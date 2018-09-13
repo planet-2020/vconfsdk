@@ -72,7 +72,7 @@ final class NotifyManager {
 
         for (Handler sub : subs){
             Message msg = Message.obtain();
-            msg.obj = new JniManager.ResponseBundle(ntfId, ntfContent, JniManager.NTF);
+            msg.obj = new ResponseBundle(ntfId, ntfContent, Constant.NTF);
             sub.sendMessage(msg);
         }
 

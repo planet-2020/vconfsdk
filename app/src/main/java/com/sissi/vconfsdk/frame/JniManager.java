@@ -35,16 +35,10 @@ public final class JniManager {
     private JsonManager jsonManager;    // json管理器，负责序列化反序列化
     private MessageRegister messageRegister; // 请求-响应映射器(保存有请求响应的映射关系)
 
-    private NativeEmulator nativeEmulator; // native模拟器。可模拟native层接收请求及反馈响应，仅用于调试！
+    private NativeEmulator nativeEmulator; // native模拟器。可模拟native层接收请求及反馈响应，仅用于调试！  // TODO 剥离
 
     private boolean isWhiteListEnabled = false;
     private boolean isBlackListEnabled = false;
-
-    // 消息类型
-    public static final int NTF = 101; // 通知
-    public static final int RSP = 102; // 响应
-    public static final int RSP_FIN = 103; // 响应结束（收到响应序列中的最后一条响应）
-    public static final int RSP_TIMEOUT = 104; // 响应超时
 
     private JniManager(){
         configManager = ConfigManager.instance();
@@ -373,62 +367,5 @@ public final class JniManager {
         });
     }
 
-    class RequestBundle{
-        Handler requester; // 请求者
-        String reqName; // 请求消息名称
-        String reqPara; // 请求参数(JSon格式)
-        int reqSn; // 请求序列号
-        Object[] rsps;  // 模拟响应. 仅模拟模式下有意义
-        RequestBundle(Handler requester, String reqName, String reqPara, int reqSn, Object[] rsps){
-            this.requester = requester;
-            this.reqName = reqName;
-            this.reqPara = reqPara;
-            this.reqSn = reqSn;
-            this.rsps = rsps;
-        }
-    }
-
-
-    public static class ResponseBundle{
-        String name;  // 响应消息名称
-        Object body; // 响应消息体
-        int type;   // 响应类型：NTF、RSP、FIN、TIMEOUT
-        String reqName; // 对应的请求消息名称
-        int reqSn;  // 对应的请求序列号
-
-        ResponseBundle(String name, Object body, int type, String reqName, int reqSn){
-            this.name = name;
-            this.body = body;
-            this.type = type;
-            this.reqName = reqName;
-            this.reqSn = reqSn;
-        }
-
-        ResponseBundle(String name, Object body, int type){
-            this.name = name;
-            this.body = body;
-            this.type = type;
-        }
-
-        public String name(){
-            return name;
-        }
-
-        public Object body(){
-            return body;
-        }
-
-        public int type(){
-            return type;
-        }
-
-        public String reqName(){
-            return reqName;
-        }
-
-        public int reqSn(){
-            return reqSn;
-        }
-    }
 
 }

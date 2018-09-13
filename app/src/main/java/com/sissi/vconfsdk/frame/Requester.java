@@ -281,18 +281,18 @@ public abstract class Requester extends Handler {
     }
 
     private void processMsg(Message msg){
-        JniManager.ResponseBundle responseBundle = (JniManager.ResponseBundle) msg.obj;
+        ResponseBundle responseBundle = (ResponseBundle) msg.obj;
         Object rspContent = responseBundle.body();
         int type = responseBundle.type();
         int reqSn = responseBundle.reqSn();
-        if (JniManager.NTF == type){
+        if (Constant.NTF == type){
             // 通知
             DmMsg ntfId = DmMsg.valueOf(responseBundle.name());
             Set<Object> ntfListeners = ntfListenerList.get(ntfId);
             if (null != ntfListeners){
                 onNtf(ntfListeners, ntfId, rspContent);
             }
-        }else if (JniManager.RSP_TIMEOUT == type){
+        }else if (Constant.RSP_TIMEOUT == type){
             // 请求超时
             Object rspListener = rspListenerList.get(reqSn);
             synchronized (rspListenerList) {
@@ -302,7 +302,7 @@ public abstract class Requester extends Handler {
         }else{
             // 响应
             Object rspListener = rspListenerList.get(reqSn);
-            if (JniManager.RSP_FIN == type){
+            if (Constant.RSP_FIN == type){
                 synchronized (rspListenerList) {
                     rspListenerList.remove(reqSn); // 请求已结束，移除该次请求记录
                 }
