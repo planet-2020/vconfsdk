@@ -1,4 +1,4 @@
-package com.sissi.vconfsdk.frame;
+package com.sissi.vconfsdk.base.engine;
 
 /**
  * 协议．用于解析收到的json格式消息。

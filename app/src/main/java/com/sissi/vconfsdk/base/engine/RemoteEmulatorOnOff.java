@@ -1,4 +1,4 @@
-package com.sissi.vconfsdk.frame;
+package com.sissi.vconfsdk.base.engine;
 
 /**
  * 模拟器开关。

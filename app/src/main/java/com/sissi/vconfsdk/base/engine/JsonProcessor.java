@@ -1,4 +1,4 @@
-package com.sissi.vconfsdk.frame;
+package com.sissi.vconfsdk.base.engine;
 
 import java.lang.reflect.Type;
 import java.util.Set;

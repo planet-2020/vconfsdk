@@ -1,4 +1,4 @@
-package com.sissi.vconfsdk;
+package com.sissi.vconfsdk.base;
 
 import com.sissi.annotation.SerializeEnumAsInt;
 

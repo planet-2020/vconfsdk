@@ -1,8 +1,8 @@
 package com.sissi.vconfsdk.login;
 
-import com.sissi.vconfsdk.DmMsg;
-import com.sissi.vconfsdk.frame.Requester;
-import com.sissi.vconfsdk.MsgBeans;
+import com.sissi.vconfsdk.base.DmMsg;
+import com.sissi.vconfsdk.base.Requester;
+import com.sissi.vconfsdk.base.MsgBeans;
 import com.sissi.vconfsdk.utils.KLog;
 
 /**

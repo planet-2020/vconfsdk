@@ -1,10 +1,11 @@
-package com.sissi.vconfsdk.frame;
+package com.sissi.vconfsdk.base;
 
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
-import com.sissi.vconfsdk.DmMsg;
+import com.sissi.vconfsdk.base.engine.MessageDispatcher;
+import com.sissi.vconfsdk.base.engine.ResponseBundle;
 import com.sissi.vconfsdk.utils.KLog;
 
 import java.lang.reflect.Constructor;

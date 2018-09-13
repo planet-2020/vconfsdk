@@ -1,4 +1,4 @@
-package com.sissi.vconfsdk.frame;
+package com.sissi.vconfsdk.base.engine;
 
 /**
  * Created by Sissi on 2018/9/13.

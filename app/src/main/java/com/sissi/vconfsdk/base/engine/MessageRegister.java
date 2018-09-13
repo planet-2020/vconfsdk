@@ -1,6 +1,4 @@
-package com.sissi.vconfsdk.frame;
-
-import android.util.Log;
+package com.sissi.vconfsdk.base.engine;
 
 import com.sissi.annotation.Consumer;
 import com.sissi.annotation.Message;
