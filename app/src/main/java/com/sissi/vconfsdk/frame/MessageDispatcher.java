@@ -14,11 +14,11 @@ import org.json.JSONException;
  * Created by Sissi on 1/5/2017.
  */
 
-public final class JniManager {
+public final class MessageDispatcher {
     
-    private static final String TAG = "JniManager";
+    private static final String TAG = "MessageDispatcher";
     
-    private static JniManager instance;
+    private static MessageDispatcher instance;
     private static boolean reqEnabled = true; // 是否允许发送请求
     private static boolean rspEnabled = true; // 是否允许接收响应（包括RSP和NTF）
 
@@ -40,7 +40,7 @@ public final class JniManager {
     private boolean isWhiteListEnabled = false;
     private boolean isBlackListEnabled = false;
 
-    private JniManager(){
+    private MessageDispatcher(){
         configManager = ConfigManager.instance();
         sessionManager = SessionManager.instance();
         notifyManager = NotifyManager.instance();
@@ -58,9 +58,9 @@ public final class JniManager {
         sessionManager.setSendreqHandler(reqHandler);
     }
 
-    public synchronized static JniManager instance() {
+    public synchronized static MessageDispatcher instance() {
         if (null == instance) {
-            instance = new JniManager();
+            instance = new MessageDispatcher();
 //            NativeMethods.setCallback(instance);
         }
 

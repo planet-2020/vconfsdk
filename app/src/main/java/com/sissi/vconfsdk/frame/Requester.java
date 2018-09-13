@@ -21,7 +21,7 @@ import java.util.Set;
  * Created by Sissi on 1/9/2017.
  */
 public abstract class Requester extends Handler {
-    private JniManager jniManager;
+    private MessageDispatcher messageDispatcher;
     private static HashMap<Class<?>, Requester> instances = new HashMap<>();
     private static HashMap<Class<?>, Integer> refercnt = new HashMap<>();
     private int reqSn; // 请求序列号，唯一标识一次请求。
@@ -39,7 +39,7 @@ public abstract class Requester extends Handler {
 
     protected Requester(){
         super(Looper.getMainLooper());
-        jniManager = JniManager.instance();
+        messageDispatcher = MessageDispatcher.instance();
         reqSn = 0;
         rspListenerList = new HashMap<>();
         ntfListenerList = new HashMap<>();
@@ -92,10 +92,10 @@ public abstract class Requester extends Handler {
     }
 
 //    public synchronized static void setReqEnable(boolean enable){
-//        JniManager.setReqEnable(enable);
+//        MessageDispatcher.setReqEnable(enable);
 //    }
 //    public synchronized static void setRspEnable(boolean enable){
-//        JniManager.setRspEnable(enable);
+//        MessageDispatcher.setRspEnable(enable);
 //    }
 
     /**
@@ -111,7 +111,7 @@ public abstract class Requester extends Handler {
      * */
     protected synchronized void sendReq(DmMsg reqId, Object reqPara, Object rspListener){
 //        KLog.p("rspListener=%s, reqId=%s, reqPara=%s", rspListener, reqId, reqPara);
-        if (jniManager.request(this, reqId.name(), reqPara, ++reqSn)){
+        if (messageDispatcher.request(this, reqId.name(), reqPara, ++reqSn)){
 //            if (null != rspListener) {
                 rspListenerList.put(reqSn, rspListener);
 //            }
@@ -124,7 +124,7 @@ public abstract class Requester extends Handler {
      * */
     protected synchronized void sendReq(DmMsg reqId, Object reqPara, Object[] rsps, Object rspListener){
 //        KLog.p("rspListener=%s, reqId=%s, reqPara=%s, rsps=%s", rspListener, reqId, reqPara, rsps);
-        if (jniManager.request(this, reqId.name(), reqPara, ++reqSn, rsps)){
+        if (messageDispatcher.request(this, reqId.name(), reqPara, ++reqSn, rsps)){
 //            if (null != rspListener) {
                 rspListenerList.put(reqSn, rspListener);
 //            }
@@ -146,7 +146,7 @@ public abstract class Requester extends Handler {
         }
         Set<Object> listeners = ntfListenerList.get(ntfId);
         if (null == listeners){
-            jniManager.subscribeNtf(this, ntfId.name());
+            messageDispatcher.subscribeNtf(this, ntfId.name());
             listeners = new HashSet<Object>();
             ntfListenerList.put(ntfId, listeners);
         }
@@ -178,7 +178,7 @@ public abstract class Requester extends Handler {
 //            KLog.p("del ntfListener=%s, ntfId=%s", ntfListener, ntfId);
             if (listeners.isEmpty()) {
                 ntfListenerList.remove(ntfId);
-                jniManager.unsubscribeNtf(this, ntfId.name());
+                messageDispatcher.unsubscribeNtf(this, ntfId.name());
 //                KLog.p("unsubscribeNtf %s", ntfId);
             }
         }
@@ -201,21 +201,21 @@ public abstract class Requester extends Handler {
      * */
     protected synchronized void ejectNtf(DmMsg ntfId, Object ntf){
 //        KLog.p("ntfId=%s, ntf=%s", ntfId, ntf);
-        jniManager.ejectNtf(ntfId.name(), ntf);
+        messageDispatcher.ejectNtf(ntfId.name(), ntf);
     }
 
     /**
      * 设置配置
      * */
     protected synchronized void setConfig(DmMsg reqId, Object config){
-        jniManager.setConfig(reqId.name(), config);
+        messageDispatcher.setConfig(reqId.name(), config);
     }
 
     /**
      * 获取配置
      * */
     protected synchronized Object getConfig(DmMsg reqId){ // TODO 获取配置也有可能需要除reqId外的传入参数
-//        return jniManager.getConfig(reqId);
+//        return messageDispatcher.getConfig(reqId);
         return null;
     }
 
@@ -258,7 +258,7 @@ public abstract class Requester extends Handler {
     @Override
     public void handleMessage(Message msg) {
 //        KLog.p("handle msg=%s", msg);
-//        JniManager.ResponseBundle responseBundle = (JniManager.ResponseBundle) msg.obj;
+//        MessageDispatcher.ResponseBundle responseBundle = (MessageDispatcher.ResponseBundle) msg.obj;
 //        EmRsp[] rspIds = EmRsp.values();
 //        if (rspOrdinal<0 || rspIds.length<=rspOrdinal){
 //            KLog.p(KLog.ERROR, "Invalid rsp ordinal %d", rspOrdinal);
