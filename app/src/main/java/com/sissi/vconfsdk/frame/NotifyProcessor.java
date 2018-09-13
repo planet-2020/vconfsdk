@@ -7,20 +7,21 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
- * Native通知管理器(NM)
+ * 通知处理器
+ *
  * Created by Sissi on 1/9/2017.
  */
-final class NotifyManager {
-    private static NotifyManager instance;
+final class NotifyProcessor {
+    private static NotifyProcessor instance;
     private HashMap<String, ArrayList<Handler>> subscribers;
 
-    private NotifyManager(){
+    private NotifyProcessor(){
         subscribers = new HashMap<>();
     }
 
-    synchronized static NotifyManager instance() {
+    synchronized static NotifyProcessor instance() {
         if (null == instance) {
-            instance = new NotifyManager();
+            instance = new NotifyProcessor();
         }
 
         return instance;

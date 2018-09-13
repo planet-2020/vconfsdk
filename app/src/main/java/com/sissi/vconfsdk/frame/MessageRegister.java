@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ * 消息注册表
+ *
  * Created by Sissi on 1/9/2017.
  */
 

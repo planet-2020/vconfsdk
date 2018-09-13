@@ -11,34 +11,34 @@ import android.util.Log;
  * Created by Sissi on 1/20/2017.
  * */
 /**
- * Native模拟器。<p>
+ * 远端模拟器。<p>
  *
- * 若启用了模拟器则进入了“模拟模式”，模拟模式下模拟器替代了真实的native层，请求会被定向到模拟器而非真实的native层。
+ * 若启用了模拟器则进入了“模拟模式”，模拟模式下模拟器替代了真实的远端(服务器)，请求会被定向到模拟器而非发给真实服务器.
  * 模拟器收到请求后会反馈响应。<p>
  * 模拟模式主要有两个用途：<p>
  * 1、便于在Native层没有完成开发的情况下UI层开发仍可以照常进行不受制约。<p>
  * 2、便于定位问题。比如当联调出现问题时可启用模拟模式跑下程序，若模拟模式下程序正常则问题出在native层，否则问题出在UI层。
  *
  */
-final class NativeEmulator{
+final class RemoteEmulator {
 
-    private static final String TAG = "NativeEmulator";
+    private static final String TAG = "RemoteEmulator";
 
-    private static NativeEmulator instance;
-    private JsonManager jsonManager;
+    private static RemoteEmulator instance;
+    private JsonProcessor jsonProcessor;
 
     private Thread thread;
     private Handler handler;
     private Callback cb;
 
-    private NativeEmulator() {
-        jsonManager = JsonManager.instance();
+    private RemoteEmulator() {
+        jsonProcessor = JsonProcessor.instance();
         initThread();
     }
 
-    synchronized static NativeEmulator instance() {
+    synchronized static RemoteEmulator instance() {
         if (null == instance) {
-            instance = new NativeEmulator();
+            instance = new RemoteEmulator();
         }
 
         return instance;
@@ -54,7 +54,7 @@ final class NativeEmulator{
             public void run() {
                 Contract.Head head= new Contract.Head(-1, ntfId, 1);
                 Contract.Mtapi mtapi= new Contract.Mtapi(head, ntf);
-                String jsonNtf = jsonManager.toJson(new Contract.RspWrapper(mtapi));
+                String jsonNtf = jsonProcessor.toJson(new Contract.RspWrapper(mtapi));
                 if (null != cb){
                     Log.i(TAG, String.format("NATIVE REPORT NTF %s: content=%s", ntfId, jsonNtf));
                     cb.callback(jsonNtf);
@@ -75,7 +75,7 @@ final class NativeEmulator{
                 handler = new Handler(){
                     @Override
                     public void handleMessage(Message msg) {
-                        SessionManager.Session s = (SessionManager.Session) msg.obj;
+                        SessionProcessor.Session s = (SessionProcessor.Session) msg.obj;
                         String reqId = s.reqId();
                         Log.i(TAG, String.format("NATIVE RECV REQ %s: reqPara=%s", reqId, s.reqPara()));
                         String[] rspIds = s.rspIds();
@@ -86,7 +86,7 @@ final class NativeEmulator{
                             // 构造响应json字符串
                             head= new Contract.Head(-1, rspIds[i], 1);
                             mtapi= new Contract.Mtapi(head, rsps[i]);
-                            String jsonRsp = jsonManager.toJson(new Contract.RspWrapper(mtapi));
+                            String jsonRsp = jsonProcessor.toJson(new Contract.RspWrapper(mtapi));
                             if (null != cb){
                                 // 上报响应
                                 Log.i(TAG, String.format("NATIVE REPORT RSP %s(for REQ %s): rspContent=%s", rspIds[i], reqId, jsonRsp));
@@ -105,7 +105,7 @@ final class NativeEmulator{
             }
         };
 
-        thread.setName("NativeEmulator");
+        thread.setName("RemoteEmulator");
 
         thread.start();
 

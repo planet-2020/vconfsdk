@@ -10,7 +10,8 @@ import android.util.Log;
 import org.json.JSONException;
 
 /**
- * Jni管理器（JM）。
+ * 消息分发器.
+ *
  * Created by Sissi on 1/5/2017.
  */
 
@@ -30,32 +31,32 @@ public final class MessageDispatcher {
     private static final int NATIVE_RSP = -998;
 
     private ConfigManager configManager;  // 配置管理器
-    private SessionManager sessionManager;  // 会话管理器
-    private NotifyManager notifyManager; // 通知管理器
-    private JsonManager jsonManager;    // json管理器，负责序列化反序列化
+    private SessionProcessor sessionProcessor;  // 会话管理器
+    private NotifyProcessor notifyProcessor; // 通知管理器
+    private JsonProcessor jsonProcessor;    // json管理器，负责序列化反序列化
     private MessageRegister messageRegister; // 请求-响应映射器(保存有请求响应的映射关系)
 
-    private NativeEmulator nativeEmulator; // native模拟器。可模拟native层接收请求及反馈响应，仅用于调试！
+    private RemoteEmulator remoteEmulator; // native模拟器。可模拟native层接收请求及反馈响应，仅用于调试！
 
     private boolean isWhiteListEnabled = false;
     private boolean isBlackListEnabled = false;
 
     private MessageDispatcher(){
         configManager = ConfigManager.instance();
-        sessionManager = SessionManager.instance();
-        notifyManager = NotifyManager.instance();
+        sessionProcessor = SessionProcessor.instance();
+        notifyProcessor = NotifyProcessor.instance();
 
-        jsonManager = JsonManager.instance();
+        jsonProcessor = JsonProcessor.instance();
         messageRegister = MessageRegister.instance();
 
-        if (NativeEmulatorOnOff.on) {
+        if (RemoteEmulatorOnOff.on) {
             // 模拟模式开启
             initEmulator();
-            sessionManager.setEmulatedNativeHandler(nativeEmulator.getHandler());
+            sessionProcessor.setEmulatedNativeHandler(remoteEmulator.getHandler());
         }
         initReqThread();
         initRspThread();
-        sessionManager.setSendreqHandler(reqHandler);
+        sessionProcessor.setSendreqHandler(reqHandler);
     }
 
     public synchronized static MessageDispatcher instance() {
@@ -96,7 +97,7 @@ public final class MessageDispatcher {
             Log.e(TAG, "Request disabled!");
             return false;
         }
-        if (null != rsps && null==nativeEmulator){
+        if (null != rsps && null== remoteEmulator){
             // 期望使用模拟模式但模拟器没开
             Log.e(TAG, "Emulator not enabled");
             return false;
@@ -105,7 +106,7 @@ public final class MessageDispatcher {
             Log.e(TAG, "Invalid para");
             return false;
         }
-        String jsonReqPara = jsonManager.toJson(reqPara);
+        String jsonReqPara = jsonProcessor.toJson(reqPara);
         jsonReqPara = "null".equalsIgnoreCase(jsonReqPara) ? null : jsonReqPara;
         Message msg = Message.obtain();
         msg.what = UI_REQ;
@@ -154,7 +155,7 @@ public final class MessageDispatcher {
             return;
         }
         Log.i(TAG, String.format("-*-> %s subscriber=%s", ntfId, subscriber));
-        notifyManager.subscribeNtf(subscriber, ntfId);
+        notifyProcessor.subscribeNtf(subscriber, ntfId);
     }
 
     /**
@@ -164,7 +165,7 @@ public final class MessageDispatcher {
      * */
     public void unsubscribeNtf(Handler subscriber, String ntfId){
         Log.i(TAG, String.format("-*-< %s subscriber=%s", ntfId, subscriber));
-        notifyManager.unsubscribeNtf(subscriber, ntfId);
+        notifyProcessor.unsubscribeNtf(subscriber, ntfId);
     }
 
     /**
@@ -175,8 +176,8 @@ public final class MessageDispatcher {
             Log.e(TAG, "Respond disabled!");
             return;
         }
-        if (null != nativeEmulator){
-            nativeEmulator.ejectNtf(ntfId, ntf);
+        if (null != remoteEmulator){
+            remoteEmulator.ejectNtf(ntfId, ntf);
         }
     }
 
@@ -189,7 +190,7 @@ public final class MessageDispatcher {
             Log.e(TAG, "Request disabled!");
             return;
         }
-        String jsonConfig = null==config ? null : jsonManager.toJson(config);
+        String jsonConfig = null==config ? null : jsonProcessor.toJson(config);
         Log.i(TAG, String.format("-~->| %s\npara=%s", reqId, jsonConfig));
         configManager.setConfig(reqId, jsonConfig);
     }
@@ -211,7 +212,7 @@ public final class MessageDispatcher {
 //
 //        Log.i(TAG, String.format("-~->| %s", reqId));
 //        String config = configManager.getConfig(reqId);
-//        return jsonManager.fromJson(config, clz);
+//        return jsonProcessor.fromJson(config, clz);
         return null;
     }
 
@@ -305,7 +306,7 @@ public final class MessageDispatcher {
         if (UI_REQ == msg.what){
             RequestBundle reqBundle = (RequestBundle) msg.obj;
             Log.i(TAG, String.format("-~-> %s\npara=%s\nrequester=%s", reqBundle.reqName, reqBundle.reqPara, reqBundle.requester));
-            if (!sessionManager.request(reqBundle.requester, reqBundle.reqName, reqBundle.reqPara, reqBundle.reqSn, reqBundle.rsps)){
+            if (!sessionProcessor.request(reqBundle.requester, reqBundle.reqName, reqBundle.reqPara, reqBundle.reqSn, reqBundle.rsps)){
                 Log.e(TAG, "Session request failed!");
             }
         }
@@ -318,9 +319,9 @@ public final class MessageDispatcher {
             String rspBody = null;
 
             try {
-                Object rootObj = jsonManager.getRootObj(rsp);
-                rspName = jsonManager.getRspName(rootObj);
-                rspBody = jsonManager.getRspBody(rootObj);
+                Object rootObj = jsonProcessor.getRootObj(rsp);
+                rspName = jsonProcessor.getRspName(rootObj);
+                rspBody = jsonProcessor.getRspBody(rootObj);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -338,15 +339,15 @@ public final class MessageDispatcher {
                 return;
             }
 
-            Object rspObj = jsonManager.fromJson(rspBody, clz);
+            Object rspObj = jsonProcessor.fromJson(rspBody, clz);
             if (null == rspObj){
                 Log.e(TAG, String.format("Failed to convert msg %s to object, msg json body: %s ", rspName, rspBody));
                 return;
             }
 
-            if (sessionManager.respond(rspName, rspObj)){
+            if (sessionProcessor.respond(rspName, rspObj)){
                 Log.i(TAG,String.format("<-~- %s\n%s", rspName, rsp));
-            }else if(notifyManager.notify(rspName, rspObj)){
+            }else if(notifyProcessor.notify(rspName, rspObj)){
                 Log.i(TAG,String.format("<<-~- %s\n%s", rspName, rsp));
             }else {
                 Log.e(TAG, "Unexpected msg: "+rspName);
@@ -358,8 +359,8 @@ public final class MessageDispatcher {
      * 初始化Native模拟器
      * */
     private void initEmulator(){
-        nativeEmulator = NativeEmulator.instance();
-        nativeEmulator.setCallback(new NativeEmulator.Callback(){
+        remoteEmulator = RemoteEmulator.instance();
+        remoteEmulator.setCallback(new RemoteEmulator.Callback(){
             @Override
             public void callback(String jsonRsp) {
                 respond(jsonRsp);

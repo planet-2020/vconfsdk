@@ -18,15 +18,20 @@ import com.sissi.annotation.SerializeEnumAsInt;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-@Consumer(SerializeEnumAsInt.class)
-final class JsonManager {
 
-    private static JsonManager instance;
+/***
+ *
+ * Json处理器
+ * */
+@Consumer(SerializeEnumAsInt.class)
+final class JsonProcessor {
+
+    private static JsonProcessor instance;
 
     private GsonBuilder gsonBuilder;
     private Gson gson;
 
-    private JsonManager() {
+    private JsonProcessor() {
         gsonBuilder = new GsonBuilder();
 
         Set<Class> serializeEnumAsIntSet = SerializeEnumAsInt$$Generated.serializeEnumAsIntSet;
@@ -38,9 +43,9 @@ final class JsonManager {
         gson = gsonBuilder.create();
     }
 
-    synchronized static JsonManager instance() {
+    synchronized static JsonProcessor instance() {
         if (null == instance) {
-            instance = new JsonManager();
+            instance = new JsonProcessor();
         }
 
         return instance;
