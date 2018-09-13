@@ -293,14 +293,14 @@ public abstract class Requester{
         Object rspContent = responseBundle.body();
         int type = responseBundle.type();
         int reqSn = responseBundle.reqSn();
-        if (Constant.NTF == type){
+        if (ResponseBundle.NTF == type){
             // 通知
             DmMsg ntfId = DmMsg.valueOf(responseBundle.name());
             Set<Object> ntfListeners = ntfListenerList.get(ntfId);
             if (null != ntfListeners){
                 onNtf(ntfListeners, ntfId, rspContent);
             }
-        }else if (Constant.RSP_TIMEOUT == type){
+        }else if (ResponseBundle.RSP_TIMEOUT == type){
             // 请求超时
             Object rspListener = rspListenerList.get(reqSn);
             synchronized (rspListenerList) {
@@ -310,7 +310,7 @@ public abstract class Requester{
         }else{
             // 响应
             Object rspListener = rspListenerList.get(reqSn);
-            if (Constant.RSP_FIN == type){
+            if (ResponseBundle.RSP_FIN == type){
                 synchronized (rspListenerList) {
                     rspListenerList.remove(reqSn); // 请求已结束，移除该次请求记录
                 }

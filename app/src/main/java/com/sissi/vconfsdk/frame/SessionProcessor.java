@@ -183,13 +183,13 @@ final class SessionProcessor {
                 timeoutHandler.removeMessages(MSG_TIMEOUT, s); // 移除定时器
                 s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                 sessions.remove(s);
-                rsp.obj = new ResponseBundle(rspId, rspContent, Constant.RSP_FIN, s.reqId, s.reqSn);
+                rsp.obj = new ResponseBundle(rspId, rspContent, ResponseBundle.RSP_FIN, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
                 // 驱动被当前会话阻塞的会话
                 driveBlockedSession(s.reqId);
             } else {
                 Log.i(TAG, String.format("<-=- (session %d) %s", s.id, rspId));
-                rsp.obj = new ResponseBundle(rspId, rspContent, Constant.RSP, s.reqId, s.reqSn);
+                rsp.obj = new ResponseBundle(rspId, rspContent, ResponseBundle.RSP, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
             }
 
@@ -241,7 +241,7 @@ final class SessionProcessor {
 
         // 通知用户请求超时
         Message rsp = Message.obtain();
-        rsp.obj = new ResponseBundle("TIMEOUT", null, Constant.RSP_TIMEOUT, s.reqId, s.reqSn);
+        rsp.obj = new ResponseBundle("TIMEOUT", null, ResponseBundle.RSP_TIMEOUT, s.reqId, s.reqSn);
         s.requester.sendMessage(rsp);
 
         sessions.remove(s);

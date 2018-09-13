@@ -73,7 +73,7 @@ final class NotifyProcessor {
 
         for (Handler sub : subs){
             Message msg = Message.obtain();
-            msg.obj = new ResponseBundle(ntfId, ntfContent, Constant.NTF);
+            msg.obj = new ResponseBundle(ntfId, ntfContent, ResponseBundle.NTF);
             sub.sendMessage(msg);
         }
 
