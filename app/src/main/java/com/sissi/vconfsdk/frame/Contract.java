@@ -1,6 +1,8 @@
 package com.sissi.vconfsdk.frame;
 
 /**
+ * 协议．用于解析收到的json格式消息。
+ *
  * Created by Sissi on 2018/9/13.
  */
 

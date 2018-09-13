@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
- * 会话管理器(SM)
+ * 会话处理器　
  * Created by Sissi on 1/9/2017.
  */
 
