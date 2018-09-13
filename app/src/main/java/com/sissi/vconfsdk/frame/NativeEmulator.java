@@ -52,9 +52,9 @@ final class NativeEmulator{
         handler.post(new Runnable() {
             @Override
             public void run() {
-                Head head= new Head(-1, ntfId, 1);
-                Mtapi mtapi= new Mtapi(head, ntf);
-                String jsonNtf = jsonManager.toJson(new RspWrapper(mtapi));
+                Contract.Head head= new Contract.Head(-1, ntfId, 1);
+                Contract.Mtapi mtapi= new Contract.Mtapi(head, ntf);
+                String jsonNtf = jsonManager.toJson(new Contract.RspWrapper(mtapi));
                 if (null != cb){
                     Log.i(TAG, String.format("NATIVE REPORT NTF %s: content=%s", ntfId, jsonNtf));
                     cb.callback(jsonNtf);
@@ -80,13 +80,13 @@ final class NativeEmulator{
                         Log.i(TAG, String.format("NATIVE RECV REQ %s: reqPara=%s", reqId, s.reqPara()));
                         String[] rspIds = s.rspIds();
                         Object[] rsps = s.rsps();
-                        Head head;
-                        Mtapi mtapi;
+                        Contract.Head head;
+                        Contract.Mtapi mtapi;
                         for (int i=0; i<rsps.length; ++i){
                             // 构造响应json字符串
-                            head= new Head(-1, rspIds[i], 1);
-                            mtapi= new Mtapi(head, rsps[i]);
-                            String jsonRsp = jsonManager.toJson(new RspWrapper(mtapi));
+                            head= new Contract.Head(-1, rspIds[i], 1);
+                            mtapi= new Contract.Mtapi(head, rsps[i]);
+                            String jsonRsp = jsonManager.toJson(new Contract.RspWrapper(mtapi));
                             if (null != cb){
                                 // 上报响应
                                 Log.i(TAG, String.format("NATIVE REPORT RSP %s(for REQ %s): rspContent=%s", rspIds[i], reqId, jsonRsp));
@@ -128,28 +128,4 @@ final class NativeEmulator{
         this.cb = cb;
     }
 
-    /** 响应消息头定义 */
-    private class Head {
-        int eventid; // 消息ID（底层的消息序号，暂时没用）
-        String eventname; // 消息名称
-        int SessionID;   // （用于硬终端）
-        public Head(int eventId, String eventName, int sessionID){
-            eventid = eventId;
-            eventname = eventName;
-            SessionID = sessionID;
-        }
-    }
-    /** 响应消息结构定义 */
-    private class Mtapi {
-        Head head; // 消息头
-        Object body; // 消息体
-        public Mtapi(Head head, Object body){
-            this.head = head;
-            this.body = body;
-        }
-    }
-    private class RspWrapper {
-        Mtapi mtapi;
-        public RspWrapper(Mtapi mtapi){this.mtapi = mtapi;}
-    }
 }

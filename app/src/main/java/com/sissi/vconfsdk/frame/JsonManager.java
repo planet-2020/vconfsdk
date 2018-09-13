@@ -1,7 +1,6 @@
 package com.sissi.vconfsdk.frame;
 
 import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.Set;
 
 import com.google.gson.Gson;
@@ -26,14 +25,6 @@ final class JsonManager {
 
     private GsonBuilder gsonBuilder;
     private Gson gson;
-
-    private static ArrayList<Class<? extends Enum>> enumClazzs ;
-
-    private static final String KEY_MTAPI = "mtapi";
-    private static final String KEY_HEAD = "head";
-    private static final String KEY_BODY = "body";
-    private static final String KEY_EVENTNAME = "eventname";
-    private static final String KEY_BASE_TYPE = "basetype";
 
     private JsonManager() {
         gsonBuilder = new GsonBuilder();
@@ -96,15 +87,15 @@ final class JsonManager {
     }
 
     Object getRootObj(String jsonRsp) throws JSONException{
-        return new JSONObject(jsonRsp).getJSONObject(KEY_MTAPI);
+        return new JSONObject(jsonRsp).getJSONObject(Contract.KEY_MTAPI);
     }
 
     String getRspName(Object rootObj) throws JSONException {
-        return ((JSONObject)rootObj).getJSONObject(KEY_HEAD).getString(KEY_EVENTNAME);
+        return ((JSONObject)rootObj).getJSONObject(Contract.KEY_HEAD).getString(Contract.KEY_EVENTNAME);
     }
 
     String getRspBody(Object rootObj) throws JSONException {
-        return ((JSONObject)rootObj).getString(KEY_BODY);
+        return ((JSONObject)rootObj).getString(Contract.KEY_BODY);
     }
 
 }

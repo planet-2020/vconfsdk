@@ -35,7 +35,7 @@ public final class MessageDispatcher {
     private JsonManager jsonManager;    // json管理器，负责序列化反序列化
     private MessageRegister messageRegister; // 请求-响应映射器(保存有请求响应的映射关系)
 
-    private NativeEmulator nativeEmulator; // native模拟器。可模拟native层接收请求及反馈响应，仅用于调试！  // TODO 剥离
+    private NativeEmulator nativeEmulator; // native模拟器。可模拟native层接收请求及反馈响应，仅用于调试！
 
     private boolean isWhiteListEnabled = false;
     private boolean isBlackListEnabled = false;
