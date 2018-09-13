@@ -20,7 +20,7 @@ import java.util.Set;
  * Jni请求者。用来向JM发送请求、订阅通知、接收响应。
  * Created by Sissi on 1/9/2017.
  */
-public abstract class Requester extends Handler {
+public abstract class Requester{
     private MessageDispatcher messageDispatcher;
     private static HashMap<Class<?>, Requester> instances = new HashMap<>();
     private static HashMap<Class<?>, Integer> refercnt = new HashMap<>();
@@ -37,8 +37,16 @@ public abstract class Requester extends Handler {
     private Handler assistHandler;
 //    private EmRsp[] assistThreadRsps; // 需要在辅助线程处理的响应
 
+    private Handler handler;
+
     protected Requester(){
-        super(Looper.getMainLooper());
+        handler = new Handler(Looper.getMainLooper()){
+            @Override
+            public void handleMessage(Message msg) {
+                processMsg(msg);
+            }
+        };
+
         messageDispatcher = MessageDispatcher.instance();
         reqSn = 0;
         rspListenerList = new HashMap<>();
@@ -111,7 +119,7 @@ public abstract class Requester extends Handler {
      * */
     protected synchronized void sendReq(DmMsg reqId, Object reqPara, Object rspListener){
 //        KLog.p("rspListener=%s, reqId=%s, reqPara=%s", rspListener, reqId, reqPara);
-        if (messageDispatcher.request(this, reqId.name(), reqPara, ++reqSn)){
+        if (messageDispatcher.request(handler, reqId.name(), reqPara, ++reqSn)){
 //            if (null != rspListener) {
                 rspListenerList.put(reqSn, rspListener);
 //            }
@@ -124,7 +132,7 @@ public abstract class Requester extends Handler {
      * */
     protected synchronized void sendReq(DmMsg reqId, Object reqPara, Object[] rsps, Object rspListener){
 //        KLog.p("rspListener=%s, reqId=%s, reqPara=%s, rsps=%s", rspListener, reqId, reqPara, rsps);
-        if (messageDispatcher.request(this, reqId.name(), reqPara, ++reqSn, rsps)){
+        if (messageDispatcher.request(handler, reqId.name(), reqPara, ++reqSn, rsps)){
 //            if (null != rspListener) {
                 rspListenerList.put(reqSn, rspListener);
 //            }
@@ -146,7 +154,7 @@ public abstract class Requester extends Handler {
         }
         Set<Object> listeners = ntfListenerList.get(ntfId);
         if (null == listeners){
-            messageDispatcher.subscribeNtf(this, ntfId.name());
+            messageDispatcher.subscribeNtf(handler, ntfId.name());
             listeners = new HashSet<Object>();
             ntfListenerList.put(ntfId, listeners);
         }
@@ -178,7 +186,7 @@ public abstract class Requester extends Handler {
 //            KLog.p("del ntfListener=%s, ntfId=%s", ntfListener, ntfId);
             if (listeners.isEmpty()) {
                 ntfListenerList.remove(ntfId);
-                messageDispatcher.unsubscribeNtf(this, ntfId.name());
+                messageDispatcher.unsubscribeNtf(handler, ntfId.name());
 //                KLog.p("unsubscribeNtf %s", ntfId);
             }
         }
@@ -254,9 +262,9 @@ public abstract class Requester extends Handler {
     }
 
 
-    /**处理Jni层反馈的响应、通知*/
-    @Override
-    public void handleMessage(Message msg) {
+//    /**处理Jni层反馈的响应、通知*/
+//    @Override
+//    public void handleMessage(Message msg) {
 //        KLog.p("handle msg=%s", msg);
 //        MessageDispatcher.ResponseBundle responseBundle = (MessageDispatcher.ResponseBundle) msg.obj;
 //        EmRsp[] rspIds = EmRsp.values();
@@ -277,8 +285,8 @@ public abstract class Requester extends Handler {
 //            }
 //        }
 
-        processMsg(msg);
-    }
+//        processMsg(msg);
+//    }
 
     private void processMsg(Message msg){
         ResponseBundle responseBundle = (ResponseBundle) msg.obj;
@@ -401,5 +409,6 @@ public abstract class Requester extends Handler {
 //            }
 //        }, 1*60*1000);
 //    }
+
 
 }
