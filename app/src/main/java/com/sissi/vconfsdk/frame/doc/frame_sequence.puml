@@ -1,0 +1,103 @@
+@startuml
+title Session Sequence
+
+box "moduleXxx"
+participant UIControl as UC
+participant XxxPresenter as XP
+end box
+
+participant PersistenceManager as PM
+
+box "frame"
+participant JniRequester as JR
+participant JniManager as JM
+participant SessionManager as SM
+end box
+'participant NotifyManager as NM
+'participant UnHandledRspManager as UM
+'participant NotifyManager as NM
+'participant NativeEmulator as NE
+participant NativeComponents as NC
+
+activate UC
+[->UC:用户事件
+UC -> XP: request(uiPara,\n rspListener)
+activate XP
+
+XP -> PM: 获取配置
+activate PM
+XP <<-- PM
+deactivate PM
+
+XP -> XP: 组装参数
+XP -> JR: request(rspListener, \nreqId, reqPara)
+activate JR
+JR -> JR: 缓存requester、\nreqSn（请求序号）等信息
+JR ->> JM: request(this, reqSn, \nreqId, reqPara)
+activate JM
+JM -> JM : 参数检查
+JR <<-- JM
+XP <<-- JR
+UC <<-- XP
+deactivate JM
+deactivate XP
+deactivate JR
+deactivate UC
+
+JM -> JM: 将请求加入<b><color:green>发送线程</color></b>\n的请求队列
+activate JM #00AA00
+
+JM -> JM: 参数转换为json格式
+JM -> SM: request(requester, reqSn, \nreqId, reqParaJsonStr)
+activate SM #00AA00
+SM -> SM: 创建Session
+SM ->> NC: request(reqParaJsonStr)
+activate NC #00AA00
+NC -->>]: 向服务器发送请求
+SM <<-- NC
+JM <<-- SM
+deactivate NC
+deactivate SM
+deactivate JM
+
+NC \--]:收到服务器响应
+activate NC #cccccc
+JM <- NC : respond(rspJsonStr)
+activate JM #cccccc
+JM -->> NC
+deactivate JM
+deactivate NC
+
+JM -> JM : 将响应加入<b><color:blue>接收线程</color></b>\n的响应队列
+activate JM #0033aa
+JM -> JM : json解析
+JM -> SM : respond(rspId, rspObj)
+activate SM #0033aa
+SM -> SM : 处理响应
+SM -> SM : 结束Session
+JM <<-- SM :
+deactivate JM
+SM -> SM : 将处理结果加入\n<b>UI线程</b>消息队列
+deactivate SM
+
+JR /-- SM : respond(reqSn, rspId, rspContent, resCode)
+activate JR
+JR -> JR : handleMessage{\n查找请求者\n判断响应序列是否结束}
+XP <<-- JR : onRsp(rspListener, rspId, rspContent)
+deactivate JR
+
+activate XP
+XP -> XP : 业务逻辑处理
+XP ->> PM : 数据保存
+activate PM
+PM -> PM : <b><color:#005500>新启线程</color></b>保存数据
+activate PM #005500
+XP <<-- PM
+deactivate PM
+deactivate PM
+UC <- XP : rspListener.onReqXxxSuccess(result)
+deactivate XP
+activate UC
+UC -> UC : 刷新界面
+
+@enduml

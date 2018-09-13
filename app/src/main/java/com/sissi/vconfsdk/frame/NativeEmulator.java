@@ -1,0 +1,155 @@
+package com.sissi.vconfsdk.frame;
+
+import android.annotation.SuppressLint;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+import android.os.Process;
+import android.util.Log;
+
+/**
+ * Created by Sissi on 1/20/2017.
+ * */
+/**
+ * Native模拟器。<p>
+ *
+ * 若启用了模拟器则进入了“模拟模式”，模拟模式下模拟器替代了真实的native层，请求会被定向到模拟器而非真实的native层。
+ * 模拟器收到请求后会反馈响应。<p>
+ * 模拟模式主要有两个用途：<p>
+ * 1、便于在Native层没有完成开发的情况下UI层开发仍可以照常进行不受制约。<p>
+ * 2、便于定位问题。比如当联调出现问题时可启用模拟模式跑下程序，若模拟模式下程序正常则问题出在native层，否则问题出在UI层。
+ *
+ */
+final class NativeEmulator{
+
+    private static final String TAG = "NativeEmulator";
+
+    private static NativeEmulator instance;
+    private JsonManager jsonManager;
+
+    private Thread thread;
+    private Handler handler;
+    private Callback cb;
+
+    private NativeEmulator() {
+        jsonManager = JsonManager.instance();
+        initThread();
+    }
+
+    synchronized static NativeEmulator instance() {
+        if (null == instance) {
+            instance = new NativeEmulator();
+        }
+
+        return instance;
+    }
+
+    Handler getHandler(){
+        return handler;
+    }
+
+    void ejectNtf(final String ntfId, final Object ntf){
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                Head head= new Head(-1, ntfId, 1);
+                Mtapi mtapi= new Mtapi(head, ntf);
+                String jsonNtf = jsonManager.toJson(new RspWrapper(mtapi));
+                if (null != cb){
+                    Log.i(TAG, String.format("NATIVE REPORT NTF %s: content=%s", ntfId, jsonNtf));
+                    cb.callback(jsonNtf);
+                }
+            }
+        });
+    }
+
+
+    private void initThread(){
+        final Object lock = new Object();
+        thread = new Thread() {
+            @SuppressLint("HandlerLeak")
+            @Override
+            public void run() {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+                Looper.prepare();
+                handler = new Handler(){
+                    @Override
+                    public void handleMessage(Message msg) {
+                        SessionManager.Session s = (SessionManager.Session) msg.obj;
+                        String reqId = s.reqId();
+                        Log.i(TAG, String.format("NATIVE RECV REQ %s: reqPara=%s", reqId, s.reqPara()));
+                        String[] rspIds = s.rspIds();
+                        Object[] rsps = s.rsps();
+                        Head head;
+                        Mtapi mtapi;
+                        for (int i=0; i<rsps.length; ++i){
+                            // 构造响应json字符串
+                            head= new Head(-1, rspIds[i], 1);
+                            mtapi= new Mtapi(head, rsps[i]);
+                            String jsonRsp = jsonManager.toJson(new RspWrapper(mtapi));
+                            if (null != cb){
+                                // 上报响应
+                                Log.i(TAG, String.format("NATIVE REPORT RSP %s(for REQ %s): rspContent=%s", rspIds[i], reqId, jsonRsp));
+                                cb.callback(jsonRsp);
+                            }
+                            try {
+                                sleep(100);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                };
+                synchronized (lock) { lock.notify(); }
+                Looper.loop();
+            }
+        };
+
+        thread.setName("NativeEmulator");
+
+        thread.start();
+
+        if (null == handler){
+            synchronized (lock) {
+                try {
+                    lock.wait(); // 保证初始化结束后立即可用。
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    interface Callback{
+        void callback(String jsonRsp);
+    }
+
+    void setCallback(Callback cb){
+        this.cb = cb;
+    }
+
+    /** 响应消息头定义 */
+    private class Head {
+        int eventid; // 消息ID（底层的消息序号，暂时没用）
+        String eventname; // 消息名称
+        int SessionID;   // （用于硬终端）
+        public Head(int eventId, String eventName, int sessionID){
+            eventid = eventId;
+            eventname = eventName;
+            SessionID = sessionID;
+        }
+    }
+    /** 响应消息结构定义 */
+    private class Mtapi {
+        Head head; // 消息头
+        Object body; // 消息体
+        public Mtapi(Head head, Object body){
+            this.head = head;
+            this.body = body;
+        }
+    }
+    private class RspWrapper {
+        Mtapi mtapi;
+        public RspWrapper(Mtapi mtapi){this.mtapi = mtapi;}
+    }
+}

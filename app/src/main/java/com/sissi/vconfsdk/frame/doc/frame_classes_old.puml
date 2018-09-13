@@ -1,0 +1,99 @@
+@startuml
+
+class LoginUI{
+    +onLoginBtnClicked()
+    +loginResult(Result)
+    -startTimeout()
+    -stopTimeout()
+}
+note right of LoginUI::onLoginBtnClicked
+    LoginManager.login(uiLoginPara)
+    startTimeout()
+end note
+note right of LoginUI::loginResult
+    stopTimeout()；
+    解析登录响应；
+    刷新界面
+end note
+
+class LoginManager{
+    +{static}login(UiLoginPara)
+    +{static}loginResult(Result)
+}
+note right of LoginManager::login
+    new Thread(){
+        loginPara = convert UiLoginPara
+        LoginLibCtrl.login(loginPara)
+    }
+end note
+note right of LoginManager::loginResult
+if (currentUI is LoginUI){
+    runOnUiThread(){
+        loginUI.loginResult(result)
+    }
+}
+end note
+
+class LoginLibCtrl{
+    +{static}login(LoginPara)
+}
+note right of LoginLibCtrl::login
+loginParaJsonStr = convert loginPara
+LoginCtrl.login(loginParaJsonStr)
+end note
+
+class LoginCtrl{
+    +{static}login(String)
+}
+note right of LoginCtrl::login
+NativeLoginModule.login(String)
+end note
+
+class NativeLoginModule{
+    login(String )
+    callback(String json)
+}
+'skinparam class {
+'	BackgroundColor PaleGreen
+'	ArrowColor SeaGreen
+'	BorderColor SpringGreen
+'}
+'skinparam stereotypeCBackgroundColor YellowGreen
+note right of NativeLoginModule::login
+将登录请求发送给服务器
+end note
+note right of NativeLoginModule::callback
+收到服务器返回的响应；
+callback.dispatchRspOrNtf(rspJsonStr)
+end note
+
+class Callback{
+    +dispatchRspOrNtf(String)
+}
+note right of Callback::dispatchRspOrNtf
+if(response is LoginRsp){
+    LoginCallback.parseLoginRsp(rspJsonStr)
+}
+end note
+
+class LoginCallback{
+    +{static}parseLoginRsp(String)
+}
+note right of LoginCallback::parseLoginRsp
+json解析；
+处理业务逻辑；
+数据持久化；
+LoginManager.loginResult(result)
+end note
+
+LoginUI ..> LoginManager : request
+LoginManager .[#blue].> LoginLibCtrl
+LoginLibCtrl .[#blue].> LoginCtrl
+LoginCtrl .[#blue].> NativeLoginModule : jni invoke
+Callback <.[#green]. NativeLoginModule : callback
+LoginCallback <.[#green]. Callback
+LoginManager <.[#green]. LoginCallback
+LoginUI <.. LoginManager : callback
+
+
+@enduml

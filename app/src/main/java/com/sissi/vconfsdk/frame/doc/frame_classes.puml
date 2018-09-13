@@ -1,0 +1,176 @@
+@startuml
+
+
+package "moduleXxx"{
+    class XxxUiControl{
+        onRequestXxxBtnClicked()
+        onStructureArrived()
+        onRequestXxxFailed(errorCode)
+        onRequestXxxTimeout()
+    }
+    class XxxPresenter{
+        requestXxx(para1, para2, ..., paraN, requestXxxListener)
+    }
+    
+    interface requestXxxListener{
+        onRequestXxxSuccess()
+        onRequestXxxFailed(errorCode)
+        onRequestXxxTimeout()
+    }
+
+}
+
+XxxUiControl .left.|> requestXxxListener
+XxxUiControl "*"-->"1" XxxPresenter
+
+XxxPresenter +-- requestXxxListener
+
+
+package "persistence"{
+    class PersistenceManager{
+        DatabaseManager
+        FileManager
+        SharedParametersManager
+    }
+
+    class DatabaseManager{
+    }
+    class FileManager{
+    }
+    class SharedParametersManager{
+    }
+
+    PersistenceManager o-- DatabaseManager
+    PersistenceManager o-- FileManager
+    PersistenceManager o-- SharedParametersManager
+}
+
+XxxPresenter "*"-right->"1" persistence
+
+package "frame" {
+
+class JniManager{
+    -sessionManager
+    -notifyManager
+    -unHandledRspManager
+    -jsonManager
+    -reqRspMap
+    -nativeEmulator
+    -requestThread : Thread
+    -respondThread : Thread
+
+    ~request(JniRequester, int reqSn, EmReq reqName,
+     Object reqPara, Object[] emulatedRsps): boolean
+    -respond(String rspJsonStr)
+    ~subscribeNtf(JniRequester, EmRsp ntfId)
+    ~unsubscribeNtf(JniRequester, EmRsp ntfId)
+    ~ejectNtf(EmRsp ntfId, Object ntfObj)
+    ~callback(String rspJsonStr)
+}
+
+class SessionManager{
+    -sessions : List<Session>
+    -blockedSessions : List<Session>
+    -sessionCnt : int
+    -timeoutThread : Thread
+    -reqRspMap
+    -sendreqHandler
+    -emulatedNativeHandler
+
+    ~request(JniRequester, int reqSn, EmReq reqName,
+    String reqPara, Object[] emulatedRsps): boolean
+    ~respond(EmRsp rspId, Object rspContent): boolean
+    -timeout(Session)
+    -driveBlockedSession(EmReq)
+}
+
+class Session{
+    -id: int
+    -requester: JniRequester
+    -reqSn: int
+    -reqName: EmReq
+    -reqPara: String
+    -timeoutVal: int
+    -rspIds: EmRsp[][]
+    -candidates: Map<Integer, Integer>
+    -emulatedRsps: Object[]
+    -state{IDLE, WAITING,
+    RECVING, END}
+}
+
+class NotifyManager{
+    -subscribers: Map<EmRsp, ArrayList<Handler>>
+    ~subscribe(Handler subscriber, EmRsp ntfId)
+    ~unsubscribe(Handler subscriber, EmRsp ntfId)
+    ~notify(EmRsp ntfId, Object ntfContent): boolean
+}
+
+class UnHandledRspManager{
+    ~handle(String rspJsonStr)
+}
+
+class JsonManager{
+    ~toJson(Object):String
+    ~fromJson(String):Object
+    -regEnumType()
+}
+
+
+class ReqRspMap{
+    initRspMap()
+    initReqMap()
+    map(EmRsp rsp, Class<?> rspClazz)
+    map(EmReq req, EmRsp[][] rspGroups, 
+    int timeoutVal)
+}
+
+'class NativeMethods{
+'    ~invoke(methodName, jsonStr)
+'    -method1(jsonStr)
+'    -method2(jsonStr)
+'}
+
+abstract class JniRequester{
+    -jniManager
+    -reqSn: int
+    -rspListenerList: Map<Integer, Object>
+    -ntfListenerList: Map<EmRsp, Set<Object>>
+    #sendReq(Object rspListener, EmReq reqName, Object reqPara)
+    #subscribeNtf(Object ntfListener, EmRsp ntfId)
+    #unsubscribeNtf(Object ntfListener, EmRsp ntfId)
+    +delListener(Object listener)
+    +handleMessage(Message msg)
+    #abstract onRsp(Object listener, EmRsp rspId, Object rspContent)
+}
+class Handler{
+    +handleMessage(Message msg)
+}
+JniRequester -right-|> Handler
+
+}
+
+XxxPresenter --|>JniRequester
+JniRequester "*"--"1" JniManager
+JniManager *-- SessionManager
+JniManager *-- NotifyManager
+JniManager *-- UnHandledRspManager
+JniManager .. native : < callback
+JniManager .right.> ReqRspMap
+JniManager .right.> JsonManager
+(SessionManager, native)..Session
+
+SessionManager "1"+--"*" Session
+
+package "native" {
+    class NativeComponents{
+        request(String)
+        callback(String json)
+    }
+    class NativeEmulator{
+        request(String)
+        callback(String json)
+        ejectNtf(EmRsp ntfId, Object ntf)
+    }
+}
+
+@enduml
