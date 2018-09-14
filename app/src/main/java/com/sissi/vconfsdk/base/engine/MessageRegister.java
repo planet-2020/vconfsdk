@@ -80,7 +80,15 @@ final class MessageRegister {
     }
 
     boolean isNotification(String msg){
-        return false;
+        return ntfSet.contains(msg);
+    }
+
+    boolean isGet(String msg){
+        return gets.contains(msg);
+    }
+
+    boolean isSet(String msg){
+        return sets.contains(msg);
     }
 
     int getTimeout(String req){
@@ -98,6 +106,10 @@ final class MessageRegister {
 
     Class<?> getRspClazz(String rsp){
         return rspClazzMap.get(rsp);
+    }
+
+    Class<?> getNtfClazz(String ntf){
+        return ntfClazzMap.get(ntf);
     }
 
 //    EmRsp getRsp(String rspName){

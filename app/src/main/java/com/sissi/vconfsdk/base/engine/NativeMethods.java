@@ -10,7 +10,8 @@ final class NativeMethods {
 
     static native int setCallback(Object callback);
 
-    static native int invoke(String methodName, String reqPara);
-    static native int invoke(String methodName, StringBuffer output);
+    static native int invoke(String methodName, String reqPara);  // request/set
+    static native int invoke(String methodName, StringBuffer output); // get
+    static native int invoke(String methodName, String para, StringBuffer output); // get
 
 }

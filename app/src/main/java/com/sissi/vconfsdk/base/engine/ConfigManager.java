@@ -35,4 +35,14 @@ final class ConfigManager {
         NativeMethods.invoke(reqId, buffer);
         return buffer.toString();
     }
+
+    /**
+     * 获取配置。
+     * 该接口阻塞
+     * */
+    String getConfig(String reqId, String para){
+        StringBuffer buffer = new StringBuffer();
+        NativeMethods.invoke(reqId, para, buffer);
+        return buffer.toString();
+    }
 }
