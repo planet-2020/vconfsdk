@@ -97,6 +97,11 @@ public final class MessageDispatcher {
             Log.e(TAG, "Request disabled!");
             return false;
         }
+        if (!messageRegister.isRequest(reqName)) {
+            Log.e(TAG, "Unknown request "+reqName);
+            return false;
+        }
+
         if (null != rsps && null== remoteEmulator){
             // 期望使用模拟模式但模拟器没开
             Log.e(TAG, "Emulator not enabled");
@@ -106,31 +111,14 @@ public final class MessageDispatcher {
             Log.e(TAG, "Invalid para");
             return false;
         }
+
         String jsonReqPara = jsonProcessor.toJson(reqPara);
         jsonReqPara = "null".equalsIgnoreCase(jsonReqPara) ? null : jsonReqPara;
 
-        // TODO
-        /* 做合法性判断
-        * if (request){
-        *   session();
-        * }else if (get||set){
-        *
-        *   configmanager();
-        * }
-        * */
-
-        if (messageRegister.isRequest(reqName)) {
-            Message msg = Message.obtain();
-            msg.what = UI_REQ;
-            msg.obj = new RequestBundle(requester, reqName, jsonReqPara, reqSn, rsps);
-            reqHandler.sendMessage(msg);
-        }
-//        else if (get||set){
-//            configmanager();
-//        }
-        else{
-            return false;
-        }
+        Message msg = Message.obtain();
+        msg.what = UI_REQ;
+        msg.obj = new RequestBundle(requester, reqName, jsonReqPara, reqSn, rsps);
+        reqHandler.sendMessage(msg);
 
         return true;
     }
@@ -168,13 +156,15 @@ public final class MessageDispatcher {
      * @param subscriber 订阅者。
      * @param ntfId 订阅的通知。
      * */
-    public void subscribeNtf(Handler subscriber, String ntfId){
-        if (!rspEnabled){
-            Log.e(TAG, "Respond disabled!");
-            return;
+    public boolean subscribeNtf(Handler subscriber, String ntfId){
+        if (!messageRegister.isNotification(ntfId)){
+            Log.e(TAG, "Unknown notification "+ntfId);
+            return false;
         }
         Log.i(TAG, String.format("-*-> %s subscriber=%s", ntfId, subscriber));
         notificationProcessor.subscribeNtf(subscriber, ntfId);
+
+        return true;
     }
 
     /**
@@ -182,22 +172,29 @@ public final class MessageDispatcher {
      * @param subscriber 订阅者。
      * @param ntfId 订阅的通知。
      * */
-    public void unsubscribeNtf(Handler subscriber, String ntfId){
+    public boolean unsubscribeNtf(Handler subscriber, String ntfId){
+        if (!messageRegister.isNotification(ntfId)){
+            Log.e(TAG, "Unknown notification "+ntfId);
+            return false;
+        }
         Log.i(TAG, String.format("-*-< %s subscriber=%s", ntfId, subscriber));
         notificationProcessor.unsubscribeNtf(subscriber, ntfId);
+
+        return true;
     }
 
     /**
      * 发射通知。驱动模拟器发射通知，仅用于模拟模式。
      * */
-    public void ejectNtf(final String ntfId, Object ntf){
-        if (!rspEnabled){
-            Log.e(TAG, "Respond disabled!");
-            return;
+    public boolean ejectNtf(final String ntfId, Object ntf){
+        if (!messageRegister.isNotification(ntfId)){
+            Log.e(TAG, "Unknown notification "+ntfId);
+            return false;
         }
         if (null != remoteEmulator){
             remoteEmulator.ejectNtf(ntfId, ntf);
         }
+        return true;
     }
 
     /**
@@ -218,21 +215,20 @@ public final class MessageDispatcher {
      * 获取配置。
      * 该接口阻塞
      * */
-    Object getConfig(String reqId){
-//        if (!reqEnabled){
-//            Log.e(TAG, "Request disabled!");
-//            return null;
-//        }
-//        Class<?> clz = messageRegister.getConfClazz(reqId);
-//        if (null == clz){
-//            Log.e(TAG, "No register clazz for "+reqId);
-//            return null;
-//        }
-//
-//        Log.i(TAG, String.format("-~->| %s", reqId));
-//        String config = configManager.getConfig(reqId);
-//        return jsonProcessor.fromJson(config, clz);
-        return null;
+    Object getConfig(String reqId, String para){
+        if (!reqEnabled){
+            Log.e(TAG, "Request disabled!");
+            return null;
+        }
+        Class<?> clz = messageRegister.getGetResultClazz(reqId);
+        if (null == clz){
+            Log.e(TAG, "No register clazz for "+reqId);
+            return null;
+        }
+
+        Log.i(TAG, String.format("-~->| %s", reqId));
+        String config = (null == para ? configManager.getConfig(reqId) : configManager.getConfig(reqId, para));
+        return jsonProcessor.fromJson(config, clz);
     }
 
     /**

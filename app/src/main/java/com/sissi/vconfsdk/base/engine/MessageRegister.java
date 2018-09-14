@@ -112,26 +112,17 @@ final class MessageRegister {
         return ntfClazzMap.get(ntf);
     }
 
-//    EmRsp getRsp(String rspName){
-//        try {
-//            return EmRsp.valueOf(rspName);
-//        }catch (IllegalArgumentException e){
-//            PcTrace.p(PcTrace.WARN, "%s is not a constant in %s", rspName, EmRsp.class.getName());
-//            return null;
-//        }
-//    }
+    Class<?> getGetParaClazz(String get){
+        return getParaClazzMap.get(get);
+    }
 
-//    Class<?> getConfClazz(EmReq req){
-//        return confReqClazzs.get(req);
-//    }
+    Class<?> getGetResultClazz(String get){
+        return getResultClazzMap.get(get);
+    }
 
-//    boolean isInWhiteList(EmRsp rsp){
-//        return whiteList.contains(rsp);
-//    }
-//
-//    boolean isInBlackList(EmRsp rsp){
-//        return blackList.contains(rsp);
-//    }
+    Class<?> getSetParaClazz(String set){
+        return setParaClazzMap.get(set);
+    }
 
 
 //    private void initWhiteList(){
@@ -139,13 +130,6 @@ final class MessageRegister {
 //
 //    private void initBlackList(){
 //    }
-
-//    /**注册映射关系：获取配置请求——配置对应的类*/
-//    private void initConfMap(){
-////        map(EmReq.GetCallCapPlusCmd, ReqRspBeans.SetCallCapPlusCmd.class);
-//        map(EmReq.GetSkyShareLoginState, ReqRspBeans.SkyShareLoginState.class);
-//    }
-//
 
 }
 
