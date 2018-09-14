@@ -15,11 +15,11 @@ import java.util.HashMap;
  * Created by Sissi on 1/9/2017.
  */
 
-final class SessionProcessor {
+final class SessionManager {
 
-    private static final String TAG = "SessionProcessor";
+    private static final String TAG = "SessionManager";
 
-    private static SessionProcessor instance;
+    private static SessionManager instance;
 
     private ArrayList<Session> sessions;  // 正常会话
     private ArrayList<Session> blockedSessions; // 被阻塞的会话
@@ -37,26 +37,26 @@ final class SessionProcessor {
     private Handler sendreqHandler; // 用来发送请求的线程的handler，不能为null
     private Handler emulatedNativeHandler; // 模拟器handler，用于模拟模式
 
-    private SessionProcessor(){
+    private SessionManager(){
         sessions = new ArrayList<Session>();
         blockedSessions = new ArrayList<Session>();
         messageRegister = MessageRegister.instance();
         initTimeoutThread();
     }
 
-    synchronized static SessionProcessor instance() {
+    synchronized static SessionManager instance() {
         if (null == instance) {
-            instance = new SessionProcessor();
+            instance = new SessionManager();
         }
 
         return instance;
     }
 
-    synchronized SessionProcessor setSendreqHandler(Handler sendreqHandler){
+    synchronized SessionManager setSendreqHandler(Handler sendreqHandler){
         this.sendreqHandler = sendreqHandler;
         return this;
     }
-    synchronized SessionProcessor setEmulatedNativeHandler(Handler emulatedNativeHandler){
+    synchronized SessionManager setEmulatedNativeHandler(Handler emulatedNativeHandler){
         this.emulatedNativeHandler = emulatedNativeHandler;
         return this;
     }
@@ -298,7 +298,7 @@ final class SessionProcessor {
                     @Override
                     public void handleMessage(Message msg) {
                         Log.i("", "msg="+msg.what);
-                        SessionProcessor.this.timeout((Session) msg.obj);
+                        SessionManager.this.timeout((Session) msg.obj);
                     }
                 };
                 synchronized (lock){ lock.notify(); }

@@ -75,7 +75,7 @@ final class RemoteEmulator {
                 handler = new Handler(){
                     @Override
                     public void handleMessage(Message msg) {
-                        SessionProcessor.Session s = (SessionProcessor.Session) msg.obj;
+                        SessionManager.Session s = (SessionManager.Session) msg.obj;
                         String reqId = s.reqId();
                         Log.i(TAG, String.format("NATIVE RECV REQ %s: reqPara=%s", reqId, s.reqPara()));
                         String[] rspIds = s.rspIds();

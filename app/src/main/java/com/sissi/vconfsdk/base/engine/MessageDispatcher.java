@@ -31,8 +31,8 @@ public final class MessageDispatcher {
     private static final int NATIVE_RSP = -998;
 
     private CommandManager commandManager;  // 配置管理器
-    private SessionProcessor sessionProcessor;  // 会话管理器
-    private NotificationProcessor notificationProcessor; // 通知管理器
+    private SessionManager sessionManager;  // 会话管理器
+    private NotifiManager notifiManager; // 通知管理器
     private JsonProcessor jsonProcessor;    // json管理器，负责序列化反序列化
     private MessageRegister messageRegister; // 请求-响应映射器(保存有请求响应的映射关系)
 
@@ -43,8 +43,8 @@ public final class MessageDispatcher {
 
     private MessageDispatcher(){
         commandManager = CommandManager.instance();
-        sessionProcessor = SessionProcessor.instance();
-        notificationProcessor = NotificationProcessor.instance();
+        sessionManager = SessionManager.instance();
+        notifiManager = NotifiManager.instance();
 
         jsonProcessor = JsonProcessor.instance();
         messageRegister = MessageRegister.instance();
@@ -52,11 +52,11 @@ public final class MessageDispatcher {
         if (RemoteEmulatorOnOff.on) {
             // 模拟模式开启
             initEmulator();
-            sessionProcessor.setEmulatedNativeHandler(remoteEmulator.getHandler());
+            sessionManager.setEmulatedNativeHandler(remoteEmulator.getHandler());
         }
         initReqThread();
         initRspThread();
-        sessionProcessor.setSendreqHandler(reqHandler);
+        sessionManager.setSendreqHandler(reqHandler);
     }
 
     public synchronized static MessageDispatcher instance() {
@@ -162,7 +162,7 @@ public final class MessageDispatcher {
             return false;
         }
         Log.i(TAG, String.format("-*-> %s subscriber=%s", ntfId, subscriber));
-        notificationProcessor.subscribeNtf(subscriber, ntfId);
+        notifiManager.subscribeNtf(subscriber, ntfId);
 
         return true;
     }
@@ -178,7 +178,7 @@ public final class MessageDispatcher {
             return false;
         }
         Log.i(TAG, String.format("-*-< %s subscriber=%s", ntfId, subscriber));
-        notificationProcessor.unsubscribeNtf(subscriber, ntfId);
+        notifiManager.unsubscribeNtf(subscriber, ntfId);
 
         return true;
     }
@@ -321,7 +321,7 @@ public final class MessageDispatcher {
         if (UI_REQ == msg.what){
             RequestBundle reqBundle = (RequestBundle) msg.obj;
             Log.i(TAG, String.format("-~-> %s\npara=%s\nrequester=%s", reqBundle.reqName, reqBundle.reqPara, reqBundle.requester));
-            if (!sessionProcessor.request(reqBundle.requester, reqBundle.reqName, reqBundle.reqPara, reqBundle.reqSn, reqBundle.rsps)){
+            if (!sessionManager.request(reqBundle.requester, reqBundle.reqName, reqBundle.reqPara, reqBundle.reqSn, reqBundle.rsps)){
                 Log.e(TAG, "Session request failed!");
             }
         }
@@ -361,13 +361,13 @@ public final class MessageDispatcher {
             }
 
             if (messageRegister.isResponse(rspName)){
-                if (sessionProcessor.respond(rspName, rspObj)){
+                if (sessionManager.respond(rspName, rspObj)){
                     Log.i(TAG, String.format("<-~- %s\n%s", rspName, rsp));
                 }else{
                     Log.e(TAG, String.format("<-~- %s. EXCEPTION: No session expects this response! \n%s", rspName, rsp));
                 }
             }else if (messageRegister.isNotification(rspName)){
-                if (notificationProcessor.notify(rspName, rspObj)){
+                if (notifiManager.notify(rspName, rspObj)){
                     Log.i(TAG, String.format("<<-~- %s\n%s", rspName, rsp));
                 }else{
                     Log.e(TAG, String.format("<<-~- %s. EXCEPTION: No observer subscribes this notification! \n%s", rspName, rsp));
