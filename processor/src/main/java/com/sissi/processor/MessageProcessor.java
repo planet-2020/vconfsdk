@@ -47,6 +47,9 @@ import javax.tools.Diagnostic;
         "com.sissi.annotation.Message",
         "com.sissi.annotation.Request",
         "com.sissi.annotation.Response",
+        "com.sissi.annotation.Notification",
+        "com.sissi.annotation.Get",
+        "com.sissi.annotation.Set",
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
 public class MessageProcessor extends AbstractProcessor {
@@ -68,10 +71,6 @@ public class MessageProcessor extends AbstractProcessor {
     private Map<String, String> getResultClazzMap = new HashMap<>();
 
     private Map<String, String> setParaClazzMap = new HashMap<>();
-
-//    private Set<String> reqSet = new HashSet<>();
-//
-//    private Set<String> rspSet = new HashSet<>();
 
     private String packageName;
 
@@ -108,8 +107,6 @@ public class MessageProcessor extends AbstractProcessor {
         getParaClazzMap.clear();
         getResultClazzMap.clear();
         setParaClazzMap.clear();
-//        reqSet.clear();
-//        rspSet.clear();
 
         Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Message.class);
 
@@ -169,10 +166,10 @@ public class MessageProcessor extends AbstractProcessor {
                 // 获取超时时长
                 reqTimeoutMap.put(reqName, request.timeout());
 
-                messager.printMessage(Diagnostic.Kind.NOTE, "request: "+reqName
-                        + " reqParaFullName: "+reqParaFullName
-                        + " rspSeq: "+request.rspSeq()
-                        + " timeout: "+request.timeout());
+//                messager.printMessage(Diagnostic.Kind.NOTE, "request: "+reqName
+//                        + " reqParaFullName: "+reqParaFullName
+//                        + " rspSeq: "+request.rspSeq()
+//                        + " timeout: "+request.timeout());
 
             }else if (null != (response = element.getAnnotation(Response.class))){
                 rspName = element.getSimpleName().toString();
@@ -187,8 +184,8 @@ public class MessageProcessor extends AbstractProcessor {
                     rspClazzFullName = classTypeElement.getQualifiedName().toString();
                 }
 
-                messager.printMessage(Diagnostic.Kind.NOTE, "response: "+rspName
-                        + " rspClazzFullName: "+rspClazzFullName);
+//                messager.printMessage(Diagnostic.Kind.NOTE, "response: "+rspName
+//                        + " rspClazzFullName: "+rspClazzFullName);
 
                 rspClazzMap.put(rspName, rspClazzFullName);
 
@@ -205,8 +202,8 @@ public class MessageProcessor extends AbstractProcessor {
                     ntfClazzFullName = classTypeElement.getQualifiedName().toString();
                 }
 
-                messager.printMessage(Diagnostic.Kind.NOTE, "ntfName: "+ntfName
-                        + " ntfClazzFullName: "+ntfClazzFullName);
+//                messager.printMessage(Diagnostic.Kind.NOTE, "ntfName: "+ntfName
+//                        + " ntfClazzFullName: "+ntfClazzFullName);
 
                 ntfClazzMap.put(ntfName, ntfClazzFullName);
 
@@ -235,9 +232,9 @@ public class MessageProcessor extends AbstractProcessor {
                 }
                 getResultClazzMap.put(getName, getResultFullName);
 
-                messager.printMessage(Diagnostic.Kind.NOTE, "getName: "+getName
-                        + " getParaFullName: "+getParaFullName
-                        + " result class: "+ getResultFullName);
+//                messager.printMessage(Diagnostic.Kind.NOTE, "getName: "+getName
+//                        + " getParaFullName: "+getParaFullName
+//                        + " result class: "+ getResultFullName);
 
             }else if (null != (set = element.getAnnotation(com.sissi.annotation.Set.class))){
                 setName = element.getSimpleName().toString();
@@ -252,8 +249,8 @@ public class MessageProcessor extends AbstractProcessor {
                     setParaFullName = classTypeElement.getQualifiedName().toString();
                 }
 
-                messager.printMessage(Diagnostic.Kind.NOTE, "setName: "+setName
-                        + " setParaFullName: "+setParaFullName);
+//                messager.printMessage(Diagnostic.Kind.NOTE, "setName: "+setName
+//                        + " setParaFullName: "+setParaFullName);
 
                 setParaClazzMap.put(setName, setParaFullName);
             }
@@ -313,8 +310,6 @@ public class MessageProcessor extends AbstractProcessor {
 
 
     private void generateFile(){
-//        String fieldNameReqSet = "reqSet";
-//        String fieldNameRspSet = "rspSet";
         String fieldNameReqParaMap = "reqParaMap";
         String fieldNameReqRspsMap = "reqRspsMap";
         String fieldNameReqTimeoutMap = "reqTimeoutMap";
@@ -329,8 +324,6 @@ public class MessageProcessor extends AbstractProcessor {
 
         // 构建代码块
         CodeBlock.Builder codeBlockBuilder = CodeBlock.builder()
-//                .addStatement("$L = new $T<>()", fieldNameReqSet, HashSet.class)
-//                .addStatement("$L = new $T<>()", fieldNameRspSet, HashSet.class)
                 .addStatement("$L = new $T<>()", fieldNameReqParaMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqRspsMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqTimeoutMap, HashMap.class)
@@ -340,14 +333,6 @@ public class MessageProcessor extends AbstractProcessor {
                 .addStatement("$L = new $T<>()", fieldNameGetResultClazzMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameSetParaClazzMap, HashMap.class)
                 ;
-
-//        for (String req : reqSet){
-//            codeBlockBuilder.addStatement("$L.add($S)", fieldNameReqSet, req);
-//        }
-//
-//        for (String rsp : rspSet){
-//            codeBlockBuilder.addStatement("$L.add($S)", fieldNameRspSet, rsp);
-//        }
 
         for(String req : reqParaMap.keySet()){
             codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameReqParaMap, req, reqParaMap.get(req));
@@ -393,12 +378,6 @@ public class MessageProcessor extends AbstractProcessor {
         // 构建Class
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.PUBLIC)
-//                .addField(FieldSpec.builder(ParameterizedTypeName.get(Set.class, String.class),
-//                        fieldNameReqSet, Modifier.PUBLIC, Modifier.STATIC)
-//                        .build())
-//                .addField(FieldSpec.builder(ParameterizedTypeName.get(Set.class, String.class),
-//                        fieldNameRspSet, Modifier.PUBLIC, Modifier.STATIC)
-//                        .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
                         fieldNameReqParaMap, Modifier.PUBLIC, Modifier.STATIC)
                         .build())
