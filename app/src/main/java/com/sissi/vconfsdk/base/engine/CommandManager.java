@@ -23,7 +23,7 @@ final class CommandManager {
      * 该接口阻塞
      * */
     void set(String reqId, String config){
-        NativeMethods.invoke(reqId, config);
+        NativeInteractor.invoke(reqId, config);
     }
 
     /**
@@ -32,7 +32,7 @@ final class CommandManager {
      * */
     String get(String reqId){
         StringBuffer buffer = new StringBuffer();
-        NativeMethods.invoke(reqId, buffer);
+        NativeInteractor.invoke(reqId, buffer);
         return buffer.toString();
     }
 
@@ -42,7 +42,7 @@ final class CommandManager {
      * */
     String get(String reqId, String para){
         StringBuffer buffer = new StringBuffer();
-        NativeMethods.invoke(reqId, para, buffer);
+        NativeInteractor.invoke(reqId, para, buffer);
         return buffer.toString();
     }
 }

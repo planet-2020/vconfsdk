@@ -36,7 +36,7 @@ public final class MessageDispatcher {
     private JsonProcessor jsonProcessor;    // json管理器，负责序列化反序列化
     private MessageRegister messageRegister; // 请求-响应映射器(保存有请求响应的映射关系)
 
-    private RemoteEmulator remoteEmulator; // native模拟器。可模拟native层接收请求及反馈响应，仅用于调试！
+    private NativeEmulator nativeEmulator; // native模拟器。可模拟native层接收请求及反馈响应，仅用于调试！
 
     private boolean isWhiteListEnabled = false;
     private boolean isBlackListEnabled = false;
@@ -49,10 +49,10 @@ public final class MessageDispatcher {
         jsonProcessor = JsonProcessor.instance();
         messageRegister = MessageRegister.instance();
 
-        if (RemoteEmulatorOnOff.on) {
+        if (NativeEmulatorOnOff.on) {
             // 模拟模式开启
             initEmulator();
-            sessionManager.setEmulatedNativeHandler(remoteEmulator.getHandler());
+            sessionManager.setEmulatedNativeHandler(nativeEmulator.getHandler());
         }
         initReqThread();
         initRspThread();
@@ -62,7 +62,7 @@ public final class MessageDispatcher {
     public synchronized static MessageDispatcher instance() {
         if (null == instance) {
             instance = new MessageDispatcher();
-//            NativeMethods.setCallback(instance);
+//            NativeInteractor.setCallback(instance);
         }
 
         return instance;
@@ -102,7 +102,7 @@ public final class MessageDispatcher {
             return false;
         }
 
-        if (null != rsps && null== remoteEmulator){
+        if (null != rsps && null== nativeEmulator){
             // 期望使用模拟模式但模拟器没开
             Log.e(TAG, "Emulator not enabled");
             return false;
@@ -191,8 +191,8 @@ public final class MessageDispatcher {
             Log.e(TAG, "Unknown notification "+ntfId);
             return false;
         }
-        if (null != remoteEmulator){
-            remoteEmulator.ejectNtf(ntfId, ntf);
+        if (null != nativeEmulator){
+            nativeEmulator.ejectNtf(ntfId, ntf);
         }
         return true;
     }
@@ -383,8 +383,8 @@ public final class MessageDispatcher {
      * 初始化Native模拟器
      * */
     private void initEmulator(){
-        remoteEmulator = RemoteEmulator.instance();
-        remoteEmulator.setCallback(new RemoteEmulator.Callback(){
+        nativeEmulator = NativeEmulator.instance();
+        nativeEmulator.setCallback(new NativeEmulator.Callback(){
             @Override
             public void callback(String jsonRsp) {
                 respond(jsonRsp);

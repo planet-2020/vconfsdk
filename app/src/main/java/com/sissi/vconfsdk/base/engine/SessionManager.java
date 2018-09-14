@@ -15,7 +15,7 @@ import java.util.HashMap;
  * Created by Sissi on 1/9/2017.
  */
 
-final class SessionManager {
+final class SessionManager implements IResponseProcessor{
 
     private static final String TAG = "SessionManager";
 
@@ -28,6 +28,9 @@ final class SessionManager {
     private static final int MAX_SESSION_NUM = 2000; // 正常会话数上限
     private static final int MAX_BLOCKED_SESSION_NUM = 10000; // 被阻塞的会话数上限
 
+    private static final int UI_REQ = -999;
+    private Thread reqThread; // 发送请求线程
+    private Handler reqHandler; // 请求handler
     private static final int MSG_TIMEOUT = 999;
     private Thread timeoutThread; // 超时线程
     private Handler timeoutHandler;
@@ -37,10 +40,20 @@ final class SessionManager {
     private Handler sendreqHandler; // 用来发送请求的线程的handler，不能为null
     private Handler emulatedNativeHandler; // 模拟器handler，用于模拟模式
 
+    private NativeInteractor nativeInteractor;
+
     private SessionManager(){
         sessions = new ArrayList<Session>();
         blockedSessions = new ArrayList<Session>();
         messageRegister = MessageRegister.instance();
+
+        nativeInteractor = NativeInteractor.instance();
+        nativeInteractor.setResponseProcessor(this);
+        if (NativeEmulatorOnOff.on) {
+            nativeInteractor.setNativeEmulator(NativeEmulator.instance());
+        }
+
+        initRequestThread();
         initTimeoutThread();
     }
 
@@ -209,7 +222,7 @@ final class SessionManager {
             req.obj = s;
             emulatedNativeHandler.sendMessage(req);
         }else{ // 否则直接调用native接口
-            NativeMethods.invoke(s.reqId, s.reqPara);
+            NativeInteractor.invoke(s.reqId, s.reqPara);
         }
 
         Log.i(TAG, String.format("-=-> (session %d START) %s", s.id, s.reqId));
@@ -283,6 +296,87 @@ final class SessionManager {
         });
     }
 
+    public boolean request(final Handler requester, final String reqName, final Object reqPara, final int reqSn, final Object[] rsps){
+//        if (!reqEnabled){
+//            Log.e(TAG, "Request disabled!");
+//            return false;
+//        }
+        if (!messageRegister.isRequest(reqName)) {
+            Log.e(TAG, "Unknown request "+reqName);
+            return false;
+        }
+
+        if (null != rsps && null== remoteEmulator){
+            // 期望使用模拟模式但模拟器没开
+            Log.e(TAG, "Emulator not enabled");
+            return false;
+        }
+        if (null==requester || null==reqName){
+            Log.e(TAG, "Invalid para");
+            return false;
+        }
+
+        String jsonReqPara = jsonProcessor.toJson(reqPara);
+        jsonReqPara = "null".equalsIgnoreCase(jsonReqPara) ? null : jsonReqPara;
+
+        Message msg = Message.obtain();
+        msg.what = UI_REQ;
+        msg.obj = new RequestBundle(requester, reqName, jsonReqPara, reqSn, rsps);
+        reqHandler.sendMessage(msg);
+
+        return true;
+    }
+
+    /**
+     * 初始化发送请求线程
+     * */
+    private void initRequestThread(){
+        final Object lock = new Object();
+        reqThread = new Thread(){
+            @SuppressLint("HandlerLeak") // 或者, 可以使用Handler.Callback替代在Thread中定义内部类Handler以避免"HandlerLeak"问题，尤其在主线程中建议如此。
+            @Override
+            public void run() {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+                Looper.prepare();
+
+                reqHandler = new Handler(){
+                    @Override
+                    public void handleMessage(Message msg) {
+                        processReq(msg);
+                    }
+                };
+                synchronized (lock){lock.notify();}
+
+                Looper.loop();
+            }
+        };
+
+        reqThread.setName("SM.request");
+
+        reqThread.start();
+
+        if (null == reqHandler){
+            synchronized (lock) {
+                try {
+                    lock.wait(); // 保证thread初始化结束后handler立即可用。
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private void processReq(Message msg){
+        if (UI_REQ == msg.what){
+            RequestBundle reqBundle = (RequestBundle) msg.obj;
+            Log.i(TAG, String.format("-~-> %s\npara=%s\nrequester=%s", reqBundle.reqName, reqBundle.reqPara, reqBundle.requester));
+            if (!request(reqBundle.requester, reqBundle.reqName, reqBundle.reqPara, reqBundle.reqSn, reqBundle.rsps)){
+                Log.e(TAG, "Session request failed!");
+            }
+        }
+    }
+
+
     /**
      * 初始化超时线程
      * */
@@ -316,6 +410,11 @@ final class SessionManager {
                 }
             }
         }
+    }
+
+    @Override
+    public synchronized boolean process(String rspName, Object rspContent) {
+        return false;
     }
 
     /**

@@ -11,12 +11,13 @@ import java.util.HashMap;
  *
  * Created by Sissi on 1/9/2017.
  */
-final class NotifiManager {
+final class NotifiManager implements INotificationProcessor{
     private static NotifiManager instance;
     private HashMap<String, ArrayList<Handler>> subscribers;
 
     private NotifiManager(){
         subscribers = new HashMap<>();
+        NativeInteractor.instance().setNotificationProcessor(this);
     }
 
     synchronized static NotifiManager instance() {
@@ -59,21 +60,17 @@ final class NotifiManager {
         }
     }
 
-    /**
-     * 上报通知。
-     * @param ntfId 通知ID.
-     * @param ntfContent 通知内容.
-     * @return 返回真若上报成功，返回假若上报失败。
-     * */
-    synchronized boolean notify(String ntfId, Object ntfContent){
-        ArrayList<Handler> subs = subscribers.get(ntfId);
+
+    @Override
+    public synchronized boolean process(String ntfName, Object ntfContent) {
+        ArrayList<Handler> subs = subscribers.get(ntfName);
         if (null == subs || 0==subs.size()){
             return false;
         }
 
         for (Handler sub : subs){
             Message msg = Message.obtain();
-            msg.obj = new ResponseBundle(ntfId, ntfContent, ResponseBundle.NTF);
+            msg.obj = new ResponseBundle(ntfName, ntfContent, ResponseBundle.NTF);
             sub.sendMessage(msg);
         }
 

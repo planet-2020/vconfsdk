@@ -20,25 +20,25 @@ import android.util.Log;
  * 2、便于定位问题。比如当联调出现问题时可启用模拟模式跑下程序，若模拟模式下程序正常则问题出在native层，否则问题出在UI层。
  *
  */
-final class RemoteEmulator {
+final class NativeEmulator implements INativeEmulator{
 
-    private static final String TAG = "RemoteEmulator";
+    private static final String TAG = "NativeEmulator";
 
-    private static RemoteEmulator instance;
+    private static NativeEmulator instance;
     private JsonProcessor jsonProcessor;
 
     private Thread thread;
     private Handler handler;
-    private Callback cb;
+    private INativeCallback cb;
 
-    private RemoteEmulator() {
+    private NativeEmulator() {
         jsonProcessor = JsonProcessor.instance();
         initThread();
     }
 
-    synchronized static RemoteEmulator instance() {
+    synchronized static NativeEmulator instance() {
         if (null == instance) {
-            instance = new RemoteEmulator();
+            instance = new NativeEmulator();
         }
 
         return instance;
@@ -105,7 +105,7 @@ final class RemoteEmulator {
             }
         };
 
-        thread.setName("RemoteEmulator");
+        thread.setName("NativeEmulator");
 
         thread.start();
 
@@ -120,12 +120,19 @@ final class RemoteEmulator {
         }
     }
 
-    interface Callback{
-        void callback(String jsonRsp);
+    @Override
+    public void setCallback(INativeCallback cb) {
+        this.cb = cb;
     }
 
-    void setCallback(Callback cb){
-        this.cb = cb;
+    @Override
+    public void ejectNotification(String ntfId, Object ntfContent) {
+
+    }
+
+    @Override
+    public int invoke(String methodName, String reqPara) {
+        return 0;
     }
 
 }
