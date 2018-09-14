@@ -55,4 +55,19 @@ public final class MsgBeans {
         public int result;
     }
 
+    public static final class MemberStateChangedNtf {
+    }
+
+    public static final class GetXmppServerInfo{
+
+    }
+
+    public static final class XmppServerInfo{
+
+    }
+
+    public static final class NetConfig{
+
+    }
+
 }

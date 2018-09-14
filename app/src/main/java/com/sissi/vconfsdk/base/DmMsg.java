@@ -1,9 +1,12 @@
 package com.sissi.vconfsdk.base;
 
 
+import com.sissi.annotation.Get;
 import com.sissi.annotation.Message;
+import com.sissi.annotation.Notification;
 import com.sissi.annotation.Request;
 import com.sissi.annotation.Response;
+import com.sissi.annotation.Set;
 
 /**
  * Created by Sissi on 2018/9/3.
@@ -28,4 +31,12 @@ public enum DmMsg { // Domain Message
     @Response(Enum.class)
     LogoutRspFin,
 
+    @Get(result = MsgBeans.XmppServerInfo.class)
+    GetXmppServerInfo,
+
+    @Set(MsgBeans.NetConfig.class)
+    SetNetConfig,
+
+    @Notification(MsgBeans.MemberStateChangedNtf.class)
+    MemberStateChangedNtf,
 }

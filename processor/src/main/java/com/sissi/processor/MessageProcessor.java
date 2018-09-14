@@ -2,7 +2,9 @@ package com.sissi.processor;
 
 import com.google.auto.service.AutoService;
 import com.sissi.annotation.Consumer;
+import com.sissi.annotation.Get;
 import com.sissi.annotation.Message;
+import com.sissi.annotation.Notification;
 import com.sissi.annotation.Request;
 import com.sissi.annotation.Response;
 import com.squareup.javapoet.CodeBlock;
@@ -59,9 +61,17 @@ public class MessageProcessor extends AbstractProcessor {
 
     private Map<String, String> rspClazzMap = new HashMap<>();
 
-    private Set<String> reqSet = new HashSet<>();
+    private Map<String, String> ntfClazzMap = new HashMap<>();
 
-    private Set<String> rspSet = new HashSet<>();
+    private Map<String, String> getParaClazzMap = new HashMap<>();
+
+    private Map<String, String> getResultClazzMap = new HashMap<>();
+
+    private Map<String, String> setParaClazzMap = new HashMap<>();
+
+//    private Set<String> reqSet = new HashSet<>();
+//
+//    private Set<String> rspSet = new HashSet<>();
 
     private String packageName;
 
@@ -94,8 +104,12 @@ public class MessageProcessor extends AbstractProcessor {
         reqRspsMap.clear();
         reqTimeoutMap.clear();
         rspClazzMap.clear();
-        reqSet.clear();
-        rspSet.clear();
+        ntfClazzMap.clear();
+        getParaClazzMap.clear();
+        getResultClazzMap.clear();
+        setParaClazzMap.clear();
+//        reqSet.clear();
+//        rspSet.clear();
 
         Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Message.class);
 
@@ -109,11 +123,21 @@ public class MessageProcessor extends AbstractProcessor {
         List<? extends Element> msgElements = msgDefClass.getEnclosedElements();
         Request request;
         Response response;
+        Notification notification;
+        Get get;
+        com.sissi.annotation.Set set;
         Class clz;
         String reqParaFullName;
         String rspClazzFullName;
+        String ntfClazzFullName;
+        String getParaFullName;
+        String getResultFullName;
+        String setParaFullName;
         String reqName;
         String rspName;
+        String ntfName;
+        String getName;
+        String setName;
         for (Element element : msgElements){
             if (ElementKind.ENUM_CONSTANT != element.getKind()){
                 continue;
@@ -145,12 +169,10 @@ public class MessageProcessor extends AbstractProcessor {
                 // 获取超时时长
                 reqTimeoutMap.put(reqName, request.timeout());
 
-                reqSet.add(reqName);
-
-//                messager.printMessage(Diagnostic.Kind.NOTE, "request: "+reqName
-//                        + " reqParaFullName: "+reqParaFullName
-//                        + " rspSeq: "+request.rspSeq()
-//                        + " timeout: "+request.timeout());
+                messager.printMessage(Diagnostic.Kind.NOTE, "request: "+reqName
+                        + " reqParaFullName: "+reqParaFullName
+                        + " rspSeq: "+request.rspSeq()
+                        + " timeout: "+request.timeout());
 
             }else if (null != (response = element.getAnnotation(Response.class))){
                 rspName = element.getSimpleName().toString();
@@ -165,13 +187,75 @@ public class MessageProcessor extends AbstractProcessor {
                     rspClazzFullName = classTypeElement.getQualifiedName().toString();
                 }
 
-//                messager.printMessage(Diagnostic.Kind.NOTE, "response: "+rspName
-//                        + " rspClazzFullName: "+rspClazzFullName);
+                messager.printMessage(Diagnostic.Kind.NOTE, "response: "+rspName
+                        + " rspClazzFullName: "+rspClazzFullName);
 
                 rspClazzMap.put(rspName, rspClazzFullName);
 
-                rspSet.add(rspName);
+            }else if (null != (notification = element.getAnnotation(Notification.class))){
+                ntfName = element.getSimpleName().toString();
 
+                // 获取通知对应的消息体类型
+                try {
+                    clz = notification.value();
+                    ntfClazzFullName = clz.getCanonicalName();
+                }catch (MirroredTypeException mte) {
+                    DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
+                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
+                    ntfClazzFullName = classTypeElement.getQualifiedName().toString();
+                }
+
+                messager.printMessage(Diagnostic.Kind.NOTE, "ntfName: "+ntfName
+                        + " ntfClazzFullName: "+ntfClazzFullName);
+
+                ntfClazzMap.put(ntfName, ntfClazzFullName);
+
+            }else if (null != (get = element.getAnnotation(Get.class))){
+                getName = element.getSimpleName().toString();
+                // 获取请求参数
+                try {
+                    clz = get.para();
+                    getParaFullName = clz.getCanonicalName();
+                }catch (MirroredTypeException mte) {
+                    DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
+                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
+                    getParaFullName = classTypeElement.getQualifiedName().toString();
+                }
+
+                getParaClazzMap.put(getName, getParaFullName);
+
+                // 获取结果
+                try {
+                    clz = get.result();
+                    getResultFullName = clz.getCanonicalName();
+                }catch (MirroredTypeException mte) {
+                    DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
+                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
+                    getResultFullName = classTypeElement.getQualifiedName().toString();
+                }
+                getResultClazzMap.put(getName, getResultFullName);
+
+                messager.printMessage(Diagnostic.Kind.NOTE, "getName: "+getName
+                        + " getParaFullName: "+getParaFullName
+                        + " result class: "+ getResultFullName);
+
+            }else if (null != (set = element.getAnnotation(com.sissi.annotation.Set.class))){
+                setName = element.getSimpleName().toString();
+
+                // 获取响应对应的消息体类型
+                try {
+                    clz = set.value();
+                    setParaFullName = clz.getCanonicalName();
+                }catch (MirroredTypeException mte) {
+                    DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
+                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
+                    setParaFullName = classTypeElement.getQualifiedName().toString();
+                }
+
+                messager.printMessage(Diagnostic.Kind.NOTE, "setName: "+setName
+                        + " setParaFullName: "+setParaFullName);
+
+                setParaClazzMap.put(setName, setParaFullName);
             }
 
         }
@@ -229,33 +313,41 @@ public class MessageProcessor extends AbstractProcessor {
 
 
     private void generateFile(){
-        String fieldNameReqSet = "reqSet";
-        String fieldNameRspSet = "rspSet";
+//        String fieldNameReqSet = "reqSet";
+//        String fieldNameRspSet = "rspSet";
         String fieldNameReqParaMap = "reqParaMap";
         String fieldNameReqRspsMap = "reqRspsMap";
         String fieldNameReqTimeoutMap = "reqTimeoutMap";
         String fieldNameRspClazzMap = "rspClazzMap";
+        String fieldNameNtfClazzMap = "ntfClazzMap";
+        String fieldNameGetParaClazzMap = "getParaClazzMap";
+        String fieldNameGetResultClazzMap = "getResultClazzMap";
+        String fieldNameSetParaClazzMap = "setParaClazzMap";
 
         MethodSpec.Builder constructor = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PRIVATE);
 
         // 构建代码块
         CodeBlock.Builder codeBlockBuilder = CodeBlock.builder()
-                .addStatement("$L = new $T<>()", fieldNameReqSet, HashSet.class)
-                .addStatement("$L = new $T<>()", fieldNameRspSet, HashSet.class)
+//                .addStatement("$L = new $T<>()", fieldNameReqSet, HashSet.class)
+//                .addStatement("$L = new $T<>()", fieldNameRspSet, HashSet.class)
                 .addStatement("$L = new $T<>()", fieldNameReqParaMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqRspsMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqTimeoutMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameRspClazzMap, HashMap.class)
+                .addStatement("$L = new $T<>()", fieldNameNtfClazzMap, HashMap.class)
+                .addStatement("$L = new $T<>()", fieldNameGetParaClazzMap, HashMap.class)
+                .addStatement("$L = new $T<>()", fieldNameGetResultClazzMap, HashMap.class)
+                .addStatement("$L = new $T<>()", fieldNameSetParaClazzMap, HashMap.class)
                 ;
 
-        for (String req : reqSet){
-            codeBlockBuilder.addStatement("$L.add($S)", fieldNameReqSet, req);
-        }
-
-        for (String rsp : rspSet){
-            codeBlockBuilder.addStatement("$L.add($S)", fieldNameRspSet, rsp);
-        }
+//        for (String req : reqSet){
+//            codeBlockBuilder.addStatement("$L.add($S)", fieldNameReqSet, req);
+//        }
+//
+//        for (String rsp : rspSet){
+//            codeBlockBuilder.addStatement("$L.add($S)", fieldNameRspSet, rsp);
+//        }
 
         for(String req : reqParaMap.keySet()){
             codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameReqParaMap, req, reqParaMap.get(req));
@@ -282,16 +374,31 @@ public class MessageProcessor extends AbstractProcessor {
             codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameRspClazzMap, rsp, rspClazzMap.get(rsp));
         }
 
+        for(String ntf : ntfClazzMap.keySet()){
+            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameNtfClazzMap, ntf, ntfClazzMap.get(ntf));
+        }
+
+        for(String get : getParaClazzMap.keySet()){
+            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameGetParaClazzMap, get, getParaClazzMap.get(get));
+        }
+
+        for(String get : getResultClazzMap.keySet()){
+            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameGetResultClazzMap, get, getResultClazzMap.get(get));
+        }
+
+        for(String set : setParaClazzMap.keySet()){
+            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameSetParaClazzMap, set, setParaClazzMap.get(set));
+        }
 
         // 构建Class
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.PUBLIC)
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Set.class, String.class),
-                        fieldNameReqSet, Modifier.PUBLIC, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Set.class, String.class),
-                        fieldNameRspSet, Modifier.PUBLIC, Modifier.STATIC)
-                        .build())
+//                .addField(FieldSpec.builder(ParameterizedTypeName.get(Set.class, String.class),
+//                        fieldNameReqSet, Modifier.PUBLIC, Modifier.STATIC)
+//                        .build())
+//                .addField(FieldSpec.builder(ParameterizedTypeName.get(Set.class, String.class),
+//                        fieldNameRspSet, Modifier.PUBLIC, Modifier.STATIC)
+//                        .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
                         fieldNameReqParaMap, Modifier.PUBLIC, Modifier.STATIC)
                         .build())
@@ -303,6 +410,18 @@ public class MessageProcessor extends AbstractProcessor {
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
                         fieldNameRspClazzMap, Modifier.PUBLIC, Modifier.STATIC)
+                        .build())
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
+                        fieldNameNtfClazzMap, Modifier.PUBLIC, Modifier.STATIC)
+                        .build())
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
+                        fieldNameGetParaClazzMap, Modifier.PUBLIC, Modifier.STATIC)
+                        .build())
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
+                        fieldNameGetResultClazzMap, Modifier.PUBLIC, Modifier.STATIC)
+                        .build())
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
+                        fieldNameSetParaClazzMap, Modifier.PUBLIC, Modifier.STATIC)
                         .build())
                 .addStaticBlock(codeBlockBuilder.build())
                 .addMethod(constructor.build())

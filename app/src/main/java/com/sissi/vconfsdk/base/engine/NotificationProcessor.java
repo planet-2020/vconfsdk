@@ -11,17 +11,17 @@ import java.util.HashMap;
  *
  * Created by Sissi on 1/9/2017.
  */
-final class NotifyProcessor {
-    private static NotifyProcessor instance;
+final class NotificationProcessor {
+    private static NotificationProcessor instance;
     private HashMap<String, ArrayList<Handler>> subscribers;
 
-    private NotifyProcessor(){
+    private NotificationProcessor(){
         subscribers = new HashMap<>();
     }
 
-    synchronized static NotifyProcessor instance() {
+    synchronized static NotificationProcessor instance() {
         if (null == instance) {
-            instance = new NotifyProcessor();
+            instance = new NotificationProcessor();
         }
 
         return instance;

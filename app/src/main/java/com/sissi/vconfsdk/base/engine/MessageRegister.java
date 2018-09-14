@@ -20,26 +20,47 @@ final class MessageRegister {
 
     private Set<String> rspSet;
 
-    private Map<String, Class> reqParaMap;
+    private Set<String> ntfSet;
+
+    private Set<String> gets;
+
+    private Set<String> sets;
+
+    private Map<String, Class> reqParaMap; // 请求——请求参数对应的类
 
     private Map<String, String[][]> reqRspsMap; // 请求——响应序列
 
     private Map<String, Integer> reqTimeoutMap; // 请求——超时时限. 单位: 秒.
 
-    private Map<String, Class> rspClazzMap; // 响应——响应类类型
+    private Map<String, Class> rspClazzMap; // 响应——响应对应的类
+
+    private Map<String, Class> ntfClazzMap; // 通知——通知对应的类
+
+    private Map<String, Class> getParaClazzMap; // 获取参数——参数对应的类
+
+    private Map<String, Class> getResultClazzMap; // 获取结果——结果对应的类
+
+    private Map<String, Class> setParaClazzMap; // 设置参数——参数对应的类
     
-//    private final EnumMap<EmReq, Class<?>> confReqClazzs;   // 获取配置请求——配置类类型
 //
 //    private final EnumSet<EmRsp> whiteList; // 白名单
 //    private final EnumSet<EmRsp> blackList; // 黑名单
 
     private MessageRegister(){
-        reqSet = Message$$Generated.reqSet;
-        rspSet = Message$$Generated.rspSet;
         reqParaMap = Message$$Generated.reqParaMap;
         reqRspsMap = Message$$Generated.reqRspsMap;
         reqTimeoutMap = Message$$Generated.reqTimeoutMap;
         rspClazzMap = Message$$Generated.rspClazzMap;
+        ntfClazzMap = Message$$Generated.ntfClazzMap;
+        getParaClazzMap = Message$$Generated.getParaClazzMap;
+        getResultClazzMap = Message$$Generated.getResultClazzMap;
+        setParaClazzMap = Message$$Generated.setParaClazzMap;
+
+        reqSet = reqParaMap.keySet();
+        rspSet = rspClazzMap.keySet();
+        ntfSet = ntfClazzMap.keySet();
+        gets = getParaClazzMap.keySet();
+        sets = setParaClazzMap.keySet();
     }
 
     synchronized static MessageRegister instance() {
@@ -48,6 +69,18 @@ final class MessageRegister {
         }
 
         return instance;
+    }
+
+    boolean isRequest(String msg){
+        return reqSet.contains(msg);
+    }
+
+    boolean isResponse(String msg){
+        return rspSet.contains(msg);
+    }
+
+    boolean isNotification(String msg){
+        return false;
     }
 
     int getTimeout(String req){
