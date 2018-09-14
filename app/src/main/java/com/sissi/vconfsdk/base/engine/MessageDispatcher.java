@@ -30,7 +30,7 @@ public final class MessageDispatcher {
     private static final int UI_REQ = -999;
     private static final int NATIVE_RSP = -998;
 
-    private ConfigManager configManager;  // 配置管理器
+    private CommandManager commandManager;  // 配置管理器
     private SessionProcessor sessionProcessor;  // 会话管理器
     private NotificationProcessor notificationProcessor; // 通知管理器
     private JsonProcessor jsonProcessor;    // json管理器，负责序列化反序列化
@@ -42,7 +42,7 @@ public final class MessageDispatcher {
     private boolean isBlackListEnabled = false;
 
     private MessageDispatcher(){
-        configManager = ConfigManager.instance();
+        commandManager = CommandManager.instance();
         sessionProcessor = SessionProcessor.instance();
         notificationProcessor = NotificationProcessor.instance();
 
@@ -208,7 +208,7 @@ public final class MessageDispatcher {
         }
         String jsonConfig = null==config ? null : jsonProcessor.toJson(config);
         Log.i(TAG, String.format("-~->| %s\npara=%s", reqId, jsonConfig));
-        configManager.setConfig(reqId, jsonConfig);
+        commandManager.set(reqId, jsonConfig);
     }
 
     /**
@@ -227,7 +227,7 @@ public final class MessageDispatcher {
         }
 
         Log.i(TAG, String.format("-~->| %s", reqId));
-        String config = (null == para ? configManager.getConfig(reqId) : configManager.getConfig(reqId, para));
+        String config = (null == para ? commandManager.get(reqId) : commandManager.get(reqId, para));
         return jsonProcessor.fromJson(config, clz);
     }
 

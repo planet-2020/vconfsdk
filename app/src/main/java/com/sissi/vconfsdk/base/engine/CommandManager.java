@@ -5,14 +5,14 @@ package com.sissi.vconfsdk.base.engine;
  * native配置管理器(CM)
  * Created by Sissi on 2/22/2017.
  */
-final class ConfigManager {
-    private static ConfigManager instance;
-    private ConfigManager(){
+final class CommandManager {
+    private static CommandManager instance;
+    private CommandManager(){
     }
 
-    synchronized static ConfigManager instance() {
+    synchronized static CommandManager instance() {
         if (null == instance) {
-            instance = new ConfigManager();
+            instance = new CommandManager();
         }
 
         return instance;
@@ -22,7 +22,7 @@ final class ConfigManager {
      * 设置配置。
      * 该接口阻塞
      * */
-    void setConfig(String reqId, String config){
+    void set(String reqId, String config){
         NativeMethods.invoke(reqId, config);
     }
 
@@ -30,7 +30,7 @@ final class ConfigManager {
      * 获取配置。
      * 该接口阻塞
      * */
-    String getConfig(String reqId){
+    String get(String reqId){
         StringBuffer buffer = new StringBuffer();
         NativeMethods.invoke(reqId, buffer);
         return buffer.toString();
@@ -40,7 +40,7 @@ final class ConfigManager {
      * 获取配置。
      * 该接口阻塞
      * */
-    String getConfig(String reqId, String para){
+    String get(String reqId, String para){
         StringBuffer buffer = new StringBuffer();
         NativeMethods.invoke(reqId, para, buffer);
         return buffer.toString();
