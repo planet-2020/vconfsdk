@@ -15,7 +15,7 @@ import org.json.JSONException;
 @SuppressWarnings({"JniMissingFunction", "unused"})
 final class NativeInteractor implements INativeCallback{
 
-    private static final String TAG = "NativeInteractor";
+    private static final String TAG = NativeInteractor.class.getSimpleName();
 
     private static NativeInteractor instance;
     private static boolean reqEnabled = true;
@@ -27,7 +27,7 @@ final class NativeInteractor implements INativeCallback{
     private static final int NATIVE_RSP = -998;
 
     private JsonProcessor jsonProcessor;
-    private MessageRegister messageRegister;
+//    private MessageRegister messageRegister;
 
     private boolean isWhiteListEnabled = false;
     private boolean isBlackListEnabled = false;
@@ -40,7 +40,14 @@ final class NativeInteractor implements INativeCallback{
     private NativeInteractor(){
 
         jsonProcessor = JsonProcessor.instance();
-        messageRegister = MessageRegister.instance();
+//        messageRegister = MessageRegister.instance();
+        // 此处写死 responseProcessor = NotifiManager.instance(); responseProcessor= ; nativeEmulator = ;因为可替换的部分是各个xxManager,而上层Requester以及下层NativeInteractor都是不变的. 此处是为了方便起见直接写死在这里, 更好的方式是支持外部注入.
+
+        responseProcessor = SessionManager.instance();
+        notificationProcessor = NotifiManager.instance();
+        if (NativeEmulatorOnOff.on) {
+            nativeEmulator = NativeEmulator.instance();
+        }
 
         initNativeCallbackProcessThread();
     }
@@ -68,25 +75,6 @@ final class NativeInteractor implements INativeCallback{
     }
 
 
-    int invoke(String methodName, Object reqPara){
-        String jsonReqPara = jsonProcessor.toJson(reqPara);
-        jsonReqPara = "null".equalsIgnoreCase(jsonReqPara) ? null : jsonReqPara;
-
-        return call(methodName, jsonReqPara);
-    }
-
-
-    int invoke(String methodName, StringBuffer output){
-        return call(methodName, output);
-    }
-
-    int invoke(String methodName, Object para, StringBuffer output){
-        String jsonPara = jsonProcessor.toJson(para);
-        jsonPara = "null".equalsIgnoreCase(jsonPara) ? null : jsonPara;
-
-        return call(methodName, jsonPara, output);
-    }
-
     int emulateInvoke(String methodName, Object reqPara){ // 此reqPara为RequestBundle？或session？RequestBundle可删除？ XXX 上层（SessionManager）不应该感知下层具体是真实的调用还是模拟调用！！！意即不应该区别调用该接口， 但是真实请求和模拟请求数据不一样，如果用其它通用的invoke则模拟数据也能让sessionManager感知，得通过其它途径设置下来，在Requester内做。UI层的调用方式可以保持不变。模拟器、通知管理器、会话管理器、这些模块的组合需要高层的模块去做，而非像现在这样在SM、NM中设置。
         String jsonReqPara = jsonProcessor.toJson(reqPara);
         jsonReqPara = "null".equalsIgnoreCase(jsonReqPara) ? null : jsonReqPara;
@@ -94,6 +82,21 @@ final class NativeInteractor implements INativeCallback{
         return nativeEmulator.call(methodName, jsonReqPara);
     }
 
+    int request(String methodName, String reqPara){
+        return call(methodName, reqPara);
+    }
+
+    int set(String methodName, String setPara){
+        return call(methodName, setPara);
+    }
+
+    int get(String methodName, String para, StringBuffer output){
+        return call(methodName, para, output);
+    }
+
+    int get(String methodName, StringBuffer output){
+        return call(methodName, output);
+    }
 
     /**
      * 发射通知。驱动模拟器发射通知，仅用于模拟模式。
@@ -116,7 +119,7 @@ final class NativeInteractor implements INativeCallback{
             Log.e(TAG, "native callback disabled!");
             return;
         }
-        respond(nativeMsg);
+        enqueue(nativeMsg);
     }
 
 
@@ -126,7 +129,7 @@ final class NativeInteractor implements INativeCallback{
      * 该接口是非阻塞的，不会阻塞native线程。
      * @param nativeMsg json格式的响应。
      * */
-    void respond(String nativeMsg){
+    void enqueue(String nativeMsg){
         Message msg = Message.obtain();
         msg.what = NATIVE_RSP;
         msg.obj = nativeMsg;
@@ -150,7 +153,7 @@ final class NativeInteractor implements INativeCallback{
                 nativeCallbackProcessHandler = new Handler(){
                     @Override
                     public void handleMessage(Message msg) {
-                        processMessage(msg);
+                        processNativeCallback(msg);
                     }
                 };
                 synchronized (lock){lock.notify();}
@@ -174,8 +177,8 @@ final class NativeInteractor implements INativeCallback{
         }
     }
 
-    private void processMessage(Message msg){
-        if (NATIVE_RSP == msg.what){
+    private void processNativeCallback(Message msg){
+        if (NATIVE_RSP == msg.what){  // XXX 消息ID没必要
             String rsp = (String) msg.obj;
             String rspName = null;
             String rspBody = null;
@@ -193,38 +196,46 @@ final class NativeInteractor implements INativeCallback{
                 return;
             }
 
-            Class<?> clz = messageRegister.getRspClazz(rspName);
-            if (null == clz){
-                Log.e(TAG, "Failed to find clazz corresponding "+rspName);
-                return;
-            }
+//            Class<?> clz = messageRegister.getRspClazz(rspName);
+//            if (null == clz){
+//                Log.e(TAG, "Failed to find clazz corresponding "+rspName);
+//                return;
+//            }
+//
+//            Object rspObj = jsonProcessor.fromJson(rspBody, clz);
+//            if (null == rspObj){
+//                Log.e(TAG, String.format("Failed to convert msg %s to object, msg json body: %s ", rspName, rspBody));
+//                return;
+//            }
 
-            Object rspObj = jsonProcessor.fromJson(rspBody, clz);
-            if (null == rspObj){
-                Log.e(TAG, String.format("Failed to convert msg %s to object, msg json body: %s ", rspName, rspBody));
-                return;
-            }
+//            if (messageRegister.isResponse(rspName)){
+//                if (responseProcessor.processResponse(rspName, rspObj)){
+//                    Log.i(TAG, String.format("<-~- %s\n%s", rspName, rsp));
+//                }else{
+//                    Log.e(TAG, String.format("<-~- %s. EXCEPTION: No session expects this response! \n%s", rspName, rsp));
+//                }
+//            }else if (messageRegister.isNotification(rspName)){
+//                if (notificationProcessor.processNotification(rspName, rspObj)){
+//                    Log.i(TAG, String.format("<<-~- %s\n%s", rspName, rsp));
+//                }else{
+//                    Log.e(TAG, String.format("<<-~- %s. EXCEPTION: No observer subscribes this notification! \n%s", rspName, rsp));
+//                }
+//            }else{
+//                Log.e(TAG, String.format("<-~- %s. EXCEPTION: Unknown msg. \n%s", rspName, rsp));
+//            }
 
-            if (messageRegister.isResponse(rspName)){
-                if (responseProcessor.processResponse(rspName, rspObj)){
-                    Log.i(TAG, String.format("<-~- %s\n%s", rspName, rsp));
-                }else{
-                    Log.e(TAG, String.format("<-~- %s. EXCEPTION: No session expects this response! \n%s", rspName, rsp));
-                }
-            }else if (messageRegister.isNotification(rspName)){
-                if (notificationProcessor.processNotification(rspName, rspObj)){
-                    Log.i(TAG, String.format("<<-~- %s\n%s", rspName, rsp));
-                }else{
-                    Log.e(TAG, String.format("<<-~- %s. EXCEPTION: No observer subscribes this notification! \n%s", rspName, rsp));
-                }
+            if (responseProcessor.processResponse(rspName, rspBody)){
+
+            }else if (notificationProcessor.processNotification(rspName, rspBody)){
+
             }else{
-                Log.e(TAG, String.format("<-~- %s. EXCEPTION: Unknown msg. \n%s", rspName, rsp));
+                Log.e(TAG, String.format("<-~- %s. EXCEPTION: unexpected msg. \n%s", rspName, rsp));
             }
 
         }
     }
 
-
+    // TODO 还是需要在此类中，此类更名为MessageProcessor, 注释处理器的更名为MessageAnnotationProcessor。　先绘图后编码。彻底把关系理清。　
 
 
     void setResponseProcessor(IResponseProcessor responseProcessor){

@@ -2,12 +2,25 @@ package com.sissi.vconfsdk.base.engine;
 
 
 /**
- * native配置管理器(CM)
+ *
  * Created by Sissi on 2/22/2017.
  */
-final class CommandManager {
+final class CommandManager implements ICommandProcessor{
+
+    private static final String TAG = CommandManager.class.getSimpleName();
+
     private static CommandManager instance;
+
+    private JsonProcessor jsonProcessor;
+
+    private MessageRegister messageRegister;
+
+    private NativeInteractor nativeInteractor;
+
     private CommandManager(){
+        jsonProcessor = JsonProcessor.instance();
+        messageRegister = MessageRegister.instance();
+        nativeInteractor = NativeInteractor.instance();
     }
 
     synchronized static CommandManager instance() {
@@ -22,27 +35,48 @@ final class CommandManager {
      * 设置配置。
      * 该接口阻塞
      * */
-    void set(String reqId, String config){
-        NativeInteractor.invoke(reqId, config);
+    @Override
+    public void set(String setId, Object para){  // XXX 用异常机制代替返回值机制
+
+        if (!messageRegister.isSet(setId)){
+            return;
+        }
+
+        if (para.getClass() != messageRegister.getSetParaClazz(setId)){
+            return;
+        }
+
+        nativeInteractor.set(setId, jsonProcessor.toJson(para));
     }
 
-    /**
-     * 获取配置。
-     * 该接口阻塞
-     * */
-    String get(String reqId){
+    @Override
+    public Object get(String getId){
+
+        if (!messageRegister.isGet(getId)){ // XXX 用异常机制代替返回值机制
+            return null; //TODO  throw Exception
+        }
+
         StringBuffer buffer = new StringBuffer();
-        NativeInteractor.invoke(reqId, buffer);
-        return buffer.toString();
+        nativeInteractor.get(getId, buffer);
+
+        return jsonProcessor.fromJson(buffer.toString(), messageRegister.getGetResultClazz(getId));
     }
 
-    /**
-     * 获取配置。
-     * 该接口阻塞
-     * */
-    String get(String reqId, String para){
+    @Override
+    public Object get(String getId, Object para){
+        if (!messageRegister.isGet(getId)){ // XXX 用异常机制代替返回值机制
+            return null; //TODO  throw Exception
+        }
+
+        if (para.getClass() != messageRegister.getGetParaClazz(getId)){
+            return null;
+        }
+
         StringBuffer buffer = new StringBuffer();
-        NativeInteractor.invoke(reqId, para, buffer);
-        return buffer.toString();
+        nativeInteractor.get(getId, jsonProcessor.toJson(para), buffer);
+
+        return jsonProcessor.fromJson(buffer.toString(), messageRegister.getGetResultClazz(getId));
     }
+
+
 }

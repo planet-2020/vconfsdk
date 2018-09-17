@@ -17,7 +17,7 @@ import java.util.HashMap;
 
 final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
-    private static final String TAG = "SessionManager";
+    private static final String TAG = SessionManager.class.getSimpleName();
 
     private static SessionManager instance;
 
@@ -35,19 +35,24 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     private Thread timeoutThread; // 超时线程
     private Handler timeoutHandler;
 
+    private JsonProcessor jsonProcessor;
+
     private MessageRegister messageRegister;
 
-    private Handler sendreqHandler; // 用来发送请求的线程的handler，不能为null
-    private Handler emulatedNativeHandler; // 模拟器handler，用于模拟模式
-
     private NativeInteractor nativeInteractor;
+
+    private Handler sendreqHandler; // 用来发送请求的线程的handler，不能为null
+
+    private Handler emulatedNativeHandler; // 模拟器handler，用于模拟模式
 
     private SessionManager(){
         sessions = new ArrayList<Session>();
         blockedSessions = new ArrayList<Session>();
-        messageRegister = MessageRegister.instance();
 
+        jsonProcessor = JsonProcessor.instance();
+        messageRegister = MessageRegister.instance();
         nativeInteractor = NativeInteractor.instance();
+
         nativeInteractor.setResponseProcessor(this);
         if (NativeEmulatorOnOff.on) {
             nativeInteractor.setNativeEmulator(NativeEmulator.instance());
@@ -201,6 +206,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
      * @param rspContent 响应内容
      * @return 若响应被消化返回真，否则返回假。
      * */
+    @Override
     public synchronized boolean processResponse(String rspId, Object rspContent){
         HashMap<Integer, Integer> candidates = new HashMap<>();
         String[] rspIds = null;

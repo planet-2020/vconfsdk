@@ -92,7 +92,10 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
 
     @Override
-    public synchronized boolean processNotification(String ntfName, Object ntfContent) {
+    public synchronized boolean processNotification(String ntfName, Object ntfContent) { // XXX ntfName改为ntfId, ntfContent改为String ntfBody
+        if (!messageRegister.isNotification(ntfName)){
+            return false;
+        }
         Set<Handler> subs = subscribers.get(ntfName);
         if (null == subs || 0==subs.size()){
             return false;

@@ -51,6 +51,8 @@ public abstract class Requester{
         reqSn = 0;
         rspListenerList = new HashMap<>();
         ntfListenerList = new HashMap<>();
+
+        // TODO 组装 NativeInteractor, SessionManager, NotifiManager, NativeEmulator.
     }
 
     /**获取Jni请求者。

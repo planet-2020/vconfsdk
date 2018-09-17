@@ -84,7 +84,8 @@ final class JsonProcessor {
     }
 
     String toJson(Object obj){
-        return gson.toJson(obj);
+        String json = gson.toJson(obj);
+        return "null".equalsIgnoreCase(json) ? null : json;
     }
 
     <T> T fromJson(String json, Class<T> classOfT){
