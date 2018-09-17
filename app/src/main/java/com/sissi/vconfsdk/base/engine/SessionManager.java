@@ -15,7 +15,7 @@ import java.util.HashMap;
  * Created by Sissi on 1/9/2017.
  */
 
-final class SessionManager implements IResponseProcessor{
+final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
     private static final String TAG = "SessionManager";
 
@@ -63,15 +63,6 @@ final class SessionManager implements IResponseProcessor{
         }
 
         return instance;
-    }
-
-    synchronized SessionManager setSendreqHandler(Handler sendreqHandler){
-        this.sendreqHandler = sendreqHandler;
-        return this;
-    }
-    synchronized SessionManager setEmulatedNativeHandler(Handler emulatedNativeHandler){
-        this.emulatedNativeHandler = emulatedNativeHandler;
-        return this;
     }
 
 
@@ -150,13 +141,67 @@ final class SessionManager implements IResponseProcessor{
     }
 
 
+
+    @Override
+    public synchronized boolean processRequest(Handler requester, String reqId, Object reqPara, int reqSn) {
+
+        if (null == requester){
+            return false;
+        }
+
+        if (!messageRegister.isRequest(reqId)){
+            return false;
+        }
+
+
+
+
+        // 检查是否存在未完成的同类请求
+        boolean isReqExist = false;
+        for (Session s : sessions){
+            if (s.reqId.equals(reqId)) {
+                isReqExist = true;
+                break;
+            }
+        }
+
+        // 创建会话
+        Session s = new Session(++sessionCnt, requester, reqSn, reqId, reqPara, messageRegister.getTimeout(reqId)*1000);
+        // 尝试发送请求
+        if (!isReqExist){
+            if (sessions.size() >= MAX_SESSION_NUM){
+                return false;
+            }
+            sessions.add(s);
+            // 发送请求
+            if (sendReq(s)){
+                sessions.remove(s);
+                driveBlockedSession(s.reqId);
+            }
+
+            return true;
+
+        }else{ // 存在未完成的同类请求（阻塞源）
+            if (blockedSessions.size() >= MAX_BLOCKED_SESSION_NUM){
+                return false;
+            }
+            blockedSessions.add(s);
+//            KLog.p("created blocked session id=%s", sessionCnt); // TODO 启动超时？阻塞时间算在超时内？
+
+            return true; // 返回真表示请求成功，不让外部感知请求被阻塞
+        }
+
+    }
+
+
+
     /**
      * 接收响应
      * @param rspId 响应Id
      * @param rspContent 响应内容
      * @return 若响应被消化返回真，否则返回假。
      * */
-    synchronized boolean respond(String rspId, Object rspContent){
+    public synchronized boolean processResponse(String rspId, Object rspContent){
         HashMap<Integer, Integer> candidates = new HashMap<>();
         String[] rspIds = null;
         boolean gotLast = false; // 是否匹配到会话的最后一条响应
@@ -212,17 +257,22 @@ final class SessionManager implements IResponseProcessor{
         return false;
     }
 
-    /**
-     * 发送请求
-     * @return 若会话结束返回真，否则返回假。
-     * */
-    private synchronized boolean sendReq(Session s){
+
+    private synchronized void sendReq(Session s){
+
+        Message msg = Message.obtain();
+        msg.obj = s;
+        reqHandler.sendMessage(msg);
+    }
+
+    private synchronized boolean doSendReq(Session s){
         if (null!=s.emulatedRsps && null!=emulatedNativeHandler){ // 若模拟模式下则请求发给模拟器
-            Message req = Message.obtain();
-            req.obj = s;
-            emulatedNativeHandler.sendMessage(req);
+//            Message req = Message.obtain();
+//            req.obj = s;
+//            emulatedNativeHandler.sendMessage(req);
+            nativeInteractor.emulateInvoke(s.reqId, s.reqPara);
         }else{ // 否则直接调用native接口
-            NativeInteractor.invoke(s.reqId, s.reqPara);
+            nativeInteractor.invoke(s.reqId, s.reqPara);
         }
 
         Log.i(TAG, String.format("-=-> (session %d START) %s", s.id, s.reqId));
@@ -242,6 +292,8 @@ final class SessionManager implements IResponseProcessor{
 
         return false;
     }
+
+
 
 
     /**
@@ -302,7 +354,7 @@ final class SessionManager implements IResponseProcessor{
 //            return false;
 //        }
         if (!messageRegister.isRequest(reqName)) {
-            Log.e(TAG, "Unknown request "+reqName);
+            Log.e(TAG, "Unknown processRequest "+reqName);
             return false;
         }
 
@@ -351,7 +403,7 @@ final class SessionManager implements IResponseProcessor{
             }
         };
 
-        reqThread.setName("SM.request");
+        reqThread.setName("SM.processRequest");
 
         reqThread.start();
 
@@ -371,7 +423,7 @@ final class SessionManager implements IResponseProcessor{
             RequestBundle reqBundle = (RequestBundle) msg.obj;
             Log.i(TAG, String.format("-~-> %s\npara=%s\nrequester=%s", reqBundle.reqName, reqBundle.reqPara, reqBundle.requester));
             if (!request(reqBundle.requester, reqBundle.reqName, reqBundle.reqPara, reqBundle.reqSn, reqBundle.rsps)){
-                Log.e(TAG, "Session request failed!");
+                Log.e(TAG, "Session processRequest failed!");
             }
         }
     }
@@ -412,10 +464,7 @@ final class SessionManager implements IResponseProcessor{
         }
     }
 
-    @Override
-    public synchronized boolean process(String rspName, Object rspContent) {
-        return false;
-    }
+
 
     /**
      * 会话 */

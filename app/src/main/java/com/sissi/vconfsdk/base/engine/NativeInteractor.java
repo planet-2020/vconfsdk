@@ -18,16 +18,16 @@ final class NativeInteractor implements INativeCallback{
     private static final String TAG = "NativeInteractor";
 
     private static NativeInteractor instance;
-    private static boolean reqEnabled = true; // 是否允许发送请求
-    private static boolean rspEnabled = true; // 是否允许接收响应（包括RSP和NTF）
+    private static boolean reqEnabled = true;
+    private static boolean callbackEnabled = true;
 
-    private Thread msgProcessThread; // 接收响应线程
-    private Handler msgHandler; // 响应handler
+    private Thread nativeCallbackProcessThread;
+    private Handler nativeCallbackProcessHandler;
     private static final int UI_REQ = -999;
     private static final int NATIVE_RSP = -998;
 
-    private JsonProcessor jsonProcessor;    // json管理器，负责序列化反序列化
-    private MessageRegister messageRegister; // 请求-响应映射器(保存有请求响应的映射关系)
+    private JsonProcessor jsonProcessor;
+    private MessageRegister messageRegister;
 
     private boolean isWhiteListEnabled = false;
     private boolean isBlackListEnabled = false;
@@ -35,14 +35,14 @@ final class NativeInteractor implements INativeCallback{
 
     private IResponseProcessor responseProcessor;
     private INotificationProcessor notificationProcessor;
-    private INativeEmulator nativeEmulator; // native模拟器。可模拟native层接收请求及反馈响应，仅用于调试！
+    private INativeEmulator nativeEmulator;
 
     private NativeInteractor(){
 
         jsonProcessor = JsonProcessor.instance();
         messageRegister = MessageRegister.instance();
 
-        initMessageProcessThread();
+        initNativeCallbackProcessThread();
     }
 
     public synchronized static NativeInteractor instance() {
@@ -64,8 +64,61 @@ final class NativeInteractor implements INativeCallback{
      * 设置是否允许接收响应
      * */
     synchronized void setRspEnable(boolean enable){
-        rspEnabled = enable;
+        callbackEnabled = enable;
     }
+
+
+    int invoke(String methodName, Object reqPara){
+        String jsonReqPara = jsonProcessor.toJson(reqPara);
+        jsonReqPara = "null".equalsIgnoreCase(jsonReqPara) ? null : jsonReqPara;
+
+        return call(methodName, jsonReqPara);
+    }
+
+
+    int invoke(String methodName, StringBuffer output){
+        return call(methodName, output);
+    }
+
+    int invoke(String methodName, Object para, StringBuffer output){
+        String jsonPara = jsonProcessor.toJson(para);
+        jsonPara = "null".equalsIgnoreCase(jsonPara) ? null : jsonPara;
+
+        return call(methodName, jsonPara, output);
+    }
+
+    int emulateInvoke(String methodName, Object reqPara){ // 此reqPara为RequestBundle？或session？RequestBundle可删除？ XXX 上层（SessionManager）不应该感知下层具体是真实的调用还是模拟调用！！！意即不应该区别调用该接口， 但是真实请求和模拟请求数据不一样，如果用其它通用的invoke则模拟数据也能让sessionManager感知，得通过其它途径设置下来，在Requester内做。UI层的调用方式可以保持不变。模拟器、通知管理器、会话管理器、这些模块的组合需要高层的模块去做，而非像现在这样在SM、NM中设置。
+        String jsonReqPara = jsonProcessor.toJson(reqPara);
+        jsonReqPara = "null".equalsIgnoreCase(jsonReqPara) ? null : jsonReqPara;
+
+        return nativeEmulator.call(methodName, jsonReqPara);
+    }
+
+
+    /**
+     * 发射通知。驱动模拟器发射通知，仅用于模拟模式。
+     * */
+    public boolean emulateNotify(String ntfId, Object ntfContent){
+        if (null != nativeEmulator){
+            nativeEmulator.ejectNotification(ntfId, jsonProcessor.toJson(ntfContent));
+        }
+        return true;
+    }
+
+
+    /**
+     * native回调。<p>
+     * 方法名称是固定的，要修改需和native层协商一致。
+     * */
+    @Override
+    public void callback(String nativeMsg){
+        if (!callbackEnabled){
+            Log.e(TAG, "native callback disabled!");
+            return;
+        }
+        respond(nativeMsg);
+    }
+
 
 
     /**
@@ -74,47 +127,27 @@ final class NativeInteractor implements INativeCallback{
      * @param nativeMsg json格式的响应。
      * */
     void respond(String nativeMsg){
-        if (!rspEnabled){
-            Log.e(TAG, "Respond disabled!");
-            return;
-        }
         Message msg = Message.obtain();
         msg.what = NATIVE_RSP;
         msg.obj = nativeMsg;
-        msgHandler.sendMessage(msg);
+        nativeCallbackProcessHandler.sendMessage(msg);
     }
-
-
-//    /**
-//     * 发射通知。驱动模拟器发射通知，仅用于模拟模式。
-//     * */
-//    public boolean ejectNtf(final String ntfId, Object ntf){
-//        if (!messageRegister.isNotification(ntfId)){
-//            Log.e(TAG, "Unknown notification "+ntfId);
-//            return false;
-//        }
-//        if (null != nativeEmulator){
-//            nativeEmulator.ejectNtf(ntfId, ntf);
-//        }
-//        return true;
-//    }
-
 
 
 
     /**
      * 初始化native消息处理线程
      * */
-    private void initMessageProcessThread(){
+    private void initNativeCallbackProcessThread(){
         final Object lock = new Object();
-        msgProcessThread = new Thread(){
+        nativeCallbackProcessThread = new Thread(){
             @SuppressLint("HandlerLeak")
             @Override
             public void run() {
                 Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
                 Looper.prepare();
 
-                msgHandler = new Handler(){
+                nativeCallbackProcessHandler = new Handler(){
                     @Override
                     public void handleMessage(Message msg) {
                         processMessage(msg);
@@ -126,11 +159,11 @@ final class NativeInteractor implements INativeCallback{
             }
         };
 
-        msgProcessThread.setName("JM.rsp");
+        nativeCallbackProcessThread.setName("native message processor");
 
-        msgProcessThread.start();
+        nativeCallbackProcessThread.start();
 
-        if (null == msgHandler){
+        if (null == nativeCallbackProcessHandler){
             synchronized (lock) {
                 try {
                     lock.wait();
@@ -173,13 +206,13 @@ final class NativeInteractor implements INativeCallback{
             }
 
             if (messageRegister.isResponse(rspName)){
-                if (responseProcessor.process(rspName, rspObj)){
+                if (responseProcessor.processResponse(rspName, rspObj)){
                     Log.i(TAG, String.format("<-~- %s\n%s", rspName, rsp));
                 }else{
                     Log.e(TAG, String.format("<-~- %s. EXCEPTION: No session expects this response! \n%s", rspName, rsp));
                 }
             }else if (messageRegister.isNotification(rspName)){
-                if (notificationProcessor.process(rspName, rspObj)){
+                if (notificationProcessor.processNotification(rspName, rspObj)){
                     Log.i(TAG, String.format("<<-~- %s\n%s", rspName, rsp));
                 }else{
                     Log.e(TAG, String.format("<<-~- %s. EXCEPTION: No observer subscribes this notification! \n%s", rspName, rsp));
@@ -190,6 +223,7 @@ final class NativeInteractor implements INativeCallback{
 
         }
     }
+
 
 
 
@@ -207,47 +241,13 @@ final class NativeInteractor implements INativeCallback{
     }
 
 
-    int call(String methodName, Object reqPara){
-        String jsonReqPara = jsonProcessor.toJson(reqPara);
-        jsonReqPara = "null".equalsIgnoreCase(jsonReqPara) ? null : jsonReqPara;
-
-        return invoke(methodName, jsonReqPara);
-    }
-
-
-    int call(String methodName, StringBuffer output){
-        return invoke(methodName, output);
-    }
-
-    int call(String methodName, Object para, StringBuffer output){
-        String jsonPara = jsonProcessor.toJson(para);
-        jsonPara = "null".equalsIgnoreCase(jsonPara) ? null : jsonPara;
-
-        return invoke(methodName, jsonPara, output);
-    }
-
-    int emulateCall(String methodName, Object reqPara){
-        String jsonReqPara = jsonProcessor.toJson(reqPara);
-        jsonReqPara = "null".equalsIgnoreCase(jsonReqPara) ? null : jsonReqPara;
-
-        return nativeEmulator.invoke(methodName, jsonReqPara);
-    }
-
-    /**
-     * native回调。<p>
-     * 方法名称是固定的，要修改需和native层协商一致。
-     * */
-    @Override
-    public void callback(String nativeMsg){
-        respond(nativeMsg);
-    }
 
     // native methods
 
-    private native int setCallback(Object callback);
+    private native int setCallback(INativeCallback callback);
 
-    native int invoke(String methodName, String reqPara);  // request/set
-    native int invoke(String methodName, StringBuffer output); // get
-    native int invoke(String methodName, String para, StringBuffer output); // get
+    native int call(String methodName, String reqPara);  // request/set
+    native int call(String methodName, StringBuffer output); // get
+    native int call(String methodName, String para, StringBuffer output); // get
 
 }

@@ -4,8 +4,8 @@ package com.sissi.vconfsdk.base.engine;
  * Created by Sissi on 2018/9/14.
  */
 
-public interface INativeEmulator {
+interface INativeEmulator {
     void setCallback(INativeCallback cb);
-    void ejectNotification(String ntfId, final Object ntfContent);
-    int invoke(String methodName, String reqPara);
+    int call(String methodName, String reqPara);
+    void ejectNotification(String ntfId, Object ntfContent);
 }

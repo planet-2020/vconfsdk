@@ -11,7 +11,7 @@ import android.util.Log;
  * Created by Sissi on 1/20/2017.
  * */
 /**
- * 远端模拟器。<p>
+ * 模拟器。<p>
  *
  * 若启用了模拟器则进入了“模拟模式”，模拟模式下模拟器替代了真实的远端(服务器)，请求会被定向到模拟器而非发给真实服务器.
  * 模拟器收到请求后会反馈响应。<p>
@@ -42,25 +42,6 @@ final class NativeEmulator implements INativeEmulator{
         }
 
         return instance;
-    }
-
-    Handler getHandler(){
-        return handler;
-    }
-
-    void ejectNtf(final String ntfId, final Object ntf){
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                Contract.Head head= new Contract.Head(-1, ntfId, 1);
-                Contract.Mtapi mtapi= new Contract.Mtapi(head, ntf);
-                String jsonNtf = jsonProcessor.toJson(new Contract.RspWrapper(mtapi));
-                if (null != cb){
-                    Log.i(TAG, String.format("NATIVE REPORT NTF %s: content=%s", ntfId, jsonNtf));
-                    cb.callback(jsonNtf);
-                }
-            }
-        });
     }
 
 
@@ -126,12 +107,26 @@ final class NativeEmulator implements INativeEmulator{
     }
 
     @Override
-    public void ejectNotification(String ntfId, Object ntfContent) {
-
+    public void ejectNotification(final String ntfId, final Object ntfContent) {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                Contract.Head head= new Contract.Head(-1, ntfId, 1);
+                Contract.Mtapi mtapi= new Contract.Mtapi(head, ntfContent);
+                String jsonNtf = jsonProcessor.toJson(new Contract.RspWrapper(mtapi));
+                if (null != cb){
+                    Log.i(TAG, String.format("NATIVE REPORT NTF %s: content=%s", ntfId, jsonNtf));
+                    cb.callback(jsonNtf);
+                }
+            }
+        });
     }
 
     @Override
-    public int invoke(String methodName, String reqPara) {
+    public int call(String methodName, String reqPara) {
+        Message req = Message.obtain();
+        req.obj = reqPara;
+        handler.sendMessage(req);
         return 0;
     }
 

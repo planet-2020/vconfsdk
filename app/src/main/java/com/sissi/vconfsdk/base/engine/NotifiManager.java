@@ -2,22 +2,39 @@ package com.sissi.vconfsdk.base.engine;
 
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 通知处理器
  *
  * Created by Sissi on 1/9/2017.
  */
-final class NotifiManager implements INotificationProcessor{
+final class NotifiManager implements ISubscribeProcessor, INotificationProcessor, INotificationEmitter{
+
+    private static final String TAG = NotifiManager.class.getSimpleName();
+
     private static NotifiManager instance;
-    private HashMap<String, ArrayList<Handler>> subscribers;
+
+    private NativeInteractor nativeInteractor;  // NativeInteractor 应该是个接口，并且注入进来， NotifiManager不感知具体NativeInteractor实现。它所需要的只是一个发射器。
+
+    private MessageRegister messageRegister;
+
+    private Map<String, Set<Handler>> subscribers;
 
     private NotifiManager(){
+        nativeInteractor = NativeInteractor.instance();
+        nativeInteractor.setNotificationProcessor(this);
+        messageRegister = MessageRegister.instance();
+        if (NativeEmulatorOnOff.on) {
+            nativeInteractor.setNativeEmulator(NativeEmulator.instance());
+        }
+
         subscribers = new HashMap<>();
-        NativeInteractor.instance().setNotificationProcessor(this);
     }
 
     synchronized static NotifiManager instance() {
@@ -28,30 +45,43 @@ final class NotifiManager implements INotificationProcessor{
         return instance;
     }
 
-    /**
-     * 订阅通知。
-     * @param subscriber 订阅者.
-     * @param ntfId 通知ID.
-     * */
-    synchronized void subscribeNtf(Handler subscriber, String ntfId){
-        ArrayList<Handler> subs = subscribers.get(ntfId);
+
+
+    @Override
+    public synchronized boolean subscribe(Handler subscriber, String ntfId) {
+        if (null == subscriber){
+            return false;
+        }
+
+        if (!messageRegister.isNotification(ntfId)){
+            Log.e(TAG, "Unknown notification "+ntfId);
+            return false;
+        }
+
+        Set<Handler> subs = subscribers.get(ntfId);
         if (null == subs){
-            subs = new ArrayList<Handler>();
+            subs = new HashSet<>();
             subscribers.put(ntfId, subs);
         }
 
-        if (!subs.contains(subscriber)) {
-            subs.add(subscriber);
-        }
+        subs.add(subscriber);
+
+        return true;
     }
 
-    /**
-     * 取消订阅通知。
-     * @param subscriber 订阅者.
-     * @param ntfId 通知ID.
-     * */
-    synchronized void unsubscribeNtf(Handler subscriber, String ntfId){
-        ArrayList<Handler> subs = subscribers.get(ntfId);
+    @Override
+    public synchronized void unsubscribe(Handler subscriber, String ntfId) {
+
+        if (null == subscriber){
+            return;
+        }
+
+        if (!messageRegister.isNotification(ntfId)){
+            Log.e(TAG, "Unknown notification "+ntfId);
+            return;
+        }
+
+        Set<Handler> subs = subscribers.get(ntfId);
         if (null != subs){
             subs.remove(subscriber);
             if (subs.isEmpty()){
@@ -62,8 +92,8 @@ final class NotifiManager implements INotificationProcessor{
 
 
     @Override
-    public synchronized boolean process(String ntfName, Object ntfContent) {
-        ArrayList<Handler> subs = subscribers.get(ntfName);
+    public synchronized boolean processNotification(String ntfName, Object ntfContent) {
+        Set<Handler> subs = subscribers.get(ntfName);
         if (null == subs || 0==subs.size()){
             return false;
         }
@@ -76,4 +106,16 @@ final class NotifiManager implements INotificationProcessor{
 
         return true;
     }
+
+
+    @Override
+    public synchronized boolean emitNotification(String ntfName, Object ntfContent) {
+        if (!messageRegister.isNotification(ntfName)){
+            Log.e(TAG, "Unknown notification "+ntfName);
+            return false;
+        }
+
+        return nativeInteractor.emulateNotify(ntfName, ntfContent);
+    }
+
 }
