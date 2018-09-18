@@ -18,16 +18,11 @@ final class NativeInteractor implements INativeCallback{
     private static final String TAG = NativeInteractor.class.getSimpleName();
 
     private static NativeInteractor instance;
-    private static boolean reqEnabled = true;
-    private static boolean callbackEnabled = true;
 
     private Thread nativeCallbackProcessThread;
     private Handler nativeCallbackProcessHandler;
-    private static final int UI_REQ = -999;
-    private static final int NATIVE_RSP = -998;
 
     private JsonProcessor jsonProcessor;  // XXX 可以把这个去掉, native 层配合传上来就是 msgId, body
-//    private MessageRegister messageRegister;
 
     private boolean isWhiteListEnabled = false;
     private boolean isBlackListEnabled = false;
@@ -40,14 +35,6 @@ final class NativeInteractor implements INativeCallback{
     private NativeInteractor(){
 
         jsonProcessor = JsonProcessor.instance();
-//        messageRegister = MessageRegister.instance();
-        // 此处写死 responseProcessor = NotifiManager.instance(); responseProcessor= ; nativeEmulator = ;因为可替换的部分是各个xxManager,而上层Requester以及下层NativeInteractor都是不变的. 此处是为了方便起见直接写死在这里, 更好的方式是支持外部注入.
-
-//        responseProcessor = SessionManager.instance();
-//        notificationProcessor = NotifiManager.instance();
-//        if (NativeEmulatorOnOff.on) {
-//            nativeEmulator = NativeEmulator.instance();
-//        }
 
         initNativeCallbackProcessThread();
     }
@@ -61,20 +48,6 @@ final class NativeInteractor implements INativeCallback{
         return instance;
     }
 
-    /**
-     * 设置是否允许发送请求
-     * */
-    synchronized void setReqEnable(boolean enable){
-        reqEnabled = enable;
-    }
-    /**
-     * 设置是否允许接收响应
-     * */
-    synchronized void setRspEnable(boolean enable){
-        callbackEnabled = enable;
-    }
-
-
     int emulateInvoke(String methodName, Object reqPara){ // 此reqPara为RequestBundle？或session？RequestBundle可删除？ XXX 上层（SessionManager）不应该感知下层具体是真实的调用还是模拟调用！！！意即不应该区别调用该接口， 但是真实请求和模拟请求数据不一样，如果用其它通用的invoke则模拟数据也能让sessionManager感知，得通过其它途径设置下来，在Requester内做。UI层的调用方式可以保持不变。模拟器、通知管理器、会话管理器、这些模块的组合需要高层的模块去做，而非像现在这样在SM、NM中设置。
         String jsonReqPara = jsonProcessor.toJson(reqPara);
         jsonReqPara = "null".equalsIgnoreCase(jsonReqPara) ? null : jsonReqPara;
@@ -83,6 +56,10 @@ final class NativeInteractor implements INativeCallback{
     }
 
     int request(String methodName, String reqPara){
+        if (null != nativeEmulator){
+            return nativeEmulator.call(methodName, reqPara);
+        }
+
         return 0;
 //        return call(methodName, reqPara);
     }
@@ -116,10 +93,6 @@ final class NativeInteractor implements INativeCallback{
      * */
     @Override
     public void callback(String nativeMsg){
-        if (!callbackEnabled){
-            Log.e(TAG, "native callback disabled!");
-            return;
-        }
         enqueue(nativeMsg);
     }
 
@@ -132,7 +105,6 @@ final class NativeInteractor implements INativeCallback{
      * */
     void enqueue(String nativeMsg){
         Message msg = Message.obtain();
-        msg.what = NATIVE_RSP;
         msg.obj = nativeMsg;
         nativeCallbackProcessHandler.sendMessage(msg);
     }
@@ -179,37 +151,34 @@ final class NativeInteractor implements INativeCallback{
     }
 
     private void processNativeCallback(Message msg){
-        if (NATIVE_RSP == msg.what){  // XXX 消息ID没必要
-            String rsp = (String) msg.obj;
-            String msgName = null;
-            String msgBody = null;
+        String rsp = (String) msg.obj;
+        String msgName = null;
+        String msgBody = null;
 
-            try {
-                Object rootObj = jsonProcessor.getRootObj(rsp);
-                msgName = jsonProcessor.getRspName(rootObj);
-                msgBody = jsonProcessor.getRspBody(rootObj);
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-
-            if (null == msgName || null == msgBody){
-                Log.e(TAG, "Invalid rsp: "+ rsp);
-                return;
-            }
-
-            if (responseProcessor.processResponse(msgName, msgBody)){
-
-            }else if (notificationProcessor.processNotification(msgName, msgBody)){
-
-            }else{
-                Log.e(TAG, String.format("<-~- %s. EXCEPTION: unexpected msg. \n%s", msgName, rsp));
-            }
-
+        try {
+            Object rootObj = jsonProcessor.getRootObj(rsp);
+            msgName = jsonProcessor.getRspName(rootObj);
+            msgBody = jsonProcessor.getRspBody(rootObj);
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
+
+        if (null == msgName || null == msgBody){
+            Log.e(TAG, "Invalid rsp: "+ rsp);
+            return;
+        }
+
+        if (null!=responseProcessor
+                && responseProcessor.processResponse(msgName, msgBody)){
+
+        }else if (null!=notificationProcessor
+                && notificationProcessor.processNotification(msgName, msgBody)){
+
+        }else{
+            Log.e(TAG, String.format("<-~- %s. EXCEPTION: unprocessed msg. \n%s", msgName, rsp));
+        }
+
     }
-
-    // TODO 还是需要在此类中，此类更名为MessageProcessor, 注释处理器的更名为MessageAnnotationProcessor。　先绘图后编码。彻底把关系理清。　
-
 
     NativeInteractor setResponseProcessor(IResponseProcessor responseProcessor){
         this.responseProcessor = responseProcessor;
@@ -223,7 +192,10 @@ final class NativeInteractor implements INativeCallback{
 
     NativeInteractor setNativeEmulator(INativeEmulator nativeEmulator){
         this.nativeEmulator = nativeEmulator;
-        nativeEmulator.setCallback(this);
+        if (null != nativeEmulator) {
+            nativeEmulator.setCallback(this);
+//            setCallback(null);
+        }
         return this;
     }
 

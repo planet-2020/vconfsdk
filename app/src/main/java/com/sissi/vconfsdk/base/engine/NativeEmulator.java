@@ -26,6 +26,7 @@ final class NativeEmulator implements INativeEmulator{
 
     private static NativeEmulator instance;
     private JsonProcessor jsonProcessor;
+    private MessageRegister messageRegister;
 
     private Thread thread;
     private Handler handler;
@@ -33,6 +34,7 @@ final class NativeEmulator implements INativeEmulator{
 
     private NativeEmulator() {
         jsonProcessor = JsonProcessor.instance();
+        messageRegister = MessageRegister.instance();
         initThread();
     }
 
@@ -56,16 +58,25 @@ final class NativeEmulator implements INativeEmulator{
                 handler = new Handler(){
                     @Override
                     public void handleMessage(Message msg) {
-                        SessionManager.Session s = (SessionManager.Session) msg.obj;
-                        String reqId = s.reqId();
-                        String[] rspIds = s.rspIds();
-                        Object[] rsps = s.rsps();
+                        CallPara callPara = (CallPara) msg.obj;
+                        String reqId = callPara.methodName;
+                        String reqPara = callPara.para;
+
+                        String[] rspIds = messageRegister.getRsps(reqId)[0];
+                        Object rspObj = null;
                         Contract.Head head;
                         Contract.Mtapi mtapi;
-                        for (int i=0; i<rsps.length; ++i){
+                        for (int i=0; i<rspIds.length; ++i){
                             // 构造响应json字符串
                             head= new Contract.Head(-1, rspIds[i], 1);
-                            mtapi= new Contract.Mtapi(head, rsps[i]);
+                            try {
+                                rspObj = messageRegister.getRspClazz(rspIds[i]).newInstance();
+                            } catch (InstantiationException e) {
+                                e.printStackTrace();
+                            } catch (IllegalAccessException e) {
+                                e.printStackTrace();
+                            }
+                            mtapi= new Contract.Mtapi(head, rspObj);
                             String jsonRsp = jsonProcessor.toJson(new Contract.RspWrapper(mtapi));
                             if (null != cb){
                                 // 上报响应
@@ -124,9 +135,18 @@ final class NativeEmulator implements INativeEmulator{
     @Override
     public int call(String methodName, String reqPara) {
         Message req = Message.obtain();
-        req.obj = reqPara;
+        req.obj = new CallPara(methodName, reqPara);
         handler.sendMessage(req);
         return 0;
+    }
+
+    private class CallPara{
+        String methodName;
+        String para;
+        CallPara(String methodName, String para){
+            this.methodName = methodName;
+            this.para = para;
+        }
     }
 
 }

@@ -38,9 +38,27 @@ public abstract class Requester{
 
     private Handler handler;
 
-    private IRequestProcessor requestProcessor;
-    private ICommandProcessor commandProcessor;
-    private ISubscribeProcessor subscribeProcessor;
+    private static IRequestProcessor requestProcessor;
+    private static ICommandProcessor commandProcessor;
+    private static ISubscribeProcessor subscribeProcessor;
+
+    private static boolean enable; // TODO 原本在Native层的开关挪到这里
+
+    static {
+
+        requestProcessor = SessionManager.instance();
+        commandProcessor = CommandManager.instance();
+        subscribeProcessor = NotifiManager.instance();
+
+        NativeInteractor.instance()
+                .setResponseProcessor(SessionManager.instance())
+                .setNotificationProcessor(NotifiManager.instance());
+
+        if (NativeEmulatorOnOff.on) {
+            NativeInteractor.instance().setNativeEmulator(NativeEmulator.instance());
+        }
+
+    }
 
     protected Requester(){
         handler = new Handler(Looper.getMainLooper()){
@@ -54,13 +72,6 @@ public abstract class Requester{
         rspListenerList = new HashMap<>();
         ntfListenerList = new HashMap<>();
 
-        requestProcessor = SessionManager.instance();
-        commandProcessor = CommandManager.instance();
-        subscribeProcessor = NotifiManager.instance();
-
-        NativeInteractor.instance()
-                .setResponseProcessor(SessionManager.instance())
-                .setNotificationProcessor(NotifiManager.instance());
     }
 
     /**获取Jni请求者。
