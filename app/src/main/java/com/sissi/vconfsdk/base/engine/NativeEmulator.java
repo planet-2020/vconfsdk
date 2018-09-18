@@ -58,7 +58,6 @@ final class NativeEmulator implements INativeEmulator{
                     public void handleMessage(Message msg) {
                         SessionManager.Session s = (SessionManager.Session) msg.obj;
                         String reqId = s.reqId();
-                        Log.i(TAG, String.format("NATIVE RECV REQ %s: reqPara=%s", reqId, s.reqPara()));
                         String[] rspIds = s.rspIds();
                         Object[] rsps = s.rsps();
                         Contract.Head head;

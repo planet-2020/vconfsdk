@@ -5,5 +5,5 @@ package com.sissi.vconfsdk.base.engine;
  */
 
 interface IResponseProcessor {
-    boolean processResponse(String rspName, Object rspContent);
+    boolean processResponse(String rspName, String rspBody);
 }

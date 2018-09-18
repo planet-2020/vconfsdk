@@ -24,15 +24,14 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
     private MessageRegister messageRegister;
 
+    private JsonProcessor jsonProcessor;
+
     private Map<String, Set<Handler>> subscribers;
 
     private NotifiManager(){
         nativeInteractor = NativeInteractor.instance();
-        nativeInteractor.setNotificationProcessor(this);
         messageRegister = MessageRegister.instance();
-        if (NativeEmulatorOnOff.on) {
-            nativeInteractor.setNativeEmulator(NativeEmulator.instance());
-        }
+        jsonProcessor = JsonProcessor.instance();
 
         subscribers = new HashMap<>();
     }
@@ -92,7 +91,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
 
     @Override
-    public synchronized boolean processNotification(String ntfName, Object ntfContent) { // XXX ntfName改为ntfId, ntfContent改为String ntfBody
+    public synchronized boolean processNotification(String ntfName, String ntfBody) {
         if (!messageRegister.isNotification(ntfName)){
             return false;
         }
@@ -100,6 +99,8 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
         if (null == subs || 0==subs.size()){
             return false;
         }
+
+        Object ntfContent = jsonProcessor.fromJson(ntfBody, messageRegister.getNtfClazz(ntfName));
 
         for (Handler sub : subs){
             Message msg = Message.obtain();

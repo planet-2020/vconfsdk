@@ -1,10 +1,10 @@
-package com.sissi.vconfsdk.base;
+package com.sissi.vconfsdk.base.engine;
 
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
-import com.sissi.vconfsdk.base.engine.ResponseBundle;
+import com.sissi.vconfsdk.base.DmMsg;  // 怎么从编译时注解获取枚举信息,从而无需引入具体枚举类.
 import com.sissi.vconfsdk.utils.KLog;
 
 import java.lang.reflect.Constructor;
@@ -21,7 +21,6 @@ import java.util.Set;
  * Created by Sissi on 1/9/2017.
  */
 public abstract class Requester{
-    private MessageDispatcher messageDispatcher;
     private static HashMap<Class<?>, Requester> instances = new HashMap<>();
     private static HashMap<Class<?>, Integer> refercnt = new HashMap<>();
     private int reqSn; // 请求序列号，唯一标识一次请求。
@@ -39,6 +38,10 @@ public abstract class Requester{
 
     private Handler handler;
 
+    private IRequestProcessor requestProcessor;
+    private ICommandProcessor commandProcessor;
+    private ISubscribeProcessor subscribeProcessor;
+
     protected Requester(){
         handler = new Handler(Looper.getMainLooper()){
             @Override
@@ -47,12 +50,17 @@ public abstract class Requester{
             }
         };
 
-        messageDispatcher = MessageDispatcher.instance();
         reqSn = 0;
         rspListenerList = new HashMap<>();
         ntfListenerList = new HashMap<>();
 
-        // TODO 组装 NativeInteractor, SessionManager, NotifiManager, NativeEmulator.
+        requestProcessor = SessionManager.instance();
+        commandProcessor = CommandManager.instance();
+        subscribeProcessor = NotifiManager.instance();
+
+        NativeInteractor.instance()
+                .setResponseProcessor(SessionManager.instance())
+                .setNotificationProcessor(NotifiManager.instance());
     }
 
     /**获取Jni请求者。
@@ -121,7 +129,7 @@ public abstract class Requester{
      * */
     protected synchronized void sendReq(DmMsg reqId, Object reqPara, Object rspListener){
 //        KLog.p("rspListener=%s, reqId=%s, reqPara=%s", rspListener, reqId, reqPara);
-        if (messageDispatcher.request(handler, reqId.name(), reqPara, ++reqSn)){
+        if (requestProcessor.processRequest(handler, reqId.name(), reqPara, ++reqSn)){
 //            if (null != rspListener) {
                 rspListenerList.put(reqSn, rspListener);
 //            }
@@ -134,7 +142,7 @@ public abstract class Requester{
      * */
     protected synchronized void sendReq(DmMsg reqId, Object reqPara, Object[] rsps, Object rspListener){
 //        KLog.p("rspListener=%s, reqId=%s, reqPara=%s, rsps=%s", rspListener, reqId, reqPara, rsps);
-        if (messageDispatcher.request(handler, reqId.name(), reqPara, ++reqSn, rsps)){
+        if (requestProcessor.processRequest(handler, reqId.name(), reqPara, ++reqSn)){
 //            if (null != rspListener) {
                 rspListenerList.put(reqSn, rspListener);
 //            }
@@ -156,7 +164,7 @@ public abstract class Requester{
         }
         Set<Object> listeners = ntfListenerList.get(ntfId);
         if (null == listeners){
-            messageDispatcher.subscribeNtf(handler, ntfId.name());
+            subscribeProcessor.subscribe(handler, ntfId.name());
             listeners = new HashSet<Object>();
             ntfListenerList.put(ntfId, listeners);
         }
@@ -188,7 +196,7 @@ public abstract class Requester{
 //            KLog.p("del ntfListener=%s, ntfId=%s", ntfListener, ntfId);
             if (listeners.isEmpty()) {
                 ntfListenerList.remove(ntfId);
-                messageDispatcher.unsubscribeNtf(handler, ntfId.name());
+                subscribeProcessor.unsubscribe(handler, ntfId.name());
 //                KLog.p("unsubscribeNtf %s", ntfId);
             }
         }
@@ -211,14 +219,14 @@ public abstract class Requester{
      * */
     protected synchronized void ejectNtf(DmMsg ntfId, Object ntf){
 //        KLog.p("ntfId=%s, ntf=%s", ntfId, ntf);
-        messageDispatcher.ejectNtf(ntfId.name(), ntf);
+//        messageDispatcher.ejectNtf(ntfId.name(), ntf);
     }
 
     /**
      * 设置配置
      * */
     protected synchronized void setConfig(DmMsg reqId, Object config){
-        messageDispatcher.setConfig(reqId.name(), config);
+//        messageDispatcher.setConfig(reqId.name(), config);
     }
 
     /**

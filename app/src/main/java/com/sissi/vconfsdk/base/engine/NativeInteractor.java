@@ -26,7 +26,7 @@ final class NativeInteractor implements INativeCallback{
     private static final int UI_REQ = -999;
     private static final int NATIVE_RSP = -998;
 
-    private JsonProcessor jsonProcessor;
+    private JsonProcessor jsonProcessor;  // XXX 可以把这个去掉, native 层配合传上来就是 msgId, body
 //    private MessageRegister messageRegister;
 
     private boolean isWhiteListEnabled = false;
@@ -43,11 +43,11 @@ final class NativeInteractor implements INativeCallback{
 //        messageRegister = MessageRegister.instance();
         // 此处写死 responseProcessor = NotifiManager.instance(); responseProcessor= ; nativeEmulator = ;因为可替换的部分是各个xxManager,而上层Requester以及下层NativeInteractor都是不变的. 此处是为了方便起见直接写死在这里, 更好的方式是支持外部注入.
 
-        responseProcessor = SessionManager.instance();
-        notificationProcessor = NotifiManager.instance();
-        if (NativeEmulatorOnOff.on) {
-            nativeEmulator = NativeEmulator.instance();
-        }
+//        responseProcessor = SessionManager.instance();
+//        notificationProcessor = NotifiManager.instance();
+//        if (NativeEmulatorOnOff.on) {
+//            nativeEmulator = NativeEmulator.instance();
+//        }
 
         initNativeCallbackProcessThread();
     }
@@ -83,7 +83,8 @@ final class NativeInteractor implements INativeCallback{
     }
 
     int request(String methodName, String reqPara){
-        return call(methodName, reqPara);
+        return 0;
+//        return call(methodName, reqPara);
     }
 
     int set(String methodName, String setPara){
@@ -180,56 +181,28 @@ final class NativeInteractor implements INativeCallback{
     private void processNativeCallback(Message msg){
         if (NATIVE_RSP == msg.what){  // XXX 消息ID没必要
             String rsp = (String) msg.obj;
-            String rspName = null;
-            String rspBody = null;
+            String msgName = null;
+            String msgBody = null;
 
             try {
                 Object rootObj = jsonProcessor.getRootObj(rsp);
-                rspName = jsonProcessor.getRspName(rootObj);
-                rspBody = jsonProcessor.getRspBody(rootObj);
+                msgName = jsonProcessor.getRspName(rootObj);
+                msgBody = jsonProcessor.getRspBody(rootObj);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
 
-            if (null == rspName || null == rspBody){
+            if (null == msgName || null == msgBody){
                 Log.e(TAG, "Invalid rsp: "+ rsp);
                 return;
             }
 
-//            Class<?> clz = messageRegister.getRspClazz(rspName);
-//            if (null == clz){
-//                Log.e(TAG, "Failed to find clazz corresponding "+rspName);
-//                return;
-//            }
-//
-//            Object rspObj = jsonProcessor.fromJson(rspBody, clz);
-//            if (null == rspObj){
-//                Log.e(TAG, String.format("Failed to convert msg %s to object, msg json body: %s ", rspName, rspBody));
-//                return;
-//            }
+            if (responseProcessor.processResponse(msgName, msgBody)){
 
-//            if (messageRegister.isResponse(rspName)){
-//                if (responseProcessor.processResponse(rspName, rspObj)){
-//                    Log.i(TAG, String.format("<-~- %s\n%s", rspName, rsp));
-//                }else{
-//                    Log.e(TAG, String.format("<-~- %s. EXCEPTION: No session expects this response! \n%s", rspName, rsp));
-//                }
-//            }else if (messageRegister.isNotification(rspName)){
-//                if (notificationProcessor.processNotification(rspName, rspObj)){
-//                    Log.i(TAG, String.format("<<-~- %s\n%s", rspName, rsp));
-//                }else{
-//                    Log.e(TAG, String.format("<<-~- %s. EXCEPTION: No observer subscribes this notification! \n%s", rspName, rsp));
-//                }
-//            }else{
-//                Log.e(TAG, String.format("<-~- %s. EXCEPTION: Unknown msg. \n%s", rspName, rsp));
-//            }
-
-            if (responseProcessor.processResponse(rspName, rspBody)){
-
-            }else if (notificationProcessor.processNotification(rspName, rspBody)){
+            }else if (notificationProcessor.processNotification(msgName, msgBody)){
 
             }else{
-                Log.e(TAG, String.format("<-~- %s. EXCEPTION: unexpected msg. \n%s", rspName, rsp));
+                Log.e(TAG, String.format("<-~- %s. EXCEPTION: unexpected msg. \n%s", msgName, rsp));
             }
 
         }
@@ -238,17 +211,20 @@ final class NativeInteractor implements INativeCallback{
     // TODO 还是需要在此类中，此类更名为MessageProcessor, 注释处理器的更名为MessageAnnotationProcessor。　先绘图后编码。彻底把关系理清。　
 
 
-    void setResponseProcessor(IResponseProcessor responseProcessor){
+    NativeInteractor setResponseProcessor(IResponseProcessor responseProcessor){
         this.responseProcessor = responseProcessor;
+        return this;
     }
 
-    void setNotificationProcessor(INotificationProcessor notificationProcessor){
+    NativeInteractor setNotificationProcessor(INotificationProcessor notificationProcessor){
         this.notificationProcessor = notificationProcessor;
+        return this;
     }
 
-    void setNativeEmulator(INativeEmulator nativeEmulator){
+    NativeInteractor setNativeEmulator(INativeEmulator nativeEmulator){
         this.nativeEmulator = nativeEmulator;
         nativeEmulator.setCallback(this);
+        return this;
     }
 
 
@@ -262,3 +238,4 @@ final class NativeInteractor implements INativeCallback{
     native int call(String methodName, String para, StringBuffer output); // get
 
 }
+

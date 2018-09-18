@@ -5,5 +5,5 @@ package com.sissi.vconfsdk.base.engine;
  */
 
 interface INotificationProcessor {
-    boolean processNotification(String ntfName, Object ntfContent);
+    boolean processNotification(String ntfName, String ntfBody);
 }
