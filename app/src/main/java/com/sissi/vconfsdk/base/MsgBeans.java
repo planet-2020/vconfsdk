@@ -75,7 +75,11 @@ public final class MsgBeans {
     }
 
     public static final class NetConfig{
-
+        long ip;
+        int port;
+        public NetConfig(long ip, int port){
+            this.ip = ip; this.port = port;
+        }
     }
 
 

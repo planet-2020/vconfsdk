@@ -87,6 +87,12 @@ final class NativeEmulator implements INativeEmulator{
 
     @Override
     public int call(String methodName, String para) {
+        if (messageRegister.isSet(methodName)){
+            set(methodName, para);
+            return 0;
+        }
+
+
         if (null == cb){
             return -1;
         }
@@ -141,6 +147,8 @@ final class NativeEmulator implements INativeEmulator{
             e.printStackTrace();
         }
 
+        Log.i(TAG, String.format("GET %s, para= %s, result=%s", methodName, para, jsonProcessor.toJson(result)));
+
         output.append(jsonProcessor.toJson(result));
 
         return 0;
@@ -170,6 +178,11 @@ final class NativeEmulator implements INativeEmulator{
                 cb.callback(finalNtfId, jsonNtfBody);
             }
         }, 10);
+    }
+
+
+    private void set(String methodName, String para){
+        Log.i(TAG, String.format("SET %s, para= %s", methodName, para));
     }
 
 }

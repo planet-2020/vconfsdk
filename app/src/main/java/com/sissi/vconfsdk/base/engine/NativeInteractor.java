@@ -45,7 +45,10 @@ final class NativeInteractor implements INativeCallback{
         return call(methodName, reqPara);
     }
 
-    int set(String methodName, String setPara){ // TODO 模拟模式
+    int set(String methodName, String setPara){
+        if (null != nativeEmulator){
+            return nativeEmulator.call(methodName, setPara);
+        }
         return call(methodName, setPara);
     }
 
