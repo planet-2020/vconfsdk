@@ -34,7 +34,7 @@ final class NativeEmulator implements INativeEmulator{
     private NativeEmulator() {
         jsonProcessor = JsonProcessor.instance();
         messageRegister = MessageRegister.instance();
-        initThread();
+        initHandler();
     }
 
     synchronized static NativeEmulator instance() {
@@ -46,7 +46,7 @@ final class NativeEmulator implements INativeEmulator{
     }
 
 
-    private void initThread(){
+    private void initHandler(){
         final Object lock = new Object();
         Thread thread = new Thread() {
             @SuppressLint("HandlerLeak")
@@ -62,7 +62,7 @@ final class NativeEmulator implements INativeEmulator{
             }
         };
 
-        thread.setName("NativeEmulator");
+        thread.setName("NE.callback");
 
         thread.start();
 

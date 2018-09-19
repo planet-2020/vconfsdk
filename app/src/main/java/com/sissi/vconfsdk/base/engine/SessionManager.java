@@ -28,12 +28,9 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     private static final int MAX_SESSION_NUM = 2000; // 正常会话数上限
     private static final int MAX_BLOCKED_SESSION_NUM = 10000; // 被阻塞的会话数上限
 
-    private static final int UI_REQ = -999;
-    private Thread reqThread; // 发送请求线程
-    private Handler reqHandler; // 请求handler
-    private static final int MSG_TIMEOUT = 999;
-    private Thread timeoutThread; // 超时线程
+    private Handler reqHandler;
     private Handler timeoutHandler;
+    private static final int MSG_TIMEOUT = 999;
 
     private JsonProcessor jsonProcessor;
 
@@ -42,15 +39,15 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     private NativeInteractor nativeInteractor;
 
     private SessionManager(){
-        sessions = new ArrayList<Session>();
-        blockedSessions = new ArrayList<Session>();
+        sessions = new ArrayList<>();
+        blockedSessions = new ArrayList<>();
 
         jsonProcessor = JsonProcessor.instance();
         messageRegister = MessageRegister.instance();
         nativeInteractor = NativeInteractor.instance();
 
-        initRequestThread();
-        initTimeoutThread();
+        initRequestHandler();
+        initTimeoutHandler();
     }
 
     synchronized static SessionManager instance() {
@@ -102,13 +99,17 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
             return true;
 
-        }else{ // 存在未完成的同类请求（阻塞源）
+        }else{
+            /* 存在未完成的同类请求则阻塞当前请求直到同类请求完成。 此举的目的是为了尽量保证“请求-响应”是正确匹配的。
+            在不采用此举的情形下，考虑如下场景：上层连续多次同类请求req1、req2，期望的响应序列为rsp1、rsp2，
+            但因下层不保证消息的有序性，所以可能到达序列为rsp2、rsp1，进而错误的将req1-rsp2、req2-rsp1匹配了。
+             注意：此举并不能完全保证“请求-响应”的正确匹配，极端情形下，req1等待rsp1超时然后req1被废弃接着发送req2，
+             若此时刚好rsp1到来了，则req2-rsp1将被匹配。*/
             if (blockedSessions.size() >= MAX_BLOCKED_SESSION_NUM){
                 Log.e(TAG, "blocked requests reach the limit "+MAX_BLOCKED_SESSION_NUM);
                 return false;
             }
             blockedSessions.add(s);
-
 
             Log.w(TAG, String.format("-=->| %s (session %d BLOCKED)", s.reqId, s.id)); // XXX 启动超时？阻塞时间算在超时内？
 
@@ -259,28 +260,31 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     /**
      * 初始化发送请求线程
      * */
-    private void initRequestThread(){
+    private void initRequestHandler(){
         final Object lock = new Object();
-        reqThread = new Thread(){
-            @SuppressLint("HandlerLeak") // 或者, 可以使用Handler.Callback替代在Thread中定义内部类Handler以避免"HandlerLeak"问题，尤其在主线程中建议如此。
+        Thread reqThread = new Thread() {
+            @SuppressLint("HandlerLeak")
+            // 或者, 可以使用Handler.Callback替代在Thread中定义内部类Handler以避免"HandlerLeak"问题，尤其在主线程中建议如此。
             @Override
             public void run() {
                 Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
                 Looper.prepare();
 
-                reqHandler = new Handler(){
+                reqHandler = new Handler() {
                     @Override
                     public void handleMessage(Message msg) {
                         startSession((Session) msg.obj);
                     }
                 };
-                synchronized (lock){lock.notify();}
+                synchronized (lock) {
+                    lock.notify();
+                }
 
                 Looper.loop();
             }
         };
 
-        reqThread.setName("SM.processRequest");
+        reqThread.setName("SM.request");
 
         reqThread.start();
 
@@ -299,22 +303,23 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     /**
      * 初始化超时线程
      * */
-    private void initTimeoutThread(){
+    private void initTimeoutHandler(){
         final Object lock = new Object();
-        timeoutThread = new Thread() {
+        Thread timeoutThread = new Thread() {
             @SuppressLint("HandlerLeak")
             @Override
             public void run() {
                 Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
                 Looper.prepare();
-                timeoutHandler = new Handler(){
+                timeoutHandler = new Handler() {
                     @Override
                     public void handleMessage(Message msg) {
-                        Log.i("", "msg="+msg.what);
                         SessionManager.this.timeout((Session) msg.obj);
                     }
                 };
-                synchronized (lock){ lock.notify(); }
+                synchronized (lock) {
+                    lock.notify();
+                }
                 Looper.loop();
             }
         };

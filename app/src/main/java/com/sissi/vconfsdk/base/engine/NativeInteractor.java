@@ -18,14 +18,14 @@ final class NativeInteractor implements INativeCallback{
 
     private static NativeInteractor instance;
 
-    private Handler nativeCallbackProcessHandler;
+    private Handler nativeMsgHandler;
 
     private IResponseProcessor responseProcessor;
     private INotificationProcessor notificationProcessor;
     private INativeEmulator nativeEmulator;
 
     private NativeInteractor(){
-        initNativeCallbackProcessThread();
+        initNativeMsgHandler();
     }
 
     public synchronized static NativeInteractor instance() {
@@ -77,23 +77,23 @@ final class NativeInteractor implements INativeCallback{
         }
         Message msg = Message.obtain();
         msg.obj = new NativeMsgWrapper(msgId, msgBody);
-        nativeCallbackProcessHandler.sendMessage(msg);
+        nativeMsgHandler.sendMessage(msg);
     }
 
 
     /**
      * 初始化native消息处理线程
      * */
-    private void initNativeCallbackProcessThread(){
+    private void initNativeMsgHandler(){
         final Object lock = new Object();
-        Thread nativeCallbackProcessThread = new Thread() {
+        Thread thread = new Thread() {
             @SuppressLint("HandlerLeak")
             @Override
             public void run() {
                 Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
                 Looper.prepare();
 
-                nativeCallbackProcessHandler = new Handler() {
+                nativeMsgHandler = new Handler() {
                     @Override
                     public void handleMessage(Message msg) {
                         NativeMsgWrapper nativeMsgWrapper = (NativeMsgWrapper) msg.obj;
@@ -115,11 +115,11 @@ final class NativeInteractor implements INativeCallback{
             }
         };
 
-        nativeCallbackProcessThread.setName("native message processor");
+        thread.setName("NI.nativeMsgHandler");
 
-        nativeCallbackProcessThread.start();
+        thread.start();
 
-        if (null == nativeCallbackProcessHandler){
+        if (null == nativeMsgHandler){
             synchronized (lock) {
                 try {
                     lock.wait();

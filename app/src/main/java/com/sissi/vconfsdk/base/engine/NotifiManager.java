@@ -20,7 +20,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
     private static NotifiManager instance;
 
-    private NativeInteractor nativeInteractor;  // NativeInteractor 应该是个接口，并且注入进来， NotifiManager不感知具体NativeInteractor实现。它所需要的只是一个发射器。
+    private NativeInteractor nativeInteractor;
 
     private MessageRegister messageRegister;
 
