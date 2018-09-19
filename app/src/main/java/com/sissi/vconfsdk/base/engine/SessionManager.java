@@ -8,8 +8,8 @@ import android.os.Process;
 import android.util.Log;
 import android.util.SparseIntArray;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * 会话处理器　
@@ -22,8 +22,8 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
     private static SessionManager instance;
 
-    private ArrayList<Session> sessions;  // 正常会话
-    private ArrayList<Session> blockedSessions; // 被阻塞的会话
+    private Set<Session> sessions;  // 正常会话
+    private Set<Session> blockedSessions; // 被阻塞的会话
 
     private int sessionCnt = 0;
     private static final int MAX_SESSION_NUM = 2000; // 正常会话数上限
@@ -40,8 +40,8 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     private NativeInteractor nativeInteractor;
 
     private SessionManager(){
-        sessions = new ArrayList<>();
-        blockedSessions = new ArrayList<>();
+        sessions = new HashSet<>();
+        blockedSessions = new HashSet<>();
 
         jsonProcessor = JsonProcessor.instance();
         messageRegister = MessageRegister.instance();
