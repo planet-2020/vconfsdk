@@ -97,7 +97,7 @@ final class NativeEmulator implements INativeEmulator{
 
         Log.i(TAG, String.format("receive REQ %s, para= %s", reqId, reqPara));
 
-        String[] rspIds = messageRegister.getRsps(reqId)[0];
+        String[] rspIds = messageRegister.getRspSeqs(reqId)[0];
         Object rspBody = null;
         for (int i=0; i<rspIds.length; ++i) {
             // 构造响应json字符串

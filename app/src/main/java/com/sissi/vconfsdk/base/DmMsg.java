@@ -16,8 +16,12 @@ import com.sissi.annotation.Set;
 public enum DmMsg { // Domain Message
 
     // login
-    @Request(reqPara = MsgBeans.LoginReq.class, rspSeq = {"LoginRsp", "LoginRspFin"}, timeout = 6)
+    @Request(reqPara = MsgBeans.LoginReq.class,
+            rspSeq = {"LoginRsp", "LoginRspFin", "LogoutRsp"},
+            rspSeq2 = {"LoginRsp", "LoginRspFin", "LogoutRspFin"},
+            timeout = 6)
     LoginReq,
+
     @Response(MsgBeans.LoginResult.class)
     LoginRsp,
     @Response(MsgBeans.LoginRspFin.class)
@@ -26,9 +30,9 @@ public enum DmMsg { // Domain Message
     // logout
     @Request(reqPara = MsgBeans.LogoutReq.class, rspSeq = {"LogoutRsp", "LogoutRspFin"}, timeout = 5)
     LogoutReq,
-    @Response(Enum.class)
+    @Response(String.class)
     LogoutRsp,
-    @Response(Enum.class)
+    @Response(String.class)
     LogoutRspFin,
 
     @Get(result = MsgBeans.XmppServerInfo.class)

@@ -28,7 +28,7 @@ final class MessageRegister {
 
     private Map<String, Class> reqParaMap; // 请求——请求参数对应的类
 
-    private Map<String, String[][]> reqRspsMap; // 请求——响应序列
+    private Map<String, String[][]> reqRspSeqsMap; // 请求——响应序列
 
     private Map<String, Integer> reqTimeoutMap; // 请求——超时时限. 单位: 秒.
 
@@ -48,7 +48,7 @@ final class MessageRegister {
 
     private MessageRegister(){
         reqParaMap = Message$$Generated.reqParaMap;
-        reqRspsMap = Message$$Generated.reqRspsMap;
+        reqRspSeqsMap = Message$$Generated.reqRspsMap;
         reqTimeoutMap = Message$$Generated.reqTimeoutMap;
         rspClazzMap = Message$$Generated.rspClazzMap;
         ntfClazzMap = Message$$Generated.ntfClazzMap;
@@ -100,8 +100,8 @@ final class MessageRegister {
         return timeoutVal;
     }
 
-    String[][] getRsps(String req){
-        return reqRspsMap.get(req);
+    String[][] getRspSeqs(String req){
+        return reqRspSeqsMap.get(req);
     }
 
     Class<?> getRspClazz(String rsp){
