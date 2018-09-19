@@ -17,8 +17,7 @@ public enum DmMsg { // Domain Message
 
     // login
     @Request(reqPara = MsgBeans.LoginReq.class,
-            rspSeq = {"LoginRsp", "LoginRspFin", "LogoutRsp"},
-            rspSeq2 = {"LoginRsp", "LoginRspFin", "LogoutRspFin"},
+            rspSeq = {"LoginRsp", "LoginRspFin"},
             timeout = 6)
     LoginReq,
 

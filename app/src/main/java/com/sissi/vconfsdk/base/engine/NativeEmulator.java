@@ -9,9 +9,7 @@ import android.util.Log;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
-/**
- * Created by Sissi on 1/20/2017.
- * */
+
 /**
  * 模拟器。<p>
  *
@@ -21,6 +19,7 @@ import java.lang.reflect.InvocationTargetException;
  * 1、便于在Native层没有完成开发的情况下UI层开发仍可以照常进行不受制约。<p>
  * 2、便于定位问题。比如当联调出现问题时可启用模拟模式跑下程序，若模拟模式下程序正常则问题出在native层，否则问题出在UI层。
  *
+ * Created by Sissi on 1/20/2017.
  */
 final class NativeEmulator implements INativeEmulator{
 
@@ -118,7 +117,7 @@ final class NativeEmulator implements INativeEmulator{
                     Log.i(TAG, String.format("send RSP %s, rspContent=%s", rspId, jsonRspBody));
                     cb.callback(rspId, jsonRspBody);
                 }
-            }, 100);
+            }, 10);
 
         }
 
@@ -148,7 +147,7 @@ final class NativeEmulator implements INativeEmulator{
                 Log.i(TAG, String.format("send NTF %s, content=%s", finalNtfId, jsonNtfBody));
                 cb.callback(finalNtfId, jsonNtfBody);
             }
-        }, 100);
+        }, 10);
     }
 
 }
