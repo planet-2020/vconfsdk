@@ -9,21 +9,6 @@ import com.sissi.annotation.SerializeEnumAsInt;
 @SerializeEnumAsInt
 public final class MsgBeans {
 
-
-    //=> enum definitions
-    public enum SetType {
-        Phone,
-        Pad,
-        Tv,
-    }
-
-    public enum Color {
-        Red,
-        Green,
-    }
-
-    //<= enum definitions
-
     public static final class LoginReq {
         public String serverAddr;
         public String account;
@@ -66,6 +51,12 @@ public final class MsgBeans {
         public int preState;
         public int curState;
 
+        private MemberState(){ // 我们不需要手动创建该类对象，默认构造方法仅用于框架生成模拟对象。
+            memberId = 1;
+            preState = 2;
+            curState = 3;
+        }
+
         @Override
         public String toString() { //TODO 此类模版代码能否统一生成
             return String.format(getClass().getSimpleName()
@@ -84,5 +75,22 @@ public final class MsgBeans {
     public static final class NetConfig{
 
     }
+
+
+
+
+    //=> enum definitions
+    public enum SetType {
+        Phone,
+        Pad,
+        Tv,
+    }
+
+    public enum Color {
+        Red,
+        Green,
+    }
+
+    //<= enum definitions
 
 }

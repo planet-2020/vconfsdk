@@ -6,6 +6,9 @@ import android.os.Looper;
 import android.os.Process;
 import android.util.Log;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+
 /**
  * Created by Sissi on 1/20/2017.
  * */
@@ -100,10 +103,11 @@ final class NativeEmulator implements INativeEmulator{
             // 构造响应json字符串
             final String rspId = rspIds[i];
             try {
-                rspBody = messageRegister.getRspClazz(rspId).newInstance(); // 使用响应消息体类的默认构造函数构造响应消息对象
-            } catch (InstantiationException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
+                Class<?> clz = messageRegister.getRspClazz(rspId);
+                Constructor ctor = clz.getDeclaredConstructor((Class[])null); // 使用响应消息体类的默认构造函数构造响应消息对象
+                ctor.setAccessible(true);
+                rspBody = ctor.newInstance((Object[]) null);
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                 e.printStackTrace();
             }
             final String jsonRspBody = jsonProcessor.toJson(rspBody);
@@ -129,10 +133,11 @@ final class NativeEmulator implements INativeEmulator{
         }
         Object ntfBody = null;
         try {
-            ntfBody = messageRegister.getNtfClazz(ntfId).newInstance(); // 使用通知消息体类的默认构造函数构造通知消息对象
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
+            Class<?> clz = messageRegister.getNtfClazz(ntfId);
+            Constructor ctor = clz.getDeclaredConstructor((Class[])null); // 使用通知消息体类的默认构造函数构造通知消息对象
+            ctor.setAccessible(true);
+            ntfBody = ctor.newInstance((Object[]) null);
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
         }
         final String finalNtfId = ntfId;
