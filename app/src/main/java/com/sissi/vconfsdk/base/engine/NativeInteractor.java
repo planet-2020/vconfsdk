@@ -48,13 +48,6 @@ final class NativeInteractor implements INativeCallback{
         return instance;
     }
 
-    int emulateInvoke(String methodName, Object reqPara){ // 此reqPara为RequestBundle？或session？RequestBundle可删除？ XXX 上层（SessionManager）不应该感知下层具体是真实的调用还是模拟调用！！！意即不应该区别调用该接口， 但是真实请求和模拟请求数据不一样，如果用其它通用的invoke则模拟数据也能让sessionManager感知，得通过其它途径设置下来，在Requester内做。UI层的调用方式可以保持不变。模拟器、通知管理器、会话管理器、这些模块的组合需要高层的模块去做，而非像现在这样在SM、NM中设置。
-        String jsonReqPara = jsonProcessor.toJson(reqPara);
-        jsonReqPara = "null".equalsIgnoreCase(jsonReqPara) ? null : jsonReqPara;
-
-        return nativeEmulator.call(methodName, jsonReqPara);
-    }
-
     int request(String methodName, String reqPara){
         if (null != nativeEmulator){
             return nativeEmulator.call(methodName, reqPara);
@@ -79,10 +72,11 @@ final class NativeInteractor implements INativeCallback{
     /**
      * 发射通知。驱动模拟器发射通知，仅用于模拟模式。
      * */
-    public boolean emulateNotify(String ntfId, Object ntfContent){
-        if (null != nativeEmulator){
-            nativeEmulator.ejectNotification(ntfId, jsonProcessor.toJson(ntfContent));
+    public boolean emitNotification(String ntfId){
+        if (null == nativeEmulator){
+            return false;
         }
+        nativeEmulator.ejectNotification(ntfId);
         return true;
     }
 

@@ -6,8 +6,10 @@ import android.view.View;
 
 import com.sissi.vconfsdk.base.engine.Requester;
 import com.sissi.vconfsdk.login.LoginManager;
+import com.sissi.vconfsdk.login.MemberStateManager;
+import com.sissi.vconfsdk.utils.KLog;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements LoginManager.OnLoginResultListener, MemberStateManager.OnMemberStateChangedListener{
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -18,5 +20,28 @@ public class MainActivity extends Activity {
     public void login(View view) {
         LoginManager loginManager = (LoginManager) Requester.instance(LoginManager.class);
         loginManager.login("server", "account", "passwd", null);
+
+        MemberStateManager memberStateManager = (MemberStateManager) Requester.instance(MemberStateManager.class);
+        memberStateManager.addOnMemberStateChangedListener(this);
+    }
+
+    @Override
+    public void onLoginSuccess() {
+        KLog.p("####");
+    }
+
+    @Override
+    public void onLoginFailed(int errorCode) {
+        KLog.p("####");
+    }
+
+    @Override
+    public void onLoginTimeout() {
+        KLog.p("####");
+    }
+
+    @Override
+    public void onMemberStateChanged() {
+        KLog.p("####");
     }
 }

@@ -41,6 +41,7 @@ public abstract class Requester{
     private static IRequestProcessor requestProcessor;
     private static ICommandProcessor commandProcessor;
     private static ISubscribeProcessor subscribeProcessor;
+    private static INotificationEmitter notificationEmitter;
 
     private static boolean enable; // TODO 原本在Native层的开关挪到这里
 
@@ -49,6 +50,7 @@ public abstract class Requester{
         requestProcessor = SessionManager.instance();
         commandProcessor = CommandManager.instance();
         subscribeProcessor = NotifiManager.instance();
+        notificationEmitter = NotifiManager.instance();
 
         NativeInteractor.instance()
                 .setResponseProcessor(SessionManager.instance())
@@ -147,19 +149,6 @@ public abstract class Requester{
         }
     }
 
-    /**
-     * 发送请求。模拟模式，需自行指定期望的响应。
-     * @param rspListener 响应监听者。
-     * */
-    protected synchronized void sendReq(DmMsg reqId, Object reqPara, Object[] rsps, Object rspListener){
-//        KLog.p("rspListener=%s, reqId=%s, reqPara=%s, rsps=%s", rspListener, reqId, reqPara, rsps);
-        if (requestProcessor.processRequest(handler, reqId.name(), reqPara, ++reqSn)){
-//            if (null != rspListener) {
-                rspListenerList.put(reqSn, rspListener);
-//            }
-        }
-    }
-
     /**撤销请求*/
     protected synchronized void revertReq(DmMsg reqId, Object rspListener){
         // TODO
@@ -183,18 +172,6 @@ public abstract class Requester{
     }
 
     /**
-     * 批量订阅通知
-     * */
-    protected synchronized void subscribeNtf(Object ntfListener, DmMsg[] ntfIds){
-        if (null == ntfListener || null == ntfIds){
-            return;
-        }
-        for (int i=0; i<ntfIds.length; ++i){
-            subscribeNtf(ntfListener, ntfIds[i]);
-        }
-    }
-
-    /**
      * 取消订阅通知
      * */
     protected synchronized void unsubscribeNtf(Object ntfListener, DmMsg ntfId){
@@ -213,6 +190,19 @@ public abstract class Requester{
         }
     }
 
+
+    /**
+     * 批量订阅通知
+     * */
+    protected synchronized void subscribeNtf(Object ntfListener, DmMsg[] ntfIds){
+        if (null == ntfListener || null == ntfIds){
+            return;
+        }
+        for (int i=0; i<ntfIds.length; ++i){
+            subscribeNtf(ntfListener, ntfIds[i]);
+        }
+    }
+
     /**
      * 批量取消订阅通知
      * */
@@ -228,9 +218,9 @@ public abstract class Requester{
     /**
      * （驱使下层）发射通知。仅用于模拟模式。
      * */
-    protected synchronized void ejectNtf(DmMsg ntfId, Object ntf){
+    protected synchronized void ejectNtf(DmMsg ntfId){
 //        KLog.p("ntfId=%s, ntf=%s", ntfId, ntf);
-//        messageDispatcher.ejectNtf(ntfId.name(), ntf);
+        notificationEmitter.emitNotification(ntfId.name());
     }
 
     /**
@@ -283,32 +273,6 @@ public abstract class Requester{
     }
 
 
-//    /**处理Jni层反馈的响应、通知*/
-//    @Override
-//    public void handleMessage(Message msg) {
-//        KLog.p("handle msg=%s", msg);
-//        MessageDispatcher.ResponseBundle responseBundle = (MessageDispatcher.ResponseBundle) msg.obj;
-//        EmRsp[] rspIds = EmRsp.values();
-//        if (rspOrdinal<0 || rspIds.length<=rspOrdinal){
-//            KLog.p(KLog.ERROR, "Invalid rsp ordinal %d", rspOrdinal);
-//            return;
-//        }
-//        EmRsp rspId = rspIds[rspOrdinal];
-//        if (null != assistThreadRsps){
-//            for (EmRsp r : assistThreadRsps){
-//                if (r == rspId){ // 该响应需要在辅助线程处理
-//                    if (null == assistThread){
-//                        initAssistThread();
-//                    }
-//                    assistHandler.sendMessage(Message.obtain(msg));
-//                    return;
-//                }
-//            }
-//        }
-
-//        processMsg(msg);
-//    }
-
     private void processMsg(Message msg){
         ResponseBundle responseBundle = (ResponseBundle) msg.obj;
         Object rspContent = responseBundle.body();
@@ -319,7 +283,9 @@ public abstract class Requester{
             DmMsg ntfId = DmMsg.valueOf(responseBundle.name());
             Set<Object> ntfListeners = ntfListenerList.get(ntfId);
             if (null != ntfListeners){
-                onNtf(ntfListeners, ntfId, rspContent);
+                for (Object ntfListener : ntfListeners) {
+                    onNtf(ntfListener, ntfId, rspContent);
+                }
             }
         }else if (ResponseBundle.RSP_TIMEOUT == type){
             // 请求超时
@@ -352,10 +318,10 @@ public abstract class Requester{
 
     /**
      * 处理通知
-     * @param listeners 通知监听者列表
-     * @param rspId 通知ID
-     * @param rspContent 通知内容*/
-    protected void onNtf(Set<Object> listeners, DmMsg rspId, Object rspContent){ }
+     * @param listener 通知监听者
+     * @param ntfId 通知ID
+     * @param ntfContent 通知内容 */
+    protected void onNtf(Object listener, DmMsg ntfId, Object ntfContent){ }
 
     /**
      * 处理请求超时

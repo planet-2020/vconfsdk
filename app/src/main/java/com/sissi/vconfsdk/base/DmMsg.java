@@ -37,6 +37,6 @@ public enum DmMsg { // Domain Message
     @Set(MsgBeans.NetConfig.class)
     SetNetConfig,
 
-    @Notification(MsgBeans.MemberStateChangedNtf.class)
+    @Notification(MsgBeans.MemberState.class)
     MemberStateChangedNtf,
 }

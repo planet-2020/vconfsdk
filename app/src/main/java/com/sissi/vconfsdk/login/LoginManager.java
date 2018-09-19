@@ -11,12 +11,11 @@ import com.sissi.vconfsdk.utils.KLog;
 
 public class LoginManager extends Requester {
 
-    private LoginManager(){ }
+    private LoginManager(){
+    }
 
     public void login(String server, String account, String passwd, OnLoginResultListener loginResultListener){
-        sendReq(DmMsg.LoginReq, new MsgBeans.LoginReq(server, account, passwd, MsgBeans.SetType.Phone),
-                new Object[]{new MsgBeans.LoginRsp(), new MsgBeans.LoginRspFin()},
-                loginResultListener);
+        sendReq(DmMsg.LoginReq, new MsgBeans.LoginReq(server, account, passwd, MsgBeans.SetType.Phone), loginResultListener);
     }
 
     @Override

@@ -29,8 +29,14 @@ public final class MsgBeans {
         public String account;
         public String passwd;
         public SetType setType;
-        public LoginReq(String serverAddr, String account, String passwd, SetType setType){
+        public LoginReq(String serverAddr, String account, String passwd, SetType setType){ //TODO 此类模版代码能否统一生成
             this.serverAddr = serverAddr; this.account = account; this.passwd=passwd; this.setType=setType;
+        }
+
+        @Override
+        public String toString() { //TODO 此类模版代码能否统一生成
+            return String.format(getClass().getSimpleName()
+                    +"{serverAddr=%s, account=%s, passwd=%s, setType=%s}", serverAddr, account, passwd, setType);
         }
     }
 
@@ -55,7 +61,16 @@ public final class MsgBeans {
         public int result;
     }
 
-    public static final class MemberStateChangedNtf {
+    public static final class MemberState {
+        public int memberId;
+        public int preState;
+        public int curState;
+
+        @Override
+        public String toString() { //TODO 此类模版代码能否统一生成
+            return String.format(getClass().getSimpleName()
+                    +"{memberId=%s, preState=%s, curState=%s}", memberId, preState, curState);
+        }
     }
 
     public static final class GetXmppServerInfo{

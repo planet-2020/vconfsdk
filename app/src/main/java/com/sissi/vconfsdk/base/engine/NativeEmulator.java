@@ -55,42 +55,7 @@ final class NativeEmulator implements INativeEmulator{
             public void run() {
                 Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
                 Looper.prepare();
-                handler = new Handler(){
-                    @Override
-                    public void handleMessage(Message msg) {
-                        CallPara callPara = (CallPara) msg.obj;
-                        String reqId = callPara.methodName;
-                        String reqPara = callPara.para;
-
-                        String[] rspIds = messageRegister.getRsps(reqId)[0];
-                        Object rspObj = null;
-                        Contract.Head head;
-                        Contract.Mtapi mtapi;
-                        for (int i=0; i<rspIds.length; ++i){
-                            // 构造响应json字符串
-                            head= new Contract.Head(-1, rspIds[i], 1);
-                            try {
-                                rspObj = messageRegister.getRspClazz(rspIds[i]).newInstance();
-                            } catch (InstantiationException e) {
-                                e.printStackTrace();
-                            } catch (IllegalAccessException e) {
-                                e.printStackTrace();
-                            }
-                            mtapi= new Contract.Mtapi(head, rspObj);
-                            String jsonRsp = jsonProcessor.toJson(new Contract.RspWrapper(mtapi));
-                            if (null != cb){
-                                // 上报响应
-                                Log.i(TAG, String.format("NATIVE REPORT RSP %s(for REQ %s): rspContent=%s", rspIds[i], reqId, jsonRsp));
-                                cb.callback(jsonRsp);
-                            }
-                            try {
-                                sleep(100);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                };
+                handler = new Handler();
                 synchronized (lock) { lock.notify(); }
                 Looper.loop();
             }
@@ -116,37 +81,77 @@ final class NativeEmulator implements INativeEmulator{
         this.cb = cb;
     }
 
-    @Override
-    public void ejectNotification(final String ntfId, final Object ntfContent) {
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                Contract.Head head= new Contract.Head(-1, ntfId, 1);
-                Contract.Mtapi mtapi= new Contract.Mtapi(head, ntfContent);
-                String jsonNtf = jsonProcessor.toJson(new Contract.RspWrapper(mtapi));
-                if (null != cb){
-                    Log.i(TAG, String.format("NATIVE REPORT NTF %s: content=%s", ntfId, jsonNtf));
-                    cb.callback(jsonNtf);
-                }
-            }
-        });
-    }
 
     @Override
-    public int call(String methodName, String reqPara) {
-        Message req = Message.obtain();
-        req.obj = new CallPara(methodName, reqPara);
-        handler.sendMessage(req);
+    public int call(String methodName, String para) {
+        if (null == cb){
+            return -1;
+        }
+
+        final String reqId = methodName;
+        String reqPara = para;
+
+        Log.i(TAG, String.format("NATIVE receive req= %s para= %s", reqId, reqPara));
+
+        final String[] rspIds = messageRegister.getRsps(reqId)[0];
+        String rspId;
+        Object rspObj = null;
+        Contract.Head head;
+        Contract.Mtapi mtapi;
+        for (int i=0; i<rspIds.length; ++i) {
+            // 构造响应json字符串
+            rspId = rspIds[i];
+            head = new Contract.Head(-1, rspId, 1);
+            try {
+                rspObj = messageRegister.getRspClazz(rspId).newInstance(); // 使用响应消息体类的默认构造函数构造响应消息对象
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+            mtapi = new Contract.Mtapi(head, rspObj);
+            final String jsonRsp = jsonProcessor.toJson(new Contract.RspWrapper(mtapi));
+            // 上报响应
+            final String finalRspId = rspId;
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    Log.i(TAG, String.format("NATIVE REPORT RSP %s(for REQ %s): rspContent=%s", finalRspId, reqId, jsonRsp));
+                    cb.callback(jsonRsp);
+                }
+            }, 100);
+
+        }
+
         return 0;
     }
 
-    private class CallPara{
-        String methodName;
-        String para;
-        CallPara(String methodName, String para){
-            this.methodName = methodName;
-            this.para = para;
+
+    @Override
+    public void ejectNotification(String ntfId) {
+        if (null == cb){
+            return;
         }
+        final String finalNtfId = ntfId;
+        Object ntfContent = null;
+        try {
+            ntfContent = messageRegister.getNtfClazz(finalNtfId).newInstance(); // 使用通知消息体类的默认构造函数构造通知消息对象
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        Contract.Head head= new Contract.Head(-1, finalNtfId, 1);
+        Contract.Mtapi mtapi= new Contract.Mtapi(head, ntfContent);
+        final String jsonNtf = jsonProcessor.toJson(new Contract.RspWrapper(mtapi));
+
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Log.i(TAG, String.format("NATIVE REPORT NTF %s: content=%s", finalNtfId, jsonNtf));
+                cb.callback(jsonNtf);
+            }
+        }, 100);
     }
 
 }

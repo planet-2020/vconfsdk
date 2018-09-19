@@ -7,5 +7,5 @@ package com.sissi.vconfsdk.base.engine;
 interface INativeEmulator {
     void setCallback(INativeCallback cb);
     int call(String methodName, String reqPara);
-    void ejectNotification(String ntfId, Object ntfContent);
+    void ejectNotification(String ntfId);
 }

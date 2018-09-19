@@ -113,13 +113,13 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
 
     @Override
-    public synchronized boolean emitNotification(String ntfName, Object ntfContent) {
+    public synchronized boolean emitNotification(String ntfName) {
         if (!messageRegister.isNotification(ntfName)){
             Log.e(TAG, "Unknown notification "+ntfName);
             return false;
         }
 
-        return nativeInteractor.emulateNotify(ntfName, ntfContent);
+        return nativeInteractor.emitNotification(ntfName);
     }
 
 }
