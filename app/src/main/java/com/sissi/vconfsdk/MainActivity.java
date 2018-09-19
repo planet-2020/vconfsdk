@@ -19,7 +19,7 @@ public class MainActivity extends Activity implements LoginManager.OnLoginResult
 
     public void login(View view) {
         LoginManager loginManager = (LoginManager) Requester.instance(LoginManager.class);
-        loginManager.login("server", "account", "passwd", null);
+        loginManager.login("server", "account", "passwd", this);
 
         MemberStateManager memberStateManager = (MemberStateManager) Requester.instance(MemberStateManager.class);
         memberStateManager.addOnMemberStateChangedListener(this);

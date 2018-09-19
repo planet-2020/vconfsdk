@@ -183,7 +183,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
     private void startSession(Session s){ // session自己有start方法, 通过session.start这种方式.
 
-        nativeInteractor.request(s.reqId, jsonProcessor.toJson(s.reqPara)); // 真实的还是模拟的这层不感知
+        nativeInteractor.request(s.reqId, jsonProcessor.toJson(s.reqPara));
 
         Log.i(TAG, String.format("-=-> (session %d START) %s", s.id, s.reqId));
         if (null==s.rspIds || 0==s.rspIds.length){

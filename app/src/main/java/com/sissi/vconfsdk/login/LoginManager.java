@@ -21,6 +21,16 @@ public class LoginManager extends Requester {
     @Override
     protected void onRsp(Object listener, DmMsg rspId, Object rspContent) {
         KLog.p("rspId=%s, rspContent=%s",rspId, rspContent);
+        if (DmMsg.LoginRsp.equals(rspId)){
+            MsgBeans.LoginResult loginRes = (MsgBeans.LoginResult) rspContent;
+            if (null != listener){
+                if (0 == loginRes.result) {
+                    ((OnLoginResultListener) listener).onLoginSuccess();
+                }else{
+                    ((OnLoginResultListener) listener).onLoginFailed(loginRes.result);
+                }
+            }
+        }
     }
 
     @Override

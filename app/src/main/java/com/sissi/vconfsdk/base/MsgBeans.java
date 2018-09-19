@@ -40,7 +40,7 @@ public final class MsgBeans {
         }
     }
 
-    public static final class LoginRsp {
+    public static final class LoginResult {
         public String sessionId;
         public int result;
     }
