@@ -92,16 +92,4 @@ final class JsonProcessor {
         return gson.fromJson(json, classOfT);
     }
 
-    Object getRootObj(String jsonRsp) throws JSONException{
-        return new JSONObject(jsonRsp).getJSONObject(Contract.KEY_MTAPI);
-    }
-
-    String getRspName(Object rootObj) throws JSONException {
-        return ((JSONObject)rootObj).getJSONObject(Contract.KEY_HEAD).getString(Contract.KEY_EVENTNAME);
-    }
-
-    String getRspBody(Object rootObj) throws JSONException {
-        return ((JSONObject)rootObj).getString(Contract.KEY_BODY);
-    }
-
 }

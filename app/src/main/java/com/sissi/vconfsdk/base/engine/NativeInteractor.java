@@ -7,7 +7,6 @@ import android.os.Message;
 import android.os.Process;
 import android.util.Log;
 
-import org.json.JSONException;
 
 /**
  * Created by Sissi on 1/20/2017.
@@ -19,23 +18,13 @@ final class NativeInteractor implements INativeCallback{
 
     private static NativeInteractor instance;
 
-    private Thread nativeCallbackProcessThread;
     private Handler nativeCallbackProcessHandler;
-
-    private JsonProcessor jsonProcessor;  // XXX 可以把这个去掉, native 层配合传上来就是 msgId, body
-
-    private boolean isWhiteListEnabled = false;
-    private boolean isBlackListEnabled = false;
-
 
     private IResponseProcessor responseProcessor;
     private INotificationProcessor notificationProcessor;
     private INativeEmulator nativeEmulator;
 
     private NativeInteractor(){
-
-        jsonProcessor = JsonProcessor.instance();
-
         initNativeCallbackProcessThread();
     }
 
@@ -53,19 +42,18 @@ final class NativeInteractor implements INativeCallback{
             return nativeEmulator.call(methodName, reqPara);
         }
 
-        return 0;
-//        return call(methodName, reqPara);
+        return call(methodName, reqPara);
     }
 
-    int set(String methodName, String setPara){
+    int set(String methodName, String setPara){ // TODO 模拟模式
         return call(methodName, setPara);
     }
 
-    int get(String methodName, String para, StringBuffer output){
+    int get(String methodName, String para, StringBuffer output){ // TODO 模拟模式
         return call(methodName, para, output);
     }
 
-    int get(String methodName, StringBuffer output){
+    int get(String methodName, StringBuffer output){ // TODO 模拟模式
         return call(methodName, output);
     }
 
@@ -81,28 +69,16 @@ final class NativeInteractor implements INativeCallback{
     }
 
 
-    /**
-     * native回调。<p>
-     * 方法名称是固定的，要修改需和native层协商一致。
-     * */
     @Override
-    public void callback(String nativeMsg){
-        enqueue(nativeMsg);
-    }
-
-
-
-    /**
-     * native层响应。<p>
-     * 该接口是非阻塞的，不会阻塞native线程。
-     * @param nativeMsg json格式的响应。
-     * */
-    void enqueue(String nativeMsg){
+    public void callback(String msgId, String msgBody){
+        if (null == msgId || msgId.isEmpty()){
+            Log.e(TAG, "Invalid native msg.");
+            return;
+        }
         Message msg = Message.obtain();
-        msg.obj = nativeMsg;
+        msg.obj = new NativeMsgWrapper(msgId, msgBody);
         nativeCallbackProcessHandler.sendMessage(msg);
     }
-
 
 
     /**
@@ -110,20 +86,30 @@ final class NativeInteractor implements INativeCallback{
      * */
     private void initNativeCallbackProcessThread(){
         final Object lock = new Object();
-        nativeCallbackProcessThread = new Thread(){
+        Thread nativeCallbackProcessThread = new Thread() {
             @SuppressLint("HandlerLeak")
             @Override
             public void run() {
                 Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
                 Looper.prepare();
 
-                nativeCallbackProcessHandler = new Handler(){
+                nativeCallbackProcessHandler = new Handler() {
                     @Override
                     public void handleMessage(Message msg) {
-                        processNativeCallback(msg);
+                        NativeMsgWrapper nativeMsgWrapper = (NativeMsgWrapper) msg.obj;
+                        String msgId = nativeMsgWrapper.msgId;
+                        String msgBody = nativeMsgWrapper.msgBody;
+                        if (null!=responseProcessor){
+                            responseProcessor.processResponse(msgId, msgBody);
+                        }
+                        if (null!=notificationProcessor){
+                            notificationProcessor.processNotification(msgId, msgBody);
+                        }
                     }
                 };
-                synchronized (lock){lock.notify();}
+                synchronized (lock) {
+                    lock.notify();
+                }
 
                 Looper.loop();
             }
@@ -144,35 +130,6 @@ final class NativeInteractor implements INativeCallback{
         }
     }
 
-    private void processNativeCallback(Message msg){
-        String rsp = (String) msg.obj;
-        String msgName = null;
-        String msgBody = null;
-
-        try {
-            Object rootObj = jsonProcessor.getRootObj(rsp);
-            msgName = jsonProcessor.getRspName(rootObj);
-            msgBody = jsonProcessor.getRspBody(rootObj);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
-        if (null == msgName || null == msgBody){
-            Log.e(TAG, "Invalid rsp: "+ rsp);
-            return;
-        }
-
-        if (null!=responseProcessor
-                && responseProcessor.processResponse(msgName, msgBody)){
-
-        }else if (null!=notificationProcessor
-                && notificationProcessor.processNotification(msgName, msgBody)){
-
-        }else{
-            Log.e(TAG, String.format("<-~- %s. EXCEPTION: unprocessed msg. \n%s", msgName, rsp));
-        }
-
-    }
 
     NativeInteractor setResponseProcessor(IResponseProcessor responseProcessor){
         this.responseProcessor = responseProcessor;
@@ -193,6 +150,11 @@ final class NativeInteractor implements INativeCallback{
         return this;
     }
 
+    private class NativeMsgWrapper{
+        String msgId;
+        String msgBody;
+        NativeMsgWrapper(String msgId, String msgBody){this.msgId=msgId; this.msgBody=msgBody;}
+    }
 
 
     // native methods

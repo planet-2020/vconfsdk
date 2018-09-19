@@ -100,6 +100,8 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
             return false;
         }
 
+        Log.i(TAG, String.format("<-~- %s\n%s", ntfName, ntfBody));
+
         Object ntfContent = jsonProcessor.fromJson(ntfBody, messageRegister.getNtfClazz(ntfName));
 
         for (Handler sub : subs){

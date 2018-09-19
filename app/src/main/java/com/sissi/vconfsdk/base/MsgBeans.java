@@ -34,7 +34,7 @@ public final class MsgBeans {
         }
 
         @Override
-        public String toString() { //TODO 此类模版代码能否统一生成
+        public String toString() { //TODO 此类模版代码能否统一生成, 直接使用json格式好了
             return String.format(getClass().getSimpleName()
                     +"{serverAddr=%s, account=%s, passwd=%s, setType=%s}", serverAddr, account, passwd, setType);
         }

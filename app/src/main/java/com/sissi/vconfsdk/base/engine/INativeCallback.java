@@ -5,5 +5,5 @@ package com.sissi.vconfsdk.base.engine;
  */
 
 interface INativeCallback {
-    void callback(String jsonMsg);
+    void callback(String msgId, String msgBody);
 }

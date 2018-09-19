@@ -88,7 +88,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         // 创建会话
         Session s = new Session(++sessionCnt, requester, reqSn, reqId, reqPara,
                 messageRegister.getTimeout(reqId)*1000,
-                messageRegister.getRsps(reqId), null);
+                messageRegister.getRsps(reqId));
         // 尝试发送请求
         if (!isReqExist){
             if (sessions.size() >= MAX_SESSION_NUM){
@@ -110,7 +110,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             blockedSessions.add(s);
 
 
-            Log.w(TAG, String.format("-=-> (session %d BLOCKED) %s", s.id, s.reqId)); // XXX 启动超时？阻塞时间算在超时内？
+            Log.w(TAG, String.format("-=->| %s (session %d BLOCKED)", s.reqId, s.id)); // XXX 启动超时？阻塞时间算在超时内？
 
             return true; // 返回真表示请求成功，不让外部感知请求被阻塞
         }
@@ -160,7 +160,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             Message rsp = Message.obtain();
 
             if (gotLast){// 该会话已获取到最后一条期待的响应
-                Log.i(TAG, String.format("<-=- (session %d FINISH) %s", s.id, rspName));
+                Log.i(TAG, String.format("<-=- %s (session %d FINISH) \n%s", rspName, s.id, rspBody));
                 timeoutHandler.removeMessages(MSG_TIMEOUT, s); // 移除定时器
                 s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                 sessions.remove(s);
@@ -169,7 +169,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 // 驱动被当前会话阻塞的会话
                 driveBlockedSession(s.reqId);
             } else {
-                Log.i(TAG, String.format("<-=- (session %d) %s", s.id, rspName));
+                Log.i(TAG, String.format("<-=- %s (session %d) \n%s", rspName, s.id, rspBody));
                 rsp.obj = new ResponseBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), ResponseBundle.RSP, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
             }
@@ -183,12 +183,14 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
     private void startSession(Session s){ // session自己有start方法, 通过session.start这种方式.
 
-        nativeInteractor.request(s.reqId, jsonProcessor.toJson(s.reqPara));
+        String jsonReqPara = jsonProcessor.toJson(s.reqPara);
+        Log.i(TAG, String.format("-=-> %s (session %d START) \n%s", s.reqId, s.id, jsonReqPara));
 
-        Log.i(TAG, String.format("-=-> (session %d START) %s", s.id, s.reqId));
+        nativeInteractor.request(s.reqId, jsonReqPara);
+
         if (null==s.rspIds || 0==s.rspIds.length){
             s.state = Session.END; // 请求没有响应，会话结束
-            Log.i(TAG, String.format("<-=- (session %d FINISH) NO RESPONSE", s.id));
+            Log.i(TAG, String.format("<-=- (session %d FINISHED. NO RESPONSE)", s.id));
             sessions.remove(s);
             driveBlockedSession(s.reqId);
 
@@ -342,7 +344,6 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         private final int timeoutVal;   // 超时时限。单位：毫秒
         private final String[][] rspIds;  // 响应Id序列组。一条请求可能对应多条响应序列，如{{rsp1, rsp2},{rsp1,rsp3}}，一次会话只能对应其中一条序列。
         private HashMap<Integer, Integer> candidates; // 候选的响应序列记录。记录当前可被用来匹配的响应序列及起始匹配位置。“键”对应响应Id序列组rspIds的行下标，“值”对应rspIds的列下标。每收到一条响应后该记录会更新。
-        private final Object[] emulatedRsps;     // 模拟响应。仅用于模拟模式。
 
         private int state;  // 会话状态
         private static final int IDLE = 2;  // 空闲。初始状态
@@ -350,7 +351,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         private static final int RECVING = 4; // 接收。收到第一条响应后，收到最后一条响应之前。
         private static final int END = 5;   // 结束。最终状态。会话已成功结束（接收到最后一个响应）或者已失败（超时或其它失败原因）。
 
-        private Session(int id, Handler requester, int reqSn, String reqId, Object reqPara, int timeoutVal, String[][] rspIds, Object[] emulatedRsps){
+        private Session(int id, Handler requester, int reqSn, String reqId, Object reqPara, int timeoutVal, String[][] rspIds){
             this.id = id;
             this.requester = requester;
             this.reqSn = reqSn;
@@ -358,9 +359,8 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             this.reqPara = reqPara;
             this.timeoutVal = timeoutVal;
             this.rspIds = rspIds;
-            this.emulatedRsps = emulatedRsps;
 
-            candidates = new HashMap<Integer, Integer>();
+            candidates = new HashMap<>();
             if (null != rspIds) {
                 for (int i = 0; i < rspIds.length; ++i) {
                     candidates.put(i, 0);
@@ -369,15 +369,6 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             state = IDLE;
         }
 
-        synchronized String reqId(){
-            return reqId;
-        }
-        synchronized String[] rspIds(){
-            return null==rspIds ? null : rspIds[0];
-        }
-        synchronized Object[] rsps(){
-            return emulatedRsps;
-        }
     }
 
 }

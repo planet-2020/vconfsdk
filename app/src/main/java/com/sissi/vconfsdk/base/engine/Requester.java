@@ -89,7 +89,6 @@ public abstract class Requester{
                 Constructor ctor = clz.getDeclaredConstructor((Class[])null);
                 ctor.setAccessible(true);
                 requester = (Requester) ctor.newInstance();
-                KLog.p("~~> new presenter: %s", requester);
                 instances.put(clz, requester);
                 refercnt.put(clz, 1);
             } catch (NoSuchMethodException e) {
