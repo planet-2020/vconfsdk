@@ -74,8 +74,10 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             return false;
         }
 
-        if (null != reqPara){
-            // TODO 检查参数类型
+        if (null != reqPara
+                && reqPara.getClass() != messageRegister.getReqParaClazz(reqId)){
+            Log.e(TAG, String.format("invalid request para %s, expect %s", reqPara.getClass(), messageRegister.getReqParaClazz(reqId)));
+            return false;
         }
 
         // 检查是否存在未完成的同类请求
@@ -187,7 +189,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 s.requester.sendMessage(rsp); // 上报该响应
             }
 
-            // for debug
+/*            // for debug
             Log.i(TAG, String.format("candidate rsp seqs for req %s{\n", s.reqId));
             for (int i=0; i<candidates.size(); ++i) {
                 int key = candidates.keyAt(i);
@@ -203,7 +205,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 stringBuffer.append(" next "+next+"\n");
                 Log.i(TAG, stringBuffer.toString());
             }
-            Log.i(TAG, "}\n");
+            Log.i(TAG, "}\n");*/
 
             return true;
         }

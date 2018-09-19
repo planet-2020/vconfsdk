@@ -91,6 +91,15 @@ final class MessageRegister {
         return sets.contains(msg);
     }
 
+
+    Class<?> getReqParaClazz(String req){
+        return reqParaMap.get(req);
+    }
+
+    String[][] getRspSeqs(String req){
+        return reqRspSeqsMap.get(req);
+    }
+
     int getTimeout(String req){
         Integer timeoutVal = reqTimeoutMap.get(req);
         if (null == timeoutVal) {
@@ -98,10 +107,6 @@ final class MessageRegister {
         }
 
         return timeoutVal;
-    }
-
-    String[][] getRspSeqs(String req){
-        return reqRspSeqsMap.get(req);
     }
 
     Class<?> getRspClazz(String rsp){
