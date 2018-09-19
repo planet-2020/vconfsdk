@@ -64,12 +64,14 @@ public final class MsgBeans {
         }
     }
 
-    public static final class GetXmppServerInfo{
-
-    }
 
     public static final class XmppServerInfo{
-
+        public String domain;
+        public long ip;
+        private XmppServerInfo(){
+            domain = "www.kedacom.com";
+            ip = 123445555;
+        }
     }
 
     public static final class NetConfig{

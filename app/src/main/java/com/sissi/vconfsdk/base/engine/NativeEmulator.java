@@ -124,6 +124,28 @@ final class NativeEmulator implements INativeEmulator{
         return 0;
     }
 
+    @Override
+    public int call(String methodName, StringBuffer output) {
+        return call(methodName, null, output);
+    }
+
+    @Override
+    public int call(String methodName, String para, StringBuffer output) {
+        Object result = null;
+        try {
+            Class<?> clz = messageRegister.getGetResultClazz(methodName);
+            Constructor ctor = clz.getDeclaredConstructor((Class[])null);
+            ctor.setAccessible(true);
+            result = ctor.newInstance((Object[]) null);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+
+        output.append(jsonProcessor.toJson(result));
+
+        return 0;
+    }
+
 
     @Override
     public void ejectNotification(String ntfId) {

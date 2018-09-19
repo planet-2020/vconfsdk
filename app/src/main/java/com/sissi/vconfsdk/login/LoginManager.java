@@ -15,6 +15,8 @@ public class LoginManager extends Requester {
     }
 
     public void login(String server, String account, String passwd, OnLoginResultListener loginResultListener){
+        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) getConfig(DmMsg.GetXmppServerInfo);
+        KLog.p("xmppServerInfo{%s, %d}",xmppServerInfo.domain, xmppServerInfo.ip);
         sendReq(DmMsg.LoginReq, new MsgBeans.LoginReq(server, account, passwd, MsgBeans.SetType.Phone), loginResultListener);
     }
 

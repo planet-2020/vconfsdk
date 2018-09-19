@@ -49,11 +49,17 @@ final class NativeInteractor implements INativeCallback{
         return call(methodName, setPara);
     }
 
-    int get(String methodName, String para, StringBuffer output){ // TODO 模拟模式
+    int get(String methodName, String para, StringBuffer output){
+        if (null != nativeEmulator){
+            return nativeEmulator.call(methodName, para, output);
+        }
         return call(methodName, para, output);
     }
 
-    int get(String methodName, StringBuffer output){ // TODO 模拟模式
+    int get(String methodName, StringBuffer output){
+        if (null != nativeEmulator){
+            return nativeEmulator.call(methodName, output);
+        }
         return call(methodName, output);
     }
 

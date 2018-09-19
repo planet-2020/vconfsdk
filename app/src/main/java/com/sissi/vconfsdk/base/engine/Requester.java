@@ -226,15 +226,18 @@ public abstract class Requester{
      * 设置配置
      * */
     protected synchronized void setConfig(DmMsg reqId, Object config){
-//        messageDispatcher.setConfig(reqId.name(), config);
+        commandProcessor.set(reqId.name(), config);
     }
 
     /**
      * 获取配置
      * */
-    protected synchronized Object getConfig(DmMsg reqId){ // TODO 获取配置也有可能需要除reqId外的传入参数
-//        return messageDispatcher.getConfig(reqId);
-        return null;
+    protected synchronized Object getConfig(DmMsg reqId){
+        return commandProcessor.get(reqId.name());
+    }
+
+    protected synchronized Object getConfig(DmMsg reqId, Object para){
+        return commandProcessor.get(reqId.name(), para);
     }
 
     /**
