@@ -15,9 +15,6 @@ import com.google.gson.JsonSerializer;
 import com.sissi.annotation.Consumer;
 import com.sissi.annotation.SerializeEnumAsInt;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 
 /***
  *
