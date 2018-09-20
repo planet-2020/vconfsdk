@@ -80,19 +80,17 @@ public class MessageProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
-        messager = processingEnv.getMessager();
-        messager.printMessage(Diagnostic.Kind.NOTE, "############# IN");
 
         if (bDone){
             return true;
         }
         bDone = true;
 
+        messager = processingEnv.getMessager();
+
         if (collectInfo(roundEnvironment)) {
             generateFile();
         }
-
-        messager.printMessage(Diagnostic.Kind.NOTE, "############# OUT");
 
         return true;
     }
