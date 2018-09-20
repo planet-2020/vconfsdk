@@ -1,4 +1,4 @@
-package com.sissi.vconfsdk.base.engine;
+package com.sissi.vconfsdk.base.amulet;
 
 
 /**
