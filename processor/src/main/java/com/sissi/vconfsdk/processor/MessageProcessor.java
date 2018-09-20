@@ -1,12 +1,12 @@
-package com.sissi.processor;
+package com.sissi.vconfsdk.processor;
 
 import com.google.auto.service.AutoService;
-import com.sissi.annotation.Consumer;
-import com.sissi.annotation.Get;
-import com.sissi.annotation.Message;
-import com.sissi.annotation.Notification;
-import com.sissi.annotation.Request;
-import com.sissi.annotation.Response;
+import com.sissi.vconfsdk.annotation.Consumer;
+import com.sissi.vconfsdk.annotation.Get;
+import com.sissi.vconfsdk.annotation.Message;
+import com.sissi.vconfsdk.annotation.Notification;
+import com.sissi.vconfsdk.annotation.Request;
+import com.sissi.vconfsdk.annotation.Response;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
@@ -16,7 +16,6 @@ import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,12 +43,13 @@ import javax.tools.Diagnostic;
 
 @AutoService(Processor.class)
 @SupportedAnnotationTypes({
-        "com.sissi.annotation.Message",
-        "com.sissi.annotation.Request",
-        "com.sissi.annotation.Response",
-        "com.sissi.annotation.Notification",
-        "com.sissi.annotation.Get",
-        "com.sissi.annotation.Set",
+        "com.sissi.vconfsdk.annotation.Message",
+        "com.sissi.vconfsdk.annotation.Request",
+        "com.sissi.vconfsdk.annotation.Response",
+        "com.sissi.vconfsdk.annotation.Notification",
+        "com.sissi.vconfsdk.annotation.Get",
+        "com.sissi.vconfsdk.annotation.Set",
+        "com.sissi.vconfsdk.annotation.Consumer",
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
 public class MessageProcessor extends AbstractProcessor {
@@ -122,7 +122,7 @@ public class MessageProcessor extends AbstractProcessor {
         Response response;
         Notification notification;
         Get get;
-        com.sissi.annotation.Set set;
+        com.sissi.vconfsdk.annotation.Set set;
         Class clz;
         String reqParaFullName;
         String rspClazzFullName;
@@ -236,7 +236,7 @@ public class MessageProcessor extends AbstractProcessor {
 //                        + " getParaFullName: "+getParaFullName
 //                        + " result class: "+ getResultFullName);
 
-            }else if (null != (set = element.getAnnotation(com.sissi.annotation.Set.class))){
+            }else if (null != (set = element.getAnnotation(com.sissi.vconfsdk.annotation.Set.class))){
                 setName = element.getSimpleName().toString();
 
                 // 获取响应对应的消息体类型

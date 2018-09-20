@@ -1,7 +1,7 @@
 package com.sissi.vconfsdk.base.engine;
 
-import com.sissi.annotation.Consumer;
-import com.sissi.annotation.Message;
+import com.sissi.vconfsdk.annotation.Consumer;
+import com.sissi.vconfsdk.annotation.Message;
 
 import java.util.Map;
 import java.util.Set;

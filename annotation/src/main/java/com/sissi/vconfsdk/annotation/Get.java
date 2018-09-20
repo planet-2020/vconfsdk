@@ -1,4 +1,4 @@
-package com.sissi.annotation;
+package com.sissi.vconfsdk.annotation;
 
 /**
  * 用于标记获取消息．

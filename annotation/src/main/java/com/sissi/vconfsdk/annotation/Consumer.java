@@ -1,4 +1,4 @@
-package com.sissi.annotation;
+package com.sissi.vconfsdk.annotation;
 
 /**
  * Created by Sissi on 2018/9/10.

@@ -1,6 +1,6 @@
 package com.sissi.vconfsdk.base;
 
-import com.sissi.annotation.SerializeEnumAsInt;
+import com.sissi.vconfsdk.annotation.SerializeEnumAsInt;
 
 /**
  * Created by Sissi on 2018/9/6.

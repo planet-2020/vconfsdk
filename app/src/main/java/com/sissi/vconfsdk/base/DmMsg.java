@@ -1,12 +1,12 @@
 package com.sissi.vconfsdk.base;
 
 
-import com.sissi.annotation.Get;
-import com.sissi.annotation.Message;
-import com.sissi.annotation.Notification;
-import com.sissi.annotation.Request;
-import com.sissi.annotation.Response;
-import com.sissi.annotation.Set;
+import com.sissi.vconfsdk.annotation.Get;
+import com.sissi.vconfsdk.annotation.Message;
+import com.sissi.vconfsdk.annotation.Notification;
+import com.sissi.vconfsdk.annotation.Request;
+import com.sissi.vconfsdk.annotation.Response;
+import com.sissi.vconfsdk.annotation.Set;
 
 /**
  * Created by Sissi on 2018/9/3.

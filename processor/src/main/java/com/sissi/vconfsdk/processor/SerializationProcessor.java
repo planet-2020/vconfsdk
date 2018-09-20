@@ -1,9 +1,8 @@
-package com.sissi.processor;
+package com.sissi.vconfsdk.processor;
 
 import com.google.auto.service.AutoService;
-import com.sissi.annotation.Consumer;
-import com.sissi.annotation.Message;
-import com.sissi.annotation.SerializeEnumAsInt;
+import com.sissi.vconfsdk.annotation.Consumer;
+import com.sissi.vconfsdk.annotation.SerializeEnumAsInt;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
@@ -37,7 +36,7 @@ import javax.tools.Diagnostic;
  */
 
 @SupportedAnnotationTypes({
-        "com.sissi.annotation.SerializeEnumAsInt",
+        "com.sissi.vconfsdk.annotation.SerializeEnumAsInt",
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
 @AutoService(Processor.class)
