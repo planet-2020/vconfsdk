@@ -13,7 +13,7 @@ import com.sissi.vconfsdk.annotation.Set;
  */
 
 @Message
-public enum DmMsg { // Domain Message
+public enum DmMsg {
 
     // login
     @Request(reqPara = MsgBeans.LoginReq.class,

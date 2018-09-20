@@ -15,11 +15,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-
-/**
- * Jni请求者。用来向JM发送请求、订阅通知、接收响应。
- * Created by Sissi on 1/9/2017.
- */
+// TODO 更名为Visitor，去掉对DmMsg的依赖， 在上层的Requester中将String转为Msg
 public abstract class Requester{
     private static HashMap<Class<?>, Requester> instances = new HashMap<>();
     private static HashMap<Class<?>, Integer> refercnt = new HashMap<>();
