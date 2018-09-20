@@ -3,12 +3,12 @@ package com.sissi.vconfsdk.base.amulet;
 /**
  * Created by Sissi on 2018/9/13.
  */
-public class ResponseBundle {
+class ResponseBundle {
     // 消息类型
-    public static final int NTF = 101; // 通知
-    public static final int RSP = 102; // 响应
-    public static final int RSP_FIN = 103; // 响应结束（收到响应序列中的最后一条响应）
-    public static final int RSP_TIMEOUT = 104; // 响应超时
+    static final int NTF = 101; // 通知
+    static final int RSP = 102; // 响应
+    static final int RSP_FIN = 103; // 响应结束（收到响应序列中的最后一条响应）
+    static final int RSP_TIMEOUT = 104; // 响应超时
 
     String name;  // 响应消息名称
     Object body; // 响应消息体
@@ -30,23 +30,4 @@ public class ResponseBundle {
         this.type = type;
     }
 
-    public String name() {
-        return name;
-    }
-
-    public Object body() {
-        return body;
-    }
-
-    public int type() {
-        return type;
-    }
-
-    public String reqName() {
-        return reqName;
-    }
-
-    public int reqSn() {
-        return reqSn;
-    }
 }

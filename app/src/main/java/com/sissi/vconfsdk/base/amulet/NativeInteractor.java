@@ -69,7 +69,7 @@ final class NativeInteractor implements INativeCallback{
     /**
      * 发射通知。驱动模拟器发射通知，仅用于模拟模式。
      * */
-    public boolean emitNotification(String ntfId){
+    boolean emitNotification(String ntfId){
         if (null == nativeEmulator){
             return false;
         }

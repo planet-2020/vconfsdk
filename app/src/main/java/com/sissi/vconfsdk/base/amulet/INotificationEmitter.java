@@ -1,5 +1,5 @@
 package com.sissi.vconfsdk.base.amulet;
 
-public interface INotificationEmitter {
+interface INotificationEmitter {
     boolean emitNotification(String ntfName);
 }

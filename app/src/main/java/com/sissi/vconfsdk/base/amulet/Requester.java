@@ -277,12 +277,12 @@ public abstract class Requester{
 
     private void processMsg(Message msg){
         ResponseBundle responseBundle = (ResponseBundle) msg.obj;
-        Object rspContent = responseBundle.body();
-        int type = responseBundle.type();
-        int reqSn = responseBundle.reqSn();
+        Object rspContent = responseBundle.body;
+        int type = responseBundle.type;
+        int reqSn = responseBundle.reqSn;
         if (ResponseBundle.NTF == type){
             // 通知
-            DmMsg ntfId = DmMsg.valueOf(responseBundle.name());
+            DmMsg ntfId = DmMsg.valueOf(responseBundle.name);
             Set<Object> ntfListeners = ntfListenerList.get(ntfId);
             if (null != ntfListeners){
                 for (Object ntfListener : ntfListeners) {
@@ -295,7 +295,7 @@ public abstract class Requester{
             synchronized (rspListenerList) {
                 rspListenerList.remove(reqSn); // 请求已结束，移除该次请求记录
             }
-            onTimeout(rspListener, DmMsg.valueOf(responseBundle.reqName()));
+            onTimeout(rspListener, DmMsg.valueOf(responseBundle.reqName));
         }else{
             // 响应
             Object rspListener = rspListenerList.get(reqSn);
@@ -305,7 +305,7 @@ public abstract class Requester{
                 }
             }
 //            if (null != rspListener){
-            DmMsg rspId = DmMsg.valueOf(responseBundle.name());
+            DmMsg rspId = DmMsg.valueOf(responseBundle.name);
             onRsp(rspListener, rspId, rspContent);
 //            }
         }
