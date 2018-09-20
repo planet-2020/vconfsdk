@@ -4,7 +4,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
-import com.sissi.vconfsdk.base.DmMsg;  // 怎么从编译时注解获取枚举信息,从而无需引入具体枚举类.
+import com.sissi.vconfsdk.base.Msg;  // 怎么从编译时注解获取枚举信息,从而无需引入具体枚举类.
 import com.sissi.vconfsdk.utils.KLog;
 
 import java.lang.reflect.Constructor;
@@ -21,7 +21,7 @@ public abstract class Requester{
     private static HashMap<Class<?>, Integer> refercnt = new HashMap<>();
     private int reqSn; // 请求序列号，唯一标识一次请求。
     private final HashMap<Integer, Object> rspListenerList; // 响应监听者列表
-    private HashMap<DmMsg, Set<Object>> ntfListenerList; // 通知监听者列表
+    private HashMap<Msg, Set<Object>> ntfListenerList; // 通知监听者列表
 
     /* 辅助线程。
     对于高频次反馈的响应建议抛给辅助线程处理以减轻主线程压力但同时需要小心注意多线程可能带来的问题。
@@ -127,7 +127,7 @@ public abstract class Requester{
     /**
      * 发送请求（不关注响应）
      * */
-    protected synchronized void sendReq(DmMsg reqId, Object reqPara){
+    protected synchronized void sendReq(Msg reqId, Object reqPara){
         sendReq(reqId, reqPara, null);
     }
 
@@ -135,7 +135,7 @@ public abstract class Requester{
      * 发送请求。
      * @param rspListener 响应监听者。
      * */
-    protected synchronized void sendReq(DmMsg reqId, Object reqPara, Object rspListener){
+    protected synchronized void sendReq(Msg reqId, Object reqPara, Object rspListener){
 //        KLog.p("rspListener=%s, reqId=%s, reqPara=%s", rspListener, reqId, reqPara);
         if (requestProcessor.processRequest(handler, reqId.name(), reqPara, ++reqSn)){
 //            if (null != rspListener) {
@@ -145,14 +145,14 @@ public abstract class Requester{
     }
 
     /**撤销请求*/
-    protected synchronized void revertReq(DmMsg reqId, Object rspListener){
+    protected synchronized void revertReq(Msg reqId, Object rspListener){
         // TODO
     }
 
     /**
      * 订阅通知
      * */
-    protected synchronized void subscribeNtf(Object ntfListener, DmMsg ntfId){
+    protected synchronized void subscribeNtf(Object ntfListener, Msg ntfId){
 //        KLog.p("ntfListener=%s, ntfId=%s", ntfListener, ntfId);
         if (null == ntfListener){
             return;
@@ -169,7 +169,7 @@ public abstract class Requester{
     /**
      * 取消订阅通知
      * */
-    protected synchronized void unsubscribeNtf(Object ntfListener, DmMsg ntfId){
+    protected synchronized void unsubscribeNtf(Object ntfListener, Msg ntfId){
         if (null == ntfListener){
             return;
         }
@@ -189,7 +189,7 @@ public abstract class Requester{
     /**
      * 批量订阅通知
      * */
-    protected synchronized void subscribeNtf(Object ntfListener, DmMsg[] ntfIds){
+    protected synchronized void subscribeNtf(Object ntfListener, Msg[] ntfIds){
         if (null == ntfListener || null == ntfIds){
             return;
         }
@@ -201,11 +201,11 @@ public abstract class Requester{
     /**
      * 批量取消订阅通知
      * */
-    protected synchronized void unsubscribeNtf(Object ntfListener, DmMsg[] ntfIds){
+    protected synchronized void unsubscribeNtf(Object ntfListener, Msg[] ntfIds){
         if (null == ntfListener || null == ntfIds){
             return;
         }
-        for (DmMsg ntfId:ntfIds) {
+        for (Msg ntfId:ntfIds) {
             unsubscribeNtf(ntfListener, ntfId);
         }
     }
@@ -213,7 +213,7 @@ public abstract class Requester{
     /**
      * （驱使下层）发射通知。仅用于模拟模式。
      * */
-    protected synchronized void ejectNtf(DmMsg ntfId){
+    protected synchronized void ejectNtf(Msg ntfId){
 //        KLog.p("ntfId=%s, ntf=%s", ntfId, ntf);
         notificationEmitter.emitNotification(ntfId.name());
     }
@@ -221,18 +221,18 @@ public abstract class Requester{
     /**
      * 设置配置
      * */
-    protected synchronized void setConfig(DmMsg reqId, Object config){
+    protected synchronized void setConfig(Msg reqId, Object config){
         commandProcessor.set(reqId.name(), config);
     }
 
     /**
      * 获取配置
      * */
-    protected synchronized Object getConfig(DmMsg reqId){
+    protected synchronized Object getConfig(Msg reqId){
         return commandProcessor.get(reqId.name());
     }
 
-    protected synchronized Object getConfig(DmMsg reqId, Object para){
+    protected synchronized Object getConfig(Msg reqId, Object para){
         return commandProcessor.get(reqId.name(), para);
     }
 
@@ -265,7 +265,7 @@ public abstract class Requester{
      * 删除通知监听者
      * */
     protected synchronized void delNtfListener(Object ntfListener){
-        for (DmMsg ntfId : ntfListenerList.keySet()) {
+        for (Msg ntfId : ntfListenerList.keySet()) {
             unsubscribeNtf(ntfListener, ntfId);
         }
     }
@@ -278,7 +278,7 @@ public abstract class Requester{
         int reqSn = responseBundle.reqSn;
         if (ResponseBundle.NTF == type){
             // 通知
-            DmMsg ntfId = DmMsg.valueOf(responseBundle.name);
+            Msg ntfId = Msg.valueOf(responseBundle.name);
             Set<Object> ntfListeners = ntfListenerList.get(ntfId);
             if (null != ntfListeners){
                 for (Object ntfListener : ntfListeners) {
@@ -291,7 +291,7 @@ public abstract class Requester{
             synchronized (rspListenerList) {
                 rspListenerList.remove(reqSn); // 请求已结束，移除该次请求记录
             }
-            onTimeout(rspListener, DmMsg.valueOf(responseBundle.reqName));
+            onTimeout(rspListener, Msg.valueOf(responseBundle.reqName));
         }else{
             // 响应
             Object rspListener = rspListenerList.get(reqSn);
@@ -301,7 +301,7 @@ public abstract class Requester{
                 }
             }
 //            if (null != rspListener){
-            DmMsg rspId = DmMsg.valueOf(responseBundle.name);
+            Msg rspId = Msg.valueOf(responseBundle.name);
             onRsp(rspListener, rspId, rspContent);
 //            }
         }
@@ -312,21 +312,21 @@ public abstract class Requester{
      * @param listener 响应监听者
      * @param rspId 响应ID
      * @param rspContent 响应内容*/
-    protected void onRsp(Object listener, DmMsg rspId, Object rspContent){ }
+    protected void onRsp(Object listener, Msg rspId, Object rspContent){ }
 
     /**
      * 处理通知
      * @param listener 通知监听者
      * @param ntfId 通知ID
      * @param ntfContent 通知内容 */
-    protected void onNtf(Object listener, DmMsg ntfId, Object ntfContent){ }
+    protected void onNtf(Object listener, Msg ntfId, Object ntfContent){ }
 
     /**
      * 处理请求超时
      * @param listener 响应监听者
      * @param reqId 请求ID
      * */
-    protected void onTimeout(Object listener, DmMsg reqId){ }
+    protected void onTimeout(Object listener, Msg reqId){ }
 
 
 //    /**设置响应在非主线程处理。

@@ -1,6 +1,6 @@
 package com.sissi.vconfsdk.login;
 
-import com.sissi.vconfsdk.base.DmMsg;
+import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.amulet.Requester;
 import com.sissi.vconfsdk.base.MsgBeans;
 import com.sissi.vconfsdk.utils.KLog;
@@ -15,16 +15,16 @@ public class LoginManager extends Requester {
     }
 
     public void login(String server, String account, String passwd, OnLoginResultListener loginResultListener){
-        setConfig(DmMsg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
-        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) getConfig(DmMsg.GetXmppServerInfo);
+        setConfig(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
+        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) getConfig(Msg.GetXmppServerInfo);
         KLog.p("xmppServerInfo{%s, %d}",xmppServerInfo.domain, xmppServerInfo.ip);
-        sendReq(DmMsg.LoginReq, new MsgBeans.LoginReq(server, account, passwd, MsgBeans.SetType.Phone), loginResultListener);
+        sendReq(Msg.LoginReq, new MsgBeans.LoginReq(server, account, passwd, MsgBeans.SetType.Phone), loginResultListener);
     }
 
     @Override
-    protected void onRsp(Object listener, DmMsg rspId, Object rspContent) {
+    protected void onRsp(Object listener, Msg rspId, Object rspContent) {
         KLog.p("rspId=%s, rspContent=%s",rspId, rspContent);
-        if (DmMsg.LoginRsp.equals(rspId)){
+        if (Msg.LoginRsp.equals(rspId)){
             MsgBeans.LoginResult loginRes = (MsgBeans.LoginResult) rspContent;
             if (null != listener){
                 if (0 == loginRes.result) {
@@ -37,7 +37,7 @@ public class LoginManager extends Requester {
     }
 
     @Override
-    protected void onTimeout(Object listener, DmMsg reqId) {
+    protected void onTimeout(Object listener, Msg reqId) {
         KLog.p("listener=%s, reqId=%s",listener, reqId);
     }
 
