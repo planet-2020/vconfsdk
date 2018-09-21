@@ -3,9 +3,7 @@ package com.sissi.vconfsdk.base.amulet;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-
-import com.sissi.vconfsdk.base.Msg;  // 怎么从编译时注解获取枚举信息,从而无需引入具体枚举类.
-import com.sissi.vconfsdk.utils.KLog;
+import android.util.Log;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -16,12 +14,15 @@ import java.util.Map;
 import java.util.Set;
 
 // TODO 更名为Visitor，去掉对DmMsg的依赖， 在上层的Requester中将String转为Msg
-public abstract class Requester{
-    private static HashMap<Class<?>, Requester> instances = new HashMap<>();
+public abstract class Visitor{
+
+    private static final String TAG = Visitor.class.getSimpleName();
+
+    private static HashMap<Class<?>, Visitor> instances = new HashMap<>();
     private static HashMap<Class<?>, Integer> refercnt = new HashMap<>();
     private int reqSn; // 请求序列号，唯一标识一次请求。
     private final HashMap<Integer, Object> rspListenerList; // 响应监听者列表
-    private HashMap<Msg, Set<Object>> ntfListenerList; // 通知监听者列表
+    private HashMap<String, Set<Object>> ntfListenerList; // 通知监听者列表
 
     /* 辅助线程。
     对于高频次反馈的响应建议抛给辅助线程处理以减轻主线程压力但同时需要小心注意多线程可能带来的问题。
@@ -38,8 +39,6 @@ public abstract class Requester{
     private static ICommandProcessor commandProcessor;
     private static ISubscribeProcessor subscribeProcessor;
     private static INotificationEmitter notificationEmitter;
-
-    private static boolean enable; // TODO 原本在Native层的开关挪到这里
 
     static {
 
@@ -58,7 +57,7 @@ public abstract class Requester{
 
     }
 
-    protected Requester(){
+    protected Visitor(){
         handler = new Handler(Looper.getMainLooper()){
             @Override
             public void handleMessage(Message msg) {
@@ -74,17 +73,17 @@ public abstract class Requester{
 
     /**获取Jni请求者。
      * @param clz 请求者类型*/
-    public synchronized static Requester instance(Class<?> clz){
-        if (!Requester.class.isAssignableFrom(clz)){
-            KLog.p(KLog.ERROR, "Invalid para!");
+    public synchronized static Visitor instance(Class<?> clz){
+        if (!Visitor.class.isAssignableFrom(clz)){
+            Log.e(TAG, "Invalid para!");
             return null;
         }
-        Requester requester = instances.get(clz);
+        Visitor requester = instances.get(clz);
         if (null == requester){
             try {
                 Constructor ctor = clz.getDeclaredConstructor((Class[])null);
                 ctor.setAccessible(true);
-                requester = (Requester) ctor.newInstance();
+                requester = (Visitor) ctor.newInstance();
                 instances.put(clz, requester);
                 refercnt.put(clz, 1);
             } catch (NoSuchMethodException e) {
@@ -113,7 +112,7 @@ public abstract class Requester{
             return;
         }
 
-        KLog.p("free presenter: %s", clz);
+        Log.i(TAG, "free presenter: "+clz);
         instances.remove(clz);
     }
 
@@ -127,7 +126,7 @@ public abstract class Requester{
     /**
      * 发送请求（不关注响应）
      * */
-    protected synchronized void sendReq(Msg reqId, Object reqPara){
+    protected synchronized void sendReq(String reqId, Object reqPara){
         sendReq(reqId, reqPara, null);
     }
 
@@ -135,9 +134,9 @@ public abstract class Requester{
      * 发送请求。
      * @param rspListener 响应监听者。
      * */
-    protected synchronized void sendReq(Msg reqId, Object reqPara, Object rspListener){
+    protected synchronized void sendReq(String reqId, Object reqPara, Object rspListener){
 //        KLog.p("rspListener=%s, reqId=%s, reqPara=%s", rspListener, reqId, reqPara);
-        if (requestProcessor.processRequest(handler, reqId.name(), reqPara, ++reqSn)){
+        if (requestProcessor.processRequest(handler, reqId, reqPara, ++reqSn)){
 //            if (null != rspListener) {
                 rspListenerList.put(reqSn, rspListener);
 //            }
@@ -145,21 +144,21 @@ public abstract class Requester{
     }
 
     /**撤销请求*/
-    protected synchronized void revertReq(Msg reqId, Object rspListener){
+    protected synchronized void revertReq(String reqId, Object rspListener){
         // TODO
     }
 
     /**
      * 订阅通知
      * */
-    protected synchronized void subscribeNtf(Object ntfListener, Msg ntfId){
+    protected synchronized void subscribeNtf(Object ntfListener, String ntfId){
 //        KLog.p("ntfListener=%s, ntfId=%s", ntfListener, ntfId);
         if (null == ntfListener){
             return;
         }
         Set<Object> listeners = ntfListenerList.get(ntfId);
         if (null == listeners){
-            subscribeProcessor.subscribe(handler, ntfId.name());
+            subscribeProcessor.subscribe(handler, ntfId);
             listeners = new HashSet<Object>();
             ntfListenerList.put(ntfId, listeners);
         }
@@ -169,7 +168,7 @@ public abstract class Requester{
     /**
      * 取消订阅通知
      * */
-    protected synchronized void unsubscribeNtf(Object ntfListener, Msg ntfId){
+    protected synchronized void unsubscribeNtf(Object ntfListener, String ntfId){
         if (null == ntfListener){
             return;
         }
@@ -179,7 +178,7 @@ public abstract class Requester{
 //            KLog.p("del ntfListener=%s, ntfId=%s", ntfListener, ntfId);
             if (listeners.isEmpty()) {
                 ntfListenerList.remove(ntfId);
-                subscribeProcessor.unsubscribe(handler, ntfId.name());
+                subscribeProcessor.unsubscribe(handler, ntfId);
 //                KLog.p("unsubscribeNtf %s", ntfId);
             }
         }
@@ -189,7 +188,7 @@ public abstract class Requester{
     /**
      * 批量订阅通知
      * */
-    protected synchronized void subscribeNtf(Object ntfListener, Msg[] ntfIds){
+    protected synchronized void subscribeNtf(Object ntfListener, String[] ntfIds){
         if (null == ntfListener || null == ntfIds){
             return;
         }
@@ -201,11 +200,11 @@ public abstract class Requester{
     /**
      * 批量取消订阅通知
      * */
-    protected synchronized void unsubscribeNtf(Object ntfListener, Msg[] ntfIds){
+    protected synchronized void unsubscribeNtf(Object ntfListener, String[] ntfIds){
         if (null == ntfListener || null == ntfIds){
             return;
         }
-        for (Msg ntfId:ntfIds) {
+        for (String ntfId:ntfIds) {
             unsubscribeNtf(ntfListener, ntfId);
         }
     }
@@ -213,27 +212,27 @@ public abstract class Requester{
     /**
      * （驱使下层）发射通知。仅用于模拟模式。
      * */
-    protected synchronized void ejectNtf(Msg ntfId){
+    protected synchronized void ejectNtf(String ntfId){
 //        KLog.p("ntfId=%s, ntf=%s", ntfId, ntf);
-        notificationEmitter.emitNotification(ntfId.name());
+        notificationEmitter.emitNotification(ntfId);
     }
 
     /**
      * 设置配置
      * */
-    protected synchronized void setConfig(Msg reqId, Object config){
-        commandProcessor.set(reqId.name(), config);
+    protected synchronized void setConfig(String reqId, Object config){
+        commandProcessor.set(reqId, config);
     }
 
     /**
      * 获取配置
      * */
-    protected synchronized Object getConfig(Msg reqId){
-        return commandProcessor.get(reqId.name());
+    protected synchronized Object getConfig(String reqId){
+        return commandProcessor.get(reqId);
     }
 
-    protected synchronized Object getConfig(Msg reqId, Object para){
-        return commandProcessor.get(reqId.name(), para);
+    protected synchronized Object getConfig(String reqId, Object para){
+        return commandProcessor.get(reqId, para);
     }
 
     /**
@@ -265,7 +264,7 @@ public abstract class Requester{
      * 删除通知监听者
      * */
     protected synchronized void delNtfListener(Object ntfListener){
-        for (Msg ntfId : ntfListenerList.keySet()) {
+        for (String ntfId : ntfListenerList.keySet()) {
             unsubscribeNtf(ntfListener, ntfId);
         }
     }
@@ -278,7 +277,7 @@ public abstract class Requester{
         int reqSn = responseBundle.reqSn;
         if (ResponseBundle.NTF == type){
             // 通知
-            Msg ntfId = Msg.valueOf(responseBundle.name);
+            String ntfId = responseBundle.name;
             Set<Object> ntfListeners = ntfListenerList.get(ntfId);
             if (null != ntfListeners){
                 for (Object ntfListener : ntfListeners) {
@@ -291,7 +290,7 @@ public abstract class Requester{
             synchronized (rspListenerList) {
                 rspListenerList.remove(reqSn); // 请求已结束，移除该次请求记录
             }
-            onTimeout(rspListener, Msg.valueOf(responseBundle.reqName));
+            onTimeout(rspListener, responseBundle.reqName);
         }else{
             // 响应
             Object rspListener = rspListenerList.get(reqSn);
@@ -301,7 +300,7 @@ public abstract class Requester{
                 }
             }
 //            if (null != rspListener){
-            Msg rspId = Msg.valueOf(responseBundle.name);
+            String rspId = responseBundle.name;
             onRsp(rspListener, rspId, rspContent);
 //            }
         }
@@ -312,21 +311,21 @@ public abstract class Requester{
      * @param listener 响应监听者
      * @param rspId 响应ID
      * @param rspContent 响应内容*/
-    protected void onRsp(Object listener, Msg rspId, Object rspContent){ }
+    protected void onRsp(Object listener, String rspId, Object rspContent){ }
 
     /**
      * 处理通知
      * @param listener 通知监听者
      * @param ntfId 通知ID
      * @param ntfContent 通知内容 */
-    protected void onNtf(Object listener, Msg ntfId, Object ntfContent){ }
+    protected void onNtf(Object listener, String ntfId, Object ntfContent){ }
 
     /**
      * 处理请求超时
      * @param listener 响应监听者
      * @param reqId 请求ID
      * */
-    protected void onTimeout(Object listener, Msg reqId){ }
+    protected void onTimeout(Object listener, String reqId){ }
 
 
 //    /**设置响应在非主线程处理。
@@ -357,7 +356,7 @@ public abstract class Requester{
 //            }
 //        };
 //
-//        assistThread.setName("Requester.assist");
+//        assistThread.setName("Visitor.assist");
 //        assistThread.start();
 //
 //        // 保证往下继续执行时handler已初始化完成

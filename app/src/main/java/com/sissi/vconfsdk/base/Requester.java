@@ -1,4 +1,4 @@
 package com.sissi.vconfsdk.base;
 
-public class Visitor {
+public class Requester {
 }
