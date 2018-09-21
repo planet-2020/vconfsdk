@@ -30,3 +30,6 @@ task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
+ext{
+    javaVersion = JavaVersion.VERSION_1_8
+}

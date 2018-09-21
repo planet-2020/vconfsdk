@@ -51,7 +51,7 @@ import javax.tools.Diagnostic;
         "com.sissi.vconfsdk.annotation.Set",
         "com.sissi.vconfsdk.annotation.Consumer",
 })
-@SupportedSourceVersion(SourceVersion.RELEASE_7)
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class MessageProcessor extends AbstractProcessor {
 
     private boolean bDone = false;

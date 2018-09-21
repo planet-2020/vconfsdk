@@ -38,7 +38,7 @@ import javax.tools.Diagnostic;
 @SupportedAnnotationTypes({
         "com.sissi.vconfsdk.annotation.SerializeEnumAsInt",
 })
-@SupportedSourceVersion(SourceVersion.RELEASE_7)
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 @AutoService(Processor.class)
 public class SerializationProcessor extends AbstractProcessor {
 
@@ -54,19 +54,16 @@ public class SerializationProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
-        messager = processingEnv.getMessager();
-        messager.printMessage(Diagnostic.Kind.NOTE, "############# IN");
 
         if (bDone){
             return true;
         }
         bDone = true;
+        messager = processingEnv.getMessager();
 
         if (collectInfo(roundEnvironment)) {
             generateFile();
         }
-
-        messager.printMessage(Diagnostic.Kind.NOTE, "############# OUT");
 
         return true;
     }
