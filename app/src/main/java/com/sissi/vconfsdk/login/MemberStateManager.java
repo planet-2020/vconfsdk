@@ -1,7 +1,7 @@
 package com.sissi.vconfsdk.login;
 
 import com.sissi.vconfsdk.base.Msg;
-import com.sissi.vconfsdk.base.amulet.Requester;
+import com.sissi.vconfsdk.base.Requester;
 import com.sissi.vconfsdk.utils.KLog;
 
 public class MemberStateManager extends Requester {

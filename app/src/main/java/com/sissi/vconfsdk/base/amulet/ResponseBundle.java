@@ -3,7 +3,7 @@ package com.sissi.vconfsdk.base.amulet;
 /**
  * Created by Sissi on 2018/9/13.
  */
-class ResponseBundle {
+class ResponseBundle {  //TODO 更名为FeedbackBundle
     // 消息类型
     static final int NTF = 101; // 通知
     static final int RSP = 102; // 响应

@@ -388,4 +388,26 @@ public abstract class Visitor{
 //    }
 
 
+    public interface IOnFeedback{
+        /**
+         * 处理响应
+         * @param listener 响应监听者
+         * @param rspId 响应ID
+         * @param rspContent 响应内容*/
+         void onRsp(Object listener, String rspId, Object rspContent);
+
+        /**
+         * 处理通知
+         * @param listener 通知监听者
+         * @param ntfId 通知ID
+         * @param ntfContent 通知内容 */
+         void onNtf(Object listener, String ntfId, Object ntfContent);
+
+        /**
+         * 处理请求超时
+         * @param listener 响应监听者
+         * @param reqId 请求ID
+         * */
+         void onTimeout(Object listener, String reqId);
+    }
 }
