@@ -22,7 +22,7 @@ public abstract class Visitor{
     private static HashMap<Class<?>, Integer> refercnt = new HashMap<>();
     private int reqSn; // 请求序列号，唯一标识一次请求。
     private final HashMap<Integer, Object> rspListenerList; // 响应监听者列表
-    private HashMap<String, Set<Object>> ntfListenerList; // 通知监听者列表
+    private final HashMap<String, Set<Object>> ntfListenerList; // 通知监听者列表
 
     /* 辅助线程。
     对于高频次反馈的响应建议抛给辅助线程处理以减轻主线程压力但同时需要小心注意多线程可能带来的问题。
@@ -73,7 +73,7 @@ public abstract class Visitor{
 
     /**获取Jni请求者。
      * @param clz 请求者类型*/
-    public synchronized static Visitor instance(Class<?> clz){
+    public synchronized static Visitor instance(Class<?> clz){ // TODO 挪到Requester
         if (!Visitor.class.isAssignableFrom(clz)){
             Log.e(TAG, "Invalid para!");
             return null;
@@ -263,7 +263,7 @@ public abstract class Visitor{
     }
 
 
-    private void processFeedback(Message msg){
+    private synchronized void processFeedback(Message msg){
         ResponseBundle responseBundle = (ResponseBundle) msg.obj;
         Object rspContent = responseBundle.body;
         int type = responseBundle.type;
