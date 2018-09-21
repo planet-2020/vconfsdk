@@ -48,23 +48,17 @@ public class Caster {
         return requestProcessor.processRequest(feedbackHandler, reqId, reqPara, reqSn);
     }
 
-
-    /**撤销请求*/
-    protected void revertReq(String reqId, int reqSn){
-        // TODO
-    }
-
     /**
      * 订阅通知
      * */
-    protected boolean subscribe(String ntfId){
+    public boolean subscribe(String ntfId){
         return subscribeProcessor.subscribe(feedbackHandler, ntfId);
     }
 
     /**
      * 取消订阅通知
      * */
-    protected void unsubscribe(String ntfId){
+    public void unsubscribe(String ntfId){
         subscribeProcessor.unsubscribe(feedbackHandler, ntfId);
     }
 
@@ -72,7 +66,7 @@ public class Caster {
     /**
      * 批量订阅通知
      * */
-    protected void subscribe(String[] ntfIds){
+    public void subscribe(String[] ntfIds){
         for (String ntfId : ntfIds){
             subscribe(ntfId);
         }
@@ -81,7 +75,7 @@ public class Caster {
     /**
      * 批量取消订阅通知
      * */
-    protected void unsubscribe(String[] ntfIds){
+    public void unsubscribe(String[] ntfIds){
         for (String ntfId : ntfIds) {
             unsubscribe(ntfId);
         }
@@ -90,25 +84,25 @@ public class Caster {
     /**
      * （驱使下层）发射通知。仅用于模拟模式。
      * */
-    protected void eject(String ntfId){
+    public void eject(String ntfId){
         notificationEmitter.emitNotification(ntfId);
     }
 
     /**
      * 设置配置
      * */
-    protected void set(String setId, Object para){
+    public void set(String setId, Object para){
         commandProcessor.set(setId, para);
     }
 
     /**
      * 获取配置
      * */
-    protected Object get(String getId){
+    public Object get(String getId){
         return commandProcessor.get(getId);
     }
 
-    protected Object get(String getId, Object para){
+    public Object get(String getId, Object para){
         return commandProcessor.get(getId, para);
     }
 

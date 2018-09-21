@@ -1,6 +1,6 @@
 package com.sissi.vconfsdk.startup;
 
-import com.sissi.vconfsdk.base.amulet.Requester;
+import com.sissi.vconfsdk.base.Requester;
 
 /**
  * Created by Sissi on 2018/9/12.

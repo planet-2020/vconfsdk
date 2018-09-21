@@ -4,7 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;
 
-import com.sissi.vconfsdk.base.amulet.Requester;
+import com.sissi.vconfsdk.base.Requester;
 import com.sissi.vconfsdk.login.LoginManager;
 import com.sissi.vconfsdk.login.MemberStateManager;
 import com.sissi.vconfsdk.utils.KLog;

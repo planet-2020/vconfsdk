@@ -9,7 +9,7 @@ public class MemberStateManager extends Requester {
     private MemberStateManager(){}
 
     @Override
-    protected void onNtf(Object listener, Msg ntfId, Object ntfContent) {
+    protected void onNtf(Msg ntfId, Object ntfContent, Object listener) {
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listener, ntfId, ntfContent);
         if (Msg.MemberStateChangedNtf.equals(ntfId)){
             if (null != listener){
@@ -19,13 +19,13 @@ public class MemberStateManager extends Requester {
     }
 
     public void addOnMemberStateChangedListener(OnMemberStateChangedListener onMemberStateChangedListener){ //TODO 添加和删除监听器的工作能否自动完成，兼顾activity生命周期
-        subscribeNtf(onMemberStateChangedListener, Msg.MemberStateChangedNtf);
+        subscribe(Msg.MemberStateChangedNtf, onMemberStateChangedListener);
 
-        ejectNtf(Msg.MemberStateChangedNtf);
+        eject(Msg.MemberStateChangedNtf);
     }
 
     public void delOnMemberStateChangedListener(OnMemberStateChangedListener onMemberStateChangedListener){
-        unsubscribeNtf(onMemberStateChangedListener, Msg.MemberStateChangedNtf);
+        unsubscribe(Msg.MemberStateChangedNtf, onMemberStateChangedListener);
     }
 
     public interface OnMemberStateChangedListener{

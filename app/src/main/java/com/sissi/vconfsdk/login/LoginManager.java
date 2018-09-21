@@ -15,14 +15,14 @@ public class LoginManager extends Requester {
     }
 
     public void login(String server, String account, String passwd, OnLoginResultListener loginResultListener){
-        setConfig(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
-        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) getConfig(Msg.GetXmppServerInfo);
+        set(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
+        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) get(Msg.GetXmppServerInfo);
         KLog.p("xmppServerInfo{%s, %d}",xmppServerInfo.domain, xmppServerInfo.ip);
-        sendReq(Msg.LoginReq, new MsgBeans.LoginReq(server, account, passwd, MsgBeans.SetType.Phone), loginResultListener);
+        req(Msg.LoginReq, new MsgBeans.LoginReq(server, account, passwd, MsgBeans.SetType.Phone), loginResultListener);
     }
 
     @Override
-    protected void onRsp(Object listener, Msg rspId, Object rspContent) {
+    protected void onRsp(Msg rspId, Object rspContent, Object listener) {
         KLog.p("rspId=%s, rspContent=%s",rspId, rspContent);
         if (Msg.LoginRsp.equals(rspId)){
             MsgBeans.LoginResult loginRes = (MsgBeans.LoginResult) rspContent;
@@ -37,7 +37,7 @@ public class LoginManager extends Requester {
     }
 
     @Override
-    protected void onTimeout(Object listener, Msg reqId) {
+    protected void onTimeout(Msg reqId, Object listener) {
         KLog.p("listener=%s, reqId=%s",listener, reqId);
     }
 
