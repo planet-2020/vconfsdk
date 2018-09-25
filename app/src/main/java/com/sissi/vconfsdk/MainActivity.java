@@ -1,20 +1,47 @@
 package com.sissi.vconfsdk;
 
-import android.app.Activity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 
+import com.sissi.vconfsdk.base.ActivityLifecycleObserver;
 import com.sissi.vconfsdk.base.Requester;
 import com.sissi.vconfsdk.login.LoginManager;
 import com.sissi.vconfsdk.login.MemberStateManager;
 import com.sissi.vconfsdk.utils.KLog;
 
-public class MainActivity extends Activity implements LoginManager.OnLoginResultListener, MemberStateManager.OnMemberStateChangedListener{
+public class MainActivity extends AppCompatActivity implements LoginManager.OnLoginResultListener, MemberStateManager.OnMemberStateChangedListener{
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        getLifecycle().addObserver(new ActivityLifecycleObserver(this));
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        KLog.p("-->");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        KLog.p("-->");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        KLog.p("-->");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        KLog.p("-->");
     }
 
     public void login(View view) {

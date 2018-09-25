@@ -1,8 +1,7 @@
 package com.sissi.vconfsdk.base;
 
-import android.util.Log;
-
 import com.sissi.vconfsdk.base.amulet.Caster;
+import com.sissi.vconfsdk.utils.KLog;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -13,8 +12,6 @@ import java.util.Map;
 import java.util.Set;
 
 public abstract class Requester implements Caster.IOnFeedbackListener {
-
-    private static final String TAG = Requester.class.getSimpleName();
 
     private static HashMap<Class<?>, Requester> instances = new HashMap<>();
     private static HashMap<Class<?>, Integer> refercnt = new HashMap<>();
@@ -39,7 +36,7 @@ public abstract class Requester implements Caster.IOnFeedbackListener {
      * @param clz 请求者类型*/
     public synchronized static Requester instance(Class<?> clz){
         if (!Requester.class.isAssignableFrom(clz)){
-            Log.e(TAG, "Invalid para!");
+            KLog.p("Invalid para!");
             return null;
         }
         Requester requester = instances.get(clz);
@@ -70,7 +67,7 @@ public abstract class Requester implements Caster.IOnFeedbackListener {
             return;
         }
 
-        Log.i(TAG, "free presenter: "+clz);
+        KLog.p("free presenter: "+clz);
         instances.remove(clz);
     }
 
