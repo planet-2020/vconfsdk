@@ -35,6 +35,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.MirroredTypesException;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
 /**
@@ -280,9 +281,11 @@ public class MessageProcessor extends AbstractProcessor {
                     }
                 }
             }catch (MirroredTypesException mte) {
-                List<DeclaredType> classTypeMirrors = (List<DeclaredType>) mte.getTypeMirrors();
-                for (DeclaredType classTypeMirror : classTypeMirrors) {
-                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
+                List<? extends TypeMirror> classTypeMirrors = mte.getTypeMirrors();
+                DeclaredType declaredType;
+                for (TypeMirror classTypeMirror : classTypeMirrors) {
+                    declaredType = (DeclaredType) classTypeMirror;
+                    TypeElement classTypeElement = (TypeElement) declaredType.asElement();
 //                    messager.printMessage(Diagnostic.Kind.NOTE, "Message.class: " + Message.class.getCanonicalName()
 //                            + "\nclz name=" + classTypeElement.getQualifiedName().toString());
                     if (Message.class.getCanonicalName().equals(classTypeElement.getQualifiedName().toString())){
@@ -339,10 +342,10 @@ public class MessageProcessor extends AbstractProcessor {
         for(String req : reqRspsMap.keySet()){
             StringBuffer value = new StringBuffer();
             String[][] rspSeq = reqRspsMap.get(req);
-            for (int i=0; i<rspSeq.length; ++i) {
+            for (String[] aRspSeq : rspSeq) {
                 value.append("{");
-                for (int j=0; j<rspSeq[i].length; ++j) {
-                    value.append("\"" + rspSeq[i][j] + "\", ");
+                for (String anARspSeq : aRspSeq) {
+                    value.append("\"").append(anARspSeq).append("\", ");
                 }
                 value.append("}, ");
             }

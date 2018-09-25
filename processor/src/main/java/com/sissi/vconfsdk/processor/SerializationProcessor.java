@@ -31,6 +31,7 @@ import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.MirroredTypesException;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
 /**
@@ -117,9 +118,11 @@ public class SerializationProcessor extends AbstractProcessor {
                     }
                 }
             }catch (MirroredTypesException mte) {
-                List<DeclaredType> classTypeMirrors = (List<DeclaredType>) mte.getTypeMirrors();
-                for (DeclaredType classTypeMirror : classTypeMirrors) {
-                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
+                List<? extends TypeMirror> classTypeMirrors = mte.getTypeMirrors();
+                DeclaredType declaredType;
+                for (TypeMirror classTypeMirror : classTypeMirrors) {
+                    declaredType = (DeclaredType) classTypeMirror;
+                    TypeElement classTypeElement = (TypeElement) declaredType.asElement();
                     if (SerializeEnumAsInt.class.getCanonicalName().equals(classTypeElement.getQualifiedName().toString())){
                         PackageElement packageElement = (PackageElement) element.getEnclosingElement();
                         packageName = packageElement.getQualifiedName().toString();
