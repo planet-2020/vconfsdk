@@ -31,9 +31,9 @@ final class JsonProcessor {
     private JsonProcessor() {
         gsonBuilder = new GsonBuilder();
 
-        Set<Class> serializeEnumAsIntSet = SerializeEnumAsInt$$Generated.serializeEnumAsIntSet;
+        Set<Class<? extends Enum<?>>> serializeEnumAsIntSet = SerializeEnumAsInt$$Generated.serializeEnumAsIntSet;
 
-        for (Class c : serializeEnumAsIntSet) {
+        for (Class<? extends Enum<?>> c : serializeEnumAsIntSet) {
             regEnumType(c);
         }
 
@@ -49,7 +49,7 @@ final class JsonProcessor {
     }
 
 
-    private  <T extends Enum<T>> void regEnumType(final Class<T> t) {
+    private  <T extends Enum<?>> void regEnumType(final Class<T> t) {
         gsonBuilder.registerTypeAdapter(t, new JsonSerializer<T>() {
 
             @Override

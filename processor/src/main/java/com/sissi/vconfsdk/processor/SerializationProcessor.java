@@ -3,12 +3,14 @@ package com.sissi.vconfsdk.processor;
 import com.google.auto.service.AutoService;
 import com.sissi.vconfsdk.annotation.Consumer;
 import com.sissi.vconfsdk.annotation.SerializeEnumAsInt;
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.WildcardTypeName;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -155,7 +157,10 @@ public class SerializationProcessor extends AbstractProcessor {
         // 构建Class
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.PUBLIC)
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Set.class, Class.class),
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(ClassName.get(Set.class), ParameterizedTypeName.get(ClassName.get(Class.class),
+                        WildcardTypeName.subtypeOf(
+                                ParameterizedTypeName.get(ClassName.get(Enum.class), WildcardTypeName.subtypeOf(Object.class)))
+                        )),
                         fieldNameSerializeEnumAsIntSet, Modifier.PUBLIC, Modifier.STATIC)
                         .build())
                 .addStaticBlock(codeBlockBuilder.build())
