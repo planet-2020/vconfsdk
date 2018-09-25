@@ -9,6 +9,14 @@ import com.sissi.vconfsdk.annotation.SerializeEnumAsInt;
 @SerializeEnumAsInt
 public final class MsgBeans {
 
+    public static final class StartupInfo{
+
+    }
+
+    public static final class StartupResult{
+
+    }
+
     public static final class LoginReq {
         public String serverAddr;
         public String account;

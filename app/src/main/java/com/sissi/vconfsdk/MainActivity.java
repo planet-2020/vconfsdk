@@ -2,22 +2,14 @@ package com.sissi.vconfsdk;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.view.View;
-
-import com.sissi.vconfsdk.base.ActivityLifecycleObserver;
-import com.sissi.vconfsdk.base.Requester;
-import com.sissi.vconfsdk.login.LoginManager;
-import com.sissi.vconfsdk.login.MemberStateManager;
 import com.sissi.vconfsdk.utils.KLog;
 
-public class MainActivity extends AppCompatActivity implements LoginManager.OnLoginResultListener, MemberStateManager.OnMemberStateChangedListener{
+public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        getLifecycle().addObserver(new ActivityLifecycleObserver(this));
     }
 
     @Override
@@ -44,31 +36,4 @@ public class MainActivity extends AppCompatActivity implements LoginManager.OnLo
         KLog.p("-->");
     }
 
-    public void login(View view) {
-        LoginManager loginManager = (LoginManager) Requester.instance(LoginManager.class);
-        loginManager.login("server", "account", "passwd", this);
-
-        MemberStateManager memberStateManager = (MemberStateManager) Requester.instance(MemberStateManager.class);
-        memberStateManager.addOnMemberStateChangedListener(this);
-    }
-
-    @Override
-    public void onLoginSuccess() {
-        KLog.p("####");
-    }
-
-    @Override
-    public void onLoginFailed(int errorCode) {
-        KLog.p("####");
-    }
-
-    @Override
-    public void onLoginTimeout() {
-        KLog.p("####");
-    }
-
-    @Override
-    public void onMemberStateChanged() {
-        KLog.p("####");
-    }
 }

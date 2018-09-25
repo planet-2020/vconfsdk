@@ -1,5 +1,7 @@
 package com.sissi.vconfsdk.base;
 
+import android.support.v7.app.AppCompatActivity;
+
 import com.sissi.vconfsdk.base.amulet.Caster;
 import com.sissi.vconfsdk.utils.KLog;
 
@@ -11,9 +13,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-public abstract class Requester implements Caster.IOnFeedbackListener {
+public abstract class RequestAgent implements Caster.IOnFeedbackListener, RequesterLifecycleObserver.Callback{
 
-    private static HashMap<Class<?>, Requester> instances = new HashMap<>();
+    private static HashMap<Class<?>, RequestAgent> instances = new HashMap<>();
     private static HashMap<Class<?>, Integer> refercnt = new HashMap<>();
 
     private int reqSn; // 请求序列号，唯一标识一次请求。
@@ -22,7 +24,7 @@ public abstract class Requester implements Caster.IOnFeedbackListener {
 
     private Caster caster;
 
-    protected Requester(){
+    protected RequestAgent(){
         caster = new Caster();
         caster.setOnFeedbackListener(this);
 
@@ -34,17 +36,17 @@ public abstract class Requester implements Caster.IOnFeedbackListener {
 
     /**获取Jni请求者。
      * @param clz 请求者类型*/
-    public synchronized static Requester instance(Class<?> clz){
-        if (!Requester.class.isAssignableFrom(clz)){
+    public synchronized static RequestAgent instance(Class<?> clz){
+        if (!RequestAgent.class.isAssignableFrom(clz)){
             KLog.p("Invalid para!");
             return null;
         }
-        Requester requester = instances.get(clz);
+        RequestAgent requester = instances.get(clz);
         if (null == requester){
             try {
                 Constructor ctor = clz.getDeclaredConstructor((Class[])null);
                 ctor.setAccessible(true);
-                requester = (Requester) ctor.newInstance();
+                requester = (RequestAgent) ctor.newInstance();
                 instances.put(clz, requester);
                 refercnt.put(clz, 1);
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
@@ -86,6 +88,7 @@ public abstract class Requester implements Caster.IOnFeedbackListener {
      * */
     protected synchronized void req(Msg reqId, Object reqPara, Object rspListener){
 //        Log.i(TAG, String.format("rspListener=%s, reqId=%s, reqPara=%s", rspListener, reqId, reqPara));
+        tryObserveLifecycle(rspListener);
         if (caster.req(reqId.name(), ++reqSn, reqPara)){
 //            if (null != rspListener) {
             rspListeners.put(reqSn, rspListener);
@@ -222,7 +225,37 @@ public abstract class Requester implements Caster.IOnFeedbackListener {
         }
     }
 
+    private void tryObserveLifecycle(Object lifecycleOwner){
+        boolean isLifecycleOwner = false;
+        if (lifecycleOwner instanceof AppCompatActivity){
+            try {
+                lifecycleOwner.getClass().getMethod("getLifecycle", (Class<?>[]) null);  // 尽管我们sdk依赖28 appcompat-v7可保证只要是AppCompatActivity子类就能调用getLifecycle方法，但是实际使用中该listener是外部传入的，有可能他们使用的AppCompatActivity是低版本的没有该方法。XXX 待验证这种场景会有什么情况发生。
+                isLifecycleOwner = true;
+            } catch (NoSuchMethodException e) {
+                isLifecycleOwner = false;
+            }
+        }
 
+        KLog.p("lifecycleOwner=%s, isLifecycleOwner=%s", lifecycleOwner, isLifecycleOwner);
+
+        if (isLifecycleOwner){
+            ((AppCompatActivity)lifecycleOwner).getLifecycle().addObserver(new RequesterLifecycleObserver(lifecycleOwner, this));
+        }
+
+    }
+
+
+    @Override
+    public void onRequesterResumed(Object requester) {
+        KLog.p("--> onRequesterResumed "+ requester);
+    }
+
+    @Override
+    public void onRequesterPause(Object requester) {
+
+        KLog.p("--> onRequesterPause "+ requester);
+        // pause 只做标记，destroy才删除？保证onCreate中请求后，跳转到其他界面再跳回来时，请求结果依然能上报界面，而无需在onResume中再次请求。
+    }
 
     @Override
     public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn) {
