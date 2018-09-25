@@ -137,8 +137,8 @@ public class SerializationProcessor extends AbstractProcessor {
         // 获取待生成文件的类名
         className = SerializeEnumAsInt.class.getSimpleName()+"$$Generated";
 
-        messager.printMessage(Diagnostic.Kind.NOTE, "\ngen packageName="+packageName
-                + "\ngen className="+className);
+//        messager.printMessage(Diagnostic.Kind.NOTE, "\ngen packageName="+packageName
+//                + "\ngen className="+className);
 
         return true;
     }
