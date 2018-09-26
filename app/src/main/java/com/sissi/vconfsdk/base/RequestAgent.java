@@ -231,23 +231,23 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         }
     }
 
-    private void tryObserveLifecycle(Object requester){
-        KLog.p("requester instanceof LifecycleOwner? %s", requester instanceof LifecycleOwner);
-        if (requester instanceof LifecycleOwner){
-            ((LifecycleOwner)requester).getLifecycle().addObserver(listenerLifecycleObserver);
+    private void tryObserveLifecycle(Object listener){
+        KLog.p("listener instanceof LifecycleOwner? %s", listener instanceof LifecycleOwner);
+        if (listener instanceof LifecycleOwner){
+            ((LifecycleOwner)listener).getLifecycle().addObserver(listenerLifecycleObserver);
         }
     }
 
 
     @Override
-    public void onRequesterResumed(Object requester) { // 该事件是粘滞的，即便activity已经resume很久了，然后才注册生命周期观察者也会收到该事件。
-        KLog.p(""+ requester);
+    public void onListenerResumed(Object listener) { // 该事件是粘滞的，即便activity已经resume很久了，然后才注册生命周期观察者也会收到该事件。
+        KLog.p(""+ listener);
     }
 
     @Override
-    public void onRequesterPause(Object requester) {
+    public void onListenerPause(Object listener) {
 
-        KLog.p(""+ requester);
+        KLog.p(""+ listener);
         // pause 只做标记，destroy才删除？保证onCreate中请求后，跳转到其他界面再跳回来时，请求结果依然能上报界面，而无需在onResume中再次请求。
     }
 
