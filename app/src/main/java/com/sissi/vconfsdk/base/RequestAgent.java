@@ -1,6 +1,6 @@
 package com.sissi.vconfsdk.base;
 
-import android.support.v7.app.AppCompatActivity;
+import android.arch.lifecycle.LifecycleOwner;
 
 import com.sissi.vconfsdk.base.amulet.Caster;
 import com.sissi.vconfsdk.utils.KLog;
@@ -231,27 +231,16 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Reques
         }
     }
 
-    private void tryObserveLifecycle(Object lifecycleOwner){
-        boolean isLifecycleOwner = false;
-        if (lifecycleOwner instanceof AppCompatActivity){
-            try {
-                lifecycleOwner.getClass().getMethod("getLifecycle", (Class<?>[]) null);  // 尽管我们sdk依赖28 appcompat-v7可保证只要是AppCompatActivity子类就能调用getLifecycle方法，但是实际使用中该listener是外部传入的，有可能他们使用的AppCompatActivity是低版本的没有该方法。XXX 待验证这种场景会有什么情况发生。
-                isLifecycleOwner = true;
-            } catch (NoSuchMethodException e) {
-                isLifecycleOwner = false;
-            }
+    private void tryObserveLifecycle(Object requester){
+        KLog.p("requester instanceof LifecycleOwner? %s", requester instanceof LifecycleOwner);
+        if (requester instanceof LifecycleOwner){
+            ((LifecycleOwner)requester).getLifecycle().addObserver(requesterLifecycleObserver);
         }
-
-        if (isLifecycleOwner){
-            ((AppCompatActivity)lifecycleOwner).getLifecycle().addObserver(requesterLifecycleObserver);
-        }
-
-        KLog.p("lifecycleOwner=%s, isLifecycleOwner=%s, requesterLifecycleObserver=%s", lifecycleOwner, isLifecycleOwner, requesterLifecycleObserver);
     }
 
 
     @Override
-    public void onRequesterResumed(Object requester) {
+    public void onRequesterResumed(Object requester) { // 该事件是粘滞的，即便activity已经resume很久了，然后才注册生命周期观察者也会收到该事件。
         KLog.p(""+ requester);
     }
 
