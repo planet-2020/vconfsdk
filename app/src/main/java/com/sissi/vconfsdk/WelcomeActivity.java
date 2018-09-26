@@ -15,6 +15,12 @@ public class WelcomeActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_welcome);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
         StartManager startManager = (StartManager) RequestAgent.instance(StartManager.class);
         startManager.startup(0, this);
     }

@@ -24,9 +24,13 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Reques
 
     private Caster caster;
 
+    private RequesterLifecycleObserver requesterLifecycleObserver;
+
     protected RequestAgent(){
         caster = new Caster();
         caster.setOnFeedbackListener(this);
+
+        requesterLifecycleObserver = new RequesterLifecycleObserver(this);
 
         reqSn = 0;
         rspListeners = new HashMap<>();
@@ -88,7 +92,9 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Reques
      * */
     protected synchronized void req(Msg reqId, Object reqPara, Object rspListener){
 //        Log.i(TAG, String.format("rspListener=%s, reqId=%s, reqPara=%s", rspListener, reqId, reqPara));
+
         tryObserveLifecycle(rspListener);
+
         if (caster.req(reqId.name(), ++reqSn, reqPara)){
 //            if (null != rspListener) {
             rspListeners.put(reqSn, rspListener);
@@ -236,24 +242,23 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Reques
             }
         }
 
-        KLog.p("lifecycleOwner=%s, isLifecycleOwner=%s", lifecycleOwner, isLifecycleOwner);
-
         if (isLifecycleOwner){
-            ((AppCompatActivity)lifecycleOwner).getLifecycle().addObserver(new RequesterLifecycleObserver(lifecycleOwner, this));
+            ((AppCompatActivity)lifecycleOwner).getLifecycle().addObserver(requesterLifecycleObserver);
         }
 
+        KLog.p("lifecycleOwner=%s, isLifecycleOwner=%s, requesterLifecycleObserver=%s", lifecycleOwner, isLifecycleOwner, requesterLifecycleObserver);
     }
 
 
     @Override
     public void onRequesterResumed(Object requester) {
-        KLog.p("--> onRequesterResumed "+ requester);
+        KLog.p(""+ requester);
     }
 
     @Override
     public void onRequesterPause(Object requester) {
 
-        KLog.p("--> onRequesterPause "+ requester);
+        KLog.p(""+ requester);
         // pause 只做标记，destroy才删除？保证onCreate中请求后，跳转到其他界面再跳回来时，请求结果依然能上报界面，而无需在onResume中再次请求。
     }
 

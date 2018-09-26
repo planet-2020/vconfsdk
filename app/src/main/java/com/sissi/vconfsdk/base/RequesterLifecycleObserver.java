@@ -1,37 +1,54 @@
 package com.sissi.vconfsdk.base;
 
 
-import android.arch.lifecycle.Lifecycle;
-import android.arch.lifecycle.LifecycleObserver;
-import android.arch.lifecycle.OnLifecycleEvent;
+import android.arch.lifecycle.DefaultLifecycleObserver;
+import android.arch.lifecycle.LifecycleOwner;
+import android.support.annotation.NonNull;
 
 import com.sissi.vconfsdk.utils.KLog;
 
-class RequesterLifecycleObserver implements LifecycleObserver {
+class RequesterLifecycleObserver implements DefaultLifecycleObserver {
 
-    private Object requester;
     private Callback cb;
 
-    public RequesterLifecycleObserver(Object requester, Callback cb){
-        this.requester = requester;
+    RequesterLifecycleObserver(Callback cb){
         this.cb = cb;
     }
 
+    @Override
+    public void onCreate(@NonNull LifecycleOwner owner) {
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
-    void onResumed() {
-        KLog.p("--> resumed "+ requester);
+    }
+
+    @Override
+    public void onStart(@NonNull LifecycleOwner owner) {
+
+    }
+
+    @Override
+    public void onResume(@NonNull LifecycleOwner owner) {
+        KLog.p(""+ owner);
         if (null != cb){
-            cb.onRequesterResumed(requester);
+            cb.onRequesterResumed(owner);
         }
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-    void onPause() {
-        KLog.p("--> pause "+ requester);
+    @Override
+    public void onPause(@NonNull LifecycleOwner owner) {
+        KLog.p(""+ owner);
         if (null != cb){
-            cb.onRequesterPause(requester);
+            cb.onRequesterPause(owner);
         }
+    }
+
+    @Override
+    public void onStop(@NonNull LifecycleOwner owner) {
+
+    }
+
+    @Override
+    public void onDestroy(@NonNull LifecycleOwner owner) {
+
     }
 
     interface Callback{
