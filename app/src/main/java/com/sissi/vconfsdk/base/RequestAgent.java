@@ -76,14 +76,6 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     }
 
 
-
-    /**
-     * 发送请求（不关注响应）
-     * */
-    protected synchronized void req(Msg reqId, Object reqPara){
-        req(reqId, reqPara, null);
-    }
-
     /**
      * 发送请求。
      * @param rspListener 响应监听者。
@@ -130,19 +122,19 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * 取消订阅通知
      * */
     protected synchronized void unsubscribe(Msg ntfId, Object ntfListener){
-        if (null == ntfListener){  // XXX subscribe时允许null，此处不允许？
-            return;
-        }
+//        if (null == ntfListener){  // XXX subscribe时允许null，此处不允许？
+//            return;
+//        }
         String ntfName = ntfId.name();
         Set<Object> listeners = ntfListeners.get(ntfName);
         if (null != listeners){
             listeners.remove(ntfListener);
 //            KLog.p("del ntfListener=%s, ntfId=%s", ntfListener, ntfId);
-            if (listeners.isEmpty()) {
-                ntfListeners.remove(ntfName);
-                caster.unsubscribe(ntfName);  // XXX 即便没有listener了，通知监听也不能删除，xxManager还需要监听，并保存数据到本地。
-//                KLog.p("unsubscribeNtf %s", ntfId);
-            }
+//            if (listeners.isEmpty()) {
+//                ntfListeners.remove(ntfName);
+//                caster.unsubscribe(ntfName);  // XXX 即便没有listener了，通知监听也不能删除，xxManager还需要监听，并保存数据到本地。
+////                KLog.p("unsubscribeNtf %s", ntfId);
+//            }
         }
     }
 
