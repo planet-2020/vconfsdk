@@ -15,6 +15,15 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
         this.cb = cb;
     }
 
+    boolean tryObserve(Object listener){
+        KLog.p("listener instanceof LifecycleOwner? %s", listener instanceof LifecycleOwner);
+        if (listener instanceof LifecycleOwner){
+            ((LifecycleOwner)listener).getLifecycle().addObserver(this);
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public void onCreate(@NonNull LifecycleOwner owner) {
 

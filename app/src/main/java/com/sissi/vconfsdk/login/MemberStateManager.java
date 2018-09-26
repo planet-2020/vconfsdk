@@ -4,16 +4,20 @@ import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.RequestAgent;
 import com.sissi.vconfsdk.utils.KLog;
 
+import java.util.Set;
+
 public class MemberStateManager extends RequestAgent {
 
     private MemberStateManager(){}
 
     @Override
-    protected void onNtf(Msg ntfId, Object ntfContent, Object listener) {
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listener, ntfId, ntfContent);
+    protected void onNtf(Msg ntfId, Object ntfContent, Set<Object> listeners) {
+        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (Msg.MemberStateChangedNtf.equals(ntfId)){
-            if (null != listener){
-                ((OnMemberStateChangedListener)listener).onMemberStateChanged();
+            for (Object listener : listeners) {
+                if (null != listener) {
+                    ((OnMemberStateChangedListener) listener).onMemberStateChanged();
+                }
             }
         }
     }

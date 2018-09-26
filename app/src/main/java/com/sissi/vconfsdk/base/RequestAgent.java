@@ -1,7 +1,5 @@
 package com.sissi.vconfsdk.base;
 
-import android.arch.lifecycle.LifecycleOwner;
-
 import com.sissi.vconfsdk.base.amulet.Caster;
 import com.sissi.vconfsdk.utils.KLog;
 
@@ -20,7 +18,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
 
     private int reqSn; // 请求序列号，唯一标识一次请求。
     private final HashMap<Integer, Object> rspListeners; // 响应监听者
-    private final HashMap<Msg, Set<Object>> ntfListeners; // 通知监听者
+    private final HashMap<String, Set<Object>> ntfListeners; // 通知监听者
 
     private Caster caster;
 
@@ -93,12 +91,13 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     protected synchronized void req(Msg reqId, Object reqPara, Object rspListener){
 //        Log.i(TAG, String.format("rspListener=%s, reqId=%s, reqPara=%s", rspListener, reqId, reqPara));
 
-        tryObserveLifecycle(rspListener);
+        if (!caster.req(reqId.name(), ++reqSn, reqPara)){
+            return;
+        }
 
-        if (caster.req(reqId.name(), ++reqSn, reqPara)){
-//            if (null != rspListener) {
+        if (null != rspListener) {
             rspListeners.put(reqSn, rspListener);
-//            }
+            listenerLifecycleObserver.tryObserve(rspListener);
         }
     }
 
@@ -112,36 +111,36 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * */
     protected synchronized void subscribe(Msg ntfId, Object ntfListener){
 //        Log.i(TAG, String.format("ntfListener=%s, ntfId=%s", ntfListener, ntfId));
-        if (null == ntfListener){
+        String ntfName = ntfId.name();
+        if (!caster.subscribe(ntfName)){
             return;
         }
 
-        if (!caster.subscribe(ntfId.name())){
-            return;
-        }
-
-        Set<Object> listeners = ntfListeners.get(ntfId);
-        if (null == listeners){
+        Set<Object> listeners = ntfListeners.get(ntfName);
+        if (null == listeners) {
             listeners = new HashSet<>();
-            ntfListeners.put(ntfId, listeners);
+            ntfListeners.put(ntfName, listeners);
         }
-        listeners.add(ntfListener);
+        if (null != ntfListener) {
+            listeners.add(ntfListener);
+        }
     }
 
     /**
      * 取消订阅通知
      * */
     protected synchronized void unsubscribe(Msg ntfId, Object ntfListener){
-        if (null == ntfListener){
+        if (null == ntfListener){  // XXX subscribe时允许null，此处不允许？
             return;
         }
-        Set<Object> listeners = ntfListeners.get(ntfId);
+        String ntfName = ntfId.name();
+        Set<Object> listeners = ntfListeners.get(ntfName);
         if (null != listeners){
             listeners.remove(ntfListener);
 //            KLog.p("del ntfListener=%s, ntfId=%s", ntfListener, ntfId);
             if (listeners.isEmpty()) {
-                ntfListeners.remove(ntfId);
-                caster.unsubscribe(ntfId.name());
+                ntfListeners.remove(ntfName);
+                caster.unsubscribe(ntfName);  // XXX 即便没有listener了，通知监听也不能删除，xxManager还需要监听，并保存数据到本地。
 //                KLog.p("unsubscribeNtf %s", ntfId);
             }
         }
@@ -152,7 +151,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * 批量订阅通知
      * */
     protected synchronized void subscribe(Msg[] ntfIds, Object ntfListener){
-        if (null == ntfListener || null == ntfIds){
+        if (null == ntfIds){
             return;
         }
         for (Msg ntfId : ntfIds){
@@ -226,18 +225,10 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * 删除通知监听者
      * */
     protected synchronized void delNtfListener(Object ntfListener){ // TODO 一个监听者可能监听多种响应而他只想删除其中一种响应的监听，所以再加一个响应id参数？
-        for (Msg ntfId : ntfListeners.keySet()) {
-            unsubscribe(ntfId, ntfListener);
+        for (String ntfId : ntfListeners.keySet()) {
+            unsubscribe(Msg.valueOf(ntfId), ntfListener);
         }
     }
-
-    private void tryObserveLifecycle(Object listener){
-        KLog.p("listener instanceof LifecycleOwner? %s", listener instanceof LifecycleOwner);
-        if (listener instanceof LifecycleOwner){
-            ((LifecycleOwner)listener).getLifecycle().addObserver(listenerLifecycleObserver);
-        }
-    }
-
 
     @Override
     public void onListenerResumed(Object listener) { // 该事件是粘滞的，即便activity已经resume很久了，然后才注册生命周期观察者也会收到该事件。
@@ -253,43 +244,28 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
 
     @Override
     public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn) {
-        Object rspListener = rspListeners.get(reqSn);
-        onRsp(Msg.valueOf(rspId), rspContent, rspListener);
+        onRsp(Msg.valueOf(rspId), rspContent, rspListeners.get(reqSn));
     }
 
     @Override
     public void onFeedbackRspFin(String rspId, Object rspContent, String reqId, int reqSn) {
-        Object rspListener = rspListeners.get(reqSn);
-        synchronized (this) {
-            rspListeners.remove(reqSn); // 请求已结束，移除该次请求记录
-        }
-        onRsp(Msg.valueOf(rspId), rspContent, rspListener);
+        onRsp(Msg.valueOf(rspId), rspContent, rspListeners.remove(reqSn));
     }
 
     @Override
     public void onFeedbackTimeout(String reqId, int reqSn) {
-        Object rspListener = rspListeners.get(reqSn);
-        synchronized (this) {
-            rspListeners.remove(reqSn); // 请求已结束，移除该次请求记录
-        }
-        onTimeout(Msg.valueOf(reqId), rspListener);
+        onTimeout(Msg.valueOf(reqId), rspListeners.remove(reqSn));
     }
 
     @Override
     public void onFeedbackNtf(String ntfId, Object ntfContent) {
-        Msg ntfMsg = Msg.valueOf(ntfId);
-        Set<Object> ntfListenerSet = ntfListeners.get(ntfMsg);
-        if (null != ntfListenerSet){ //TODO ntfListeners为null时是否有必要让上层manager感知？
-            for (Object ntfListener : ntfListenerSet) {
-                onNtf(ntfMsg, ntfContent, ntfListener);
-            }
-        }
+        onNtf(Msg.valueOf(ntfId), ntfContent, ntfListeners.get(ntfId));
     }
 
 
     protected void onRsp(Msg rspId, Object rspContent, Object listener) {}
 
-    protected void onNtf(Msg ntfId, Object ntfContent, Object listener) {}
+    protected void onNtf(Msg ntfId, Object ntfContent, Set<Object> listeners) {}
 
     protected void onTimeout(Msg reqId, Object listener) {}
 
