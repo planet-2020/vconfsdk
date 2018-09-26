@@ -1,5 +1,7 @@
 package com.sissi.vconfsdk.login;
 
+import android.os.Handler;
+
 import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.MsgBeans;
 import com.sissi.vconfsdk.base.RequestAgent;
@@ -28,7 +30,8 @@ public class LoginManager extends RequestAgent {
             MsgBeans.LoginResult loginRes = (MsgBeans.LoginResult) rspContent;
             if (null != listener){
                 if (0 == loginRes.result) {
-                    ((OnLoginResultListener) listener).onLoginSuccess();
+                    new Handler().postDelayed(((OnLoginResultListener) listener)::onLoginSuccess, 5000);
+//                    ((OnLoginResultListener) listener).onLoginSuccess();
                 }else{
                     ((OnLoginResultListener) listener).onLoginFailed(loginRes.result);
                 }
