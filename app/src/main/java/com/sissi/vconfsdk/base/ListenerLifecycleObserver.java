@@ -7,11 +7,11 @@ import android.support.annotation.NonNull;
 
 import com.sissi.vconfsdk.utils.KLog;
 
-class RequesterLifecycleObserver implements DefaultLifecycleObserver {
+class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
     private Callback cb;
 
-    RequesterLifecycleObserver(Callback cb){
+    ListenerLifecycleObserver(Callback cb){
         this.cb = cb;
     }
 

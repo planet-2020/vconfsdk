@@ -13,7 +13,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-public abstract class RequestAgent implements Caster.IOnFeedbackListener, RequesterLifecycleObserver.Callback{
+public abstract class RequestAgent implements Caster.IOnFeedbackListener, ListenerLifecycleObserver.Callback{
 
     private static HashMap<Class<?>, RequestAgent> instances = new HashMap<>();
     private static HashMap<Class<?>, Integer> refercnt = new HashMap<>();
@@ -24,13 +24,13 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Reques
 
     private Caster caster;
 
-    private RequesterLifecycleObserver requesterLifecycleObserver;
+    private ListenerLifecycleObserver listenerLifecycleObserver;
 
     protected RequestAgent(){
         caster = new Caster();
         caster.setOnFeedbackListener(this);
 
-        requesterLifecycleObserver = new RequesterLifecycleObserver(this);
+        listenerLifecycleObserver = new ListenerLifecycleObserver(this);
 
         reqSn = 0;
         rspListeners = new HashMap<>();
@@ -234,7 +234,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Reques
     private void tryObserveLifecycle(Object requester){
         KLog.p("requester instanceof LifecycleOwner? %s", requester instanceof LifecycleOwner);
         if (requester instanceof LifecycleOwner){
-            ((LifecycleOwner)requester).getLifecycle().addObserver(requesterLifecycleObserver);
+            ((LifecycleOwner)requester).getLifecycle().addObserver(listenerLifecycleObserver);
         }
     }
 
