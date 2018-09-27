@@ -17,9 +17,9 @@ public class LoginManager extends RequestAgent {
     }
 
     public void login(String server, String account, String passwd, OnLoginResultListener loginResultListener){
-        set(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
-        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) get(Msg.GetXmppServerInfo);
-        KLog.p("xmppServerInfo{%s, %d}",xmppServerInfo.domain, xmppServerInfo.ip);
+//        set(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
+//        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) get(Msg.GetXmppServerInfo);
+//        KLog.p("xmppServerInfo{%s, %d}",xmppServerInfo.domain, xmppServerInfo.ip);
         req(Msg.LoginReq, new MsgBeans.LoginReq(server, account, passwd, MsgBeans.SetType.Phone), loginResultListener);
     }
 
@@ -27,11 +27,13 @@ public class LoginManager extends RequestAgent {
     protected void onRsp(Msg rspId, Object rspContent, Object listener) {
         KLog.p("rspId=%s, rspContent=%s",rspId, rspContent);
         if (Msg.LoginRsp.equals(rspId)){
+
+        }else if (Msg.LoginRspFin.equals(rspId)){
             MsgBeans.LoginResult loginRes = (MsgBeans.LoginResult) rspContent;
             if (null != listener){
                 if (0 == loginRes.result) {
-                    new Handler().postDelayed(((OnLoginResultListener) listener)::onLoginSuccess, 5000);
-//                    ((OnLoginResultListener) listener).onLoginSuccess();
+//                    new Handler().postDelayed(((OnLoginResultListener) listener)::onLoginSuccess, 3000);
+                    ((OnLoginResultListener) listener).onLoginSuccess();
                 }else{
                     ((OnLoginResultListener) listener).onLoginFailed(loginRes.result);
                 }
@@ -42,6 +44,11 @@ public class LoginManager extends RequestAgent {
     @Override
     protected void onTimeout(Msg reqId, Object listener) {
         KLog.p("listener=%s, reqId=%s",listener, reqId);
+        if (Msg.LoginReq.equals(reqId)) {
+            if (null != listener) {
+                ((OnLoginResultListener) listener).onLoginTimeout();
+            }
+        }
     }
 
 

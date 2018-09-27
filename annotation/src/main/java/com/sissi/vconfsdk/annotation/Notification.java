@@ -9,5 +9,6 @@ package com.sissi.vconfsdk.annotation;
  */
 
 public @interface Notification {
-    Class value(); // 通知消息体对应的类
+    Class clz(); // 通知消息体对应的类
+    int delay() default 100; // 延时（单位：毫秒）。仅用于模拟模式。
 }

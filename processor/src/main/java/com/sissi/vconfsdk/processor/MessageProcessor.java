@@ -65,7 +65,11 @@ public class MessageProcessor extends AbstractProcessor {
 
     private Map<String, String> rspClazzMap = new HashMap<>();
 
+    private Map<String, Integer> rspDelayMap = new HashMap<>();
+
     private Map<String, String> ntfClazzMap = new HashMap<>();
+
+    private Map<String, Integer> ntfDelayMap = new HashMap<>();
 
     private Map<String, String> getParaClazzMap = new HashMap<>();
 
@@ -175,7 +179,7 @@ public class MessageProcessor extends AbstractProcessor {
 
                 // 获取响应对应的消息体类型
                 try {
-                    clz = response.value();
+                    clz = response.clz();
                     rspClazzFullName = clz.getCanonicalName();
                 }catch (MirroredTypeException mte) {
                     DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
@@ -188,12 +192,14 @@ public class MessageProcessor extends AbstractProcessor {
 
                 rspClazzMap.put(rspName, rspClazzFullName);
 
+                rspDelayMap.put(rspName, response.delay());
+
             }else if (null != (notification = element.getAnnotation(Notification.class))){
                 ntfName = element.getSimpleName().toString();
 
                 // 获取通知对应的消息体类型
                 try {
-                    clz = notification.value();
+                    clz = notification.clz();
                     ntfClazzFullName = clz.getCanonicalName();
                 }catch (MirroredTypeException mte) {
                     DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
@@ -205,6 +211,8 @@ public class MessageProcessor extends AbstractProcessor {
 //                        + " ntfClazzFullName: "+ntfClazzFullName);
 
                 ntfClazzMap.put(ntfName, ntfClazzFullName);
+
+                ntfDelayMap.put(ntfName, notification.delay());
 
             }else if (null != (get = element.getAnnotation(Get.class))){
                 getName = element.getSimpleName().toString();
@@ -315,7 +323,9 @@ public class MessageProcessor extends AbstractProcessor {
         String fieldNameReqRspsMap = "reqRspsMap";
         String fieldNameReqTimeoutMap = "reqTimeoutMap";
         String fieldNameRspClazzMap = "rspClazzMap";
+        String fieldNameRspDelayMap = "rspDelayMap";
         String fieldNameNtfClazzMap = "ntfClazzMap";
+        String fieldNameNtfDelayMap = "ntfDelayMap";
         String fieldNameGetParaClazzMap = "getParaClazzMap";
         String fieldNameGetResultClazzMap = "getResultClazzMap";
         String fieldNameSetParaClazzMap = "setParaClazzMap";
@@ -329,7 +339,9 @@ public class MessageProcessor extends AbstractProcessor {
                 .addStatement("$L = new $T<>()", fieldNameReqRspsMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqTimeoutMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameRspClazzMap, HashMap.class)
+                .addStatement("$L = new $T<>()", fieldNameRspDelayMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameNtfClazzMap, HashMap.class)
+                .addStatement("$L = new $T<>()", fieldNameNtfDelayMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameGetParaClazzMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameGetResultClazzMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameSetParaClazzMap, HashMap.class)
@@ -360,8 +372,16 @@ public class MessageProcessor extends AbstractProcessor {
             codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameRspClazzMap, rsp, rspClazzMap.get(rsp));
         }
 
+        for(String rsp : rspDelayMap.keySet()){
+            codeBlockBuilder.addStatement("$L.put($S, $L)", fieldNameRspDelayMap, rsp, rspDelayMap.get(rsp));
+        }
+
         for(String ntf : ntfClazzMap.keySet()){
             codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameNtfClazzMap, ntf, ntfClazzMap.get(ntf));
+        }
+
+        for(String ntf : ntfDelayMap.keySet()){
+            codeBlockBuilder.addStatement("$L.put($S, $L)", fieldNameNtfDelayMap, ntf, ntfDelayMap.get(ntf));
         }
 
         for(String get : getParaClazzMap.keySet()){
@@ -391,8 +411,14 @@ public class MessageProcessor extends AbstractProcessor {
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
                         fieldNameRspClazzMap, Modifier.PUBLIC, Modifier.STATIC)
                         .build())
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Integer.class),
+                        fieldNameRspDelayMap, Modifier.PUBLIC, Modifier.STATIC)
+                        .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
                         fieldNameNtfClazzMap, Modifier.PUBLIC, Modifier.STATIC)
+                        .build())
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Integer.class),
+                        fieldNameNtfDelayMap, Modifier.PUBLIC, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
                         fieldNameGetParaClazzMap, Modifier.PUBLIC, Modifier.STATIC)

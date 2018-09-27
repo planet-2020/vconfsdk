@@ -38,11 +38,6 @@ public final class MsgBeans {
         public int result;
     }
 
-    public static final class LoginRspFin {
-        public String sessionId;
-        public int result;
-    }
-
     public static final class LogoutReq {
         public String sessionId;
         public LogoutReq(String sessionId){

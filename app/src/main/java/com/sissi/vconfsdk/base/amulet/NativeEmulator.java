@@ -104,9 +104,11 @@ final class NativeEmulator implements INativeEmulator{
 
         String[] rspIds = messageRegister.getRspSeqs(reqId)[0];
         Object rspBody = null;
+        int delay = 0;
         for (int i=0; i<rspIds.length; ++i) {
             // 构造响应json字符串
             final String rspId = rspIds[i];
+            delay += messageRegister.getRspDelay(rspId);
             try {
                 Class<?> clz = messageRegister.getRspClazz(rspId);
                 Constructor ctor = clz.getDeclaredConstructor((Class[])null); // 使用响应消息体类的默认构造函数构造响应消息对象
@@ -123,7 +125,7 @@ final class NativeEmulator implements INativeEmulator{
                     Log.i(TAG, String.format("send RSP %s, rspContent=%s", rspId, jsonRspBody));
                     cb.callback(rspId, jsonRspBody);
                 }
-            }, 10);
+            }, delay);
 
         }
 
@@ -177,7 +179,7 @@ final class NativeEmulator implements INativeEmulator{
                 Log.i(TAG, String.format("send NTF %s, content=%s", finalNtfId, jsonNtfBody));
                 cb.callback(finalNtfId, jsonNtfBody);
             }
-        }, 10);
+        }, messageRegister.getNtfDelay(finalNtfId));
     }
 
 

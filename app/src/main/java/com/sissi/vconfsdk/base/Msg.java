@@ -21,7 +21,7 @@ public enum Msg {
             timeout = 4)
     StartupReq,
 
-    @Response(MsgBeans.StartupResult.class)
+    @Response(clz = MsgBeans.StartupResult.class)
     StartupRsp,
 
     // login
@@ -30,17 +30,17 @@ public enum Msg {
             timeout = 6)
     LoginReq,
 
-    @Response(MsgBeans.LoginResult.class)
+    @Response(clz = MsgBeans.LoginResult.class, delay = 5000)
     LoginRsp,
-    @Response(MsgBeans.LoginRspFin.class)
+    @Response(clz = MsgBeans.LoginResult.class)
     LoginRspFin,
 
     // logout
     @Request(reqPara = MsgBeans.LogoutReq.class, rspSeq = {"LogoutRsp", "LogoutRspFin"}, timeout = 5)
     LogoutReq,
-    @Response(String.class)
+    @Response(clz = String.class)
     LogoutRsp,
-    @Response(String.class)
+    @Response(clz = String.class)
     LogoutRspFin,
 
     @Get(result = MsgBeans.XmppServerInfo.class)
@@ -49,6 +49,6 @@ public enum Msg {
     @Set(MsgBeans.NetConfig.class)
     SetNetConfig,
 
-    @Notification(MsgBeans.MemberState.class)
+    @Notification(clz = MsgBeans.MemberState.class, delay = 2000)
     MemberStateChangedNtf,
 }

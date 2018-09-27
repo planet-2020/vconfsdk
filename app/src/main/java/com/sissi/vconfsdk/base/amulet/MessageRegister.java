@@ -34,7 +34,11 @@ final class MessageRegister {
 
     private Map<String, Class> rspClazzMap; // 响应——响应对应的类
 
+    private Map<String, Integer> rspDelayMap; // 响应——响应延时。仅用于模拟模式
+
     private Map<String, Class> ntfClazzMap; // 通知——通知对应的类
+
+    private Map<String, Integer> ntfDelayMap; // 通知——通知延时。仅用于模拟模式
 
     private Map<String, Class> getParaClazzMap; // 获取参数——参数对应的类
 
@@ -51,7 +55,9 @@ final class MessageRegister {
         reqRspSeqsMap = Message$$Generated.reqRspsMap;
         reqTimeoutMap = Message$$Generated.reqTimeoutMap;
         rspClazzMap = Message$$Generated.rspClazzMap;
+        rspDelayMap = Message$$Generated.rspDelayMap;
         ntfClazzMap = Message$$Generated.ntfClazzMap;
+        ntfDelayMap = Message$$Generated.ntfDelayMap;
         getParaClazzMap = Message$$Generated.getParaClazzMap;
         getResultClazzMap = Message$$Generated.getResultClazzMap;
         setParaClazzMap = Message$$Generated.setParaClazzMap;
@@ -115,6 +121,14 @@ final class MessageRegister {
 
     Class<?> getNtfClazz(String ntf){
         return ntfClazzMap.get(ntf);
+    }
+
+    int getRspDelay(String rsp){
+        return rspDelayMap.get(rsp);
+    }
+
+    int getNtfDelay(String ntf){
+        return ntfDelayMap.get(ntf);
     }
 
     Class<?> getGetParaClazz(String get){
