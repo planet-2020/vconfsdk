@@ -10,14 +10,20 @@ public class MemberStateManager extends RequestAgent {
 
     private MemberStateManager(){}
 
+
+    @Override
+    protected Msg[] caredNtfs() {
+        return new Msg[]{
+                Msg.MemberStateChangedNtf,
+        };
+    }
+
     @Override
     protected void onNtf(Msg ntfId, Object ntfContent, Set<Object> listeners) {
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (Msg.MemberStateChangedNtf.equals(ntfId)){
             for (Object listener : listeners) {
-                if (null != listener) {
-                    ((OnMemberStateChangedListener) listener).onMemberStateChanged();
-                }
+                ((OnMemberStateChangedListener) listener).onMemberStateChanged();
             }
         }
     }

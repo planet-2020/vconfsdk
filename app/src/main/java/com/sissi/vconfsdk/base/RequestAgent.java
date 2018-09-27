@@ -19,7 +19,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     private int reqSn; // 请求序列号，唯一标识一次请求。
     private final HashMap<Integer, Object> rspListeners; // 响应监听者
     private final HashMap<String, Set<Object>> ntfListeners; // 通知监听者
-
+    private Set<Msg> caredNtfs;
     private Caster caster;
 
     private ListenerLifecycleObserver listenerLifecycleObserver;
@@ -34,6 +34,17 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         rspListeners = new HashMap<>();
         ntfListeners = new HashMap<>();
 
+        caredNtfs = new HashSet<>();
+        Msg[] ntfs = caredNtfs();
+        if (null != ntfs) {
+            String ntfName;
+            for (Msg ntf : ntfs) {
+                this.caredNtfs.add(ntf);
+                ntfName = ntf.name();
+                caster.subscribe(ntfName);
+                ntfListeners.put(ntfName, new HashSet<>());
+            }
+        }
     }
 
     /**获取Jni请求者。
@@ -75,6 +86,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         instances.remove(clz);
     }
 
+    protected Msg[] caredNtfs(){return null;}
 
     /**
      * 发送请求。
@@ -103,71 +115,54 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * */
     protected synchronized void subscribe(Msg ntfId, Object ntfListener){
 //        Log.i(TAG, String.format("ntfListener=%s, ntfId=%s", ntfListener, ntfId));
-        String ntfName = ntfId.name();
-        if (!caster.subscribe(ntfName)){
+        if (null == ntfListener){
             return;
         }
 
+        if (!caredNtfs.contains(ntfId)){
+            KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
+            return;
+        }
+
+        String ntfName = ntfId.name();
         Set<Object> listeners = ntfListeners.get(ntfName);
         if (null == listeners) {
             listeners = new HashSet<>();
             ntfListeners.put(ntfName, listeners);
         }
-        if (null != ntfListener) {
-            listeners.add(ntfListener);
-        }
+        listeners.add(ntfListener);
     }
 
     /**
      * 取消订阅通知
      * */
     protected synchronized void unsubscribe(Msg ntfId, Object ntfListener){
-//        if (null == ntfListener){  // XXX subscribe时允许null，此处不允许？
-//            return;
-//        }
+        if (null == ntfListener){
+            return;
+        }
+
+        if (!caredNtfs.contains(ntfId)){
+            KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
+            return;
+        }
+
         String ntfName = ntfId.name();
         Set<Object> listeners = ntfListeners.get(ntfName);
         if (null != listeners){
             listeners.remove(ntfListener);
-//            KLog.p("del ntfListener=%s, ntfId=%s", ntfListener, ntfId);
-//            if (listeners.isEmpty()) {
-//                ntfListeners.remove(ntfName);
-//                caster.unsubscribe(ntfName);  // XXX 即便没有listener了，通知监听也不能删除，xxManager还需要监听，并保存数据到本地。
-////                KLog.p("unsubscribeNtf %s", ntfId);
-//            }
         }
     }
 
-
-    /**
-     * 批量订阅通知
-     * */
-    protected synchronized void subscribe(Msg[] ntfIds, Object ntfListener){
-        if (null == ntfIds){
-            return;
-        }
-        for (Msg ntfId : ntfIds){
-            subscribe(ntfId, ntfListener);
-        }
-    }
-
-    /**
-     * 批量取消订阅通知
-     * */
-    protected synchronized void unsubscribe(Msg[] ntfIds, Object ntfListener){
-        if (null == ntfListener || null == ntfIds){
-            return;
-        }
-        for (Msg ntfId : ntfIds) {
-            unsubscribe(ntfId, ntfListener);
-        }
-    }
 
     /**
      * （驱使下层）发射通知。仅用于模拟模式。
      * */
     protected void eject(Msg ntfId){
 //        Log.i(TAG, "eject ntf "+ntfId);
+        if (!caredNtfs.contains(ntfId)){
+            KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
+            return;
+        }
         caster.eject(ntfId.name());
     }
 
@@ -193,7 +188,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * 删除监听者。
      * */
     public synchronized void delListener(Object listener){
-        if (null == listener){ // TOIMPROVE 添加Listener的时候允许为null
+        if (null == listener){
             return;
         }
         delRspListener(listener);
@@ -204,6 +199,9 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * 删除响应监听者
      * */
     protected synchronized void delRspListener(Object rspListener){  // TODO 一个监听者可能监听多种响应而他只想删除其中一种响应的监听，所以再加一个响应id参数？
+        if (null == rspListener){
+            return;
+        }
         Iterator<Map.Entry<Integer,Object>> iter = rspListeners.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<Integer,Object> entry = iter.next();
@@ -217,6 +215,9 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * 删除通知监听者
      * */
     protected synchronized void delNtfListener(Object ntfListener){ // TODO 一个监听者可能监听多种响应而他只想删除其中一种响应的监听，所以再加一个响应id参数？
+        if (null == ntfListener){
+            return;
+        }
         for (String ntfId : ntfListeners.keySet()) {
             unsubscribe(Msg.valueOf(ntfId), ntfListener);
         }
