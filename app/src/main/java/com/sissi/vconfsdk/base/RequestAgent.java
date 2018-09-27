@@ -131,6 +131,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
             ntfListeners.put(ntfName, listeners);
         }
         listeners.add(ntfListener);
+        listenerLifecycleObserver.tryObserve(ntfListener);
     }
 
     /**
@@ -230,9 +231,15 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
 
     @Override
     public void onListenerPause(Object listener) {
-
         KLog.p(""+ listener);
+        delListener(listener);
         // pause 只做标记，destroy才删除？保证onCreate中请求后，跳转到其他界面再跳回来时，请求结果依然能上报界面，而无需在onResume中再次请求。
+    }
+
+    @Override
+    public void onListenerStop(Object listener) {
+        KLog.p(""+ listener);
+        delListener(listener);
     }
 
     @Override

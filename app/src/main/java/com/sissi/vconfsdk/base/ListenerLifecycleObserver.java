@@ -36,7 +36,6 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
     @Override
     public void onResume(@NonNull LifecycleOwner owner) {
-        KLog.p(""+ owner);
         if (null != cb){
             cb.onListenerResumed(owner);
         }
@@ -44,7 +43,6 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
     @Override
     public void onPause(@NonNull LifecycleOwner owner) {
-        KLog.p(""+ owner);
         if (null != cb){
             cb.onListenerPause(owner);
         }
@@ -52,7 +50,9 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
     @Override
     public void onStop(@NonNull LifecycleOwner owner) {
-
+        if (null != cb){
+            cb.onListenerStop(owner);
+        }
     }
 
     @Override
@@ -63,6 +63,7 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
     interface Callback{
         void onListenerResumed(Object listener);
         void onListenerPause(Object listener);
+        void onListenerStop(Object listener);
     }
 
 }
