@@ -16,7 +16,7 @@ import com.sissi.vconfsdk.annotation.Set;
 public enum Msg {
 
     // startup
-    @Request(reqPara = MsgBeans.StartupInfo.class,
+    @Request(para = MsgBeans.StartupInfo.class,
             rspSeq = {"StartupRsp"},
             timeout = 4)
     StartupReq,
@@ -25,7 +25,7 @@ public enum Msg {
     StartupRsp,
 
     // login
-    @Request(reqPara = MsgBeans.LoginReq.class,
+    @Request(para = MsgBeans.LoginReq.class,
             rspSeq = {"LoginRsp", "LoginRspFin"},
             timeout = 6)
     LoginReq,
@@ -36,7 +36,7 @@ public enum Msg {
     LoginRspFin,
 
     // logout
-    @Request(reqPara = MsgBeans.LogoutReq.class, rspSeq = {"LogoutRsp", "LogoutRspFin"}, timeout = 5)
+    @Request(para = MsgBeans.LogoutReq.class, rspSeq = {"LogoutRsp", "LogoutRspFin"}, timeout = 5)
     LogoutReq,
     @Response(clz = String.class)
     LogoutRsp,

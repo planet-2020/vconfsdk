@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
 public @interface Request {
-    Class reqPara() default Void.class;  // 请求参数对应的类
+    Class para() default Void.class;  // 请求参数对应的类
     String[] rspSeq() default {}; // 请求对应的响应序列
     String[] rspSeq2() default {}; // 请求对应的第2路响应序列
     String[] rspSeq3() default {}; // 请求对应的第3路响应序列

@@ -147,7 +147,7 @@ public class MessageProcessor extends AbstractProcessor {
                 reqName = element.getSimpleName().toString();
                 // 获取请求参数
                 try {
-                    clz = request.reqPara();
+                    clz = request.para();
                     reqParaFullName = clz.getCanonicalName();
                 }catch (MirroredTypeException mte) {
                     DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();

@@ -93,7 +93,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * @param rspListener 响应监听者。
      * */
     protected synchronized void req(Msg reqId, Object reqPara, Object rspListener){
-//        Log.i(TAG, String.format("rspListener=%s, reqId=%s, reqPara=%s", rspListener, reqId, reqPara));
+//        Log.i(TAG, String.format("rspListener=%s, reqId=%s, para=%s", rspListener, reqId, para));
 
         if (!caster.req(reqId.name(), ++reqSn, reqPara)){
             return;
