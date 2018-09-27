@@ -60,7 +60,7 @@ public class LoginActivity extends AppCompatActivity
     @Override
     public void onLoginSuccess() {
         KLog.p("####");
-        findViewById(R.id.login).setVisibility(View.INVISIBLE);   // 下层框架能保证此回调处于正确的时机吗？（如果退出该界面则不应回调）
+//        findViewById(R.id.login).setVisibility(View.INVISIBLE);   // 下层框架能保证此回调处于正确的时机吗？（如果退出该界面则不应回调）
         startActivity(new Intent(this, MainActivity.class));
     }
 

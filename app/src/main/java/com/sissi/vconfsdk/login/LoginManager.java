@@ -25,7 +25,7 @@ public class LoginManager extends RequestAgent {
 
     @Override
     protected void onRsp(Msg rspId, Object rspContent, Object listener) {
-        KLog.p("rspId=%s, rspContent=%s",rspId, rspContent);
+        KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
         if (Msg.LoginRsp.equals(rspId)){
 
         }else if (Msg.LoginRspFin.equals(rspId)){

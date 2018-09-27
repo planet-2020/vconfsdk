@@ -32,7 +32,7 @@ public enum Msg {
 
     @Response(clz = MsgBeans.LoginResult.class, delay = 5000)
     LoginRsp,
-    @Response(clz = MsgBeans.LoginResult.class)
+    @Response(clz = MsgBeans.LoginResult.class, delay = 500)
     LoginRspFin,
 
     // logout

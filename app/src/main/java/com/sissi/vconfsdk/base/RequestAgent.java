@@ -101,7 +101,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
 
         if (null != rspListener) {
             rspListeners.put(reqSn, rspListener);
-            listenerLifecycleObserver.tryObserve(rspListener);
+            listenerLifecycleObserver.tryObserve(rspListener);  // XXX 如果同一个listener多次调用该接口注册，则生命周期事件发生时会回调多次。
         }
     }
 
