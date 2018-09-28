@@ -1,9 +1,3 @@
 <resources>
     <string name="app_name">VConfSdk</string>
-    <string name="title_activity_welcome">WelcomeActivity</string>
-    <string name="title_activity_login">LoginActivity</string>
-    <string name="title_activity_main">MainActivity</string>
-
-    <string name="welcome">welcome</string>
-    <string name="login">login</string>
 </resources>
