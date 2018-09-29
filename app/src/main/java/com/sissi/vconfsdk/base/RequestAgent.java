@@ -5,8 +5,6 @@ import android.support.annotation.RestrictTo;
 import com.sissi.vconfsdk.base.amulet.Caster;
 import com.sissi.vconfsdk.utils.KLog;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -52,44 +50,6 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         }
     }
 
-//    /**获取Jni请求者。
-//     * @param clz 请求者类型*/
-//    public synchronized static RequestAgent instance(Class<?> clz){
-//        if (!RequestAgent.class.isAssignableFrom(clz)){
-//            KLog.p("Invalid para!");
-//            return null;
-//        }
-//        RequestAgent requester = instances.get(clz);
-//        if (null == requester){
-//            try {
-//                Constructor ctor = clz.getDeclaredConstructor((Class[])null);
-//                ctor.setAccessible(true);
-//                requester = (RequestAgent) ctor.newInstance();
-//                instances.put(clz, requester);
-//                refercnt.put(clz, 1);
-//            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
-//                e.printStackTrace();
-//            }
-//        } else {
-//            int cnt = refercnt.get(clz);
-//            refercnt.put(clz, ++cnt);
-//        }
-//
-//        return requester;
-//    }
-//
-//    /**释放Jni请求者。
-//     * @param clz 请求者类型*/
-//    public synchronized static void free(Class<?> clz){
-//        int cnt = refercnt.get(clz);
-//        refercnt.put(clz, --cnt);
-//        if (cnt > 0){
-//            return;
-//        }
-//
-//        KLog.p("free presenter: "+clz);
-//        instances.remove(clz);
-//    }
 
     protected abstract Map<Msg, RspProcessor> rspProcessors();
     protected abstract Map<Msg, NtfProcessor> ntfProcessors();
