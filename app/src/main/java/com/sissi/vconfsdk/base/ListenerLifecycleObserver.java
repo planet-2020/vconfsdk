@@ -24,16 +24,21 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
     }
 
     boolean tryObserve(Object listener){
-//        KLog.p("%s instanceof LifecycleOwner? %s", listener, listener instanceof LifecycleOwner);
+        KLog.p("%s instanceof LifecycleOwner? %s", listener, listener instanceof LifecycleOwner);
         if (listener instanceof LifecycleOwner){
             ((LifecycleOwner)listener).getLifecycle().addObserver(this);
             return true;
         }
 
         Class clz = listener.getClass();
-//        KLog.p("LifecycleOwner isAssignableFrom %s? %s", clz.getEnclosingClass(),
-//                LifecycleOwner.class.isAssignableFrom(clz.getEnclosingClass()));
-        if (LifecycleOwner.class.isAssignableFrom(clz.getEnclosingClass())){
+
+        KLog.p("%s EnclosingClass = %s", clz, clz.getEnclosingClass());
+        if (null != clz.getEnclosingClass()){
+            KLog.p("LifecycleOwner.class.isAssignableFrom %s? %s", clz.getEnclosingClass(), LifecycleOwner.class.isAssignableFrom(clz.getEnclosingClass()));
+        }
+
+        if (null != clz.getEnclosingClass()
+                && LifecycleOwner.class.isAssignableFrom(clz.getEnclosingClass())){
             try {
                 Field enclosingClzRef = clz.getDeclaredField("this$0"); // 外部类在内部类中的引用名称为"this$0"
                 enclosingClzRef.setAccessible(true);
@@ -67,14 +72,6 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
     @Override
     public void onResume(@NonNull LifecycleOwner owner) {
         if (null != cb){
-//            cb.onListenerResumed(owner);
-//
-//            if (ownerEnclosedListeners.keySet().contains(owner)){
-//                Set<Object> objects = ownerEnclosedListeners.get(owner);
-//                for (Object obj : objects){
-//                    cb.onListenerResumed(obj);
-//                }
-//            }
             notify(owner, cb::onListenerResumed);
         }
     }
@@ -82,14 +79,6 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
     @Override
     public void onPause(@NonNull LifecycleOwner owner) {
         if (null != cb){
-//            cb.onListenerPause(owner);
-//
-//            if (ownerEnclosedListeners.keySet().contains(owner)){
-//                Set<Object> objects = ownerEnclosedListeners.get(owner);
-//                for (Object obj : objects){
-//                    cb.onListenerPause(obj);
-//                }
-//            }
             notify(owner, cb::onListenerPause);
         }
     }
@@ -97,15 +86,6 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
     @Override
     public void onStop(@NonNull LifecycleOwner owner) {
         if (null != cb){
-//            cb.onListenerStop(owner);
-//
-//            if (ownerEnclosedListeners.keySet().contains(owner)){
-//                Set<Object> objects = ownerEnclosedListeners.get(owner);
-//                for (Object obj : objects){
-//                    cb.onListenerStop(obj);
-//                }
-//            }
-
             notify(owner, cb::onListenerStop);
         }
         ownerEnclosedListeners.remove(owner);
@@ -116,7 +96,6 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
     }
 
     private void notify(LifecycleOwner owner, Action action){
-        KLog.p("#####action=%s", action);
         action.act(owner);
 
         if (ownerEnclosedListeners.keySet().contains(owner)){
