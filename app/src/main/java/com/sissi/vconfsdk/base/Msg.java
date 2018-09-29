@@ -1,6 +1,8 @@
 package com.sissi.vconfsdk.base;
 
 
+import android.support.annotation.RestrictTo;
+
 import com.sissi.vconfsdk.annotation.Get;
 import com.sissi.vconfsdk.annotation.Message;
 import com.sissi.vconfsdk.annotation.Notification;
@@ -12,8 +14,12 @@ import com.sissi.vconfsdk.annotation.Set;
  * Created by Sissi on 2018/9/3.
  */
 
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 @Message
 public enum Msg {
+    // common
+    Timeout,
+    NetworkUnavaliable,
 
     // startup
     @Request(para = MsgBeans.StartupInfo.class,

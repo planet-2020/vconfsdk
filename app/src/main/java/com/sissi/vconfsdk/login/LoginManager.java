@@ -1,11 +1,12 @@
 package com.sissi.vconfsdk.login;
 
-import android.os.Handler;
-
 import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.MsgBeans;
 import com.sissi.vconfsdk.base.RequestAgent;
 import com.sissi.vconfsdk.utils.KLog;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by Sissi on 2018/9/12.
@@ -16,6 +17,20 @@ public class LoginManager extends RequestAgent {
     private LoginManager(){
     }
 
+    @Override
+    protected Map<Msg, RspProcessor> rspProcessors() {
+        Map<Msg, RspProcessor> rspProcessorMap = new HashMap<>();
+
+        rspProcessorMap.put(Msg.LoginReq, this::processLoginResult);
+
+        return rspProcessorMap;
+    }
+
+    @Override
+    protected Map<Msg, NtfProcessor> ntfProcessors() {
+        return null;
+    }
+
     public void login(String server, String account, String passwd, OnLoginResultListener loginResultListener){
 //        set(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
 //        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) get(Msg.GetXmppServerInfo);
@@ -23,8 +38,9 @@ public class LoginManager extends RequestAgent {
         req(Msg.LoginReq, new MsgBeans.LoginReq(server, account, passwd, MsgBeans.SetType.Phone), loginResultListener);
     }
 
-    @Override
-    protected void onRsp(Msg rspId, Object rspContent, Object listener) {
+
+
+    private void processLoginResult(Msg rspId, Object rspContent, Object listener){
         KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
         if (Msg.LoginRsp.equals(rspId)){
 
@@ -32,7 +48,6 @@ public class LoginManager extends RequestAgent {
             MsgBeans.LoginResult loginRes = (MsgBeans.LoginResult) rspContent;
             if (null != listener){
                 if (0 == loginRes.result) {
-//                    new Handler().postDelayed(((OnLoginResultListener) listener)::onLoginSuccess, 3000);
                     ((OnLoginResultListener) listener).onLoginSuccess();
                 }else{
                     ((OnLoginResultListener) listener).onLoginFailed(loginRes.result);
@@ -40,17 +55,6 @@ public class LoginManager extends RequestAgent {
             }
         }
     }
-
-    @Override
-    protected void onTimeout(Msg reqId, Object listener) {
-        KLog.p("listener=%s, reqId=%s",listener, reqId);
-        if (Msg.LoginReq.equals(reqId)) {
-            if (null != listener) {
-                ((OnLoginResultListener) listener).onLoginTimeout();
-            }
-        }
-    }
-
 
     public interface OnLoginResultListener{
         void onLoginSuccess();

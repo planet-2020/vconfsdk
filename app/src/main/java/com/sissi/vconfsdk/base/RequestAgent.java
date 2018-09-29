@@ -1,5 +1,7 @@
 package com.sissi.vconfsdk.base;
 
+import android.support.annotation.RestrictTo;
+
 import com.sissi.vconfsdk.base.amulet.Caster;
 import com.sissi.vconfsdk.utils.KLog;
 
@@ -11,6 +13,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 public abstract class RequestAgent implements Caster.IOnFeedbackListener, ListenerLifecycleObserver.Callback{
 
     private static HashMap<Class<?>, RequestAgent> instances = new HashMap<>();
@@ -19,10 +22,13 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     private int reqSn; // 请求序列号，唯一标识一次请求。
     private final HashMap<Integer, Object> rspListeners; // 响应监听者
     private final HashMap<String, Set<Object>> ntfListeners; // 通知监听者
-    private Set<Msg> caredNtfs;
-    private Caster caster;
+
+    private Map<Msg, RspProcessor> rspProcessorMap;
+    private Map<Msg, NtfProcessor> ntfProcessorMap;
 
     private ListenerLifecycleObserver listenerLifecycleObserver;
+
+    private Caster caster;
 
     protected RequestAgent(){
         caster = new Caster();
@@ -34,12 +40,11 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         rspListeners = new HashMap<>();
         ntfListeners = new HashMap<>();
 
-        caredNtfs = new HashSet<>();
-        Msg[] ntfs = caredNtfs();
-        if (null != ntfs) {
+        rspProcessorMap = rspProcessors();
+        ntfProcessorMap = ntfProcessors();
+        if (null != ntfProcessorMap){
             String ntfName;
-            for (Msg ntf : ntfs) {
-                this.caredNtfs.add(ntf);
+            for (Msg ntf : ntfProcessorMap.keySet()){
                 ntfName = ntf.name();
                 caster.subscribe(ntfName);
                 ntfListeners.put(ntfName, new HashSet<>());
@@ -86,7 +91,17 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         instances.remove(clz);
     }
 
-    protected Msg[] caredNtfs(){return null;}
+    protected abstract Map<Msg, RspProcessor> rspProcessors();
+    protected abstract Map<Msg, NtfProcessor> ntfProcessors();
+
+    protected interface RspProcessor{
+        void process(Msg rspId, Object rspContent, Object listener);
+    }
+
+    protected interface NtfProcessor{
+        void process(Msg ntfId, Object ntfContent, Set<Object> listeners);
+    }
+
 
     /**
      * 发送请求。
@@ -94,6 +109,12 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * */
     protected synchronized void req(Msg reqId, Object reqPara, Object rspListener){
 //        Log.i(TAG, String.format("rspListener=%s, reqId=%s, para=%s", rspListener, reqId, para));
+
+        if (null == rspProcessorMap
+                || !rspProcessorMap.keySet().contains(reqId)){
+            KLog.p(KLog.ERROR, "%s is not in 'cared-req-list'", reqId);
+            return;
+        }
 
         if (!caster.req(reqId.name(), ++reqSn, reqPara)){
             return;
@@ -119,7 +140,8 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
             return;
         }
 
-        if (!caredNtfs.contains(ntfId)){
+        if (null == ntfProcessorMap
+                || !ntfProcessorMap.keySet().contains(ntfId)){
             KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
             return;
         }
@@ -142,11 +164,6 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
             return;
         }
 
-        if (!caredNtfs.contains(ntfId)){
-            KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
-            return;
-        }
-
         String ntfName = ntfId.name();
         Set<Object> listeners = ntfListeners.get(ntfName);
         if (null != listeners){
@@ -160,7 +177,8 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * */
     protected void eject(Msg ntfId){
 //        Log.i(TAG, "eject ntf "+ntfId);
-        if (!caredNtfs.contains(ntfId)){
+        if (null == ntfProcessorMap
+                || !ntfProcessorMap.keySet().contains(ntfId)){
             KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
             return;
         }
@@ -244,29 +262,25 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
 
     @Override
     public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn) {
-        onRsp(Msg.valueOf(rspId), rspContent, rspListeners.get(reqSn));
+        rspProcessorMap.get(Msg.valueOf(reqId))
+                .process(Msg.valueOf(rspId), rspContent, rspListeners.get(reqSn));
     }
 
     @Override
     public void onFeedbackRspFin(String rspId, Object rspContent, String reqId, int reqSn) {
-        onRsp(Msg.valueOf(rspId), rspContent, rspListeners.remove(reqSn));
+        rspProcessorMap.get(Msg.valueOf(reqId))
+                .process(Msg.valueOf(rspId), rspContent, rspListeners.remove(reqSn));
     }
 
     @Override
     public void onFeedbackTimeout(String reqId, int reqSn) {
-        onTimeout(Msg.valueOf(reqId), rspListeners.remove(reqSn));
+//        onTimeout(Msg.valueOf(reqId), rspListeners.remove(reqSn));
     }
 
     @Override
     public void onFeedbackNtf(String ntfId, Object ntfContent) {
-        onNtf(Msg.valueOf(ntfId), ntfContent, ntfListeners.get(ntfId));
+        ntfProcessorMap.get(Msg.valueOf(ntfId))
+                .process(Msg.valueOf(ntfId), ntfContent, ntfListeners.get(ntfId));
     }
-
-
-    protected void onRsp(Msg rspId, Object rspContent, Object listener) {}
-
-    protected void onNtf(Msg ntfId, Object ntfContent, Set<Object> listeners) {}
-
-    protected void onTimeout(Msg reqId, Object listener) {}
 
 }

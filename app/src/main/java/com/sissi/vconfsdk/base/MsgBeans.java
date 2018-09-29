@@ -1,11 +1,14 @@
 package com.sissi.vconfsdk.base;
 
+import android.support.annotation.RestrictTo;
+
 import com.sissi.vconfsdk.annotation.SerializeEnumAsInt;
 
 /**
  * Created by Sissi on 2018/9/6.
  */
 
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 @SerializeEnumAsInt
 public final class MsgBeans {
 
