@@ -14,9 +14,6 @@ import java.util.Set;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public abstract class RequestAgent implements Caster.IOnFeedbackListener, ListenerLifecycleObserver.Callback{
 
-    private static HashMap<Class<?>, RequestAgent> instances = new HashMap<>();
-    private static HashMap<Class<?>, Integer> refercnt = new HashMap<>();
-
     private int reqSn; // 请求序列号，唯一标识一次请求。
     private final HashMap<Integer, Object> rspListeners; // 响应监听者
     private final HashMap<String, Set<Object>> ntfListeners; // 通知监听者
