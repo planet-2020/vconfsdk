@@ -17,9 +17,6 @@ import com.sissi.vconfsdk.annotation.Set;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @Message
 public enum Msg {
-    // common
-    Timeout,
-    NetworkUnavaliable,
 
     // startup
     @Request(para = MsgBeans.StartupInfo.class,
@@ -27,7 +24,7 @@ public enum Msg {
             timeout = 4)
     StartupReq,
 
-    @Response(clz = MsgBeans.StartupResult.class)
+    @Response(clz = MsgBeans.StartupResult.class, delay = 3000)
     StartupRsp,
 
     // login

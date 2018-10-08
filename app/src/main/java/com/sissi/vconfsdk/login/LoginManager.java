@@ -1,8 +1,10 @@
 package com.sissi.vconfsdk.login;
 
+import com.sissi.vconfsdk.base.IOnResponseListener;
 import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.MsgBeans;
 import com.sissi.vconfsdk.base.RequestAgent;
+import com.sissi.vconfsdk.base.ResultCode;
 import com.sissi.vconfsdk.utils.KLog;
 
 import java.util.HashMap;
@@ -21,7 +23,7 @@ public class LoginManager extends RequestAgent {
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> rspProcessorMap = new HashMap<>();
 
-        rspProcessorMap.put(Msg.LoginReq, this::processLoginResult);
+        rspProcessorMap.put(Msg.LoginReq, this::processLoginResponse);
 
         return rspProcessorMap;
     }
@@ -31,7 +33,7 @@ public class LoginManager extends RequestAgent {
         return null;
     }
 
-    public void login(String server, String account, String passwd, OnLoginResultListener loginResultListener){
+    public void login(String server, String account, String passwd, IOnResponseListener loginResultListener){
 //        set(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
 //        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) get(Msg.GetXmppServerInfo);
 //        KLog.p("xmppServerInfo{%s, %d}",xmppServerInfo.domain, xmppServerInfo.ip);
@@ -40,7 +42,7 @@ public class LoginManager extends RequestAgent {
 
 
 
-    private void processLoginResult(Msg rspId, Object rspContent, Object listener){
+    private void processLoginResponse(Msg rspId, Object rspContent, IOnResponseListener listener){
         KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
         if (Msg.LoginRsp.equals(rspId)){
 
@@ -48,23 +50,12 @@ public class LoginManager extends RequestAgent {
             MsgBeans.LoginResult loginRes = (MsgBeans.LoginResult) rspContent;
             if (null != listener){
                 if (0 == loginRes.result) {
-                    ((OnLoginResultListener) listener).onLoginSuccess();
+                    listener.onResponse(ResultCode.SUCCESS, null);
                 }else{
-                    ((OnLoginResultListener) listener).onLoginFailed(loginRes.result);
+                    listener.onResponse(ResultCode.FAILED, null);
                 }
             }
         }
     }
 
-    public interface OnLoginResultListener{
-        void onLoginSuccess();
-        void onLoginFailed(int errorCode);
-        void onLoginTimeout();
-    }
-
-    public interface OnLogoutResultListener{
-        void onLogoutSuccess();
-        void onLogoutFailed(int errorCode);
-        void onLogoutTimeout();
-    }
 }

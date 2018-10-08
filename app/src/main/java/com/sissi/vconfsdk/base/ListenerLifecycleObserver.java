@@ -31,15 +31,20 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
         }
 
         Class clz = listener.getClass();
+        Class enclosingClz = getEnclosingClass(listener);
 
-        KLog.p("%s EnclosingClass = %s", clz, clz.getEnclosingClass());
-        if (null != clz.getEnclosingClass()){
-            KLog.p("LifecycleOwner.class.isAssignableFrom %s? %s", clz.getEnclosingClass(), LifecycleOwner.class.isAssignableFrom(clz.getEnclosingClass()));
+        KLog.p("%s EnclosingClass = %s", clz, enclosingClz);
+        if (null != enclosingClz){
+            KLog.p("LifecycleOwner.class.isAssignableFrom %s? %s", enclosingClz, LifecycleOwner.class.isAssignableFrom(enclosingClz));
         }
 
-        if (null != clz.getEnclosingClass()
-                && LifecycleOwner.class.isAssignableFrom(clz.getEnclosingClass())){
+        if (null != enclosingClz
+                && LifecycleOwner.class.isAssignableFrom(enclosingClz)){
             try {
+                Field[] fields = clz.getDeclaredFields();
+                for (Field field : fields){
+                    KLog.p("======= field: %s", field);
+                }
                 Field enclosingClzRef = clz.getDeclaredField("this$0"); // 外部类在内部类中的引用名称为"this$0"
                 enclosingClzRef.setAccessible(true);
                 LifecycleOwner owner = (LifecycleOwner) enclosingClzRef.get(listener);
@@ -58,6 +63,25 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
         }
 
         return false;
+    }
+
+    private Class<?> getEnclosingClass(Object obj){
+        Class<?> enclosingClz = obj.getClass().getEnclosingClass();
+        if (null != enclosingClz){
+            return enclosingClz;
+        }
+
+        String canonical = obj.getClass().getCanonicalName();
+        int lambdaOffset = canonical.indexOf("$$Lambda$");
+        if (lambdaOffset > 0) {
+            try {
+                enclosingClz = Class.forName(canonical.substring(0, lambdaOffset));
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return enclosingClz;
     }
 
     @Override

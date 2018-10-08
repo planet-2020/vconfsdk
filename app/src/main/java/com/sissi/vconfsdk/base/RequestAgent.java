@@ -15,8 +15,8 @@ import java.util.Set;
 public abstract class RequestAgent implements Caster.IOnFeedbackListener, ListenerLifecycleObserver.Callback{
 
     private int reqSn; // 请求序列号，唯一标识一次请求。
-    private final HashMap<Integer, Object> rspListeners; // 响应监听者
-    private final HashMap<String, Set<Object>> ntfListeners; // 通知监听者
+    private final HashMap<Integer, IOnResponseListener> rspListeners; // 响应监听者 // TODO 改为OnResopnseListener
+    private final HashMap<String, Set<Object>> ntfListeners; // 通知监听者 // TODO 改为OnNotificationListener
 
     private Map<Msg, RspProcessor> rspProcessorMap;
     private Map<Msg, NtfProcessor> ntfProcessorMap;
@@ -52,7 +52,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     protected abstract Map<Msg, NtfProcessor> ntfProcessors();
 
     protected interface RspProcessor{
-        void process(Msg rspId, Object rspContent, Object listener);
+        void process(Msg rspId, Object rspContent, IOnResponseListener listener);
     }
 
     protected interface NtfProcessor{
@@ -64,7 +64,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * 发送请求。
      * @param rspListener 响应监听者。
      * */
-    protected synchronized void req(Msg reqId, Object reqPara, Object rspListener){
+    protected synchronized void req(Msg reqId, Object reqPara, IOnResponseListener rspListener){
 //        Log.i(TAG, String.format("rspListener=%s, reqId=%s, para=%s", rspListener, reqId, para));
 
         if (null == rspProcessorMap
@@ -178,9 +178,9 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         if (null == rspListener){
             return;
         }
-        Iterator<Map.Entry<Integer,Object>> iter = rspListeners.entrySet().iterator();
+        Iterator<Map.Entry<Integer,IOnResponseListener>> iter = rspListeners.entrySet().iterator();
         while (iter.hasNext()) {
-            Map.Entry<Integer,Object> entry = iter.next();
+            Map.Entry<Integer,IOnResponseListener> entry = iter.next();
             if(rspListener.equals(entry.getValue())){
                 iter.remove();
             }
@@ -232,6 +232,10 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     @Override
     public void onFeedbackTimeout(String reqId, int reqSn) { // 响应还有其它的异常，不只超时，所以要扩充？
 //        onTimeout(Msg.valueOf(reqId), rspListeners.remove(reqSn));
+        IOnResponseListener rspListener = (IOnResponseListener) rspListeners.remove(reqSn);
+        if (null != rspListener){
+            rspListener.onResponse(ResultCode.TIMEOUT, null);
+        }
     }
 
     @Override

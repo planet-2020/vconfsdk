@@ -54,4 +54,4 @@ task copyLibs(type: Copy){
     from configurations.embed
     into "$project.projectDir/libs/"
 }
-//build.dependsOn copyLibs
+//compile.dependsOn copyLibs

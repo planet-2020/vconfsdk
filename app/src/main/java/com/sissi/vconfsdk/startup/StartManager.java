@@ -1,8 +1,10 @@
 package com.sissi.vconfsdk.startup;
 
+import com.sissi.vconfsdk.base.IOnResponseListener;
 import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.MsgBeans;
 import com.sissi.vconfsdk.base.RequestAgent;
+import com.sissi.vconfsdk.base.ResultCode;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,7 +15,7 @@ import java.util.Map;
 
 public class StartManager extends RequestAgent {
 
-    public void startup(int mode, OnStartupResultListener listener){
+    public void startup(int mode, IOnResponseListener listener){
         req(Msg.StartupReq, new MsgBeans.StartupInfo(), listener);
     }
 
@@ -21,7 +23,7 @@ public class StartManager extends RequestAgent {
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> rspProcessorMap = new HashMap<>();
 
-        rspProcessorMap.put(Msg.StartupReq, this::processLoginResult);
+        rspProcessorMap.put(Msg.StartupReq, this::processStartupResponse);
 
         return rspProcessorMap;
     }
@@ -31,17 +33,13 @@ public class StartManager extends RequestAgent {
         return null;
     }
 
-    private void processLoginResult(Msg rspId, Object rspContent, Object listener){
+    private void processStartupResponse(Msg rspId, Object rspContent, IOnResponseListener listener){
         if (Msg.StartupRsp.equals(rspId)){
             if (null != listener){
-                ((OnStartupResultListener)listener).onStartupSuccess();
+                listener.onResponse(ResultCode.SUCCESS, null);
             }
         }
     }
 
 
-    public interface OnStartupResultListener{
-        void onStartupSuccess();
-        void onStartupFailed(int errCode);
-    }
 }
