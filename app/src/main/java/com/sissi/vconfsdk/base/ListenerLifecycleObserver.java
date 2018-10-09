@@ -26,10 +26,13 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
     boolean tryObserve(Object listener){
         KLog.p("%s instanceof LifecycleOwner? %s", listener, listener instanceof LifecycleOwner);
         if (listener instanceof LifecycleOwner){
+            // listener本身即为生命周期拥有者，则直接监控其生命周期
             ((LifecycleOwner)listener).getLifecycle().addObserver(this);
             return true;
         }
 
+        /* listener本身不拥有生命周期则尝试监控其外部类的生命周期（若其外部类为生命周期拥有者）。
+         注意：不支持多级嵌套。即仅检查listener的直接外部类，不再往上递归。*/
         Object encloser = getEncloser(listener);
         KLog.p("%s instanceof LifecycleOwner? %s", encloser, encloser instanceof LifecycleOwner);
         if (encloser instanceof LifecycleOwner){
@@ -61,6 +64,9 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
             if (null != enclosingClz) { // 内部类
                 enclosingClzRef = clz.getDeclaredField("this$0"); // 外部类在内部类中的引用名称为"this$0"
             }else { // lambda
+                /*lambda可能持有外部类引用也可能未持有。
+                若lambda内部引用了外部类或外部类的成员则持有否则未持有。
+                持有的情况下外部类在lambda类中的引用名称为"arg$1"*/
                 enclosingClzRef = clz.getDeclaredField("arg$1");
             }
         } catch (NoSuchFieldException e) {
