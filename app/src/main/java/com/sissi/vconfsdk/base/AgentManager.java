@@ -11,11 +11,7 @@ public class AgentManager {
     private static HashMap<Class<?>, RequestAgent> agents = new HashMap<>();
     private static HashMap<Class<?>, Integer> referCnt = new HashMap<>();
 
-    public synchronized static RequestAgent obtain(Class<?> clz){
-        if (!RequestAgent.class.isAssignableFrom(clz)){
-            KLog.p("Invalid para!");
-            return null;
-        }
+    public synchronized static <T extends RequestAgent> T obtain(Class<T> clz){
         RequestAgent agent = agents.get(clz);
         if (null == agent){
             try {
@@ -26,17 +22,18 @@ public class AgentManager {
                 referCnt.put(clz, 1);
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
                 e.printStackTrace();
+                return null;
             }
         } else {
             int cnt = referCnt.get(clz);
             referCnt.put(clz, ++cnt);
         }
 
-        return agent;
+        return clz.cast(agent);
     }
 
 
-    public synchronized static void free(Class<?> clz){
+    public synchronized static void free(Class<? extends RequestAgent> clz){
         int cnt = referCnt.get(clz);
         referCnt.put(clz, --cnt);
         if (cnt > 0){
