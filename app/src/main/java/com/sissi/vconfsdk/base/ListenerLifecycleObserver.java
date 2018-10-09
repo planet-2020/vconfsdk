@@ -30,58 +30,52 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
             return true;
         }
 
-        Class clz = listener.getClass();
-        Class enclosingClz = getEnclosingClass(listener);
-
-        KLog.p("%s EnclosingClass = %s", clz, enclosingClz);
-        if (null != enclosingClz){
-            KLog.p("LifecycleOwner.class.isAssignableFrom %s? %s", enclosingClz, LifecycleOwner.class.isAssignableFrom(enclosingClz));
-        }
-
-        if (null != enclosingClz
-                && LifecycleOwner.class.isAssignableFrom(enclosingClz)){
-            try {
-                Field[] fields = clz.getDeclaredFields();
-                for (Field field : fields){
-                    KLog.p("======= field: %s", field);
-                }
-                Field enclosingClzRef = clz.getDeclaredField("this$0"); // 外部类在内部类中的引用名称为"this$0"
-                enclosingClzRef.setAccessible(true);
-                LifecycleOwner owner = (LifecycleOwner) enclosingClzRef.get(listener);
-                owner.getLifecycle().addObserver(this);
-                Set<Object> objSet = ownerEnclosedListeners.get(owner);
-                if (null == objSet){
-                    objSet = new HashSet<>();
-                    ownerEnclosedListeners.put(owner, objSet);
-                }
-                objSet.add(listener);
-
-                return true;
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                e.printStackTrace();
+        Object encloser = getEncloser(listener);
+        KLog.p("%s instanceof LifecycleOwner? %s", encloser, encloser instanceof LifecycleOwner);
+        if (encloser instanceof LifecycleOwner){
+            LifecycleOwner owner = (LifecycleOwner) encloser;
+            owner.getLifecycle().addObserver(this);
+            Set<Object> objSet = ownerEnclosedListeners.get(owner);
+            if (null == objSet){
+                objSet = new HashSet<>();
+                ownerEnclosedListeners.put(owner, objSet);
             }
+            objSet.add(listener);
+
+            return true;
         }
 
         return false;
     }
 
-    private Class<?> getEnclosingClass(Object obj){
-        Class<?> enclosingClz = obj.getClass().getEnclosingClass();
-        if (null != enclosingClz){
-            return enclosingClz;
-        }
-
-        String canonical = obj.getClass().getCanonicalName();
-        int lambdaOffset = canonical.indexOf("$$Lambda$");
-        if (lambdaOffset > 0) {
-            try {
-                enclosingClz = Class.forName(canonical.substring(0, lambdaOffset));
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
+    private Object getEncloser(Object obj){
+        Class<?> clz = obj.getClass();
+        Class<?> enclosingClz = clz.getEnclosingClass();
+        Object encloser = null;
+        Field enclosingClzRef;
+        try {
+            Field[] fields = clz.getDeclaredFields();
+            for (Field field : fields){
+                KLog.p("======= field: %s", field);
             }
+            if (null != enclosingClz) { // 内部类
+                enclosingClzRef = clz.getDeclaredField("this$0"); // 外部类在内部类中的引用名称为"this$0"
+            }else { // lambda
+                enclosingClzRef = clz.getDeclaredField("arg$1");
+            }
+        } catch (NoSuchFieldException e) {
+            return null;
         }
 
-        return enclosingClz;
+        enclosingClzRef.setAccessible(true);
+
+        try {
+            encloser = enclosingClzRef.get(obj);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+
+        return encloser;
     }
 
     @Override
