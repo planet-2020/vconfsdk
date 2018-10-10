@@ -279,7 +279,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
         // 通知用户请求超时
         Message rsp = Message.obtain();
-        rsp.obj = new FeedbackBundle("TIMEOUT", null, FeedbackBundle.RSP_TIMEOUT, s.reqId, s.reqSn);
+        rsp.obj = new FeedbackBundle("Timeout", null, FeedbackBundle.RSP_TIMEOUT, s.reqId, s.reqSn);
         s.requester.sendMessage(rsp);
 
         sessions.remove(s);

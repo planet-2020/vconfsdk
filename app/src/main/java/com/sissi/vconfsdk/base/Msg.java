@@ -18,6 +18,9 @@ import com.sissi.vconfsdk.annotation.Set;
 @Message
 public enum Msg {
 
+    @Response
+    Timeout,
+
     // startup
     @Request(para = MsgBeans.StartupInfo.class,
             rspSeq = {"StartupRsp"},

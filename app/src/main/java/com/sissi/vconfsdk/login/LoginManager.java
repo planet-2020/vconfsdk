@@ -23,7 +23,7 @@ public class LoginManager extends RequestAgent {
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> rspProcessorMap = new HashMap<>();
 
-        rspProcessorMap.put(Msg.LoginReq, this::processLoginResponse);
+        rspProcessorMap.put(Msg.LoginReq, this::processLoginResponses);
 
         return rspProcessorMap;
     }
@@ -42,7 +42,7 @@ public class LoginManager extends RequestAgent {
 
 
 
-    private void processLoginResponse(Msg rspId, Object rspContent, IOnResponseListener listener){
+    private void processLoginResponses(Msg rspId, Object rspContent, IOnResponseListener listener){
         KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
         if (Msg.LoginRsp.equals(rspId)){
 
@@ -56,6 +56,11 @@ public class LoginManager extends RequestAgent {
                 }
             }
         }
+/*        else if (Msg.Timeout.equals(rspId)){
+            if (null != listener){
+                listener.onResponse(ResultCode.TIMEOUT, null); // agent会通知上层已超时，此处不需要再次通知，只需要做一些善后工作，比如保存/清空数据等。
+            }
+        }*/
     }
 
 }

@@ -15,6 +15,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
 public @interface Response {
-    Class clz(); // 响应消息体对应的类
+    Class clz() default Void.class; // 响应消息体对应的类
     int delay() default 100; // 延时（单位：毫秒）。仅用于模拟模式。
 }

@@ -230,9 +230,10 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     }
 
     @Override
-    public void onFeedbackTimeout(String reqId, int reqSn) { // 响应还有其它的异常，不只超时，所以要扩充？
-//        onTimeout(Msg.valueOf(reqId), rspListeners.remove(reqSn));
+    public void onFeedbackTimeout(String reqId, int reqSn) {
         IOnResponseListener rspListener = rspListeners.remove(reqSn);
+        rspProcessorMap.get(Msg.valueOf(reqId))
+                .process(Msg.Timeout, null, rspListener);
         if (null != rspListener){
             rspListener.onResponse(ResultCode.TIMEOUT, null);
         }
