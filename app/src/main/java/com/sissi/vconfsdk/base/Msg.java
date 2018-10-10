@@ -55,6 +55,6 @@ public enum Msg {
     @Set(MsgBeans.NetConfig.class)
     SetNetConfig,
 
-    @Notification(clz = MsgBeans.MemberState.class, delay = 2000)
+    @Notification(clz = MsgBeans.MemberState.class, delay = 6000)
     MemberStateChangedNtf,
 }

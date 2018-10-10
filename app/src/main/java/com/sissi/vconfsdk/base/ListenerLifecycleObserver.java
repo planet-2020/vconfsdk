@@ -57,10 +57,11 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
         Object encloser = null;
         Field enclosingClzRef;
         try {
-            Field[] fields = clz.getDeclaredFields();
-            for (Field field : fields){
-                KLog.p("======= field: %s", field);
-            }
+            //for debug
+//            Field[] fields = clz.getDeclaredFields();
+//            for (Field field : fields){
+//                KLog.p("======= field: %s", field);
+//            }
             if (null != enclosingClz) { // 内部类
                 enclosingClzRef = clz.getDeclaredField("this$0"); // 外部类在内部类中的引用名称为"this$0"
             }else { // lambda
