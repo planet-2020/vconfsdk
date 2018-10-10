@@ -34,23 +34,10 @@ public class MemberStateManager extends RequestAgent {
         }
     }
 
-    public void subscribeMemberState(IOnNotificationListener notificationListener){
+    public void subscribeMemberState(/*Set<Member> members, */IOnNotificationListener notificationListener){ // 不需要反注册方法，可以直接使用delListener()
         subscribe(Msg.MemberStateChangedNtf, notificationListener);
 
         eject(Msg.MemberStateChangedNtf);
     }
 
-//    public void addOnMemberStateChangedListener(OnMemberStateChangedListener onMemberStateChangedListener){ //TODO 添加和删除监听器的工作能否自动完成，兼顾activity生命周期
-//        subscribe(Msg.MemberStateChangedNtf, onMemberStateChangedListener);
-//
-//        eject(Msg.MemberStateChangedNtf);
-//    }
-//
-//    public void delOnMemberStateChangedListener(OnMemberStateChangedListener onMemberStateChangedListener){
-//        unsubscribe(Msg.MemberStateChangedNtf, onMemberStateChangedListener);
-//    }
-
-//    public interface OnMemberStateChangedListener{
-//        void onMemberStateChanged();
-//    }
 }
