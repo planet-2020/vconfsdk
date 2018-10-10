@@ -47,6 +47,8 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
                 caster.subscribe(ntfName);
                 ntfListeners.put(ntfName, new HashSet<>());
             }
+        }else{
+            ntfProcessorMap = new HashMap<>();
         }
     }
 
@@ -99,8 +101,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
             return;
         }
 
-        if (null == ntfProcessorMap
-                || !ntfProcessorMap.keySet().contains(ntfId)){
+        if (!ntfProcessorMap.keySet().contains(ntfId)){
             KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
             return;
         }
@@ -136,8 +137,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * */
     protected void eject(Msg ntfId){
 //        Log.i(TAG, "eject ntf "+ntfId);
-        if (null == ntfProcessorMap
-                || !ntfProcessorMap.keySet().contains(ntfId)){
+        if (!ntfProcessorMap.keySet().contains(ntfId)){
             KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
             return;
         }
