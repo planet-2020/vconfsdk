@@ -106,7 +106,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
         for (Handler sub : subs){
             Message msg = Message.obtain();
-            msg.obj = new ResponseBundle(ntfName, ntfContent, ResponseBundle.NTF);
+            msg.obj = new FeedbackBundle(ntfName, ntfContent, FeedbackBundle.NTF);
             sub.sendMessage(msg);
         }
 

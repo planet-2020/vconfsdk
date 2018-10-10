@@ -3,7 +3,7 @@ package com.sissi.vconfsdk.base.amulet;
 /**
  * Created by Sissi on 2018/9/13.
  */
-class ResponseBundle {  //TODO 更名为FeedbackBundle
+class FeedbackBundle {  //TODO 更名为FeedbackBundle
     // 消息类型
     static final int NTF = 101; // 通知
     static final int RSP = 102; // 响应
@@ -16,7 +16,7 @@ class ResponseBundle {  //TODO 更名为FeedbackBundle
     String reqName; // 对应的请求消息名称
     int reqSn;  // 对应的请求序列号
 
-    ResponseBundle(String name, Object body, int type, String reqName, int reqSn) {
+    FeedbackBundle(String name, Object body, int type, String reqName, int reqSn) {
         this.name = name;
         this.body = body;
         this.type = type;
@@ -24,7 +24,7 @@ class ResponseBundle {  //TODO 更名为FeedbackBundle
         this.reqSn = reqSn;
     }
 
-    ResponseBundle(String name, Object body, int type) {
+    FeedbackBundle(String name, Object body, int type) {
         this.name = name;
         this.body = body;
         this.type = type;

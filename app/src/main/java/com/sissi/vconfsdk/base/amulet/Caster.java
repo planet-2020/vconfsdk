@@ -113,22 +113,22 @@ public class Caster {
             return;
         }
 
-        ResponseBundle feedbackBundle = (ResponseBundle) msg.obj;
+        FeedbackBundle feedbackBundle = (FeedbackBundle) msg.obj;
         int type = feedbackBundle.type;
 
-        if (ResponseBundle.RSP == type){
+        if (FeedbackBundle.RSP == type){
 
             onFeedbackListener.onFeedbackRsp(feedbackBundle.name, feedbackBundle.body, feedbackBundle.reqName, feedbackBundle.reqSn);
 
-        }else if (ResponseBundle.RSP_FIN == type){
+        }else if (FeedbackBundle.RSP_FIN == type){
 
             onFeedbackListener.onFeedbackRspFin(feedbackBundle.name, feedbackBundle.body, feedbackBundle.reqName, feedbackBundle.reqSn);
 
-        }else if (ResponseBundle.RSP_TIMEOUT == type){
+        }else if (FeedbackBundle.RSP_TIMEOUT == type){
 
             onFeedbackListener.onFeedbackTimeout(feedbackBundle.reqName, feedbackBundle.reqSn);
 
-        }else if (ResponseBundle.NTF == type){
+        }else if (FeedbackBundle.NTF == type){
 
             onFeedbackListener.onFeedbackNtf(feedbackBundle.name, feedbackBundle.body);
 

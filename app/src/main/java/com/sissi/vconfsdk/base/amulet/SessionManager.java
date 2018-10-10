@@ -179,13 +179,13 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 timeoutHandler.removeMessages(MSG_TIMEOUT, s); // 移除定时器
                 s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                 sessions.remove(s);
-                rsp.obj = new ResponseBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), ResponseBundle.RSP_FIN, s.reqId, s.reqSn);
+                rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), FeedbackBundle.RSP_FIN, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
                 // 驱动被当前会话阻塞的会话
                 driveBlockedSession(s.reqId);
             } else {
                 Log.i(TAG, String.format("<-=- %s (session %d) \n%s", rspName, s.id, rspBody));
-                rsp.obj = new ResponseBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), ResponseBundle.RSP, s.reqId, s.reqSn);
+                rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), FeedbackBundle.RSP, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
             }
 
@@ -214,7 +214,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     }
 
 
-    private void startSession(Session s){ // session自己有start方法, 通过session.start这种方式.
+    private void startSession(Session s){
 
         String jsonReqPara = jsonProcessor.toJson(s.reqPara);
         Log.i(TAG, String.format("-=-> %s (session %d START) \n%s", s.reqId, s.id, jsonReqPara));
@@ -279,7 +279,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
         // 通知用户请求超时
         Message rsp = Message.obtain();
-        rsp.obj = new ResponseBundle("TIMEOUT", null, ResponseBundle.RSP_TIMEOUT, s.reqId, s.reqSn);
+        rsp.obj = new FeedbackBundle("TIMEOUT", null, FeedbackBundle.RSP_TIMEOUT, s.reqId, s.reqSn);
         s.requester.sendMessage(rsp);
 
         sessions.remove(s);
