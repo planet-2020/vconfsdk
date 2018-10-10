@@ -3,12 +3,12 @@ package com.sissi.vconfsdk.base.amulet;
 /**
  * Created by Sissi on 2018/9/13.
  */
-class FeedbackBundle {  //TODO 更名为FeedbackBundle
+class FeedbackBundle {
     // 消息类型
     static final int NTF = 101; // 通知
     static final int RSP = 102; // 响应
     static final int RSP_FIN = 103; // 响应结束（收到响应序列中的最后一条响应）
-    static final int RSP_TIMEOUT = 104; // 响应超时
+    static final int RSP_TIMEOUT = 104; // 响应超时。（TODO 是否要增加类似RSP_NETWORK_UNAVAILABLE的消息类型？为了使功能更加内聚，暂时倾向于不添加，仅关注会话流程相关的消息）
 
     String name;  // 响应消息名称
     Object body; // 响应消息体
