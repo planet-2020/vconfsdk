@@ -88,6 +88,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     }
 
     /**撤销请求*/
+    @Deprecated // 没意义，底层不支持撤销，响应始终会上来。上层如果不想收到响应可直接删掉监听器
     protected synchronized void revertReq(Msg reqId, Object rspListener){
         // TODO
     }
@@ -192,7 +193,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     /**
      * 删除通知监听者
      * */
-    protected synchronized void delNtfListener(Object ntfListener){ // TODO 一个监听者可能监听多种响应而他只想删除其中一种响应的监听，所以再加一个响应id参数？
+    protected synchronized void delNtfListener(Object ntfListener){
         if (null == ntfListener){
             return;
         }
