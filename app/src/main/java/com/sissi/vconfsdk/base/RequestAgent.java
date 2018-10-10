@@ -15,8 +15,8 @@ import java.util.Set;
 public abstract class RequestAgent implements Caster.IOnFeedbackListener, ListenerLifecycleObserver.Callback{
 
     private int reqSn; // 请求序列号，唯一标识一次请求。
-    private final HashMap<Integer, IOnResponseListener> rspListeners; // 响应监听者 // TODO 改为OnResopnseListener
-    private final HashMap<String, Set<Object>> ntfListeners; // 通知监听者 // TODO 改为OnNotificationListener
+    private final HashMap<Integer, IOnResponseListener> rspListeners; // 响应监听者
+    private final HashMap<String, Set<IOnNotificationListener>> ntfListeners; // 通知监听者
 
     private Map<Msg, RspProcessor> rspProcessorMap;
     private Map<Msg, NtfProcessor> ntfProcessorMap;
@@ -56,7 +56,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     }
 
     protected interface NtfProcessor{
-        void process(Msg ntfId, Object ntfContent, Set<Object> listeners);
+        void process(Msg ntfId, Object ntfContent, Set<IOnNotificationListener> listeners);
     }
 
 
@@ -91,7 +91,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     /**
      * 订阅通知
      * */
-    protected synchronized void subscribe(Msg ntfId, Object ntfListener){
+    protected synchronized void subscribe(Msg ntfId, IOnNotificationListener ntfListener){
 //        Log.i(TAG, String.format("ntfListener=%s, ntfId=%s", ntfListener, ntfId));
         if (null == ntfListener){
             return;
@@ -104,7 +104,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         }
 
         String ntfName = ntfId.name();
-        Set<Object> listeners = ntfListeners.get(ntfName);
+        Set<IOnNotificationListener> listeners = ntfListeners.get(ntfName);
         if (null == listeners) {
             listeners = new HashSet<>();
             ntfListeners.put(ntfName, listeners);
@@ -122,7 +122,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         }
 
         String ntfName = ntfId.name();
-        Set<Object> listeners = ntfListeners.get(ntfName);
+        Set<IOnNotificationListener> listeners = ntfListeners.get(ntfName);
         if (null != listeners){
             listeners.remove(ntfListener);
         }
@@ -232,7 +232,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     @Override
     public void onFeedbackTimeout(String reqId, int reqSn) { // 响应还有其它的异常，不只超时，所以要扩充？
 //        onTimeout(Msg.valueOf(reqId), rspListeners.remove(reqSn));
-        IOnResponseListener rspListener = (IOnResponseListener) rspListeners.remove(reqSn);
+        IOnResponseListener rspListener = rspListeners.remove(reqSn);
         if (null != rspListener){
             rspListener.onResponse(ResultCode.TIMEOUT, null);
         }

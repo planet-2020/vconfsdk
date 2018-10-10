@@ -1,5 +1,6 @@
 package com.sissi.vconfsdk.login;
 
+import com.sissi.vconfsdk.base.IOnNotificationListener;
 import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.RequestAgent;
 import com.sissi.vconfsdk.utils.KLog;
@@ -26,25 +27,30 @@ public class MemberStateManager extends RequestAgent {
         return ntfProcessorMap;
     }
 
-    private void processMemberStateChangedNtf(Msg ntfId, Object ntfContent, Set<Object> listeners){
+    private void processMemberStateChangedNtf(Msg ntfId, Object ntfContent, Set<IOnNotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (Object listener : listeners) {
-            ((OnMemberStateChangedListener) listener).onMemberStateChanged();
+        for (IOnNotificationListener listener : listeners) {
+            listener.onNotification(ntfContent);
         }
     }
 
-
-    public void addOnMemberStateChangedListener(OnMemberStateChangedListener onMemberStateChangedListener){ //TODO 添加和删除监听器的工作能否自动完成，兼顾activity生命周期
-        subscribe(Msg.MemberStateChangedNtf, onMemberStateChangedListener);
+    public void subscribeMemberState(IOnNotificationListener notificationListener){
+        subscribe(Msg.MemberStateChangedNtf, notificationListener);
 
         eject(Msg.MemberStateChangedNtf);
     }
 
-    public void delOnMemberStateChangedListener(OnMemberStateChangedListener onMemberStateChangedListener){
-        unsubscribe(Msg.MemberStateChangedNtf, onMemberStateChangedListener);
-    }
+//    public void addOnMemberStateChangedListener(OnMemberStateChangedListener onMemberStateChangedListener){ //TODO 添加和删除监听器的工作能否自动完成，兼顾activity生命周期
+//        subscribe(Msg.MemberStateChangedNtf, onMemberStateChangedListener);
+//
+//        eject(Msg.MemberStateChangedNtf);
+//    }
+//
+//    public void delOnMemberStateChangedListener(OnMemberStateChangedListener onMemberStateChangedListener){
+//        unsubscribe(Msg.MemberStateChangedNtf, onMemberStateChangedListener);
+//    }
 
-    public interface OnMemberStateChangedListener{
-        void onMemberStateChanged();
-    }
+//    public interface OnMemberStateChangedListener{
+//        void onMemberStateChanged();
+//    }
 }
