@@ -15,8 +15,8 @@ import java.util.Set;
 public abstract class RequestAgent implements Caster.IOnFeedbackListener, ListenerLifecycleObserver.Callback{
 
     private int reqSn; // 请求序列号，唯一标识一次请求。
-    private final HashMap<Integer, IOnResponseListener> rspListeners; // 响应监听者
-    private final HashMap<String, Set<IOnNotificationListener>> ntfListeners; // 通知监听者
+    private final Map<Integer, IOnResponseListener> rspListeners; // 响应监听者
+    private final Map<String, Set<IOnNotificationListener>> ntfListeners; // 通知监听者
 
     private Map<Msg, RspProcessor> rspProcessorMap;
     private Map<Msg, NtfProcessor> ntfProcessorMap;
@@ -36,6 +36,9 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         ntfListeners = new HashMap<>();
 
         rspProcessorMap = rspProcessors();
+        if (null == rspProcessorMap){
+            rspProcessorMap = new HashMap<>();
+        }
         ntfProcessorMap = ntfProcessors();
         if (null != ntfProcessorMap){
             String ntfName;
@@ -67,8 +70,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     protected synchronized void req(Msg reqId, Object reqPara, IOnResponseListener rspListener){
 //        Log.i(TAG, String.format("rspListener=%s, reqId=%s, para=%s", rspListener, reqId, para));
 
-        if (null == rspProcessorMap
-                || !rspProcessorMap.keySet().contains(reqId)){
+        if (!rspProcessorMap.keySet().contains(reqId)){
             KLog.p(KLog.ERROR, "%s is not in 'cared-req-list'", reqId);
             return;
         }
