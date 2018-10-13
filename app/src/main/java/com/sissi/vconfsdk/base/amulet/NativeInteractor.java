@@ -111,7 +111,7 @@ final class NativeInteractor implements INativeCallback{
                         if (null!=responseProcessor){
                             responseProcessor.processResponse(msgId, msgBody);
                         }
-                        if (null!=notificationProcessor){
+                        if (null!=notificationProcessor){ //XXX 需不需要采用消费模式？但是如果一条消息既可以是通知也可以是响应呢？
                             notificationProcessor.processNotification(msgId, msgBody);
                         }
                     }

@@ -26,12 +26,8 @@ public class Caster {
 
         NativeInteractor.instance()
                 .setResponseProcessor(SessionManager.instance())
-                .setNotificationProcessor(NotifiManager.instance());
-
-        if (NativeEmulatorOnOff.on) {
-            NativeInteractor.instance().setNativeEmulator(NativeEmulator.instance());
-        }
-
+                .setNotificationProcessor(NotifiManager.instance())
+                .setNativeEmulator(NativeEmulatorOnOff.on ? NativeEmulator.instance() : null);
     }
 
     public Caster(){

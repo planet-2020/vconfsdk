@@ -22,21 +22,19 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
     private static SessionManager instance;
 
-    private Set<Session> sessions;  // 正常会话
+    private Set<Session> sessions;  // 进行中的会话
     private Set<Session> blockedSessions; // 被阻塞的会话
 
     private int sessionCnt = 0;
-    private static final int MAX_SESSION_NUM = 2000; // 正常会话数上限
+    private static final int MAX_SESSION_NUM = 2000; // 进行中的会话数上限
     private static final int MAX_BLOCKED_SESSION_NUM = 10000; // 被阻塞的会话数上限
 
     private Handler reqHandler;
     private Handler timeoutHandler;
-    private static final int MSG_TIMEOUT = 999;
+    private static final int MSG_ID_TIMEOUT = 999;
 
     private JsonProcessor jsonProcessor;
-
     private MessageRegister messageRegister;
-
     private NativeInteractor nativeInteractor;
 
     private SessionManager(){
@@ -138,7 +136,6 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         String candidateRsp;
         int rspSeqIndx;
         int rspIndx;
-        int candidatesCnt;
         boolean gotLast = false; // 是否匹配到会话的最后一条响应
         for (final Session s : sessions) { // 查找期望该响应的会话
             if (Session.WAITING != s.state
@@ -146,8 +143,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 continue;
             }
 
-            candidatesCnt = s.candidates.size();
-            for (int i=0; i<candidatesCnt; ++i) { // 在候选序列中查找所有能处理该响应的序列。
+            for (int i=0; i<s.candidates.size(); ++i) { // 在候选序列中查找所有能处理该响应的序列。
                 rspSeqIndx = s.candidates.keyAt(i);
                 rspIndx = s.candidates.get(rspSeqIndx);
                 candidateRspSeq = s.rspSeqs[rspSeqIndx];
@@ -170,21 +166,19 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
             s.candidates = candidates; // 更新候选序列
 
-            s.state = Session.RECVING; // 已收到响应，继续接收后续响应
-
             Message rsp = Message.obtain();
 
             if (gotLast){// 该会话已获取到最后一条期待的响应
                 Log.i(TAG, String.format("<-=- %s (session %d FINISH) \n%s", rspName, s.id, rspBody));
-                timeoutHandler.removeMessages(MSG_TIMEOUT, s); // 移除定时器
+                timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s); // 移除定时器
                 s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                 sessions.remove(s);
                 rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), FeedbackBundle.RSP_FIN, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
-                // 驱动被当前会话阻塞的会话
-                driveBlockedSession(s.reqId);
+                driveBlockedSession(s.reqId);// 驱动被当前会话阻塞的会话
             } else {
                 Log.i(TAG, String.format("<-=- %s (session %d) \n%s", rspName, s.id, rspBody));
+                s.state = Session.RECVING; // 已收到响应，继续接收后续响应
                 rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), FeedbackBundle.RSP, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
             }
@@ -234,7 +228,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
         // 启动超时
         Message msg = Message.obtain();
-        msg.what = MSG_TIMEOUT;
+        msg.what = MSG_ID_TIMEOUT;
         msg.obj = s;
         timeoutHandler.sendMessageDelayed(msg, s.timeoutVal);
     }
@@ -346,7 +340,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 timeoutHandler = new Handler() {
                     @Override
                     public void handleMessage(Message msg) {
-                        SessionManager.this.timeout((Session) msg.obj);
+                        timeout((Session) msg.obj);
                     }
                 };
                 synchronized (lock) {
@@ -372,7 +366,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
     /**
      * 会话 */
-    final class Session{
+    private final class Session{
         private final int id;   // 会话ID
         private final Handler requester;// 请求者
         private final int reqSn;        // 请求序列号。上层用来唯一标识一次请求，会话不使用不处理该字段，上报响应时带回给请求者。
