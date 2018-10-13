@@ -18,7 +18,7 @@ public class AgentManager {
                 Constructor<T> ctor = clz.getDeclaredConstructor((Class[])null);
                 ctor.setAccessible(true);
                 agent = ctor.newInstance((Object[])null);
-                KLog.p("create agent {%s, %s} ", clz, agent);
+                KLog.p(KLog.VEIN,"create agent {%s, %s} ", clz, agent);
                 agents.put(clz, agent);
                 referCnt.put(clz, 1);
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {

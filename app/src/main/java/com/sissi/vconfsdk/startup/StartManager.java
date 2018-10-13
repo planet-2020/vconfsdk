@@ -5,6 +5,7 @@ import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.MsgBeans;
 import com.sissi.vconfsdk.base.RequestAgent;
 import com.sissi.vconfsdk.base.ResultCode;
+import com.sissi.vconfsdk.utils.KLog;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,6 +15,11 @@ import java.util.Map;
  */
 
 public class StartManager extends RequestAgent {
+
+    static {
+        KLog.enable(true);
+        KLog.setTraceLevel(KLog.INFO);
+    }
 
     public void startup(int mode, IOnResponseListener listener){
         req(Msg.StartupReq, new MsgBeans.StartupInfo(), listener);
