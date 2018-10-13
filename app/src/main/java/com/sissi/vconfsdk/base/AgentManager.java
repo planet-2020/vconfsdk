@@ -15,9 +15,9 @@ public class AgentManager {
         RequestAgent agent = agents.get(clz);
         if (null == agent){
             try {
-                Constructor ctor = clz.getDeclaredConstructor((Class[])null);
+                Constructor<T> ctor = clz.getDeclaredConstructor((Class[])null);
                 ctor.setAccessible(true);
-                agent = (RequestAgent) ctor.newInstance((Object[])null);
+                agent = ctor.newInstance((Object[])null);
                 KLog.p("create agent {%s, %s} ", clz, agent);
                 agents.put(clz, agent);
                 referCnt.put(clz, 1);
