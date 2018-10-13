@@ -33,15 +33,4 @@ public class AgentManager {
         return clz.cast(agent);
     }
 
-
-    public synchronized static void free(Class<? extends RequestAgent> clz){ // TODO 自动管理释放 HashMap<Class<?>, RequestAgent>RequestAgent使用WeakReference？
-        int cnt = referCnt.get(clz);
-        referCnt.put(clz, --cnt);
-        if (cnt > 0){
-            return;
-        }
-
-        KLog.p("free agent  "+clz);
-        agents.remove(clz);
-    }
 }
