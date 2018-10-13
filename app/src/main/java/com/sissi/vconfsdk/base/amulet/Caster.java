@@ -5,9 +5,10 @@ import android.os.Looper;
 import android.os.Message;
 
 
+@SuppressWarnings("UnusedReturnValue")
 public class Caster {
 
-    private static final String TAG = Caster.class.getSimpleName();
+//    private static final String TAG = Caster.class.getSimpleName();
 
     private Handler feedbackHandler;
     private IOnFeedbackListener onFeedbackListener;
@@ -58,24 +59,6 @@ public class Caster {
         subscribeProcessor.unsubscribe(feedbackHandler, ntfId);
     }
 
-
-    /**
-     * 批量订阅通知
-     * */
-    public void subscribe(String[] ntfIds){
-        for (String ntfId : ntfIds){
-            subscribe(ntfId);
-        }
-    }
-
-    /**
-     * 批量取消订阅通知
-     * */
-    public void unsubscribe(String[] ntfIds){
-        for (String ntfId : ntfIds) {
-            unsubscribe(ntfId);
-        }
-    }
 
     /**
      * （驱使下层）发射通知。仅用于模拟模式。

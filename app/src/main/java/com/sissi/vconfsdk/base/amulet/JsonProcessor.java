@@ -1,16 +1,11 @@
 package com.sissi.vconfsdk.base.amulet;
 
-import java.lang.reflect.Type;
 import java.util.Set;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import com.sissi.vconfsdk.annotation.Consumer;
 import com.sissi.vconfsdk.annotation.SerializeEnumAsInt;
@@ -49,36 +44,19 @@ final class JsonProcessor {
     }
 
 
-    private  <T extends Enum<?>> void regEnumType(final Class<T> t) {
-        gsonBuilder.registerTypeAdapter(t, new JsonSerializer<T>() {
+    private  <T extends Enum<?>> void regEnumType(Class<T> t) {
+        gsonBuilder.registerTypeAdapter(t, (JsonSerializer<T>) (paramT, paramType, paramJsonSerializationContext) -> new JsonPrimitive(paramT.ordinal()));
 
-            @Override
-            public JsonElement serialize(T paramT, Type paramType,
-                    JsonSerializationContext paramJsonSerializationContext) {
-                return new JsonPrimitive(paramT.ordinal());
-            }
-        });
+        gsonBuilder.registerTypeAdapter(t, (JsonDeserializer<T>) (paramJsonElement, paramType, paramJsonDeserializationContext) -> {
+            T[] enumConstants = t.getEnumConstants();
+            int enumOrder = paramJsonElement.getAsInt();
+            if (enumOrder < enumConstants.length)
+                return enumConstants[enumOrder];
 
-        gsonBuilder.registerTypeAdapter(t, new JsonDeserializer<T>() {
-
-            @Override
-            public T deserialize(JsonElement paramJsonElement, Type paramType,
-                    JsonDeserializationContext paramJsonDeserializationContext) throws JsonParseException {
-                T[] enumConstants = t.getEnumConstants();
-                int enumOrder = paramJsonElement.getAsInt();
-                if (enumOrder < enumConstants.length)
-                    return enumConstants[enumOrder];
-
-                return null;
-            }
-
+            return null;
         });
     }
 
-
-    Gson obtainGson() {
-        return gson;
-    }
 
     String toJson(Object obj){
         String json = gson.toJson(obj);

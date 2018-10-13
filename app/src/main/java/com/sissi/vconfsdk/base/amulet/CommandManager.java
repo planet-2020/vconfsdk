@@ -7,7 +7,7 @@ package com.sissi.vconfsdk.base.amulet;
  */
 final class CommandManager implements ICommandProcessor{
 
-    private static final String TAG = CommandManager.class.getSimpleName();
+//    private static final String TAG = CommandManager.class.getSimpleName();
 
     private static CommandManager instance;
 
@@ -36,7 +36,7 @@ final class CommandManager implements ICommandProcessor{
      * 该接口阻塞
      * */
     @Override
-    public void set(String setId, Object para){  // XXX 用异常机制代替返回值机制
+    public void set(String setId, Object para){
 
         if (!messageRegister.isSet(setId)){
             return;
@@ -64,8 +64,8 @@ final class CommandManager implements ICommandProcessor{
 
     @Override
     public Object get(String getId, Object para){
-        if (!messageRegister.isGet(getId)){ // XXX 用异常机制代替返回值机制
-            return null; //TODO  throw Exception
+        if (!messageRegister.isGet(getId)){
+            return null;
         }
 
         if (para.getClass() != messageRegister.getGetParaClazz(getId)){

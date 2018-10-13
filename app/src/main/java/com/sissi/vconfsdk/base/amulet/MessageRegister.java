@@ -11,7 +11,7 @@ import java.util.Set;
  *
  * Created by Sissi on 1/9/2017.
  */
-
+@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 @Consumer(Message.class)
 final class MessageRegister {
     private static MessageRegister instance;
@@ -142,13 +142,6 @@ final class MessageRegister {
     Class<?> getSetParaClazz(String set){
         return setParaClazzMap.get(set);
     }
-
-
-//    private void initWhiteList(){
-//    }
-//
-//    private void initBlackList(){
-//    }
 
 }
 
