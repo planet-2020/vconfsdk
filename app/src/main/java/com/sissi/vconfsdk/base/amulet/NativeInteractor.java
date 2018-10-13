@@ -10,7 +10,7 @@ import android.util.Log;
 /**
  * Created by Sissi on 1/20/2017.
  */
-@SuppressWarnings({"JniMissingFunction", "unused"})
+@SuppressWarnings({"JniMissingFunction", /*"unused", */"UnusedReturnValue"})
 final class NativeInteractor implements INativeCallback{
 
     private static final String TAG = NativeInteractor.class.getSimpleName();

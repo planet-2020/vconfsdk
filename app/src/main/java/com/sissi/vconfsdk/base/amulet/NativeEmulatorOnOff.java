@@ -3,8 +3,7 @@ package com.sissi.vconfsdk.base.amulet;
 /**
  * 模拟器开关。
  * Created by Sissi on 2/9/2017.
- */
-/**
+ *
  * 当开启时，可本地模拟“请求——消息响应”流程，这样界面层不必等到底层Native接口开发完成即可走通整个业务流程。
  * 待底层Native接口开发完成后，关闭此开关即可。
  *

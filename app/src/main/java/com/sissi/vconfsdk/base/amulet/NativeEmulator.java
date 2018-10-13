@@ -71,34 +71,27 @@ final class NativeEmulator implements INativeEmulator{
             return -1;
         }
 
-        String reqId = methodName;
-        String reqPara = para;
+        Log.i(TAG, String.format("receive REQ %s, para= %s", methodName, para));
 
-        Log.i(TAG, String.format("receive REQ %s, para= %s", reqId, reqPara));
-
-        String[] rspIds = messageRegister.getRspSeqs(reqId)[0];
+        String[] rspIds = messageRegister.getRspSeqs(methodName)[0];
         Object rspBody = null;
         int delay = 0;
-        for (int i=0; i<rspIds.length; ++i) {
+        for (String rspId : rspIds) {
             // 构造响应json字符串
-            final String rspId = rspIds[i];
             delay += messageRegister.getRspDelay(rspId);
             try {
                 Class<?> clz = messageRegister.getRspClazz(rspId);
-                Constructor ctor = clz.getDeclaredConstructor((Class[])null); // 使用响应消息体类的默认构造函数构造响应消息对象
+                Constructor ctor = clz.getDeclaredConstructor((Class[]) null); // 使用响应消息体类的默认构造函数构造响应消息对象
                 ctor.setAccessible(true);
                 rspBody = ctor.newInstance((Object[]) null);
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                 e.printStackTrace();
             }
-            final String jsonRspBody = jsonProcessor.toJson(rspBody);
+            String jsonRspBody = jsonProcessor.toJson(rspBody);
             // 上报响应
-            handler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    Log.i(TAG, String.format("send RSP %s, rspContent=%s", rspId, jsonRspBody));
-                    cb.callback(rspId, jsonRspBody);
-                }
+            handler.postDelayed(() -> {
+                Log.i(TAG, String.format("send RSP %s, rspContent=%s", rspId, jsonRspBody));
+                cb.callback(rspId, jsonRspBody);
             }, delay);
 
         }
@@ -145,15 +138,11 @@ final class NativeEmulator implements INativeEmulator{
         } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
         }
-        final String finalNtfId = ntfId;
         final String jsonNtfBody = jsonProcessor.toJson(ntfBody);
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                Log.i(TAG, String.format("send NTF %s, content=%s", finalNtfId, jsonNtfBody));
-                cb.callback(finalNtfId, jsonNtfBody);
-            }
-        }, messageRegister.getNtfDelay(finalNtfId));
+        handler.postDelayed(() -> {
+            Log.i(TAG, String.format("send NTF %s, content=%s", ntfId, jsonNtfBody));
+            cb.callback(ntfId, jsonNtfBody);
+        }, messageRegister.getNtfDelay(ntfId));
     }
 
 
