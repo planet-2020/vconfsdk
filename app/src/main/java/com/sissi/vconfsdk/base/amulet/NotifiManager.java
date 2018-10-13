@@ -21,9 +21,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
     private static NotifiManager instance;
 
     private NativeInteractor nativeInteractor;
-
     private MessageRegister messageRegister;
-
     private JsonProcessor jsonProcessor;
 
     private Map<String, Set<Handler>> subscribers;

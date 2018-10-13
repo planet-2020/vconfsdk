@@ -73,11 +73,10 @@ final class NativeEmulator implements INativeEmulator{
 
         Log.i(TAG, String.format("receive REQ %s, para= %s", methodName, para));
 
-        String[] rspIds = messageRegister.getRspSeqs(methodName)[0];
+        String[] rspIds = messageRegister.getRspSeqs(methodName)[0]; // 若有多路响应序列默认返回第一路
         Object rspBody = null;
         int delay = 0;
         for (String rspId : rspIds) {
-            // 构造响应json字符串
             delay += messageRegister.getRspDelay(rspId);
             try {
                 Class<?> clz = messageRegister.getRspClazz(rspId);

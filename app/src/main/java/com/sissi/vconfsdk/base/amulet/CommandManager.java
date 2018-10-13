@@ -31,10 +31,6 @@ final class CommandManager implements ICommandProcessor{
         return instance;
     }
 
-    /**
-     * 设置配置。
-     * 该接口阻塞
-     * */
     @Override
     public void set(String setId, Object para){
 
