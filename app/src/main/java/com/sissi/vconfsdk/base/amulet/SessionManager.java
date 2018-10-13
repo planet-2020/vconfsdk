@@ -1,8 +1,7 @@
 package com.sissi.vconfsdk.base.amulet;
 
-import android.annotation.SuppressLint;
 import android.os.Handler;
-import android.os.Looper;
+import android.os.HandlerThread;
 import android.os.Message;
 import android.os.Process;
 import android.util.Log;
@@ -283,83 +282,27 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     }
 
 
-    /**
-     * 初始化发送请求线程
-     * */
     private void initRequestHandler(){
-        final Object lock = new Object();
-        Thread reqThread = new Thread() {
-            @SuppressLint("HandlerLeak")
-            // 或者, 可以使用Handler.Callback替代在Thread中定义内部类Handler以避免"HandlerLeak"问题，尤其在主线程中建议如此。
+        HandlerThread handlerThread = new HandlerThread("SM.request", Process.THREAD_PRIORITY_BACKGROUND);
+        handlerThread.start();
+        reqHandler = new Handler(handlerThread.getLooper()){
             @Override
-            public void run() {
-                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-                Looper.prepare();
-
-                reqHandler = new Handler() {
-                    @Override
-                    public void handleMessage(Message msg) {
-                        startSession((Session) msg.obj);
-                    }
-                };
-                synchronized (lock) {
-                    lock.notify();
-                }
-
-                Looper.loop();
+            public void handleMessage(Message msg) {
+                startSession((Session) msg.obj);
             }
         };
-
-        reqThread.setName("SM.request");
-
-        reqThread.start();
-
-        if (null == reqHandler){
-            synchronized (lock) {
-                try {
-                    lock.wait(); // 保证thread初始化结束后handler立即可用。
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
     }
 
 
-    /**
-     * 初始化超时线程
-     * */
     private void initTimeoutHandler(){
-        final Object lock = new Object();
-        Thread timeoutThread = new Thread() {
-            @SuppressLint("HandlerLeak")
+        HandlerThread handlerThread = new HandlerThread("SM.timeout", Process.THREAD_PRIORITY_BACKGROUND);
+        handlerThread.start();
+        timeoutHandler = new Handler(handlerThread.getLooper()){
             @Override
-            public void run() {
-                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-                Looper.prepare();
-                timeoutHandler = new Handler() {
-                    @Override
-                    public void handleMessage(Message msg) {
-                        timeout((Session) msg.obj);
-                    }
-                };
-                synchronized (lock) {
-                    lock.notify();
-                }
-                Looper.loop();
+            public void handleMessage(Message msg) {
+                timeout((Session) msg.obj);
             }
         };
-        timeoutThread.setName("SM.timeout");
-        timeoutThread.start();
-        if (null == timeoutHandler){
-            synchronized (lock){
-                try {
-                    lock.wait();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
     }
 
 

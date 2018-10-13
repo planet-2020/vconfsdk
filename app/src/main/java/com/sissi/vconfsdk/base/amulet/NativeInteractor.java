@@ -1,8 +1,7 @@
 package com.sissi.vconfsdk.base.amulet;
 
-import android.annotation.SuppressLint;
 import android.os.Handler;
-import android.os.Looper;
+import android.os.HandlerThread;
 import android.os.Message;
 import android.os.Process;
 import android.util.Log;
@@ -90,53 +89,23 @@ final class NativeInteractor implements INativeCallback{
     }
 
 
-    /**
-     * 初始化native消息处理线程
-     * */
     private void initNativeMsgHandler(){
-        final Object lock = new Object();
-        Thread thread = new Thread() {
-            @SuppressLint("HandlerLeak")
+        HandlerThread handlerThread = new HandlerThread("NI.nativeMsgHandler", Process.THREAD_PRIORITY_BACKGROUND);
+        handlerThread.start();
+        nativeMsgHandler = new Handler(handlerThread.getLooper()){
             @Override
-            public void run() {
-                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-                Looper.prepare();
-
-                nativeMsgHandler = new Handler() {
-                    @Override
-                    public void handleMessage(Message msg) {
-                        NativeMsgWrapper nativeMsgWrapper = (NativeMsgWrapper) msg.obj;
-                        String msgId = nativeMsgWrapper.msgId;
-                        String msgBody = nativeMsgWrapper.msgBody;
-                        if (null!=responseProcessor){
-                            responseProcessor.processResponse(msgId, msgBody);
-                        }
-                        if (null!=notificationProcessor){ //XXX 需不需要采用消费模式？但是如果一条消息既可以是通知也可以是响应呢？
-                            notificationProcessor.processNotification(msgId, msgBody);
-                        }
-                    }
-                };
-                synchronized (lock) {
-                    lock.notify();
+            public void handleMessage(Message msg) {
+                NativeMsgWrapper nativeMsgWrapper = (NativeMsgWrapper) msg.obj;
+                String msgId = nativeMsgWrapper.msgId;
+                String msgBody = nativeMsgWrapper.msgBody;
+                if (null!=responseProcessor){
+                    responseProcessor.processResponse(msgId, msgBody);
                 }
-
-                Looper.loop();
+                if (null!=notificationProcessor){ //XXX 需不需要采用消费模式？但是如果一条消息既可以是通知也可以是响应呢？
+                    notificationProcessor.processNotification(msgId, msgBody);
+                }
             }
         };
-
-        thread.setName("NI.nativeMsgHandler");
-
-        thread.start();
-
-        if (null == nativeMsgHandler){
-            synchronized (lock) {
-                try {
-                    lock.wait();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
     }
 
 

@@ -1,8 +1,7 @@
 package com.sissi.vconfsdk.base.amulet;
 
-import android.annotation.SuppressLint;
 import android.os.Handler;
-import android.os.Looper;
+import android.os.HandlerThread;
 import android.os.Process;
 import android.util.Log;
 
@@ -47,37 +46,12 @@ final class NativeEmulator implements INativeEmulator{
         return instance;
     }
 
-
     private void initHandler(){
-        final Object lock = new Object();
-        Thread thread = new Thread() {
-            @SuppressLint("HandlerLeak")
-            @Override
-            public void run() {
-                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-                Looper.prepare();
-                handler = new Handler();
-                synchronized (lock) {
-                    lock.notify();
-                }
-                Looper.loop();
-            }
-        };
-
-        thread.setName("NE.callback");
-
-        thread.start();
-
-        if (null == handler){
-            synchronized (lock) {
-                try {
-                    lock.wait(); // 保证初始化结束后立即可用。
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+        HandlerThread handlerThread = new HandlerThread("NE.callback", Process.THREAD_PRIORITY_BACKGROUND);
+        handlerThread.start();
+        handler = new Handler(handlerThread.getLooper());
     }
+
 
     @Override
     public void setCallback(INativeCallback cb) {
