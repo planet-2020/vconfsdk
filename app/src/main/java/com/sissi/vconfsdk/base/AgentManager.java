@@ -18,6 +18,7 @@ public class AgentManager {
                 Constructor ctor = clz.getDeclaredConstructor((Class[])null);
                 ctor.setAccessible(true);
                 agent = (RequestAgent) ctor.newInstance((Object[])null);
+                KLog.p("create agent {%s, %s} ", clz, agent);
                 agents.put(clz, agent);
                 referCnt.put(clz, 1);
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
@@ -33,14 +34,14 @@ public class AgentManager {
     }
 
 
-    public synchronized static void free(Class<? extends RequestAgent> clz){
+    public synchronized static void free(Class<? extends RequestAgent> clz){ // TODO 自动管理释放 HashMap<Class<?>, RequestAgent>RequestAgent使用WeakReference？
         int cnt = referCnt.get(clz);
         referCnt.put(clz, --cnt);
         if (cnt > 0){
             return;
         }
 
-        KLog.p("free presenter: "+clz);
+        KLog.p("free agent  "+clz);
         agents.remove(clz);
     }
 }

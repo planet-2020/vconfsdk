@@ -83,14 +83,8 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
 
         if (null != rspListener) {
             rspListeners.put(reqSn, rspListener);
-            listenerLifecycleObserver.tryObserve(rspListener);  // XXX 如果同一个listener多次调用该接口注册，则生命周期事件发生时会回调多次。
+            listenerLifecycleObserver.tryObserve(rspListener);  // 注意：如果同一个listener多次调用该接口注册，则该listener生命周期事件发生时会回调多次。
         }
-    }
-
-    /**撤销请求*/
-    @Deprecated // 没意义，底层不支持撤销，响应始终会上来。上层如果不想收到响应可直接删掉监听器
-    protected synchronized void revertReq(Msg reqId, Object rspListener){
-        // TODO
     }
 
     /**
@@ -211,14 +205,17 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     public void onListenerPause(Object listener) {
         KLog.p(""+ listener);
         delListener(listener);
-        // pause 只做标记，destroy才删除？保证onCreate中请求后，跳转到其他界面再跳回来时，请求结果依然能上报界面，而无需在onResume中再次请求。
+        /*pause 只做标记，destroy才删除？保证onCreate中请求后，跳转到其他界面再跳回来时，请求结果依然能上报界面，而无需在onResume中再次请求。
+        * 但是这样就需要缓存消息，并且XXXManager也需要等待，导致原本可以后台处理的逻辑停滞。比如后台保存联系人。或者可以设定一个超时来改善这种
+        * 情况？比如设定1分钟超时，超过一分钟则上报该响应给xxxManager，若1分钟内界面切回来onResume了则立即推消息给界面？ 也不好。考虑使用LiveData
+        * 等android生命周期相关的组件*/
     }
 
-    @Override
-    public void onListenerStop(Object listener) {
-        KLog.p(""+ listener);
-        delListener(listener);
-    }
+//    @Override
+//    public void onListenerStop(Object listener) {
+//        KLog.p(""+ listener);
+//        delListener(listener);
+//    }
 
     @Override
     public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn) {

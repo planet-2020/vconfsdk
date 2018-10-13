@@ -138,7 +138,10 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
     interface Callback{
         void onListenerResumed(Object listener);
         void onListenerPause(Object listener);
-        void onListenerStop(Object listener);
+
+        default void onListenerStop(Object listener) {
+
+        }
     }
 
 }
