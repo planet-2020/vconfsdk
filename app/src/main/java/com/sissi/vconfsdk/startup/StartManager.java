@@ -18,7 +18,7 @@ public class StartManager extends RequestAgent {
 
     static {
         KLog.enable(true);
-        KLog.setTraceLevel(KLog.INFO);
+        KLog.setLevel(KLog.INFO);
     }
 
     public void startup(int mode, IOnResponseListener listener){
