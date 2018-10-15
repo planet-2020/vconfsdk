@@ -12,6 +12,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 
+@SuppressWarnings({"WeakerAccess", "unused"})
 public class KLog {
 
     private static boolean isEnabled = true;
@@ -38,7 +39,7 @@ public class KLog {
     private static final String TRACE_FILE = "trace.txt";
     private static final String TRACE_FILE1 = "trace1.txt";
     private static final int TRACE_FILE_SIZE_LIMIT = 1024 * 1024 * 1024;
-    private static Object lock = new Object();
+    private static final Object lock = new Object();
 
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yy-MM-dd HH:mm:ss.SSS");
 
@@ -75,7 +76,7 @@ public class KLog {
         StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
         String pref = prefix(ste);
         Long ts = timestampRecord.get(pref);
-        long timestamp = null==ts ? 0 : ts.longValue();
+        long timestamp = null==ts ? 0 : ts;
         long curtime = System.currentTimeMillis();
         if (interval <= curtime-timestamp){
             log(lev, tag, pref+ String.format(format, para));
@@ -93,7 +94,7 @@ public class KLog {
         StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
         String pref = prefix(ste);
         Long ts = timestampRecord.get(pref);
-        long timestamp = null==ts ? 0 : ts.longValue();
+        long timestamp = null==ts ? 0 : ts;
         long curtime = System.currentTimeMillis();
         if (interval <= curtime-timestamp){
             log(lev, tag, pref+ str);
@@ -172,12 +173,12 @@ public class KLog {
 
         StackTraceElement stes[] = Thread.currentThread().getStackTrace();
         StackTraceElement ste = stes[3];
-        StringBuffer trace = new StringBuffer();
+        StringBuilder trace = new StringBuilder();
 
         trace.append(prefix(ste)).append(msg).append("\n");
 
         for (int i = 3, j = 0; i < stes.length; ++i, ++j) {
-            trace.append("#" + j + " " + stes[i] + "\n");
+            trace.append("#").append(j).append(" ").append(stes[i]).append("\n");
         }
 
         System.out.println(trace.toString());
@@ -315,7 +316,7 @@ public class KLog {
     }
 
 	private static String getClassName(String classFullName) {
-		String className = "";
+		String className;
 		int lastSlashIndx = classFullName.lastIndexOf(".");
 		if (-1 == lastSlashIndx) {
 			className = classFullName;
