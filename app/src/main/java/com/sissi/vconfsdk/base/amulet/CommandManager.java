@@ -1,13 +1,15 @@
 package com.sissi.vconfsdk.base.amulet;
 
 
+import android.util.Log;
+
 /**
  *
  * Created by Sissi on 2/22/2017.
  */
 final class CommandManager implements ICommandProcessor{
 
-//    private static final String TAG = CommandManager.class.getSimpleName();
+    private static final String TAG = CommandManager.class.getSimpleName();
 
     private static CommandManager instance;
 
@@ -35,6 +37,7 @@ final class CommandManager implements ICommandProcessor{
     public void set(String setId, Object para){
 
         if (!messageRegister.isSet(setId)){
+            Log.e(TAG, "Unknown set "+setId);
             return;
         }
 
@@ -49,6 +52,7 @@ final class CommandManager implements ICommandProcessor{
     public Object get(String getId){
 
         if (!messageRegister.isGet(getId)){ // XXX 用异常机制代替返回值机制
+            Log.e(TAG, "Unknown get "+getId);
             return null; //TODO  throw Exception
         }
 
@@ -61,6 +65,7 @@ final class CommandManager implements ICommandProcessor{
     @Override
     public Object get(String getId, Object para){
         if (!messageRegister.isGet(getId)){
+            Log.e(TAG, "Unknown get "+getId);
             return null;
         }
 

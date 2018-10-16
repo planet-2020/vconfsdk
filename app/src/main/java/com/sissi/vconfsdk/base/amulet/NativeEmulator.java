@@ -71,7 +71,7 @@ final class NativeEmulator implements INativeEmulator{
             return -1;
         }
 
-        Log.i(TAG, String.format("receive REQ %s, para= %s", methodName, para));
+        Log.d(TAG, String.format("receive REQ %s, para= %s", methodName, para));
 
         String[] rspIds = messageRegister.getRspSeqs(methodName)[0]; // 若有多路响应序列默认返回第一路
         Object rspBody = null;
@@ -89,7 +89,7 @@ final class NativeEmulator implements INativeEmulator{
             String jsonRspBody = jsonProcessor.toJson(rspBody);
             // 上报响应
             handler.postDelayed(() -> {
-                Log.i(TAG, String.format("send RSP %s, rspContent=%s", rspId, jsonRspBody));
+                Log.d(TAG, String.format("send RSP %s, rspContent=%s", rspId, jsonRspBody));
                 cb.callback(rspId, jsonRspBody);
             }, delay);
 
@@ -115,7 +115,7 @@ final class NativeEmulator implements INativeEmulator{
             e.printStackTrace();
         }
 
-        Log.i(TAG, String.format("GET %s, para= %s, result=%s", methodName, para, jsonProcessor.toJson(result)));
+        Log.d(TAG, String.format("GET %s, para= %s, result=%s", methodName, para, jsonProcessor.toJson(result)));
 
         output.append(jsonProcessor.toJson(result));
 
@@ -139,14 +139,14 @@ final class NativeEmulator implements INativeEmulator{
         }
         final String jsonNtfBody = jsonProcessor.toJson(ntfBody);
         handler.postDelayed(() -> {
-            Log.i(TAG, String.format("send NTF %s, content=%s", ntfId, jsonNtfBody));
+            Log.d(TAG, String.format("send NTF %s, content=%s", ntfId, jsonNtfBody));
             cb.callback(ntfId, jsonNtfBody);
         }, messageRegister.getNtfDelay(ntfId));
     }
 
 
     private void set(String methodName, String para){
-        Log.i(TAG, String.format("SET %s, para= %s", methodName, para));
+        Log.d(TAG, String.format("SET %s, para= %s", methodName, para));
     }
 
 }

@@ -168,7 +168,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             Message rsp = Message.obtain();
 
             if (gotLast){// 该会话已获取到最后一条期待的响应
-                Log.i(TAG, String.format("<-=- %s (session %d FINISH) \n%s", rspName, s.id, rspBody));
+                Log.d(TAG, String.format("<-=- %s (session %d FINISH) \n%s", rspName, s.id, rspBody));
                 timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s); // 移除定时器
                 s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                 sessions.remove(s);
@@ -176,7 +176,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 s.requester.sendMessage(rsp); // 上报该响应
                 driveBlockedSession(s.reqId);// 驱动被当前会话阻塞的会话
             } else {
-                Log.i(TAG, String.format("<-=- %s (session %d) \n%s", rspName, s.id, rspBody));
+                Log.d(TAG, String.format("<-=- %s (session %d) \n%s", rspName, s.id, rspBody));
                 s.state = Session.RECVING; // 已收到响应，继续接收后续响应
                 rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), FeedbackBundle.RSP, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
@@ -210,13 +210,13 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     private void startSession(Session s){
 
         String jsonReqPara = jsonProcessor.toJson(s.reqPara);
-        Log.i(TAG, String.format("-=-> %s (session %d START) \n%s", s.reqId, s.id, jsonReqPara));
+        Log.d(TAG, String.format("-=-> %s (session %d START) \n%s", s.reqId, s.id, jsonReqPara));
 
         nativeInteractor.request(s.reqId, jsonReqPara);
 
         if (null==s.rspSeqs || 0==s.rspSeqs.length){
             s.state = Session.END; // 请求没有响应，会话结束
-            Log.i(TAG, String.format("<-=- (session %d FINISHED. NO RESPONSE)", s.id));
+            Log.d(TAG, String.format("<-=- (session %d FINISHED. NO RESPONSE)", s.id));
             sessions.remove(s);
             driveBlockedSession(s.reqId);
 
@@ -267,7 +267,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
      * @param s 已超时的会话。
      * */
     private synchronized void timeout(final Session s){
-        Log.i(TAG, String.format("<-=- (session %d TIMEOUT)", s.id));
+        Log.d(TAG, String.format("<-=- (session %d TIMEOUT)", s.id));
         s.state = Session.END; // 会话结束
 
         // 通知用户请求超时
