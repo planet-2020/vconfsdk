@@ -22,12 +22,12 @@ public class MemberStateManager extends RequestAgent {
     protected Map<Msg, NtfProcessor> ntfProcessors() {
         Map<Msg, NtfProcessor> ntfProcessorMap = new HashMap<>();
 
-        ntfProcessorMap.put(Msg.MemberStateChangedNtf, this::processMemberStateChangedNtf);
+        ntfProcessorMap.put(Msg.MemberStateChanged, this::processMemberStateChanged);
 
         return ntfProcessorMap;
     }
 
-    private void processMemberStateChangedNtf(Msg ntfId, Object ntfContent, Set<IOnNotificationListener> listeners){
+    private void processMemberStateChanged(Msg ntfId, Object ntfContent, Set<IOnNotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         for (IOnNotificationListener listener : listeners) {
             listener.onNotification(ntfContent);
@@ -35,9 +35,9 @@ public class MemberStateManager extends RequestAgent {
     }
 
     public void subscribeMemberState(/*Set<Member> members, */IOnNotificationListener notificationListener){ // 不需要反注册方法，可以直接使用delListener()
-        subscribe(Msg.MemberStateChangedNtf, notificationListener);
+        subscribe(Msg.MemberStateChanged, notificationListener);
 
-        eject(Msg.MemberStateChangedNtf);
+        eject(Msg.MemberStateChanged);
     }
 
 }

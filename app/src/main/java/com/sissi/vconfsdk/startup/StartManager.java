@@ -22,14 +22,14 @@ public class StartManager extends RequestAgent {
     }
 
     public void startup(int mode, IOnResponseListener listener){
-        req(Msg.StartupReq, new MsgBeans.StartupInfo(), listener);
+        req(Msg.Startup, new MsgBeans.StartupPara(), listener);
     }
 
     @Override
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> rspProcessorMap = new HashMap<>();
 
-        rspProcessorMap.put(Msg.StartupReq, this::processStartupResponses);
+        rspProcessorMap.put(Msg.Startup, this::processStartupResponses);
 
         return rspProcessorMap;
     }

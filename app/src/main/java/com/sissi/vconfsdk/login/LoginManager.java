@@ -23,7 +23,7 @@ public class LoginManager extends RequestAgent {
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> rspProcessorMap = new HashMap<>();
 
-        rspProcessorMap.put(Msg.LoginReq, this::processLoginResponses);
+        rspProcessorMap.put(Msg.Login, this::processLoginResponses);
 
         return rspProcessorMap;
     }
@@ -37,7 +37,7 @@ public class LoginManager extends RequestAgent {
 //        set(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
 //        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) get(Msg.GetXmppServerInfo);
 //        KLog.p("xmppServerInfo{%s, %d}",xmppServerInfo.domain, xmppServerInfo.ip);
-        req(Msg.LoginReq, new MsgBeans.LoginReq(server, account, passwd, MsgBeans.SetType.Phone), loginResultListener);
+        req(Msg.Login, new MsgBeans.LoginPara(server, account, passwd, MsgBeans.SetType.Phone), loginResultListener);
     }
 
 

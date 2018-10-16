@@ -12,7 +12,7 @@ import com.sissi.vconfsdk.annotation.SerializeEnumAsInt;
 @SerializeEnumAsInt
 public final class MsgBeans {
 
-    public static final class StartupInfo{
+    public static final class StartupPara {
 
     }
 
@@ -20,12 +20,12 @@ public final class MsgBeans {
 
     }
 
-    public static final class LoginReq {
+    public static final class LoginPara {
         public String serverAddr;
         public String account;
         public String passwd;
         public SetType setType;
-        public LoginReq(String serverAddr, String account, String passwd, SetType setType){ //TODO 此类模版代码能否统一生成
+        public LoginPara(String serverAddr, String account, String passwd, SetType setType){ //TODO 此类模版代码能否统一生成
             this.serverAddr = serverAddr; this.account = account; this.passwd=passwd; this.setType=setType;
         }
 
@@ -41,9 +41,9 @@ public final class MsgBeans {
         public int result;
     }
 
-    public static final class LogoutReq {
+    public static final class LogoutPara {
         public String sessionId;
-        public LogoutReq(String sessionId){
+        public LogoutPara(String sessionId){
             this.sessionId = sessionId;
         }
     }

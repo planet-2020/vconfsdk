@@ -22,19 +22,20 @@ public enum Msg {
     Timeout,
 
     // startup
-    @Request(para = MsgBeans.StartupInfo.class,
+    @Request(para = MsgBeans.StartupPara.class,  // para表示传入参数
             rspSeq = {"StartupRsp"},
             timeout = 4)
-    StartupReq,
+    Startup, // 请求不带Req后缀
 
-    @Response(clz = MsgBeans.StartupResult.class, delay = 3000)
+    @Response(clz = MsgBeans.StartupResult.class, // Result表示反馈结果，注意区别Info
+            delay = 3000)
     StartupRsp,
 
     // login
-    @Request(para = MsgBeans.LoginReq.class,
+    @Request(para = MsgBeans.LoginPara.class,
             rspSeq = {"LoginRsp", "LoginRspFin"},
             timeout = 6)
-    LoginReq,
+    Login,
 
     @Response(clz = MsgBeans.LoginResult.class, delay = 5000)
     LoginRsp,
@@ -42,8 +43,8 @@ public enum Msg {
     LoginRspFin,
 
     // logout
-    @Request(para = MsgBeans.LogoutReq.class, rspSeq = {"LogoutRsp", "LogoutRspFin"}, timeout = 5)
-    LogoutReq,
+    @Request(para = MsgBeans.LogoutPara.class, rspSeq = {"LogoutRsp", "LogoutRspFin"}, timeout = 5)
+    Logout,
     @Response(clz = String.class)
     LogoutRsp,
     @Response(clz = String.class)
@@ -56,5 +57,5 @@ public enum Msg {
     SetNetConfig,
 
     @Notification(clz = MsgBeans.MemberState.class, delay = 6000)
-    MemberStateChangedNtf,
+    MemberStateChanged,
 }
