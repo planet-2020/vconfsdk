@@ -159,12 +159,11 @@ public class SerializationProcessor extends AbstractProcessor {
 
         // 构建Class
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
-                .addModifiers(Modifier.PUBLIC)
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(ClassName.get(Set.class), ParameterizedTypeName.get(ClassName.get(Class.class),
                         WildcardTypeName.subtypeOf(
                                 ParameterizedTypeName.get(ClassName.get(Enum.class), WildcardTypeName.subtypeOf(Object.class)))
                         )),
-                        fieldNameSerializeEnumAsIntSet, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameSerializeEnumAsIntSet, Modifier.STATIC)
                         .build())
                 .addStaticBlock(codeBlockBuilder.build())
                 .addMethod(constructor.build())

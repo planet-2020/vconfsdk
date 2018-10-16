@@ -398,36 +398,35 @@ public class MessageProcessor extends AbstractProcessor {
 
         // 构建Class
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
-                .addModifiers(Modifier.PUBLIC)
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameReqParaMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameReqParaMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, String[][].class),
-                        fieldNameReqRspsMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameReqRspsMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Integer.class),
-                        fieldNameReqTimeoutMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameReqTimeoutMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameRspClazzMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameRspClazzMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Integer.class),
-                        fieldNameRspDelayMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameRspDelayMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameNtfClazzMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameNtfClazzMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Integer.class),
-                        fieldNameNtfDelayMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameNtfDelayMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameGetParaClazzMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameGetParaClazzMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameGetResultClazzMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameGetResultClazzMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameSetParaClazzMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameSetParaClazzMap, Modifier.STATIC)
                         .build())
                 .addStaticBlock(codeBlockBuilder.build())
                 .addMethod(constructor.build())

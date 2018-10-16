@@ -57,5 +57,5 @@ public enum Msg {
     SetNetConfig,
 
     @Notification(clz = MsgBeans.MemberState.class, delay = 6000)
-    MemberStateChanged,
+    MemberStateChanged,  // 通知不加Ntf后缀，而使用动词分词表事件发生
 }
