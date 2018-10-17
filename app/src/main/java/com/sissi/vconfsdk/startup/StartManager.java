@@ -1,6 +1,6 @@
 package com.sissi.vconfsdk.startup;
 
-import com.sissi.vconfsdk.base.IOnResponseListener;
+import com.sissi.vconfsdk.base.IResultListener;
 import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.MsgBeans;
 import com.sissi.vconfsdk.base.RequestAgent;
@@ -21,7 +21,7 @@ public class StartManager extends RequestAgent {
         KLog.setLevel(KLog.DEBUG);
     }
 
-    public void startup(int mode, IOnResponseListener listener){
+    public void startup(int mode, IResultListener listener){
         req(Msg.Startup, new MsgBeans.StartupPara(), listener);
     }
 
@@ -39,7 +39,7 @@ public class StartManager extends RequestAgent {
         return null;
     }
 
-    private void processStartupResponses(Msg rspId, Object rspContent, IOnResponseListener listener){
+    private void processStartupResponses(Msg rspId, Object rspContent, IResultListener listener){
         if (Msg.StartupRsp.equals(rspId)){
             if (null != listener){
                 listener.onResponse(ResultCode.SUCCESS, null);

@@ -15,8 +15,8 @@ import java.util.Set;
 public abstract class RequestAgent implements Caster.IOnFeedbackListener, ListenerLifecycleObserver.Callback{
 
     private int reqSn; // 请求序列号，唯一标识一次请求。
-    private final Map<Integer, IOnResponseListener> rspListeners; // 响应监听者
-    private final Map<String, Set<IOnNotificationListener>> ntfListeners; // 通知监听者
+    private final Map<Integer, IResultListener> rspListeners; // 响应监听者
+    private final Map<String, Set<INotificationListener>> ntfListeners; // 通知监听者
 
     private Map<Msg, RspProcessor> rspProcessorMap;
     private Map<Msg, NtfProcessor> ntfProcessorMap;
@@ -57,11 +57,11 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     protected abstract Map<Msg, NtfProcessor> ntfProcessors();
 
     protected interface RspProcessor{
-        void process(Msg rspId, Object rspContent, IOnResponseListener listener);
+        void process(Msg rspId, Object rspContent, IResultListener listener);
     }
 
     protected interface NtfProcessor{
-        void process(Msg ntfId, Object ntfContent, Set<IOnNotificationListener> listeners);
+        void process(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners);
     }
 
 
@@ -69,7 +69,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
      * 发送请求。
      * @param rspListener 响应监听者。
      * */
-    protected synchronized void req(Msg reqId, Object reqPara, IOnResponseListener rspListener){
+    protected synchronized void req(Msg reqId, Object reqPara, IResultListener rspListener){
 //        Log.i(TAG, String.format("rspListener=%s, reqId=%s, para=%s", rspListener, reqId, para));
 
         if (!rspProcessorMap.keySet().contains(reqId)){
@@ -90,7 +90,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
     /**
      * 订阅通知
      * */
-    protected synchronized void subscribe(Msg ntfId, IOnNotificationListener ntfListener){
+    protected synchronized void subscribe(Msg ntfId, INotificationListener ntfListener){
 //        Log.i(TAG, String.format("ntfListener=%s, ntfId=%s", ntfListener, ntfId));
         if (null == ntfListener){
             return;
@@ -102,7 +102,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         }
 
         String ntfName = ntfId.name();
-        Set<IOnNotificationListener> listeners = ntfListeners.get(ntfName);
+        Set<INotificationListener> listeners = ntfListeners.get(ntfName);
         if (null == listeners) {
             listeners = new HashSet<>();
             ntfListeners.put(ntfName, listeners);
@@ -120,7 +120,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         }
 
         String ntfName = ntfId.name();
-        Set<IOnNotificationListener> listeners = ntfListeners.get(ntfName);
+        Set<INotificationListener> listeners = ntfListeners.get(ntfName);
         if (null != listeners){
             listeners.remove(ntfListener);
         }
@@ -175,9 +175,9 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         if (null == rspListener){
             return;
         }
-        Iterator<Map.Entry<Integer,IOnResponseListener>> iter = rspListeners.entrySet().iterator();
+        Iterator<Map.Entry<Integer,IResultListener>> iter = rspListeners.entrySet().iterator();
         while (iter.hasNext()) {
-            Map.Entry<Integer,IOnResponseListener> entry = iter.next();
+            Map.Entry<Integer,IResultListener> entry = iter.next();
             if(rspListener.equals(entry.getValue())){
                 iter.remove();
             }
@@ -231,7 +231,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
 
     @Override
     public void onFeedbackTimeout(String reqId, int reqSn) {
-        IOnResponseListener rspListener = rspListeners.remove(reqSn);
+        IResultListener rspListener = rspListeners.remove(reqSn);
         rspProcessorMap.get(Msg.valueOf(reqId))
                 .process(Msg.Timeout, null, rspListener);
         if (null != rspListener){

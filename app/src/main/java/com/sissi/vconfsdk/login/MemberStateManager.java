@@ -1,6 +1,6 @@
 package com.sissi.vconfsdk.login;
 
-import com.sissi.vconfsdk.base.IOnNotificationListener;
+import com.sissi.vconfsdk.base.INotificationListener;
 import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.RequestAgent;
 import com.sissi.vconfsdk.utils.KLog;
@@ -27,14 +27,14 @@ public class MemberStateManager extends RequestAgent {
         return ntfProcessorMap;
     }
 
-    private void processMemberStateChanged(Msg ntfId, Object ntfContent, Set<IOnNotificationListener> listeners){
+    private void processMemberStateChanged(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (IOnNotificationListener listener : listeners) {
+        for (INotificationListener listener : listeners) {
             listener.onNotification(ntfContent);
         }
     }
 
-    public void subscribeMemberState(/*Set<Member> members, */IOnNotificationListener notificationListener){ // 不需要反注册方法，可以直接使用delListener()
+    public void subscribeMemberState(/*Set<Member> members, */INotificationListener notificationListener){ // 不需要反注册方法，可以直接使用delListener()
         subscribe(Msg.MemberStateChanged, notificationListener);
 
         eject(Msg.MemberStateChanged);

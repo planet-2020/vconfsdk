@@ -1,5 +1,5 @@
 package com.sissi.vconfsdk.base;
 
-public interface IOnResponseListener {
+public interface IResultListener {
     void onResponse(int resultCode, Object response);
 }

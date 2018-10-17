@@ -1,5 +1,5 @@
 package com.sissi.vconfsdk.base;
 
-public interface IOnNotificationListener {
+public interface INotificationListener {
     void onNotification(Object notification);
 }
