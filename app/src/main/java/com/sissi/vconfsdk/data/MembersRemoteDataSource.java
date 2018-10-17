@@ -1,5 +1,6 @@
 package com.sissi.vconfsdk.data;
 
+import com.sissi.vconfsdk.base.IResultListener;
 import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.RequestAgent;
 
@@ -18,7 +19,7 @@ public class MembersRemoteDataSource extends RequestAgent implements IMembersDat
 
 
     @Override
-    public void getMembers() {
+    public void getMembers(IResultListener resultListener) {
 
     }
 }

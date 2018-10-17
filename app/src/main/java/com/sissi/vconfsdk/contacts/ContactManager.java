@@ -8,7 +8,7 @@ import com.sissi.vconfsdk.data.MembersRepository;
 
 import java.util.Map;
 
-public class ContactManager extends RequestAgent {
+public class ContactManager {
 
     private final MembersRepository membersRepository;
 
@@ -16,13 +16,4 @@ public class ContactManager extends RequestAgent {
         membersRepository = MembersRepository.getInstance(new MembersRemoteDataSource(), new MembersLocalDataSource());
     }
 
-    @Override
-    protected Map<Msg, RspProcessor> rspProcessors() {
-        return null;
-    }
-
-    @Override
-    protected Map<Msg, NtfProcessor> ntfProcessors() {
-        return null;
-    }
 }
