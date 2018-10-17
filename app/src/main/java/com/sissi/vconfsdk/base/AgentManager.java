@@ -4,13 +4,14 @@ import com.sissi.vconfsdk.utils.KLog;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class AgentManager {
 
-    private static HashMap<Class<?>, RequestAgent> agents = new HashMap<>();
+    private static Map<Class<?>, RequestAgent> agents = new ConcurrentHashMap<>();
 
-    public synchronized static <T extends RequestAgent> T obtain(Class<T> clz){
+    public static <T extends RequestAgent> T obtain(Class<T> clz){
         RequestAgent agent = agents.get(clz);
         if (null == agent){
             try {
