@@ -14,6 +14,7 @@ import com.sissi.vconfsdk.annotation.Set;
  * Created by Sissi on 2018/9/3.
  */
 
+@SuppressWarnings("unused")
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @Message
 public enum Msg {
@@ -58,4 +59,92 @@ public enum Msg {
 
     @Notification(clz = MsgBeans.MemberState.class, delay = 6000)
     MemberStateChanged,  // 通知不加Ntf后缀，而使用动词分词表事件发生
+
+
+    //>>>>>>>>>>>>>>>>>>> 数据协作
+
+    @Response(clz = MsgBeans.DcsLoginResult.class)
+    DcsLoginResult_Ntf,  // 数据协作服务器登录响应
+
+    @Response(clz = MsgBeans.DcsConfResult.class)
+    DcsConfResult_Ntf,
+
+    @Notification(clz = MsgBeans.TDCSCreateConfResult.class)
+    @Response(clz = MsgBeans.TDCSCreateConfResult.class)
+    DcsCreateConf_Rsp, // 数据协作创建
+
+    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
+    DcsCurrentWhiteBoard_Ntf, // 当前白板通知
+
+    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
+    DcsNewWhiteBoard_Ntf, // 新建白板通知
+
+    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
+    DcsSwitch_Ntf, // 白板切换通知
+
+    @Notification(clz = MsgBeans.DcsElementOperBegin_Ntf.class)
+    DcsElementOperBegin_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperLineOperInfo_Ntf.class)
+    DcsOperLineOperInfo_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperCircleOperInfo_Ntf.class)
+    DcsOperCircleOperInfo_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperRectangleOperInfo_Ntf.class)
+    DcsOperRectangleOperInfo_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperPencilOperInfo_Ntf.class)
+    DcsOperPencilOperInfo_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperColorPenOperInfo_Ntf.class)
+    DcsOperColorPenOperInfo_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperInsertPic_Ntf.class)
+    DcsOperInsertPic_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperPitchPicDrag_Ntf.class)
+    DcsOperPitchPicDrag_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperPitchPicDel_Ntf.class)
+    DcsOperPitchPicDel_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperEraseOperInfo_Ntf.class)
+    DcsOperEraseOperInfo_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperFullScreen_Ntf.class)
+    DcsOperFullScreen_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperUndo_Ntf.class)
+    DcsOperUndo_Ntf,
+
+    @Notification(clz = MsgBeans.DcsOperRedo_Ntf.class)
+    DcsOperRedo_Ntf,
+
+    @Notification(clz = MsgBeans.TDCSOperContent.class)
+    DcsOperClearScreen_Ntf,
+
+    @Notification(clz = MsgBeans.TDcsCacheElementParseResult.class)
+    DcsElementOperFinal_Ntf,
+
+    @Notification(clz = MsgBeans.DcsDownloadImage_Rsp.class)
+    DcsDownloadImage_Rsp,
+
+    @Notification(clz = MsgBeans.TDCSImageUrl.class)
+    DownloadImage_Ntf,
+
+    @Notification(clz = MsgBeans.DcsDelWhiteBoard_Ntf.class)
+    DcsDelWhiteBoard_Ntf,
+
+    @Notification(clz = MsgBeans.TDCSResult.class)
+    DcsQuitConf_Rsp,
+
+    @Notification(clz = MsgBeans.DcsReleaseConf_Ntf.class)
+    DcsReleaseConf_Ntf,
+
+    @Notification(clz = MsgBeans.TDCSUserInfo.class)
+    DcsUserApplyOper_Ntf,
+
+    //<<<<<<<<<<<<<<<<<< 数据协作
+
 }

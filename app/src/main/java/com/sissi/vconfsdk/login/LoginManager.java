@@ -3,6 +3,7 @@ package com.sissi.vconfsdk.login;
 import com.sissi.vconfsdk.base.IResultListener;
 import com.sissi.vconfsdk.base.Msg;
 import com.sissi.vconfsdk.base.MsgBeans;
+import com.sissi.vconfsdk.base.MsgConst;
 import com.sissi.vconfsdk.base.RequestAgent;
 import com.sissi.vconfsdk.base.ResultCode;
 import com.sissi.vconfsdk.utils.KLog;
@@ -37,7 +38,7 @@ public class LoginManager extends RequestAgent {
 //        set(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
 //        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) get(Msg.GetXmppServerInfo);
 //        KLog.p("xmppServerInfo{%s, %d}",xmppServerInfo.domain, xmppServerInfo.ip);
-        req(Msg.Login, new MsgBeans.LoginPara(server, account, passwd, MsgBeans.SetType.Phone), loginResultListener);
+        req(Msg.Login, new MsgBeans.LoginPara(server, account, passwd, MsgConst.SetType.Phone), loginResultListener);
     }
 
 
