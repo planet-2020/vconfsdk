@@ -19,11 +19,12 @@ public class KLog {
     
     public static final int VERBOSE = 0;
     public static final int DEBUG = 1;
-    public static final int INFO = 2;  // 用于描述主干流程, 如模块初始化, 消息交互
-    public static final int WARN = 3;
-    public static final int ERROR = 4;
-    public static final int FATAL = 5;
-    private static int level = DEBUG;
+    public static final int INFO = 2;
+    public static final int VEIN = 3;  // 用于描述主干流程, 如模块初始化, 消息交互
+    public static final int WARN = 4;
+    public static final int ERROR = 5;
+    public static final int FATAL = 6;
+    private static int level = INFO;
 
     private static boolean isFileTraceInited = false;
     private static boolean isFileTraceEnabled = false;
@@ -54,9 +55,9 @@ public class KLog {
 
     public static void enable(boolean isEnable) {
         if (isEnable) {
-            log(INFO, TAG, "==================KLog enabled!");
+            log(VEIN, TAG, "==================KLog enabled!");
         } else {
-            log(INFO, TAG, "==================KLog disabled!");
+            log(VEIN, TAG, "==================KLog disabled!");
         }
         isEnabled = isEnable;
     }
@@ -64,7 +65,7 @@ public class KLog {
     /**set trace level.
      * @param lv floor level. level less than it will not be print out*/
     public static void setLevel(int lv) {
-        log(INFO, TAG, "==================Set KLog level to " + lv);
+        log(VEIN, TAG, "==================Set KLog level from "+level+" to " + lv);
         level = lv;
     }
 
@@ -141,19 +142,19 @@ public class KLog {
     }
 
     public static void p(String format, Object... para){
-        if (!isEnabled || DEBUG < level || null == format || null == para) {
+        if (!isEnabled || INFO < level || null == format || null == para) {
             return;
         }
         StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
-        log(DEBUG, getClassName(ste.getClassName()), simplePrefix(ste) + String.format(format, para));
+        log(INFO, getClassName(ste.getClassName()), simplePrefix(ste) + String.format(format, para));
     }
 
     public static void p(String str){
-        if (!isEnabled || DEBUG < level) {
+        if (!isEnabled || INFO < level) {
             return;
         }
         StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
-        log(DEBUG, getClassName(ste.getClassName()), simplePrefix(ste) + str);
+        log(INFO, getClassName(ste.getClassName()), simplePrefix(ste) + str);
     }
 
     /*Raw print*/
@@ -335,6 +336,7 @@ public class KLog {
                 Log.d(tag, content);
                 break;
             case INFO:
+            case VEIN:
                 Log.i(tag, content);
                 break;
             case WARN:

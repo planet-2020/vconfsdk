@@ -18,7 +18,7 @@ public class StartManager extends RequestAgent {
 
     static {
         KLog.enable(true);
-        KLog.setLevel(KLog.DEBUG);
+        KLog.setLevel(KLog.INFO);
     }
 
     public void startup(int mode, IResultListener listener){
