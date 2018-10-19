@@ -63,15 +63,39 @@ public enum Msg {
 
     //>>>>>>>>>>>>>>>>>>> 数据协作
 
+    @Request(para = MsgBeans.TDCSRegInfo.class)
+    DCSLoginSrvReq,
+
+    @Response(/*clz = MsgBeans.DcsLoginResult.class*/)
+    DcsLoginSrv_Rsp,
+
     @Response(clz = MsgBeans.DcsLoginResult.class)
     DcsLoginResult_Ntf,  // 数据协作服务器登录响应
+
+    @Request
+    DCSLogoutReq,
 
     @Response(clz = MsgBeans.DcsConfResult.class)
     DcsConfResult_Ntf,
 
+    @Request()
+    DCSCreateConfReq, // 创建数据协作
+
     @Notification(clz = MsgBeans.TDCSCreateConfResult.class)
     @Response(clz = MsgBeans.TDCSCreateConfResult.class)
-    DcsCreateConf_Rsp, // 数据协作创建
+    DcsCreateConf_Rsp, // 数据协作创建反馈
+
+    @Request()
+    DCSQuitConfReq, // 退出数据协作
+
+    @Request()
+    DCSReleaseConfReq, // 结束数据协作
+
+    @Request()
+    DCSAddOperatorReq,
+
+
+    //TODO 添加请求
 
     @Notification(clz = MsgBeans.TDCSBoardInfo.class)
     DcsCurrentWhiteBoard_Ntf, // 当前白板通知

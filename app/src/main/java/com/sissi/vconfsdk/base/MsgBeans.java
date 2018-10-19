@@ -108,8 +108,10 @@ public final class MsgBeans {
     //>>>>>>>>>>>>>>>>>>>>>>>>>>> 数据协作
 
 
-    public static final class DCLoginPara{
-
+    public static final class TDCSRegInfo {
+        public String achIp;
+        public int dwPort;
+        public EmDcsType emMtType;
     }
 
     public static final class DcsLoginResult{
