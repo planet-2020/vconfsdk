@@ -15,4 +15,5 @@ public class DataCollaborateManager extends RequestAgent {
     protected Map<Msg, NtfProcessor> ntfProcessors() {
         return null;
     }
+    
 }

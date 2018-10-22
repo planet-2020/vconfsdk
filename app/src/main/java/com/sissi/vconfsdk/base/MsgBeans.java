@@ -114,9 +114,17 @@ public final class MsgBeans {
         public EmDcsType emMtType;
     }
 
+    /**数据协作链路建立结果响应消息体*/
+    public static final class DcsLinkCreationResult{
+        public boolean bSuccess;
+        public int emErrorCode;
+    }
+
+    /**数据协作登录结果消息体*/
     public static final class DcsLoginResult{
-        boolean bSuccess;
-        int emErrorCode;
+        public String achConfE164;
+        public boolean bSucces;
+        public int dwErrorCode;
     }
 
     public static final class DcsConfResult{
