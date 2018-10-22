@@ -45,6 +45,11 @@ public class Caster {
         return requestProcessor.processRequest(feedbackHandler, reqId, reqPara, reqSn);
     }
 
+    public boolean cancelReq(int reqSn){
+        return requestProcessor.processCancelRequest(feedbackHandler, reqSn);
+    }
+
+
     /**
      * 订阅通知
      * */

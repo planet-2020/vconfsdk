@@ -15,6 +15,7 @@ import java.util.Set;
  * Created by Sissi on 1/9/2017.
  */
 
+@SuppressWarnings("UnusedReturnValue")
 final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
     private static final String TAG = SessionManager.class.getSimpleName();
@@ -30,6 +31,9 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
     private Handler reqHandler;
     private Handler timeoutHandler;
+    private static final int MSG_ID_START_SESSION = 100;
+    private static final int MSG_ID_CANCEL_SESSION = 101;
+    private static final int MSG_ID_DRIVE_BLOCKED_SESSION = 102;
     private static final int MSG_ID_TIMEOUT = 999;
 
     private JsonProcessor jsonProcessor;
@@ -96,9 +100,11 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 Log.e(TAG, "requests reach the limit "+MAX_SESSION_NUM);
                 return false;
             }
+            s.state = Session.READY;
             sessions.add(s);
             Message msg = Message.obtain();
-            msg.obj = s;
+            msg.what = MSG_ID_START_SESSION;
+            msg.obj = s.id;
             reqHandler.sendMessage(msg);
 
             return true;
@@ -113,13 +119,34 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 Log.e(TAG, "blocked requests reach the limit "+MAX_BLOCKED_SESSION_NUM);
                 return false;
             }
+            s.state = Session.BLOCKING;
             blockedSessions.add(s);
 
             Log.w(TAG, String.format("-=->| %s (session %d BLOCKED)", s.reqId, s.id)); // XXX 启动超时？阻塞时间算在超时内？
 
-            return true; // 返回真表示请求成功，不让外部感知请求被阻塞
+            return true;
         }
 
+    }
+
+    @Override
+    public synchronized boolean processCancelRequest(Handler requester, int reqSn) {
+        if (null == requester){
+            Log.e(TAG, "requester is null");
+            return false;
+        }
+
+        Session s = getSession(requester, reqSn);
+        if (null != s){
+            timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
+            Message msg = Message.obtain();
+            msg.what = MSG_ID_CANCEL_SESSION;
+            msg.obj = s.id;
+            reqHandler.sendMessage(msg);
+            return true;
+        }
+
+        return false;
     }
 
 
@@ -174,7 +201,12 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 sessions.remove(s);
                 rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), FeedbackBundle.RSP_FIN, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
-                driveBlockedSession(s.reqId);// 驱动被当前会话阻塞的会话
+
+                Message drive = Message.obtain();
+                drive.what = MSG_ID_DRIVE_BLOCKED_SESSION;
+                drive.obj = s.reqId;
+                reqHandler.sendMessage(drive); // 驱动被当前会话阻塞的会话
+
             } else {
                 Log.d(TAG, String.format("<-=- %s (session %d) \n%s", rspName, s.id, rspBody));
                 s.state = Session.RECVING; // 已收到响应，继续接收后续响应
@@ -206,8 +238,53 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         return false;
     }
 
+    private synchronized Session getSession(int sid){
+        for (Session s: sessions){
+            if (sid == s.id){
+                return s;
+            }
+        }
 
-    private void startSession(Session s){
+        for (Session s: blockedSessions){
+            if (sid == s.id){
+                return s;
+            }
+        }
+
+        return null;
+    }
+
+    private synchronized Session getSession(Handler requester, int reqSn){
+        for (Session s : sessions){
+            if (reqSn == s.reqSn
+                    && requester.equals(s.requester)) {
+                return s;
+            }
+        }
+        for (Session s : blockedSessions){
+            if (reqSn == s.reqSn
+                    && requester.equals(s.requester)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    private synchronized int startSession(int sid){
+        Session s = getSession(sid);
+        if (null == s){
+            Log.e(TAG, "no such session. sid="+sid);
+            return -1;
+        }
+
+        return startSession(s);
+    }
+
+    private int startSession(Session s){
+        if (Session.READY != s.state){
+            Log.e(TAG, "invalid session state "+s.state);
+            return -1;
+        }
 
         String jsonReqPara = jsonProcessor.toJson(s.reqPara);
         Log.d(TAG, String.format("-=-> %s (session %d START) \n%s", s.reqId, s.id, jsonReqPara));
@@ -219,8 +296,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             Log.d(TAG, String.format("<-=- (session %d FINISHED. NO RESPONSE)", s.id));
             sessions.remove(s);
             driveBlockedSession(s.reqId);
-
-            return;
+            return 0;
         }
 
         s.state = Session.WAITING; // 请求已发出正在等待响应
@@ -228,21 +304,39 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         // 启动超时
         Message msg = Message.obtain();
         msg.what = MSG_ID_TIMEOUT;
-        msg.obj = s;
+        msg.obj = s.id;
         timeoutHandler.sendMessageDelayed(msg, s.timeoutVal);
+
+        return 0;
+    }
+
+    private synchronized void cancelSession(int sid){
+        Session s = getSession(sid);
+        if (null == s){
+            Log.e(TAG, "no such session. sid="+sid);
+            return;
+        }
+        if (Session.BLOCKING == s.state){
+            blockedSessions.remove(s);
+        }else{
+            timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s); // 移除定时器
+            sessions.remove(s);
+            driveBlockedSession(s.reqId);// 驱动被当前会话阻塞的会话
+        }
     }
 
 
     /**
      * 驱动可能存在的被阻塞的会话。<p>
-     * 相同请求ID的会话同一时间只允许一个处于工作状态，余下的处于阻塞状态。所以当会话结束时需调用此接口驱动可能存在的被阻塞的会话。
+     * 相同请求ID的会话同一时间只允许一个处于工作状态，余下的处于阻塞状态。
      * @param reqId 请求ID
      * */
-    private void driveBlockedSession(String reqId){
+    private synchronized void driveBlockedSession(String reqId){
         Session bs=null;
         for (final Session s : blockedSessions){
             if (reqId.equals(s.reqId)) {
                 blockedSessions.remove(s);
+                s.state = Session.READY;
                 sessions.add(s);
                 bs = s;
                 break;
@@ -254,19 +348,25 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         }
 
         startSession(bs);
-        if (Session.END == bs.state){
-            sessions.remove(bs);
-            driveBlockedSession(bs.reqId);
-        }
 
     }
 
 
     /**
      * 处理超时
-     * @param s 已超时的会话。
      * */
-    private synchronized void timeout(final Session s){
+    private synchronized void timeout(int sid){
+        Session s = getSession(sid);
+        if (null == s){
+            Log.e(TAG, "no such session. sid="+sid);
+            return;
+        }
+        if (Session.WAITING != s.state
+                && Session.RECVING != s.state){
+            Log.e(TAG, "invalid session state "+s.state);
+            return;
+        }
+
         Log.d(TAG, String.format("<-=- (session %d TIMEOUT)", s.id));
         s.state = Session.END; // 会话结束
 
@@ -288,7 +388,19 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         reqHandler = new Handler(handlerThread.getLooper()){
             @Override
             public void handleMessage(Message msg) {
-                startSession((Session) msg.obj);
+                switch (msg.what) {
+                    case MSG_ID_START_SESSION:
+                        startSession((int) msg.obj);
+                        break;
+
+                    case MSG_ID_CANCEL_SESSION:
+                        cancelSession((int) msg.obj);
+                        break;
+
+                    case MSG_ID_DRIVE_BLOCKED_SESSION:
+                        driveBlockedSession((String) msg.obj);
+                        break;
+                }
             }
         };
     }
@@ -300,7 +412,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         timeoutHandler = new Handler(handlerThread.getLooper()){
             @Override
             public void handleMessage(Message msg) {
-                timeout((Session) msg.obj);
+                timeout((int) msg.obj);
             }
         };
     }
@@ -320,7 +432,9 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         private SparseIntArray candidates; // 候选的响应序列记录。记录当前可被用来匹配的响应序列组及各响应序列中的下一条待匹配响应（的位置）。“键”对应响应序列组的行下标，“值”对应列下标。每收到一条响应后该记录会更新。
 
         private int state;  // 会话状态
-        private static final int IDLE = 2;  // 空闲。初始状态
+        private static final int IDLE = 0;  // 空闲。初始状态
+        private static final int BLOCKING = 1;  // 阻塞。若存在未完成的同类会话（请求id相同）则当前会话被阻塞直到同类会话结束。
+        private static final int READY = 2;  // 就绪。
         private static final int WAITING = 3; // 等待。请求发送以后，收到响应序列中的第一条响应之前。
         private static final int RECVING = 4; // 接收。收到第一条响应后，收到最后一条响应之前。
         private static final int END = 5;   // 结束。最终状态。会话已成功结束（接收到最后一个响应）或者已失败（超时或其它失败原因）。

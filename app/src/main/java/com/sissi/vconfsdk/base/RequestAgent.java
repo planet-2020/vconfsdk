@@ -15,8 +15,8 @@ import java.util.Set;
 public abstract class RequestAgent implements Caster.IOnFeedbackListener, ListenerLifecycleObserver.Callback{
 
     private int reqSn; // 请求序列号，唯一标识一次请求。
-    private final Map<Integer, IResultListener> rspListeners; // 响应监听者
-    private final Map<String, Set<INotificationListener>> ntfListeners; // 通知监听者
+    private final Map<Integer, RequestBundle> rspListeners;
+    private final Map<String, Set<INotificationListener>> ntfListeners;
 
     private Map<Msg, RspProcessor> rspProcessorMap;
     private Map<Msg, NtfProcessor> ntfProcessorMap;
@@ -82,9 +82,42 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         }
 
         if (null != rspListener) {
-            rspListeners.put(reqSn, rspListener);
+            rspListeners.put(reqSn, new RequestBundle(reqId, rspListener));
             listenerLifecycleObserver.tryObserve(rspListener);  // 注意：如果同一个listener多次调用该接口注册，则该listener生命周期事件发生时会回调多次。
         }
+    }
+
+    /**
+     * 取消请求。
+     * 若同样的请求id同样的响应监听者请求了多次，则取消的是最早的请求。*/
+    protected synchronized void cancelReq(Msg reqId, IResultListener rspListener){
+        if (null == reqId || null == rspListener){
+            return;
+        }
+        if (!rspProcessorMap.keySet().contains(reqId)){
+            KLog.p(KLog.ERROR, "%s is not in 'cared-req-list'", reqId);
+            return;
+        }
+
+        int BIG_REQSN = 987654321;
+        int earliestReq = BIG_REQSN;
+        RequestBundle bundle;
+        int reqSn;
+        for (Map.Entry<Integer, RequestBundle> entry : rspListeners.entrySet()){
+            reqSn = entry.getKey();
+            bundle = entry.getValue();
+            if (reqId.equals(bundle.reqId)
+                    && rspListener.equals(bundle.resultListener)){
+                if (reqSn < earliestReq){
+                    earliestReq = reqSn;
+                }
+            }
+        }
+
+        if (BIG_REQSN != earliestReq){
+            caster.cancelReq(earliestReq);
+        }
+
     }
 
     /**
@@ -175,10 +208,11 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         if (null == rspListener){
             return;
         }
-        Iterator<Map.Entry<Integer,IResultListener>> iter = rspListeners.entrySet().iterator();
+        Iterator<Map.Entry<Integer,RequestBundle>> iter = rspListeners.entrySet().iterator();
         while (iter.hasNext()) {
-            Map.Entry<Integer,IResultListener> entry = iter.next();
-            if(rspListener.equals(entry.getValue())){
+            Map.Entry<Integer,RequestBundle> entry = iter.next();
+            IResultListener resultListener = entry.getValue().resultListener;
+            if(rspListener.equals(resultListener)){
                 iter.remove();
             }
         }
@@ -219,23 +253,28 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
 
     @Override
     public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn) {
+        RequestBundle requestBundle = rspListeners.get(reqSn);
+        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
-                .process(Msg.valueOf(rspId), rspContent, rspListeners.get(reqSn));
+                .process(Msg.valueOf(rspId), rspContent, resultListener);
     }
 
     @Override
     public void onFeedbackRspFin(String rspId, Object rspContent, String reqId, int reqSn) {
+        RequestBundle requestBundle = rspListeners.remove(reqSn);
+        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
-                .process(Msg.valueOf(rspId), rspContent, rspListeners.remove(reqSn));
+                .process(Msg.valueOf(rspId), rspContent, resultListener);
     }
 
     @Override
     public void onFeedbackTimeout(String reqId, int reqSn) {
-        IResultListener rspListener = rspListeners.remove(reqSn);
+        RequestBundle requestBundle = rspListeners.remove(reqSn);
+        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
-                .process(Msg.Timeout, null, rspListener);
-        if (null != rspListener){
-            rspListener.onResponse(ResultCode.TIMEOUT, null);
+                .process(Msg.Timeout, null, resultListener);
+        if (null != resultListener){
+            resultListener.onResponse(ResultCode.TIMEOUT, null);
         }
     }
 
@@ -245,4 +284,12 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
                 .process(Msg.valueOf(ntfId), ntfContent, ntfListeners.get(ntfId));
     }
 
+    private static class RequestBundle{
+        private Msg reqId;
+        private IResultListener resultListener;
+        RequestBundle(Msg reqId, IResultListener resultListener){
+            this.reqId = reqId;
+            this.resultListener = resultListener;
+        }
+    }
 }

@@ -63,8 +63,11 @@ public enum Msg {
 
     //>>>>>>>>>>>>>>>>>>> 数据协作
 
+    @Get(result = MsgBeans.TMtDCSSvrAddr.class)
+    GetDCSCfg,
+
     /**登录数据协作服务器*/
-    @Request(para = MsgBeans.TDCSRegInfo.class)
+    @Request(para = MsgBeans.TDCSRegInfo.class, rspSeq = {"DcsLoginResult_Ntf", "DcsLoginSrv_Rsp"})
     DCSLoginSrvReq,
 
     /** 登录数据协作服务器链路建立结果响应。

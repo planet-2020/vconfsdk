@@ -107,11 +107,24 @@ public final class MsgBeans {
 
     //>>>>>>>>>>>>>>>>>>>>>>>>>>> 数据协作
 
+    /**数据协作服务器地址信息*/
+    public static final class TMtDCSSvrAddr{
+        public String achDomain;        // 域名
+        public long dwIp;               // ip
+        public boolean bUseDefAddr;     // 是否使用默认地址
+        public String achCustomDomain;  // 用户自定义域名
+        public long dwCustomIp;         // 用户自定义ip
+        public int dwPort;
+    }
+
 
     public static final class TDCSRegInfo {
         public String achIp;
         public int dwPort;
         public EmDcsType emMtType;
+        public TDCSRegInfo(String ip, int port, EmDcsType type){
+            achIp = ip; dwPort = port; emMtType = type;
+        }
     }
 
     /**数据协作链路建立结果响应消息体*/
