@@ -17,7 +17,7 @@ public class DataCollaborateManager extends RequestAgent {
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> processorMap = new HashMap<>();
         processorMap.put(Msg.DCSLoginSrvReq, this::processLoginResponses);
-        return null;
+        return processorMap;
     }
 
     @Override
@@ -32,11 +32,16 @@ public class DataCollaborateManager extends RequestAgent {
     private void processLoginResponses(Msg rspId, Object rspContent, IResultListener listener){
         KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
         if (Msg.DcsLoginResult_Ntf.equals(rspId)){
-
+            MsgBeans.DcsLinkCreationResult linkCreationResult = (MsgBeans.DcsLinkCreationResult) rspContent;
+            if (!linkCreationResult.bSuccess
+                    && null != listener){
+                cancelReq(Msg.DCSLoginSrvReq, listener);  // 后续不会有DcsLoginSrv_Rsp上来，取消该请求以防等待超时。
+                listener.onResponse(ResultCode.FAILED, null);
+            }
         }else if (Msg.DcsLoginSrv_Rsp.equals(rspId)){
-            MsgBeans.LoginResult loginRes = (MsgBeans.LoginResult) rspContent;
+            MsgBeans.DcsLoginResult loginRes = (MsgBeans.DcsLoginResult) rspContent;
             if (null != listener){
-                if (0 == loginRes.result) {
+                if (loginRes.bSucces) {
                     listener.onResponse(ResultCode.SUCCESS, null);
                 }else{
                     listener.onResponse(ResultCode.FAILED, null);

@@ -131,6 +131,9 @@ public final class MsgBeans {
     public static final class DcsLinkCreationResult{
         public boolean bSuccess;
         public int emErrorCode;
+        private DcsLinkCreationResult(){
+            bSuccess = false;
+        }
     }
 
     /**数据协作登录结果消息体*/
@@ -138,6 +141,9 @@ public final class MsgBeans {
         public String achConfE164;
         public boolean bSucces;
         public int dwErrorCode;
+        private DcsLoginResult(){
+            bSucces = true;
+        }
     }
 
     public static final class DcsConfResult{

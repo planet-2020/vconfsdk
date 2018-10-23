@@ -32,8 +32,6 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     private Handler reqHandler;
     private Handler timeoutHandler;
     private static final int MSG_ID_START_SESSION = 100;
-    private static final int MSG_ID_CANCEL_SESSION = 101;
-    private static final int MSG_ID_DRIVE_BLOCKED_SESSION = 102;
     private static final int MSG_ID_TIMEOUT = 999;
 
     private JsonProcessor jsonProcessor;
@@ -136,14 +134,24 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             return false;
         }
 
-        Session s = getSession(requester, reqSn);
-        if (null != s){
-            timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
-            Message msg = Message.obtain();
-            msg.what = MSG_ID_CANCEL_SESSION;
-            msg.obj = s.id;
-            reqHandler.sendMessage(msg);
-            return true;
+        for (Session s : sessions){
+            if (reqSn == s.reqSn
+                    && requester.equals(s.requester)) {
+                s.state = Session.END;
+                timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
+                sessions.remove(s);
+                Log.d(TAG, String.format("<-=- (session %d CANCELED)", s.id));
+                driveBlockedSession(s.reqId);// 驱动被当前会话阻塞的会话
+                return true;
+            }
+        }
+
+        for (Session s : blockedSessions){
+            if (reqSn == s.reqSn
+                    && requester.equals(s.requester)) {
+                blockedSessions.remove(s);
+                return true;
+            }
         }
 
         return false;
@@ -196,16 +204,13 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
             if (gotLast){// 该会话已获取到最后一条期待的响应
                 Log.d(TAG, String.format("<-=- %s (session %d FINISH) \n%s", rspName, s.id, rspBody));
-                timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s); // 移除定时器
+                timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
                 s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                 sessions.remove(s);
                 rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), FeedbackBundle.RSP_FIN, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
 
-                Message drive = Message.obtain();
-                drive.what = MSG_ID_DRIVE_BLOCKED_SESSION;
-                drive.obj = s.reqId;
-                reqHandler.sendMessage(drive); // 驱动被当前会话阻塞的会话
+                driveBlockedSession(s.reqId); // 驱动被当前会话阻塞的会话
 
             } else {
                 Log.d(TAG, String.format("<-=- %s (session %d) \n%s", rspName, s.id, rspBody));
@@ -238,51 +243,36 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         return false;
     }
 
-    private synchronized Session getSession(int sid){
+
+    private synchronized Session getActiveSession(int sid){
         for (Session s: sessions){
             if (sid == s.id){
                 return s;
             }
         }
 
-        for (Session s: blockedSessions){
-            if (sid == s.id){
-                return s;
-            }
-        }
-
         return null;
     }
 
-    private synchronized Session getSession(Handler requester, int reqSn){
-        for (Session s : sessions){
-            if (reqSn == s.reqSn
-                    && requester.equals(s.requester)) {
-                return s;
-            }
-        }
+    private synchronized Session getBlockedSession(String reqId){
         for (Session s : blockedSessions){
-            if (reqSn == s.reqSn
-                    && requester.equals(s.requester)) {
+            if (s.reqId.equals(reqId)) {
                 return s;
             }
         }
         return null;
     }
+
 
     private synchronized int startSession(int sid){
-        Session s = getSession(sid);
+        Session s = getActiveSession(sid);
         if (null == s){
-            Log.e(TAG, "no such session. sid="+sid);
+            Log.e(TAG, "try to start session failed, no such session, sid="+sid);
             return -1;
         }
 
-        return startSession(s);
-    }
-
-    private int startSession(Session s){
         if (Session.READY != s.state){
-            Log.e(TAG, "invalid session state "+s.state);
+            Log.e(TAG, "try to start session failed, invalid session state "+s.state);
             return -1;
         }
 
@@ -310,45 +300,23 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         return 0;
     }
 
-    private synchronized void cancelSession(int sid){
-        Session s = getSession(sid);
-        if (null == s){
-            Log.e(TAG, "no such session. sid="+sid);
-            return;
-        }
-        if (Session.BLOCKING == s.state){
-            blockedSessions.remove(s);
-        }else{
-            timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s); // 移除定时器
-            sessions.remove(s);
-            driveBlockedSession(s.reqId);// 驱动被当前会话阻塞的会话
-        }
-    }
-
 
     /**
      * 驱动可能存在的被阻塞的会话。<p>
      * 相同请求ID的会话同一时间只允许一个处于工作状态，余下的处于阻塞状态。
      * @param reqId 请求ID
      * */
-    private synchronized void driveBlockedSession(String reqId){
-        Session bs=null;
-        for (final Session s : blockedSessions){
-            if (reqId.equals(s.reqId)) {
-                blockedSessions.remove(s);
-                s.state = Session.READY;
-                sessions.add(s);
-                bs = s;
-                break;
-            }
+    private void driveBlockedSession(String reqId){
+        Session blockedSession = getBlockedSession(reqId);
+        if (null != blockedSession){
+            blockedSessions.remove(blockedSession);
+            blockedSession.state = Session.READY;
+            sessions.add(blockedSession);
+            Message msg = Message.obtain();
+            msg.what = MSG_ID_START_SESSION;
+            msg.obj = blockedSession.reqId;
+            reqHandler.sendMessage(msg);
         }
-
-        if (null == bs){
-            return;
-        }
-
-        startSession(bs);
-
     }
 
 
@@ -356,14 +324,14 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
      * 处理超时
      * */
     private synchronized void timeout(int sid){
-        Session s = getSession(sid);
+        Session s = getActiveSession(sid);
         if (null == s){
-            Log.e(TAG, "no such session. sid="+sid);
+            Log.e(TAG, "timeout but no such session. sid="+sid);
             return;
         }
         if (Session.WAITING != s.state
                 && Session.RECVING != s.state){
-            Log.e(TAG, "invalid session state "+s.state);
+            Log.e(TAG, "timeout but invalid session state "+s.state);
             return;
         }
 
@@ -391,14 +359,6 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 switch (msg.what) {
                     case MSG_ID_START_SESSION:
                         startSession((int) msg.obj);
-                        break;
-
-                    case MSG_ID_CANCEL_SESSION:
-                        cancelSession((int) msg.obj);
-                        break;
-
-                    case MSG_ID_DRIVE_BLOCKED_SESSION:
-                        driveBlockedSession((String) msg.obj);
                         break;
                 }
             }
