@@ -98,11 +98,15 @@ final class NativeInteractor implements INativeCallback{
                 NativeMsgWrapper nativeMsgWrapper = (NativeMsgWrapper) msg.obj;
                 String msgId = nativeMsgWrapper.msgId;
                 String msgBody = nativeMsgWrapper.msgBody;
+                boolean consumed = false;
                 if (null!=responseProcessor){
-                    responseProcessor.processResponse(msgId, msgBody);
+                    consumed = responseProcessor.processResponse(msgId, msgBody);
                 }
-                if (null!=notificationProcessor){
-                    notificationProcessor.processNotification(msgId, msgBody);  // 需不需要根据响应处理器的消费情况决定是否处理该条消息呢？但是如果一条消息既可以是通知也可以是响应呢？
+                if (!consumed  && null!=notificationProcessor){
+                    consumed = notificationProcessor.processNotification(msgId, msgBody);
+                }
+                if (!consumed){
+                    Log.w(TAG, String.format("<-/- %s, unconsumed msg \n%s", msgId, msgBody));
                 }
             }
         };

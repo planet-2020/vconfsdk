@@ -12,6 +12,9 @@ import com.sissi.vconfsdk.annotation.Set;
 
 /**
  * Created by Sissi on 2018/9/3.
+ * 消息ID。
+ * [TODO 最好结合对组件层消息的理解重新定义一套适合UI层使用及理解的，而非直接照搬组件层的，然后在jni层做这两套消息之间的转换（以及进行一些封装）。
+ * 这样做的好处在于一方面使得消息对于UI层更友好合理，另一方面迫使UI层跟组件层充分沟通充分理解每条消息的含义避免出现半懂不懂的情况下就开始写代码]
  */
 
 @SuppressWarnings("unused")
@@ -63,11 +66,12 @@ public enum Msg {
 
     //>>>>>>>>>>>>>>>>>>> 数据协作
 
-    @Get(result = MsgBeans.TMtDCSSvrAddr.class)
-    GetDCSCfg,
+//    @Get(result = MsgBeans.TMtDCSSvrAddr.class)
+//    GetDCSCfg,
 
     /**登录数据协作服务器*/
-    @Request(para = MsgBeans.TDCSRegInfo.class, rspSeq = {"DcsLoginResult_Ntf", "DcsLoginSrv_Rsp"})
+    @Request(para = MsgBeans.TDCSRegInfo.class,
+            rspSeq = {"DcsLoginResult_Ntf", "DcsLoginSrv_Rsp"})
     DCSLoginSrvReq,
 
     /** 登录数据协作服务器链路建立结果响应。
@@ -80,7 +84,8 @@ public enum Msg {
     DcsLoginSrv_Rsp,
 
     /**创建数据协作会议*/
-    @Request()
+    @Request(para = MsgBeans.DCSCreateConf.class,
+            rspSeq = {"DcsConfResult_Ntf", "DcsCreateConf_Rsp"})
     DCSCreateConfReq,
 
     /**创建数据协作会议链路建立结果响应。
@@ -91,7 +96,7 @@ public enum Msg {
     /**创建数据协作会议响应。
      * 注：该响应也会作为通知广播给其他与会者。*/
     @Notification(clz = MsgBeans.TDCSCreateConfResult.class)
-    @Response(clz = MsgBeans.TDCSCreateConfResult.class)
+    @Response(clz = MsgBeans.TDCSCreateConfResult.class, delay = 5000)
     DcsCreateConf_Rsp,
 
     /**注销数据协作服务器*/

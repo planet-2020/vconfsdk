@@ -6,6 +6,10 @@ import static com.sissi.vconfsdk.base.MsgConst.*;
 
 /**
  * Created by Sissi on 2018/9/6.
+ *
+ * 消息结构体定义。
+ *
+ * （TODO 最好结合对组件层消息体内容的理解重新定义一套适合UI层理解的，而非直接照搬组件层的，然后在jni层做这两套消息体之间的转换）
  */
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
@@ -118,6 +122,7 @@ public final class MsgBeans {
     }
 
 
+    /**数据协作登录参数*/
     public static final class TDCSRegInfo {
         public String achIp;
         public int dwPort;
@@ -132,7 +137,7 @@ public final class MsgBeans {
         public boolean bSuccess;
         public int emErrorCode;
         private DcsLinkCreationResult(){
-            bSuccess = false;
+            bSuccess = true;
         }
     }
 
@@ -146,12 +151,37 @@ public final class MsgBeans {
         }
     }
 
-    public static final class DcsConfResult{
-        boolean bSuccess;
-        int emErrorCode;
+    /**创建数据协作会议参数*/
+    public static final class  DCSCreateConf{
+        public EmDcsConfType   emConfType;
+        public String	    achConfE164;
+        public String      achConfName;
+        public EmDcsConfMode   emConfMode;
+        public TDCSConfUserInfo[] atUserList;
+        public int		    dwListNum;
+        public String  achConfAdminE164;
+        public EmDcsType   emAdminMtType;
+        public DCSCreateConf(){
+
+        }
+        public DCSCreateConf(EmDcsConfType type, String confE164, String confName, EmDcsConfMode mode,
+                             TDCSConfUserInfo[] memberList, int num, String adminE164, EmDcsType dcsType){
+            emConfType=type; achConfE164=confE164; achConfName=confName; emConfMode=mode;
+            atUserList=memberList; dwListNum=num; achConfAdminE164=adminE164; emAdminMtType=dcsType;
+        }
     }
 
-    public class TDCSCreateConfResult {
+    /**数据协作会议链路建立结果响应消息体*/
+    public static final class DcsConfResult{
+        public boolean bSuccess;
+        public int emErrorCode;
+        private DcsConfResult(){
+            bSuccess = true;
+        }
+    }
+
+    /**数据协作会议创建结果消息体*/
+    public static final class TDCSCreateConfResult {
         public String achConfE164;
         public String achConfName;
         public boolean bSuccess;
@@ -160,6 +190,9 @@ public final class MsgBeans {
         public EmDcsConfType emConfType;
         public TDCSConfAddr tConfAddr;
         public boolean bCreator;            // 自己是否是这个数据协作的创建者
+        private TDCSCreateConfResult(){
+            bSuccess = true;
+        }
     }
 
     public class TDCSBoardInfo {

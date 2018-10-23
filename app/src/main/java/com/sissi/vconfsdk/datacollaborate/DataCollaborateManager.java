@@ -17,6 +17,7 @@ public class DataCollaborateManager extends RequestAgent {
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> processorMap = new HashMap<>();
         processorMap.put(Msg.DCSLoginSrvReq, this::processLoginResponses);
+        processorMap.put(Msg.DCSCreateConfReq, this::processCreateDcConfResponses);
         return processorMap;
     }
 
@@ -27,6 +28,10 @@ public class DataCollaborateManager extends RequestAgent {
 
     public void login(String serverIp, int port, MsgConst.EmDcsType type, IResultListener resultListener){
         req(Msg.DCSLoginSrvReq, new MsgBeans.TDCSRegInfo(serverIp, port, type), resultListener);
+    }
+
+    public void createDcConf(IResultListener resultListener){
+        req(Msg.DCSCreateConfReq, new MsgBeans.DCSCreateConf(), resultListener);
     }
 
     private void processLoginResponses(Msg rspId, Object rspContent, IResultListener listener){
@@ -49,4 +54,33 @@ public class DataCollaborateManager extends RequestAgent {
             }
         }
     }
+
+
+    private void processCreateDcConfResponses(Msg rspId, Object rspContent, IResultListener listener){
+        if (Msg.DcsConfResult_Ntf.equals(rspId)){
+            MsgBeans.DcsConfResult dcsConfResult = (MsgBeans.DcsConfResult) rspContent;
+            if (!dcsConfResult.bSuccess
+                    && null != listener){
+                cancelReq(Msg.DCSCreateConfReq, listener);  // 后续不会有DcsCreateConf_Rsp上来，取消该请求以防等待超时。
+                listener.onResponse(ResultCode.FAILED, null);
+            }
+        }else if (Msg.DcsCreateConf_Rsp.equals(rspId)){
+            MsgBeans.TDCSCreateConfResult createConfResult = (MsgBeans.TDCSCreateConfResult) rspContent;
+            if (null != listener){
+                if (createConfResult.bSuccess) {
+                    listener.onResponse(ResultCode.SUCCESS, null);
+                }else{
+                    listener.onResponse(ResultCode.FAILED, null);
+                }
+            }
+        }
+    }
+
+//    private void processMemberStateChanged(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
+//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+//        for (INotificationListener listener : listeners) {
+//            listener.onNotification(ntfContent);
+//        }
+//    }
+
 }
