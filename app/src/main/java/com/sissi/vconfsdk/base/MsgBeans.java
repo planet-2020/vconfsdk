@@ -13,7 +13,7 @@ import static com.sissi.vconfsdk.base.MsgConst.*;
  */
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-@SuppressWarnings("WeakerAccess")
+@SuppressWarnings({"WeakerAccess", "unused"})
 public final class MsgBeans {
 
     public static final class BaseTypeInt{
@@ -195,6 +195,39 @@ public final class MsgBeans {
         }
     }
 
+    /**退出数据协作参数*/
+    public static final class DCSQuitConf{
+        public String e164;
+        public boolean  force;
+        public DCSQuitConf(String e164, boolean force){
+            this.e164=e164; this.force=force;
+        }
+    }
+
+    public static final class DCSBriefMemberInfo {
+        public String e164;
+        public DCSBriefMemberInfo(String e164){
+            this.e164 = e164;
+        }
+    }
+
+    public static final class DCSBriefConfInfo {
+        public String e164;
+        public DCSBriefConfInfo(String e164){
+            this.e164 = e164;
+        }
+    }
+
+    public static final class DCSGetUserListRsp {
+        public TDCSResult MainParam;
+        public TDCSGetUserList AssParam;
+    }
+
+    public static final class TDCSGetUserList {
+        public TDCSConfUserInfo[] atUserList;
+        public int dwListNum;
+    }
+
     public class TDCSBoardInfo {
         public String achWbName;
         public EmDcsWbMode emWbMode;    // 模式（白板、文档）
@@ -219,6 +252,167 @@ public final class MsgBeans {
 //    public static final class DcsSwitch_Ntf{
 //
 //    }
+
+    public static final class TDCSNewWhiteBoard{
+        public String		 achConfE164;
+        public TDCSBoardInfo tBoardinfo;
+        public TDCSNewWhiteBoard(String confE164, TDCSBoardInfo boardInfo){
+            achConfE164 = confE164; tBoardinfo=boardInfo;
+        }
+    }
+
+    public static final class DCSWhiteBoardResult {
+        public TDCSBoardResult MainParam;
+        public TDCSBoardInfo AssParam;
+    }
+
+    public static final class DCSWhiteBoardIndex {
+        public String confE164;
+        public String boardIndx;  // ??? 白板索引
+    }
+
+    public static final class TDCSBoardResult{
+        public boolean     	bSucces;
+        public int			dwErrorCode;
+        public String		achConfE164;
+        public String  		achTabId; // ???
+        public int			dwPageId; // ???
+    }
+
+    public static final class DCSGetAllWhiteBoardRsp{
+        public TDCSResult MainParam;
+        public TDCSGetAllBoard AssParam;
+    }
+
+    public static final class TDCSGetAllBoard{
+        public String	achConfE164;
+        public int	    dwBoardNum;
+        public TDCSBoardInfo[] atBoardInfo;
+    }
+
+    public static final class DCSOperLineOper{
+        public TDCSOperReq pageInfo;
+        public TDCSWbLineOperInfo lineInfo;
+    }
+
+    public static final class TDCSOperReq{
+        public String   achConfE164;
+        public String   achTabId;
+        public int  dwWbPageid;
+    }
+
+    public static final class DCSOperCircleOper{
+        public TDCSOperReq pageInfo;
+        public TDCSWbCircleOperInfo lineInfo;
+    }
+
+    public static final class DCSOperRectangleOper{
+        public TDCSOperReq pageInfo;
+        public TDCSWbRectangleOperInfo lineInfo;
+    }
+
+    public static final class DCSOperPencilOper{
+        public TDCSOperReq pageInfo;
+        public TDCSWbPencilOperInfo lineInfo;
+    }
+
+    public static final class DCSOperColorPenOper{
+        public TDCSOperReq pageInfo;
+        public TDCSWbColorPenOperInfo lineInfo;
+    }
+
+    public static final class DCSOperImageOper{
+        public TDCSOperReq pageInfo;
+        public TDCSWbImageOperInfo lineInfo;
+    }
+
+    public static final class DCSOperAddSubPageOper{
+        public TDCSOperReq pageInfo;
+        public TDCSWbAddSubPageInfo lineInfo;
+    }
+
+    public static final class DCSOperEraseOper{
+        public TDCSOperReq pageInfo;
+        public TDCSWbEraseOperInfo lineInfo;
+    }
+
+    public static final class DCSOperZoomOper{
+        public TDCSOperReq pageInfo;
+        public TDCSWbZoomInfo lineInfo;
+    }
+
+    public static final class DCSOperUndoOper{
+        public TDCSOperReq pageInfo;
+        public TDCSWbTabPageIdInfo lineInfo;
+    }
+
+    public static final class DCSOperRedoOper{
+        public TDCSOperReq pageInfo;
+        public TDCSWbTabPageIdInfo lineInfo;
+    }
+
+    public static final class DCSOperScrollOper{
+        public TDCSOperReq pageInfo;
+        public TDCSScrollScreenInfo lineInfo;
+    }
+
+    public static final class DCSTransferFile {
+        public String url;
+        public TDCSFileInfo fileInfo;
+    }
+
+    public static final class TDCSFileLoadResult {
+        public boolean bSuccess;
+        public boolean bElementFile;
+        public String achFilePathName;
+        public String achWbPicentityId;
+        public String achTabid;
+    }
+
+
+
+    public static final class TDCSFileInfo {
+        public String achFilePathName;
+        public String achWbPicentityId;     // 如果是图片，则会有pic id，否则为空
+        public String achTabid;
+        public boolean bElementCacheFile;   // 是否为图元缓存文件，即，如果是图片图元，设置为false；非图片图元（线、圆、矩形等）为true
+        public int dwFileSize;
+    }
+
+    public static final class TDCSScrollScreenInfo {
+        public String achTabId; 	    //tab白板页
+        public int  dwSubPageId;        //子页ID
+        public TDCSWbPoint  tPoint;     //滚动到的目标点坐标
+    }
+
+    public static final class TDCSWbZoomInfo {
+        public String achTabId;     // 白板tab id（guid）
+        public int dwZoom;          // 当前页缩放倍数，取百分制，例如100.0，对应100%
+    }
+
+    public static final class TDCSWbAddSubPageInfo{
+        public String 	 achTabId;             // 白板tab id（guid）
+        public int  dwSubPageCount;       // 子页总数，即打开的文档的总页数
+    }
+
+
+
+
+    public static final class TDCSWbImageOperInfo{
+        public String  achTabId;
+        public int     dwSubPageId; // ???
+        public TDCSWbImage	 tImage;
+    }
+
+    public class TDCSWbImage {
+        TDCSWbEntity	tEntity;				// 基本信息
+        TDCSWbPoint 	tBoardPt;				// 边界矩形左上角坐标
+        int 	    dwWidth;				// 边界矩形宽度
+        int 		    dwHeight;				// 边界矩形宽度
+        EmDcsWbImageState   emNetworkstate;			// 网络状态信息
+        String  achFileName;          // 文件名（utf8编码）
+        boolean	    bBkImg;	    // 是否文档底图
+    }
 
     public static final class DcsElementOperBegin_Ntf{
         public BaseTypeString MainParam;
@@ -301,7 +495,7 @@ public final class MsgBeans {
     }
 
 
-    public static final class DcsDownloadImage_Rsp{
+    public static final class DcsTransferImage {
         public TDCSResult MainParam;
         public TDCSImageUrl AssParam;
     }
@@ -314,13 +508,6 @@ public final class MsgBeans {
 //
 //    }
 
-    public static final class TDCSFileLoadResult {
-        public boolean bSuccess;
-        public boolean bElementFile;
-        public String achFilePathName;
-        public String achWbPicentityId;
-        public String achTabid;
-    }
 
     public static final class DcsDelWhiteBoard_Ntf{
 
@@ -351,7 +538,11 @@ public final class MsgBeans {
         public TDCSConfUserInfo tUserInfo;
     }
 
-
+    public class TDCSOperator{
+        public String achConfE164;
+        public int dwListNum;
+        public TDCSConfUserInfo[] atOperList;
+    }
 
 
     public static final class TDCSConfAddr {
