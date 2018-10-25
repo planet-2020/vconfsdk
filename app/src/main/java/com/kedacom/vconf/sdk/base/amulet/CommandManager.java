@@ -15,14 +15,14 @@ final class CommandManager implements ICommandProcessor{
 
     private JsonProcessor jsonProcessor;
 
-    private MessageRegister messageRegister;
+    private SpellBook spellBook;
 
-    private NativeInteractor nativeInteractor;
+    private MagicStick magicStick;
 
     private CommandManager(){
         jsonProcessor = JsonProcessor.instance();
-        messageRegister = MessageRegister.instance();
-        nativeInteractor = NativeInteractor.instance();
+        spellBook = SpellBook.instance();
+        magicStick = MagicStick.instance();
     }
 
     synchronized static CommandManager instance() {
@@ -36,47 +36,47 @@ final class CommandManager implements ICommandProcessor{
     @Override
     public void set(String setId, Object para){
 
-        if (!messageRegister.isSet(setId)){
+        if (!spellBook.isSet(setId)){
             Log.e(TAG, "Unknown set "+setId);
             return;
         }
 
-        if (para.getClass() != messageRegister.getSetParaClazz(setId)){
+        if (para.getClass() != spellBook.getSetParaClazz(setId)){
             return;
         }
 
-        nativeInteractor.set(setId, jsonProcessor.toJson(para));
+        magicStick.set(setId, jsonProcessor.toJson(para));
     }
 
     @Override
     public Object get(String getId){
 
-        if (!messageRegister.isGet(getId)){ // XXX 用异常机制代替返回值机制
+        if (!spellBook.isGet(getId)){ // XXX 用异常机制代替返回值机制
             Log.e(TAG, "Unknown get "+getId);
             return null; //TODO  throw Exception
         }
 
         StringBuffer buffer = new StringBuffer();
-        nativeInteractor.get(getId, buffer);
+        magicStick.get(getId, buffer);
 
-        return jsonProcessor.fromJson(buffer.toString(), messageRegister.getGetResultClazz(getId));
+        return jsonProcessor.fromJson(buffer.toString(), spellBook.getGetResultClazz(getId));
     }
 
     @Override
     public Object get(String getId, Object para){
-        if (!messageRegister.isGet(getId)){
+        if (!spellBook.isGet(getId)){
             Log.e(TAG, "Unknown get "+getId);
             return null;
         }
 
-        if (para.getClass() != messageRegister.getGetParaClazz(getId)){
+        if (para.getClass() != spellBook.getGetParaClazz(getId)){
             return null;
         }
 
         StringBuffer buffer = new StringBuffer();
-        nativeInteractor.get(getId, jsonProcessor.toJson(para), buffer);
+        magicStick.get(getId, jsonProcessor.toJson(para), buffer);
 
-        return jsonProcessor.fromJson(buffer.toString(), messageRegister.getGetResultClazz(getId));
+        return jsonProcessor.fromJson(buffer.toString(), spellBook.getGetResultClazz(getId));
     }
 
 

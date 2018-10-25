@@ -11,11 +11,11 @@ import android.util.Log;
  * Created by Sissi on 1/20/2017.
  */
 @SuppressWarnings({"JniMissingFunction", /*"unused", */"UnusedReturnValue"})
-final class NativeInteractor implements INativeCallback{
+final class MagicStick implements INativeCallback{
 
-    private static final String TAG = NativeInteractor.class.getSimpleName();
+    private static final String TAG = MagicStick.class.getSimpleName();
 
-    private static NativeInteractor instance;
+    private static MagicStick instance;
 
     private Handler nativeMsgHandler;
 
@@ -23,13 +23,13 @@ final class NativeInteractor implements INativeCallback{
     private INotificationProcessor notificationProcessor;
     private INativeEmulator nativeEmulator;
 
-    private NativeInteractor(){
+    private MagicStick(){
         initNativeMsgHandler();
     }
 
-    public synchronized static NativeInteractor instance() {
+    public synchronized static MagicStick instance() {
         if (null == instance) {
-            instance = new NativeInteractor();
+            instance = new MagicStick();
 //            setCallback(instance);
         }
 
@@ -113,17 +113,17 @@ final class NativeInteractor implements INativeCallback{
     }
 
 
-    NativeInteractor setResponseProcessor(IResponseProcessor responseProcessor){
+    MagicStick setResponseProcessor(IResponseProcessor responseProcessor){
         this.responseProcessor = responseProcessor;
         return this;
     }
 
-    NativeInteractor setNotificationProcessor(INotificationProcessor notificationProcessor){
+    MagicStick setNotificationProcessor(INotificationProcessor notificationProcessor){
         this.notificationProcessor = notificationProcessor;
         return this;
     }
 
-    NativeInteractor setNativeEmulator(INativeEmulator nativeEmulator){
+    MagicStick setNativeEmulator(INativeEmulator nativeEmulator){
         this.nativeEmulator = nativeEmulator;
         if (null != nativeEmulator) {
             nativeEmulator.setCallback(this);

@@ -13,8 +13,8 @@ import java.util.Set;
  */
 @SuppressWarnings("BooleanMethodIsAlwaysInverted")
 @Consumer(Message.class)
-final class MessageRegister {
-    private static MessageRegister instance;
+final class SpellBook {
+    private static SpellBook instance;
 
     private Set<String> reqSet;
 
@@ -50,7 +50,7 @@ final class MessageRegister {
 //    private final EnumSet<EmRsp> whiteList; // 白名单
 //    private final EnumSet<EmRsp> blackList; // 黑名单
 
-    private MessageRegister(){
+    private SpellBook(){
         reqParaMap = Message$$Generated.reqParaMap;
         reqRspSeqsMap = Message$$Generated.reqRspsMap;
         reqTimeoutMap = Message$$Generated.reqTimeoutMap;
@@ -69,9 +69,9 @@ final class MessageRegister {
         sets = setParaClazzMap.keySet();
     }
 
-    synchronized static MessageRegister instance() {
+    synchronized static SpellBook instance() {
         if (null == instance) {
-            instance = new MessageRegister();
+            instance = new SpellBook();
         }
 
         return instance;

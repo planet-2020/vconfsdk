@@ -27,14 +27,14 @@ final class NativeEmulator implements INativeEmulator{
     private static NativeEmulator instance;
 
     private JsonProcessor jsonProcessor;
-    private MessageRegister messageRegister;
+    private SpellBook spellBook;
 
     private Handler handler;
     private INativeCallback cb;
 
     private NativeEmulator() {
         jsonProcessor = JsonProcessor.instance();
-        messageRegister = MessageRegister.instance();
+        spellBook = SpellBook.instance();
         initHandler();
     }
 
@@ -61,7 +61,7 @@ final class NativeEmulator implements INativeEmulator{
 
     @Override
     public int call(String methodName, String para) {
-        if (messageRegister.isSet(methodName)){
+        if (spellBook.isSet(methodName)){
             set(methodName, para);
             return 0;
         }
@@ -73,13 +73,13 @@ final class NativeEmulator implements INativeEmulator{
 
         Log.d(TAG, String.format("receive REQ %s, para= %s", methodName, para));
 
-        String[] rspIds = messageRegister.getRspSeqs(methodName)[0]; // 若有多路响应序列默认返回第一路
+        String[] rspIds = spellBook.getRspSeqs(methodName)[0]; // 若有多路响应序列默认返回第一路
         Object rspBody = null;
         int delay = 0;
         for (String rspId : rspIds) {
-            delay += messageRegister.getRspDelay(rspId);
+            delay += spellBook.getRspDelay(rspId);
             try {
-                Class<?> clz = messageRegister.getRspClazz(rspId);
+                Class<?> clz = spellBook.getRspClazz(rspId);
                 Constructor ctor = clz.getDeclaredConstructor((Class[]) null); // 使用响应消息体类的默认构造函数构造响应消息对象
                 ctor.setAccessible(true);
                 rspBody = ctor.newInstance((Object[]) null);
@@ -107,7 +107,7 @@ final class NativeEmulator implements INativeEmulator{
     public int call(String methodName, String para, StringBuffer output) {
         Object result = null;
         try {
-            Class<?> clz = messageRegister.getGetResultClazz(methodName);
+            Class<?> clz = spellBook.getGetResultClazz(methodName);
             Constructor ctor = clz.getDeclaredConstructor((Class[])null);
             ctor.setAccessible(true);
             result = ctor.newInstance((Object[]) null);
@@ -130,7 +130,7 @@ final class NativeEmulator implements INativeEmulator{
         }
         Object ntfBody = null;
         try {
-            Class<?> clz = messageRegister.getNtfClazz(ntfId);
+            Class<?> clz = spellBook.getNtfClazz(ntfId);
             Constructor ctor = clz.getDeclaredConstructor((Class[])null); // 使用通知消息体类的默认构造函数构造通知消息对象
             ctor.setAccessible(true);
             ntfBody = ctor.newInstance((Object[]) null);
@@ -141,7 +141,7 @@ final class NativeEmulator implements INativeEmulator{
         handler.postDelayed(() -> {
             Log.d(TAG, String.format("send NTF %s, content=%s", ntfId, jsonNtfBody));
             cb.callback(ntfId, jsonNtfBody);
-        }, messageRegister.getNtfDelay(ntfId));
+        }, spellBook.getNtfDelay(ntfId));
     }
 
 

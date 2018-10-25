@@ -20,15 +20,15 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
     private static NotifiManager instance;
 
-    private NativeInteractor nativeInteractor;
-    private MessageRegister messageRegister;
+    private MagicStick magicStick;
+    private SpellBook spellBook;
     private JsonProcessor jsonProcessor;
 
     private Map<String, Set<Handler>> subscribers;
 
     private NotifiManager(){
-        nativeInteractor = NativeInteractor.instance();
-        messageRegister = MessageRegister.instance();
+        magicStick = MagicStick.instance();
+        spellBook = SpellBook.instance();
         jsonProcessor = JsonProcessor.instance();
 
         subscribers = new HashMap<>();
@@ -50,7 +50,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
             return false;
         }
 
-        if (!messageRegister.isNotification(ntfId)){
+        if (!spellBook.isNotification(ntfId)){
             Log.e(TAG, "Unknown notification "+ntfId);
             return false;
         }
@@ -73,7 +73,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
             return;
         }
 
-        if (!messageRegister.isNotification(ntfId)){
+        if (!spellBook.isNotification(ntfId)){
             Log.e(TAG, "Unknown notification "+ntfId);
             return;
         }
@@ -90,7 +90,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
     @Override
     public synchronized boolean processNotification(String ntfName, String ntfBody) {
-        if (!messageRegister.isNotification(ntfName)){
+        if (!spellBook.isNotification(ntfName)){
             return false;
         }
         Set<Handler> subs = subscribers.get(ntfName);
@@ -100,7 +100,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
         Log.d(TAG, String.format("<-~- %s\n%s", ntfName, ntfBody));
 
-        Object ntfContent = jsonProcessor.fromJson(ntfBody, messageRegister.getNtfClazz(ntfName));
+        Object ntfContent = jsonProcessor.fromJson(ntfBody, spellBook.getNtfClazz(ntfName));
 
         for (Handler sub : subs){
             Message msg = Message.obtain();
@@ -114,12 +114,12 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
     @Override
     public synchronized boolean emitNotification(String ntfName) {
-        if (!messageRegister.isNotification(ntfName)){
+        if (!spellBook.isNotification(ntfName)){
             Log.e(TAG, "Unknown notification "+ntfName);
             return false;
         }
 
-        return nativeInteractor.emitNotification(ntfName);
+        return magicStick.emitNotification(ntfName);
     }
 
 }

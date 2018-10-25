@@ -35,16 +35,16 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     private static final int MSG_ID_TIMEOUT = 999;
 
     private JsonProcessor jsonProcessor;
-    private MessageRegister messageRegister;
-    private NativeInteractor nativeInteractor;
+    private SpellBook spellBook;
+    private MagicStick magicStick;
 
     private SessionManager(){
         sessions = new HashSet<>();
         blockedSessions = new HashSet<>();
 
         jsonProcessor = JsonProcessor.instance();
-        messageRegister = MessageRegister.instance();
-        nativeInteractor = NativeInteractor.instance();
+        spellBook = SpellBook.instance();
+        magicStick = MagicStick.instance();
 
         initRequestHandler();
         initTimeoutHandler();
@@ -68,14 +68,14 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             return false;
         }
 
-        if (!messageRegister.isRequest(reqId)){
+        if (!spellBook.isRequest(reqId)){
             Log.e(TAG, "no such request: "+reqId);
             return false;
         }
 
         if (null != reqPara
-                && reqPara.getClass() != messageRegister.getReqParaClazz(reqId)){
-            Log.e(TAG, String.format("invalid request para %s, expect %s", reqPara.getClass(), messageRegister.getReqParaClazz(reqId)));
+                && reqPara.getClass() != spellBook.getReqParaClazz(reqId)){
+            Log.e(TAG, String.format("invalid request para %s, expect %s", reqPara.getClass(), spellBook.getReqParaClazz(reqId)));
             return false;
         }
 
@@ -90,8 +90,8 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
         // 创建会话
         Session s = new Session(++sessionCnt, requester, reqSn, reqId, reqPara,
-                messageRegister.getTimeout(reqId)*1000,
-                messageRegister.getRspSeqs(reqId));
+                spellBook.getTimeout(reqId)*1000,
+                spellBook.getRspSeqs(reqId));
         // 尝试发送请求
         if (!isReqExist){
             if (sessions.size() >= MAX_SESSION_NUM){
@@ -161,7 +161,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     @Override
     public synchronized boolean processResponse(String rspName, String rspBody){
 
-        if (!messageRegister.isResponse(rspName)){
+        if (!spellBook.isResponse(rspName)){
             return false;
         }
 
@@ -207,7 +207,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
                 s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                 sessions.remove(s);
-                rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), FeedbackBundle.RSP_FIN, s.reqId, s.reqSn);
+                rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, spellBook.getRspClazz(rspName)), FeedbackBundle.RSP_FIN, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
 
                 driveBlockedSession(s.reqId); // 驱动被当前会话阻塞的会话
@@ -215,7 +215,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             } else {
                 Log.d(TAG, String.format("<-=- %s (session %d) \n%s", rspName, s.id, rspBody));
                 s.state = Session.RECVING; // 已收到响应，继续接收后续响应
-                rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, messageRegister.getRspClazz(rspName)), FeedbackBundle.RSP, s.reqId, s.reqSn);
+                rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, spellBook.getRspClazz(rspName)), FeedbackBundle.RSP, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
             }
 
@@ -279,7 +279,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
         String jsonReqPara = jsonProcessor.toJson(s.reqPara);
         Log.d(TAG, String.format("-=-> %s (session %d START) \n%s", s.reqId, s.id, jsonReqPara));
 
-        nativeInteractor.request(s.reqId, jsonReqPara);
+        magicStick.request(s.reqId, jsonReqPara);
 
         if (null==s.rspSeqs || 0==s.rspSeqs.length){
             s.state = Session.END; // 请求没有响应，会话结束

@@ -25,7 +25,7 @@ public class Caster {
         subscribeProcessor = NotifiManager.instance();
         notificationEmitter = NotifiManager.instance();
 
-        NativeInteractor.instance()
+        MagicStick.instance()
                 .setResponseProcessor(SessionManager.instance())
                 .setNotificationProcessor(NotifiManager.instance())
                 .setNativeEmulator(NativeEmulatorOnOff.on ? NativeEmulator.instance() : null);
