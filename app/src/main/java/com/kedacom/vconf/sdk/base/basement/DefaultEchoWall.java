@@ -3,7 +3,7 @@
  */
 
 
-package com.kedacom.vconf.sdk.base.amulet;
+package com.kedacom.vconf.sdk.base.basement;
 
 @SuppressWarnings("JniMissingFunction")
 class DefaultEchoWall implements IEchoWall {

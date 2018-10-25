@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.base.amulet;
+package com.kedacom.vconf.sdk.base.basement;
 
 interface ICommandProcessor {
     void set(String setId, Object para);

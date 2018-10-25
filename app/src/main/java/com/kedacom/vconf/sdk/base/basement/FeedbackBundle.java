@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.base.amulet;
+package com.kedacom.vconf.sdk.base.basement;
 
 class FeedbackBundle {
     // 消息类型

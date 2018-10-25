@@ -9,7 +9,7 @@
  * 该开关仅调试模式下开启！SVN上的版本应始终为关闭状态且该文件在首次提交后应设置为不可提交！
  * */
 
-package com.kedacom.vconf.sdk.base.amulet;
+package com.kedacom.vconf.sdk.base.basement;
 
 class FakeEchoWallOnOff {
     static final boolean on = true;

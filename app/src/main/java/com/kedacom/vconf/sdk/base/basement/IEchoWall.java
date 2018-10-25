@@ -3,7 +3,7 @@
  */
 
 
-package com.kedacom.vconf.sdk.base.amulet;
+package com.kedacom.vconf.sdk.base.basement;
 
 public interface IEchoWall {
     interface IYellback {

@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.base.amulet;
+package com.kedacom.vconf.sdk.base.basement;
 
 import com.kedacom.vconf.sdk.annotation.Consumer;
 import com.kedacom.vconf.sdk.annotation.Message;

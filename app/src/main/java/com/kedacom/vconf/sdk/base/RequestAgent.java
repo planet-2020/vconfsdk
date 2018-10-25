@@ -2,7 +2,7 @@ package com.kedacom.vconf.sdk.base;
 
 import android.support.annotation.RestrictTo;
 
-import com.kedacom.vconf.sdk.base.amulet.Caster;
+import com.kedacom.vconf.sdk.base.basement.Caster;
 import com.kedacom.vconf.sdk.utils.KLog;
 
 import java.util.HashMap;
