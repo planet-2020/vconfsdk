@@ -1,3 +1,9 @@
+
+/**
+ * Created by gaofan_kd7331, 2018-10-25
+ */
+
+
 package com.kedacom.vconf.sdk.base.amulet;
 
 import android.os.Handler;
@@ -7,97 +13,87 @@ import android.os.Process;
 import android.util.Log;
 
 
-/**
- * Created by Sissi on 1/20/2017.
- */
 @SuppressWarnings({"JniMissingFunction", /*"unused", */"UnusedReturnValue"})
-final class MagicStick implements INativeCallback{
+final class MagicStick implements IEchoWall.IYellback {
 
     private static final String TAG = MagicStick.class.getSimpleName();
 
     private static MagicStick instance;
 
-    private Handler nativeMsgHandler;
+    private Handler handler;
 
     private IResponseProcessor responseProcessor;
     private INotificationProcessor notificationProcessor;
-    private INativeEmulator nativeEmulator;
+    private IEchoWall echoWall;
 
     private MagicStick(){
-        initNativeMsgHandler();
+        initHandler();
     }
 
     public synchronized static MagicStick instance() {
         if (null == instance) {
             instance = new MagicStick();
-//            setCallback(instance);
         }
-
         return instance;
     }
 
     int request(String methodName, String reqPara){
-        if (null != nativeEmulator){
-            return nativeEmulator.call(methodName, reqPara);
+        if (null == echoWall){
+            return -1;
         }
-
-        return call(methodName, reqPara);
+        return echoWall.yell(methodName, reqPara);
     }
 
     int set(String methodName, String setPara){
-        if (null != nativeEmulator){
-            return nativeEmulator.call(methodName, setPara);
+        if (null == echoWall){
+            return -1;
         }
-        return call(methodName, setPara);
+        return echoWall.yell(methodName, setPara);
     }
 
     int get(String methodName, String para, StringBuffer output){
-        if (null != nativeEmulator){
-            return nativeEmulator.call(methodName, para, output);
+        if (null == echoWall){
+            return -1;
         }
-        return call(methodName, para, output);
+        return echoWall.yell(methodName, para, output);
     }
 
     int get(String methodName, StringBuffer output){
-        if (null != nativeEmulator){
-            return nativeEmulator.call(methodName, output);
+        if (null == echoWall){
+            return -1;
         }
-        return call(methodName, output);
+        return echoWall.yell(methodName, output);
     }
 
-    /**
-     * 发射通知。驱动模拟器发射通知，仅用于模拟模式。
-     * */
     boolean emitNotification(String ntfId){
-        if (null == nativeEmulator){
+        if (null == echoWall){
             return false;
         }
-        nativeEmulator.ejectNotification(ntfId);
-        return true;
+        return echoWall.ejectNotification(ntfId);
     }
 
 
     @Override
-    public void callback(String msgId, String msgBody){
+    public void yellback(String msgId, String msgBody){
         if (null == msgId || msgId.isEmpty()){
-            Log.e(TAG, "Invalid native msg.");
+            Log.w(TAG, "empty msg id");
             return;
         }
         Message msg = Message.obtain();
-        msg.obj = new NativeMsgWrapper(msgId, msgBody);
-        nativeMsgHandler.sendMessage(msg);
+        msg.obj = new MsgWrapper(msgId, msgBody);
+        handler.sendMessage(msg);
     }
 
 
-    private void initNativeMsgHandler(){
-        HandlerThread handlerThread = new HandlerThread("NI.nativeMsgHandler", Process.THREAD_PRIORITY_BACKGROUND);
+    private void initHandler(){
+        HandlerThread handlerThread = new HandlerThread("MS.handler", Process.THREAD_PRIORITY_BACKGROUND);
         handlerThread.start();
-        nativeMsgHandler = new Handler(handlerThread.getLooper()){
+        handler = new Handler(handlerThread.getLooper()){
             @Override
             public void handleMessage(Message msg) {
-                NativeMsgWrapper nativeMsgWrapper = (NativeMsgWrapper) msg.obj;
-                String msgId = nativeMsgWrapper.msgId;
-                String msgBody = nativeMsgWrapper.msgBody;
+                MsgWrapper msgWrapper = (MsgWrapper) msg.obj;
+                String msgId = msgWrapper.msgId;
+                String msgBody = msgWrapper.msgBody;
                 boolean consumed = false;
                 if (null!=responseProcessor){
                     consumed = responseProcessor.processResponse(msgId, msgBody);
@@ -123,29 +119,19 @@ final class MagicStick implements INativeCallback{
         return this;
     }
 
-    MagicStick setNativeEmulator(INativeEmulator nativeEmulator){
-        this.nativeEmulator = nativeEmulator;
-        if (null != nativeEmulator) {
-            nativeEmulator.setCallback(this);
-//            setCallback(null);
+    MagicStick setEchoWall(IEchoWall echoWall){
+        this.echoWall = echoWall;
+        if (null != echoWall) {
+            echoWall.setYellback(this);
         }
         return this;
     }
 
-    private class NativeMsgWrapper{
+    private class MsgWrapper {
         String msgId;
         String msgBody;
-        NativeMsgWrapper(String msgId, String msgBody){this.msgId=msgId; this.msgBody=msgBody;}
+        MsgWrapper(String msgId, String msgBody){this.msgId=msgId; this.msgBody=msgBody;}
     }
-
-
-    // native methods
-
-    private native int setCallback(INativeCallback callback);
-
-    native int call(String methodName, String reqPara);  // request/set
-    native int call(String methodName, StringBuffer output); // get
-    native int call(String methodName, String para, StringBuffer output); // get
 
 }
 

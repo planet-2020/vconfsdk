@@ -1,12 +1,7 @@
 package com.kedacom.vconf.sdk.base.amulet;
 
-
 import android.util.Log;
 
-/**
- *
- * Created by Sissi on 2/22/2017.
- */
 final class CommandManager implements ICommandProcessor{
 
     private static final String TAG = CommandManager.class.getSimpleName();

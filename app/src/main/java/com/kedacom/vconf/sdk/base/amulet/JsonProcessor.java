@@ -11,10 +11,6 @@ import com.kedacom.vconf.sdk.annotation.Consumer;
 import com.kedacom.vconf.sdk.annotation.SerializeEnumAsInt;
 
 
-/***
- *
- * Json处理器
- * */
 @Consumer(SerializeEnumAsInt.class)
 final class JsonProcessor {
 

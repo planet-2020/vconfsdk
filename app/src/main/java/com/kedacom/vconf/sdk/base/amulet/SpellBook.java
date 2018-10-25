@@ -6,11 +6,7 @@ import com.kedacom.vconf.sdk.annotation.Message;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * 消息注册表
- *
- * Created by Sissi on 1/9/2017.
- */
+
 @SuppressWarnings("BooleanMethodIsAlwaysInverted")
 @Consumer(Message.class)
 final class SpellBook {

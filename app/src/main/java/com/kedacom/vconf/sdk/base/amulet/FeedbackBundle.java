@@ -1,8 +1,5 @@
 package com.kedacom.vconf.sdk.base.amulet;
 
-/**
- * Created by Sissi on 2018/9/13.
- */
 class FeedbackBundle {
     // 消息类型
     static final int NTF = 101; // 通知

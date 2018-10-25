@@ -10,10 +10,6 @@ import android.util.SparseIntArray;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * 会话处理器　
- * Created by Sissi on 1/9/2017.
- */
 
 @SuppressWarnings("UnusedReturnValue")
 final class SessionManager implements IRequestProcessor, IResponseProcessor {

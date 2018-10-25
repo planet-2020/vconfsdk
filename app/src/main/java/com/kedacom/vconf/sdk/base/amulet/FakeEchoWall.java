@@ -1,3 +1,8 @@
+/**
+ * Created by gaofan_kd7331, 2018-10-25
+ */
+
+
 package com.kedacom.vconf.sdk.base.amulet;
 
 import android.os.Handler;
@@ -8,70 +13,56 @@ import android.util.Log;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
+class FakeEchoWall implements IEchoWall {
 
-/**
- * 模拟器。<p>
- *
- * 模拟模式下模拟器替代了真实的远端(服务器)，请求会被定向到模拟器而非发给真实服务器.
- * 模拟器收到请求后会反馈响应。<p>
- * 模拟模式主要有两个用途：<p>
- * 1、便于在Native层没有完成开发的情况下UI层开发仍可以照常进行不受制约。<p>
- * 2、便于定位问题。比如当联调出现问题时可启用模拟模式跑下程序，若模拟模式下程序正常则问题出在native层，否则问题出在UI层。
- *
- * Created by Sissi on 1/20/2017.
- */
-final class NativeEmulator implements INativeEmulator{
+    private static final String TAG = "FakeEchoWall";
 
-    private static final String TAG = "NativeEmulator";
-
-    private static NativeEmulator instance;
+    private static FakeEchoWall instance;
 
     private JsonProcessor jsonProcessor;
     private SpellBook spellBook;
 
     private Handler handler;
-    private INativeCallback cb;
+    private IYellback yb;
 
-    private NativeEmulator() {
+    private FakeEchoWall() {
         jsonProcessor = JsonProcessor.instance();
         spellBook = SpellBook.instance();
         initHandler();
     }
 
-    synchronized static NativeEmulator instance() {
+    synchronized static FakeEchoWall instance() {
         if (null == instance) {
-            instance = new NativeEmulator();
+            instance = new FakeEchoWall();
         }
-
         return instance;
     }
 
     private void initHandler(){
-        HandlerThread handlerThread = new HandlerThread("NE.callback", Process.THREAD_PRIORITY_BACKGROUND);
+        HandlerThread handlerThread = new HandlerThread("FEW.yellback", Process.THREAD_PRIORITY_BACKGROUND);
         handlerThread.start();
         handler = new Handler(handlerThread.getLooper());
     }
 
 
+
     @Override
-    public void setCallback(INativeCallback cb) {
-        this.cb = cb;
+    public void setYellback(IYellback yb) {
+        this.yb = yb;
     }
 
-
     @Override
-    public int call(String methodName, String para) {
+    public int yell(String methodName, String para) {
         if (spellBook.isSet(methodName)){
             set(methodName, para);
             return 0;
         }
 
-
-        if (null == cb){
+        if (null == yb){
             return -1;
         }
 
-        Log.d(TAG, String.format("receive REQ %s, para= %s", methodName, para));
+        Log.d(TAG, String.format("receive REQ %s, para=%s", methodName, para));
 
         String[] rspIds = spellBook.getRspSeqs(methodName)[0]; // 若有多路响应序列默认返回第一路
         Object rspBody = null;
@@ -90,7 +81,7 @@ final class NativeEmulator implements INativeEmulator{
             // 上报响应
             handler.postDelayed(() -> {
                 Log.d(TAG, String.format("send RSP %s, rspContent=%s", rspId, jsonRspBody));
-                cb.callback(rspId, jsonRspBody);
+                yb.yellback(rspId, jsonRspBody);
             }, delay);
 
         }
@@ -99,12 +90,12 @@ final class NativeEmulator implements INativeEmulator{
     }
 
     @Override
-    public int call(String methodName, StringBuffer output) {
-        return call(methodName, null, output);
+    public int yell(String methodName, StringBuffer output) {
+        return yell(methodName, null, output);
     }
 
     @Override
-    public int call(String methodName, String para, StringBuffer output) {
+    public int yell(String methodName, String para, StringBuffer output) {
         Object result = null;
         try {
             Class<?> clz = spellBook.getGetResultClazz(methodName);
@@ -122,12 +113,12 @@ final class NativeEmulator implements INativeEmulator{
         return 0;
     }
 
-
     @Override
-    public void ejectNotification(String ntfId) {
-        if (null == cb){
-            return;
+    public boolean ejectNotification(String ntfId) {
+        if (null == yb){
+            return false;
         }
+
         Object ntfBody = null;
         try {
             Class<?> clz = spellBook.getNtfClazz(ntfId);
@@ -140,10 +131,11 @@ final class NativeEmulator implements INativeEmulator{
         final String jsonNtfBody = jsonProcessor.toJson(ntfBody);
         handler.postDelayed(() -> {
             Log.d(TAG, String.format("send NTF %s, content=%s", ntfId, jsonNtfBody));
-            cb.callback(ntfId, jsonNtfBody);
+            yb.yellback(ntfId, jsonNtfBody);
         }, spellBook.getNtfDelay(ntfId));
-    }
 
+        return true;
+    }
 
     private void set(String methodName, String para){
         Log.d(TAG, String.format("SET %s, para= %s", methodName, para));

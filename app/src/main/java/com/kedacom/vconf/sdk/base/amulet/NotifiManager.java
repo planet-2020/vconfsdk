@@ -9,11 +9,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * 通知处理器
- *
- * Created by Sissi on 1/9/2017.
- */
+
 final class NotifiManager implements ISubscribeProcessor, INotificationProcessor, INotificationEmitter{
 
     private static final String TAG = NotifiManager.class.getSimpleName();

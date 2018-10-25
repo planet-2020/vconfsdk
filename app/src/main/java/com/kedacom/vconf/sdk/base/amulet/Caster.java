@@ -1,3 +1,9 @@
+
+/**
+ * Created by gaofan_kd7331, 2018-10-25
+ */
+
+
 package com.kedacom.vconf.sdk.base.amulet;
 
 import android.os.Handler;
@@ -24,11 +30,11 @@ public class Caster {
         commandProcessor = CommandManager.instance();
         subscribeProcessor = NotifiManager.instance();
         notificationEmitter = NotifiManager.instance();
-
         MagicStick.instance()
+                .setEchoWall(FakeEchoWallOnOff.on ? FakeEchoWall.instance() : DefaultEchoWall.instance())
                 .setResponseProcessor(SessionManager.instance())
-                .setNotificationProcessor(NotifiManager.instance())
-                .setNativeEmulator(NativeEmulatorOnOff.on ? NativeEmulator.instance() : null);
+                .setNotificationProcessor(NotifiManager.instance());
+
     }
 
     public Caster(){
