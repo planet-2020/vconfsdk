@@ -84,6 +84,12 @@ final class SessionFairy implements IRequestProcessor, IResponseProcessor {
             }
         }
 
+        if (isReqExist
+                && magicBook.isMutualExclusive(reqId)){
+            Log.w(TAG, String.format("request %s is mutual exclusive", reqId));
+            return false;
+        }
+
         // 创建会话
         Session s = new Session(++sessionCnt, requester, reqSn, reqId, reqPara,
                 magicBook.getTimeout(reqId)*1000,

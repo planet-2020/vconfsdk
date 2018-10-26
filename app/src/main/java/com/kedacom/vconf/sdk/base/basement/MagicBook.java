@@ -28,6 +28,8 @@ final class MagicBook {
 
     private Map<String, Integer> reqTimeoutMap; // 请求——超时时限. 单位: 秒.
 
+    private Map<String, Boolean> reqExclusiveMap; // 请求——互斥
+
     private Map<String, Class> rspClazzMap; // 响应——响应对应的类
 
     private Map<String, Integer> rspDelayMap; // 响应——响应延时。仅用于模拟模式
@@ -50,6 +52,7 @@ final class MagicBook {
         reqParaMap = Message$$Generated.reqParaMap;
         reqRspSeqsMap = Message$$Generated.reqRspsMap;
         reqTimeoutMap = Message$$Generated.reqTimeoutMap;
+        reqExclusiveMap = Message$$Generated.reqExclusiveMap;
         rspClazzMap = Message$$Generated.rspClazzMap;
         rspDelayMap = Message$$Generated.rspDelayMap;
         ntfClazzMap = Message$$Generated.ntfClazzMap;
@@ -109,6 +112,10 @@ final class MagicBook {
         }
 
         return timeoutVal;
+    }
+
+    boolean isMutualExclusive(String req){
+        return reqExclusiveMap.get(req);
     }
 
     Class<?> getRspClazz(String rsp){

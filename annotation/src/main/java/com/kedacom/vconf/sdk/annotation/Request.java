@@ -19,4 +19,5 @@ public @interface Request {
     String[] rspSeq2() default {}; // 请求对应的另一个可能的响应序列
     String[] rspSeq3() default {}; // 请求对应的另一个可能的响应序列
     int timeout() default 10;   // 请求对应的超时。单位：秒
+    boolean isMutualExclusive() default true; // 是否互斥。若互斥则仅容许存在一个进行中的该类请求。比如Login请求已发出且响应尚未收到，此时又来一个Login请求则第二个请求被丢弃。
 }

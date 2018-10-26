@@ -63,6 +63,8 @@ public class MessageProcessor extends AbstractProcessor {
 
     private Map<String, Integer> reqTimeoutMap = new HashMap<>();
 
+    private Map<String, Boolean> reqExclusiveMap = new HashMap<>();
+
     private Map<String, String> rspClazzMap = new HashMap<>();
 
     private Map<String, Integer> rspDelayMap = new HashMap<>();
@@ -105,6 +107,7 @@ public class MessageProcessor extends AbstractProcessor {
         reqParaMap.clear();
         reqRspsMap.clear();
         reqTimeoutMap.clear();
+        reqExclusiveMap.clear();
         rspClazzMap.clear();
         ntfClazzMap.clear();
         getParaClazzMap.clear();
@@ -168,6 +171,7 @@ public class MessageProcessor extends AbstractProcessor {
 
                 // 获取超时时长
                 reqTimeoutMap.put(reqName, request.timeout());
+                reqExclusiveMap.put(reqName, request.isMutualExclusive());
 
 //                messager.printMessage(Diagnostic.Kind.NOTE, "request: "+reqName
 //                        + " reqParaFullName: "+reqParaFullName
@@ -322,6 +326,7 @@ public class MessageProcessor extends AbstractProcessor {
         String fieldNameReqParaMap = "reqParaMap";
         String fieldNameReqRspsMap = "reqRspsMap";
         String fieldNameReqTimeoutMap = "reqTimeoutMap";
+        String fieldNameReqExclusiveMap = "reqExclusiveMap";
         String fieldNameRspClazzMap = "rspClazzMap";
         String fieldNameRspDelayMap = "rspDelayMap";
         String fieldNameNtfClazzMap = "ntfClazzMap";
@@ -338,6 +343,7 @@ public class MessageProcessor extends AbstractProcessor {
                 .addStatement("$L = new $T<>()", fieldNameReqParaMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqRspsMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqTimeoutMap, HashMap.class)
+                .addStatement("$L = new $T<>()", fieldNameReqExclusiveMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameRspClazzMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameRspDelayMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameNtfClazzMap, HashMap.class)
@@ -366,6 +372,10 @@ public class MessageProcessor extends AbstractProcessor {
 
         for(String req : reqTimeoutMap.keySet()){
             codeBlockBuilder.addStatement("$L.put($S, $L)", fieldNameReqTimeoutMap, req, reqTimeoutMap.get(req));
+        }
+
+        for(String req : reqExclusiveMap.keySet()){
+            codeBlockBuilder.addStatement("$L.put($S, $L)", fieldNameReqExclusiveMap, req, reqExclusiveMap.get(req));
         }
 
         for(String rsp : rspClazzMap.keySet()){
@@ -406,6 +416,9 @@ public class MessageProcessor extends AbstractProcessor {
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Integer.class),
                         fieldNameReqTimeoutMap, Modifier.STATIC)
+                        .build())
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Boolean.class),
+                        fieldNameReqExclusiveMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
                         fieldNameRspClazzMap, Modifier.STATIC)
