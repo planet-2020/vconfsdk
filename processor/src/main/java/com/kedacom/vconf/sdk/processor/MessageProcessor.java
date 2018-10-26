@@ -444,7 +444,7 @@ public class MessageProcessor extends AbstractProcessor {
                         .build())
                 .addStaticBlock(codeBlockBuilder.build())
                 .addMethod(constructor.build())
-                .addType(TypeSpec.classBuilder("InnerClassTest").build())
+//                .addType(TypeSpec.classBuilder("InnerClassTest").build())
                 .build();
 
         JavaFile javaFile = JavaFile.builder(packageName, typeSpec)
