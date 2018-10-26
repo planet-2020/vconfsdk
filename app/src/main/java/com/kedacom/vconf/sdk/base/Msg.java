@@ -28,7 +28,8 @@ public enum Msg {
     // startup
     @Request(para = MsgBeans.StartupPara.class,  // para表示传入参数
             rspSeq = {"StartupRsp"},
-            timeout = 4)
+            timeout = 4,
+            isMutualExclusive = true)
     Startup, // 请求不带Req后缀
 
     @Response(clz = MsgBeans.StartupResult.class, // Result表示反馈结果，注意区别Info
