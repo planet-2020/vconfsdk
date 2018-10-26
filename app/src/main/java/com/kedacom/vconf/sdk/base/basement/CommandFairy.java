@@ -2,27 +2,27 @@ package com.kedacom.vconf.sdk.base.basement;
 
 import android.util.Log;
 
-final class CommandManager implements ICommandProcessor{
+final class CommandFairy implements ICommandProcessor{
 
-    private static final String TAG = CommandManager.class.getSimpleName();
+    private static final String TAG = CommandFairy.class.getSimpleName();
 
-    private static CommandManager instance;
+    private static CommandFairy instance;
 
     private JsonProcessor jsonProcessor;
 
-    private SpellBook spellBook;
+    private MagicBook magicBook;
 
     private MagicStick magicStick;
 
-    private CommandManager(){
+    private CommandFairy(){
         jsonProcessor = JsonProcessor.instance();
-        spellBook = SpellBook.instance();
+        magicBook = MagicBook.instance();
         magicStick = MagicStick.instance();
     }
 
-    synchronized static CommandManager instance() {
+    synchronized static CommandFairy instance() {
         if (null == instance) {
-            instance = new CommandManager();
+            instance = new CommandFairy();
         }
 
         return instance;
@@ -31,12 +31,12 @@ final class CommandManager implements ICommandProcessor{
     @Override
     public void set(String setId, Object para){
 
-        if (!spellBook.isSet(setId)){
+        if (!magicBook.isSet(setId)){
             Log.e(TAG, "Unknown set "+setId);
             return;
         }
 
-        if (para.getClass() != spellBook.getSetParaClazz(setId)){
+        if (para.getClass() != magicBook.getSetParaClazz(setId)){
             return;
         }
 
@@ -46,7 +46,7 @@ final class CommandManager implements ICommandProcessor{
     @Override
     public Object get(String getId){
 
-        if (!spellBook.isGet(getId)){ // XXX 用异常机制代替返回值机制
+        if (!magicBook.isGet(getId)){ // XXX 用异常机制代替返回值机制
             Log.e(TAG, "Unknown get "+getId);
             return null; //TODO  throw Exception
         }
@@ -54,24 +54,24 @@ final class CommandManager implements ICommandProcessor{
         StringBuffer buffer = new StringBuffer();
         magicStick.get(getId, buffer);
 
-        return jsonProcessor.fromJson(buffer.toString(), spellBook.getGetResultClazz(getId));
+        return jsonProcessor.fromJson(buffer.toString(), magicBook.getGetResultClazz(getId));
     }
 
     @Override
     public Object get(String getId, Object para){
-        if (!spellBook.isGet(getId)){
+        if (!magicBook.isGet(getId)){
             Log.e(TAG, "Unknown get "+getId);
             return null;
         }
 
-        if (para.getClass() != spellBook.getGetParaClazz(getId)){
+        if (para.getClass() != magicBook.getGetParaClazz(getId)){
             return null;
         }
 
         StringBuffer buffer = new StringBuffer();
         magicStick.get(getId, jsonProcessor.toJson(para), buffer);
 
-        return jsonProcessor.fromJson(buffer.toString(), spellBook.getGetResultClazz(getId));
+        return jsonProcessor.fromJson(buffer.toString(), magicBook.getGetResultClazz(getId));
     }
 
 

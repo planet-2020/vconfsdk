@@ -12,11 +12,11 @@ import java.util.Set;
 
 
 @SuppressWarnings("UnusedReturnValue")
-final class SessionManager implements IRequestProcessor, IResponseProcessor {
+final class SessionFairy implements IRequestProcessor, IResponseProcessor {
 
-    private static final String TAG = SessionManager.class.getSimpleName();
+    private static final String TAG = SessionFairy.class.getSimpleName();
 
-    private static SessionManager instance;
+    private static SessionFairy instance;
 
     private Set<Session> sessions;  // 进行中的会话
     private Set<Session> blockedSessions; // 被阻塞的会话
@@ -31,24 +31,24 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     private static final int MSG_ID_TIMEOUT = 999;
 
     private JsonProcessor jsonProcessor;
-    private SpellBook spellBook;
+    private MagicBook magicBook;
     private MagicStick magicStick;
 
-    private SessionManager(){
+    private SessionFairy(){
         sessions = new HashSet<>();
         blockedSessions = new HashSet<>();
 
         jsonProcessor = JsonProcessor.instance();
-        spellBook = SpellBook.instance();
+        magicBook = MagicBook.instance();
         magicStick = MagicStick.instance();
 
         initRequestHandler();
         initTimeoutHandler();
     }
 
-    synchronized static SessionManager instance() {
+    synchronized static SessionFairy instance() {
         if (null == instance) {
-            instance = new SessionManager();
+            instance = new SessionFairy();
         }
 
         return instance;
@@ -64,14 +64,14 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             return false;
         }
 
-        if (!spellBook.isRequest(reqId)){
+        if (!magicBook.isRequest(reqId)){
             Log.e(TAG, "no such request: "+reqId);
             return false;
         }
 
         if (null != reqPara
-                && reqPara.getClass() != spellBook.getReqParaClazz(reqId)){
-            Log.e(TAG, String.format("invalid request para %s, expect %s", reqPara.getClass(), spellBook.getReqParaClazz(reqId)));
+                && reqPara.getClass() != magicBook.getReqParaClazz(reqId)){
+            Log.e(TAG, String.format("invalid request para %s, expect %s", reqPara.getClass(), magicBook.getReqParaClazz(reqId)));
             return false;
         }
 
@@ -86,8 +86,8 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
 
         // 创建会话
         Session s = new Session(++sessionCnt, requester, reqSn, reqId, reqPara,
-                spellBook.getTimeout(reqId)*1000,
-                spellBook.getRspSeqs(reqId));
+                magicBook.getTimeout(reqId)*1000,
+                magicBook.getRspSeqs(reqId));
         // 尝试发送请求
         if (!isReqExist){
             if (sessions.size() >= MAX_SESSION_NUM){
@@ -157,7 +157,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
     @Override
     public synchronized boolean processResponse(String rspName, String rspBody){
 
-        if (!spellBook.isResponse(rspName)){
+        if (!magicBook.isResponse(rspName)){
             return false;
         }
 
@@ -203,7 +203,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
                 timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
                 s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                 sessions.remove(s);
-                rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, spellBook.getRspClazz(rspName)), FeedbackBundle.RSP_FIN, s.reqId, s.reqSn);
+                rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, magicBook.getRspClazz(rspName)), FeedbackBundle.RSP_FIN, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
 
                 driveBlockedSession(s.reqId); // 驱动被当前会话阻塞的会话
@@ -211,7 +211,7 @@ final class SessionManager implements IRequestProcessor, IResponseProcessor {
             } else {
                 Log.d(TAG, String.format("<-=- %s (session %d) \n%s", rspName, s.id, rspBody));
                 s.state = Session.RECVING; // 已收到响应，继续接收后续响应
-                rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, spellBook.getRspClazz(rspName)), FeedbackBundle.RSP, s.reqId, s.reqSn);
+                rsp.obj = new FeedbackBundle(rspName, jsonProcessor.fromJson(rspBody, magicBook.getRspClazz(rspName)), FeedbackBundle.RSP, s.reqId, s.reqSn);
                 s.requester.sendMessage(rsp); // 上报该响应
             }
 

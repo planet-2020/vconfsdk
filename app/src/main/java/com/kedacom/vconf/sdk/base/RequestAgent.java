@@ -2,7 +2,7 @@ package com.kedacom.vconf.sdk.base;
 
 import android.support.annotation.RestrictTo;
 
-import com.kedacom.vconf.sdk.base.basement.Caster;
+import com.kedacom.vconf.sdk.base.basement.Witch;
 import com.kedacom.vconf.sdk.utils.KLog;
 
 import java.util.HashMap;
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-public abstract class RequestAgent implements Caster.IOnFeedbackListener, ListenerLifecycleObserver.Callback{
+public abstract class RequestAgent implements Witch.IOnFeedbackListener, ListenerLifecycleObserver.Callback{
 
     private int reqSn; // 请求序列号，唯一标识一次请求。
     private final Map<Integer, RequestBundle> rspListeners;
@@ -23,11 +23,11 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
 
     private ListenerLifecycleObserver listenerLifecycleObserver;
 
-    private Caster caster;
+    private Witch witch;
 
     protected RequestAgent(){
-        caster = new Caster();
-        caster.setOnFeedbackListener(this);
+        witch = new Witch();
+        witch.setOnFeedbackListener(this);
 
         listenerLifecycleObserver = new ListenerLifecycleObserver(this);
 
@@ -44,7 +44,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
             String ntfName;
             for (Msg ntf : ntfProcessorMap.keySet()){
                 ntfName = ntf.name();
-                caster.subscribe(ntfName);
+                witch.subscribe(ntfName);
                 ntfListeners.put(ntfName, new HashSet<>());
             }
         }else{
@@ -77,7 +77,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
             return;
         }
 
-        if (!caster.req(reqId.name(), ++reqSn, reqPara)){
+        if (!witch.req(reqId.name(), ++reqSn, reqPara)){
             return;
         }
 
@@ -115,7 +115,7 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
         }
 
         if (BIG_REQSN != earliestReq){
-            caster.cancelReq(earliestReq);
+            witch.cancelReq(earliestReq);
         }
 
     }
@@ -169,25 +169,25 @@ public abstract class RequestAgent implements Caster.IOnFeedbackListener, Listen
             KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
             return;
         }
-        caster.eject(ntfId.name());
+        witch.eject(ntfId.name());
     }
 
     /**
      * 设置配置
      * */
     protected void set(Msg setId, Object para){
-        caster.set(setId.name(), para);
+        witch.set(setId.name(), para);
     }
 
     /**
      * 获取配置
      * */
     protected Object get(Msg getId){
-        return caster.get(getId.name());
+        return witch.get(getId.name());
     }
 
     protected Object get(Msg getId, Object para){
-        return caster.get(getId.name(), para);
+        return witch.get(getId.name(), para);
     }
 
     /**

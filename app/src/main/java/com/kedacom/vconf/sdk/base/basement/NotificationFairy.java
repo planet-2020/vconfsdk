@@ -10,29 +10,29 @@ import java.util.Map;
 import java.util.Set;
 
 
-final class NotifiManager implements ISubscribeProcessor, INotificationProcessor, INotificationEmitter{
+final class NotificationFairy implements ISubscribeProcessor, INotificationProcessor, INotificationEmitter{
 
-    private static final String TAG = NotifiManager.class.getSimpleName();
+    private static final String TAG = NotificationFairy.class.getSimpleName();
 
-    private static NotifiManager instance;
+    private static NotificationFairy instance;
 
     private MagicStick magicStick;
-    private SpellBook spellBook;
+    private MagicBook magicBook;
     private JsonProcessor jsonProcessor;
 
     private Map<String, Set<Handler>> subscribers;
 
-    private NotifiManager(){
+    private NotificationFairy(){
         magicStick = MagicStick.instance();
-        spellBook = SpellBook.instance();
+        magicBook = MagicBook.instance();
         jsonProcessor = JsonProcessor.instance();
 
         subscribers = new HashMap<>();
     }
 
-    synchronized static NotifiManager instance() {
+    synchronized static NotificationFairy instance() {
         if (null == instance) {
-            instance = new NotifiManager();
+            instance = new NotificationFairy();
         }
 
         return instance;
@@ -46,7 +46,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
             return false;
         }
 
-        if (!spellBook.isNotification(ntfId)){
+        if (!magicBook.isNotification(ntfId)){
             Log.e(TAG, "Unknown notification "+ntfId);
             return false;
         }
@@ -69,7 +69,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
             return;
         }
 
-        if (!spellBook.isNotification(ntfId)){
+        if (!magicBook.isNotification(ntfId)){
             Log.e(TAG, "Unknown notification "+ntfId);
             return;
         }
@@ -86,7 +86,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
     @Override
     public synchronized boolean processNotification(String ntfName, String ntfBody) {
-        if (!spellBook.isNotification(ntfName)){
+        if (!magicBook.isNotification(ntfName)){
             return false;
         }
         Set<Handler> subs = subscribers.get(ntfName);
@@ -96,7 +96,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
         Log.d(TAG, String.format("<-~- %s\n%s", ntfName, ntfBody));
 
-        Object ntfContent = jsonProcessor.fromJson(ntfBody, spellBook.getNtfClazz(ntfName));
+        Object ntfContent = jsonProcessor.fromJson(ntfBody, magicBook.getNtfClazz(ntfName));
 
         for (Handler sub : subs){
             Message msg = Message.obtain();
@@ -110,7 +110,7 @@ final class NotifiManager implements ISubscribeProcessor, INotificationProcessor
 
     @Override
     public synchronized boolean emitNotification(String ntfName) {
-        if (!spellBook.isNotification(ntfName)){
+        if (!magicBook.isNotification(ntfName)){
             Log.e(TAG, "Unknown notification "+ntfName);
             return false;
         }

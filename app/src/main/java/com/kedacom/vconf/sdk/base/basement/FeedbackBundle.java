@@ -1,6 +1,6 @@
 package com.kedacom.vconf.sdk.base.basement;
 
-class FeedbackBundle {
+final class FeedbackBundle {
     // 消息类型
     static final int NTF = 101; // 通知
     static final int RSP = 102; // 响应

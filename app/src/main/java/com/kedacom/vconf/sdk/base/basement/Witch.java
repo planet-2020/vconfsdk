@@ -12,9 +12,9 @@ import android.os.Message;
 
 
 @SuppressWarnings("UnusedReturnValue")
-public class Caster {
+public final class Witch {
 
-//    private static final String TAG = Caster.class.getSimpleName();
+//    private static final String TAG = Witch.class.getSimpleName();
 
     private Handler feedbackHandler;
     private IOnFeedbackListener onFeedbackListener;
@@ -26,18 +26,18 @@ public class Caster {
 
     static {
 
-        requestProcessor = SessionManager.instance();
-        commandProcessor = CommandManager.instance();
-        subscribeProcessor = NotifiManager.instance();
-        notificationEmitter = NotifiManager.instance();
+        requestProcessor = SessionFairy.instance();
+        commandProcessor = CommandFairy.instance();
+        subscribeProcessor = NotificationFairy.instance();
+        notificationEmitter = NotificationFairy.instance();
         MagicStick.instance()
-                .setEchoWall(FakeEchoWallOnOff.on ? FakeEchoWall.instance() : DefaultEchoWall.instance())
-                .setResponseProcessor(SessionManager.instance())
-                .setNotificationProcessor(NotifiManager.instance());
+                .setCrystalBall(EmulationModeOnOff.on ? FakeCrystalBall.instance() : NativeInteractor.instance())
+                .setResponseProcessor(SessionFairy.instance())
+                .setNotificationProcessor(NotificationFairy.instance());
 
     }
 
-    public Caster(){
+    public Witch(){
         feedbackHandler = new Handler(Looper.getMainLooper()){
             @Override
             public void handleMessage(Message msg) {

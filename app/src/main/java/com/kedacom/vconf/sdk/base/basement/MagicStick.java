@@ -14,7 +14,7 @@ import android.util.Log;
 
 
 @SuppressWarnings({"JniMissingFunction", /*"unused", */"UnusedReturnValue"})
-final class MagicStick implements IEchoWall.IYellback {
+final class MagicStick implements ICrystalBall.IYellback {
 
     private static final String TAG = MagicStick.class.getSimpleName();
 
@@ -24,7 +24,7 @@ final class MagicStick implements IEchoWall.IYellback {
 
     private IResponseProcessor responseProcessor;
     private INotificationProcessor notificationProcessor;
-    private IEchoWall echoWall;
+    private ICrystalBall crystalBall;
 
     private MagicStick(){
         initHandler();
@@ -38,38 +38,38 @@ final class MagicStick implements IEchoWall.IYellback {
     }
 
     int request(String methodName, String reqPara){
-        if (null == echoWall){
+        if (null == crystalBall){
             return -1;
         }
-        return echoWall.yell(methodName, reqPara);
+        return crystalBall.yell(methodName, reqPara);
     }
 
     int set(String methodName, String setPara){
-        if (null == echoWall){
+        if (null == crystalBall){
             return -1;
         }
-        return echoWall.yell(methodName, setPara);
+        return crystalBall.yell(methodName, setPara);
     }
 
     int get(String methodName, String para, StringBuffer output){
-        if (null == echoWall){
+        if (null == crystalBall){
             return -1;
         }
-        return echoWall.yell(methodName, para, output);
+        return crystalBall.yell(methodName, para, output);
     }
 
     int get(String methodName, StringBuffer output){
-        if (null == echoWall){
+        if (null == crystalBall){
             return -1;
         }
-        return echoWall.yell(methodName, output);
+        return crystalBall.yell(methodName, output);
     }
 
     boolean emitNotification(String ntfId){
-        if (null == echoWall){
+        if (null == crystalBall){
             return false;
         }
-        return echoWall.ejectNotification(ntfId);
+        return crystalBall.ejectNotification(ntfId);
     }
 
 
@@ -119,10 +119,10 @@ final class MagicStick implements IEchoWall.IYellback {
         return this;
     }
 
-    MagicStick setEchoWall(IEchoWall echoWall){
-        this.echoWall = echoWall;
-        if (null != echoWall) {
-            echoWall.setYellback(this);
+    MagicStick setCrystalBall(ICrystalBall crystalBall){
+        this.crystalBall = crystalBall;
+        if (null != crystalBall) {
+            crystalBall.setYellback(this);
         }
         return this;
     }

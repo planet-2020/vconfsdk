@@ -5,7 +5,7 @@
 
 package com.kedacom.vconf.sdk.base.basement;
 
-public interface IEchoWall {
+public interface ICrystalBall {
     interface IYellback {
         void yellback(String msgId, String msgBody);
     }

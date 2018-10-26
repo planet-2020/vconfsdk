@@ -13,27 +13,27 @@ import android.util.Log;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
-class FakeEchoWall implements IEchoWall {
+class FakeCrystalBall implements ICrystalBall {
 
-    private static final String TAG = "FakeEchoWall";
+    private static final String TAG = "FakeCrystalBall";
 
-    private static FakeEchoWall instance;
+    private static FakeCrystalBall instance;
 
     private JsonProcessor jsonProcessor;
-    private SpellBook spellBook;
+    private MagicBook magicBook;
 
     private Handler handler;
     private IYellback yb;
 
-    private FakeEchoWall() {
+    private FakeCrystalBall() {
         jsonProcessor = JsonProcessor.instance();
-        spellBook = SpellBook.instance();
+        magicBook = MagicBook.instance();
         initHandler();
     }
 
-    synchronized static FakeEchoWall instance() {
+    synchronized static FakeCrystalBall instance() {
         if (null == instance) {
-            instance = new FakeEchoWall();
+            instance = new FakeCrystalBall();
         }
         return instance;
     }
@@ -53,7 +53,7 @@ class FakeEchoWall implements IEchoWall {
 
     @Override
     public int yell(String methodName, String para) {
-        if (spellBook.isSet(methodName)){
+        if (magicBook.isSet(methodName)){
             set(methodName, para);
             return 0;
         }
@@ -64,13 +64,13 @@ class FakeEchoWall implements IEchoWall {
 
         Log.d(TAG, String.format("receive REQ %s, para=%s", methodName, para));
 
-        String[] rspIds = spellBook.getRspSeqs(methodName)[0]; // 若有多路响应序列默认返回第一路
+        String[] rspIds = magicBook.getRspSeqs(methodName)[0]; // 若有多路响应序列默认返回第一路
         Object rspBody = null;
         int delay = 0;
         for (String rspId : rspIds) {
-            delay += spellBook.getRspDelay(rspId);
+            delay += magicBook.getRspDelay(rspId);
             try {
-                Class<?> clz = spellBook.getRspClazz(rspId);
+                Class<?> clz = magicBook.getRspClazz(rspId);
                 Constructor ctor = clz.getDeclaredConstructor((Class[]) null); // 使用响应消息体类的默认构造函数构造响应消息对象
                 ctor.setAccessible(true);
                 rspBody = ctor.newInstance((Object[]) null);
@@ -98,7 +98,7 @@ class FakeEchoWall implements IEchoWall {
     public int yell(String methodName, String para, StringBuffer output) {
         Object result = null;
         try {
-            Class<?> clz = spellBook.getGetResultClazz(methodName);
+            Class<?> clz = magicBook.getGetResultClazz(methodName);
             Constructor ctor = clz.getDeclaredConstructor((Class[])null);
             ctor.setAccessible(true);
             result = ctor.newInstance((Object[]) null);
@@ -121,7 +121,7 @@ class FakeEchoWall implements IEchoWall {
 
         Object ntfBody = null;
         try {
-            Class<?> clz = spellBook.getNtfClazz(ntfId);
+            Class<?> clz = magicBook.getNtfClazz(ntfId);
             Constructor ctor = clz.getDeclaredConstructor((Class[])null); // 使用通知消息体类的默认构造函数构造通知消息对象
             ctor.setAccessible(true);
             ntfBody = ctor.newInstance((Object[]) null);
@@ -132,7 +132,7 @@ class FakeEchoWall implements IEchoWall {
         handler.postDelayed(() -> {
             Log.d(TAG, String.format("send NTF %s, content=%s", ntfId, jsonNtfBody));
             yb.yellback(ntfId, jsonNtfBody);
-        }, spellBook.getNtfDelay(ntfId));
+        }, magicBook.getNtfDelay(ntfId));
 
         return true;
     }

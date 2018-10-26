@@ -9,8 +9,8 @@ import java.util.Set;
 
 @SuppressWarnings("BooleanMethodIsAlwaysInverted")
 @Consumer(Message.class)
-final class SpellBook {
-    private static SpellBook instance;
+final class MagicBook {
+    private static MagicBook instance;
 
     private Set<String> reqSet;
 
@@ -46,7 +46,7 @@ final class SpellBook {
 //    private final EnumSet<EmRsp> whiteList; // 白名单
 //    private final EnumSet<EmRsp> blackList; // 黑名单
 
-    private SpellBook(){
+    private MagicBook(){
         reqParaMap = Message$$Generated.reqParaMap;
         reqRspSeqsMap = Message$$Generated.reqRspsMap;
         reqTimeoutMap = Message$$Generated.reqTimeoutMap;
@@ -65,9 +65,9 @@ final class SpellBook {
         sets = setParaClazzMap.keySet();
     }
 
-    synchronized static SpellBook instance() {
+    synchronized static MagicBook instance() {
         if (null == instance) {
-            instance = new SpellBook();
+            instance = new MagicBook();
         }
 
         return instance;
