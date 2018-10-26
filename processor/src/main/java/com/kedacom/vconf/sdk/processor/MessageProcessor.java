@@ -408,6 +408,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         // 构建Class
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
+                .addModifiers(Modifier.FINAL)
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
                         fieldNameReqParaMap, Modifier.STATIC)
                         .build())
@@ -443,6 +444,7 @@ public class MessageProcessor extends AbstractProcessor {
                         .build())
                 .addStaticBlock(codeBlockBuilder.build())
                 .addMethod(constructor.build())
+                .addType(TypeSpec.classBuilder("InnerClassTest").build())
                 .build();
 
         JavaFile javaFile = JavaFile.builder(packageName, typeSpec)

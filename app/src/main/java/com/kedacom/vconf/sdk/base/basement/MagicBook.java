@@ -28,7 +28,7 @@ final class MagicBook {
 
     private Map<String, Integer> reqTimeoutMap; // 请求——超时时限. 单位: 秒.
 
-    private Map<String, Boolean> reqExclusiveMap; // 请求——互斥
+    private Map<String, Boolean> reqExclusiveMap; // 请求——是否互斥
 
     private Map<String, Class> rspClazzMap; // 响应——响应对应的类
 
@@ -114,7 +114,7 @@ final class MagicBook {
         return timeoutVal;
     }
 
-    boolean isMutualExclusive(String req){
+    boolean isMutualExclusiveReq(String req){
         return reqExclusiveMap.get(req);
     }
 
