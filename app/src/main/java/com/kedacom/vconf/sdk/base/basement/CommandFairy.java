@@ -2,7 +2,7 @@ package com.kedacom.vconf.sdk.base.basement;
 
 import android.util.Log;
 
-final class CommandFairy implements ICommandProcessor{
+final class CommandFairy implements IFairy.ICommandFairy{
 
     private static final String TAG = CommandFairy.class.getSimpleName();
 
@@ -12,12 +12,13 @@ final class CommandFairy implements ICommandProcessor{
 
     private MagicBook magicBook;
 
-    private MagicStick magicStick;
+//    private MagicStick magicStick;
+    private IStick.ICommandStick stick;
 
     private CommandFairy(){
         jsonProcessor = JsonProcessor.instance();
         magicBook = MagicBook.instance();
-        magicStick = MagicStick.instance();
+//        magicStick = MagicStick.instance();
     }
 
     synchronized static CommandFairy instance() {
@@ -31,6 +32,11 @@ final class CommandFairy implements ICommandProcessor{
     @Override
     public void set(String setId, Object para){
 
+        if (null == stick){
+            Log.e(TAG, "no command stick ");
+            return;
+        }
+
         if (!magicBook.isSet(setId)){
             Log.e(TAG, "Unknown set "+setId);
             return;
@@ -40,11 +46,16 @@ final class CommandFairy implements ICommandProcessor{
             return;
         }
 
-        magicStick.set(setId, jsonProcessor.toJson(para));
+        stick.set(setId, jsonProcessor.toJson(para));
     }
 
     @Override
     public Object get(String getId){
+
+        if (null == stick){
+            Log.e(TAG, "no command stick ");
+            return null;
+        }
 
         if (!magicBook.isGet(getId)){ // XXX 用异常机制代替返回值机制
             Log.e(TAG, "Unknown get "+getId);
@@ -52,13 +63,19 @@ final class CommandFairy implements ICommandProcessor{
         }
 
         StringBuffer buffer = new StringBuffer();
-        magicStick.get(getId, buffer);
+        stick.get(getId, buffer);
 
         return jsonProcessor.fromJson(buffer.toString(), magicBook.getGetResultClazz(getId));
     }
 
     @Override
     public Object get(String getId, Object para){
+
+        if (null == stick){
+            Log.e(TAG, "no command stick ");
+            return null;
+        }
+
         if (!magicBook.isGet(getId)){
             Log.e(TAG, "Unknown get "+getId);
             return null;
@@ -69,10 +86,14 @@ final class CommandFairy implements ICommandProcessor{
         }
 
         StringBuffer buffer = new StringBuffer();
-        magicStick.get(getId, jsonProcessor.toJson(para), buffer);
+        stick.get(getId, jsonProcessor.toJson(para), buffer);
 
         return jsonProcessor.fromJson(buffer.toString(), magicBook.getGetResultClazz(getId));
     }
 
+    @Override
+    public void setCommandStick(IStick.ICommandStick commandStick) {
+        stick = commandStick;
+    }
 
 }

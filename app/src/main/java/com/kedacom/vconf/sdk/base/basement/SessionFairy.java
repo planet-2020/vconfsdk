@@ -12,7 +12,7 @@ import java.util.Set;
 
 
 @SuppressWarnings("UnusedReturnValue")
-final class SessionFairy implements IRequestProcessor, IResponseProcessor {
+final class SessionFairy implements /*IRequestProcessor, IResponseProcessor*/ IFairy.IRequestFairy, IFairy.IResponseFairy{
 
     private static final String TAG = SessionFairy.class.getSimpleName();
 
@@ -32,7 +32,8 @@ final class SessionFairy implements IRequestProcessor, IResponseProcessor {
 
     private JsonProcessor jsonProcessor;
     private MagicBook magicBook;
-    private MagicStick magicStick;
+//    private MagicStick magicStick;
+    private IStick.IRequestStick stick;
 
     private SessionFairy(){
         sessions = new HashSet<>();
@@ -40,7 +41,7 @@ final class SessionFairy implements IRequestProcessor, IResponseProcessor {
 
         jsonProcessor = JsonProcessor.instance();
         magicBook = MagicBook.instance();
-        magicStick = MagicStick.instance();
+//        magicStick = MagicStick.instance();
 
         initRequestHandler();
         initTimeoutHandler();
@@ -58,6 +59,11 @@ final class SessionFairy implements IRequestProcessor, IResponseProcessor {
 
     @Override
     public synchronized boolean processRequest(Handler requester, String reqId, Object reqPara, int reqSn) {
+
+        if (null == stick){
+            Log.e(TAG, "no request stick ");
+            return false;
+        }
 
         if (null == requester){
             Log.e(TAG, "requester is null");
@@ -246,6 +252,13 @@ final class SessionFairy implements IRequestProcessor, IResponseProcessor {
     }
 
 
+    @Override
+    public void setRequestStick(IStick.IRequestStick requestStick) {
+        stick = requestStick;
+    }
+
+
+
     private synchronized Session getActiveSession(int sid){
         for (Session s: sessions){
             if (sid == s.id){
@@ -281,7 +294,7 @@ final class SessionFairy implements IRequestProcessor, IResponseProcessor {
         String jsonReqPara = jsonProcessor.toJson(s.reqPara);
         Log.d(TAG, String.format("-=-> %s (session %d START) \n%s", s.reqId, s.id, jsonReqPara));
 
-        magicStick.request(s.reqId, jsonReqPara);
+        stick.request(s.reqId, jsonReqPara);
 
         if (null==s.rspSeqs || 0==s.rspSeqs.length){
             s.state = Session.END; // 请求没有响应，会话结束

@@ -14,7 +14,13 @@ import android.util.Log;
 
 
 @SuppressWarnings({"JniMissingFunction", /*"unused", */"UnusedReturnValue"})
-final class MagicStick implements ICrystalBall.IYellback {
+final class MagicStick implements IStick,
+        IStick.ICommandStick,
+        IStick.IRequestStick,
+        IStick.IResponseStick,
+        IStick.IEmitNotificationStick,
+        IStick.INotificationStick,
+        ICrystalBall.IYellback {
 
     private static final String TAG = MagicStick.class.getSimpleName();
 
@@ -22,8 +28,10 @@ final class MagicStick implements ICrystalBall.IYellback {
 
     private Handler handler;
 
-    private IResponseProcessor responseProcessor;
-    private INotificationProcessor notificationProcessor;
+//    private IResponseProcessor responseProcessor;
+//    private INotificationProcessor notificationProcessor;
+    private IFairy.IResponseFairy responseFairy;
+    private IFairy.INotificationFairy notificationFairy;
     private ICrystalBall crystalBall;
 
     private MagicStick(){
@@ -37,35 +45,40 @@ final class MagicStick implements ICrystalBall.IYellback {
         return instance;
     }
 
-    int request(String methodName, String reqPara){
+    @Override
+    public int request(String methodName, String reqPara){
         if (null == crystalBall){
             return -1;
         }
         return crystalBall.yell(methodName, reqPara);
     }
 
-    int set(String methodName, String setPara){
+    @Override
+    public int set(String methodName, String setPara){
         if (null == crystalBall){
             return -1;
         }
         return crystalBall.yell(methodName, setPara);
     }
 
-    int get(String methodName, String para, StringBuffer output){
+    @Override
+    public int get(String methodName, String para, StringBuffer output){
         if (null == crystalBall){
             return -1;
         }
         return crystalBall.yell(methodName, para, output);
     }
 
-    int get(String methodName, StringBuffer output){
+    @Override
+    public int get(String methodName, StringBuffer output){
         if (null == crystalBall){
             return -1;
         }
         return crystalBall.yell(methodName, output);
     }
 
-    boolean emitNotification(String ntfId){
+    @Override
+    public boolean emitNotification(String ntfId){
         if (null == crystalBall){
             return false;
         }
@@ -94,38 +107,50 @@ final class MagicStick implements ICrystalBall.IYellback {
                 MsgWrapper msgWrapper = (MsgWrapper) msg.obj;
                 String msgId = msgWrapper.msgId;
                 String msgBody = msgWrapper.msgBody;
-                boolean consumed = false;
-                if (null!=responseProcessor){
-                    consumed = responseProcessor.processResponse(msgId, msgBody);
+                boolean processed = false;
+                if (null!=responseFairy){
+                    processed = responseFairy.processResponse(msgId, msgBody);
                 }
-                if (!consumed  && null!=notificationProcessor){
-                    consumed = notificationProcessor.processNotification(msgId, msgBody);
+                if (!processed  && null!=notificationFairy){
+                    processed = notificationFairy.processNotification(msgId, msgBody);
                 }
-                if (!consumed){
-                    Log.w(TAG, String.format("<-/- %s, unconsumed msg \n%s", msgId, msgBody));
+                if (!processed){
+                    Log.w(TAG, String.format("<-/- %s, unprocessed msg \n%s", msgId, msgBody));
                 }
             }
         };
     }
 
 
-    MagicStick setResponseProcessor(IResponseProcessor responseProcessor){
-        this.responseProcessor = responseProcessor;
-        return this;
+//    MagicStick setResponseProcessor(IResponseProcessor responseProcessor){
+//        this.responseProcessor = responseProcessor;
+//        return this;
+//    }
+//
+//    MagicStick setNotificationProcessor(INotificationProcessor notificationProcessor){
+//        this.notificationProcessor = notificationProcessor;
+//        return this;
+//    }
+
+
+    @Override
+    public void setResponseFairy(IFairy.IResponseFairy responseFairy) {
+        this.responseFairy = responseFairy;
     }
 
-    MagicStick setNotificationProcessor(INotificationProcessor notificationProcessor){
-        this.notificationProcessor = notificationProcessor;
-        return this;
+    @Override
+    public void setNotificationFairy(IFairy.INotificationFairy notificationFairy) {
+        this.notificationFairy = notificationFairy;
     }
 
-    MagicStick setCrystalBall(ICrystalBall crystalBall){
+    @Override
+    public void setCrystalBall(ICrystalBall crystalBall){
         this.crystalBall = crystalBall;
         if (null != crystalBall) {
             crystalBall.setYellback(this);
         }
-        return this;
     }
+
 
     private class MsgWrapper {
         String msgId;

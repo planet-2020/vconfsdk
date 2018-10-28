@@ -19,21 +19,35 @@ public final class Witch {
     private Handler feedbackHandler;
     private IOnFeedbackListener onFeedbackListener;
 
-    private static IRequestProcessor requestProcessor;
-    private static ICommandProcessor commandProcessor;
-    private static ISubscribeProcessor subscribeProcessor;
-    private static INotificationEmitter notificationEmitter;
+//    private static IRequestProcessor requestProcessor;
+//    private static ICommandProcessor commandProcessor;
+//    private static ISubscribeProcessor subscribeProcessor;
+//    private static INotificationEmitter notificationEmitter;
+
+    private static IFairy.ICommandFairy commandFairy;
+    private static IFairy.IRequestFairy requestFairy;
+    private static IFairy.ISubscribeFairy subscribeFairy;
+    private static IFairy.IEmitNotificationFairy emitNotificationFairy;
 
     static {
 
-        requestProcessor = SessionFairy.instance();
-        commandProcessor = CommandFairy.instance();
-        subscribeProcessor = NotificationFairy.instance();
-        notificationEmitter = NotificationFairy.instance();
-        MagicStick.instance()
-                .setCrystalBall(EmulationModeOnOff.on ? FakeCrystalBall.instance() : NativeInteractor.instance())
-                .setResponseProcessor(SessionFairy.instance())
-                .setNotificationProcessor(NotificationFairy.instance());
+        CommandFairy cmdFairy = CommandFairy.instance();
+        SessionFairy sessionFairy = SessionFairy.instance();
+        NotificationFairy notificationFairy = NotificationFairy.instance();
+
+        MagicStick magicStick = MagicStick.instance();
+        magicStick.setCrystalBall(EmulationModeOnOff.on ? FakeCrystalBall.instance() : NativeInteractor.instance());
+        magicStick.setResponseFairy(sessionFairy);
+        magicStick.setNotificationFairy(notificationFairy);
+
+        cmdFairy.setCommandStick(magicStick);
+        sessionFairy.setRequestStick(magicStick);
+        notificationFairy.setEmitNotificationStick(magicStick);
+
+        commandFairy = cmdFairy;
+        requestFairy = sessionFairy;
+        subscribeFairy = notificationFairy;
+        emitNotificationFairy = notificationFairy;
 
     }
 
@@ -48,11 +62,11 @@ public final class Witch {
 
 
     public boolean req(String reqId, int reqSn, Object reqPara){
-        return requestProcessor.processRequest(feedbackHandler, reqId, reqPara, reqSn);
+        return requestFairy.processRequest(feedbackHandler, reqId, reqPara, reqSn);
     }
 
     public boolean cancelReq(int reqSn){
-        return requestProcessor.processCancelRequest(feedbackHandler, reqSn);
+        return requestFairy.processCancelRequest(feedbackHandler, reqSn);
     }
 
 
@@ -60,14 +74,14 @@ public final class Witch {
      * 订阅通知
      * */
     public boolean subscribe(String ntfId){
-        return subscribeProcessor.subscribe(feedbackHandler, ntfId);
+        return subscribeFairy.subscribe(feedbackHandler, ntfId);
     }
 
     /**
      * 取消订阅通知
      * */
     public void unsubscribe(String ntfId){
-        subscribeProcessor.unsubscribe(feedbackHandler, ntfId);
+        subscribeFairy.unsubscribe(feedbackHandler, ntfId);
     }
 
 
@@ -75,25 +89,25 @@ public final class Witch {
      * （驱使下层）发射通知。仅用于模拟模式。
      * */
     public void eject(String ntfId){
-        notificationEmitter.emitNotification(ntfId);
+        emitNotificationFairy.emitNotification(ntfId);
     }
 
     /**
      * 设置配置
      * */
     public void set(String setId, Object para){
-        commandProcessor.set(setId, para);
+        commandFairy.set(setId, para);
     }
 
     /**
      * 获取配置
      * */
     public Object get(String getId){
-        return commandProcessor.get(getId);
+        return commandFairy.get(getId);
     }
 
     public Object get(String getId, Object para){
-        return commandProcessor.get(getId, para);
+        return commandFairy.get(getId, para);
     }
 
 

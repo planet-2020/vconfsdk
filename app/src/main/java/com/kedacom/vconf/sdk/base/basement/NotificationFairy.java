@@ -10,20 +10,21 @@ import java.util.Map;
 import java.util.Set;
 
 
-final class NotificationFairy implements ISubscribeProcessor, INotificationProcessor, INotificationEmitter{
+final class NotificationFairy implements /*ISubscribeProcessor, INotificationProcessor, INotificationEmitter*/ IFairy.ISubscribeFairy, IFairy.IEmitNotificationFairy, IFairy.INotificationFairy{
 
     private static final String TAG = NotificationFairy.class.getSimpleName();
 
     private static NotificationFairy instance;
 
-    private MagicStick magicStick;
+//    private MagicStick magicStick;
+    private IStick.IEmitNotificationStick stick;
     private MagicBook magicBook;
     private JsonProcessor jsonProcessor;
 
     private Map<String, Set<Handler>> subscribers;
 
     private NotificationFairy(){
-        magicStick = MagicStick.instance();
+//        magicStick = MagicStick.instance();
         magicBook = MagicBook.instance();
         jsonProcessor = JsonProcessor.instance();
 
@@ -110,12 +111,23 @@ final class NotificationFairy implements ISubscribeProcessor, INotificationProce
 
     @Override
     public synchronized boolean emitNotification(String ntfName) {
+
+        if (null == stick){
+            Log.e(TAG, "no emit notification stick ");
+            return false;
+        }
+
         if (!magicBook.isNotification(ntfName)){
             Log.e(TAG, "Unknown notification "+ntfName);
             return false;
         }
 
-        return magicStick.emitNotification(ntfName);
+        return stick.emitNotification(ntfName);
+    }
+
+    @Override
+    public void setEmitNotificationStick(IStick.IEmitNotificationStick emitNotificationStick) {
+        stick = emitNotificationStick;
     }
 
 }
