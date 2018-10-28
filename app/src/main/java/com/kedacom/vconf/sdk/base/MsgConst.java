@@ -11,6 +11,7 @@ import com.kedacom.vconf.sdk.annotation.SerializeEnumAsInt;
  * （TODO 最好结合对组件层消息的理解重新定义一套适合UI层使用及理解的，而非直接照搬组件层的，然后在jni层做这两套消息之间的转换）
  */
 
+@SuppressWarnings("unused")
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @SerializeEnumAsInt
 public final class MsgConst {
