@@ -19,11 +19,6 @@ public final class Witch {
     private Handler feedbackHandler;
     private IOnFeedbackListener onFeedbackListener;
 
-//    private static IRequestProcessor requestProcessor;
-//    private static ICommandProcessor commandProcessor;
-//    private static ISubscribeProcessor subscribeProcessor;
-//    private static INotificationEmitter notificationEmitter;
-
     private static IFairy.ICommandFairy commandFairy;
     private static IFairy.IRequestFairy requestFairy;
     private static IFairy.ISubscribeFairy subscribeFairy;
@@ -74,14 +69,14 @@ public final class Witch {
      * 订阅通知
      * */
     public boolean subscribe(String ntfId){
-        return subscribeFairy.subscribe(feedbackHandler, ntfId);
+        return subscribeFairy.processSubscribe(feedbackHandler, ntfId);
     }
 
     /**
      * 取消订阅通知
      * */
     public void unsubscribe(String ntfId){
-        subscribeFairy.unsubscribe(feedbackHandler, ntfId);
+        subscribeFairy.processUnsubscribe(feedbackHandler, ntfId);
     }
 
 
@@ -89,25 +84,25 @@ public final class Witch {
      * （驱使下层）发射通知。仅用于模拟模式。
      * */
     public void eject(String ntfId){
-        emitNotificationFairy.emitNotification(ntfId);
+        emitNotificationFairy.processEmitNotification(ntfId);
     }
 
     /**
      * 设置配置
      * */
     public void set(String setId, Object para){
-        commandFairy.set(setId, para);
+        commandFairy.processSet(setId, para);
     }
 
     /**
      * 获取配置
      * */
     public Object get(String getId){
-        return commandFairy.get(getId);
+        return commandFairy.processGet(getId);
     }
 
     public Object get(String getId, Object para){
-        return commandFairy.get(getId, para);
+        return commandFairy.processGet(getId, para);
     }
 
 

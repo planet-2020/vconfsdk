@@ -10,9 +10,9 @@ public interface ICrystalBall {
         void yellback(String msgId, String msgBody);
     }
     void setYellback(IYellback yb);
-    int yell(String methodName, String reqPara);  // request/set
-    int yell(String methodName, StringBuffer output); // get
-    int yell(String methodName, String para, StringBuffer output); // get
+    int yell(String methodName, String reqPara);  // request/processSet
+    int yell(String methodName, StringBuffer output); // processGet
+    int yell(String methodName, String para, StringBuffer output); // processGet
 
     default boolean ejectNotification(String ntfId) {
         return false;

@@ -5,9 +5,9 @@ import android.os.Handler;
 interface IFairy {
 
     interface ICommandFairy{
-        void set(String setId, Object para);  // TODO processSet
-        Object get(String getId);
-        Object get(String getId, Object para);
+        void processSet(String setId, Object para);
+        Object processGet(String getId);
+        Object processGet(String getId, Object para);
         void setCommandStick(IStick.ICommandStick commandStick);
     }
 
@@ -22,8 +22,8 @@ interface IFairy {
     }
 
     interface ISubscribeFairy{
-        boolean subscribe(Handler subscriber, String ntfId);
-        void unsubscribe(Handler subscriber, String ntfId);
+        boolean processSubscribe(Handler subscriber, String ntfId);
+        void processUnsubscribe(Handler subscriber, String ntfId);
     }
 
     interface INotificationFairy{
@@ -31,7 +31,7 @@ interface IFairy {
     }
 
     interface IEmitNotificationFairy{
-        boolean emitNotification(String ntfName);
+        boolean processEmitNotification(String ntfName);
         void setEmitNotificationStick(IStick.IEmitNotificationStick emitNotificationStick);
     }
 

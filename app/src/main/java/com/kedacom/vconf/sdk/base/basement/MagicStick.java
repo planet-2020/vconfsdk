@@ -28,8 +28,6 @@ final class MagicStick implements IStick,
 
     private Handler handler;
 
-//    private IResponseProcessor responseProcessor;
-//    private INotificationProcessor notificationProcessor;
     private IFairy.IResponseFairy responseFairy;
     private IFairy.INotificationFairy notificationFairy;
     private ICrystalBall crystalBall;
@@ -111,7 +109,7 @@ final class MagicStick implements IStick,
                 if (null!=responseFairy){
                     processed = responseFairy.processResponse(msgId, msgBody);
                 }
-                if (!processed  && null!=notificationFairy){
+                if (!processed && null!=notificationFairy){
                     processed = notificationFairy.processNotification(msgId, msgBody);
                 }
                 if (!processed){
@@ -121,16 +119,6 @@ final class MagicStick implements IStick,
         };
     }
 
-
-//    MagicStick setResponseProcessor(IResponseProcessor responseProcessor){
-//        this.responseProcessor = responseProcessor;
-//        return this;
-//    }
-//
-//    MagicStick setNotificationProcessor(INotificationProcessor notificationProcessor){
-//        this.notificationProcessor = notificationProcessor;
-//        return this;
-//    }
 
 
     @Override

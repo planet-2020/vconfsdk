@@ -62,7 +62,7 @@ public class KLog {
         isEnabled = isEnable;
     }
 
-    /**set trace level.
+    /**processSet trace level.
      * @param lv floor level. level less than it will not be print out*/
     public static void setLevel(int lv) {
         log(VEIN, TAG, "==================Set KLog level from "+level+" to " + lv);

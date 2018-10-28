@@ -42,9 +42,9 @@ class NativeInteractor implements ICrystalBall, INativeCallback{
     }
 
 
-    private native int call(String methodName, String reqPara);  // request/set
-    private native int call(String methodName, StringBuffer output); // get
-    private native int call(String methodName, String para, StringBuffer output); // get
+    private native int call(String methodName, String reqPara);  // request/processSet
+    private native int call(String methodName, StringBuffer output); // processGet
+    private native int call(String methodName, String para, StringBuffer output); // processGet
 
     private native int setCallback(INativeCallback callback);
 

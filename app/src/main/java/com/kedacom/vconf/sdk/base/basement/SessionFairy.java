@@ -12,7 +12,7 @@ import java.util.Set;
 
 
 @SuppressWarnings("UnusedReturnValue")
-final class SessionFairy implements /*IRequestProcessor, IResponseProcessor*/ IFairy.IRequestFairy, IFairy.IResponseFairy{
+final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
 
     private static final String TAG = SessionFairy.class.getSimpleName();
 
@@ -32,7 +32,6 @@ final class SessionFairy implements /*IRequestProcessor, IResponseProcessor*/ IF
 
     private JsonProcessor jsonProcessor;
     private MagicBook magicBook;
-//    private MagicStick magicStick;
     private IStick.IRequestStick stick;
 
     private SessionFairy(){
@@ -41,7 +40,6 @@ final class SessionFairy implements /*IRequestProcessor, IResponseProcessor*/ IF
 
         jsonProcessor = JsonProcessor.instance();
         magicBook = MagicBook.instance();
-//        magicStick = MagicStick.instance();
 
         initRequestHandler();
         initTimeoutHandler();
@@ -238,7 +236,7 @@ final class SessionFairy implements /*IRequestProcessor, IResponseProcessor*/ IF
                     stringBuffer.append(rspSeq[j]+" ");
                 }
                 stringBuffer.append("}");
-                int value = candidates.get(key);
+                int value = candidates.processGet(key);
                 String next = value<rspSeq.length ? rspSeq[value] : "none";
                 stringBuffer.append(" next "+next+"\n");
                 Log.i(TAG, stringBuffer.toString());

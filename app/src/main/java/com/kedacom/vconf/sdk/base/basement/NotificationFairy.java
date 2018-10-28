@@ -10,13 +10,14 @@ import java.util.Map;
 import java.util.Set;
 
 
-final class NotificationFairy implements /*ISubscribeProcessor, INotificationProcessor, INotificationEmitter*/ IFairy.ISubscribeFairy, IFairy.IEmitNotificationFairy, IFairy.INotificationFairy{
+final class NotificationFairy implements IFairy.ISubscribeFairy,
+        IFairy.IEmitNotificationFairy,
+        IFairy.INotificationFairy{
 
     private static final String TAG = NotificationFairy.class.getSimpleName();
 
     private static NotificationFairy instance;
 
-//    private MagicStick magicStick;
     private IStick.IEmitNotificationStick stick;
     private MagicBook magicBook;
     private JsonProcessor jsonProcessor;
@@ -24,7 +25,6 @@ final class NotificationFairy implements /*ISubscribeProcessor, INotificationPro
     private Map<String, Set<Handler>> subscribers;
 
     private NotificationFairy(){
-//        magicStick = MagicStick.instance();
         magicBook = MagicBook.instance();
         jsonProcessor = JsonProcessor.instance();
 
@@ -42,7 +42,7 @@ final class NotificationFairy implements /*ISubscribeProcessor, INotificationPro
 
 
     @Override
-    public synchronized boolean subscribe(Handler subscriber, String ntfId) {
+    public synchronized boolean processSubscribe(Handler subscriber, String ntfId) {
         if (null == subscriber){
             return false;
         }
@@ -64,7 +64,7 @@ final class NotificationFairy implements /*ISubscribeProcessor, INotificationPro
     }
 
     @Override
-    public synchronized void unsubscribe(Handler subscriber, String ntfId) {
+    public synchronized void processUnsubscribe(Handler subscriber, String ntfId) {
 
         if (null == subscriber){
             return;
@@ -110,7 +110,7 @@ final class NotificationFairy implements /*ISubscribeProcessor, INotificationPro
 
 
     @Override
-    public synchronized boolean emitNotification(String ntfName) {
+    public synchronized boolean processEmitNotification(String ntfName) {
 
         if (null == stick){
             Log.e(TAG, "no emit notification stick ");

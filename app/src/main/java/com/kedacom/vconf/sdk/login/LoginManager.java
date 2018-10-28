@@ -35,8 +35,8 @@ public class LoginManager extends RequestAgent {
     }
 
     public void login(String server, String account, String passwd, IResultListener loginResultListener){
-//        set(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
-//        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) get(Msg.GetXmppServerInfo);
+//        processSet(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
+//        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) processGet(Msg.GetXmppServerInfo);
 //        KLog.p("xmppServerInfo{%s, %d}",xmppServerInfo.domain, xmppServerInfo.ip);
         req(Msg.Login, new MsgBeans.LoginPara(server, account, passwd, MsgConst.SetType.Phone), loginResultListener);
     }

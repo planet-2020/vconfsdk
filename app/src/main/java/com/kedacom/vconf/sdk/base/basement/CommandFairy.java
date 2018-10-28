@@ -12,13 +12,11 @@ final class CommandFairy implements IFairy.ICommandFairy{
 
     private MagicBook magicBook;
 
-//    private MagicStick magicStick;
     private IStick.ICommandStick stick;
 
     private CommandFairy(){
         jsonProcessor = JsonProcessor.instance();
         magicBook = MagicBook.instance();
-//        magicStick = MagicStick.instance();
     }
 
     synchronized static CommandFairy instance() {
@@ -30,7 +28,7 @@ final class CommandFairy implements IFairy.ICommandFairy{
     }
 
     @Override
-    public void set(String setId, Object para){
+    public void processSet(String setId, Object para){
 
         if (null == stick){
             Log.e(TAG, "no command stick ");
@@ -38,7 +36,7 @@ final class CommandFairy implements IFairy.ICommandFairy{
         }
 
         if (!magicBook.isSet(setId)){
-            Log.e(TAG, "Unknown set "+setId);
+            Log.e(TAG, "Unknown processSet "+setId);
             return;
         }
 
@@ -50,7 +48,7 @@ final class CommandFairy implements IFairy.ICommandFairy{
     }
 
     @Override
-    public Object get(String getId){
+    public Object processGet(String getId){
 
         if (null == stick){
             Log.e(TAG, "no command stick ");
@@ -58,7 +56,7 @@ final class CommandFairy implements IFairy.ICommandFairy{
         }
 
         if (!magicBook.isGet(getId)){ // XXX 用异常机制代替返回值机制
-            Log.e(TAG, "Unknown get "+getId);
+            Log.e(TAG, "Unknown processGet "+getId);
             return null; //TODO  throw Exception
         }
 
@@ -69,7 +67,7 @@ final class CommandFairy implements IFairy.ICommandFairy{
     }
 
     @Override
-    public Object get(String getId, Object para){
+    public Object processGet(String getId, Object para){
 
         if (null == stick){
             Log.e(TAG, "no command stick ");
@@ -77,7 +75,7 @@ final class CommandFairy implements IFairy.ICommandFairy{
         }
 
         if (!magicBook.isGet(getId)){
-            Log.e(TAG, "Unknown get "+getId);
+            Log.e(TAG, "Unknown processGet "+getId);
             return null;
         }
 
