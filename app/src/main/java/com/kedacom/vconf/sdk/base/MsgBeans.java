@@ -1,6 +1,6 @@
 package com.kedacom.vconf.sdk.base;
 
-import android.support.annotation.RestrictTo;
+import androidx.annotation.RestrictTo;
 
 import static com.kedacom.vconf.sdk.base.MsgConst.*;
 

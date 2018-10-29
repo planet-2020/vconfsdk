@@ -1,7 +1,7 @@
 package com.kedacom.vconf.sdk.base;
 
 
-import android.support.annotation.RestrictTo;
+import androidx.annotation.RestrictTo;
 
 import com.kedacom.vconf.sdk.annotation.Get;
 import com.kedacom.vconf.sdk.annotation.Message;

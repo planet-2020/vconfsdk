@@ -1,6 +1,6 @@
 package com.kedacom.vconf.sdk.data;
 
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 
 import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.ResultCode;
