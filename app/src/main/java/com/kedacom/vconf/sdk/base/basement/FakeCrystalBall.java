@@ -39,7 +39,7 @@ class FakeCrystalBall implements ICrystalBall {
     }
 
     private void initHandler(){
-        HandlerThread handlerThread = new HandlerThread("FEW.yellback", Process.THREAD_PRIORITY_BACKGROUND);
+        HandlerThread handlerThread = new HandlerThread("FCB.yellback", Process.THREAD_PRIORITY_BACKGROUND);
         handlerThread.start();
         handler = new Handler(handlerThread.getLooper());
     }
