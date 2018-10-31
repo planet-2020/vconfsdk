@@ -1,5 +1,7 @@
 apply plugin: 'com.android.library'
 
+version = '0.0.1'
+
 android {
     compileSdkVersion 28
     defaultConfig {
@@ -48,7 +50,9 @@ dependencies {
 //    implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"  // java8的lifecycle回调中包含了owner
 //    implementation 'com.android.support:appcompat-v7:28.0.0'
 
-    api project(':base')
+    implementation 'com.kedacom.vconf.sdk:base:0.1.1'
+
+//    api project(':base')
 
     def room_version = "2.1.0-alpha01"
     implementation "androidx.room:room-runtime:$room_version"
@@ -69,4 +73,6 @@ task copyLibs(type: Copy){
 //compile.dependsOn copyLibs
 
 
-apply from: '../nexus-push.gradle'
+//apply from: '../nexus-push.gradle'
+
+apply from: '../publish.gradle'

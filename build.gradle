@@ -19,12 +19,18 @@ allprojects {
     repositories {
         google()
         jcenter()
+
+        maven {
+            url "http://localhost:8081/repository/maven-releases/"
+        }
     }
 
     tasks.withType(JavaCompile) {
         options.encoding = "UTF-8"
         options.compilerArgs << "-Xlint:unchecked"
     }
+
+    group = 'com.kedacom.vconf.sdk'
 }
 
 task clean(type: Delete) {
