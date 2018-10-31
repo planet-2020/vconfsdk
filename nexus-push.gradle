@@ -1,18 +1,18 @@
 apply plugin: 'maven'
 
-task androidJavadocs(type: Javadoc) {
-    source = android.sourceSets.main.java.srcDirs
-    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
-}
-
-task androidSourcesJar(type: Jar) {
-    classifier = 'sources'
-    from android.sourceSets.main.java.srcDirs
-}
-
-artifacts {
-    archives androidSourcesJar
-}
+//task androidJavadocs(type: Javadoc) {
+//    source = android.sourceSets.main.java.srcDirs
+//    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+//}
+//
+//task androidSourcesJar(type: Jar) {
+//    classifier = 'sources'
+//    from android.sourceSets.main.java.srcDirs
+//}
+//
+//artifacts {
+//    archives androidSourcesJar
+//}
 
 //任务名
 uploadArchives {
@@ -27,9 +27,9 @@ uploadArchives {
             // library的包名
             pom.groupId = 'com.kedacom.vconf.sdk'
             // library的项目名
-            pom.artifactId = 'vconfsdk'
+            pom.artifactId = ':main'
             // library的版本号
-            pom.version = '0.0.7'
+            pom.version = '0.0.1'
 
             pom.project {
                 licenses {

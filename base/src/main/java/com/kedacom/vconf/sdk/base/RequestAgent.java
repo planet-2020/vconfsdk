@@ -1,9 +1,7 @@
 package com.kedacom.vconf.sdk.base;
 
-import androidx.annotation.RestrictTo;
-
 import com.kedacom.vconf.sdk.base.basement.Witch;
-import com.kedacom.vconf.sdk.utils.KLog;
+import com.kedacom.vconf.sdk.base.KLog;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,8 +9,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-@RestrictTo(RestrictTo.Scope.LIBRARY)
-public abstract class RequestAgent implements Witch.IOnFeedbackListener, ListenerLifecycleObserver.Callback{
+public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
     private int reqSn; // 请求序列号，唯一标识一次请求。
     private final Map<Integer, RequestBundle> rspListeners;
@@ -21,15 +18,32 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener, Listene
     private Map<Msg, RspProcessor> rspProcessorMap;
     private Map<Msg, NtfProcessor> ntfProcessorMap;
 
-    private ListenerLifecycleObserver listenerLifecycleObserver;
-
     private Witch witch;
+
+    private ListenerLifecycleObserver listenerLifecycleObserver;
+    private ListenerLifecycleObserver.Callback listenerLifecycleCallback = new ListenerLifecycleObserver.Callback(){
+        @Override
+        public void onListenerResumed(Object listener) { // 该事件是粘滞的，即便activity已经resume很久了，然后才注册生命周期观察者也会收到该事件。
+            KLog.p(""+ listener);
+        }
+
+        @Override
+        public void onListenerPause(Object listener) {
+            KLog.p(""+ listener);
+            delListener(listener);
+        }
+
+        @Override
+        public void onListenerStop(Object listener) {
+
+        }
+    };
 
     protected RequestAgent(){
         witch = new Witch();
         witch.setOnFeedbackListener(this);
 
-        listenerLifecycleObserver = new ListenerLifecycleObserver(this);
+        listenerLifecycleObserver = new ListenerLifecycleObserver(listenerLifecycleCallback);
 
         reqSn = 0;
         rspListeners = new HashMap<>();
@@ -230,22 +244,6 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener, Listene
         }
     }
 
-    @Override
-    public void onListenerResumed(Object listener) { // 该事件是粘滞的，即便activity已经resume很久了，然后才注册生命周期观察者也会收到该事件。
-        KLog.p(""+ listener);
-    }
-
-    @Override
-    public void onListenerPause(Object listener) {
-        KLog.p(""+ listener);
-        delListener(listener);
-    }
-
-//    @Override
-//    public void onListenerStop(Object listener) {
-//        KLog.p(""+ listener);
-//        delListener(listener);
-//    }
 
     @Override
     public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn) {

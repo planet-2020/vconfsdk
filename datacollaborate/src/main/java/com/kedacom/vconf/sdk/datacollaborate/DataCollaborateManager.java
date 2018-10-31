@@ -6,7 +6,7 @@ import com.kedacom.vconf.sdk.base.MsgBeans;
 import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.ResultCode;
-import com.kedacom.vconf.sdk.utils.KLog;
+import com.kedacom.vconf.sdk.base.KLog;
 
 import java.util.HashMap;
 import java.util.Map;

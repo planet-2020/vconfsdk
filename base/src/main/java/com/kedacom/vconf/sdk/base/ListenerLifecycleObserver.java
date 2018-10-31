@@ -6,7 +6,7 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.annotation.NonNull;
 
-import com.kedacom.vconf.sdk.utils.KLog;
+import com.kedacom.vconf.sdk.base.KLog;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;

@@ -1,6 +1,6 @@
 package com.kedacom.vconf.sdk.base;
 
-import com.kedacom.vconf.sdk.utils.KLog;
+import com.kedacom.vconf.sdk.base.KLog;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
