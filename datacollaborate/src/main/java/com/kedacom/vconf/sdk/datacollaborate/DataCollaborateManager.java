@@ -13,6 +13,16 @@ import java.util.Map;
 
 public class DataCollaborateManager extends RequestAgent {
 
+    // 终端类型
+    public static final int Terminal_TrueLinkPc = 1; // 致邻PC版
+    public static final int Terminal_TrueLinkIosPhone = 2; // 致邻IOS手机版
+    public static final int Terminal_TrueLinkIosPad = 3; // 致邻IOS平板版
+    public static final int Terminal_TrueLinkAndroidPhone = 4; // 致邻Android手机版
+    public static final int Terminal_TrueLinkAndroidPad = 5; // 致邻Android平板版
+    public static final int Terminal_TrueSens = 6; // 硬终端
+    public static final int Terminal_Imix = 7; // 网呈IMIX
+    public static final int Terminal_Other = 8; // 其他终端
+
     @Override
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> processorMap = new HashMap<>();
@@ -26,8 +36,8 @@ public class DataCollaborateManager extends RequestAgent {
         return null;
     }
 
-    public void login(String serverIp, int port, MsgConst.EmDcsType type, IResultListener resultListener){
-        req(Msg.DCSLoginSrvReq, new MsgBeans.TDCSRegInfo(serverIp, port, type), resultListener);
+    public void login(String serverIp, int port, int terminalType, IResultListener resultListener){
+        req(Msg.DCSLoginSrvReq, new MsgBeans.TDCSRegInfo(serverIp, port, convertTerminalType(terminalType)), resultListener);
     }
 
     public void createDcConf(IResultListener resultListener){
@@ -82,5 +92,27 @@ public class DataCollaborateManager extends RequestAgent {
 //            listener.onNotification(ntfContent);
 //        }
 //    }
+
+    private MsgConst.EmDcsType convertTerminalType(int terminal){
+        switch (terminal){
+            case Terminal_TrueLinkPc:
+                return MsgConst.EmDcsType.emTypeTrueLink;
+            case Terminal_TrueLinkIosPhone:
+                return MsgConst.EmDcsType.emTypeTrueTouchPhoneIOS;
+            case Terminal_TrueLinkIosPad:
+                return MsgConst.EmDcsType.emTypeTrueTouchPadIOS;
+            case Terminal_TrueLinkAndroidPhone:
+                return MsgConst.EmDcsType.emTypeTrueTouchPhoneAndroid;
+            case Terminal_TrueLinkAndroidPad:
+                return MsgConst.EmDcsType.emTypeTrueTouchPadAndroid;
+            case Terminal_TrueSens:
+                return MsgConst.EmDcsType.emTypeTrueSens;
+            case Terminal_Imix:
+                return MsgConst.EmDcsType.emTypeIMIX;
+            case Terminal_Other:
+            default:
+                return MsgConst.EmDcsType.emTypeThirdPartyTer;
+        }
+    }
 
 }
