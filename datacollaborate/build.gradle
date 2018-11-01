@@ -29,7 +29,8 @@ android {
 
 dependencies {
 //    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation project(':base')
+//    implementation project(':base')
+    implementation 'com.kedacom.vconf.sdk:base:0.0.1'
 }
 
 apply from: '../publish.gradle'

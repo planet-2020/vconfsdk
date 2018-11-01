@@ -98,6 +98,7 @@ task publishToExternalRepository {
     group = 'publishing'
     description = 'Publishes all Maven publications to the external Maven repository.'
     dependsOn tasks.withType(PublishToMavenRepository).matching {
-        it.repository == publishing.repositories.external
+        it.repository == publishing.repositories.external // TODO 一次性发布所有组件
+//        println "repo=$it.repository, publishing.repositories=$publishing.repositories"
     }
 }

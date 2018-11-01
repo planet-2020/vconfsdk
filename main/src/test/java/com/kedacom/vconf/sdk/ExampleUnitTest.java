@@ -1,4 +1,4 @@
-package com.kedacom.sdk;
+package com.kedacom.vconf.sdk;
 
 import org.junit.Test;
 

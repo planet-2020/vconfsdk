@@ -27,8 +27,8 @@ public class MembersRepository implements IMembersDataSource {
 
     private MembersRepository(@NonNull IMembersDataSource remoteDataSource,
                               @NonNull IMembersDataSource localDataSource) {
-        membersRemoteDataSource = checkNotNull(remoteDataSource);
-        membersLocalDataSource = checkNotNull(localDataSource);
+        membersRemoteDataSource = null;//checkNotNull(remoteDataSource);
+        membersLocalDataSource = null;//checkNotNull(localDataSource);
     }
 
     public static MembersRepository getInstance(IMembersDataSource remoteDataSource,
@@ -43,7 +43,7 @@ public class MembersRepository implements IMembersDataSource {
 
     @Override
     public void getMembers(IResultListener resultListener) {
-        checkNotNull(resultListener);
+//        checkNotNull(resultListener);
 
         if (cachedMembers != null && !cacheIsDirty) {
             resultListener.onResponse(ResultCode.SUCCESS, new ArrayList<>(cachedMembers.values()));
