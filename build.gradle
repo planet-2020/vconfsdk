@@ -21,9 +21,9 @@ allprojects {
         jcenter()
 
 
-//        maven {
-//            url "http://localhost:8081/repository/maven-releases/"
-//        }
+        maven {
+            url "http://localhost:8081/repository/maven-releases/"
+        }
         mavenLocal()
 
 //        maven {

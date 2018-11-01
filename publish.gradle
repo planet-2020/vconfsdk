@@ -59,12 +59,29 @@ publishing {
 
 //        }
 
-        maven(MavenPublication) {
+        "${project.name}"(MavenPublication) {
 //            artifact(sourceJar)
-            artifact("$buildDir/outputs/aar/${project.getName()}-release.aar")
+            artifact("$buildDir/outputs/aar/${project.name}-release.aar")
+
+            // 生成依赖。（maven-publish插件针对android支持似乎有缺陷，不能将依赖自动写入pom文件中，故需要我们手动生成依赖信息写入pom）
+            pom.withXml {
+                def dependenciesNode = asNode().getAt('dependencies')[0]
+                if (dependenciesNode == null) {
+                    dependenciesNode = asNode().appendNode('dependencies') // 创建pom文件的dependencies节点
+                }
+                configurations.implementation.allDependencies.each {
+                    logger.debug("name=$it.name")
+                    def dependencyNode = dependenciesNode.appendNode('dependency') // 创建dependency节点
+                    dependencyNode.appendNode('groupId', it.group)
+                    dependencyNode.appendNode('artifactId', it.name)
+                    dependencyNode.appendNode('version', it.version)
+//                    dependencyNode.appendNode('scope', "compile")
+                }
+            }
         }
 
-    }
+     }
+
     repositories {
         maven {
             // change URLs to point to your repos, e.g. http://my.org/repo
