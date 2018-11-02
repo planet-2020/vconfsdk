@@ -10,7 +10,10 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
+import androidx.annotation.RestrictTo;
 
+
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 @SuppressWarnings("UnusedReturnValue")
 public final class Witch {
 

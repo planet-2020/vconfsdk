@@ -423,11 +423,12 @@ public enum Msg {
     @Notification(clz = MsgBeans.DcsOperRectangleOperInfo_Ntf.class)
     DcsOperRectangleOperInfo_Ntf,
 
-    /**曲线操作通知*/
+    /**铅笔操作通知*/
     @Notification(clz = MsgBeans.DcsOperPencilOperInfo_Ntf.class)
     DcsOperPencilOperInfo_Ntf,
 
-    /**曲线操作通知（彩笔）*/
+    /**彩笔操作通知*/
+    @Deprecated
     @Notification(clz = MsgBeans.DcsOperColorPenOperInfo_Ntf.class)
     DcsOperColorPenOperInfo_Ntf,
 
