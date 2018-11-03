@@ -57,6 +57,8 @@ public class MessageProcessor extends AbstractProcessor {
 
     private boolean bDone = false;
 
+    private Map<String, String> msgNameMap = new HashMap<>();
+
     private Map<String, String> reqParaMap = new HashMap<>();
 
     private Map<String, String[][]> reqRspsMap = new HashMap<>();
@@ -172,7 +174,10 @@ public class MessageProcessor extends AbstractProcessor {
 
                 // 获取超时时长
                 reqTimeoutMap.put(reqName, request.timeout());
+
                 reqExclusiveMap.put(reqName, request.isMutualExclusive());
+
+                msgNameMap.put(element.getSimpleName().toString(), reqName);
 
 //                messager.printMessage(Diagnostic.Kind.NOTE, "request: "+reqName
 //                        + " reqParaFullName: "+reqParaFullName
@@ -200,6 +205,8 @@ public class MessageProcessor extends AbstractProcessor {
 
                 rspDelayMap.put(rspName, response.delay());
 
+                msgNameMap.put(element.getSimpleName().toString(), rspName);
+
             }else if (null != (notification = element.getAnnotation(Notification.class))){
                 ntfName = notification.name();
                 ntfName = !ntfName.isEmpty() ? ntfName : element.getSimpleName().toString();
@@ -220,6 +227,8 @@ public class MessageProcessor extends AbstractProcessor {
                 ntfClazzMap.put(ntfName, ntfClazzFullName);
 
                 ntfDelayMap.put(ntfName, notification.delay());
+
+                msgNameMap.put(element.getSimpleName().toString(), ntfName);
 
             }else if (null != (get = element.getAnnotation(Get.class))){
                 getName = get.name();
@@ -247,6 +256,8 @@ public class MessageProcessor extends AbstractProcessor {
                 }
                 getResultClazzMap.put(getName, getResultFullName);
 
+                msgNameMap.put(element.getSimpleName().toString(), getName);
+
 //                messager.printMessage(Diagnostic.Kind.NOTE, "getName: "+getName
 //                        + " getParaFullName: "+getParaFullName
 //                        + " result class: "+ getResultFullName);
@@ -269,6 +280,9 @@ public class MessageProcessor extends AbstractProcessor {
 //                        + " setParaFullName: "+setParaFullName);
 
                 setParaClazzMap.put(setName, setParaFullName);
+
+                msgNameMap.put(element.getSimpleName().toString(), setName);
+
             }
 
         }
@@ -328,6 +342,7 @@ public class MessageProcessor extends AbstractProcessor {
 
 
     private void generateFile(){
+        String fieldNameMsgNameMap = "msgNameMap";
         String fieldNameReqParaMap = "reqParaMap";
         String fieldNameReqRspsMap = "reqRspsMap";
         String fieldNameReqTimeoutMap = "reqTimeoutMap";
@@ -345,6 +360,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         // 构建代码块
         CodeBlock.Builder codeBlockBuilder = CodeBlock.builder()
+                .addStatement("$L = new $T<>()", fieldNameMsgNameMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqParaMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqRspsMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqTimeoutMap, HashMap.class)
@@ -357,6 +373,10 @@ public class MessageProcessor extends AbstractProcessor {
                 .addStatement("$L = new $T<>()", fieldNameGetResultClazzMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameSetParaClazzMap, HashMap.class)
                 ;
+
+        for(String name : msgNameMap.keySet()){
+            codeBlockBuilder.addStatement("$L.put($S, $S)", fieldNameMsgNameMap, name, msgNameMap.get(name));
+        }
 
         for(String req : reqParaMap.keySet()){
             codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameReqParaMap, req, reqParaMap.get(req));
@@ -414,6 +434,9 @@ public class MessageProcessor extends AbstractProcessor {
         // 构建Class
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.FINAL)
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, String.class),
+                        fieldNameMsgNameMap, Modifier.STATIC)
+                        .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
                         fieldNameReqParaMap, Modifier.STATIC)
                         .build())

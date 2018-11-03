@@ -28,7 +28,7 @@ public class DataCollaborateManager extends RequestAgent {
     @Override
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> processorMap = new HashMap<>();
-        processorMap.put(Msg.DCSLoginSrvReq, this::onLoginResponses);
+        processorMap.put(Msg.DCLogin, this::onLoginResponses);
         processorMap.put(Msg.DCSCreateConfReq, this::onCreateDcConfResponses);
         return processorMap;
     }
@@ -58,7 +58,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     public void login(String serverIp, int port, int terminalType, IResultListener resultListener){
-        req(Msg.DCSLoginSrvReq, new MsgBeans.TDCSRegInfo(serverIp, port, convertTerminalType(terminalType)), resultListener);
+        req(Msg.DCLogin, new MsgBeans.TDCSRegInfo(serverIp, port, convertTerminalType(terminalType)), resultListener);
     }
 
     public void createDcConf(IResultListener resultListener){
@@ -67,14 +67,14 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onLoginResponses(Msg rspId, Object rspContent, IResultListener listener){
         KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
-        if (Msg.DcsLoginResult_Ntf.equals(rspId)){
+        if (Msg.DCBuildLink4LoginRsp.equals(rspId)){
             MsgBeans.DcsLinkCreationResult linkCreationResult = (MsgBeans.DcsLinkCreationResult) rspContent;
             if (!linkCreationResult.bSuccess
                     && null != listener){
-                cancelReq(Msg.DCSLoginSrvReq, listener);  // 后续不会有DcsLoginSrv_Rsp上来，取消该请求以防等待超时。
+                cancelReq(Msg.DCLogin, listener);  // 后续不会有DcsLoginSrv_Rsp上来，取消该请求以防等待超时。
                 listener.onResponse(ResultCode.FAILED, null);
             }
-        }else if (Msg.DcsLoginSrv_Rsp.equals(rspId)){
+        }else if (Msg.DCLoginRsp.equals(rspId)){
             MsgBeans.DcsLoginResult loginRes = (MsgBeans.DcsLoginResult) rspContent;
             if (null != listener){
                 if (loginRes.bSucces) {

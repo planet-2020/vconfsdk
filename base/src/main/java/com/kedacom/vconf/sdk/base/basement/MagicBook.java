@@ -22,6 +22,8 @@ final class MagicBook {
 
     private Set<String> sets;
 
+    private Map<String, String> msgNameMap; // 上层请求名——下层请求名
+
     private Map<String, Class> reqParaMap; // 请求——请求参数对应的类
 
     private Map<String, String[][]> reqRspSeqsMap; // 请求——响应序列
@@ -49,6 +51,7 @@ final class MagicBook {
 //    private final EnumSet<EmRsp> blackList; // 黑名单
 
     private MagicBook(){
+        msgNameMap = Message$$Generated.msgNameMap;
         reqParaMap = Message$$Generated.reqParaMap;
         reqRspSeqsMap = Message$$Generated.reqRspsMap;
         reqTimeoutMap = Message$$Generated.reqTimeoutMap;
