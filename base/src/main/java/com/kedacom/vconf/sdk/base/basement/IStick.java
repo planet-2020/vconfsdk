@@ -3,7 +3,7 @@ package com.kedacom.vconf.sdk.base.basement;
 interface IStick {
 
     interface IRequestStick{
-        int request(String reqId, String reqPara);
+        int request(String reqName, String reqPara);
     }
 
     interface IResponseStick{
@@ -11,13 +11,13 @@ interface IStick {
     }
 
     interface ICommandStick{
-        int set(String setId, String setPara);
-        int get(String getId, StringBuffer output);
-        int get(String getId, String para, StringBuffer output);
+        int set(String setName, String setPara);
+        int get(String getName, StringBuffer output);
+        int get(String getName, String para, StringBuffer output);
     }
 
     interface IEmitNotificationStick{
-        boolean emitNotification(String ntfId);
+        boolean emitNotification(String ntfName);
     }
 
     interface INotificationStick{

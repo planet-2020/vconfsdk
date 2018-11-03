@@ -44,54 +44,54 @@ final class MagicStick implements IStick,
     }
 
     @Override
-    public int request(String methodName, String reqPara){
+    public int request(String reqName, String reqPara){
         if (null == crystalBall){
             return -1;
         }
-        return crystalBall.yell(methodName, reqPara);
+        return crystalBall.yell(reqName, reqPara);
     }
 
     @Override
-    public int set(String methodName, String setPara){
+    public int set(String setName, String setPara){
         if (null == crystalBall){
             return -1;
         }
-        return crystalBall.yell(methodName, setPara);
+        return crystalBall.yell(setName, setPara);
     }
 
     @Override
-    public int get(String methodName, String para, StringBuffer output){
+    public int get(String getName, String para, StringBuffer output){
         if (null == crystalBall){
             return -1;
         }
-        return crystalBall.yell(methodName, para, output);
+        return crystalBall.yell(getName, para, output);
     }
 
     @Override
-    public int get(String methodName, StringBuffer output){
+    public int get(String getName, StringBuffer output){
         if (null == crystalBall){
             return -1;
         }
-        return crystalBall.yell(methodName, output);
+        return crystalBall.yell(getName, output);
     }
 
     @Override
-    public boolean emitNotification(String ntfId){
+    public boolean emitNotification(String ntfName){
         if (null == crystalBall){
             return false;
         }
-        return crystalBall.ejectNotification(ntfId);
+        return crystalBall.ejectNotification(ntfName);
     }
 
 
     @Override
-    public void yellback(String msgId, String msgBody){
-        if (null == msgId || msgId.isEmpty()){
-            Log.w(TAG, "empty msg id");
+    public void yellback(String msgName, String msgBody){
+        if (null == msgName || msgName.isEmpty()){
+            Log.w(TAG, "empty msg name");
             return;
         }
         Message msg = Message.obtain();
-        msg.obj = new MsgWrapper(msgId, msgBody);
+        msg.obj = new MsgWrapper(msgName, msgBody);
         handler.sendMessage(msg);
     }
 
@@ -103,17 +103,17 @@ final class MagicStick implements IStick,
             @Override
             public void handleMessage(Message msg) {
                 MsgWrapper msgWrapper = (MsgWrapper) msg.obj;
-                String msgId = msgWrapper.msgId;
+                String msgName = msgWrapper.msgName;
                 String msgBody = msgWrapper.msgBody;
                 boolean processed = false;
                 if (null!=responseFairy){
-                    processed = responseFairy.processResponse(msgId, msgBody);
+                    processed = responseFairy.processResponse(msgName, msgBody);
                 }
                 if (!processed && null!=notificationFairy){
-                    processed = notificationFairy.processNotification(msgId, msgBody);
+                    processed = notificationFairy.processNotification(msgName, msgBody);
                 }
                 if (!processed){
-                    Log.w(TAG, String.format("<-/- %s, unprocessed msg \n%s", msgId, msgBody));
+                    Log.w(TAG, String.format("<-/- %s, unprocessed msg \n%s", msgName, msgBody));
                 }
             }
         };
@@ -141,9 +141,9 @@ final class MagicStick implements IStick,
 
 
     private class MsgWrapper {
-        String msgId;
+        String msgName;
         String msgBody;
-        MsgWrapper(String msgId, String msgBody){this.msgId=msgId; this.msgBody=msgBody;}
+        MsgWrapper(String msgName, String msgBody){this.msgName =msgName; this.msgBody=msgBody;}
     }
 
 }

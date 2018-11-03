@@ -120,19 +120,19 @@ public final class Witch {
 
         if (FeedbackBundle.RSP == type){
 
-            onFeedbackListener.onFeedbackRsp(feedbackBundle.name, feedbackBundle.body, feedbackBundle.reqName, feedbackBundle.reqSn);
+            onFeedbackListener.onFeedbackRsp(feedbackBundle.msgId, feedbackBundle.body, feedbackBundle.reqId, feedbackBundle.reqSn);
 
         }else if (FeedbackBundle.RSP_FIN == type){
 
-            onFeedbackListener.onFeedbackRspFin(feedbackBundle.name, feedbackBundle.body, feedbackBundle.reqName, feedbackBundle.reqSn);
+            onFeedbackListener.onFeedbackRspFin(feedbackBundle.msgId, feedbackBundle.body, feedbackBundle.reqId, feedbackBundle.reqSn);
 
         }else if (FeedbackBundle.RSP_TIMEOUT == type){
 
-            onFeedbackListener.onFeedbackTimeout(feedbackBundle.reqName, feedbackBundle.reqSn);
+            onFeedbackListener.onFeedbackTimeout(feedbackBundle.msgId, feedbackBundle.reqSn);
 
         }else if (FeedbackBundle.NTF == type){
 
-            onFeedbackListener.onFeedbackNtf(feedbackBundle.name, feedbackBundle.body);
+            onFeedbackListener.onFeedbackNtf(feedbackBundle.msgId, feedbackBundle.body);
 
         }
 

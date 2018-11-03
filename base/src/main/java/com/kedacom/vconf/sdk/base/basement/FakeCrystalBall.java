@@ -52,9 +52,9 @@ class FakeCrystalBall implements ICrystalBall {
     }
 
     @Override
-    public int yell(String methodName, String para) {
-        if (magicBook.isSet(methodName)){
-            set(methodName, para);
+    public int yell(String msgName, String para) {
+        if (magicBook.isSet(msgName)){
+            set(msgName, para);
             return 0;
         }
 
@@ -62,9 +62,9 @@ class FakeCrystalBall implements ICrystalBall {
             return -1;
         }
 
-        Log.d(TAG, String.format("receive REQ %s, para=%s", methodName, para));
+        Log.d(TAG, String.format("receive REQ %s, para=%s", msgName, para));
 
-        String[] rspIds = magicBook.getRspSeqs(methodName)[0]; // 若有多路响应序列默认返回第一路
+        String[] rspIds = magicBook.getRspSeqs(msgName)[0]; // 若有多路响应序列默认返回第一路
         Object rspBody = null;
         int delay = 0;
         for (String rspId : rspIds) {
@@ -90,15 +90,15 @@ class FakeCrystalBall implements ICrystalBall {
     }
 
     @Override
-    public int yell(String methodName, StringBuffer output) {
-        return yell(methodName, null, output);
+    public int yell(String msgName, StringBuffer output) {
+        return yell(msgName, null, output);
     }
 
     @Override
-    public int yell(String methodName, String para, StringBuffer output) {
+    public int yell(String msgName, String para, StringBuffer output) {
         Object result = null;
         try {
-            Class<?> clz = magicBook.getGetResultClazz(methodName);
+            Class<?> clz = magicBook.getGetResultClazz(msgName);
             Constructor ctor = clz.getDeclaredConstructor((Class[])null);
             ctor.setAccessible(true);
             result = ctor.newInstance((Object[]) null);
@@ -106,7 +106,7 @@ class FakeCrystalBall implements ICrystalBall {
             e.printStackTrace();
         }
 
-        Log.d(TAG, String.format("GET %s, para= %s, result=%s", methodName, para, jsonProcessor.toJson(result)));
+        Log.d(TAG, String.format("GET %s, para= %s, result=%s", msgName, para, jsonProcessor.toJson(result)));
 
         output.append(jsonProcessor.toJson(result));
 
@@ -114,14 +114,14 @@ class FakeCrystalBall implements ICrystalBall {
     }
 
     @Override
-    public boolean ejectNotification(String ntfId) {
+    public boolean ejectNotification(String ntfName) {
         if (null == yb){
             return false;
         }
 
         Object ntfBody = null;
         try {
-            Class<?> clz = magicBook.getNtfClazz(ntfId);
+            Class<?> clz = magicBook.getNtfClazz(ntfName);
             Constructor ctor = clz.getDeclaredConstructor((Class[])null); // 使用通知消息体类的默认构造函数构造通知消息对象
             ctor.setAccessible(true);
             ntfBody = ctor.newInstance((Object[]) null);
@@ -130,15 +130,15 @@ class FakeCrystalBall implements ICrystalBall {
         }
         final String jsonNtfBody = jsonProcessor.toJson(ntfBody);
         handler.postDelayed(() -> {
-            Log.d(TAG, String.format("send NTF %s, content=%s", ntfId, jsonNtfBody));
-            yb.yellback(ntfId, jsonNtfBody);
-        }, magicBook.getNtfDelay(ntfId));
+            Log.d(TAG, String.format("send NTF %s, content=%s", ntfName, jsonNtfBody));
+            yb.yellback(ntfName, jsonNtfBody);
+        }, magicBook.getNtfDelay(ntfName));
 
         return true;
     }
 
-    private void set(String methodName, String para){
-        Log.d(TAG, String.format("SET %s, para= %s", methodName, para));
+    private void set(String msgName, String para){
+        Log.d(TAG, String.format("SET %s, para= %s", msgName, para));
     }
 
 }

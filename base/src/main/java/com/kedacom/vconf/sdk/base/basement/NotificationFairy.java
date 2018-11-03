@@ -47,15 +47,17 @@ final class NotificationFairy implements IFairy.ISubscribeFairy,
             return false;
         }
 
-        if (!magicBook.isNotification(ntfId)){
-            Log.e(TAG, "Unknown notification "+ntfId);
+        String ntfName = magicBook.getMsgName(ntfId);
+
+        if (!magicBook.isNotification(ntfName)){
+            Log.e(TAG, "Unknown notification "+ntfName);
             return false;
         }
 
-        Set<Handler> subs = subscribers.get(ntfId);
+        Set<Handler> subs = subscribers.get(ntfName);
         if (null == subs){
             subs = new HashSet<>();
-            subscribers.put(ntfId, subs);
+            subscribers.put(ntfName, subs);
         }
 
         subs.add(subscriber);
@@ -70,16 +72,18 @@ final class NotificationFairy implements IFairy.ISubscribeFairy,
             return;
         }
 
-        if (!magicBook.isNotification(ntfId)){
-            Log.e(TAG, "Unknown notification "+ntfId);
+        String ntfName = magicBook.getMsgName(ntfId);
+
+        if (!magicBook.isNotification(ntfName)){
+            Log.e(TAG, "Unknown notification "+ntfName);
             return;
         }
 
-        Set<Handler> subs = subscribers.get(ntfId);
+        Set<Handler> subs = subscribers.get(ntfName);
         if (null != subs){
             subs.remove(subscriber);
             if (subs.isEmpty()){
-                subscribers.remove(ntfId);
+                subscribers.remove(ntfName);
             }
         }
     }
@@ -101,7 +105,9 @@ final class NotificationFairy implements IFairy.ISubscribeFairy,
 
         for (Handler sub : subs){
             Message msg = Message.obtain();
-            msg.obj = new FeedbackBundle(ntfName, ntfContent, FeedbackBundle.NTF);
+            msg.obj = new FeedbackBundle(magicBook.getMsgId(ntfName),
+                    ntfContent,
+                    FeedbackBundle.NTF);
             sub.sendMessage(msg);
         }
 
@@ -110,15 +116,17 @@ final class NotificationFairy implements IFairy.ISubscribeFairy,
 
 
     @Override
-    public synchronized boolean processEmitNotification(String ntfName) {
+    public synchronized boolean processEmitNotification(String ntfId) {
 
         if (null == stick){
             Log.e(TAG, "no emit notification stick ");
             return false;
         }
 
+        String ntfName = magicBook.getMsgName(ntfId);
+
         if (!magicBook.isNotification(ntfName)){
-            Log.e(TAG, "Unknown notification "+ntfName);
+            Log.e(TAG, "Unknown notification "+ ntfName);
             return false;
         }
 

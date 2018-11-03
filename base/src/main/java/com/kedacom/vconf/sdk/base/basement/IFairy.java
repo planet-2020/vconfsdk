@@ -31,7 +31,7 @@ interface IFairy {
     }
 
     interface IEmitNotificationFairy{
-        boolean processEmitNotification(String ntfName);
+        boolean processEmitNotification(String ntfId);
         void setEmitNotificationStick(IStick.IEmitNotificationStick emitNotificationStick);
     }
 

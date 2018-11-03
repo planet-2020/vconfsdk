@@ -35,16 +35,18 @@ final class CommandFairy implements IFairy.ICommandFairy{
             return;
         }
 
-        if (!magicBook.isSet(setId)){
-            Log.e(TAG, "Unknown processSet "+setId);
+        String setName = magicBook.getMsgName(setId);
+
+        if (!magicBook.isSet(setName)){
+            Log.e(TAG, "Unknown processSet "+setName);
             return;
         }
 
-        if (para.getClass() != magicBook.getSetParaClazz(setId)){
+        if (para.getClass() != magicBook.getSetParaClazz(setName)){
             return;
         }
 
-        stick.set(setId, jsonProcessor.toJson(para));
+        stick.set(setName, jsonProcessor.toJson(para));
     }
 
     @Override
@@ -55,15 +57,17 @@ final class CommandFairy implements IFairy.ICommandFairy{
             return null;
         }
 
-        if (!magicBook.isGet(getId)){ // XXX 用异常机制代替返回值机制
-            Log.e(TAG, "Unknown processGet "+getId);
+        String getName = magicBook.getMsgName(getId);
+
+        if (!magicBook.isGet(getName)){ // XXX 用异常机制代替返回值机制
+            Log.e(TAG, "Unknown processGet "+getName);
             return null; //TODO  throw Exception
         }
 
         StringBuffer buffer = new StringBuffer();
-        stick.get(getId, buffer);
+        stick.get(getName, buffer);
 
-        return jsonProcessor.fromJson(buffer.toString(), magicBook.getGetResultClazz(getId));
+        return jsonProcessor.fromJson(buffer.toString(), magicBook.getGetResultClazz(getName));
     }
 
     @Override
@@ -74,19 +78,21 @@ final class CommandFairy implements IFairy.ICommandFairy{
             return null;
         }
 
-        if (!magicBook.isGet(getId)){
-            Log.e(TAG, "Unknown processGet "+getId);
+        String getName = magicBook.getMsgName(getId);
+
+        if (!magicBook.isGet(getName)){
+            Log.e(TAG, "Unknown processGet "+getName);
             return null;
         }
 
-        if (para.getClass() != magicBook.getGetParaClazz(getId)){
+        if (para.getClass() != magicBook.getGetParaClazz(getName)){
             return null;
         }
 
         StringBuffer buffer = new StringBuffer();
-        stick.get(getId, jsonProcessor.toJson(para), buffer);
+        stick.get(getName, jsonProcessor.toJson(para), buffer);
 
-        return jsonProcessor.fromJson(buffer.toString(), magicBook.getGetResultClazz(getId));
+        return jsonProcessor.fromJson(buffer.toString(), magicBook.getGetResultClazz(getName));
     }
 
     @Override

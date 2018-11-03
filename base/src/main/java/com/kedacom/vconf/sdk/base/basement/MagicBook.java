@@ -22,7 +22,9 @@ final class MagicBook {
 
     private Set<String> sets;
 
-    private Map<String, String> msgNameMap; // 上层请求名——下层请求名
+    private Map<String, String> idNameMap; // 消息ID——消息名称
+
+    private Map<String, String> nameIdMap; // 消息名称——消息ID
 
     private Map<String, Class> reqParaMap; // 请求——请求参数对应的类
 
@@ -51,7 +53,8 @@ final class MagicBook {
 //    private final EnumSet<EmRsp> blackList; // 黑名单
 
     private MagicBook(){
-        msgNameMap = Message$$Generated.msgNameMap;
+        idNameMap = Message$$Generated.idNameMap;
+        nameIdMap = Message$$Generated.nameIdMap;
         reqParaMap = Message$$Generated.reqParaMap;
         reqRspSeqsMap = Message$$Generated.reqRspsMap;
         reqTimeoutMap = Message$$Generated.reqTimeoutMap;
@@ -77,6 +80,14 @@ final class MagicBook {
         }
 
         return instance;
+    }
+
+    String getMsgName(String msgId){
+        return idNameMap.get(msgId);
+    }
+
+    String getMsgId(String msgName){
+        return nameIdMap.get(msgName);
     }
 
     boolean isRequest(String msg){

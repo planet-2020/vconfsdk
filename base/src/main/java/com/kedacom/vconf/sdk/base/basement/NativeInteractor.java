@@ -27,31 +27,31 @@ class NativeInteractor implements ICrystalBall, INativeCallback{
     }
 
     @Override
-    public int yell(String methodName, String reqPara) {
-        return call(methodName, reqPara);
+    public int yell(String msgName, String para) {
+        return call(msgName, para);
     }
 
     @Override
-    public int yell(String methodName, StringBuffer output) {
-        return call(methodName, output);
+    public int yell(String msgName, StringBuffer output) {
+        return call(msgName, output);
     }
 
     @Override
-    public int yell(String methodName, String para, StringBuffer output) {
-        return call(methodName, para, output);
+    public int yell(String msgName, String para, StringBuffer output) {
+        return call(msgName, para, output);
     }
 
 
-    private native int call(String methodName, String reqPara);  // request/processSet
-    private native int call(String methodName, StringBuffer output); // processGet
-    private native int call(String methodName, String para, StringBuffer output); // processGet
+    private native int call(String msgName, String para);  // request/set
+    private native int call(String msgName, StringBuffer output); // get
+    private native int call(String msgName, String para, StringBuffer output); // get
 
     private native int setCallback(INativeCallback callback);
 
     @Override
-    public void callback(String msgId, String msgBody) {
+    public void callback(String msgName, String msgBody) {
         if (null != yb){
-            yb.yellback(msgId, msgBody);
+            yb.yellback(msgName, msgBody);
         }
     }
 }
