@@ -9,5 +9,6 @@ package com.kedacom.vconf.sdk.annotation;
  */
 
 public @interface Set {
+    String name() default "";
     Class value(); // 传入参数对应的类
 }

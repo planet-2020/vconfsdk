@@ -20,11 +20,11 @@ allprojects {
         google()
         jcenter()
 
-
-        maven {
-            url "http://localhost:8081/repository/maven-releases/"
-        }
         mavenLocal()
+
+//        maven {
+//            url "http://localhost:8081/repository/maven-releases/"
+//        }
 
 //        maven {
 //            url "file://C:\\Users\\Sissi\\.m2\\repository"

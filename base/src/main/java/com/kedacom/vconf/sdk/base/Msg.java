@@ -12,9 +12,8 @@ import com.kedacom.vconf.sdk.annotation.Set;
 
 /**
  * Created by Sissi on 2018/9/3.
- * 消息ID。
- * [TODO 最好结合对组件层消息的理解重新定义一套适合UI层使用及理解的，而非直接照搬组件层的，然后在jni层做这两套消息之间的转换（以及进行一些封装）。
- * 这样做的好处在于一方面使得消息对于UI层更友好合理，另一方面迫使UI层跟组件层充分沟通充分理解每条消息的含义避免出现半懂不懂的情况下就开始写代码]
+ * 消息。
+ *
  */
 
 @SuppressWarnings("unused")
@@ -72,24 +71,28 @@ public enum Msg {
     GetDCSCfg,
 
     /**登录数据协作建链*/
-    @Request(rspSeq = {"DcsLoginResult_Ntf"})
-    DCSLoginConnectCmd,
+    @Request(name = "DCSLoginConnectCmd",
+            rspSeq = {"DcsLoginResult_Ntf"})
+    DCBuildLink4Login,
 
     /**登录数据协作建链响应*/
-    @Response(clz = MsgBeans.DcsLinkCreationResult.class)
-    DcsLoginResult_Ntf,
+    @Response(name = "DcsLoginResult_Ntf",
+            clz = MsgBeans.DcsLinkCreationResult.class)
+    DCBuildLink4LoginRsp,
 
     /**登录数据协作服务器。
      * 注：登录前需先建链。*/
     @Request(para = MsgBeans.TDCSRegInfo.class,
             /*执行DCSLoginSrvReq时，下层自动执行了DCSLoginConnectCmd并把DcsLoginResult_Ntf抛了上来，
             所以上层看起来就是DCSLoginSrvReq对应{"DcsLoginResult_Ntf", "DcsLoginSrv_Rsp"}响应序列*/
+            name = "DCSLoginSrvReq",
             rspSeq = {"DcsLoginResult_Ntf", "DcsLoginSrv_Rsp"})
-    DCSLoginSrvReq,
+    DCLogin,
 
     /**登录数据协作服务器响应*/
-    @Response(clz = MsgBeans.DcsLoginResult.class)
-    DcsLoginSrv_Rsp,
+    @Response(name = "DcsLoginSrv_Rsp",
+            clz = MsgBeans.DcsLoginResult.class)
+    DCLoginRsp,
 
     /**注销数据协作服务器*/
     @Request(rspSeq = {"DcsLogout_Rsp"})

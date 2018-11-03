@@ -9,6 +9,7 @@ package com.kedacom.vconf.sdk.annotation;
  */
 
 public @interface Get {
+    String name() default "";
     Class para() default Void.class; // 传入参数对应的类
     Class result(); // 返回结果对应的类
 }

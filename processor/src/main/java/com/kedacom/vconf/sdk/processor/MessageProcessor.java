@@ -104,15 +104,15 @@ public class MessageProcessor extends AbstractProcessor {
 
 
     private boolean collectInfo(RoundEnvironment roundEnvironment){
-        reqParaMap.clear();
-        reqRspsMap.clear();
-        reqTimeoutMap.clear();
-        reqExclusiveMap.clear();
-        rspClazzMap.clear();
-        ntfClazzMap.clear();
-        getParaClazzMap.clear();
-        getResultClazzMap.clear();
-        setParaClazzMap.clear();
+//        reqParaMap.clear();
+//        reqRspsMap.clear();
+//        reqTimeoutMap.clear();
+//        reqExclusiveMap.clear();
+//        rspClazzMap.clear();
+//        ntfClazzMap.clear();
+//        getParaClazzMap.clear();
+//        getResultClazzMap.clear();
+//        setParaClazzMap.clear();
 
         Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Message.class);
 
@@ -147,7 +147,8 @@ public class MessageProcessor extends AbstractProcessor {
             }
 
             if (null != (request = element.getAnnotation(Request.class))){
-                reqName = element.getSimpleName().toString();
+                reqName = request.name();
+                reqName = !reqName.isEmpty() ? reqName : element.getSimpleName().toString();
                 // 获取请求参数
                 try {
                     clz = request.para();
@@ -179,7 +180,8 @@ public class MessageProcessor extends AbstractProcessor {
 //                        + " timeout: "+request.timeout());
 
             }else if (null != (response = element.getAnnotation(Response.class))){
-                rspName = element.getSimpleName().toString();
+                rspName = response.name();
+                rspName = !rspName.isEmpty() ? rspName : element.getSimpleName().toString();
 
                 // 获取响应对应的消息体类型
                 try {
@@ -199,7 +201,8 @@ public class MessageProcessor extends AbstractProcessor {
                 rspDelayMap.put(rspName, response.delay());
 
             }else if (null != (notification = element.getAnnotation(Notification.class))){
-                ntfName = element.getSimpleName().toString();
+                ntfName = notification.name();
+                ntfName = !ntfName.isEmpty() ? ntfName : element.getSimpleName().toString();
 
                 // 获取通知对应的消息体类型
                 try {
@@ -219,7 +222,8 @@ public class MessageProcessor extends AbstractProcessor {
                 ntfDelayMap.put(ntfName, notification.delay());
 
             }else if (null != (get = element.getAnnotation(Get.class))){
-                getName = element.getSimpleName().toString();
+                getName = get.name();
+                getName = !getName.isEmpty() ? getName : element.getSimpleName().toString();
                 // 获取请求参数
                 try {
                     clz = get.para();
@@ -248,7 +252,8 @@ public class MessageProcessor extends AbstractProcessor {
 //                        + " result class: "+ getResultFullName);
 
             }else if (null != (set = element.getAnnotation(com.kedacom.vconf.sdk.annotation.Set.class))){
-                setName = element.getSimpleName().toString();
+                setName = set.name();
+                setName = !setName.isEmpty() ? setName : element.getSimpleName().toString();
 
                 // 获取响应对应的消息体类型
                 try {
