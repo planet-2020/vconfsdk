@@ -69,7 +69,7 @@ public enum Msg {
     /**获取数据协作服务器地址*/
     @Get(name = "GetDCSCfg",
             result = MsgBeans.TMtDCSSvrAddr.class)
-    GetDCServerInfo,
+    GetDCServerAddrInfo,
 
     /**登录数据协作建链*/
     @Request(name = "DCSLoginConnectCmd",

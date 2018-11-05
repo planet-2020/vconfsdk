@@ -59,6 +59,11 @@ public final class Witch {
     }
 
 
+    public static void setCrystalBall(ICrystalBall crystalBall){
+        MagicStick.instance().setCrystalBall(crystalBall);
+    }
+
+
     public boolean req(String reqId, int reqSn, Object reqPara){
         return requestFairy.processRequest(feedbackHandler, reqId, reqPara, reqSn);
     }
