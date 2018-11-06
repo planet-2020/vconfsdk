@@ -2,6 +2,8 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.graphics.Path;
 import android.graphics.PointF;
+import android.os.Handler;
+import android.preference.PreferenceActivity;
 
 import com.kedacom.vconf.sdk.base.INotificationListener;
 import com.kedacom.vconf.sdk.base.IResultListener;
@@ -295,7 +297,7 @@ public class DataCollaborateManager extends RequestAgent {
         }
     }
 
-    private void ejectNtfs(){
+    public void ejectNtfs(){
         eject(Msg.DcsCurrentWhiteBoard_Ntf);
         eject(Msg.DcsNewWhiteBoard_Ntf);
         eject(Msg.DcsSwitch_Ntf);
@@ -314,14 +316,15 @@ public class DataCollaborateManager extends RequestAgent {
         eject(Msg.DcsElementOperFinal_Ntf);
     }
 
-    private DataCollaborateManager(){
-        Timer timer = new Timer();
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                DataCollaborateManager.this.ejectNtfs();
-            }
-        }, 5000, 5000);
-    }
+//    private DataCollaborateManager(){
+////        Timer timer = new Timer();
+////        timer.schedule(new TimerTask() {
+////            @Override
+////            public void run() {
+////                DataCollaborateManager.this.ejectNtfs();
+////            }
+////        }, 5000, 5000);
+//        new Handler().postDelayed(this::ejectNtfs, 5000);
+//    }
 
 }
