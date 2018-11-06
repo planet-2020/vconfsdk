@@ -1,5 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import android.graphics.Path;
+import android.graphics.PointF;
+
 import com.kedacom.vconf.sdk.base.INotificationListener;
 import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.Msg;
@@ -9,6 +12,8 @@ import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.ResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCPaintInfo;
+
+//import static com.kedacom.vconf.sdk.base.MsgBeans.*; // TODO 使用static import？
 
 import java.util.HashMap;
 import java.util.Map;
@@ -156,22 +161,42 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onCircleOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
+        if (null != painter){
+            MsgBeans.DcsOperCircleOperInfo_Ntf opInfo = (MsgBeans.DcsOperCircleOperInfo_Ntf) ntfContent;
+            MsgBeans.TDCSWbCircle element = opInfo.AssParam.tCircle;
+            KLog.p("line{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
+                    element.tBeginPt.nPosx, element.tBeginPt.nPosy, element.tEndPt.nPosx, element.tEndPt.nPosy, element.dwLineWidth, (int) element.dwRgb);
+            painter.drawOval(element.tBeginPt.nPosx, element.tBeginPt.nPosy, element.tEndPt.nPosx, element.tEndPt.nPosy,
+                    new DCPaintInfo(element.dwLineWidth, (int) element.dwRgb));
         }
     }
 
     private void onRectangleOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
+        if (null != painter){
+            MsgBeans.DcsOperRectangleOperInfo_Ntf opInfo = (MsgBeans.DcsOperRectangleOperInfo_Ntf) ntfContent;
+            MsgBeans.TDCSWbRectangle element = opInfo.AssParam.tRectangle;
+            KLog.p("line{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
+                    element.tBeginPt.nPosx, element.tBeginPt.nPosy, element.tEndPt.nPosx, element.tEndPt.nPosy, element.dwLineWidth, (int) element.dwRgb);
+            painter.drawRect(element.tBeginPt.nPosx, element.tBeginPt.nPosy, element.tEndPt.nPosx, element.tEndPt.nPosy,
+                    new DCPaintInfo(element.dwLineWidth, (int) element.dwRgb));
         }
     }
 
     private void onPencilOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
+        if (null != painter){
+            MsgBeans.DcsOperPencilOperInfo_Ntf opInfo = (MsgBeans.DcsOperPencilOperInfo_Ntf) ntfContent;
+            MsgBeans.TDCSWbPencil element = opInfo.AssParam.tPencil;
+            MsgBeans.TDCSWbPoint[] points = element.atPList;
+            Path path = new Path();
+            path.moveTo(points[0].nPosx, points[0].nPosy);
+            for (MsgBeans.TDCSWbPoint point: points){
+                KLog.p("path.point{%s, %s}", point.nPosx, point.nPosy);
+                path.lineTo(point.nPosx, point.nPosy); // 未做起始点判断，多做了一次moveTo，但简化了逻辑
+            }
+            KLog.p("path.paint{width=%s, rgb=%s}", element.dwLineWidth, (int) element.dwRgb);
+            painter.drawPath(path, new DCPaintInfo(element.dwLineWidth, (int) element.dwRgb));
         }
     }
 

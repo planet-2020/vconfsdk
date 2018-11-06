@@ -10,6 +10,8 @@ import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.annotation.Set;
 
+// TODO 使用import static MsgBeans.*？
+
 /**
  * Created by Sissi on 2018/9/3.
  * 消息。

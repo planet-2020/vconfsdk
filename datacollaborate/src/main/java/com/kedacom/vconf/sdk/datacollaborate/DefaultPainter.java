@@ -77,6 +77,7 @@ public class DefaultPainter implements IDCPainter {
 
     private Paint cfgPaint(DCPaintInfo paintInfo){
         paint.reset();
+        paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(paintInfo.strokeWidth);
         paint.setColor(paintInfo.color);
         return paint;
@@ -165,4 +166,5 @@ public class DefaultPainter implements IDCPainter {
     public void erase(float left, float top, float right, float bottom, DCPaintInfo paintInfo) {
         // 保存cv的初始状态？然后restore？
     }
+
 }
