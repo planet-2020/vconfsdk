@@ -8,10 +8,13 @@ import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.ResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCPaintInfo;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class DataCollaborateManager extends RequestAgent {
 
@@ -24,6 +27,8 @@ public class DataCollaborateManager extends RequestAgent {
     public static final int Terminal_TrueSens = 6; // 硬终端
     public static final int Terminal_Imix = 7; // 网呈IMIX
     public static final int Terminal_Other = 8; // 其他终端
+
+    private IDCPainter painter;
 
     @Override
     protected Map<Msg, RspProcessor> rspProcessors() {
@@ -55,6 +60,11 @@ public class DataCollaborateManager extends RequestAgent {
         processorMap.put(Msg.DcsElementOperFinal_Ntf, this::onOpEndNtf);
 
         return processorMap;
+    }
+
+
+    public void setPainter(IDCPainter painter){
+        this.painter = painter;
     }
 
     public void login(String serverIp, int port, int terminalType, IResultListener resultListener){
@@ -109,9 +119,6 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onCurrentWhiteBoardNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
-        }
     }
 
     private void onNewWhiteBoardNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
@@ -137,8 +144,13 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onLineOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
+        if (null != painter){
+            MsgBeans.DcsOperLineOperInfo_Ntf lineOperInfo = (MsgBeans.DcsOperLineOperInfo_Ntf) ntfContent;
+            MsgBeans.TDCSWbLine line = lineOperInfo.AssParam.tLine;
+            KLog.p("line{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
+                    line.tBeginPt.nPosx, line.tBeginPt.nPosy, line.tEndPt.nPosx, line.tEndPt.nPosy, line.dwLineWidth, (int) line.dwRgb);
+            painter.drawLine(line.tBeginPt.nPosx, line.tBeginPt.nPosy, line.tEndPt.nPosx, line.tEndPt.nPosy,
+                    new DCPaintInfo(line.dwLineWidth, (int) line.dwRgb));
         }
     }
 
@@ -256,6 +268,35 @@ public class DataCollaborateManager extends RequestAgent {
             default:
                 return MsgConst.EmDcsType.emTypeThirdPartyTer;
         }
+    }
+
+    private void ejectNtfs(){
+        eject(Msg.DcsCurrentWhiteBoard_Ntf);
+        eject(Msg.DcsNewWhiteBoard_Ntf);
+        eject(Msg.DcsSwitch_Ntf);
+        eject(Msg.DcsElementOperBegin_Ntf);
+        eject(Msg.DcsOperLineOperInfo_Ntf);
+        eject(Msg.DcsOperCircleOperInfo_Ntf);
+        eject(Msg.DcsOperRectangleOperInfo_Ntf);
+        eject(Msg.DcsOperPencilOperInfo_Ntf);
+        eject(Msg.DcsOperInsertPic_Ntf);
+        eject(Msg.DcsOperPitchPicDrag_Ntf);
+        eject(Msg.DcsOperPitchPicDel_Ntf);
+        eject(Msg.DcsOperEraseOperInfo_Ntf);
+        eject(Msg.DcsOperUndo_Ntf);
+        eject(Msg.DcsOperRedo_Ntf);
+        eject(Msg.DcsOperClearScreen_Ntf);
+        eject(Msg.DcsElementOperFinal_Ntf);
+    }
+
+    private DataCollaborateManager(){
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                DataCollaborateManager.this.ejectNtfs();
+            }
+        }, 5000, 5000);
     }
 
 }

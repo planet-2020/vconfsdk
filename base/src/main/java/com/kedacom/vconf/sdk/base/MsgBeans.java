@@ -422,22 +422,26 @@ public final class MsgBeans {
     public static final class DcsOperLineOperInfo_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbLineOperInfo AssParam;
+        DcsOperLineOperInfo_Ntf(){MainParam = new TDCSOperContent(); AssParam = new TDCSWbLineOperInfo();}
     }
 
     public static final class DcsOperCircleOperInfo_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbCircleOperInfo AssParam;
+        DcsOperCircleOperInfo_Ntf(){MainParam = new TDCSOperContent(); AssParam = new TDCSWbCircleOperInfo();}
     }
 
     public static final class DcsOperRectangleOperInfo_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbRectangleOperInfo AssParam;
+        DcsOperRectangleOperInfo_Ntf(){MainParam = new TDCSOperContent(); AssParam = new TDCSWbRectangleOperInfo();}
     }
 
 
     public static final class DcsOperPencilOperInfo_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbPencilOperInfo AssParam;
+        DcsOperPencilOperInfo_Ntf(){MainParam = new TDCSOperContent(); AssParam = new TDCSWbPencilOperInfo();}
     }
 
     public static final class DcsOperColorPenOperInfo_Ntf{
@@ -566,6 +570,9 @@ public final class MsgBeans {
         public String achTabId;     // 白板tab id（guid）
         public int dwSubPageId;     // 子页面id
         public TDCSWbLine tLine;    // 线操作信息
+        TDCSWbLineOperInfo(){
+            tLine = new TDCSWbLine();
+        }
     }
 
     public static final class TDCSWbLine {
@@ -574,12 +581,21 @@ public final class MsgBeans {
         public TDCSWbPoint tEndPt;      // 终点坐标
         public int dwLineWidth;         // 线宽
         public long dwRgb;              // 颜色，强转成int类型就是颜色值了。比如long类型的4294967295强转成int就是0xFFFFFFFF（纯白色），即-1。
+        TDCSWbLine(){
+            tBeginPt = new TDCSWbPoint(0,0);
+            tEndPt = new TDCSWbPoint(500, 500);
+            dwLineWidth = 10;
+            dwRgb = 0xFF00FF00;
+        }
     }
 
     public static final class TDCSWbCircleOperInfo {
         public String achTabId;         // 白板tab id（guid）
         public int dwSubPageId;         // 子页面id
         public TDCSWbCircle tCircle;    // 圆操作信息
+        TDCSWbCircleOperInfo(){
+            tCircle = new TDCSWbCircle();
+        }
     }
 
     public static final class TDCSWbCircle {
@@ -588,6 +604,12 @@ public final class MsgBeans {
         public TDCSWbPoint tEndPt;      // 终点坐标
         public int dwLineWidth;         // 线宽
         public long dwRgb;              // 颜色，强转成int类型就是颜色值了。比如long类型的4294967295强转成int就是0xFFFFFFFF（纯白色），即-1。
+        TDCSWbCircle(){
+            tBeginPt = new TDCSWbPoint(0,0);
+            tEndPt = new TDCSWbPoint(500, 500);
+            dwLineWidth = 10;
+            dwRgb = 0xFF00FF00;
+        }
     }
 
     public static final class TDCSWbEntity {
@@ -598,12 +620,17 @@ public final class MsgBeans {
     public static final class TDCSWbPoint {
         public int nPosx;
         public int nPosy;
+        TDCSWbPoint(){}
+        TDCSWbPoint(int x, int y){nPosx=x; nPosy=y;}
     }
 
     public static final class TDCSWbRectangleOperInfo {
         public String achTabId;             // 白板tab id（guid）
         public int dwSubPageId;             // 子页面id
         public TDCSWbRectangle tRectangle;  // 矩形操作信息
+        TDCSWbRectangleOperInfo(){
+            tRectangle = new TDCSWbRectangle();
+        }
     }
 
     public static final class TDCSWbRectangle {
@@ -612,12 +639,19 @@ public final class MsgBeans {
         public TDCSWbPoint tEndPt;      // 终点坐标
         public int dwLineWidth;         // 线宽
         public long dwRgb;              // 颜色，强转成int类型就是颜色值了。比如long类型的4294967295强转成int就是0xFFFFFFFF（纯白色），即-1。
+        TDCSWbRectangle(){
+            tBeginPt = new TDCSWbPoint(0,0);
+            tEndPt = new TDCSWbPoint(500, 500);
+            dwLineWidth = 10;
+            dwRgb = 0xFF00FF00;
+        }
     }
 
     public static final class TDCSWbPencilOperInfo {
         public String achTabId;         // 白板tab id（guid）
         public int dwSubPageId;         // 子页面id
         public TDCSWbPencil tPencil;    // 铅笔操作信息
+        TDCSWbPencilOperInfo(){tPencil = new TDCSWbPencil();}
     }
 
     public static final class TDCSWbPencil {
@@ -626,6 +660,16 @@ public final class MsgBeans {
         public TDCSWbPoint[] atPList;   // 曲线点信息列表
         public int dwLineWidth;         // 线宽
         public long dwRgb;              // 颜色，强转成int类型就是颜色值了。比如long类型的4294967295强转成int就是0xFFFFFFFF（纯白色），即-1。
+        TDCSWbPencil(){
+            atPList = new TDCSWbPoint[]{
+                    new TDCSWbPoint(0, 500),
+                    new TDCSWbPoint(250, 250),
+                    new TDCSWbPoint(0, 250),
+                    new TDCSWbPoint(250, 500),
+            };
+            dwLineWidth = 10;
+            dwRgb = 0xFF0000FF;
+        }
     }
 
     public static final class TDCSWbColorPenOperInfo {

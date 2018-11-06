@@ -177,7 +177,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     /**
      * （驱使下层）发射通知。仅用于模拟模式。
      * */
-    protected void eject(Msg ntfId){
+    protected synchronized void eject(Msg ntfId){
 //        Log.i(TAG, "eject ntf "+ntfId);
         if (!ntfProcessorMap.keySet().contains(ntfId)){
             KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);

@@ -7,10 +7,13 @@ import android.graphics.Rect;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCPaintInfo;
 
 public interface IDCPainter {
+    void onWhiteBoard();
+    void startDraw();
     void drawLine(float startX, float startY, float stopX, float stopY, DCPaintInfo paintInfo);
     void drawRect(float left, float top, float right, float bottom, DCPaintInfo paintInfo);
     void drawOval(float left, float top, float right, float bottom, DCPaintInfo paintInfo);
     void drawPath(Path path, DCPaintInfo paintInfo);
     void drawBitmap(Bitmap bitmap, Rect src, Rect dst, DCPaintInfo paintInfo);
     void erase(float left, float top, float right, float bottom, DCPaintInfo paintInfo);
+    void finishDraw();
 }
