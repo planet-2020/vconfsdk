@@ -34,7 +34,7 @@ public enum Msg {
     Startup, // 请求不带Req后缀
 
     @Response(clz = MsgBeans.StartupResult.class, // Result表示反馈结果，注意区别Info
-            delay = 3000)
+            delay = 2000)
     StartupRsp,
 
     // login
@@ -43,7 +43,7 @@ public enum Msg {
             timeout = 6)
     Login,
 
-    @Response(clz = MsgBeans.LoginResult.class, delay = 5000)
+    @Response(clz = MsgBeans.LoginResult.class, delay = 2000)
     LoginRsp,
     @Response(clz = MsgBeans.LoginResult.class, delay = 500)
     LoginRspFin,
@@ -62,7 +62,7 @@ public enum Msg {
     @Set(MsgBeans.NetConfig.class)
     SetNetConfig,
 
-    @Notification(clz = MsgBeans.MemberState.class, delay = 6000)
+    @Notification(clz = MsgBeans.MemberState.class, delay = 3000)
     MemberStateChanged,
 
 
@@ -136,7 +136,7 @@ public enum Msg {
      * 下层（组件层）收到邀请会主动加入该数据协作，然后再上报该条消息给界面，
      * 所以该消息既是响应也是通知。*/
     @Notification(clz = MsgBeans.TDCSCreateConfResult.class)
-    @Response(clz = MsgBeans.TDCSCreateConfResult.class, delay = 5000)
+    @Response(clz = MsgBeans.TDCSCreateConfResult.class, delay = 1000)
     DcsCreateConf_Rsp,
 
     /**加入数据协作*/

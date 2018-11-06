@@ -302,8 +302,8 @@ public class DataCollaborateManager extends RequestAgent {
         eject(Msg.DcsNewWhiteBoard_Ntf);
         eject(Msg.DcsSwitch_Ntf);
         eject(Msg.DcsElementOperBegin_Ntf);
-        eject(Msg.DcsOperLineOperInfo_Ntf);
         eject(Msg.DcsOperCircleOperInfo_Ntf);
+        eject(Msg.DcsOperLineOperInfo_Ntf);
         eject(Msg.DcsOperRectangleOperInfo_Ntf);
         eject(Msg.DcsOperPencilOperInfo_Ntf);
         eject(Msg.DcsOperInsertPic_Ntf);

@@ -23,29 +23,29 @@ public class DefaultPainter implements IDCPainter {
     public DefaultPainter(Context context) {
         paint = new Paint();
         textureView = new TextureView(context);
-//        textureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
-//            @Override
-//            public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-//                KLog.p("surface=%s", surface);
+        textureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+            @Override
+            public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+                KLog.p("surface=%s", surface);
 //                drawLine(0, 0, 200, 300, new DCPaintInfo(3, 0x7F00FF00));
-//            }
-//
-//            @Override
-//            public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-//                KLog.p("surface=%s", surface);
-//            }
-//
-//            @Override
-//            public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-//                KLog.p("surface=%s", surface);
-//                return false;
-//            }
-//
-//            @Override
-//            public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-//                KLog.p("surface=%s", surface);
-//            }
-//        });
+            }
+
+            @Override
+            public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+                KLog.p("surface=%s", surface);
+            }
+
+            @Override
+            public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+                KLog.p("surface=%s", surface);
+                return false;
+            }
+
+            @Override
+            public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+                KLog.p("surface=%s", surface);
+            }
+        });
     }
 
     public View getWhiteBoardView(){
