@@ -1,19 +1,21 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
-import android.graphics.Bitmap;
-import android.graphics.Path;
-import android.graphics.Rect;
-
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCPaintInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCEraseOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCImageOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCLineOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCOvalOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCPathOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCRectOp;
 
 public interface IDCPainter {
-    void onWhiteBoard();
     default void startBatchDraw(){}
-    void drawLine(float startX, float startY, float stopX, float stopY, DCPaintInfo paintInfo);
-    void drawRect(float left, float top, float right, float bottom, DCPaintInfo paintInfo);
-    void drawOval(float left, float top, float right, float bottom, DCPaintInfo paintInfo);
-    void drawPath(Path path, DCPaintInfo paintInfo);
-    void drawBitmap(Bitmap bitmap, Rect src, Rect dst, DCPaintInfo paintInfo);
-    void erase(float left, float top, float right, float bottom, DCPaintInfo paintInfo);
+//    void drawLine(DCLineOp lineOpInfo);
+//    void drawRect(DCRectOp rectOpInfo);
+//    void drawOval(DCOvalOp ovalOpInfo);
+//    void drawPath(DCPathOp pathOpInfo);
+//    void drawImage(DCImageOp imageOpInfo);
+//    void erase(DCEraseOp eraseOpInfo);
+    void draw(DCOp op);
     default void finishBatchDraw(){}
 }

@@ -2,8 +2,6 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.graphics.Path;
 import android.graphics.PointF;
-import android.os.Handler;
-import android.preference.PreferenceActivity;
 
 import com.kedacom.vconf.sdk.base.INotificationListener;
 import com.kedacom.vconf.sdk.base.IResultListener;
@@ -13,15 +11,17 @@ import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.ResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCPaintInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCLineOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCOvalOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCPaintCfg;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCPathOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCRectOp;
 
 //import static com.kedacom.vconf.sdk.base.MsgBeans.*; // TODO 使用static import？
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class DataCollaborateManager extends RequestAgent {
 
@@ -152,12 +152,13 @@ public class DataCollaborateManager extends RequestAgent {
     private void onLineOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null != painter){
-            MsgBeans.DcsOperLineOperInfo_Ntf lineOperInfo = (MsgBeans.DcsOperLineOperInfo_Ntf) ntfContent;
-            MsgBeans.TDCSWbLine line = lineOperInfo.AssParam.tLine;
+            MsgBeans.DcsOperLineOperInfo_Ntf OpInfo = (MsgBeans.DcsOperLineOperInfo_Ntf) ntfContent;
+            MsgBeans.TDCSOperContent commonInfo = OpInfo.MainParam;
+            MsgBeans.TDCSWbLine gp = OpInfo.AssParam.tLine;
             KLog.p("line{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
-                    line.tBeginPt.nPosx, line.tBeginPt.nPosy, line.tEndPt.nPosx, line.tEndPt.nPosy, line.dwLineWidth, (int) line.dwRgb);
-            painter.drawLine(line.tBeginPt.nPosx, line.tBeginPt.nPosy, line.tEndPt.nPosx, line.tEndPt.nPosy,
-                    new DCPaintInfo(line.dwLineWidth, (int) line.dwRgb));
+                    gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, gp.dwLineWidth, (int) gp.dwRgb);
+            painter.draw(new DCLineOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+                    commonInfo.dwMsgSequence, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
         }
     }
 
@@ -165,11 +166,12 @@ public class DataCollaborateManager extends RequestAgent {
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null != painter){
             MsgBeans.DcsOperCircleOperInfo_Ntf opInfo = (MsgBeans.DcsOperCircleOperInfo_Ntf) ntfContent;
-            MsgBeans.TDCSWbCircle element = opInfo.AssParam.tCircle;
-            KLog.p("line{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
-                    element.tBeginPt.nPosx, element.tBeginPt.nPosy, element.tEndPt.nPosx, element.tEndPt.nPosy, element.dwLineWidth, (int) element.dwRgb);
-            painter.drawOval(element.tBeginPt.nPosx, element.tBeginPt.nPosy, element.tEndPt.nPosx, element.tEndPt.nPosy,
-                    new DCPaintInfo(element.dwLineWidth, (int) element.dwRgb));
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            MsgBeans.TDCSWbCircle gp = opInfo.AssParam.tCircle;
+            KLog.p("oval{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
+                    gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, gp.dwLineWidth, (int) gp.dwRgb);
+            painter.draw(new DCOvalOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+                    commonInfo.dwMsgSequence, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
         }
     }
 
@@ -177,11 +179,12 @@ public class DataCollaborateManager extends RequestAgent {
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null != painter){
             MsgBeans.DcsOperRectangleOperInfo_Ntf opInfo = (MsgBeans.DcsOperRectangleOperInfo_Ntf) ntfContent;
-            MsgBeans.TDCSWbRectangle element = opInfo.AssParam.tRectangle;
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            MsgBeans.TDCSWbRectangle gp = opInfo.AssParam.tRectangle;
             KLog.p("line{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
-                    element.tBeginPt.nPosx, element.tBeginPt.nPosy, element.tEndPt.nPosx, element.tEndPt.nPosy, element.dwLineWidth, (int) element.dwRgb);
-            painter.drawRect(element.tBeginPt.nPosx, element.tBeginPt.nPosy, element.tEndPt.nPosx, element.tEndPt.nPosy,
-                    new DCPaintInfo(element.dwLineWidth, (int) element.dwRgb));
+                    gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, gp.dwLineWidth, (int) gp.dwRgb);
+            painter.draw(new DCRectOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+                    commonInfo.dwMsgSequence, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
         }
     }
 
@@ -189,16 +192,19 @@ public class DataCollaborateManager extends RequestAgent {
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null != painter){
             MsgBeans.DcsOperPencilOperInfo_Ntf opInfo = (MsgBeans.DcsOperPencilOperInfo_Ntf) ntfContent;
-            MsgBeans.TDCSWbPencil element = opInfo.AssParam.tPencil;
-            MsgBeans.TDCSWbPoint[] points = element.atPList;
-            Path path = new Path();
-            path.moveTo(points[0].nPosx, points[0].nPosy);
-            for (MsgBeans.TDCSWbPoint point: points){
-                KLog.p("path.point{%s, %s}", point.nPosx, point.nPosy);
-                path.lineTo(point.nPosx, point.nPosy); // 未做起始点判断，多做了一次moveTo，但简化了逻辑
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            MsgBeans.TDCSWbPencil gp = opInfo.AssParam.tPencil;
+            MsgBeans.TDCSWbPoint[] pl = gp.atPList;
+            PointF[] points = new PointF[pl.length];
+            if (0 == points.length){
+                return;
             }
-            KLog.p("path.paint{width=%s, rgb=%s}", element.dwLineWidth, (int) element.dwRgb);
-            painter.drawPath(path, new DCPaintInfo(element.dwLineWidth, (int) element.dwRgb));
+            for (int i=0; i<points.length; ++i){
+                points[i] = new PointF(pl[i].nPosx, pl[i].nPosy);
+                KLog.p("path.point{%s, %s}", points[i].x, points[i].y);
+            }
+            KLog.p("path.paint{width=%s, rgb=%s}", gp.dwLineWidth, (int) gp.dwRgb);
+            painter.draw(new DCPathOp(points, commonInfo.dwMsgSequence, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
         }
     }
 
@@ -305,7 +311,7 @@ public class DataCollaborateManager extends RequestAgent {
         eject(Msg.DcsOperLineOperInfo_Ntf);
         eject(Msg.DcsOperCircleOperInfo_Ntf);
         eject(Msg.DcsOperRectangleOperInfo_Ntf);
-//        eject(Msg.DcsOperPencilOperInfo_Ntf);
+        eject(Msg.DcsOperPencilOperInfo_Ntf);
 //        eject(Msg.DcsOperInsertPic_Ntf);
 //        eject(Msg.DcsOperPitchPicDrag_Ntf);
 //        eject(Msg.DcsOperPitchPicDel_Ntf);

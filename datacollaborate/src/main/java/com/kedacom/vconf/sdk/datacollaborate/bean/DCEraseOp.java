@@ -1,5 +1,4 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public class DCPath {
-    public DCPoint[] points;
+public class DCEraseOp extends DCOp {
 }

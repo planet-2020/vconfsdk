@@ -1,0 +1,17 @@
+package com.kedacom.vconf.sdk.datacollaborate.bean;
+
+public class DCRectOp extends DCOp {
+    public float left;
+    public float top;
+    public float right;
+    public float bottom;
+    public DCRectOp(float left, float top, float right, float bottom, int sn, DCPaintCfg paintCfg){
+        this.left = left;
+        this.top = top;
+        this.right = right;
+        this.bottom = bottom;
+        this.sn = sn;
+        this.paintCfg = paintCfg;
+        type = DCOp.DRAW_RECT;
+    }
+}

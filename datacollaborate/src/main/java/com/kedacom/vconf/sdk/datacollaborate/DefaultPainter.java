@@ -1,14 +1,12 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.os.Handler;
@@ -19,7 +17,15 @@ import android.view.TextureView;
 import android.view.View;
 
 import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCPaintInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCLineOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCOvalOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCPaintCfg;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCPathOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCRectOp;
+
+import java.util.PriorityQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class DefaultPainter implements IDCPainter {
 
@@ -32,7 +38,77 @@ public class DefaultPainter implements IDCPainter {
     private HandlerThread handlerThread;
     private Handler handler;
 
+    private ConcurrentLinkedQueue<DCOp> dcOps;
+    private PriorityQueue<DCOp> batchDcOps;
+
+    private boolean isBatchDrawing = false;
+
+    private Thread renderThread = new Thread("DCRenderThr"){
+        @Override
+        public void run() {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+            DCLineOp lineOp;
+            DCRectOp rectOp;
+            DCOvalOp ovalOp;
+            DCPathOp pathOp;
+            Path path = new Path();
+            RectF rect = new RectF();
+
+            while (true){
+                if (isInterrupted()){
+                    KLog.p(KLog.WARN, "quit renderThread");
+                    return;
+                }
+
+                synchronized (this) {
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        KLog.p(KLog.WARN, "quit renderThread");
+                        return;
+                    }
+                }
+
+                Canvas canvas = textureView.lockCanvas();
+                if (null == canvas){
+                    continue;
+                }
+
+                for (DCOp op : dcOps){
+                    if (op instanceof DCLineOp){
+                        lineOp = (DCLineOp) op;
+                        canvas.drawLine(lineOp.startX, lineOp.startY, lineOp.stopX, lineOp.stopY, cfgPaint(lineOp.paintCfg));
+                    }else if (op instanceof DCRectOp){
+                        rectOp = (DCRectOp) op;
+                        canvas.drawRect(rectOp.left, rectOp.top, rectOp.right, rectOp.bottom, cfgPaint(rectOp.paintCfg));
+                    }else if (op instanceof DCOvalOp){
+                        ovalOp = (DCOvalOp) op;
+                        rect.set(ovalOp.left, ovalOp.top, ovalOp.right, ovalOp.bottom);
+                        canvas.drawOval(rect, cfgPaint(ovalOp.paintCfg));
+                    }else if (op instanceof DCPathOp){
+                        pathOp = (DCPathOp) op;
+                        path.reset();
+                        path.moveTo(pathOp.points[0].x, pathOp.points[0].y);
+                        for (PointF point : pathOp.points){
+                            path.lineTo(point.x, point.y); // NOTE 起点多做了一次lineTo
+                        }
+                        canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
+                    }
+                }
+
+                textureView.unlockCanvasAndPost(canvas);
+
+            }
+        }
+    };
+
+
+
     public DefaultPainter(Context context) {
+
+        dcOps = new ConcurrentLinkedQueue<>();  // XXX 限定容量？
+        batchDcOps = new PriorityQueue<>(); // TODO 提供排序方法
 
         handlerThread = new HandlerThread("DC.OpThr", Process.THREAD_PRIORITY_BACKGROUND);
         handlerThread.start();
@@ -46,10 +122,9 @@ public class DefaultPainter implements IDCPainter {
             @Override
             public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
                 KLog.p("surface=%s", surface);
-                drawColor();
-//                drawLine(0, 0, 10, 80, new DCPaintInfo(10, 0x7FFF0000));
-//                drawLine(0, 0, 80, 10, new DCPaintInfo(10, 0x7FFF0000));
-//                drawLine(0, 0, 80, 78, new DCPaintInfo(10, 0x7FFF0000));
+//                drawLine(0, 0, 10, 80, new DCPaintCfg(10, 0x7FFF0000));
+//                drawLine(0, 0, 80, 10, new DCPaintCfg(10, 0x7FFF0000));
+//                drawLine(0, 0, 80, 78, new DCPaintCfg(10, 0x7FFF0000));
             }
 
             @Override
@@ -68,46 +143,54 @@ public class DefaultPainter implements IDCPainter {
                 KLog.p("surface=%s", surface);
             }
         });
+
+        renderThread.start();
+
     }
 
-    public View getWhiteBoardView(){
+
+
+    public View getPaintView(){
         return textureView;
 //        return surfaceView;
     }
 
 
-    @Override
-    public void onWhiteBoard() {
-
-    }
 
     @Override
     public void startBatchDraw(){
-        handler.post(()->{
-            canvas = textureView.lockCanvas();
-//            canvas = surfaceView.getHolder().lockCanvas();
-            if (null == canvas){
-                KLog.p(KLog.ERROR, "lockCanvas failed");
-            }
-        });
+        isBatchDrawing = true;
+    }
 
+    @Override
+    public void draw(DCOp op) {
+        if (isBatchDrawing) {
+            batchDcOps.offer(op);
+        }else{
+            dcOps.offer(op);
+            synchronized (renderThread) {
+                renderThread.notify();
+            }
+        }
     }
 
 
     @Override
     public void finishBatchDraw(){
-        handler.post(()-> {
-            if (null != canvas) {
-                textureView.unlockCanvasAndPost(canvas);
-//                surfaceView.getHolder().unlockCanvasAndPost(canvas);
-                canvas = null;
+        if (isBatchDrawing){
+            while(!batchDcOps.isEmpty()){
+                dcOps.offer(batchDcOps.poll());
             }
-        });
+            isBatchDrawing = false;
+            synchronized (renderThread) {
+                renderThread.notify();
+            }
+        }
     }
 
     private final PorterDuffXfermode DUFFMODE_SRCOVER = new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER);
     private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
-    private Paint cfgPaint(DCPaintInfo paintInfo){
+    private Paint cfgPaint(DCPaintCfg paintInfo){
         paint.reset();
 //        Paint paint = new Paint();
 //        paint.setXfermode(DUFFMODE_DSTOVER);
@@ -117,121 +200,5 @@ public class DefaultPainter implements IDCPainter {
         return paint;
     }
 
-    @Override
-    public void drawLine(float startX, float startY, float stopX, float stopY, DCPaintInfo paintInfo) {
-        handler.post(()->{
-            Canvas cv = null==canvas ? textureView.lockCanvas() : canvas;
-//            Canvas cv = null==canvas ? surfaceView.getHolder().lockCanvas() : canvas;
-            if (null == cv){
-                KLog.p(KLog.ERROR,"lockCanvas failed");
-                return;
-            }
-            KLog.p("line{(%s,%s),(%s,%s)}", startX, startY, stopX, stopY);
-            cv.drawLine(startX, startY, stopX, stopY, cfgPaint(paintInfo));
-            if (null == canvas) {
-                textureView.unlockCanvasAndPost(cv);
-//                surfaceView.getHolder().unlockCanvasAndPost(cv);
-            }
-        });
-    }
-
-    @Override
-    public void drawRect(float left, float top, float right, float bottom, DCPaintInfo paintInfo) {
-        handler.post(()->{
-            Canvas cv = null==canvas ? textureView.lockCanvas() : canvas;
-//            Canvas cv = null==canvas ? surfaceView.getHolder().lockCanvas() : canvas;
-            if (null == cv){
-                KLog.p(KLog.ERROR,"lockCanvas failed");
-                return;
-            }
-            KLog.p("rect{%s,%s,%s,%s}", left, top, right, bottom);
-            cv.drawRect(left, top, right, bottom, cfgPaint(paintInfo));
-            if (null == canvas) {
-                textureView.unlockCanvasAndPost(cv);
-//                surfaceView.getHolder().unlockCanvasAndPost(cv);
-            }
-        });
-
-    }
-
-    @Override
-    public void drawOval(float left, float top, float right, float bottom, DCPaintInfo paintInfo) {
-        handler.post(()->{
-            Canvas cv = null==canvas ? textureView.lockCanvas() : canvas;
-//            Canvas cv = null==canvas ? surfaceView.getHolder().lockCanvas() : canvas;
-            if (null == cv){
-                KLog.p(KLog.ERROR,"lockCanvas failed");
-                return;
-            }
-            KLog.p("oval{%s,%s,%s,%s}", left, top, right, bottom);
-            cv.drawOval(new RectF(left, top, right, bottom), cfgPaint(paintInfo));
-            if (null == canvas) {
-                textureView.unlockCanvasAndPost(cv);
-//                surfaceView.getHolder().unlockCanvasAndPost(cv);
-            }
-        });
-
-    }
-
-    @Override
-    public void drawPath(Path path, DCPaintInfo paintInfo) {
-        handler.post(()->{
-            Canvas cv = null==canvas ? textureView.lockCanvas() : canvas;
-//            Canvas cv = null==canvas ? surfaceView.getHolder().lockCanvas() : canvas;
-            if (null == cv){
-                KLog.p(KLog.ERROR,"lockCanvas failed");
-                return;
-            }
-            KLog.p("path{%s}", path);
-            cv.drawPath(path, cfgPaint(paintInfo));
-            if (null == canvas) {
-                textureView.unlockCanvasAndPost(cv);
-//                surfaceView.getHolder().unlockCanvasAndPost(cv);
-            }
-        });
-    }
-
-    @Override
-    public void drawBitmap(Bitmap bitmap, Rect src, Rect dst, DCPaintInfo paintInfo) {
-        handler.post(()->{
-            Canvas cv = null==canvas ? textureView.lockCanvas() : canvas;
-//            Canvas cv = null==canvas ? surfaceView.getHolder().lockCanvas() : canvas;
-            if (null == cv){
-                KLog.p(KLog.ERROR,"lockCanvas failed");
-                return;
-            }
-            KLog.p("bitmap{%s}", bitmap);
-            cv.drawBitmap(bitmap, src, dst, cfgPaint(paintInfo));
-            if (null == canvas) {
-                textureView.unlockCanvasAndPost(cv);
-//                surfaceView.getHolder().unlockCanvasAndPost(cv);
-            }
-        });
-    }
-
-    public void drawColor(){
-        handler.post(()->{
-            Canvas cv = null==canvas ? textureView.lockCanvas() : canvas;
-//            Canvas cv = null==canvas ? surfaceView.getHolder().lockCanvas() : canvas;
-            if (null == cv){
-                KLog.p(KLog.ERROR,"lockCanvas failed");
-                return;
-            }
-            KLog.p("color{%s}", Color.LTGRAY);
-            cv.drawColor(Color.LTGRAY);
-            if (null == canvas) {
-                textureView.unlockCanvasAndPost(cv);
-//                surfaceView.getHolder().unlockCanvasAndPost(cv);
-            }
-        });
-    }
-
-    @Override
-    public void erase(float left, float top, float right, float bottom, DCPaintInfo paintInfo) {
-        // 保存cv的初始状态？然后restore？
-    }
-
-
-    
 
 }
