@@ -474,7 +474,7 @@ public enum Msg {
     DcsOperClearScreen_Ntf,
 
     /**图元序列结束通知*/
-    @Notification(clz = MsgBeans.TDcsCacheElementParseResult.class)
+    @Notification(clz = MsgBeans.TDcsCacheElementParseResult.class, delay = 4000)
     DcsElementOperFinal_Ntf,
 
 

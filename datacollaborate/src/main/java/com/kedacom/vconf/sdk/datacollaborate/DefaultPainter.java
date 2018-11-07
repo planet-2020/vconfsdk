@@ -8,11 +8,7 @@ import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
-import android.graphics.SurfaceTexture;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Process;
-import android.view.SurfaceView;
 import android.view.TextureView;
 import android.view.View;
 
@@ -29,14 +25,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class DefaultPainter implements IDCPainter {
 
-
-    private SurfaceView surfaceView;
     private TextureView textureView;
-    private Canvas canvas;
     private Paint paint;
-
-    private HandlerThread handlerThread;
-    private Handler handler;
 
     private ConcurrentLinkedQueue<DCOp> dcOps;
     private PriorityQueue<DCOp> batchDcOps;
@@ -44,7 +34,8 @@ public class DefaultPainter implements IDCPainter {
     private boolean isBatchDrawing = false;
     private boolean needRender = false;
 
-    private final Thread renderThread = new Thread("DCRenderThr"){
+    private static int threadCount = 0;
+    private final Thread renderThread = new Thread("DCRenderThr"+threadCount++){
         @Override
         public void run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
@@ -84,8 +75,6 @@ public class DefaultPainter implements IDCPainter {
 
                 KLog.p(KLog.WARN, "############op.size=%s",dcOps.size());
                 for (DCOp op : dcOps){
-//                DCOp op = dcOps.poll();
-//                while (null != op){
                     KLog.p(KLog.WARN, "############op=%s",op);
                     if (op instanceof DCLineOp){
                         lineOp = (DCLineOp) op;
@@ -106,13 +95,12 @@ public class DefaultPainter implements IDCPainter {
                         }
                         canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
                     }
-                    try {
-                        sleep(3000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        KLog.p(KLog.WARN, "quit renderThread");
-                    }
-//                    op = dcOps.poll();
+//                    try {
+//                        sleep(1500);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                        KLog.p(KLog.WARN, "quit renderThread");
+//                    }
                 }
 
                 textureView.unlockCanvasAndPost(canvas);
@@ -126,65 +114,36 @@ public class DefaultPainter implements IDCPainter {
     public DefaultPainter(Context context) {
 
         dcOps = new ConcurrentLinkedQueue<>();  // XXX 限定容量？
-        batchDcOps = new PriorityQueue<>(); // TODO 提供排序方法
-
-        handlerThread = new HandlerThread("DC.OpThr", Process.THREAD_PRIORITY_BACKGROUND);
-        handlerThread.start();
-        handler = new Handler(handlerThread.getLooper());
+        batchDcOps = new PriorityQueue<>();
 
         paint = new Paint();
-        surfaceView = new SurfaceView(context);
         textureView = new TextureView(context);
         textureView.setOpaque(false);
-        textureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
-            @Override
-            public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-                KLog.p("######################### surface=%s", surface);
-//                drawLine(0, 0, 10, 80, new DCPaintCfg(10, 0x7FFF0000));
-//                drawLine(0, 0, 80, 10, new DCPaintCfg(10, 0x7FFF0000));
-//                drawLine(0, 0, 80, 78, new DCPaintCfg(10, 0x7FFF0000));
-            }
-
-            @Override
-            public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-                KLog.p("surface=%s", surface);
-            }
-
-            @Override
-            public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-                KLog.p("surface=%s", surface);
-                return false;
-            }
-
-            @Override
-            public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-                KLog.p("surface=%s", surface);
-            }
-        });
 
         renderThread.start();
-
     }
 
 
 
     public View getPaintView(){
         return textureView;
-//        return surfaceView;
     }
 
 
 
     @Override
     public void startBatchDraw(){
+        KLog.p(KLog.WARN, "############startBatchDraw");
         isBatchDrawing = true;
     }
 
     @Override
     public void draw(DCOp op) {
         if (isBatchDrawing) {
+            KLog.p(KLog.WARN, "############batch draw op=%s, size=%s",op, batchDcOps.size());
             batchDcOps.offer(op);
         }else{
+            KLog.p(KLog.WARN, "############draw op=%s, size=%s",op, dcOps.size());
             dcOps.offer(op);
             synchronized (renderThread) {
                 needRender = true;
@@ -194,12 +153,12 @@ public class DefaultPainter implements IDCPainter {
                 }
             }
         }
-        KLog.p(KLog.WARN, "############draw op=%s, size=%s",op, dcOps.size());
     }
 
 
     @Override
     public void finishBatchDraw(){
+        KLog.p(KLog.WARN, "############finishBatchDraw");
         if (isBatchDrawing){
             while(!batchDcOps.isEmpty()){
                 dcOps.offer(batchDcOps.poll());

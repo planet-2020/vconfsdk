@@ -268,8 +268,8 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onOpEndNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
+        if (null != painter){
+            painter.finishBatchDraw();
         }
     }
 
@@ -307,7 +307,7 @@ public class DataCollaborateManager extends RequestAgent {
 //        eject(Msg.DcsCurrentWhiteBoard_Ntf);
 //        eject(Msg.DcsNewWhiteBoard_Ntf);
 //        eject(Msg.DcsSwitch_Ntf);
-//        eject(Msg.DcsElementOperBegin_Ntf);
+        eject(Msg.DcsElementOperBegin_Ntf);
         eject(Msg.DcsOperLineOperInfo_Ntf);
         eject(Msg.DcsOperCircleOperInfo_Ntf);
         eject(Msg.DcsOperRectangleOperInfo_Ntf);
@@ -319,7 +319,7 @@ public class DataCollaborateManager extends RequestAgent {
 //        eject(Msg.DcsOperUndo_Ntf);
 //        eject(Msg.DcsOperRedo_Ntf);
 //        eject(Msg.DcsOperClearScreen_Ntf);
-//        eject(Msg.DcsElementOperFinal_Ntf);
+        eject(Msg.DcsElementOperFinal_Ntf);
     }
 
 //    private DataCollaborateManager(){
