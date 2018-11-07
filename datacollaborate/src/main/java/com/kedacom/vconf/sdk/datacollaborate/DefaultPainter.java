@@ -76,17 +76,17 @@ public class DefaultPainter implements IDCPainter {
                 KLog.p(KLog.WARN, "############op.size=%s",dcOps.size());
                 for (DCOp op : dcOps){
                     KLog.p(KLog.WARN, "############op=%s",op);
-                    if (op instanceof DCLineOp){
+                    if (DCOp.DRAW_LINE == op.type){
                         lineOp = (DCLineOp) op;
                         canvas.drawLine(lineOp.startX, lineOp.startY, lineOp.stopX, lineOp.stopY, cfgPaint(lineOp.paintCfg));
-                    }else if (op instanceof DCRectOp){
+                    }else if (DCOp.DRAW_RECT == op.type){
                         rectOp = (DCRectOp) op;
                         canvas.drawRect(rectOp.left, rectOp.top, rectOp.right, rectOp.bottom, cfgPaint(rectOp.paintCfg));
-                    }else if (op instanceof DCOvalOp){
+                    }else if (DCOp.DRAW_OVAL == op.type){
                         ovalOp = (DCOvalOp) op;
                         rect.set(ovalOp.left, ovalOp.top, ovalOp.right, ovalOp.bottom);
                         canvas.drawOval(rect, cfgPaint(ovalOp.paintCfg));
-                    }else if (op instanceof DCPathOp){
+                    }else if (DCOp.DRAW_PATH == op.type){
                         pathOp = (DCPathOp) op;
                         path.reset();
                         path.moveTo(pathOp.points[0].x, pathOp.points[0].y);
