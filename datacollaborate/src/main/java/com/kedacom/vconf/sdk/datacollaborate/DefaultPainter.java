@@ -42,6 +42,7 @@ public class DefaultPainter implements IDCPainter {
     private PriorityQueue<DCOp> batchDcOps;
 
     private boolean isBatchDrawing = false;
+    private boolean needRender = false;
 
     private final Thread renderThread = new Thread("DCRenderThr"){
         @Override
@@ -55,6 +56,7 @@ public class DefaultPainter implements IDCPainter {
             RectF rect = new RectF();
 
             while (true){
+                KLog.p(KLog.WARN, "############==run");
                 if (isInterrupted()){
                     KLog.p(KLog.WARN, "quit renderThread");
                     return;
@@ -62,7 +64,11 @@ public class DefaultPainter implements IDCPainter {
 
                 synchronized (this) {
                     try {
-                        wait();
+                        if (!needRender) {
+                            wait();
+                        }
+                        needRender = false;
+                        KLog.p(KLog.WARN, "############wakeup");
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                         KLog.p(KLog.WARN, "quit renderThread");
@@ -76,7 +82,11 @@ public class DefaultPainter implements IDCPainter {
                     continue;
                 }
 
+                KLog.p(KLog.WARN, "############op.size=%s",dcOps.size());
                 for (DCOp op : dcOps){
+//                DCOp op = dcOps.poll();
+//                while (null != op){
+                    KLog.p(KLog.WARN, "############op=%s",op);
                     if (op instanceof DCLineOp){
                         lineOp = (DCLineOp) op;
                         canvas.drawLine(lineOp.startX, lineOp.startY, lineOp.stopX, lineOp.stopY, cfgPaint(lineOp.paintCfg));
@@ -96,6 +106,13 @@ public class DefaultPainter implements IDCPainter {
                         }
                         canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
                     }
+                    try {
+                        sleep(3000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        KLog.p(KLog.WARN, "quit renderThread");
+                    }
+//                    op = dcOps.poll();
                 }
 
                 textureView.unlockCanvasAndPost(canvas);
@@ -170,9 +187,14 @@ public class DefaultPainter implements IDCPainter {
         }else{
             dcOps.offer(op);
             synchronized (renderThread) {
-                renderThread.notify();
+                needRender = true;
+                if (Thread.State.WAITING == renderThread.getState()) {
+                    KLog.p(KLog.WARN, "############notify");
+                    renderThread.notify();
+                }
             }
         }
+        KLog.p(KLog.WARN, "############draw op=%s, size=%s",op, dcOps.size());
     }
 
 
@@ -182,10 +204,14 @@ public class DefaultPainter implements IDCPainter {
             while(!batchDcOps.isEmpty()){
                 dcOps.offer(batchDcOps.poll());
             }
-            isBatchDrawing = false;
             synchronized (renderThread) {
-                renderThread.notify();
+                needRender = true;
+                if (Thread.State.WAITING == renderThread.getState()) {
+                    KLog.p(KLog.WARN, "############notify");
+                    renderThread.notify();
+                }
             }
+            isBatchDrawing = false;
         }
     }
 
