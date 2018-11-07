@@ -43,7 +43,7 @@ public class DefaultPainter implements IDCPainter {
 
     private boolean isBatchDrawing = false;
 
-    private Thread renderThread = new Thread("DCRenderThr"){
+    private final Thread renderThread = new Thread("DCRenderThr"){
         @Override
         public void run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
@@ -72,6 +72,7 @@ public class DefaultPainter implements IDCPainter {
 
                 Canvas canvas = textureView.lockCanvas();
                 if (null == canvas){
+                    KLog.p(KLog.WARN, "lockCanvas failed");
                     continue;
                 }
 
@@ -121,7 +122,7 @@ public class DefaultPainter implements IDCPainter {
         textureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override
             public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-                KLog.p("surface=%s", surface);
+                KLog.p("######################### surface=%s", surface);
 //                drawLine(0, 0, 10, 80, new DCPaintCfg(10, 0x7FFF0000));
 //                drawLine(0, 0, 80, 10, new DCPaintCfg(10, 0x7FFF0000));
 //                drawLine(0, 0, 80, 78, new DCPaintCfg(10, 0x7FFF0000));

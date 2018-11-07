@@ -144,8 +144,8 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onOpBeginNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
+        if (null != painter){
+            painter.startBatchDraw();
         }
     }
 
