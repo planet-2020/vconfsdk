@@ -114,7 +114,7 @@ class FakeCrystalBall implements ICrystalBall {
     }
 
     @Override
-    public boolean ejectNotification(String ntfName) {
+    public boolean eject(String ntfName) {
         if (null == yb){
             return false;
         }
@@ -133,6 +133,34 @@ class FakeCrystalBall implements ICrystalBall {
             Log.d(TAG, String.format("send NTF %s, content=%s", ntfName, jsonNtfBody));
             yb.yellback(ntfName, jsonNtfBody);
         }, magicBook.getNtfDelay(ntfName));
+
+        return true;
+    }
+
+    @Override
+    public boolean eject(String[] ntfNames) {
+        if (null == yb){
+            return false;
+        }
+
+        Object ntfBody = null;
+        int delay = 0;
+        for (String ntfName : ntfNames) {
+            delay += magicBook.getNtfDelay(ntfName);
+            try {
+                Class<?> clz = magicBook.getNtfClazz(ntfName);
+                Constructor ctor = clz.getDeclaredConstructor((Class[]) null); // 使用通知消息体类的默认构造函数构造通知消息对象
+                ctor.setAccessible(true);
+                ntfBody = ctor.newInstance((Object[]) null);
+            } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+            final String jsonNtfBody = jsonProcessor.toJson(ntfBody);
+            handler.postDelayed(() -> {
+                Log.d(TAG, String.format("send NTF %s, content=%s", ntfName, jsonNtfBody));
+                yb.yellback(ntfName, jsonNtfBody);
+            }, delay);
+        }
 
         return true;
     }

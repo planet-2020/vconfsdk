@@ -187,6 +187,21 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     }
 
     /**
+     * （驱使下层）发射通知。仅用于模拟模式。
+     * */
+    protected synchronized void eject(Msg[] ntfIds){
+        String[] ntfs = new String[ntfIds.length];
+        for (int i=0; i<ntfs.length; ++i) {
+            if (!ntfProcessorMap.keySet().contains(ntfIds[i])) {
+                KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfIds[i]);
+                return;
+            }
+            ntfs[i]=ntfIds[i].name();
+        }
+        witch.eject(ntfs);
+    }
+
+    /**
      * 设置配置
      * */
     protected void set(Msg setId, Object para){

@@ -96,6 +96,13 @@ public final class Witch {
     }
 
     /**
+     * （驱使下层）发射通知。仅用于模拟模式。
+     * */
+    public void eject(String[] ntfIds){
+        emitNotificationFairy.processEmitNotifications(ntfIds);
+    }
+
+    /**
      * 设置配置
      * */
     public void set(String setId, Object para){

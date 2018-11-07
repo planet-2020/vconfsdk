@@ -76,11 +76,19 @@ final class MagicStick implements IStick,
     }
 
     @Override
-    public boolean emitNotification(String ntfName){
+    public boolean emit(String ntfName){
         if (null == crystalBall){
             return false;
         }
-        return crystalBall.ejectNotification(ntfName);
+        return crystalBall.eject(ntfName);
+    }
+
+    @Override
+    public boolean emit(String[] ntfNames) {
+        if (null == crystalBall){
+            return false;
+        }
+        return crystalBall.eject(ntfNames);
     }
 
 

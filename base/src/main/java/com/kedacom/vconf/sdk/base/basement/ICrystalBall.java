@@ -14,7 +14,11 @@ public interface ICrystalBall {
     int yell(String msgName, StringBuffer output); // processGet
     int yell(String msgName, String para, StringBuffer output); // processGet
 
-    default boolean ejectNotification(String ntfName) {
+    default boolean eject(String ntfName) { //NOTE: 仅用于仿真模式
+        return false;
+    }
+
+    default boolean eject(String[] ntfNames) { //NOTE: 仅用于仿真模式
         return false;
     }
 }

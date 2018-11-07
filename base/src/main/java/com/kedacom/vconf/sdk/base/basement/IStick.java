@@ -17,7 +17,8 @@ interface IStick {
     }
 
     interface IEmitNotificationStick{
-        boolean emitNotification(String ntfName);
+        boolean emit(String ntfName);
+        boolean emit(String[] ntfNames);
     }
 
     interface INotificationStick{

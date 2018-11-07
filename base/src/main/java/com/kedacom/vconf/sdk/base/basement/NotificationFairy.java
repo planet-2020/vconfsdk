@@ -130,7 +130,27 @@ final class NotificationFairy implements IFairy.ISubscribeFairy,
             return false;
         }
 
-        return stick.emitNotification(ntfName);
+        return stick.emit(ntfName);
+    }
+
+    @Override
+    public boolean processEmitNotifications(String[] ntfIds) {
+        if (null == stick){
+            Log.e(TAG, "no emit notification stick ");
+            return false;
+        }
+
+        String[] ntfNames = new String[ntfIds.length];
+
+        for (int i=0; i<ntfNames.length; ++i) {
+            ntfNames[i] = magicBook.getMsgName(ntfIds[i]);
+            if (!magicBook.isNotification(ntfNames[i])) {
+                Log.e(TAG, "Unknown notification " + ntfNames[i]);
+                return false;
+            }
+        }
+
+        return stick.emit(ntfNames);
     }
 
     @Override

@@ -310,7 +310,7 @@ public enum Msg {
     @Request(para=MsgBeans.TDCSOperReq.class)
     DCSOperRotateRightCmd,
 
-    /**清屏*/  // TODO 请求消息重命名；响应通知若重命名涉及到下层转换，暂不做；消息结构体重命名重新整合；
+    /**清屏*/
     @Request(para=MsgBeans.TDCSOperReq.class)
     DCSOperClearScreenCmd,
 
@@ -422,18 +422,15 @@ public enum Msg {
     DcsOperLineOperInfo_Ntf,
 
     /**圆/椭圆操作通知*/
-    @Notification(clz = MsgBeans.DcsOperCircleOperInfo_Ntf.class,
-            delay = 1000)
+    @Notification(clz = MsgBeans.DcsOperCircleOperInfo_Ntf.class)
     DcsOperCircleOperInfo_Ntf,
 
     /**矩形操作通知*/
-    @Notification(clz = MsgBeans.DcsOperRectangleOperInfo_Ntf.class,
-            delay = 2000)
+    @Notification(clz = MsgBeans.DcsOperRectangleOperInfo_Ntf.class)
     DcsOperRectangleOperInfo_Ntf,
 
     /**铅笔操作通知*/
-    @Notification(clz = MsgBeans.DcsOperPencilOperInfo_Ntf.class,
-            delay = 3000)
+    @Notification(clz = MsgBeans.DcsOperPencilOperInfo_Ntf.class)
     DcsOperPencilOperInfo_Ntf,
 
     /**彩笔操作通知*/
@@ -474,7 +471,7 @@ public enum Msg {
     DcsOperClearScreen_Ntf,
 
     /**图元序列结束通知*/
-    @Notification(clz = MsgBeans.TDcsCacheElementParseResult.class, delay = 4000)
+    @Notification(clz = MsgBeans.TDcsCacheElementParseResult.class)
     DcsElementOperFinal_Ntf,
 
 
