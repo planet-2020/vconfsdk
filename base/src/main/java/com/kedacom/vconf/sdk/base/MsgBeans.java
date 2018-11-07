@@ -605,8 +605,8 @@ public final class MsgBeans {
         public int dwLineWidth;         // 线宽
         public long dwRgb;              // 颜色，强转成int类型就是颜色值了。比如long类型的4294967295强转成int就是0xFFFFFFFF（纯白色），即-1。
         TDCSWbCircle(){
-            tBeginPt = new TDCSWbPoint(0,0);
-            tEndPt = new TDCSWbPoint(500, 500);
+            tBeginPt = new TDCSWbPoint(500,500);
+            tEndPt = new TDCSWbPoint(800, 800);
             dwLineWidth = 10;
             dwRgb = 0xFF00FF00;
         }

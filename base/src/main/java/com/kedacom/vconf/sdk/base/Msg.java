@@ -34,7 +34,7 @@ public enum Msg {
     Startup, // 请求不带Req后缀
 
     @Response(clz = MsgBeans.StartupResult.class, // Result表示反馈结果，注意区别Info
-            delay = 2000)
+            delay = 500)
     StartupRsp,
 
     // login
@@ -43,7 +43,7 @@ public enum Msg {
             timeout = 6)
     Login,
 
-    @Response(clz = MsgBeans.LoginResult.class, delay = 2000)
+    @Response(clz = MsgBeans.LoginResult.class, delay = 500)
     LoginRsp,
     @Response(clz = MsgBeans.LoginResult.class, delay = 500)
     LoginRspFin,
@@ -62,7 +62,7 @@ public enum Msg {
     @Set(MsgBeans.NetConfig.class)
     SetNetConfig,
 
-    @Notification(clz = MsgBeans.MemberState.class, delay = 3000)
+    @Notification(clz = MsgBeans.MemberState.class, delay = 500)
     MemberStateChanged,
 
 
@@ -136,7 +136,7 @@ public enum Msg {
      * 下层（组件层）收到邀请会主动加入该数据协作，然后再上报该条消息给界面，
      * 所以该消息既是响应也是通知。*/
     @Notification(clz = MsgBeans.TDCSCreateConfResult.class)
-    @Response(clz = MsgBeans.TDCSCreateConfResult.class, delay = 1000)
+    @Response(clz = MsgBeans.TDCSCreateConfResult.class, delay = 500)
     DcsCreateConf_Rsp,
 
     /**加入数据协作*/
@@ -422,15 +422,18 @@ public enum Msg {
     DcsOperLineOperInfo_Ntf,
 
     /**圆/椭圆操作通知*/
-    @Notification(clz = MsgBeans.DcsOperCircleOperInfo_Ntf.class)
+    @Notification(clz = MsgBeans.DcsOperCircleOperInfo_Ntf.class,
+            delay = 1000)
     DcsOperCircleOperInfo_Ntf,
 
     /**矩形操作通知*/
-    @Notification(clz = MsgBeans.DcsOperRectangleOperInfo_Ntf.class)
+    @Notification(clz = MsgBeans.DcsOperRectangleOperInfo_Ntf.class,
+            delay = 2000)
     DcsOperRectangleOperInfo_Ntf,
 
     /**铅笔操作通知*/
-    @Notification(clz = MsgBeans.DcsOperPencilOperInfo_Ntf.class)
+    @Notification(clz = MsgBeans.DcsOperPencilOperInfo_Ntf.class,
+            delay = 3000)
     DcsOperPencilOperInfo_Ntf,
 
     /**彩笔操作通知*/

@@ -298,22 +298,22 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     public void ejectNtfs(){
-        eject(Msg.DcsCurrentWhiteBoard_Ntf);
-        eject(Msg.DcsNewWhiteBoard_Ntf);
-        eject(Msg.DcsSwitch_Ntf);
-        eject(Msg.DcsElementOperBegin_Ntf);
-        eject(Msg.DcsOperCircleOperInfo_Ntf);
+//        eject(Msg.DcsCurrentWhiteBoard_Ntf);
+//        eject(Msg.DcsNewWhiteBoard_Ntf);
+//        eject(Msg.DcsSwitch_Ntf);
+//        eject(Msg.DcsElementOperBegin_Ntf);
         eject(Msg.DcsOperLineOperInfo_Ntf);
+        eject(Msg.DcsOperCircleOperInfo_Ntf);
         eject(Msg.DcsOperRectangleOperInfo_Ntf);
-        eject(Msg.DcsOperPencilOperInfo_Ntf);
-        eject(Msg.DcsOperInsertPic_Ntf);
-        eject(Msg.DcsOperPitchPicDrag_Ntf);
-        eject(Msg.DcsOperPitchPicDel_Ntf);
-        eject(Msg.DcsOperEraseOperInfo_Ntf);
-        eject(Msg.DcsOperUndo_Ntf);
-        eject(Msg.DcsOperRedo_Ntf);
-        eject(Msg.DcsOperClearScreen_Ntf);
-        eject(Msg.DcsElementOperFinal_Ntf);
+//        eject(Msg.DcsOperPencilOperInfo_Ntf);
+//        eject(Msg.DcsOperInsertPic_Ntf);
+//        eject(Msg.DcsOperPitchPicDrag_Ntf);
+//        eject(Msg.DcsOperPitchPicDel_Ntf);
+//        eject(Msg.DcsOperEraseOperInfo_Ntf);
+//        eject(Msg.DcsOperUndo_Ntf);
+//        eject(Msg.DcsOperRedo_Ntf);
+//        eject(Msg.DcsOperClearScreen_Ntf);
+//        eject(Msg.DcsElementOperFinal_Ntf);
     }
 
 //    private DataCollaborateManager(){
