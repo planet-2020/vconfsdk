@@ -12,6 +12,6 @@ public class DCRectOp extends DCOp {
         this.bottom = bottom;
         this.sn = sn;
         this.paintCfg = paintCfg;
-        type = DCOp.DRAW_RECT;
+        type = DCOp.OP_DRAW_RECT;
     }
 }

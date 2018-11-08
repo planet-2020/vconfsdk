@@ -11,5 +11,5 @@ package com.kedacom.vconf.sdk.annotation;
 public @interface Notification {
     String name() default "";  // 通知消息名称
     Class clz(); // 通知消息体对应的类
-    int delay() default 100; // 延时（单位：毫秒）。仅用于模拟模式。
+    int delay() default 500; // 延时（单位：毫秒）。仅用于模拟模式。
 }

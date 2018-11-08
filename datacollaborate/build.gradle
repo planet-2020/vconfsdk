@@ -1,12 +1,12 @@
 apply plugin: 'com.android.library'
 
-version = '0.2.54'
+version = '0.2.73'
 
 android {
     compileSdkVersion 28
 
     defaultConfig {
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"
@@ -30,7 +30,7 @@ android {
 dependencies {
 //    implementation fileTree(dir: 'libs', include: ['*.jar'])
 //    implementation project(':base')
-    implementation 'com.kedacom.vconf.sdk:base:0.2.16'
+    implementation 'com.kedacom.vconf.sdk:base:0.2.21'
 }
 
 apply from: '../publish.gradle'

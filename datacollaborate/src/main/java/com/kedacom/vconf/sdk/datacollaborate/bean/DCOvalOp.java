@@ -13,6 +13,6 @@ public class DCOvalOp extends DCOp {
         this.bottom = bottom;
         this.sn = sn;
         this.paintCfg = paintCfg;
-        type = DCOp.DRAW_OVAL;
+        type = DCOp.OP_DRAW_OVAL;
     }
 }

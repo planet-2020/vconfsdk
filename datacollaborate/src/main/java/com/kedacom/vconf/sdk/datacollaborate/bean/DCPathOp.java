@@ -8,6 +8,6 @@ public class DCPathOp extends DCOp {
         this.points = points;
         this.sn = sn;
         this.paintCfg = paintCfg;
-        type = DCOp.DRAW_PATH;
+        type = DCOp.OP_DRAW_PATH;
     }
 }

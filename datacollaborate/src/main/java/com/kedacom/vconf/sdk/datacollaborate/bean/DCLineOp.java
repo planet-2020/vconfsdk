@@ -12,6 +12,6 @@ public class DCLineOp extends DCOp {
         this.stopY = stopY;
         this.sn = sn;
         this.paintCfg = paintCfg;
-        type = DCOp.DRAW_LINE;
+        type = DCOp.OP_DRAW_LINE;
     }
 }

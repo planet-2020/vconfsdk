@@ -422,26 +422,38 @@ public final class MsgBeans {
     public static final class DcsOperLineOperInfo_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbLineOperInfo AssParam;
-        DcsOperLineOperInfo_Ntf(){MainParam = new TDCSOperContent(); AssParam = new TDCSWbLineOperInfo();}
+        DcsOperLineOperInfo_Ntf(){
+            MainParam = new TDCSOperContent(); //MainParam.dwMsgSequence = 1;
+            AssParam = new TDCSWbLineOperInfo();
+        }
     }
 
     public static final class DcsOperCircleOperInfo_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbCircleOperInfo AssParam;
-        DcsOperCircleOperInfo_Ntf(){MainParam = new TDCSOperContent(); AssParam = new TDCSWbCircleOperInfo();}
+        DcsOperCircleOperInfo_Ntf(){
+            MainParam = new TDCSOperContent();  //MainParam.dwMsgSequence = 2;
+        AssParam = new TDCSWbCircleOperInfo();
+        }
     }
 
     public static final class DcsOperRectangleOperInfo_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbRectangleOperInfo AssParam;
-        DcsOperRectangleOperInfo_Ntf(){MainParam = new TDCSOperContent(); AssParam = new TDCSWbRectangleOperInfo();}
+        DcsOperRectangleOperInfo_Ntf(){
+            MainParam = new TDCSOperContent(); //MainParam.dwMsgSequence = 3;
+            AssParam = new TDCSWbRectangleOperInfo();
+        }
     }
 
 
     public static final class DcsOperPencilOperInfo_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbPencilOperInfo AssParam;
-        DcsOperPencilOperInfo_Ntf(){MainParam = new TDCSOperContent(); AssParam = new TDCSWbPencilOperInfo();}
+        DcsOperPencilOperInfo_Ntf(){
+            MainParam = new TDCSOperContent(); //MainParam.dwMsgSequence = 4;
+            AssParam = new TDCSWbPencilOperInfo();
+        }
     }
 
     public static final class DcsOperColorPenOperInfo_Ntf{
@@ -477,11 +489,19 @@ public final class MsgBeans {
     public static final class DcsOperUndo_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbTabPageIdInfo AssParam;
+        public DcsOperUndo_Ntf(){
+            MainParam = new TDCSOperContent(); // MainParam.dwMsgSequence = 4;
+            AssParam = new TDCSWbTabPageIdInfo();
+        }
     }
 
     public static final class DcsOperRedo_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbTabPageIdInfo AssParam;
+        public DcsOperRedo_Ntf(){
+            MainParam = new TDCSOperContent(); // MainParam.dwMsgSequence = 5;
+            AssParam = new TDCSWbTabPageIdInfo();
+        }
     }
 
 //    public static final class DcsOperClearScreen_Ntf{
