@@ -433,7 +433,7 @@ public final class MsgBeans {
         public TDCSWbCircleOperInfo AssParam;
         DcsOperCircleOperInfo_Ntf(){
             MainParam = new TDCSOperContent();  //MainParam.dwMsgSequence = 2;
-        AssParam = new TDCSWbCircleOperInfo();
+            AssParam = new TDCSWbCircleOperInfo();
         }
     }
 
@@ -479,6 +479,10 @@ public final class MsgBeans {
     public static final class DcsOperEraseOperInfo_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbEraseOperInfo AssParam;
+        public DcsOperEraseOperInfo_Ntf(){
+            MainParam = new TDCSOperContent();  //MainParam.dwMsgSequence = 2;
+            AssParam = new TDCSWbEraseOperInfo();
+        }
     }
 
     public static final class DcsOperFullScreen_Ntf{
@@ -745,13 +749,17 @@ public final class MsgBeans {
         public int dwSubPageId;
         public TDCSWbPoint tBeginPt;    // 矩形擦除区域的开始坐标（此参数矩形擦除使用）
         public TDCSWbPoint tEndPt;      // 矩形擦除区域的结束坐标（此参数矩形擦除使用）
+        public TDCSWbEraseOperInfo(){
+            tBeginPt = new TDCSWbPoint(0, 100);
+            tEndPt = new TDCSWbPoint(800, 150);
+        }
     }
 
     public  static final class TDCSWbDisPlayInfo {
         public String achTabId;        //tab白板页
         public int dwSubPageId;        //子页ID
         public String[] aachMatrixValue;     //滚动到的目标点坐标
-        public TDCSWbDisPlayInfo(){
+        TDCSWbDisPlayInfo(){
             aachMatrixValue = new String[]{
                     "0.500000",
                     "0.000000",

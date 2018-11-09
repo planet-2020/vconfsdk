@@ -15,6 +15,7 @@ import android.view.TextureView;
 import android.view.View;
 
 import com.kedacom.vconf.sdk.base.KLog;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCEraseOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCLineOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMatrixOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCOp;
@@ -41,6 +42,7 @@ public class DefaultPainter implements IDCPainter {
 
 
     private final Matrix matrix = new Matrix(); // TODO 如果需要回放功能则所有matrix操作均需完整保存而非现在的只保存最终的。
+    private boolean matrixChanged = false;
 
     private boolean isBatchDrawing = false;
     private boolean needRender = false;
@@ -54,7 +56,7 @@ public class DefaultPainter implements IDCPainter {
             DCRectOp rectOp;
             DCOvalOp ovalOp;
             DCPathOp pathOp;
-            DCMatrixOp matrixOp;
+            DCEraseOp eraseOp;
             Path path = new Path();
             RectF rect = new RectF();
 
@@ -91,13 +93,16 @@ public class DefaultPainter implements IDCPainter {
                 canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
 
                 synchronized (matrix){
-                    canvas.setMatrix(matrix); // 每次绘制重设matrix
+                    if (matrixChanged) {
+                        canvas.setMatrix(matrix);
+                        matrixChanged = false;
+                    }
                 }
 //                layer = canvas.saveLayer(null, null);
 //                KLog.p(KLog.WARN, "############textureView.isHWA=%s, cache enabled=%s, canvas=%s, op.size=%s",
 //                        textureView.isHardwareAccelerated(), textureView.isDrawingCacheEnabled(), canvas, renderOps.size());
 
-                for (DCOp op : renderOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作。
+                for (DCOp op : renderOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。。
                     KLog.p("to render %s", op);
                     if (DCOp.OP_DRAW_LINE == op.type) {
                         lineOp = (DCLineOp) op;
@@ -117,15 +122,18 @@ public class DefaultPainter implements IDCPainter {
                             path.lineTo(point.x, point.y);
                         }
                         canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
-                     }
-
-                    try {
-                        KLog.p("sleeping...");
-                        sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        KLog.p(KLog.WARN, "quit renderThread");
+                    }else if (DCOp.OP_ERASE == op.type) {
+                        eraseOp = (DCEraseOp) op;
+                        canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp.paintCfg));
                     }
+
+//                    try {
+//                        KLog.p("sleeping...");
+//                        sleep(1000);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                        KLog.p(KLog.WARN, "quit renderThread");
+//                    }
 
                 }
 
@@ -199,6 +207,7 @@ public class DefaultPainter implements IDCPainter {
             }else if (DCOp.OP_MATRIX == op.type){
                 synchronized (matrix) {
                     matrix.setValues(((DCMatrixOp) op).matrixValue);
+                    matrixChanged = true;
                 }
             }else {
                 repealedOps.clear(); // 只要不是redo或undo操作，被撤销操作缓存就没有了意义得清空。因为撤销操作缓存仅供redo操作使用，而普通绘制操作后redo操作即刻失效（redo操作必须跟在redo操作或者undo操作后面）。
@@ -256,6 +265,7 @@ public class DefaultPainter implements IDCPainter {
                 if (DCOp.OP_MATRIX == op.type){
                     synchronized (matrix) {
                         matrix.setValues(((DCMatrixOp) op).matrixValue);
+                        matrixChanged = true;
                     }
                 }else {
                     needRenderOps.offerFirst(op); // 倒着入队列，这样时序最早的排在队首，恢复了正常次序。
@@ -284,13 +294,20 @@ public class DefaultPainter implements IDCPainter {
 
     private final PorterDuffXfermode DUFFMODE_SRCOVER = new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER);
     private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
+    private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
     private Paint cfgPaint(DCPaintCfg paintInfo){
         paint.reset();
 //        Paint paint = new Paint();
 //        paint.setXfermode(null);
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(paintInfo.strokeWidth);
-        paint.setColor(paintInfo.color);
+        if (DCPaintCfg.MODE_ERASE == paintInfo.mode){
+            paint.setStyle(Paint.Style.FILL);
+            paint.setXfermode(DUFFMODE_CLEAR);
+        }else{
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(paintInfo.strokeWidth);
+            paint.setColor(paintInfo.color);
+        }
+
         return paint;
     }
 
