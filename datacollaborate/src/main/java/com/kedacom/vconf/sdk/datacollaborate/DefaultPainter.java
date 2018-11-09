@@ -33,16 +33,12 @@ public class DefaultPainter implements IDCPainter {
     private TextureView textureView;
     private Paint paint;
 
-//    private ConcurrentLinkedQueue<DCOp> renderOps;
     private ConcurrentLinkedDeque<DCOp> renderOps; // 待渲染的操作，如画线、画图等。NOTE: require API 21
-//    private DCOp lastOp;
     private PriorityQueue<DCOp> batchOps; // 批量操作缓存。批量模式下操作到达的时序可能跟操作的序列号顺序不相符，此处我们使用PriorityQueue来为我们自动排序。
     private Stack<DCOp> repealedOps;  // 被撤销的操作，缓存以供恢复
-//    private DCOp batchLastOp;
 
-
-    private final Matrix matrix = new Matrix(); // TODO 如果需要回放功能则所有matrix操作均需完整保存而非现在的只保存最终的。
-    private boolean matrixChanged = false;
+    private final Matrix matrix = new Matrix();
+    /* TODO：如果需要回放功能则所有操作均需完整按顺序保存，包括undo,redo,matrix,清屏等。*/
 
     private boolean isBatchDrawing = false;
     private boolean needRender = false;
@@ -93,16 +89,13 @@ public class DefaultPainter implements IDCPainter {
                 canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
 
                 synchronized (matrix){
-                    if (matrixChanged) {
-                        canvas.setMatrix(matrix);
-                        matrixChanged = false;
-                    }
+                    canvas.setMatrix(matrix);
                 }
 //                layer = canvas.saveLayer(null, null);
 //                KLog.p(KLog.WARN, "############textureView.isHWA=%s, cache enabled=%s, canvas=%s, op.size=%s",
 //                        textureView.isHardwareAccelerated(), textureView.isDrawingCacheEnabled(), canvas, renderOps.size());
 
-                for (DCOp op : renderOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。。
+                for (DCOp op : renderOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
                     KLog.p("to render %s", op);
                     if (DCOp.OP_DRAW_LINE == op.type) {
                         lineOp = (DCLineOp) op;
@@ -185,7 +178,8 @@ public class DefaultPainter implements IDCPainter {
         if (isBatchDrawing) {
             batchOps.offer(op);
         }else{
-            //NOTE: 非batch-draw模式下我们没有检查操作的序列号，平台必须保证给的操作序列号跟实际时序相符，即序列号为1的最先到达，2的其次，以此类推，否则会有问题。
+            /*NOTE: 非batch-draw模式下我们没有检查操作的序列号，平台必须保证给的操作序列号跟实际时序相符，
+            即序列号为1的最先到达，2的其次，以此类推，否则绘制会乱序。*/
             DCOp tmpOp = null;
             boolean dirty = true;
             if (DCOp.OP_REDO == op.type){
@@ -207,10 +201,13 @@ public class DefaultPainter implements IDCPainter {
             }else if (DCOp.OP_MATRIX == op.type){
                 synchronized (matrix) {
                     matrix.setValues(((DCMatrixOp) op).matrixValue);
-                    matrixChanged = true;
                 }
             }else {
-                repealedOps.clear(); // 只要不是redo或undo操作，被撤销操作缓存就没有了意义得清空。因为撤销操作缓存仅供redo操作使用，而普通绘制操作后redo操作即刻失效（redo操作必须跟在redo操作或者undo操作后面）。
+                /* 只要不是redo或undo操作，被撤销操作缓存就得清空，
+                因为此时redo操作已失效（redo操作前面只能是redo操作或者undo操作），
+                而撤销操作缓存仅供redo操作使用。*/
+                repealedOps.clear();
+
                 renderOps.offer(op);
                 KLog.p(KLog.WARN, "need render op %s", op);
             }
@@ -265,7 +262,6 @@ public class DefaultPainter implements IDCPainter {
                 if (DCOp.OP_MATRIX == op.type){
                     synchronized (matrix) {
                         matrix.setValues(((DCMatrixOp) op).matrixValue);
-                        matrixChanged = true;
                     }
                 }else {
                     needRenderOps.offerFirst(op); // 倒着入队列，这样时序最早的排在队首，恢复了正常次序。
@@ -297,8 +293,6 @@ public class DefaultPainter implements IDCPainter {
     private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
     private Paint cfgPaint(DCPaintCfg paintInfo){
         paint.reset();
-//        Paint paint = new Paint();
-//        paint.setXfermode(null);
         if (DCPaintCfg.MODE_ERASE == paintInfo.mode){
             paint.setStyle(Paint.Style.FILL);
             paint.setXfermode(DUFFMODE_CLEAR);
