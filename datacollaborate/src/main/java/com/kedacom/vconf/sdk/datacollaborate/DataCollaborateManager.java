@@ -145,14 +145,14 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     private void onOpBeginNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null != painter){
             painter.startBatchDraw();
         }
     }
 
     private void onLineOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null != painter){
             MsgBeans.DcsOperLineOperInfo_Ntf OpInfo = (MsgBeans.DcsOperLineOperInfo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = OpInfo.MainParam;
@@ -167,7 +167,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     private void onCircleOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null != painter){
             MsgBeans.DcsOperCircleOperInfo_Ntf opInfo = (MsgBeans.DcsOperCircleOperInfo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
@@ -182,7 +182,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     private void onRectangleOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null != painter){
             MsgBeans.DcsOperRectangleOperInfo_Ntf opInfo = (MsgBeans.DcsOperRectangleOperInfo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
@@ -192,12 +192,12 @@ public class DataCollaborateManager extends RequestAgent {
 //            painter.draw(new DCRectOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
 //                    commonInfo.dwMsgSequence, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
             painter.draw(new DCRectOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-                    5, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
+                    3, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
         }
     }
 
     private void onPencilOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null != painter){
             MsgBeans.DcsOperPencilOperInfo_Ntf opInfo = (MsgBeans.DcsOperPencilOperInfo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
@@ -253,22 +253,22 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     private void onUndoNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null != painter){
             MsgBeans.DcsOperUndo_Ntf opInfo = (MsgBeans.DcsOperUndo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
 //            painter.draw(new DCUndoOp(commonInfo.dwMsgSequence));
-            painter.draw(new DCUndoOp(3));
+            painter.draw(new DCUndoOp(4));
         }
     }
 
     private void onRedoNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null != painter){
             MsgBeans.DcsOperRedo_Ntf opInfo = (MsgBeans.DcsOperRedo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
 //            painter.draw(new DCRedoOp(commonInfo.dwMsgSequence));
-            painter.draw(new DCRedoOp(4));
+            painter.draw(new DCRedoOp(5));
         }
     }
 
@@ -336,16 +336,16 @@ public class DataCollaborateManager extends RequestAgent {
 //        eject(Msg.DcsOperClearScreen_Ntf);
 //        eject(Msg.DcsElementOperFinal_Ntf);
         eject(new Msg[]{
-                Msg.DcsOperRectangleOperInfo_Ntf,
-                Msg.DcsElementOperBegin_Ntf,
+//                Msg.DcsElementOperBegin_Ntf,
                 Msg.DcsOperLineOperInfo_Ntf,
                 Msg.DcsOperCircleOperInfo_Ntf,
                 Msg.DcsOperUndo_Ntf,
                 Msg.DcsOperUndo_Ntf,
                 Msg.DcsOperRedo_Ntf,
-//                Msg.DcsOperRedo_Ntf,
+                Msg.DcsOperRectangleOperInfo_Ntf,
+                Msg.DcsOperRedo_Ntf,
                 Msg.DcsOperPencilOperInfo_Ntf,
-                Msg.DcsElementOperFinal_Ntf,
+//                Msg.DcsElementOperFinal_Ntf,
         });
     }
 

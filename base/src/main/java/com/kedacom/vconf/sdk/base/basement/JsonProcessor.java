@@ -17,7 +17,7 @@ final class JsonProcessor {
     private static JsonProcessor instance;
 
     private GsonBuilder gsonBuilder;
-    private Gson gson;
+    private Gson gson;  // gson instance is thread-safe.
 
     private JsonProcessor() {
         gsonBuilder = new GsonBuilder();
