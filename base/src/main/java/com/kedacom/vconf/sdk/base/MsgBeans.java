@@ -484,6 +484,10 @@ public final class MsgBeans {
     public static final class DcsOperFullScreen_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbDisPlayInfo AssParam;
+        public DcsOperFullScreen_Ntf(){
+            MainParam = new TDCSOperContent(); MainParam.dwMsgSequence = 14;
+            AssParam = new TDCSWbDisPlayInfo();
+        }
     }
 
     public static final class DcsOperUndo_Ntf{
@@ -747,6 +751,19 @@ public final class MsgBeans {
         public String achTabId;        //tab白板页
         public int dwSubPageId;        //子页ID
         public String[] aachMatrixValue;     //滚动到的目标点坐标
+        public TDCSWbDisPlayInfo(){
+            aachMatrixValue = new String[]{
+                    "0.500000",
+                    "0.000000",
+                    "162.000000",
+                    "0.000000",
+                    "0.500000",
+                    "155.250000",
+                    "0.000000",
+                    "0.000000",
+                    "1.000000"
+            };
+        }
     }
 
 

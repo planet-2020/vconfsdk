@@ -454,7 +454,7 @@ public enum Msg {
     @Notification(clz = MsgBeans.DcsOperEraseOperInfo_Ntf.class)
     DcsOperEraseOperInfo_Ntf,
 
-    /**缩放或滚动操作通知*/
+    /**缩放或位移操作通知*/
     @Notification(clz = MsgBeans.DcsOperFullScreen_Ntf.class)
     DcsOperFullScreen_Ntf,
 

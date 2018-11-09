@@ -7,6 +7,7 @@ public abstract class DCOp implements Comparable<DCOp>{
     public static final int OP_DRAW_PATH = 4;
     public static final int OP_UNDO = 5;
     public static final int OP_REDO = 6;
+    public static final int OP_MATRIX = 7;
     public int type; // 类型：划线、画圈等。
     public int sn; // 序号。操作的先后顺序，序号越小的操作越先发生。
     public DCPaintCfg paintCfg;

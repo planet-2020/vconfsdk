@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
-import android.graphics.Path;
 import android.graphics.PointF;
 
 import com.kedacom.vconf.sdk.base.INotificationListener;
@@ -12,6 +11,7 @@ import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.ResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCLineOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCMatrixOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCOvalOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCPaintCfg;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCPathOp;
@@ -62,7 +62,7 @@ public class DataCollaborateManager extends RequestAgent {
         processorMap.put(Msg.DcsOperPitchPicDrag_Ntf, this::onPitchPicNtf);
         processorMap.put(Msg.DcsOperPitchPicDel_Ntf, this::onDelPicNtf);
         processorMap.put(Msg.DcsOperEraseOperInfo_Ntf, this::onEraseOpNtf);
-        processorMap.put(Msg.DcsOperFullScreen_Ntf, this::onFullScreenNtf);
+        processorMap.put(Msg.DcsOperFullScreen_Ntf, this::onMatrixNtf);
         processorMap.put(Msg.DcsOperUndo_Ntf, this::onUndoNtf);
         processorMap.put(Msg.DcsOperRedo_Ntf, this::onRedoNtf);
         processorMap.put(Msg.DcsOperClearScreen_Ntf, this::onClearScreenNtf);
@@ -245,10 +245,13 @@ public class DataCollaborateManager extends RequestAgent {
         }
     }
 
-    private void onFullScreenNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
+    private void onMatrixNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
+        if (null != painter){
+            MsgBeans.DcsOperFullScreen_Ntf opInfo = (MsgBeans.DcsOperFullScreen_Ntf) ntfContent;
+            MsgBeans.TDCSWbDisPlayInfo gp = opInfo.AssParam;
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            painter.draw(new DCMatrixOp(gp.aachMatrixValue, commonInfo.dwMsgSequence));
         }
     }
 
@@ -339,17 +342,18 @@ public class DataCollaborateManager extends RequestAgent {
 //                Msg.DcsElementOperBegin_Ntf,
                 Msg.DcsOperLineOperInfo_Ntf,
                 Msg.DcsOperCircleOperInfo_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperRedo_Ntf,
+//                Msg.DcsOperUndo_Ntf,
+//                Msg.DcsOperUndo_Ntf,
+//                Msg.DcsOperUndo_Ntf,
+//                Msg.DcsOperUndo_Ntf,
+//                Msg.DcsOperUndo_Ntf,
+//                Msg.DcsOperUndo_Ntf,
+//                Msg.DcsOperUndo_Ntf,
+//                Msg.DcsOperRedo_Ntf,
                 Msg.DcsOperRectangleOperInfo_Ntf,
-                Msg.DcsOperRedo_Ntf,
+//                Msg.DcsOperRedo_Ntf,
                 Msg.DcsOperPencilOperInfo_Ntf,
+                Msg.DcsOperFullScreen_Ntf,
 //                Msg.DcsElementOperFinal_Ntf,
         });
     }
