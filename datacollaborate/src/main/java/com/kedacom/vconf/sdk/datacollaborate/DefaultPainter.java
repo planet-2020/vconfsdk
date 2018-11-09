@@ -61,7 +61,7 @@ public class DefaultPainter implements IDCPainter {
             int layer=0;
 
             while (true){
-                KLog.p("go render!");
+                KLog.p("start loop run");
                 if (isInterrupted()){
                     KLog.p(KLog.WARN, "quit renderThread");
                     return;
@@ -70,9 +70,9 @@ public class DefaultPainter implements IDCPainter {
                 synchronized (this) {
                     try {
                         if (!needRender) {
-                            KLog.p("wait...");
+                            KLog.p("waiting...");
                             wait();
-                            KLog.p("wakeup!");
+                            KLog.p("resume run");
                         }
                         needRender = false;
                     } catch (InterruptedException e) {
@@ -88,45 +88,36 @@ public class DefaultPainter implements IDCPainter {
                     continue;
                 }
 
-                KLog.p("clear canvas");
-                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 清空画布。
+                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
 
                 synchronized (matrix){
-                    canvas.setMatrix(matrix);
+                    canvas.setMatrix(matrix); // 每次绘制重设matrix
                 }
 //                layer = canvas.saveLayer(null, null);
 //                KLog.p(KLog.WARN, "############textureView.isHWA=%s, cache enabled=%s, canvas=%s, op.size=%s",
 //                        textureView.isHardwareAccelerated(), textureView.isDrawingCacheEnabled(), canvas, renderOps.size());
 
-                if (renderOps.isEmpty()){
-                    KLog.p("clear canvas");
-                    canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 清空画布。（触发场景一般是清屏操作或者多次撤销至画布空白）
-                }else {
-
-                    for (DCOp op : renderOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作。
-//                DCOp op;
-//                while(null != (op = renderOps.poll())) {
-
-                        KLog.p("render %s", op);
-                        if (DCOp.OP_DRAW_LINE == op.type) {
-                            lineOp = (DCLineOp) op;
-                            canvas.drawLine(lineOp.startX, lineOp.startY, lineOp.stopX, lineOp.stopY, cfgPaint(lineOp.paintCfg));
-                        } else if (DCOp.OP_DRAW_RECT == op.type) {
-                            rectOp = (DCRectOp) op;
-                            canvas.drawRect(rectOp.left, rectOp.top, rectOp.right, rectOp.bottom, cfgPaint(rectOp.paintCfg));
-                        } else if (DCOp.OP_DRAW_OVAL == op.type) {
-                            ovalOp = (DCOvalOp) op;
-                            rect.set(ovalOp.left, ovalOp.top, ovalOp.right, ovalOp.bottom);
-                            canvas.drawOval(rect, cfgPaint(ovalOp.paintCfg));
-                        } else if (DCOp.OP_DRAW_PATH == op.type) {
-                            pathOp = (DCPathOp) op;
-                            path.reset();
-                            path.moveTo(pathOp.points[0].x, pathOp.points[0].y);
-                            for (PointF point : pathOp.points) {
-                                path.lineTo(point.x, point.y); // NOTE 起点多做了一次lineTo
-                            }
-                            canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
-                         }
+                for (DCOp op : renderOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作。
+                    KLog.p("to render %s", op);
+                    if (DCOp.OP_DRAW_LINE == op.type) {
+                        lineOp = (DCLineOp) op;
+                        canvas.drawLine(lineOp.startX, lineOp.startY, lineOp.stopX, lineOp.stopY, cfgPaint(lineOp.paintCfg));
+                    } else if (DCOp.OP_DRAW_RECT == op.type) {
+                        rectOp = (DCRectOp) op;
+                        canvas.drawRect(rectOp.left, rectOp.top, rectOp.right, rectOp.bottom, cfgPaint(rectOp.paintCfg));
+                    } else if (DCOp.OP_DRAW_OVAL == op.type) {
+                        ovalOp = (DCOvalOp) op;
+                        rect.set(ovalOp.left, ovalOp.top, ovalOp.right, ovalOp.bottom);
+                        canvas.drawOval(rect, cfgPaint(ovalOp.paintCfg));
+                    } else if (DCOp.OP_DRAW_PATH == op.type) {
+                        pathOp = (DCPathOp) op;
+                        path.reset();
+                        path.moveTo(pathOp.points[0].x, pathOp.points[0].y);
+                        for (PointF point : pathOp.points) {
+                            path.lineTo(point.x, point.y);
+                        }
+                        canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
+                     }
 
                     try {
                         KLog.p("sleeping...");
@@ -136,12 +127,11 @@ public class DefaultPainter implements IDCPainter {
                         KLog.p(KLog.WARN, "quit renderThread");
                     }
 
-//                }
-                    }
                 }
 
 //                canvas.restoreToCount(layer);
 
+                KLog.p("end of loop run, go render!");
                 textureView.unlockCanvasAndPost(canvas);
 
             }
@@ -152,7 +142,6 @@ public class DefaultPainter implements IDCPainter {
 
     public DefaultPainter(Context context) {
 
-//        renderOps = new ConcurrentLinkedQueue<>();  // XXX 限定容量？
         renderOps = new ConcurrentLinkedDeque<>();  // XXX 限定容量？
         batchOps = new PriorityQueue<>();
         repealedOps = new Stack<>();
@@ -174,21 +163,23 @@ public class DefaultPainter implements IDCPainter {
 
     @Override
     public void startBatchDraw(){
-        KLog.p(KLog.WARN, "startBatchDraw");
+        if (isBatchDrawing){
+            return;
+        }
+        KLog.p(KLog.WARN, ">>>>>>>>>>>>>>>>>>>>>>");
         batchOps.clear();
         isBatchDrawing = true;
     }
 
     @Override
     public void draw(DCOp op) {
+        KLog.p(KLog.WARN, "op %s",op);
         if (isBatchDrawing) {
-            KLog.p(KLog.WARN, "batch draw %s",op);
             batchOps.offer(op);
         }else{
             //NOTE: 非batch-draw模式下我们没有检查操作的序列号，平台必须保证给的操作序列号跟实际时序相符，即序列号为1的最先到达，2的其次，以此类推，否则会有问题。
             DCOp tmpOp = null;
             boolean dirty = true;
-            KLog.p(KLog.WARN, "draw %s",op);
             if (DCOp.OP_REDO == op.type){
                 if (!repealedOps.empty()) tmpOp = repealedOps.pop();
                 if (null != tmpOp){
@@ -212,7 +203,7 @@ public class DefaultPainter implements IDCPainter {
             }else {
                 repealedOps.clear(); // 只要不是redo或undo操作，被撤销操作缓存就没有了意义得清空。因为撤销操作缓存仅供redo操作使用，而普通绘制操作后redo操作即刻失效（redo操作必须跟在redo操作或者undo操作后面）。
                 renderOps.offer(op);
-                KLog.p(KLog.WARN, "to render op %s", op);
+                KLog.p(KLog.WARN, "need render op %s", op);
             }
 
             if (dirty) {
@@ -230,56 +221,65 @@ public class DefaultPainter implements IDCPainter {
 
     @Override
     public void finishBatchDraw(){
-        KLog.p(KLog.WARN, "finishBatchDraw");
-        if (isBatchDrawing){
-            DCOp op;
-            int redoCnt = 0;
-            ConcurrentLinkedDeque<DCOp> needRenderOps = new ConcurrentLinkedDeque<>();
-            boolean dirty = true;
-            while(!batchOps.isEmpty()){ // 整理批量操作。NOTE: 时序上越近的操作排在队列的越前端。时序上我们是从后往前遍历。
-                op = batchOps.poll();
-                KLog.p(KLog.WARN, "op %s", op);
-                if (DCOp.OP_REDO == op.type){
-                    ++redoCnt; // redo的作用只有一个就是用来抵消undo，它之前只可能是连续的redo或与之匹配的undo。故此处只做计数，尝试下次遍历与前面的undo抵消。
-                    dirty = false;
-                }else if (DCOp.OP_UNDO == op.type){
-                    if (0 != redoCnt){
-                        --redoCnt; // undo被redo抵消
-                        dirty = false;
-                        continue;
-                    }
-                    batchOps.poll(); // 没有被redo抵消则撤销之前的操作
-                }else { // 非redo非undo
-
-                    /* redo之前只可能是连续的redo或与之匹配的undo。
-                    如果出现了非undo非redo则正常情况下redo操作已和相应的undo抵消，或根本未出现redo，
-                    再或者redo未被同等数量的undo抵消则出现异常（平台给的消息序列有问题），异常情况下我们丢弃冗余的redo。
-                    以上情况下redo计数均需清空*/
-                    redoCnt = 0;
-
-                    if (DCOp.OP_MATRIX == op.type){
-                        synchronized (matrix) {
-                            matrix.setValues(((DCMatrixOp) op).matrixValue);
-                        }
-                    }else {
-                        needRenderOps.offerFirst(op); // 倒着入队列，这样时序最早的排在队首，恢复了正常次序。
-                    }
-                    KLog.p(KLog.WARN, "to render op %s", op);
-                }
-
-            }
-
-            if (dirty) {
-                renderOps.addAll(needRenderOps);
-                synchronized (renderThread) {
-                    needRender = true;
-                    if (Thread.State.WAITING == renderThread.getState()) {
-                        renderThread.notify();
-                    }
-                }
-            }
-            isBatchDrawing = false;
+        if (!isBatchDrawing) {
+            return;
         }
+        KLog.p(KLog.WARN, "-----------------------");
+
+        DCOp op;
+        int redoCnt = 0;
+        ConcurrentLinkedDeque<DCOp> needRenderOps = new ConcurrentLinkedDeque<>();
+        boolean dirty = true;
+        while(!batchOps.isEmpty()){ // 整理批量操作。NOTE: 时序上越近的操作排在队列的越前端。时序上我们是从后往前遍历。
+            op = batchOps.poll();
+            if (DCOp.OP_REDO == op.type){
+                ++redoCnt; // redo的作用只有一个就是用来抵消undo，它之前只可能是连续的redo或与之匹配的undo。故此处只做计数，尝试下次遍历与前面的undo抵消。
+                dirty = false;
+                KLog.p(KLog.WARN, "redo, redoCount=%s", redoCnt);
+            }else if (DCOp.OP_UNDO == op.type){
+                if (0 != redoCnt){
+                    --redoCnt; // undo被redo抵消
+                    dirty = false;
+                    KLog.p(KLog.WARN, "undo, redoCount=%s", redoCnt);
+                    continue;
+                }
+                KLog.p(KLog.WARN, "undo, repealed op %s", batchOps.peek());
+                batchOps.poll(); // 没有被redo抵消则撤销之前的操作
+            }else { // 非redo非undo
+
+                /* redo之前只可能是连续的redo或与之匹配的undo。
+                如果出现了非undo非redo则正常情况下redo操作已和相应的undo抵消，或根本未出现redo，
+                再或者redo未被同等数量的undo抵消则出现异常（平台给的消息序列有问题），异常情况下我们丢弃冗余的redo。
+                以上情况下redo计数均需清空*/
+                redoCnt = 0;
+
+                if (DCOp.OP_MATRIX == op.type){
+                    synchronized (matrix) {
+                        matrix.setValues(((DCMatrixOp) op).matrixValue);
+                    }
+                }else {
+                    needRenderOps.offerFirst(op); // 倒着入队列，这样时序最早的排在队首，恢复了正常次序。
+                }
+                KLog.p(KLog.WARN, "need render op %s", op);
+            }
+
+        }
+
+        if (dirty) {
+            renderOps.addAll(needRenderOps);
+            synchronized (renderThread) {
+                needRender = true;
+                if (Thread.State.WAITING == renderThread.getState()) {
+                    KLog.p(KLog.WARN, "notify");
+                    renderThread.notify();
+                }
+            }
+        }
+
+        isBatchDrawing = false;
+
+
+        KLog.p(KLog.WARN, "<<<<<<<<<<<<<<<<<<<<<<<");
     }
 
     private final PorterDuffXfermode DUFFMODE_SRCOVER = new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER);
