@@ -51,7 +51,7 @@ dependencies {
 //    implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"  // java8的lifecycle回调中包含了owner
 //    implementation 'com.android.support:appcompat-v7:28.0.0'
 
-    implementation 'com.kedacom.vconf.sdk:base:0.2.20'
+    implementation 'com.kedacom.vconf.sdk:base:0.2.25'
 
 //    implementation project(':base')
 

@@ -298,7 +298,7 @@ public enum Msg {
     @Request(para=MsgBeans.DCSOperUndoOper.class)
     DCSOperUndoCmd,
 
-    /**重做*/
+    /**恢复（恢复被撤销的操作）*/
     @Request(para=MsgBeans.DCSOperRedoOper.class)
     DCSOperRedoCmd,
 
@@ -454,7 +454,7 @@ public enum Msg {
     @Notification(clz = MsgBeans.DcsOperEraseOperInfo_Ntf.class)
     DcsOperEraseOperInfo_Ntf,
 
-    /**缩放或位移操作通知*/
+    /**matrix操作通知（缩放、移动、旋转）*/
     @Notification(clz = MsgBeans.DcsOperFullScreen_Ntf.class)
     DcsOperFullScreen_Ntf,
 
@@ -462,7 +462,7 @@ public enum Msg {
     @Notification(clz = MsgBeans.DcsOperUndo_Ntf.class)
     DcsOperUndo_Ntf,
 
-    /**重复操作通知*/
+    /**恢复（恢复被撤销的操作）通知*/
     @Notification(clz = MsgBeans.DcsOperRedo_Ntf.class)
     DcsOperRedo_Ntf,
 

@@ -10,6 +10,7 @@ import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.ResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCClearScreenOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCEraseOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCLineOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMatrixOp;
@@ -281,9 +282,10 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     private void onClearScreenNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
+//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+        MsgBeans.TDCSOperContent opInfo = (MsgBeans.TDCSOperContent) ntfContent;
+        if (null != painter){
+            painter.draw(new DCClearScreenOp(opInfo.dwMsgSequence));
         }
     }
 
@@ -355,6 +357,7 @@ public class DataCollaborateManager extends RequestAgent {
 //                Msg.DcsOperUndo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
 //                Msg.DcsOperRedo_Ntf,
+                Msg.DcsOperClearScreen_Ntf,
                 Msg.DcsOperRectangleOperInfo_Ntf,
 //                Msg.DcsOperRedo_Ntf,
                 Msg.DcsOperPencilOperInfo_Ntf,

@@ -9,6 +9,8 @@ public abstract class DCOp implements Comparable<DCOp>{
     public static final int OP_REDO = 6;
     public static final int OP_MATRIX = 7;
     public static final int OP_ERASE = 8;
+    public static final int OP_CLEAR_SCREEN = 9;
+    public static final int OP_UNDO_CLEAR_SCREEN = 10;
     public int type; // 类型：划线、画圈等。
     public int sn; // 序号。操作的先后顺序，序号越小的操作越先发生。
     public DCPaintCfg paintCfg;

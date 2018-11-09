@@ -44,6 +44,7 @@ public class DefaultPainter implements IDCPainter {
     private boolean needRender = false;
 
     private static int threadCount = 0;
+
     private final Thread renderThread = new Thread("DCRenderThr"+threadCount++){
         @Override
         public void run() {
@@ -118,6 +119,8 @@ public class DefaultPainter implements IDCPainter {
                     }else if (DCOp.OP_ERASE == op.type) {
                         eraseOp = (DCEraseOp) op;
                         canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp.paintCfg));
+                    }else if (DCOp.OP_CLEAR_SCREEN == op.type) {
+                        canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
                     }
 
 //                    try {
@@ -183,11 +186,11 @@ public class DefaultPainter implements IDCPainter {
             DCOp tmpOp = null;
             boolean dirty = true;
             if (DCOp.OP_REDO == op.type){
-                if (!repealedOps.empty()) tmpOp = repealedOps.pop();
-                if (null != tmpOp){
+                if (!repealedOps.empty()) {
+                    tmpOp = repealedOps.pop();
                     KLog.p(KLog.WARN, "restore %s",tmpOp);
                     renderOps.offer(tmpOp); // 恢复最近操作
-                }else{
+                }else {
                     dirty = false;
                 }
             }else if (DCOp.OP_UNDO == op.type){
@@ -198,17 +201,21 @@ public class DefaultPainter implements IDCPainter {
                 }else{
                     dirty = false;
                 }
-            }else if (DCOp.OP_MATRIX == op.type){
-                synchronized (matrix) {
-                    matrix.setValues(((DCMatrixOp) op).matrixValue);
-                }
             }else {
                 /* 只要不是redo或undo操作，被撤销操作缓存就得清空，
                 因为此时redo操作已失效（redo操作前面只能是redo操作或者undo操作），
                 而撤销操作缓存仅供redo操作使用。*/
                 repealedOps.clear();
 
-                renderOps.offer(op);
+                if (DCOp.OP_MATRIX == op.type){
+                /* matrix操作不同于普通绘制操作。从它生效开始，
+                它作用于所有之前的以及之后的操作，不受时序的制约，所以需要特殊处理。*/
+                    synchronized (matrix) {
+                        matrix.setValues(((DCMatrixOp) op).matrixValue);
+                    }
+                }else {
+                    renderOps.offer(op);
+                }
                 KLog.p(KLog.WARN, "need render op %s", op);
             }
 

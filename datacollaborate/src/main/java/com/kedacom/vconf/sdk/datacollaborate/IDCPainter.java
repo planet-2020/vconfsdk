@@ -17,7 +17,5 @@ public interface IDCPainter {
 //    void drawImage(DCImageOp imageOpInfo);
 //    void erase(DCEraseOp eraseOpInfo);
     void draw(DCOp op);
-    // TODO undo(); 对于这两个方法都需要判断sn，根据sn决定undo的哪个redo的哪个。
-    // TODO redo();
     default void finishBatchDraw(){}
 }
