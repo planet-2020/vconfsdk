@@ -80,6 +80,7 @@ publishing {
             }
         }
 
+
      }
 
     repositories {
@@ -97,6 +98,23 @@ publishing {
             url = "http://localhost:8081/repository/maven-releases/"
         }
     }
+}
+
+
+/* 添加对assembleRelease的依赖，使得发布前自动构建。
+因为发布task名称是项目配置阶段完成后动态生成的（publish${PubName}PublicationToRepoNameRepository|publish${PubName}PublicationToMavenLocal ）
+这就以为着无法在脚本中直接访问发布task的名称。所以使用下面的句块在配置完成后动态分析并创建依赖关系*/
+tasks.withType(AbstractPublishToMaven).all {  // AbstractPublishToMaven是PublishToMavenRepository和PublishToMavenLocal共同的父类。这意味着无论是上传到远程仓库还是本地仓库都会先执行构建。
+//    def matcher = name =~ /generatePomFileFor(\w+)Publication/
+//    def matcher = name =~ /publish(\w+)PublicationToMavenLocal/
+//    def publicationName = matcher[0][1]
+//    destination = "$buildDir/poms/${publicationName}-pom.xml"
+//    logger.quiet("publish task name: $it, name=$name")
+//        logger.quiet("publish task name: $it, name=$name, matcher=$matcher")
+//        logger.quiet("publish task name: $it, name=$name, publicationName=$publicationName")
+//    logger.quiet("publish task name: $it, name=$name, publicationName=$publicationName, matcher=$matcher")
+
+        dependsOn "assembleRelease"
 }
 
 //signing {

@@ -345,10 +345,11 @@ public class DataCollaborateManager extends RequestAgent {
 //        eject(Msg.DcsOperClearScreen_Ntf);
 //        eject(Msg.DcsElementOperFinal_Ntf);
         eject(new Msg[]{
-                Msg.DcsElementOperBegin_Ntf,
+//                Msg.DcsElementOperBegin_Ntf,
                 Msg.DcsOperLineOperInfo_Ntf,
                 Msg.DcsOperCircleOperInfo_Ntf,
-//                Msg.DcsOperUndo_Ntf,
+                Msg.DcsOperUndo_Ntf,
+                Msg.DcsOperRedo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
@@ -356,13 +357,12 @@ public class DataCollaborateManager extends RequestAgent {
 //                Msg.DcsOperUndo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
-//                Msg.DcsOperRedo_Ntf,
                 Msg.DcsOperClearScreen_Ntf,
                 Msg.DcsOperRectangleOperInfo_Ntf,
 //                Msg.DcsOperRedo_Ntf,
                 Msg.DcsOperPencilOperInfo_Ntf,
                 Msg.DcsOperEraseOperInfo_Ntf,
-                Msg.DcsElementOperFinal_Ntf,
+//                Msg.DcsElementOperFinal_Ntf,
         });
     }
 
