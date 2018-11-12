@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -10,12 +11,15 @@ import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
 import android.os.Process;
 import android.view.TextureView;
 import android.view.View;
+import android.widget.FrameLayout;
 
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCEraseOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCInsertPicOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCLineOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMatrixOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCOp;
@@ -32,10 +36,17 @@ public class DefaultPainter implements IDCPainter {
 
     private static final int LOG_LEVEL = KLog.WARN;
 
+    /* textureView的容器。
+     * 由于textureView.setBackground失效（看源码原因可能是textureView.lockCanvas()得到的canvas不是硬件加速的），
+     * 所以为textureView包装一个layout作为其背景。*/
+    private FrameLayout layout;
+
     private TextureView textureView;
+
     private Paint paint;
 
-    private ConcurrentLinkedDeque<DCOp> renderOps; // 待渲染的操作，如画线、画图等。NOTE: require API 21
+    private ConcurrentLinkedDeque<DCOp> renderOps; // 基本图元操作，如画线、画圆、画路径等。NOTE: require API 21
+    private ConcurrentLinkedDeque<DCOp> picOps; // 图片相关的操作，如插入图片、删除图片等。
     private PriorityQueue<DCOp> batchOps; // 批量操作缓存。批量模式下操作到达的时序可能跟操作的序列号顺序不相符，此处我们使用PriorityQueue来为我们自动排序。
     private Stack<DCOp> repealedOps;  // 被撤销的操作，缓存以供恢复
 
@@ -56,8 +67,10 @@ public class DefaultPainter implements IDCPainter {
             DCOvalOp ovalOp;
             DCPathOp pathOp;
             DCEraseOp eraseOp;
+            DCInsertPicOp insertPicOp;
             Path path = new Path();
             RectF rect = new RectF();
+            Matrix picMatrix = new Matrix();
 
             int layer=0;
 
@@ -83,7 +96,7 @@ public class DefaultPainter implements IDCPainter {
                     }
                 }
 
-                Canvas canvas = textureView.lockCanvas();
+                Canvas canvas = textureView.lockCanvas();  // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
                 if (null == canvas){
                     KLog.p(KLog.ERROR, "lockCanvas failed");
                     continue;
@@ -97,6 +110,19 @@ public class DefaultPainter implements IDCPainter {
 //                layer = canvas.saveLayer(null, null);
 //                KLog.p(KLog.WARN, "############textureView.isHWA=%s, cache enabled=%s, canvas=%s, op.size=%s",
 //                        textureView.isHardwareAccelerated(), textureView.isDrawingCacheEnabled(), canvas, renderOps.size());
+
+                for (DCOp op : picOps){
+                    switch (op.type){
+                        case DCOp.OP_INSERT_PICTURE:
+                            insertPicOp = (DCInsertPicOp) op;
+//                            int w = insertPicOp.pic.getWidth();
+//                            int h = insertPicOp.pic.getHeight();
+                            picMatrix.setValues(insertPicOp.matrixValue);
+                            KLog.p("to render %s", op);
+                            canvas.drawBitmap(insertPicOp.pic, picMatrix, cfgPaint(insertPicOp.paintCfg));
+                            break;
+                    }
+                }
 
                 for (DCOp op : renderOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
                     KLog.p("to render %s", op);
@@ -156,12 +182,16 @@ public class DefaultPainter implements IDCPainter {
     public DefaultPainter(Context context) {
 
         renderOps = new ConcurrentLinkedDeque<>();  // XXX 限定容量？
+        picOps = new ConcurrentLinkedDeque<>();  // XXX 限定容量？
         batchOps = new PriorityQueue<>();
         repealedOps = new Stack<>();
 
         paint = new Paint();
+
+        layout = new FrameLayout(context);
         textureView = new TextureView(context);
-//        textureView.setOpaque(false);
+        textureView.setOpaque(false); // 设置透明，这样才能看到画板的背景。XXX 但是实测此方法不论设置true还是false效果都是透明
+        layout.addView(textureView);
 
         renderThread.start();
     }
@@ -169,7 +199,8 @@ public class DefaultPainter implements IDCPainter {
 
 
     public View getPaintView(){
-        return textureView;
+//        return textureView;
+        return layout;
     }
 
 
@@ -227,6 +258,8 @@ public class DefaultPainter implements IDCPainter {
                     synchronized (matrix) {
                         matrix.setValues(((DCMatrixOp) op).matrixValue);
                     }
+                }else if (DCOp.OP_INSERT_PICTURE == op.type){
+                    picOps.offer(op);
                 }else {
                     renderOps.offer(op);
                 }
@@ -320,13 +353,15 @@ public class DefaultPainter implements IDCPainter {
     private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
     private Paint cfgPaint(DCPaintCfg paintInfo){
         paint.reset();
-        if (DCPaintCfg.MODE_ERASE == paintInfo.mode){
-            paint.setStyle(Paint.Style.FILL);
-            paint.setXfermode(DUFFMODE_CLEAR);
-        }else{
+        if (DCPaintCfg.MODE_NORMAL == paintInfo.mode){
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(paintInfo.strokeWidth);
             paint.setColor(paintInfo.color);
+        }else if (DCPaintCfg.MODE_PICTURE == paintInfo.mode){
+            paint.setStyle(Paint.Style.STROKE);
+        }else if (DCPaintCfg.MODE_ERASE == paintInfo.mode){
+            paint.setStyle(Paint.Style.FILL);
+            paint.setXfermode(DUFFMODE_CLEAR);
         }
 
         return paint;

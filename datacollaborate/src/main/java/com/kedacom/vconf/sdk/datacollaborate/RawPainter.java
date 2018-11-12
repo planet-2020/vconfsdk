@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
 import android.view.View;
 
 import com.kedacom.vconf.sdk.base.KLog;
@@ -60,6 +61,9 @@ public class RawPainter extends View implements IDCPainter {
     @Override
     public void draw(DCOp op) {
 
+        Drawable drawable = Drawable.createFromPath("/data/local/tmp/wb.png");
+        setBackground(drawable);
+        KLog.p(KLog.WARN, "drawable=%s", drawable);
     }
 
 

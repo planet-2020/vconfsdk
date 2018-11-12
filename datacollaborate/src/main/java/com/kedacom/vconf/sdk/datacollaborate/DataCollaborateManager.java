@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import android.graphics.BitmapFactory;
 import android.graphics.PointF;
+import android.graphics.drawable.Drawable;
 
 import com.kedacom.vconf.sdk.base.INotificationListener;
 import com.kedacom.vconf.sdk.base.IResultListener;
@@ -12,6 +14,7 @@ import com.kedacom.vconf.sdk.base.ResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCClearScreenOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCEraseOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCInsertPicOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCLineOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMatrixOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCOvalOp;
@@ -220,9 +223,14 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     private void onInsertPicNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
+//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+        if (null != painter){
+            MsgBeans.DcsOperInsertPic_Ntf opInfo = (MsgBeans.DcsOperInsertPic_Ntf) ntfContent;
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            MsgBeans.TDCSWbInsertPicOperInfo gp = opInfo.AssParam;
+
+            painter.draw(new DCInsertPicOp(BitmapFactory.decodeFile("/data/local/tmp/wb.png"), gp.dwImgWidth, gp.dwImgHeight,
+                    gp.tPoint.nPosx, gp.tPoint.nPosy, gp.aachMatrixValue, commonInfo.dwMsgSequence));
         }
     }
 
@@ -362,6 +370,7 @@ public class DataCollaborateManager extends RequestAgent {
 //                Msg.DcsOperRedo_Ntf,
                 Msg.DcsOperPencilOperInfo_Ntf,
                 Msg.DcsOperEraseOperInfo_Ntf,
+                Msg.DcsOperInsertPic_Ntf,
 //                Msg.DcsElementOperFinal_Ntf,
         });
     }

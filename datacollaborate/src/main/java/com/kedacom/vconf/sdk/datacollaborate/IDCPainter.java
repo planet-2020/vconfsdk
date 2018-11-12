@@ -16,6 +16,6 @@ public interface IDCPainter {
 //    void drawPath(DCPathOp pathOpInfo);
 //    void drawImage(DCImageOp imageOpInfo);
 //    void erase(DCEraseOp eraseOpInfo);
-    void draw(DCOp op);
+    void draw(DCOp op);  //TODO 还是拆分为具体子类比较好。
     default void finishBatchDraw(){}
 }

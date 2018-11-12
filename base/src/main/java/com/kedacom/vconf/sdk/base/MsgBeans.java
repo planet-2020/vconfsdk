@@ -464,6 +464,10 @@ public final class MsgBeans {
     public static final class DcsOperInsertPic_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbInsertPicOperInfo AssParam;
+        public DcsOperInsertPic_Ntf(){
+            MainParam = new TDCSOperContent(); //MainParam.dwMsgSequence = 4;
+            AssParam = new TDCSWbInsertPicOperInfo();
+        }
     }
 
     public static final class DcsOperPitchPicDrag_Ntf{
@@ -723,6 +727,20 @@ public final class MsgBeans {
         public TDCSWbPoint tPoint;
         public String achPicName;
         public String[] aachMatrixValue;
+        public TDCSWbInsertPicOperInfo(){
+            tPoint = new TDCSWbPoint(10, 50);
+            aachMatrixValue = new String[]{
+                    "0.500000",
+                    "0.000000",
+                    "162.000000",
+                    "0.000000",
+                    "0.500000",
+                    "155.250000",
+                    "0.000000",
+                    "0.000000",
+                    "1.000000"
+            };
+        }
     }
 
     public static final class TDCSWbPitchPicOperInfo {
