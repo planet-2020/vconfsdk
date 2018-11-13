@@ -240,6 +240,10 @@ public class DefaultPaintView extends TextureView {
     }
 
     void setMatrix(Matrix matrix){
+        if (null == myTouchListener
+                || null == onMatrixChangedListener){
+            return;
+        }
         myTouchListener.curMatrix.postConcat(matrix);
         onMatrixChangedListener.OnMatrixChanged(myTouchListener.curMatrix);
     }
