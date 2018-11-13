@@ -54,25 +54,25 @@ public class DefaultPaintView extends TextureView {
                 case MotionEvent.ACTION_DOWN:
                     mode=MODE_DRAG;
                     startPoint.set(event.getX(), event.getY()); // 记录起始点
-                    KLog.p("ACTION_DOWN{%s}", event);
+//                    KLog.p("ACTION_DOWN{%s}", event);
                     break;
 
                 case MotionEvent.ACTION_POINTER_DOWN:
                     mode=MODE_ZOOM;
                     startDis = distance(event); // 记录起始距离
-                    KLog.p("ACTION_POINTER_DOWN{%s}", event);
+//                    KLog.p("ACTION_POINTER_DOWN{%s}", event);
                     break;
 
                 case MotionEvent.ACTION_MOVE:
                     if (mode == MODE_ZOOM) {
                         if (setZoomMatrix(event)){
                             needRefresh = true;
-                            KLog.p("ACTION_ZOOM{%s}", event);
+//                            KLog.p("ACTION_ZOOM{%s}", event);
                         }
                     }else if (mode==MODE_DRAG) {
                         if (setDragMatrix(event)){
                             needRefresh = true;
-                            KLog.p("ACTION_DRAG{%s}", event);
+//                            KLog.p("ACTION_DRAG{%s}", event);
                         }
                     }
                     break;
@@ -83,7 +83,7 @@ public class DefaultPaintView extends TextureView {
                         refresh();
                         needRefresh = false;
                     }
-                    KLog.p("ACTION_UP{%s}", event);
+//                    KLog.p("ACTION_UP{%s}", event);
                     break;
 
                 case MotionEvent.ACTION_POINTER_UP:
@@ -97,10 +97,6 @@ public class DefaultPaintView extends TextureView {
 
         // 设置拖拽
         public boolean setDragMatrix(MotionEvent event) {
-
-//            if (!isZoomIn()){ // 仅放大状态下支持拖拽
-//                return;
-//            }
             float dx = event.getX() - startPoint.x; // 得到x轴的移动距离
             float dy = event.getY() - startPoint.y; // 得到x轴的移动距离
 
@@ -139,22 +135,11 @@ public class DefaultPaintView extends TextureView {
         }
 
 
-        // 调整显示效果
         private void refresh(){
 
             rectifyOverZoom();	// 矫正放缩过度
 
-//            alignEdge();	// 对齐边界
-//
-//            tryFullView();  // 尝试全景显示
-
             onMatrixChangedListener.OnMatrixChanged(curMatrix);
-        }
-
-
-        // 是否处于放大状态
-        private boolean isZoomIn() {
-            return getScale(curMatrix) > getScale(initMatrix);
         }
 
 
@@ -184,13 +169,11 @@ public class DefaultPaintView extends TextureView {
 
         // 处理双击
         public void onDoubleClick(){
-            if (isZoomIn()){  // 已放大情况下双击，则缩小至初始状态
-                curMatrix.set(initMatrix);
-                KLog.p("zoom out");
+            float curScale = getScale(curMatrix);
+            if (curScale>1){  // 已放大情况下双击，则缩小至初始状态
+                curMatrix.postScale(1/curScale, 1/curScale, getWidth()/2, getHeight()/2);
             }else{ // 未放大情况下双击，则放大
-//                curMatrix.set(getMatrix());
                 curMatrix.postScale(DOUBLE_CLICK_SCALE, DOUBLE_CLICK_SCALE, getWidth()/2,getHeight()/2);
-                KLog.p("zoom in");
             }
 
             onMatrixChangedListener.OnMatrixChanged(curMatrix);
