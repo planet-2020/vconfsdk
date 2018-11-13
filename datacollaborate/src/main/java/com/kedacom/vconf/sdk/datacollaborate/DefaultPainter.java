@@ -1,7 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -11,7 +10,6 @@ import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
-import android.graphics.drawable.Drawable;
 import android.os.Process;
 import android.view.TextureView;
 import android.view.View;
@@ -32,7 +30,7 @@ import java.util.PriorityQueue;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-public class DefaultPainter implements IDCPainter {
+public class DefaultPainter implements IDCPainter, DefaultPaintView.OnMatrixChangedListener{
 
     private static final int LOG_LEVEL = KLog.WARN;
 
@@ -41,7 +39,7 @@ public class DefaultPainter implements IDCPainter {
      * 所以为textureView包装一个layout作为其背景。*/
     private FrameLayout layout;
 
-    private TextureView textureView;
+    private DefaultPaintView textureView;
 
     private Paint paint;
 
@@ -189,7 +187,7 @@ public class DefaultPainter implements IDCPainter {
         paint = new Paint();
 
         layout = new FrameLayout(context);
-        textureView = new TextureView(context);
+        textureView = new DefaultPaintView(context, this);
         textureView.setOpaque(false); // 设置透明，这样才能看到画板的背景。XXX 但是实测此方法不论设置true还是false效果都是透明
         layout.addView(textureView);
 
@@ -365,6 +363,22 @@ public class DefaultPainter implements IDCPainter {
         }
 
         return paint;
+    }
+
+
+    @Override
+    public void OnMatrixChanged(Matrix newMatrix) {
+        synchronized (matrix) {
+            matrix.set(newMatrix);
+        }
+        KLog.p("newMatrix=%s", matrix);
+        synchronized (renderThread) {
+            needRender = true;
+            if (Thread.State.WAITING == renderThread.getState()) {
+                KLog.p(KLog.WARN, "notify");
+                renderThread.notify();
+            }
+        }
     }
 
 

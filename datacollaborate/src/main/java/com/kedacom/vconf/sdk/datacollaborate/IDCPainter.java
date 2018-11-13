@@ -9,7 +9,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.DCPathOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCRectOp;
 
 public interface IDCPainter {
-    default void startBatchDraw(){}
+    default void startBatchDraw(){}  // TODO 这个拿掉。接口中只保留drawXXX之类操作，顺序由sdk排好后再回调各个draw接口。
 //    void drawLine(DCLineOp lineOpInfo);
 //    void drawRect(DCRectOp rectOpInfo);
 //    void drawOval(DCOvalOp ovalOpInfo);
