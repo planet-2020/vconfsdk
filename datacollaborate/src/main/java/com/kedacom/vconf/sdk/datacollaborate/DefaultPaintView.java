@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.datacollaborate;
 import android.content.Context;
 import android.graphics.Matrix;
 import android.graphics.PointF;
+import android.util.AttributeSet;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.TextureView;
@@ -16,17 +17,14 @@ public class DefaultPaintView extends TextureView {
     private OnMatrixChangedListener onMatrixChangedListener;
 
     public DefaultPaintView(Context context) {
-        super(context);
+        this(context, null);
     }
 
-    public DefaultPaintView(Context context, OnMatrixChangedListener onMatrixChangedListener) {
-        super(context);
-        if (null != onMatrixChangedListener) {
-            myTouchListener = new MyTouchListener();
-            setOnTouchListener(myTouchListener);
-            gestureDetector = new GestureDetector(getContext(), new GestureListener(myTouchListener));
-            this.onMatrixChangedListener = onMatrixChangedListener;
-        }
+    public DefaultPaintView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        myTouchListener = new MyTouchListener();
+        setOnTouchListener(myTouchListener);
+        gestureDetector = new GestureDetector(getContext(), new GestureListener(myTouchListener));
     }
 
     public class MyTouchListener implements OnTouchListener{
@@ -48,13 +46,16 @@ public class DefaultPaintView extends TextureView {
 
         @Override
         public boolean onTouch(View v, MotionEvent event) {
+            if (null == onMatrixChangedListener){
+                return false;
+            }
 
             switch (event.getActionMasked()) {
 
                 case MotionEvent.ACTION_DOWN:
                     mode=MODE_DRAG;
                     startPoint.set(event.getX(), event.getY()); // 记录起始点
-//                    KLog.p("ACTION_DOWN{%s}", event);
+                    KLog.p("ACTION_DOWN{%s}", event);
                     break;
 
                 case MotionEvent.ACTION_POINTER_DOWN:
@@ -83,7 +84,7 @@ public class DefaultPaintView extends TextureView {
                         refresh();
                         needRefresh = false;
                     }
-//                    KLog.p("ACTION_UP{%s}", event);
+                    KLog.p("ACTION_UP{%s}", event);
                     break;
 
                 case MotionEvent.ACTION_POINTER_UP:
@@ -108,7 +109,7 @@ public class DefaultPaintView extends TextureView {
 
             curMatrix.postTranslate(dx, dy);
 
-            onMatrixChangedListener.OnMatrixChanged(curMatrix);
+            onMatrixChangedListener.onMatrixChanged(curMatrix);
 
             return true;
         }
@@ -129,7 +130,7 @@ public class DefaultPaintView extends TextureView {
             startDis=endDis;//重置距离
             curMatrix.postScale(scale, scale, getWidth()/2,getHeight()/2);
 
-            onMatrixChangedListener.OnMatrixChanged(curMatrix);
+            onMatrixChangedListener.onMatrixChanged(curMatrix);
 
             return true;
         }
@@ -139,7 +140,7 @@ public class DefaultPaintView extends TextureView {
 
             rectifyOverZoom();	// 矫正放缩过度
 
-            onMatrixChangedListener.OnMatrixChanged(curMatrix);
+            onMatrixChangedListener.onMatrixChanged(curMatrix);
         }
 
 
@@ -176,7 +177,7 @@ public class DefaultPaintView extends TextureView {
                 curMatrix.postScale(DOUBLE_CLICK_SCALE, DOUBLE_CLICK_SCALE, getWidth()/2,getHeight()/2);
             }
 
-            onMatrixChangedListener.OnMatrixChanged(curMatrix);
+            onMatrixChangedListener.onMatrixChanged(curMatrix);
         }
 
     }
@@ -236,16 +237,19 @@ public class DefaultPaintView extends TextureView {
     }
 
     interface OnMatrixChangedListener{
-        void OnMatrixChanged(Matrix matrix); //NOTE: 不要在该回调接口中做耗时操作
+        void onMatrixChanged(Matrix matrix); //NOTE: 不要在该回调接口中做耗时操作
+    }
+
+    void setOnMatrixChangedListener(OnMatrixChangedListener onMatrixChangedListener){
+        this.onMatrixChangedListener = onMatrixChangedListener;
     }
 
     void setMatrix(Matrix matrix){
-        if (null == myTouchListener
-                || null == onMatrixChangedListener){
+        if (null == onMatrixChangedListener){
             return;
         }
         myTouchListener.curMatrix.postConcat(matrix);
-        onMatrixChangedListener.OnMatrixChanged(myTouchListener.curMatrix);
+        onMatrixChangedListener.onMatrixChanged(myTouchListener.curMatrix);
     }
 
 }

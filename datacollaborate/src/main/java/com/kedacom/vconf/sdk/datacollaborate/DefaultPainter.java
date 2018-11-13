@@ -11,7 +11,6 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.os.Process;
-import android.view.TextureView;
 import android.view.View;
 import android.widget.FrameLayout;
 
@@ -30,166 +29,48 @@ import java.util.PriorityQueue;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-public class DefaultPainter implements IDCPainter, DefaultPaintView.OnMatrixChangedListener{
+public class DefaultPainter implements IDCPainter{
 
     private static final int LOG_LEVEL = KLog.WARN;
 
-    /* textureView的容器。
-     * 由于textureView.setBackground失效（看源码原因可能是textureView.lockCanvas()得到的canvas不是硬件加速的），
-     * 所以为textureView包装一个layout作为其背景。*/
     private FrameLayout layout;
 
-    private DefaultPaintView textureView;
+    private DefaultWhiteBoard whiteBoard;
+    private DefaultPaintView shapePaintView;
+    private DefaultPaintView picPaintView;
 
     private Paint paint;
 
-    private ConcurrentLinkedDeque<DCOp> renderOps; // 基本图元操作，如画线、画圆、画路径等。NOTE: require API 21
-    private ConcurrentLinkedDeque<DCOp> picOps; // 图片相关的操作，如插入图片、删除图片等。
+    private ConcurrentLinkedDeque<DCOp> shapeOps; // 图形操作，如画线、画圆、画路径等。NOTE: require API 21
+    private ConcurrentLinkedDeque<DCOp> picOps; // 图片操作，如插入图片、删除图片等。
     private PriorityQueue<DCOp> batchOps; // 批量操作缓存。批量模式下操作到达的时序可能跟操作的序列号顺序不相符，此处我们使用PriorityQueue来为我们自动排序。
     private Stack<DCOp> repealedOps;  // 被撤销的操作，缓存以供恢复
 
-    private final Matrix matrix = new Matrix();
-    /* TODO：如果需要回放功能则所有操作均需完整按顺序保存，包括undo,redo,matrix,清屏等。*/
+    private final Matrix shapePaintViewMatrix = new Matrix();
+    private final Matrix picPaintViewMatrix = new Matrix();
 
-    private boolean isBatchDrawing = false;
+    private boolean isBatchDrawing = false;  // TODO batch drawing 放到manager中做掉，这里拿到的操作保证是时序正确的。去掉start/finBatchDrawing接口。
     private boolean needRender = false;
 
     private static int threadCount = 0;
 
-    private final Thread renderThread = new Thread("DCRenderThr"+threadCount++){
-        @Override
-        public void run() {
-            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-            DCLineOp lineOp;
-            DCRectOp rectOp;
-            DCOvalOp ovalOp;
-            DCPathOp pathOp;
-            DCEraseOp eraseOp;
-            DCInsertPicOp insertPicOp;
-            Path path = new Path();
-            RectF rect = new RectF();
-            Matrix picMatrix = new Matrix();
-
-            int layer=0;
-
-            while (true){
-                KLog.p("start loop run");
-                if (isInterrupted()){
-                    KLog.p(KLog.WARN, "quit renderThread");
-                    return;
-                }
-
-                synchronized (this) {
-                    try {
-                        if (!needRender) {
-                            KLog.p("waiting...");
-                            wait();
-                            KLog.p("resume run");
-                        }
-                        needRender = false;
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        KLog.p(KLog.WARN, "quit renderThread");
-                        return;
-                    }
-                }
-
-                Canvas canvas = textureView.lockCanvas();  // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
-                if (null == canvas){
-                    KLog.p(KLog.ERROR, "lockCanvas failed");
-                    continue;
-                }
-
-                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
-
-                synchronized (matrix){
-                    canvas.setMatrix(matrix);
-                }
-//                layer = canvas.saveLayer(null, null);
-//                KLog.p(KLog.WARN, "############textureView.isHWA=%s, cache enabled=%s, canvas=%s, op.size=%s",
-//                        textureView.isHardwareAccelerated(), textureView.isDrawingCacheEnabled(), canvas, renderOps.size());
-
-                for (DCOp op : picOps){
-                    switch (op.type){
-                        case DCOp.OP_INSERT_PICTURE:
-                            insertPicOp = (DCInsertPicOp) op;
-//                            int w = insertPicOp.pic.getWidth();
-//                            int h = insertPicOp.pic.getHeight();
-                            picMatrix.setValues(insertPicOp.matrixValue);
-                            KLog.p("to render %s", op);
-                            canvas.drawBitmap(insertPicOp.pic, picMatrix, cfgPaint(insertPicOp.paintCfg));
-                            break;
-                    }
-                }
-
-                for (DCOp op : renderOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
-                    KLog.p("to render %s", op);
-                    switch (op.type){
-                        case DCOp.OP_DRAW_LINE:
-                            lineOp = (DCLineOp) op;
-                            canvas.drawLine(lineOp.startX, lineOp.startY, lineOp.stopX, lineOp.stopY, cfgPaint(lineOp.paintCfg));
-                            break;
-                        case DCOp.OP_DRAW_RECT:
-                            rectOp = (DCRectOp) op;
-                            canvas.drawRect(rectOp.left, rectOp.top, rectOp.right, rectOp.bottom, cfgPaint(rectOp.paintCfg));
-                            break;
-                        case DCOp.OP_DRAW_OVAL:
-                            ovalOp = (DCOvalOp) op;
-                            rect.set(ovalOp.left, ovalOp.top, ovalOp.right, ovalOp.bottom);
-                            canvas.drawOval(rect, cfgPaint(ovalOp.paintCfg));
-                            break;
-                        case DCOp.OP_DRAW_PATH:
-                            pathOp = (DCPathOp) op;
-                            path.reset();
-                            path.moveTo(pathOp.points[0].x, pathOp.points[0].y);
-                            for (PointF point : pathOp.points) {
-                                path.lineTo(point.x, point.y);
-                            }
-                            canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
-                            break;
-                        case DCOp.OP_ERASE:
-                            eraseOp = (DCEraseOp) op;
-                            canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp.paintCfg));
-                            break;
-                        case DCOp.OP_CLEAR_SCREEN:
-                            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-                            break;
-                    }
-
-//                    try {
-//                        KLog.p("sleeping...");
-//                        sleep(1000);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                        KLog.p(KLog.WARN, "quit renderThread");
-//                    }
-
-                }
-
-//                canvas.restoreToCount(layer);
-
-                KLog.p("end of loop run, go render!");
-                textureView.unlockCanvasAndPost(canvas);
-
-            }
-        }
-    };
 
 
 
     public DefaultPainter(Context context) {
 
-        renderOps = new ConcurrentLinkedDeque<>();  // XXX 限定容量？
+        shapeOps = new ConcurrentLinkedDeque<>();  // XXX 限定容量？
         picOps = new ConcurrentLinkedDeque<>();  // XXX 限定容量？
         batchOps = new PriorityQueue<>();
         repealedOps = new Stack<>();
 
         paint = new Paint();
 
-        layout = new FrameLayout(context);
-        textureView = new DefaultPaintView(context, this);
-        textureView.setOpaque(false); // 设置透明，这样才能看到画板的背景。XXX 但是实测此方法不论设置true还是false效果都是透明
-        layout.addView(textureView);
+        whiteBoard = new DefaultWhiteBoard(context);
+        picPaintView = whiteBoard.getPicPaintView();
+        picPaintView.setOnMatrixChangedListener(this::onPicPaintViewMatrixChanged);
+        shapePaintView = whiteBoard.getShapePaintView();
+        shapePaintView.setOnMatrixChangedListener(this::onShapePaintViewMatrixChanged);
 
         renderThread.start();
     }
@@ -197,8 +78,8 @@ public class DefaultPainter implements IDCPainter, DefaultPaintView.OnMatrixChan
 
 
     public View getPaintView(){
-//        return textureView;
-        return layout;
+//        return shapePaintView;
+        return whiteBoard;
     }
 
 
@@ -230,13 +111,13 @@ public class DefaultPainter implements IDCPainter, DefaultPaintView.OnMatrixChan
                 if (!repealedOps.empty()) {
                     tmpOp = repealedOps.pop();
                     KLog.p(KLog.WARN, "restore %s",tmpOp);
-                    renderOps.offer(tmpOp); // 恢复最近操作
+                    shapeOps.offer(tmpOp); // 恢复最近操作
                 }else {
                     dirty = false;
                 }
                 break;
             case DCOp.OP_UNDO:
-                tmpOp = renderOps.pollLast(); // 撤销最近的操作
+                tmpOp = shapeOps.pollLast(); // 撤销最近的操作
                 if (null != tmpOp){
                     KLog.p(KLog.WARN, "repeal %s",tmpOp);
                     repealedOps.push(tmpOp); // 缓存撤销的操作以供恢复
@@ -253,13 +134,13 @@ public class DefaultPainter implements IDCPainter, DefaultPaintView.OnMatrixChan
                 if (DCOp.OP_MATRIX == op.type){
                 /* matrix操作不同于普通绘制操作。从它生效开始，
                 它作用于所有之前的以及之后的操作，不受时序的制约，所以需要特殊处理。*/
-                    synchronized (matrix) {
-                        matrix.setValues(((DCMatrixOp) op).matrixValue);
+                    synchronized (shapePaintViewMatrix) {
+                        shapePaintViewMatrix.setValues(((DCMatrixOp) op).matrixValue);
                     }
                 }else if (DCOp.OP_INSERT_PICTURE == op.type){
                     picOps.offer(op);
                 }else {
-                    renderOps.offer(op);
+                    shapeOps.offer(op);
                 }
                 KLog.p(KLog.WARN, "need render op %s", op);
                 break;
@@ -316,8 +197,8 @@ public class DefaultPainter implements IDCPainter, DefaultPaintView.OnMatrixChan
                     redoCnt = 0;
 
                     if (DCOp.OP_MATRIX == op.type){
-                        synchronized (matrix) {
-                            matrix.setValues(((DCMatrixOp) op).matrixValue);
+                        synchronized (shapePaintViewMatrix) {
+                            shapePaintViewMatrix.setValues(((DCMatrixOp) op).matrixValue);
                         }
                     }else {
                         needRenderOps.offerFirst(op); // 倒着入队列，这样时序最早的排在队首，恢复了正常次序。
@@ -330,7 +211,7 @@ public class DefaultPainter implements IDCPainter, DefaultPaintView.OnMatrixChan
         }
 
         if (dirty) {
-            renderOps.addAll(needRenderOps);
+            shapeOps.addAll(needRenderOps);
             synchronized (renderThread) {
                 needRender = true;
                 if (Thread.State.WAITING == renderThread.getState()) {
@@ -366,12 +247,11 @@ public class DefaultPainter implements IDCPainter, DefaultPaintView.OnMatrixChan
     }
 
 
-    @Override
-    public void OnMatrixChanged(Matrix newMatrix) {
-        synchronized (matrix) {
-            matrix.set(newMatrix);
+    public void onShapePaintViewMatrixChanged(Matrix newMatrix) {
+        synchronized (shapePaintViewMatrix) {
+            shapePaintViewMatrix.set(newMatrix);
         }
-        KLog.p("newMatrix=%s", matrix);
+        KLog.p("newMatrix=%s", shapePaintViewMatrix);
         synchronized (renderThread) {
             needRender = true;
             if (Thread.State.WAITING == renderThread.getState()) {
@@ -380,6 +260,153 @@ public class DefaultPainter implements IDCPainter, DefaultPaintView.OnMatrixChan
             }
         }
     }
+
+    public void onPicPaintViewMatrixChanged(Matrix newMatrix) {
+        synchronized (picPaintViewMatrix) {
+            picPaintViewMatrix.set(newMatrix);
+        }
+        KLog.p("newMatrix=%s", picPaintViewMatrix);
+        synchronized (renderThread) {
+            needRender = true;
+            if (Thread.State.WAITING == renderThread.getState()) {
+                KLog.p(KLog.WARN, "notify");
+                renderThread.notify();
+            }
+        }
+    }
+
+
+    private final Thread renderThread = new Thread("DCRenderThr"+threadCount++){
+        @Override
+        public void run() {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+            DCLineOp lineOp;
+            DCRectOp rectOp;
+            DCOvalOp ovalOp;
+            DCPathOp pathOp;
+            DCEraseOp eraseOp;
+            DCInsertPicOp insertPicOp;
+            Path path = new Path();
+            RectF rect = new RectF();
+            Matrix picMatrix = new Matrix();
+
+            int layer=0;
+
+            while (true){
+                KLog.p("start loop run");
+                if (isInterrupted()){
+                    KLog.p(KLog.WARN, "quit renderThread");
+                    return;
+                }
+
+                synchronized (this) {
+                    try {
+                        if (!needRender) {
+                            KLog.p("waiting...");
+                            wait();
+                            KLog.p("resume run");
+                        }
+                        needRender = false;
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        KLog.p(KLog.WARN, "quit renderThread");
+                        return;
+                    }
+                }
+
+                Canvas canvas = shapePaintView.lockCanvas();  // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
+                if (null == canvas){
+                    KLog.p(KLog.ERROR, "lockCanvas failed");
+                    continue;
+                }
+
+                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
+
+                synchronized (shapePaintViewMatrix){
+                    canvas.setMatrix(shapePaintViewMatrix);
+                }
+//                layer = canvas.saveLayer(null, null);
+//                KLog.p(KLog.WARN, "############shapePaintView.isHWA=%s, cache enabled=%s, canvas=%s, op.size=%s",
+//                        shapePaintView.isHardwareAccelerated(), shapePaintView.isDrawingCacheEnabled(), canvas, shapeOps.size());
+
+                for (DCOp op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
+                    KLog.p("to render %s", op);
+                    switch (op.type){
+                        case DCOp.OP_DRAW_LINE:
+                            lineOp = (DCLineOp) op;
+                            canvas.drawLine(lineOp.startX, lineOp.startY, lineOp.stopX, lineOp.stopY, cfgPaint(lineOp.paintCfg));
+                            break;
+                        case DCOp.OP_DRAW_RECT:
+                            rectOp = (DCRectOp) op;
+                            canvas.drawRect(rectOp.left, rectOp.top, rectOp.right, rectOp.bottom, cfgPaint(rectOp.paintCfg));
+                            break;
+                        case DCOp.OP_DRAW_OVAL:
+                            ovalOp = (DCOvalOp) op;
+                            rect.set(ovalOp.left, ovalOp.top, ovalOp.right, ovalOp.bottom);
+                            canvas.drawOval(rect, cfgPaint(ovalOp.paintCfg));
+                            break;
+                        case DCOp.OP_DRAW_PATH:
+                            pathOp = (DCPathOp) op;
+                            path.reset();
+                            path.moveTo(pathOp.points[0].x, pathOp.points[0].y);
+                            for (PointF point : pathOp.points) {
+                                path.lineTo(point.x, point.y);
+                            }
+                            canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
+                            break;
+                        case DCOp.OP_ERASE:
+                            eraseOp = (DCEraseOp) op;
+                            canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp.paintCfg));
+                            break;
+                        case DCOp.OP_CLEAR_SCREEN:
+                            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+                            break;
+                    }
+
+//                    try {
+//                        KLog.p("sleeping...");
+//                        sleep(1000);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                        KLog.p(KLog.WARN, "quit renderThread");
+//                    }
+
+                }
+
+//                canvas.restoreToCount(layer);
+
+                KLog.p("end of loop run, go render!");
+                shapePaintView.unlockCanvasAndPost(canvas);
+
+
+                Canvas picPaintViewCanvas = picPaintView.lockCanvas();
+                if (null == picPaintViewCanvas){
+                    KLog.p(KLog.ERROR, "lockCanvas failed");
+                    continue;
+                }
+
+                picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
+
+                synchronized (picPaintViewMatrix){
+                    picPaintViewCanvas.setMatrix(picPaintViewMatrix);
+                }
+                for (DCOp op : picOps){
+                    switch (op.type){
+                        case DCOp.OP_INSERT_PICTURE:
+                            insertPicOp = (DCInsertPicOp) op;
+//                            int w = insertPicOp.pic.getWidth();
+//                            int h = insertPicOp.pic.getHeight();
+                            picMatrix.setValues(insertPicOp.matrixValue);
+                            KLog.p("to render %s", op);
+                            picPaintViewCanvas.drawBitmap(insertPicOp.pic, picMatrix, cfgPaint(insertPicOp.paintCfg));
+                            break;
+                    }
+                }
+                picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
+
+            }
+        }
+    };
 
 
 }
