@@ -14,15 +14,15 @@ import android.os.Process;
 import android.view.View;
 
 import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCEraseOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCInsertPicOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCLineOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCMatrixOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCOvalOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCPaintCfg;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCPathOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCRectOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DrawOvalOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DrawRectOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EraseOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.InsertPicOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DrawLineOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.MatrixOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.PaintOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.PaintCfg;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DrawPathOp;
 
 import java.util.PriorityQueue;
 import java.util.Stack;
@@ -40,10 +40,10 @@ public class DefaultPainter implements IPainter {
 
     private Paint paint;
 
-    private ConcurrentLinkedDeque<DCOp> shapeOps; // 图形操作，如画线、画圆、画路径等。NOTE: require API 21
-    private ConcurrentLinkedDeque<DCOp> picOps; // 图片操作，如插入图片、删除图片等。
-    private PriorityQueue<DCOp> batchOps; // 批量操作缓存。批量模式下操作到达的时序可能跟操作的序列号顺序不相符，此处我们使用PriorityQueue来为我们自动排序。
-    private Stack<DCOp> repealedOps;  // 被撤销的操作，缓存以供恢复
+    private ConcurrentLinkedDeque<PaintOp> shapeOps; // 图形操作，如画线、画圆、画路径等。NOTE: require API 21
+    private ConcurrentLinkedDeque<PaintOp> picOps; // 图片操作，如插入图片、删除图片等。
+    private PriorityQueue<PaintOp> batchOps; // 批量操作缓存。批量模式下操作到达的时序可能跟操作的序列号顺序不相符，此处我们使用PriorityQueue来为我们自动排序。
+    private Stack<PaintOp> repealedOps;  // 被撤销的操作，缓存以供恢复
 
     private final Matrix shapePaintViewMatrix = new Matrix();
     private final Matrix picPaintViewMatrix = new Matrix();
@@ -95,7 +95,7 @@ public class DefaultPainter implements IPainter {
     }
 
     @Override
-    public void paint(DCOp op) {
+    public void paint(PaintOp op) {
         KLog.p(KLog.WARN, "op %s",op);
         if (isBatchDrawing) {
             batchOps.offer(op);
@@ -104,10 +104,10 @@ public class DefaultPainter implements IPainter {
 
         /*NOTE: 非batch-draw模式下我们没有检查操作的序列号，平台必须保证给的操作序列号跟实际时序相符，
         即序列号为1的最先到达，2的其次，以此类推，否则绘制会乱序。*/
-        DCOp tmpOp;
+        PaintOp tmpOp;
         boolean dirty = true;
         switch (op.type){
-            case DCOp.OP_REDO:
+            case PaintOp.OP_REDO:
                 if (!repealedOps.empty()) {
                     tmpOp = repealedOps.pop();
                     KLog.p(KLog.WARN, "restore %s",tmpOp);
@@ -116,7 +116,7 @@ public class DefaultPainter implements IPainter {
                     dirty = false;
                 }
                 break;
-            case DCOp.OP_UNDO:
+            case PaintOp.OP_UNDO:
                 tmpOp = shapeOps.pollLast(); // 撤销最近的操作
                 if (null != tmpOp){
                     KLog.p(KLog.WARN, "repeal %s",tmpOp);
@@ -131,13 +131,13 @@ public class DefaultPainter implements IPainter {
                 redo操作前面只能是redo操作或者undo操作），而撤销操作缓存仅供redo操作使用。*/
                 repealedOps.clear();
 
-                if (DCOp.OP_MATRIX == op.type){
+                if (PaintOp.OP_MATRIX == op.type){
                 /* matrix操作不同于普通绘制操作。从它生效开始，
                 它作用于所有之前的以及之后的操作，不受时序的制约，所以需要特殊处理。*/
                     synchronized (shapePaintViewMatrix) {
-                        shapePaintViewMatrix.setValues(((DCMatrixOp) op).matrixValue);
+                        shapePaintViewMatrix.setValues(((MatrixOp) op).matrixValue);
                     }
-                }else if (DCOp.OP_INSERT_PICTURE == op.type){
+                }else if (PaintOp.OP_INSERT_PICTURE == op.type){
                     picOps.offer(op);
                 }else {
                     shapeOps.offer(op);
@@ -167,19 +167,19 @@ public class DefaultPainter implements IPainter {
         }
         KLog.p(KLog.WARN, "-----------------------");
 
-        DCOp op;
+        PaintOp op;
         int redoCnt = 0;
-        ConcurrentLinkedDeque<DCOp> needRenderOps = new ConcurrentLinkedDeque<>();
+        ConcurrentLinkedDeque<PaintOp> needRenderOps = new ConcurrentLinkedDeque<>();
         boolean dirty = true;
         while(!batchOps.isEmpty()){ // 整理批量操作。NOTE: 时序上越近的操作排在队列的越前端。时序上我们是从后往前遍历。
             op = batchOps.poll();
             switch (op.type){
-                case DCOp.OP_REDO:
+                case PaintOp.OP_REDO:
                     ++redoCnt; // redo的作用只有一个就是用来抵消undo，它之前只可能是连续的redo或与之匹配的undo。故此处只做计数，尝试下次遍历与前面的undo抵消。
                     dirty = false;
                     KLog.p(KLog.WARN, "redo, redoCount=%s", redoCnt);
                     break;
-                case DCOp.OP_UNDO:
+                case PaintOp.OP_UNDO:
                     if (0 != redoCnt){
                         --redoCnt; // undo被redo抵消
                         dirty = false;
@@ -196,9 +196,9 @@ public class DefaultPainter implements IPainter {
                     以上情况下redo计数均需清空*/
                     redoCnt = 0;
 
-                    if (DCOp.OP_MATRIX == op.type){
+                    if (PaintOp.OP_MATRIX == op.type){
                         synchronized (shapePaintViewMatrix) {
-                            shapePaintViewMatrix.setValues(((DCMatrixOp) op).matrixValue);
+                            shapePaintViewMatrix.setValues(((MatrixOp) op).matrixValue);
                         }
                     }else {
                         needRenderOps.offerFirst(op); // 倒着入队列，这样时序最早的排在队首，恢复了正常次序。
@@ -230,15 +230,15 @@ public class DefaultPainter implements IPainter {
     private final PorterDuffXfermode DUFFMODE_SRCOVER = new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER);
     private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
     private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
-    private Paint cfgPaint(DCPaintCfg paintInfo){
+    private Paint cfgPaint(PaintCfg paintInfo){
         paint.reset();
-        if (DCPaintCfg.MODE_NORMAL == paintInfo.mode){
+        if (PaintCfg.MODE_NORMAL == paintInfo.mode){
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(paintInfo.strokeWidth);
             paint.setColor(paintInfo.color);
-        }else if (DCPaintCfg.MODE_PICTURE == paintInfo.mode){
+        }else if (PaintCfg.MODE_PICTURE == paintInfo.mode){
             paint.setStyle(Paint.Style.STROKE);
-        }else if (DCPaintCfg.MODE_ERASE == paintInfo.mode){
+        }else if (PaintCfg.MODE_ERASE == paintInfo.mode){
             paint.setStyle(Paint.Style.FILL);
             paint.setXfermode(DUFFMODE_CLEAR);
         }
@@ -292,12 +292,12 @@ public class DefaultPainter implements IPainter {
         @Override
         public void run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-            DCLineOp lineOp;
-            DCRectOp rectOp;
-            DCOvalOp ovalOp;
-            DCPathOp pathOp;
-            DCEraseOp eraseOp;
-            DCInsertPicOp insertPicOp;
+            DrawLineOp lineOp;
+            DrawRectOp rectOp;
+            DrawOvalOp ovalOp;
+            DrawPathOp pathOp;
+            EraseOp eraseOp;
+            InsertPicOp insertPicOp;
             Path path = new Path();
             RectF rect = new RectF();
             Matrix picMatrix = new Matrix();
@@ -341,24 +341,24 @@ public class DefaultPainter implements IPainter {
 //                KLog.p(KLog.WARN, "############shapePaintView.isHWA=%s, cache enabled=%s, canvas=%s, op.size=%s",
 //                        shapePaintView.isHardwareAccelerated(), shapePaintView.isDrawingCacheEnabled(), canvas, shapeOps.size());
 
-                for (DCOp op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
+                for (PaintOp op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
                     KLog.p("to render %s", op);
                     switch (op.type){
-                        case DCOp.OP_DRAW_LINE:
-                            lineOp = (DCLineOp) op;
+                        case PaintOp.OP_DRAW_LINE:
+                            lineOp = (DrawLineOp) op;
                             canvas.drawLine(lineOp.startX, lineOp.startY, lineOp.stopX, lineOp.stopY, cfgPaint(lineOp.paintCfg));
                             break;
-                        case DCOp.OP_DRAW_RECT:
-                            rectOp = (DCRectOp) op;
+                        case PaintOp.OP_DRAW_RECT:
+                            rectOp = (DrawRectOp) op;
                             canvas.drawRect(rectOp.left, rectOp.top, rectOp.right, rectOp.bottom, cfgPaint(rectOp.paintCfg));
                             break;
-                        case DCOp.OP_DRAW_OVAL:
-                            ovalOp = (DCOvalOp) op;
+                        case PaintOp.OP_DRAW_OVAL:
+                            ovalOp = (DrawOvalOp) op;
                             rect.set(ovalOp.left, ovalOp.top, ovalOp.right, ovalOp.bottom);
                             canvas.drawOval(rect, cfgPaint(ovalOp.paintCfg));
                             break;
-                        case DCOp.OP_DRAW_PATH:
-                            pathOp = (DCPathOp) op;
+                        case PaintOp.OP_DRAW_PATH:
+                            pathOp = (DrawPathOp) op;
                             path.reset();
                             path.moveTo(pathOp.points[0].x, pathOp.points[0].y);
                             for (PointF point : pathOp.points) {
@@ -366,11 +366,11 @@ public class DefaultPainter implements IPainter {
                             }
                             canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
                             break;
-                        case DCOp.OP_ERASE:
-                            eraseOp = (DCEraseOp) op;
+                        case PaintOp.OP_ERASE:
+                            eraseOp = (EraseOp) op;
                             canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp.paintCfg));
                             break;
-                        case DCOp.OP_CLEAR_SCREEN:
+                        case PaintOp.OP_CLEAR_SCREEN:
                             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
                             break;
                     }
@@ -403,10 +403,10 @@ public class DefaultPainter implements IPainter {
                 synchronized (picPaintViewMatrix){
                     picPaintViewCanvas.setMatrix(picPaintViewMatrix);
                 }
-                for (DCOp op : picOps){
+                for (PaintOp op : picOps){
                     switch (op.type){
-                        case DCOp.OP_INSERT_PICTURE:
-                            insertPicOp = (DCInsertPicOp) op;
+                        case PaintOp.OP_INSERT_PICTURE:
+                            insertPicOp = (InsertPicOp) op;
 //                            int w = insertPicOp.pic.getWidth();
 //                            int h = insertPicOp.pic.getHeight();
                             picMatrix.setValues(insertPicOp.matrixValue);

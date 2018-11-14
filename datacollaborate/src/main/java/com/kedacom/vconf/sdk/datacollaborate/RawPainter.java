@@ -7,7 +7,7 @@ import android.graphics.drawable.Drawable;
 import android.view.View;
 
 import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.PaintOp;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -52,7 +52,7 @@ public class RawPainter extends View implements IPainter {
 
 
     @Override
-    public void paint(DCOp op) {
+    public void paint(PaintOp op) {
 
         Drawable drawable = Drawable.createFromPath("/data/local/tmp/wb.png");
         setBackground(drawable);
@@ -61,7 +61,7 @@ public class RawPainter extends View implements IPainter {
 
 
 //    @Override
-//    public void drawLine(DCLineOp lineOpInfo) {
+//    public void drawLine(DrawLineOp lineOpInfo) {
 //        KLog.p("drawLine");
 //        LineOp op = new LineOp();
 //        op.x1 = startX; op.y1 = startY;
@@ -73,7 +73,7 @@ public class RawPainter extends View implements IPainter {
 //    }
 //
 //    @Override
-//    public void drawRect(DCRectOp rectOpInfo) {
+//    public void drawRect(DrawRectOp rectOpInfo) {
 //        KLog.p("drawRect");
 //        RectOp op = new RectOp();
 //        op.x1 = left; op.y1 = top;
@@ -84,7 +84,7 @@ public class RawPainter extends View implements IPainter {
 //        invalidate();
 //    }
 //
-//    public void drawOval(DCOvalOp ovalOpInfo) {
+//    public void drawOval(DrawOvalOp ovalOpInfo) {
 //        KLog.p("drawOval");
 //        OvalOp op = new OvalOp();
 //        op.x1 = left; op.y1 = top;
@@ -95,7 +95,7 @@ public class RawPainter extends View implements IPainter {
 //        invalidate();
 //    }
 //
-//    public void drawPath(DCPathOp pathOpInfo) {
+//    public void drawPath(DrawPathOp pathOpInfo) {
 //
 //    }
 //
@@ -103,7 +103,7 @@ public class RawPainter extends View implements IPainter {
 //
 //    }
 //
-//    public void erase(DCEraseOp eraseOpInfo) {
+//    public void erase(EraseOp eraseOpInfo) {
 //
 //    }
 }

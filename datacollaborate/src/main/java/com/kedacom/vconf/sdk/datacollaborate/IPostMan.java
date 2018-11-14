@@ -1,7 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.PaintOp;
 
 interface IPostMan {
-    void post(DCOp op);
+    void post(PaintOp op);
 }

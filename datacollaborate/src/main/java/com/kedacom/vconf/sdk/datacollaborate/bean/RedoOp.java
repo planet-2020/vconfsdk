@@ -1,9 +1,9 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public class DCRedoOp extends DCOp {
+public class RedoOp extends PaintOp {
 //    public boolean done;
-    public DCRedoOp(int sn){
+    public RedoOp(int sn){
         this.sn = sn;
-        type = DCOp.OP_REDO;
+        type = PaintOp.OP_REDO;
     }
 }

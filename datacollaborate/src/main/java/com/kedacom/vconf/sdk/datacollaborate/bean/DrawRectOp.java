@@ -1,18 +1,17 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public class DCOvalOp extends DCOp {
+public class DrawRectOp extends PaintOp {
     public float left;
     public float top;
     public float right;
     public float bottom;
-
-    public DCOvalOp(float left, float top, float right, float bottom, int sn, DCPaintCfg paintCfg){
+    public DrawRectOp(float left, float top, float right, float bottom, int sn, PaintCfg paintCfg){
         this.left = left;
         this.top = top;
         this.right = right;
         this.bottom = bottom;
         this.sn = sn;
         this.paintCfg = paintCfg;
-        type = DCOp.OP_DRAW_OVAL;
+        type = PaintOp.OP_DRAW_RECT;
     }
 }

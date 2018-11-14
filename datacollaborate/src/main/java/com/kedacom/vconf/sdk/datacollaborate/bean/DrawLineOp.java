@@ -1,17 +1,17 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public class DCLineOp extends DCOp {
+public class DrawLineOp extends PaintOp {
     public float startX;
     public float startY;
     public float stopX;
     public float stopY;
-    public DCLineOp(float startX, float startY, float stopX, float stopY, int sn, DCPaintCfg paintCfg){
+    public DrawLineOp(float startX, float startY, float stopX, float stopY, int sn, PaintCfg paintCfg){
         this.startX = startX;
         this.startY = startY;
         this.stopX = stopX;
         this.stopY = stopY;
         this.sn = sn;
         this.paintCfg = paintCfg;
-        type = DCOp.OP_DRAW_LINE;
+        type = PaintOp.OP_DRAW_LINE;
     }
 }

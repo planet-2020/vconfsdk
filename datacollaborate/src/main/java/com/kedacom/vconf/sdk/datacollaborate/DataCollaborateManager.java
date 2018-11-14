@@ -11,18 +11,18 @@ import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.ResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCClearScreenOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCEraseOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCInsertPicOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCLineOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCMatrixOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCOvalOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCPaintCfg;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCPathOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCRectOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCRedoOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCUndoOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.ClearScreenOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DrawLineOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DrawPathOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DrawRectOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EraseOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.InsertPicOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.MatrixOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.PaintCfg;
+import com.kedacom.vconf.sdk.datacollaborate.bean.PaintOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DrawOvalOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.RedoOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.UndoOp;
 
 //import static com.kedacom.vconf.sdk.base.MsgBeans.*; // TODO 使用static import？
 
@@ -46,7 +46,7 @@ public class DataCollaborateManager extends RequestAgent {
 
     private IPostMan postMan = new IPostMan() {
         @Override
-        public void post(DCOp op) {
+        public void post(PaintOp op) {
             // TODO
         }
     };
@@ -172,10 +172,10 @@ public class DataCollaborateManager extends RequestAgent {
             MsgBeans.TDCSWbLine gp = OpInfo.AssParam.tLine;
             KLog.p("line{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
                     gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, gp.dwLineWidth, (int) gp.dwRgb);
-            painter.paint(new DCLineOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-                    commonInfo.dwMsgSequence, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-//            painter.paint(new DCLineOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-//                    1, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
+            painter.paint(new DrawLineOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
+//            painter.paint(new DrawLineOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+//                    1, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
         }
     }
 
@@ -187,10 +187,10 @@ public class DataCollaborateManager extends RequestAgent {
             MsgBeans.TDCSWbCircle gp = opInfo.AssParam.tCircle;
             KLog.p("oval{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
                     gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, gp.dwLineWidth, (int) gp.dwRgb);
-            painter.paint(new DCOvalOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-                    commonInfo.dwMsgSequence, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-//            painter.paint(new DCOvalOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-//                    2, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
+            painter.paint(new DrawOvalOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
+//            painter.paint(new DrawOvalOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+//                    2, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
         }
     }
 
@@ -202,10 +202,10 @@ public class DataCollaborateManager extends RequestAgent {
             MsgBeans.TDCSWbRectangle gp = opInfo.AssParam.tRectangle;
             KLog.p("line{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
                     gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, gp.dwLineWidth, (int) gp.dwRgb);
-            painter.paint(new DCRectOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-                    commonInfo.dwMsgSequence, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-//            painter.paint(new DCRectOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-//                    3, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
+            painter.paint(new DrawRectOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
+//            painter.paint(new DrawRectOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+//                    3, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
         }
     }
 
@@ -225,8 +225,8 @@ public class DataCollaborateManager extends RequestAgent {
                 KLog.p("path.point{%s, %s}", points[i].x, points[i].y);
             }
             KLog.p("path.paint{width=%s, rgb=%s}", gp.dwLineWidth, (int) gp.dwRgb);
-            painter.paint(new DCPathOp(points, commonInfo.dwMsgSequence, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-//            painter.paint(new DCPathOp(points, 6, new DCPaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
+            painter.paint(new DrawPathOp(points, commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
+//            painter.paint(new DrawPathOp(points, 6, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
         }
     }
 
@@ -237,7 +237,7 @@ public class DataCollaborateManager extends RequestAgent {
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
             MsgBeans.TDCSWbInsertPicOperInfo gp = opInfo.AssParam;
 
-            painter.paint(new DCInsertPicOp(BitmapFactory.decodeFile("/data/local/tmp/wb.png"), gp.dwImgWidth, gp.dwImgHeight,
+            painter.paint(new InsertPicOp(BitmapFactory.decodeFile("/data/local/tmp/wb.png"), gp.dwImgWidth, gp.dwImgHeight,
                     gp.tPoint.nPosx, gp.tPoint.nPosy, gp.aachMatrixValue, commonInfo.dwMsgSequence));
         }
     }
@@ -262,7 +262,7 @@ public class DataCollaborateManager extends RequestAgent {
             MsgBeans.DcsOperEraseOperInfo_Ntf opInfo = (MsgBeans.DcsOperEraseOperInfo_Ntf) ntfContent;
             MsgBeans.TDCSWbEraseOperInfo gp = opInfo.AssParam;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            painter.paint(new DCEraseOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, commonInfo.dwMsgSequence));
+            painter.paint(new EraseOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, commonInfo.dwMsgSequence));
         }
     }
 
@@ -272,7 +272,7 @@ public class DataCollaborateManager extends RequestAgent {
             MsgBeans.DcsOperFullScreen_Ntf opInfo = (MsgBeans.DcsOperFullScreen_Ntf) ntfContent;
             MsgBeans.TDCSWbDisPlayInfo gp = opInfo.AssParam;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            painter.paint(new DCMatrixOp(gp.aachMatrixValue, commonInfo.dwMsgSequence));
+            painter.paint(new MatrixOp(gp.aachMatrixValue, commonInfo.dwMsgSequence));
         }
     }
 
@@ -281,8 +281,8 @@ public class DataCollaborateManager extends RequestAgent {
         if (null != painter){
             MsgBeans.DcsOperUndo_Ntf opInfo = (MsgBeans.DcsOperUndo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            painter.paint(new DCUndoOp(commonInfo.dwMsgSequence));
-//            painter.paint(new DCUndoOp(4));
+            painter.paint(new UndoOp(commonInfo.dwMsgSequence));
+//            painter.paint(new UndoOp(4));
         }
     }
 
@@ -291,8 +291,8 @@ public class DataCollaborateManager extends RequestAgent {
         if (null != painter){
             MsgBeans.DcsOperRedo_Ntf opInfo = (MsgBeans.DcsOperRedo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            painter.paint(new DCRedoOp(commonInfo.dwMsgSequence));
-//            painter.paint(new DCRedoOp(5));
+            painter.paint(new RedoOp(commonInfo.dwMsgSequence));
+//            painter.paint(new RedoOp(5));
         }
     }
 
@@ -301,7 +301,7 @@ public class DataCollaborateManager extends RequestAgent {
 //        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         MsgBeans.TDCSOperContent opInfo = (MsgBeans.TDCSOperContent) ntfContent;
         if (null != painter){
-            painter.paint(new DCClearScreenOp(opInfo.dwMsgSequence));
+            painter.paint(new ClearScreenOp(opInfo.dwMsgSequence));
         }
     }
 

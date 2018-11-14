@@ -2,7 +2,7 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.Bitmap;
 
-public class DCInsertPicOp extends DCOp {
+public class InsertPicOp extends PaintOp {
     public Bitmap pic;
     public int picWidth;
     public int picHeight;
@@ -10,7 +10,7 @@ public class DCInsertPicOp extends DCOp {
     public float insertPosY;
     public float[] matrixValue = new float[9];
 
-    public DCInsertPicOp(Bitmap pic, int picWidth, int picHeight, float insertPosX, float insertPosY, String[] matrixValue, int sn){
+    public InsertPicOp(Bitmap pic, int picWidth, int picHeight, float insertPosX, float insertPosY, String[] matrixValue, int sn){
         this.pic = pic;
         this.picWidth = picWidth;
         this.picHeight = picHeight;
@@ -20,7 +20,7 @@ public class DCInsertPicOp extends DCOp {
             this.matrixValue[i] = Float.valueOf(matrixValue[i]);
         }
         this.sn = sn;
-        type = DCOp.OP_INSERT_PICTURE;
-        paintCfg = new DCPaintCfg(DCPaintCfg.MODE_PICTURE);
+        type = PaintOp.OP_INSERT_PICTURE;
+        paintCfg = new PaintCfg(PaintCfg.MODE_PICTURE);
     }
 }

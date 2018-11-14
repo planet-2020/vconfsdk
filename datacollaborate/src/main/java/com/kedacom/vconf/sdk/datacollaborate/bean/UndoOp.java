@@ -1,9 +1,9 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public class DCUndoOp extends DCOp {
+public class UndoOp extends PaintOp {
 //    public boolean done;
-    public DCUndoOp(int sn){
+    public UndoOp(int sn){
         this.sn = sn;
-        type = DCOp.OP_UNDO;
+        type = PaintOp.OP_UNDO;
     }
 }
