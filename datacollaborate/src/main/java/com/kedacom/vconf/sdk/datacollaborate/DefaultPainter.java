@@ -12,7 +12,6 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.os.Process;
 import android.view.View;
-import android.widget.FrameLayout;
 
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCEraseOp;
@@ -29,11 +28,11 @@ import java.util.PriorityQueue;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-public class DefaultPainter implements IDCPainter{
+public class DefaultPainter implements IPainter {
 
     private static final int LOG_LEVEL = KLog.WARN;
 
-    private FrameLayout layout;
+    private int boardId = -1; // TODO 该painter所属的白板ID，由Manager传进来。
 
     private DefaultWhiteBoard whiteBoard;
     private DefaultPaintView shapePaintView;
@@ -54,6 +53,7 @@ public class DefaultPainter implements IDCPainter{
 
     private static int threadCount = 0;
 
+    private IPostMan postMan;
 
 
 
@@ -95,7 +95,7 @@ public class DefaultPainter implements IDCPainter{
     }
 
     @Override
-    public void draw(DCOp op) {
+    public void paint(DCOp op) {
         KLog.p(KLog.WARN, "op %s",op);
         if (isBatchDrawing) {
             batchOps.offer(op);
@@ -246,6 +246,10 @@ public class DefaultPainter implements IDCPainter{
         return paint;
     }
 
+    void setPostMan(IPostMan postMan){
+        this.postMan = postMan;
+    }
+
 
     public void onShapePaintViewMatrixChanged(Matrix newMatrix) {
         synchronized (shapePaintViewMatrix) {
@@ -258,6 +262,10 @@ public class DefaultPainter implements IDCPainter{
                 KLog.p(KLog.WARN, "notify");
                 renderThread.notify();
             }
+        }
+
+        if (null != postMan){
+//            postMan.post(); TODO
         }
     }
 
@@ -272,6 +280,10 @@ public class DefaultPainter implements IDCPainter{
                 KLog.p(KLog.WARN, "notify");
                 renderThread.notify();
             }
+        }
+
+        if (null != postMan){
+//            postMan.post(); TODO
         }
     }
 

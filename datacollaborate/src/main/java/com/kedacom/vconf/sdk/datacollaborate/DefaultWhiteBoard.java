@@ -15,6 +15,7 @@ public class DefaultWhiteBoard extends FrameLayout {
     private DefaultPaintView picPaintView;
     private DefaultPaintView shapePaintView;
 
+    public static final int LAYER_NONE = 0;
     public static final int LAYER_PIC = 1;
     public static final int LAYER_SHAPE = 2;
     public static final int LAYER_ALL = 3;
@@ -38,7 +39,9 @@ public class DefaultWhiteBoard extends FrameLayout {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (LAYER_SHAPE == focusedLayer){
+        if (LAYER_NONE == focusedLayer){
+            return true;
+        }else if (LAYER_SHAPE == focusedLayer){
             return shapePaintView.dispatchTouchEvent(ev);
         }else if (LAYER_PIC == focusedLayer){
             return picPaintView.dispatchTouchEvent(ev);
@@ -60,7 +63,7 @@ public class DefaultWhiteBoard extends FrameLayout {
     }
 
     void focusLayer(int layer){
-        if (1<=layer && layer<=3){
+        if (LAYER_NONE<=layer && layer<=LAYER_ALL){
             focusedLayer = layer;
         }
     }

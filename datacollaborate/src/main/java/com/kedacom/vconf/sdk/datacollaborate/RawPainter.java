@@ -3,23 +3,16 @@ package com.kedacom.vconf.sdk.datacollaborate;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.view.View;
 
 import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCEraseOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCImageOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCLineOp;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCOvalOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCPathOp;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCRectOp;
 
 import java.util.HashSet;
 import java.util.Set;
 
-public class RawPainter extends View implements IDCPainter {
+public class RawPainter extends View implements IPainter {
 
     Set<Object> ops = new HashSet<>();
     Paint paint = new Paint();
@@ -59,7 +52,7 @@ public class RawPainter extends View implements IDCPainter {
 
 
     @Override
-    public void draw(DCOp op) {
+    public void paint(DCOp op) {
 
         Drawable drawable = Drawable.createFromPath("/data/local/tmp/wb.png");
         setBackground(drawable);

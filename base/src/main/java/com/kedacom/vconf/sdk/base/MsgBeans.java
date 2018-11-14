@@ -275,8 +275,8 @@ public final class MsgBeans {
         public boolean     	bSucces;
         public int			dwErrorCode;
         public String		achConfE164;
-        public String  		achTabId; // ???
-        public int			dwPageId; // ???
+        public String  		achTabId;
+        public int			dwPageId;
     }
 
     public static final class DCSGetAllWhiteBoardRsp{
