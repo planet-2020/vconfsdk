@@ -376,12 +376,13 @@ public class DefaultPainter implements IDCPainter{
 //                canvas.restoreToCount(layer);
 
                 KLog.p("end of loop run, go render!");
-                shapePaintView.unlockCanvasAndPost(canvas);
+//                shapePaintView.unlockCanvasAndPost(canvas);
 
 
                 Canvas picPaintViewCanvas = picPaintView.lockCanvas();
                 if (null == picPaintViewCanvas){
                     KLog.p(KLog.ERROR, "lockCanvas failed");
+                    shapePaintView.unlockCanvasAndPost(canvas);
                     continue;
                 }
 
@@ -402,6 +403,10 @@ public class DefaultPainter implements IDCPainter{
                             break;
                     }
                 }
+
+
+                shapePaintView.unlockCanvasAndPost(canvas);
+
                 picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
 
             }
