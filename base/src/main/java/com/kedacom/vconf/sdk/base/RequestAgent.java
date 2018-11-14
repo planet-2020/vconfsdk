@@ -53,22 +53,44 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         if (null == rspProcessorMap){
             rspProcessorMap = new HashMap<>();
         }
-        ntfProcessorMap = ntfProcessors();
+
+        Map<Msg, NtfProcessor> ntfProcessorMap = ntfProcessors();
+        String ntfName;
         if (null != ntfProcessorMap){
-            String ntfName;
             for (Msg ntf : ntfProcessorMap.keySet()){
                 ntfName = ntf.name();
                 witch.subscribe(ntfName);
                 ntfListeners.put(ntfName, new HashSet<>());
             }
-        }else{
-            ntfProcessorMap = new HashMap<>();
+            this.ntfProcessorMap = ntfProcessorMap;
+        }
+
+        Map<Msg[], NtfProcessor> ntfsProcessorMap = ntfsProcessors();
+        if (null != ntfsProcessorMap){
+            if (null == this.ntfProcessorMap){
+                this.ntfProcessorMap = new HashMap<>();
+            }
+            NtfProcessor ntfProcessor;
+            for (Msg[] ntfs : ntfsProcessorMap.keySet()){
+                ntfProcessor = ntfsProcessorMap.get(ntfs);
+                for (Msg ntf : ntfs){
+                    this.ntfProcessorMap.put(ntf, ntfProcessor);
+                    ntfName = ntf.name();
+                    witch.subscribe(ntfName);
+                    ntfListeners.put(ntfName, new HashSet<>());
+                }
+            }
+        }
+
+        if (null == this.ntfProcessorMap){
+            this.ntfProcessorMap = new HashMap<>();
         }
     }
 
 
-    protected abstract Map<Msg, RspProcessor> rspProcessors();
-    protected abstract Map<Msg, NtfProcessor> ntfProcessors();
+    protected Map<Msg, RspProcessor> rspProcessors(){return null;}
+    protected Map<Msg, NtfProcessor> ntfProcessors(){return null;}
+    protected Map<Msg[], NtfProcessor> ntfsProcessors(){return null;}
 
     protected interface RspProcessor{
         void process(Msg rspId, Object rspContent, IResultListener listener);

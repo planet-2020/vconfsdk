@@ -60,28 +60,53 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     @Override
-    protected Map<Msg, NtfProcessor> ntfProcessors() {
-        Map<Msg, NtfProcessor> processorMap = new HashMap<>();
-        processorMap.put(Msg.DcsCurrentWhiteBoard_Ntf, this::onCurrentWhiteBoardNtf);
-        processorMap.put(Msg.DcsNewWhiteBoard_Ntf, this::onNewWhiteBoardNtf);
-        processorMap.put(Msg.DcsSwitch_Ntf, this::onSwitchWhiteBoardNtf);
-        processorMap.put(Msg.DcsElementOperBegin_Ntf, this::onBatchOpBeginNtf);
-        processorMap.put(Msg.DcsOperLineOperInfo_Ntf, this::onLineOpNtf);
-        processorMap.put(Msg.DcsOperCircleOperInfo_Ntf, this::onCircleOpNtf);
-        processorMap.put(Msg.DcsOperRectangleOperInfo_Ntf, this::onRectangleOpNtf);
-        processorMap.put(Msg.DcsOperPencilOperInfo_Ntf, this::onPencilOpNtf);
-        processorMap.put(Msg.DcsOperInsertPic_Ntf, this::onInsertPicNtf);
-        processorMap.put(Msg.DcsOperPitchPicDrag_Ntf, this::onPitchPicNtf);
-        processorMap.put(Msg.DcsOperPitchPicDel_Ntf, this::onDelPicNtf);
-        processorMap.put(Msg.DcsOperEraseOperInfo_Ntf, this::onEraseNtf);
-        processorMap.put(Msg.DcsOperFullScreen_Ntf, this::onMatrixNtf);
-        processorMap.put(Msg.DcsOperUndo_Ntf, this::onUndoNtf);
-        processorMap.put(Msg.DcsOperRedo_Ntf, this::onRedoNtf);
-        processorMap.put(Msg.DcsOperClearScreen_Ntf, this::onClearScreenNtf);
-        processorMap.put(Msg.DcsElementOperFinal_Ntf, this::onBatchOpFinNtf);
-
+    protected Map<Msg[], NtfProcessor> ntfsProcessors() {
+        Map<Msg[], NtfProcessor> processorMap = new HashMap<>();
+        processorMap.put(new Msg[]{
+                Msg.DcsCurrentWhiteBoard_Ntf,
+                Msg.DcsNewWhiteBoard_Ntf,
+                Msg.DcsSwitch_Ntf,
+                Msg.DcsElementOperBegin_Ntf,
+                Msg.DcsOperLineOperInfo_Ntf,
+                Msg.DcsOperCircleOperInfo_Ntf,
+                Msg.DcsOperRectangleOperInfo_Ntf,
+                Msg.DcsOperPencilOperInfo_Ntf,
+                Msg.DcsOperInsertPic_Ntf,
+                Msg.DcsOperPitchPicDrag_Ntf,
+                Msg.DcsOperPitchPicDel_Ntf,
+                Msg.DcsOperEraseOperInfo_Ntf,
+                Msg.DcsOperFullScreen_Ntf,
+                Msg.DcsOperUndo_Ntf,
+                Msg.DcsOperRedo_Ntf,
+                Msg.DcsOperClearScreen_Ntf,
+                Msg.DcsElementOperFinal_Ntf,
+        }, this::onNtf);
         return processorMap;
     }
+
+//    @Override
+//    protected Map<Msg, NtfProcessor> ntfProcessors() {
+//        Map<Msg, NtfProcessor> processorMap = new HashMap<>();
+//        processorMap.put(Msg.DcsCurrentWhiteBoard_Ntf, this::onCurrentWhiteBoardNtf);
+//        processorMap.put(Msg.DcsNewWhiteBoard_Ntf, this::onNewWhiteBoardNtf);
+//        processorMap.put(Msg.DcsSwitch_Ntf, this::onSwitchWhiteBoardNtf);
+//        processorMap.put(Msg.DcsElementOperBegin_Ntf, this::onBatchOpBeginNtf);
+//        processorMap.put(Msg.DcsOperLineOperInfo_Ntf, this::onLineOpNtf);
+//        processorMap.put(Msg.DcsOperCircleOperInfo_Ntf, this::onCircleOpNtf);
+//        processorMap.put(Msg.DcsOperRectangleOperInfo_Ntf, this::onRectangleOpNtf);
+//        processorMap.put(Msg.DcsOperPencilOperInfo_Ntf, this::onPencilOpNtf);
+//        processorMap.put(Msg.DcsOperInsertPic_Ntf, this::onInsertPicNtf);
+//        processorMap.put(Msg.DcsOperPitchPicDrag_Ntf, this::onPitchPicNtf);
+//        processorMap.put(Msg.DcsOperPitchPicDel_Ntf, this::onDelPicNtf);
+//        processorMap.put(Msg.DcsOperEraseOperInfo_Ntf, this::onEraseNtf);
+//        processorMap.put(Msg.DcsOperFullScreen_Ntf, this::onMatrixNtf);
+//        processorMap.put(Msg.DcsOperUndo_Ntf, this::onUndoNtf);
+//        processorMap.put(Msg.DcsOperRedo_Ntf, this::onRedoNtf);
+//        processorMap.put(Msg.DcsOperClearScreen_Ntf, this::onClearScreenNtf);
+//        processorMap.put(Msg.DcsElementOperFinal_Ntf, this::onBatchOpFinNtf);
+//
+//        return processorMap;
+//    }
 
 
     public void setPainter(IPainter painter){
@@ -137,6 +162,11 @@ public class DataCollaborateManager extends RequestAgent {
                 }
             }
         }
+    }
+
+
+    private void onNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
+        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
     }
 
     private void onCurrentWhiteBoardNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
