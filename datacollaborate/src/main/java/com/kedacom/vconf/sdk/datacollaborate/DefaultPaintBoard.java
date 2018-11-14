@@ -11,7 +11,7 @@ import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-public class DefaultWhiteBoard extends FrameLayout {
+public class DefaultPaintBoard extends FrameLayout {
     private DefaultPaintView picPaintView;
     private DefaultPaintView shapePaintView;
 
@@ -21,11 +21,11 @@ public class DefaultWhiteBoard extends FrameLayout {
     public static final int LAYER_ALL = 3;
     private int focusedLayer = LAYER_ALL;
 
-    public DefaultWhiteBoard(@NonNull Context context) {
+    public DefaultPaintBoard(@NonNull Context context) {
         this(context, null);
     }
 
-    public DefaultWhiteBoard(@NonNull Context context, @Nullable AttributeSet attrs) {
+    public DefaultPaintBoard(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         View whiteBoard = layoutInflater.inflate(R.layout.default_whiteboard_layout, this);

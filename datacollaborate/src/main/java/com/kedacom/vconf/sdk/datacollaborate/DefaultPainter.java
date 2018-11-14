@@ -34,7 +34,7 @@ public class DefaultPainter implements IPainter {
 
     private int boardId = -1; // TODO 该painter所属的白板ID，由Manager传进来。
 
-    private DefaultWhiteBoard whiteBoard;
+    private DefaultPaintBoard whiteBoard;
     private DefaultPaintView shapePaintView;
     private DefaultPaintView picPaintView;
 
@@ -66,7 +66,7 @@ public class DefaultPainter implements IPainter {
 
         paint = new Paint();
 
-        whiteBoard = new DefaultWhiteBoard(context);
+        whiteBoard = new DefaultPaintBoard(context);
         picPaintView = whiteBoard.getPicPaintView();
         picPaintView.setOnMatrixChangedListener(this::onPicPaintViewMatrixChanged);
         shapePaintView = whiteBoard.getShapePaintView();
@@ -425,5 +425,13 @@ public class DefaultPainter implements IPainter {
         }
     };
 
+
+    public View getPaintBoard(int boardId){
+        return null;
+    }
+
+    public View delPaintBoard(int boardId){
+        return null;
+    }
 
 }
