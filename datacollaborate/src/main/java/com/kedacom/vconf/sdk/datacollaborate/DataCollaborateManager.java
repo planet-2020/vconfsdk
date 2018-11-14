@@ -28,6 +28,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.UndoOp;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 
 public class DataCollaborateManager extends RequestAgent {
@@ -43,6 +44,9 @@ public class DataCollaborateManager extends RequestAgent {
     public static final int Terminal_Other = 8; // 其他终端
 
     private IPainter painter;
+
+    private boolean isBatchDrawing = false;
+    private PriorityQueue<PaintOp> batchOps = new PriorityQueue<>(); // 批量操作缓存。批量模式下操作到达的时序可能跟操作的序列号顺序不相符，此处我们使用PriorityQueue来为我们自动排序。
 
     private IPostMan postMan = new IPostMan() {
         @Override
@@ -66,6 +70,8 @@ public class DataCollaborateManager extends RequestAgent {
                 Msg.DcsCurrentWhiteBoard_Ntf,
                 Msg.DcsNewWhiteBoard_Ntf,
                 Msg.DcsSwitch_Ntf,
+        }, this::onControlNtfs);
+        processorMap.put(new Msg[]{
                 Msg.DcsElementOperBegin_Ntf,
                 Msg.DcsOperLineOperInfo_Ntf,
                 Msg.DcsOperCircleOperInfo_Ntf,
@@ -80,33 +86,10 @@ public class DataCollaborateManager extends RequestAgent {
                 Msg.DcsOperRedo_Ntf,
                 Msg.DcsOperClearScreen_Ntf,
                 Msg.DcsElementOperFinal_Ntf,
-        }, this::onNtf);
+        }, this::onPaintNtfs);
+
         return processorMap;
     }
-
-//    @Override
-//    protected Map<Msg, NtfProcessor> ntfProcessors() {
-//        Map<Msg, NtfProcessor> processorMap = new HashMap<>();
-//        processorMap.put(Msg.DcsCurrentWhiteBoard_Ntf, this::onCurrentWhiteBoardNtf);
-//        processorMap.put(Msg.DcsNewWhiteBoard_Ntf, this::onNewWhiteBoardNtf);
-//        processorMap.put(Msg.DcsSwitch_Ntf, this::onSwitchWhiteBoardNtf);
-//        processorMap.put(Msg.DcsElementOperBegin_Ntf, this::onBatchOpBeginNtf);
-//        processorMap.put(Msg.DcsOperLineOperInfo_Ntf, this::onLineOpNtf);
-//        processorMap.put(Msg.DcsOperCircleOperInfo_Ntf, this::onCircleOpNtf);
-//        processorMap.put(Msg.DcsOperRectangleOperInfo_Ntf, this::onRectangleOpNtf);
-//        processorMap.put(Msg.DcsOperPencilOperInfo_Ntf, this::onPencilOpNtf);
-//        processorMap.put(Msg.DcsOperInsertPic_Ntf, this::onInsertPicNtf);
-//        processorMap.put(Msg.DcsOperPitchPicDrag_Ntf, this::onPitchPicNtf);
-//        processorMap.put(Msg.DcsOperPitchPicDel_Ntf, this::onDelPicNtf);
-//        processorMap.put(Msg.DcsOperEraseOperInfo_Ntf, this::onEraseNtf);
-//        processorMap.put(Msg.DcsOperFullScreen_Ntf, this::onMatrixNtf);
-//        processorMap.put(Msg.DcsOperUndo_Ntf, this::onUndoNtf);
-//        processorMap.put(Msg.DcsOperRedo_Ntf, this::onRedoNtf);
-//        processorMap.put(Msg.DcsOperClearScreen_Ntf, this::onClearScreenNtf);
-//        processorMap.put(Msg.DcsElementOperFinal_Ntf, this::onBatchOpFinNtf);
-//
-//        return processorMap;
-//    }
 
 
     public void setPainter(IPainter painter){
@@ -164,9 +147,113 @@ public class DataCollaborateManager extends RequestAgent {
         }
     }
 
-
-    private void onNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
+    private void onControlNtfs(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+        if (Msg.DcsCurrentWhiteBoard_Ntf.equals(ntfId)){
+
+        }else if (Msg.DcsNewWhiteBoard_Ntf.equals(ntfId)){
+
+        }else if (Msg.DcsSwitch_Ntf.equals(ntfId)){
+
+        }
+    }
+
+    private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
+        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+        if (null == painter){
+            return;
+        }
+
+        PaintOp paintOp = null;
+        if (Msg.DcsElementOperBegin_Ntf.equals(ntfId)){
+            if (isBatchDrawing){
+                return;
+            }
+            KLog.p("batch paint start >>>>>>>>>>>>>>>>>>>>>>");
+            batchOps.clear();
+            isBatchDrawing = true;
+            // TODO 起定时器，防止fin消息不到。
+            return;
+        }else if (Msg.DcsOperLineOperInfo_Ntf.equals(ntfId)){
+            MsgBeans.DcsOperLineOperInfo_Ntf OpInfo = (MsgBeans.DcsOperLineOperInfo_Ntf) ntfContent;
+            MsgBeans.TDCSOperContent commonInfo = OpInfo.MainParam;
+            MsgBeans.TDCSWbLine gp = OpInfo.AssParam.tLine;
+            paintOp = new DrawLineOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb));
+        }else if (Msg.DcsOperCircleOperInfo_Ntf.equals(ntfId)){
+            MsgBeans.DcsOperCircleOperInfo_Ntf opInfo = (MsgBeans.DcsOperCircleOperInfo_Ntf) ntfContent;
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            MsgBeans.TDCSWbCircle gp = opInfo.AssParam.tCircle;
+            paintOp = new DrawOvalOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb));
+        }else if (Msg.DcsOperRectangleOperInfo_Ntf.equals(ntfId)){
+            MsgBeans.DcsOperRectangleOperInfo_Ntf opInfo = (MsgBeans.DcsOperRectangleOperInfo_Ntf) ntfContent;
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            MsgBeans.TDCSWbRectangle gp = opInfo.AssParam.tRectangle;
+            paintOp = new DrawRectOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
+                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb));
+        }else if (Msg.DcsOperPencilOperInfo_Ntf.equals(ntfId)){
+            MsgBeans.DcsOperPencilOperInfo_Ntf opInfo = (MsgBeans.DcsOperPencilOperInfo_Ntf) ntfContent;
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            MsgBeans.TDCSWbPencil gp = opInfo.AssParam.tPencil;
+            MsgBeans.TDCSWbPoint[] pl = gp.atPList;
+            PointF[] points = new PointF[pl.length];
+            if (0 == points.length){
+                return;
+            }
+            for (int i=0; i<points.length; ++i){
+                points[i] = new PointF(pl[i].nPosx, pl[i].nPosy);
+            }
+            paintOp = new DrawPathOp(points, commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb));
+        }else if (Msg.DcsOperInsertPic_Ntf.equals(ntfId)){
+            MsgBeans.DcsOperInsertPic_Ntf opInfo = (MsgBeans.DcsOperInsertPic_Ntf) ntfContent;
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            MsgBeans.TDCSWbInsertPicOperInfo gp = opInfo.AssParam;
+            paintOp = new InsertPicOp(BitmapFactory.decodeFile("/data/local/tmp/wb.png"), gp.dwImgWidth, gp.dwImgHeight,
+                    gp.tPoint.nPosx, gp.tPoint.nPosy, gp.aachMatrixValue, commonInfo.dwMsgSequence);
+        }else if (Msg.DcsOperPitchPicDrag_Ntf.equals(ntfId)){
+            paintOp = null;
+        }else if (Msg.DcsOperPitchPicDel_Ntf.equals(ntfId)){
+            paintOp = null;
+        }else if (Msg.DcsOperEraseOperInfo_Ntf.equals(ntfId)){
+            MsgBeans.DcsOperEraseOperInfo_Ntf opInfo = (MsgBeans.DcsOperEraseOperInfo_Ntf) ntfContent;
+            MsgBeans.TDCSWbEraseOperInfo gp = opInfo.AssParam;
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            paintOp = new EraseOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, commonInfo.dwMsgSequence);
+        }else if (Msg.DcsOperFullScreen_Ntf.equals(ntfId)){
+            MsgBeans.DcsOperFullScreen_Ntf opInfo = (MsgBeans.DcsOperFullScreen_Ntf) ntfContent;
+            MsgBeans.TDCSWbDisPlayInfo gp = opInfo.AssParam;
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            paintOp = new MatrixOp(gp.aachMatrixValue, commonInfo.dwMsgSequence);
+        }else if (Msg.DcsOperUndo_Ntf.equals(ntfId)){
+            MsgBeans.DcsOperUndo_Ntf opInfo = (MsgBeans.DcsOperUndo_Ntf) ntfContent;
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            paintOp = new UndoOp(commonInfo.dwMsgSequence);
+        }else if (Msg.DcsOperRedo_Ntf.equals(ntfId)){
+            MsgBeans.DcsOperRedo_Ntf opInfo = (MsgBeans.DcsOperRedo_Ntf) ntfContent;
+            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+            paintOp = new RedoOp(commonInfo.dwMsgSequence);
+        }else if (Msg.DcsOperClearScreen_Ntf.equals(ntfId)){
+            MsgBeans.TDCSOperContent opInfo = (MsgBeans.TDCSOperContent) ntfContent;
+            paintOp = new ClearScreenOp(opInfo.dwMsgSequence);
+        }else if (Msg.DcsElementOperFinal_Ntf.equals(ntfId)){
+            if (!isBatchDrawing) {
+                return;
+            }
+            isBatchDrawing = false;
+            while(!batchOps.isEmpty()){
+                painter.paint(batchOps.poll());
+            }
+            KLog.p(KLog.WARN, "batch paint stop <<<<<<<<<<<<<<<<<<<<<<<");
+            return;
+        }
+
+        if (isBatchDrawing){
+            batchOps.offer(paintOp);
+        }else{
+            if (null != paintOp)
+                painter.paint(paintOp);
+        }
     }
 
     private void onCurrentWhiteBoardNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){

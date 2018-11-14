@@ -22,7 +22,7 @@ public abstract class PaintOp implements Comparable<PaintOp>{
 
     @Override
     public int compareTo(PaintOp o) {
-        if (sn>o.sn){
+        if (sn<o.sn){
             return -1;
         }else if (sn == o.sn){
             return 0;
