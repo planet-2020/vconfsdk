@@ -34,44 +34,22 @@ public class DefaultPainter implements IPainter {
     private static final int LOG_LEVEL = KLog.WARN;
 
     private Context context;
-//    private DefaultPaintBoard whiteBoard;
-//    private DefaultPaintView shapePaintView;
-//    private DefaultPaintView picPaintView;
 
     private Map<String, DefaultPaintBoard> paintBoards = new HashMap<>();
-
+    private String curBoardId;
     private Paint paint = new Paint();
-
-//    private ConcurrentLinkedDeque<PaintOp> shapeOps; // 图形操作，如画线、画圆、画路径等。NOTE: require API 21
-//    private ConcurrentLinkedDeque<PaintOp> picOps; // 图片操作，如插入图片、删除图片等。
-//    private Stack<PaintOp> repealedShapeOps;  // 被撤销的图形操作，缓存以供恢复。NOTE: 图片操作暂时不支持撤销。
+    private boolean needRender = false;
 
     private final Matrix shapePaintViewMatrix = new Matrix();
     private final Matrix picPaintViewMatrix = new Matrix();
-
-    private boolean needRender = false;
 
     private static int threadCount = 0;
 
     private IPostMan postMan;
 
-    private String curBoardId;
-
 
     public DefaultPainter(Context context) {
         this.context = context;
-//        shapeOps = new ConcurrentLinkedDeque<>();  // XXX 限定容量？
-//        picOps = new ConcurrentLinkedDeque<>();  // XXX 限定容量？
-//        repealedShapeOps = new Stack<>();
-
-//        paint = new Paint();
-
-//        whiteBoard = new DefaultPaintBoard(context);
-//        picPaintView = whiteBoard.getPicPaintView();
-//        picPaintView.setOnMatrixChangedListener(this::onPicPaintViewMatrixChanged);
-//        shapePaintView = whiteBoard.getShapePaintView();
-//        shapePaintView.setOnMatrixChangedListener(this::onShapePaintViewMatrixChanged);
-
         renderThread.start();
     }
 
