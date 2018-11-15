@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.graphics.BitmapFactory;
 import android.graphics.PointF;
+import android.os.Handler;
 
 import com.kedacom.vconf.sdk.base.INotificationListener;
 import com.kedacom.vconf.sdk.base.IResultListener;
@@ -158,6 +159,18 @@ public class DataCollaborateManager extends RequestAgent {
         }
     }
 
+    private Handler handler = new Handler();
+    private final Runnable batchOpTimeout = () -> {
+        KLog.p(KLog.WARN,"wait batch paint ops timeout <<<<<<<<<<<<<<<<<<<<<<<");
+        if (null != painter){
+            while(!batchOps.isEmpty()){
+                painter.paint(batchOps.poll());
+            }
+        }else{
+            batchOps.clear();
+        }
+        isBatchDrawing = false;
+    };
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (null == painter){
@@ -169,10 +182,9 @@ public class DataCollaborateManager extends RequestAgent {
             if (isBatchDrawing){
                 return;
             }
-            KLog.p("batch paint start >>>>>>>>>>>>>>>>>>>>>>");
-            batchOps.clear();
+            KLog.p("batch paint ops >>>>>>>>>>>>>>>>>>>>>>");
             isBatchDrawing = true;
-            // TODO 起定时器，防止fin消息不到。
+            handler.postDelayed(batchOpTimeout, 5000); // 起定时器防止final消息不到。
             return;
         }else if (Msg.DcsOperLineOperInfo_Ntf.equals(ntfId)){
             MsgBeans.DcsOperLineOperInfo_Ntf OpInfo = (MsgBeans.DcsOperLineOperInfo_Ntf) ntfContent;
@@ -240,11 +252,12 @@ public class DataCollaborateManager extends RequestAgent {
             if (!isBatchDrawing) {
                 return;
             }
-            isBatchDrawing = false;
+            KLog.p("batch paint ops <<<<<<<<<<<<<<<<<<<<<<<");
+            handler.removeCallbacks(batchOpTimeout);
             while(!batchOps.isEmpty()){
                 painter.paint(batchOps.poll());
             }
-            KLog.p(KLog.WARN, "batch paint stop <<<<<<<<<<<<<<<<<<<<<<<");
+            isBatchDrawing = false;
             return;
         }
 
@@ -255,183 +268,6 @@ public class DataCollaborateManager extends RequestAgent {
                 painter.paint(paintOp);
         }
     }
-
-    private void onCurrentWhiteBoardNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-    }
-
-    private void onNewWhiteBoardNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
-        }
-    }
-
-    private void onSwitchWhiteBoardNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
-        }
-    }
-
-    private void onBatchOpBeginNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (null != painter){
-            painter.startBatchDraw();  //TODO: 起个定时器，防止后面finish消息丢失。
-        }
-    }
-
-    private void onLineOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (null != painter){
-            MsgBeans.DcsOperLineOperInfo_Ntf OpInfo = (MsgBeans.DcsOperLineOperInfo_Ntf) ntfContent;
-            MsgBeans.TDCSOperContent commonInfo = OpInfo.MainParam;
-            MsgBeans.TDCSWbLine gp = OpInfo.AssParam.tLine;
-            KLog.p("line{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
-                    gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, gp.dwLineWidth, (int) gp.dwRgb);
-            painter.paint(new DrawLineOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-//            painter.paint(new DrawLineOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-//                    1, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-        }
-    }
-
-    private void onCircleOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (null != painter){
-            MsgBeans.DcsOperCircleOperInfo_Ntf opInfo = (MsgBeans.DcsOperCircleOperInfo_Ntf) ntfContent;
-            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            MsgBeans.TDCSWbCircle gp = opInfo.AssParam.tCircle;
-            KLog.p("oval{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
-                    gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, gp.dwLineWidth, (int) gp.dwRgb);
-            painter.paint(new DrawOvalOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-//            painter.paint(new DrawOvalOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-//                    2, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-        }
-    }
-
-    private void onRectangleOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (null != painter){
-            MsgBeans.DcsOperRectangleOperInfo_Ntf opInfo = (MsgBeans.DcsOperRectangleOperInfo_Ntf) ntfContent;
-            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            MsgBeans.TDCSWbRectangle gp = opInfo.AssParam.tRectangle;
-            KLog.p("line{left=%s, top=%s, right=%s, bottom=%s}, paint{width=%s, rgb=%s}",
-                    gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, gp.dwLineWidth, (int) gp.dwRgb);
-            painter.paint(new DrawRectOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-//            painter.paint(new DrawRectOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-//                    3, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-        }
-    }
-
-    private void onPencilOpNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (null != painter){
-            MsgBeans.DcsOperPencilOperInfo_Ntf opInfo = (MsgBeans.DcsOperPencilOperInfo_Ntf) ntfContent;
-            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            MsgBeans.TDCSWbPencil gp = opInfo.AssParam.tPencil;
-            MsgBeans.TDCSWbPoint[] pl = gp.atPList;
-            PointF[] points = new PointF[pl.length];
-            if (0 == points.length){
-                return;
-            }
-            for (int i=0; i<points.length; ++i){
-                points[i] = new PointF(pl[i].nPosx, pl[i].nPosy);
-                KLog.p("path.point{%s, %s}", points[i].x, points[i].y);
-            }
-            KLog.p("path.paint{width=%s, rgb=%s}", gp.dwLineWidth, (int) gp.dwRgb);
-            painter.paint(new DrawPathOp(points, commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-//            painter.paint(new DrawPathOp(points, 6, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb)));
-        }
-    }
-
-    private void onInsertPicNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (null != painter){
-            MsgBeans.DcsOperInsertPic_Ntf opInfo = (MsgBeans.DcsOperInsertPic_Ntf) ntfContent;
-            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            MsgBeans.TDCSWbInsertPicOperInfo gp = opInfo.AssParam;
-
-            painter.paint(new InsertPicOp(BitmapFactory.decodeFile("/data/local/tmp/wb.png"), gp.dwImgWidth, gp.dwImgHeight,
-                    gp.tPoint.nPosx, gp.tPoint.nPosy, gp.aachMatrixValue, commonInfo.dwMsgSequence));
-        }
-    }
-
-    private void onPitchPicNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
-        }
-    }
-
-    private void onDelPicNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            listener.onNotification(ntfContent);
-        }
-    }
-
-    private void onEraseNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (null != painter){
-            MsgBeans.DcsOperEraseOperInfo_Ntf opInfo = (MsgBeans.DcsOperEraseOperInfo_Ntf) ntfContent;
-            MsgBeans.TDCSWbEraseOperInfo gp = opInfo.AssParam;
-            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            painter.paint(new EraseOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, commonInfo.dwMsgSequence));
-        }
-    }
-
-    private void onMatrixNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (null != painter){
-            MsgBeans.DcsOperFullScreen_Ntf opInfo = (MsgBeans.DcsOperFullScreen_Ntf) ntfContent;
-            MsgBeans.TDCSWbDisPlayInfo gp = opInfo.AssParam;
-            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            painter.paint(new MatrixOp(gp.aachMatrixValue, commonInfo.dwMsgSequence));
-        }
-    }
-
-    private void onUndoNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (null != painter){
-            MsgBeans.DcsOperUndo_Ntf opInfo = (MsgBeans.DcsOperUndo_Ntf) ntfContent;
-            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            painter.paint(new UndoOp(commonInfo.dwMsgSequence));
-//            painter.paint(new UndoOp(4));
-        }
-    }
-
-    private void onRedoNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (null != painter){
-            MsgBeans.DcsOperRedo_Ntf opInfo = (MsgBeans.DcsOperRedo_Ntf) ntfContent;
-            MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            painter.paint(new RedoOp(commonInfo.dwMsgSequence));
-//            painter.paint(new RedoOp(5));
-        }
-    }
-
-
-    private void onClearScreenNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        MsgBeans.TDCSOperContent opInfo = (MsgBeans.TDCSOperContent) ntfContent;
-        if (null != painter){
-            painter.paint(new ClearScreenOp(opInfo.dwMsgSequence));
-        }
-    }
-
-
-    private void onBatchOpFinNtf(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
-//        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (null != painter){
-            painter.finishBatchDraw();
-        }
-    }
-
-
-
 
 
 
@@ -461,28 +297,12 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     public void ejectNtfs(){
-//        eject(Msg.DcsCurrentWhiteBoard_Ntf);
-//        eject(Msg.DcsNewWhiteBoard_Ntf);
-//        eject(Msg.DcsSwitch_Ntf);
-//        eject(Msg.DcsElementOperBegin_Ntf);
-//        eject(Msg.DcsOperLineOperInfo_Ntf);
-//        eject(Msg.DcsOperCircleOperInfo_Ntf);
-//        eject(Msg.DcsOperRectangleOperInfo_Ntf);
-//        eject(Msg.DcsOperPencilOperInfo_Ntf);
-//        eject(Msg.DcsOperInsertPic_Ntf);
-//        eject(Msg.DcsOperPitchPicDrag_Ntf);
-//        eject(Msg.DcsOperPitchPicDel_Ntf);
-//        eject(Msg.DcsOperEraseOperInfo_Ntf);
-//        eject(Msg.DcsOperUndo_Ntf);
-//        eject(Msg.DcsOperRedo_Ntf);
-//        eject(Msg.DcsOperClearScreen_Ntf);
-//        eject(Msg.DcsElementOperFinal_Ntf);
         eject(new Msg[]{
-//                Msg.DcsElementOperBegin_Ntf,
+                Msg.DcsElementOperBegin_Ntf,
                 Msg.DcsOperLineOperInfo_Ntf,
                 Msg.DcsOperCircleOperInfo_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperRedo_Ntf,
+//                Msg.DcsOperUndo_Ntf,
+//                Msg.DcsOperRedo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
@@ -496,19 +316,8 @@ public class DataCollaborateManager extends RequestAgent {
                 Msg.DcsOperPencilOperInfo_Ntf,
                 Msg.DcsOperEraseOperInfo_Ntf,
                 Msg.DcsOperInsertPic_Ntf,
-//                Msg.DcsElementOperFinal_Ntf,
+                Msg.DcsElementOperFinal_Ntf,
         });
     }
-
-//    private DataCollaborateManager(){
-////        Timer timer = new Timer();
-////        timer.schedule(new TimerTask() {
-////            @Override
-////            public void run() {
-////                DataCollaborateManager.this.ejectNtfs();
-////            }
-////        }, 5000, 5000);
-//        new Handler().postDelayed(this::ejectNtfs, 5000);
-//    }
 
 }

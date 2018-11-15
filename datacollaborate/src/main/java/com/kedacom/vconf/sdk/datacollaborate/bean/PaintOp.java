@@ -12,7 +12,7 @@ public abstract class PaintOp implements Comparable<PaintOp>{
     public static final int OP_CLEAR_SCREEN = 9;
     public static final int OP_INSERT_PICTURE = 10;
     public int type; // 类型：划线、画圈等。
-    public int sn; // 序号。操作的先后顺序，序号越小的操作越先发生。
+    int sn; // 序号。操作的先后顺序，序号越小的操作越先发生。
     public PaintCfg paintCfg;
 
     public String confId; // 会议E164
