@@ -9,7 +9,8 @@ import static com.kedacom.vconf.sdk.base.MsgConst.*;
  *
  * 消息结构体定义。
  *
- * （TODO 最好结合对组件层消息体内容的理解重新定义一套适合UI层理解的，而非直接照搬组件层的，然后在jni层做这两套消息体之间的转换）
+ * NOTE: 所有内部类请用“static final”修饰
+ *
  */
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
@@ -228,7 +229,7 @@ public final class MsgBeans {
         public int dwListNum;
     }
 
-    public class TDCSBoardInfo {
+    public  static final class TDCSBoardInfo {
         public String achWbName;
         public EmDcsWbMode emWbMode;    // 模式（白板、文档）
         public int dwWbPageNum;         // 总页数（限文档）——以TDCSWbAddSubPageInfo中的dwSubPageCount为准。
@@ -243,6 +244,10 @@ public final class MsgBeans {
         public String achDownloadUrl;   // 图片下载Url（限文档）
         public String achUploadUrl;     // 图片上传Url（限文档）
         public int dwWbAnonyId;         // 平台成功响应后，平台填写（限白板）
+        TDCSBoardInfo(){
+            achWbName = "paint board";
+            achTabId = "boardId";
+        }
     }
 
 //    public static final class DcsNewWhiteBoard_Ntf{
@@ -404,7 +409,7 @@ public final class MsgBeans {
         public TDCSWbImage	 tImage;
     }
 
-    public class TDCSWbImage {
+    public  static final class TDCSWbImage {
         TDCSWbEntity	tEntity;				// 基本信息
         TDCSWbPoint 	tBoardPt;				// 边界矩形左上角坐标
         int 	    dwWidth;				// 边界矩形宽度
@@ -574,7 +579,7 @@ public final class MsgBeans {
         public TDCSConfUserInfo tUserInfo;
     }
 
-    public class TDCSOperator{
+    public  static final class TDCSOperator{
         public String achConfE164;
         public int dwListNum;
         public TDCSConfUserInfo[] atOperList;
@@ -596,6 +601,9 @@ public final class MsgBeans {
         public String achConfE164;
         public String achFromE164;      // 谁画的
         public boolean bCacheElement;   // 是否是服务器缓存的图元
+        TDCSOperContent(){
+            achTabId = "boardId";
+        }
     }
 
     public static final class TDCSWbLineOperInfo {
@@ -806,7 +814,7 @@ public final class MsgBeans {
         public String achWbPicentityId;     // 图片ID
     }
 
-    public class TDCSConfUserInfo {
+    public  static final class TDCSConfUserInfo {
         // @formatter:off
         public String achE164;
         /**

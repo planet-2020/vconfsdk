@@ -8,6 +8,11 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
 
+import com.kedacom.vconf.sdk.datacollaborate.bean.PaintOp;
+
+import java.util.Stack;
+import java.util.concurrent.ConcurrentLinkedDeque;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -20,6 +25,10 @@ public class DefaultPaintBoard extends FrameLayout {
     public static final int LAYER_SHAPE = 2;
     public static final int LAYER_ALL = 3;
     private int focusedLayer = LAYER_ALL;
+
+    private ConcurrentLinkedDeque<PaintOp> shapeOps = new ConcurrentLinkedDeque<>(); // 图形操作，如画线、画圆、画路径等。NOTE: require API 21
+    private ConcurrentLinkedDeque<PaintOp> picOps = new ConcurrentLinkedDeque<>(); // 图片操作，如插入图片、删除图片等。
+    private Stack<PaintOp> repealedShapeOps = new Stack<>();  // 被撤销的图形操作，缓存以供恢复。NOTE: 图片操作暂时不支持撤销。
 
     public DefaultPaintBoard(@NonNull Context context) {
         this(context, null);
@@ -60,6 +69,18 @@ public class DefaultPaintBoard extends FrameLayout {
 
     DefaultPaintView getShapePaintView(){
         return shapePaintView;
+    }
+
+    ConcurrentLinkedDeque<PaintOp> getShapeOps(){
+        return shapeOps;
+    }
+
+    ConcurrentLinkedDeque<PaintOp> getPicOps(){
+        return picOps;
+    }
+
+    Stack<PaintOp> getRepealedShapeOps(){
+        return repealedShapeOps;
     }
 
     void focusLayer(int layer){

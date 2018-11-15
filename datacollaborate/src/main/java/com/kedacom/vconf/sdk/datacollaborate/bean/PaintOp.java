@@ -15,9 +15,9 @@ public abstract class PaintOp implements Comparable<PaintOp>{
     int sn; // 序号。操作的先后顺序，序号越小的操作越先发生。
     public PaintCfg paintCfg;
 
-    public String confId; // 会议E164
-    public String tabId;  // 白板tab ID
-    public int pageIndex; // 当白板装载文档时表示文档页码
+    public String confId; // 画板所属会议E164
+    public String boardId;  // 画板ID
+    public int pageIndex; // 当画板装载文档时表示文档页码
 
 
     @Override

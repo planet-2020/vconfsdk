@@ -10,7 +10,7 @@ public class InsertPicOp extends PaintOp {
     public float insertPosY;
     public float[] matrixValue = new float[9];
 
-    public InsertPicOp(Bitmap pic, int picWidth, int picHeight, float insertPosX, float insertPosY, String[] matrixValue, int sn){
+    public InsertPicOp(Bitmap pic, int picWidth, int picHeight, float insertPosX, float insertPosY, String[] matrixValue, int sn, String boardId){
         this.pic = pic;
         this.picWidth = picWidth;
         this.picHeight = picHeight;
@@ -21,6 +21,7 @@ public class InsertPicOp extends PaintOp {
         }
         this.sn = sn;
         type = PaintOp.OP_INSERT_PICTURE;
+        this.boardId = boardId;
         paintCfg = new PaintCfg(PaintCfg.MODE_PICTURE);
     }
 }

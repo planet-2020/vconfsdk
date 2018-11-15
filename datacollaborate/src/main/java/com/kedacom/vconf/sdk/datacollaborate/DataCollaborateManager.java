@@ -71,6 +71,7 @@ public class DataCollaborateManager extends RequestAgent {
                 Msg.DcsCurrentWhiteBoard_Ntf,
                 Msg.DcsNewWhiteBoard_Ntf,
                 Msg.DcsSwitch_Ntf,
+                Msg.DcsDelWhiteBoard_Ntf,
         }, this::onControlNtfs);
         processorMap.put(new Msg[]{
                 Msg.DcsElementOperBegin_Ntf,
@@ -150,12 +151,17 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onControlNtfs(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        if (Msg.DcsCurrentWhiteBoard_Ntf.equals(ntfId)){
-
-        }else if (Msg.DcsNewWhiteBoard_Ntf.equals(ntfId)){
-
-        }else if (Msg.DcsSwitch_Ntf.equals(ntfId)){
-
+        if (null == painter){
+            return;
+        }
+        if (Msg.DcsCurrentWhiteBoard_Ntf.equals(ntfId)
+                || Msg.DcsNewWhiteBoard_Ntf.equals(ntfId)
+                || Msg.DcsSwitch_Ntf.equals(ntfId)){
+            MsgBeans.TDCSBoardInfo boardInfo = (MsgBeans.TDCSBoardInfo) ntfContent;
+            painter.switchPaintBoard(boardInfo.achTabId);
+        }else if (Msg.DcsDelWhiteBoard_Ntf.equals(ntfId)){
+            MsgBeans.TDCSBoardInfo boardInfo = (MsgBeans.TDCSBoardInfo) ntfContent;
+            painter.deletePaintBoard(boardInfo.achTabId);
         }
     }
 
@@ -191,19 +197,19 @@ public class DataCollaborateManager extends RequestAgent {
             MsgBeans.TDCSOperContent commonInfo = OpInfo.MainParam;
             MsgBeans.TDCSWbLine gp = OpInfo.AssParam.tLine;
             paintOp = new DrawLineOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb));
+                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb), commonInfo.achTabId);
         }else if (Msg.DcsOperCircleOperInfo_Ntf.equals(ntfId)){
             MsgBeans.DcsOperCircleOperInfo_Ntf opInfo = (MsgBeans.DcsOperCircleOperInfo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
             MsgBeans.TDCSWbCircle gp = opInfo.AssParam.tCircle;
             paintOp = new DrawOvalOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb));
+                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb), commonInfo.achTabId);
         }else if (Msg.DcsOperRectangleOperInfo_Ntf.equals(ntfId)){
             MsgBeans.DcsOperRectangleOperInfo_Ntf opInfo = (MsgBeans.DcsOperRectangleOperInfo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
             MsgBeans.TDCSWbRectangle gp = opInfo.AssParam.tRectangle;
             paintOp = new DrawRectOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb));
+                    commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb), commonInfo.achTabId);
         }else if (Msg.DcsOperPencilOperInfo_Ntf.equals(ntfId)){
             MsgBeans.DcsOperPencilOperInfo_Ntf opInfo = (MsgBeans.DcsOperPencilOperInfo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
@@ -216,13 +222,13 @@ public class DataCollaborateManager extends RequestAgent {
             for (int i=0; i<points.length; ++i){
                 points[i] = new PointF(pl[i].nPosx, pl[i].nPosy);
             }
-            paintOp = new DrawPathOp(points, commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb));
+            paintOp = new DrawPathOp(points, commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb), commonInfo.achTabId);
         }else if (Msg.DcsOperInsertPic_Ntf.equals(ntfId)){
             MsgBeans.DcsOperInsertPic_Ntf opInfo = (MsgBeans.DcsOperInsertPic_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
             MsgBeans.TDCSWbInsertPicOperInfo gp = opInfo.AssParam;
             paintOp = new InsertPicOp(BitmapFactory.decodeFile("/data/local/tmp/wb.png"), gp.dwImgWidth, gp.dwImgHeight,
-                    gp.tPoint.nPosx, gp.tPoint.nPosy, gp.aachMatrixValue, commonInfo.dwMsgSequence);
+                    gp.tPoint.nPosx, gp.tPoint.nPosy, gp.aachMatrixValue, commonInfo.dwMsgSequence, commonInfo.achTabId);
         }else if (Msg.DcsOperPitchPicDrag_Ntf.equals(ntfId)){
             paintOp = null;
         }else if (Msg.DcsOperPitchPicDel_Ntf.equals(ntfId)){
@@ -231,23 +237,23 @@ public class DataCollaborateManager extends RequestAgent {
             MsgBeans.DcsOperEraseOperInfo_Ntf opInfo = (MsgBeans.DcsOperEraseOperInfo_Ntf) ntfContent;
             MsgBeans.TDCSWbEraseOperInfo gp = opInfo.AssParam;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            paintOp = new EraseOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, commonInfo.dwMsgSequence);
+            paintOp = new EraseOp(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, commonInfo.dwMsgSequence, commonInfo.achTabId);
         }else if (Msg.DcsOperFullScreen_Ntf.equals(ntfId)){
             MsgBeans.DcsOperFullScreen_Ntf opInfo = (MsgBeans.DcsOperFullScreen_Ntf) ntfContent;
             MsgBeans.TDCSWbDisPlayInfo gp = opInfo.AssParam;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            paintOp = new MatrixOp(gp.aachMatrixValue, commonInfo.dwMsgSequence);
+            paintOp = new MatrixOp(gp.aachMatrixValue, commonInfo.dwMsgSequence, commonInfo.achTabId);
         }else if (Msg.DcsOperUndo_Ntf.equals(ntfId)){
             MsgBeans.DcsOperUndo_Ntf opInfo = (MsgBeans.DcsOperUndo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            paintOp = new UndoOp(commonInfo.dwMsgSequence);
+            paintOp = new UndoOp(commonInfo.dwMsgSequence, commonInfo.achTabId);
         }else if (Msg.DcsOperRedo_Ntf.equals(ntfId)){
             MsgBeans.DcsOperRedo_Ntf opInfo = (MsgBeans.DcsOperRedo_Ntf) ntfContent;
             MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-            paintOp = new RedoOp(commonInfo.dwMsgSequence);
+            paintOp = new RedoOp(commonInfo.dwMsgSequence, commonInfo.achTabId);
         }else if (Msg.DcsOperClearScreen_Ntf.equals(ntfId)){
             MsgBeans.TDCSOperContent opInfo = (MsgBeans.TDCSOperContent) ntfContent;
-            paintOp = new ClearScreenOp(opInfo.dwMsgSequence);
+            paintOp = new ClearScreenOp(opInfo.dwMsgSequence, opInfo.achTabId);
         }else if (Msg.DcsElementOperFinal_Ntf.equals(ntfId)){
             if (!isBatchDrawing) {
                 return;
@@ -298,6 +304,9 @@ public class DataCollaborateManager extends RequestAgent {
 
     public void ejectNtfs(){
         eject(new Msg[]{
+                Msg.DcsCurrentWhiteBoard_Ntf,
+                Msg.DcsNewWhiteBoard_Ntf,
+                Msg.DcsSwitch_Ntf,
                 Msg.DcsElementOperBegin_Ntf,
                 Msg.DcsOperLineOperInfo_Ntf,
                 Msg.DcsOperCircleOperInfo_Ntf,
@@ -307,14 +316,14 @@ public class DataCollaborateManager extends RequestAgent {
 //                Msg.DcsOperUndo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
                 Msg.DcsOperFullScreen_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperClearScreen_Ntf,
+//                Msg.DcsOperUndo_Ntf,
+//                Msg.DcsOperUndo_Ntf,
+//                Msg.DcsOperUndo_Ntf,
+//                Msg.DcsOperClearScreen_Ntf,
                 Msg.DcsOperRectangleOperInfo_Ntf,
-                Msg.DcsOperRedo_Ntf,
-                Msg.DcsOperRedo_Ntf,
-                Msg.DcsOperRedo_Ntf,
+//                Msg.DcsOperRedo_Ntf,
+//                Msg.DcsOperRedo_Ntf,
+//                Msg.DcsOperRedo_Ntf,
                 Msg.DcsOperPencilOperInfo_Ntf,
                 Msg.DcsOperEraseOperInfo_Ntf,
                 Msg.DcsOperInsertPic_Ntf,

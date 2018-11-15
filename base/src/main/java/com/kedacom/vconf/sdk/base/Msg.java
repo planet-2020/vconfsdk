@@ -385,7 +385,7 @@ public enum Msg {
     DcsSwitch_Ntf,
 
     /**删除白板通知*/
-    @Notification(clz = MsgBeans.DcsDelWhiteBoard_Ntf.class)
+    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
     DcsDelWhiteBoard_Ntf,
 
 
