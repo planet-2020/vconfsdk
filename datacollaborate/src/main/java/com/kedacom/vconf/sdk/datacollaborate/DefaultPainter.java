@@ -86,7 +86,7 @@ public class DefaultPainter implements IPainter {
             case PaintOp.OP_UNDO:
                 tmpOp = shapeOps.pollLast(); // 撤销最近的图形操作
                 if (null != tmpOp){
-                    KLog.p(KLog.WARN, "repeal %s",tmpOp);
+//                    KLog.p(KLog.WARN, "repeal %s",tmpOp);
                     repealedShapeOps.push(tmpOp); // 缓存撤销的操作以供恢复
                 }else{
                     dirty = false;
@@ -95,7 +95,7 @@ public class DefaultPainter implements IPainter {
             case PaintOp.OP_REDO:
                 if (!repealedShapeOps.empty()) {
                     tmpOp = repealedShapeOps.pop();
-                    KLog.p(KLog.WARN, "restore %s",tmpOp);
+//                    KLog.p(KLog.WARN, "restore %s",tmpOp);
                     shapeOps.offer(tmpOp); // 恢复最近操作
                 }else {
                     dirty = false;
@@ -118,7 +118,7 @@ public class DefaultPainter implements IPainter {
                 }else {
                     shapeOps.offer(op);
                 }
-                KLog.p(KLog.WARN, "need render op %s", op);
+//                KLog.p(KLog.WARN, "need render op %s", op);
                 break;
 
         }

@@ -161,7 +161,7 @@ public class DataCollaborateManager extends RequestAgent {
 
     private Handler handler = new Handler();
     private final Runnable batchOpTimeout = () -> {
-        KLog.p(KLog.WARN,"wait batch paint ops timeout <<<<<<<<<<<<<<<<<<<<<<<");
+        KLog.p(KLog.ERROR,"wait batch paint ops timeout <<<<<<<<<<<<<<<<<<<<<<<");
         if (null != painter){
             while(!batchOps.isEmpty()){
                 painter.paint(batchOps.poll());
@@ -184,7 +184,7 @@ public class DataCollaborateManager extends RequestAgent {
             }
             KLog.p("batch paint ops >>>>>>>>>>>>>>>>>>>>>>");
             isBatchDrawing = true;
-            handler.postDelayed(batchOpTimeout, 5000); // 起定时器防止final消息不到。
+            handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
             return;
         }else if (Msg.DcsOperLineOperInfo_Ntf.equals(ntfId)){
             MsgBeans.DcsOperLineOperInfo_Ntf OpInfo = (MsgBeans.DcsOperLineOperInfo_Ntf) ntfContent;
@@ -306,13 +306,15 @@ public class DataCollaborateManager extends RequestAgent {
 //                Msg.DcsOperUndo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
-//                Msg.DcsOperFullScreen_Ntf,
-//                Msg.DcsOperUndo_Ntf,
-//                Msg.DcsOperUndo_Ntf,
-//                Msg.DcsOperUndo_Ntf,
-//                Msg.DcsOperClearScreen_Ntf,
+                Msg.DcsOperFullScreen_Ntf,
+                Msg.DcsOperUndo_Ntf,
+                Msg.DcsOperUndo_Ntf,
+                Msg.DcsOperUndo_Ntf,
+                Msg.DcsOperClearScreen_Ntf,
                 Msg.DcsOperRectangleOperInfo_Ntf,
-//                Msg.DcsOperRedo_Ntf,
+                Msg.DcsOperRedo_Ntf,
+                Msg.DcsOperRedo_Ntf,
+                Msg.DcsOperRedo_Ntf,
                 Msg.DcsOperPencilOperInfo_Ntf,
                 Msg.DcsOperEraseOperInfo_Ntf,
                 Msg.DcsOperInsertPic_Ntf,
