@@ -34,6 +34,13 @@ dependencies {
 //    implementation ('com.kedacom.vconf.sdk:base:0.2.25'){
 //        changing = true
 //    }
+
+    configurations.all {
+        resolutionStrategy {
+            // don't cache changing modules at all
+            cacheChangingModulesFor 0, 'seconds'
+        }
+    }
 }
 
 apply from: '../publish.gradle'

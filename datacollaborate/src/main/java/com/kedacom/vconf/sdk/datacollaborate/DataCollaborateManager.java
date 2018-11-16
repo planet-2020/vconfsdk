@@ -19,6 +19,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
+import com.kedacom.vconf.sdk.datacollaborate.bean.PaintBoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.PaintCfg;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
@@ -333,16 +334,16 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     public interface IPaintBoardLifecycleListener{
-
+        void onBoardCreated(PaintBoardInfo boardInfo);
+        void onBoardDeleted(PaintBoardInfo boardInfo);
+        void onBoardSwitched(PaintBoardInfo boardInfo);
     }
 
-    public void addPaintBoardLifecycleListener(INotificationListener notificationListener){
-        subscribe(new Msg[]{
-                Msg.DcsCurrentWhiteBoard_Ntf,
-                Msg.DcsNewWhiteBoard_Ntf,
-                Msg.DcsSwitch_Ntf,
-                Msg.DcsDelWhiteBoard_Ntf,
-        }, notificationListener);
+    public void addPaintBoardLifecycleListener(IPaintBoardLifecycleListener boardLifecycleListener){
+//        subscribe(Msg.DcsNewWhiteBoard_Ntf, boardLifecycleListener::onBoardCreated);
+//        subscribe(Msg.DcsDelWhiteBoard_Ntf, boardLifecycleListener::onBoardDeleted);
+//        subscribe(Msg.DcsSwitch_Ntf, boardLifecycleListener::onBoardSwitched);
+//        subscribe(Msg.DcsCurrentWhiteBoard_Ntf, boardLifecycleListener::onBoardSwitched);
     }
 
     public void addPaintOpListener(INotificationListener notificationListener){
