@@ -1,10 +1,10 @@
 package com.kedacom.vconf.sdk.startup;
 
-import com.kedacom.vconf.sdk.base.IResultListener;
+import com.kedacom.vconf.sdk.base.IResponseListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
 import com.kedacom.vconf.sdk.base.RequestAgent;
-import com.kedacom.vconf.sdk.base.ResultCode;
+import com.kedacom.vconf.sdk.base.CommonResultCode;
 import com.kedacom.vconf.sdk.utils.KLog;
 
 import java.util.HashMap;
@@ -21,7 +21,7 @@ public class StartManager extends RequestAgent {
         KLog.setLevel(KLog.INFO);
     }
 
-    public void startup(int mode, IResultListener listener){
+    public void startup(int mode, IResponseListener listener){
         req(Msg.Startup, new MsgBeans.StartupPara(), listener);
     }
 
@@ -39,10 +39,10 @@ public class StartManager extends RequestAgent {
         return null;
     }
 
-    private void processStartupResponses(Msg rspId, Object rspContent, IResultListener listener){
+    private void processStartupResponses(Msg rspId, Object rspContent, IResponseListener listener){
         if (Msg.StartupRsp.equals(rspId)){
             if (null != listener){
-                listener.onResponse(ResultCode.SUCCESS, null);
+                listener.onResponse(CommonResultCode.SUCCESS, null);
             }
         }
     }

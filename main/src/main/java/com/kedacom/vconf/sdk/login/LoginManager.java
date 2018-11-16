@@ -1,11 +1,11 @@
 package com.kedacom.vconf.sdk.login;
 
-import com.kedacom.vconf.sdk.base.IResultListener;
+import com.kedacom.vconf.sdk.base.IResponseListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
 import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
-import com.kedacom.vconf.sdk.base.ResultCode;
+import com.kedacom.vconf.sdk.base.CommonResultCode;
 import com.kedacom.vconf.sdk.utils.KLog;
 
 import java.util.HashMap;
@@ -34,7 +34,7 @@ public class LoginManager extends RequestAgent {
         return null;
     }
 
-    public void login(String server, String account, String passwd, IResultListener loginResultListener){
+    public void login(String server, String account, String passwd, IResponseListener loginResultListener){
 //        processSet(Msg.SetNetConfig, new MsgBeans.NetConfig(1234555, 65530));
 //        MsgBeans.XmppServerInfo xmppServerInfo = (MsgBeans.XmppServerInfo) processGet(Msg.GetXmppServerInfo);
 //        KLog.p("xmppServerInfo{%s, %d}",xmppServerInfo.domain, xmppServerInfo.ip);
@@ -43,7 +43,7 @@ public class LoginManager extends RequestAgent {
 
 
 
-    private void processLoginResponses(Msg rspId, Object rspContent, IResultListener listener){
+    private void processLoginResponses(Msg rspId, Object rspContent, IResponseListener listener){
         KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
         if (Msg.LoginRsp.equals(rspId)){
 
@@ -51,15 +51,15 @@ public class LoginManager extends RequestAgent {
             MsgBeans.LoginResult loginRes = (MsgBeans.LoginResult) rspContent;
             if (null != listener){
                 if (0 == loginRes.result) {
-                    listener.onResponse(ResultCode.SUCCESS, null);
+                    listener.onResponse(CommonResultCode.SUCCESS, null);
                 }else{
-                    listener.onResponse(ResultCode.FAILED, null);
+                    listener.onResponse(CommonResultCode.FAILED, null);
                 }
             }
         }
 /*        else if (Msg.Timeout.equals(rspId)){
             if (null != listener){
-                listener.onResponse(ResultCode.TIMEOUT, null); // agent会通知上层已超时，此处不需要再次通知，只需要做一些善后工作，比如保存/清空数据等。
+                listener.onResponse(CommonResultCode.TIMEOUT, null); // agent会通知上层已超时，此处不需要再次通知，只需要做一些善后工作，比如保存/清空数据等。
             }
         }*/
     }

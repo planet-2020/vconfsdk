@@ -1,8 +1,8 @@
 package com.kedacom.vconf.sdk.data;
 
-import com.kedacom.vconf.sdk.base.IResultListener;
+import com.kedacom.vconf.sdk.base.IResponseListener;
 
 public interface IMembersDataSource {
 
-    void getMembers(IResultListener resultListener);
+    void getMembers(IResponseListener resultListener);
 }

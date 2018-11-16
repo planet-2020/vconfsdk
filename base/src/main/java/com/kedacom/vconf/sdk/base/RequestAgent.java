@@ -1,7 +1,6 @@
 package com.kedacom.vconf.sdk.base;
 
 import com.kedacom.vconf.sdk.base.basement.Witch;
-import com.kedacom.vconf.sdk.base.KLog;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -88,14 +87,24 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     }
 
 
+    /**注册：请求——请求对应的响应处理器。
+     * 子类如有请求，则需重写该方法。*/
     protected Map<Msg, RspProcessor> rspProcessors(){return null;}
+
+    /**注册：通知——通知处理器
+     * 子类如需要订阅通知，则需重写该方法和{@link this#ntfsProcessors()}中的一个或者全部。*/
     protected Map<Msg, NtfProcessor> ntfProcessors(){return null;}
+
+    /**注册：通知列表——通知处理器
+     * 子类如需要订阅通知，则需重写该方法和{@link this#ntfProcessors()}中的一个或者全部。*/
     protected Map<Msg[], NtfProcessor> ntfsProcessors(){return null;}
 
+    /**响应处理器*/
     protected interface RspProcessor{
-        void process(Msg rspId, Object rspContent, IResultListener listener);
+        void process(Msg rspId, Object rspContent, IResponseListener listener);
     }
 
+    /**通知处理器*/
     protected interface NtfProcessor{
         void process(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners);
     }
@@ -105,7 +114,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
      * 发送请求。
      * @param rspListener 响应监听者。
      * */
-    protected synchronized void req(Msg reqId, Object reqPara, IResultListener rspListener){
+    protected synchronized void req(Msg reqId, Object reqPara, IResponseListener rspListener){
 //        Log.i(TAG, String.format("rspListener=%s, reqId=%s, para=%s", rspListener, reqId, para));
 
         if (!rspProcessorMap.keySet().contains(reqId)){
@@ -126,7 +135,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     /**
      * 取消请求。
      * 若同样的请求id同样的响应监听者请求了多次，则取消的是最早的请求。*/
-    protected synchronized void cancelReq(Msg reqId, IResultListener rspListener){
+    protected synchronized void cancelReq(Msg reqId, IResponseListener rspListener){
         if (null == reqId || null == rspListener){
             return;
         }
@@ -181,6 +190,18 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     }
 
     /**
+     * 订阅通知
+     * */
+    protected synchronized void subscribe(Msg[] ntfIds, INotificationListener ntfListener){
+        if (null == ntfIds){
+            return;
+        }
+        for (Msg ntfId : ntfIds){
+            subscribe(ntfId, ntfListener);
+        }
+    }
+
+    /**
      * 取消订阅通知
      * */
     protected synchronized void unsubscribe(Msg ntfId, Object ntfListener){
@@ -195,6 +216,9 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         }
     }
 
+    protected Set<INotificationListener> getNtfListeners(Msg ntfId){
+        return ntfListeners.get(ntfId.name());
+    }
 
     /**
      * （驱使下层）发射通知。仅用于模拟模式。
@@ -262,7 +286,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         Iterator<Map.Entry<Integer,RequestBundle>> iter = rspListeners.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<Integer,RequestBundle> entry = iter.next();
-            IResultListener resultListener = entry.getValue().resultListener;
+            IResponseListener resultListener = entry.getValue().resultListener;
             if(rspListener.equals(resultListener)){
                 iter.remove();
             }
@@ -285,7 +309,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     @Override
     public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn) {
         RequestBundle requestBundle = rspListeners.get(reqSn);
-        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
+        IResponseListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
                 .process(Msg.valueOf(rspId), rspContent, resultListener);
     }
@@ -293,7 +317,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     @Override
     public void onFeedbackRspFin(String rspId, Object rspContent, String reqId, int reqSn) {
         RequestBundle requestBundle = rspListeners.remove(reqSn);
-        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
+        IResponseListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
                 .process(Msg.valueOf(rspId), rspContent, resultListener);
     }
@@ -301,11 +325,11 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     @Override
     public void onFeedbackTimeout(String reqId, int reqSn) {
         RequestBundle requestBundle = rspListeners.remove(reqSn);
-        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
+        IResponseListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
                 .process(Msg.Timeout, null, resultListener);
         if (null != resultListener){
-            resultListener.onResponse(ResultCode.TIMEOUT, null);
+            resultListener.onResponse(CommonResultCode.TIMEOUT, null);
         }
     }
 
@@ -317,8 +341,8 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
     private static class RequestBundle{
         private Msg reqId;
-        private IResultListener resultListener;
-        RequestBundle(Msg reqId, IResultListener resultListener){
+        private IResponseListener resultListener;
+        RequestBundle(Msg reqId, IResponseListener resultListener){
             this.reqId = reqId;
             this.resultListener = resultListener;
         }

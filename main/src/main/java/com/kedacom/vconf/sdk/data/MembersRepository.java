@@ -2,8 +2,8 @@ package com.kedacom.vconf.sdk.data;
 
 import androidx.annotation.NonNull;
 
-import com.kedacom.vconf.sdk.base.IResultListener;
-import com.kedacom.vconf.sdk.base.ResultCode;
+import com.kedacom.vconf.sdk.base.IResponseListener;
+import com.kedacom.vconf.sdk.base.CommonResultCode;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -42,11 +42,11 @@ public class MembersRepository implements IMembersDataSource {
 
 
     @Override
-    public void getMembers(IResultListener resultListener) {
+    public void getMembers(IResponseListener resultListener) {
 //        checkNotNull(resultListener);
 
         if (cachedMembers != null && !cacheIsDirty) {
-            resultListener.onResponse(ResultCode.SUCCESS, new ArrayList<>(cachedMembers.values()));
+            resultListener.onResponse(CommonResultCode.SUCCESS, new ArrayList<>(cachedMembers.values()));
             return;
         }
 
@@ -55,11 +55,11 @@ public class MembersRepository implements IMembersDataSource {
         }
     }
 
-    private void getMembersFromRemoteDataSource(@NonNull final IResultListener callback) {
-        membersRemoteDataSource.getMembers(new IResultListener(){
+    private void getMembersFromRemoteDataSource(@NonNull final IResponseListener callback) {
+        membersRemoteDataSource.getMembers(new IResponseListener(){
             @Override
             public void onResponse(int resultCode, Object response) {
-                if (resultCode == ResultCode.SUCCESS){
+                if (resultCode == CommonResultCode.SUCCESS){
                     refreshCache((List<Member>)response);
                 }
 
