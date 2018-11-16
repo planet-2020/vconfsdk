@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-public class DefaultPaintBoard extends FrameLayout {
+public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private DefaultPaintView picPaintView;
     private DefaultPaintView shapePaintView;
 
@@ -26,7 +26,7 @@ public class DefaultPaintBoard extends FrameLayout {
     public static final int LAYER_ALL = 3;
     private int focusedLayer = LAYER_ALL;
 
-    private ConcurrentLinkedDeque<PaintOp> shapeOps = new ConcurrentLinkedDeque<>(); // 图形操作，如画线、画圆、画路径等。NOTE: require API 21
+    private ConcurrentLinkedDeque<PaintOp> shapeOps = new ConcurrentLinkedDeque<>(); // 图形操作，如画线、画圆、画路径等。NOTE: require API 21 // TODO ops放入画布。
     private ConcurrentLinkedDeque<PaintOp> picOps = new ConcurrentLinkedDeque<>(); // 图片操作，如插入图片、删除图片等。
     private Stack<PaintOp> repealedShapeOps = new Stack<>();  // 被撤销的图形操作，缓存以供恢复。NOTE: 图片操作暂时不支持撤销。
 
@@ -71,7 +71,7 @@ public class DefaultPaintBoard extends FrameLayout {
         return shapePaintView;
     }
 
-    ConcurrentLinkedDeque<PaintOp> getShapeOps(){
+    ConcurrentLinkedDeque<PaintOp> getShapeOps(){   // TODO 放入画布
         return shapeOps;
     }
 
@@ -89,4 +89,32 @@ public class DefaultPaintBoard extends FrameLayout {
         }
     }
 
+    @Override
+    public int getMyId() {
+        return 0;
+    }
+
+    @Override
+    public void addPaintView(IPaintView paintView) {
+    }
+
+    @Override
+    public void delPaintView(int viewId) {
+
+    }
+
+    @Override
+    public IPaintView getPaintView(int viewId) {
+        return null;
+    }
+
+    @Override
+    public View getBoardView() {
+        return null;
+    }
+
+    @Override
+    public void focusPaintView(int viewId) {
+
+    }
 }

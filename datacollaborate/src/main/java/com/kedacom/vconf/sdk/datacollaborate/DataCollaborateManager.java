@@ -49,13 +49,6 @@ public class DataCollaborateManager extends RequestAgent {
     private boolean isBatchDrawing = false;
     private PriorityQueue<PaintOp> batchOps = new PriorityQueue<>(); // 批量操作缓存。批量模式下操作到达的时序可能跟操作的序列号顺序不相符，此处我们使用PriorityQueue来为我们自动排序。
 
-    private IPostMan postMan = new IPostMan() {
-        @Override
-        public void post(PaintOp op) {
-            // TODO
-        }
-    };
-
     @Override
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> processorMap = new HashMap<>();
@@ -105,6 +98,10 @@ public class DataCollaborateManager extends RequestAgent {
 
     public void createDcConf(IResultListener resultListener){
         req(Msg.DCSCreateConfReq, new MsgBeans.DCSCreateConf(), resultListener);
+    }
+
+    public void postPaintOp(PaintOp op){
+//        req();
     }
 
     private void onLoginResponses(Msg rspId, Object rspContent, IResultListener listener){

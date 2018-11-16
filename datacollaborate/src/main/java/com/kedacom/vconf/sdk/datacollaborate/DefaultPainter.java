@@ -40,13 +40,13 @@ public class DefaultPainter implements IPainter {
     private Paint paint = new Paint();
     private boolean needRender = false;
 
-    private final Matrix shapePaintViewMatrix = new Matrix();
-    private final Matrix picPaintViewMatrix = new Matrix();
+    private final Matrix curShapePaintViewMatrix = new Matrix();
+    private final Matrix curPicPaintViewMatrix = new Matrix();
 
     private static int threadCount = 0;
 
-    private IPostMan postMan;
-
+    public DefaultPainter() {
+    }
 
     public DefaultPainter(Context context) {
         this.context = context;
@@ -65,6 +65,22 @@ public class DefaultPainter implements IPainter {
 
 
     @Override
+    public int getMyId() {
+        return 0;
+    }
+
+    @Override
+    public void addPaintBoard(IPaintBoard paintBoard) {
+
+    }
+
+    @Override
+    public void deletePaintBoard(String boardId) {
+        KLog.p(LOG_LEVEL,"delete board %s", boardId);
+        paintBoards.remove(boardId);
+    }
+
+    @Override
     public void switchPaintBoard(String boardId) {
         KLog.p(LOG_LEVEL, "switch board from %s to %s", curBoardId, boardId);
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
@@ -76,13 +92,7 @@ public class DefaultPainter implements IPainter {
     }
 
     @Override
-    public void deletePaintBoard(String boardId) {
-        KLog.p(LOG_LEVEL,"delete board %s", boardId);
-        paintBoards.remove(boardId);
-    }
-
-    @Override
-    public void paint(PaintOp op) {
+    public void paint(PaintOp op){
         KLog.p(KLog.WARN, "for board %s op %s", op.boardId, op);
         DefaultPaintBoard paintBoard = paintBoards.get(op.boardId);
         if(null == paintBoard){
@@ -124,8 +134,8 @@ public class DefaultPainter implements IPainter {
                 if (PaintOp.OP_MATRIX == op.type){
                 /* matrix操作不同于普通绘制操作。从它生效开始，
                 它作用于所有之前的以及之后的操作，不受时序的制约，所以需要特殊处理。*/
-                    synchronized (shapePaintViewMatrix) {
-                        shapePaintViewMatrix.setValues(((MatrixOp) op).matrixValue);
+                    synchronized (curShapePaintViewMatrix) {
+                        curShapePaintViewMatrix.setValues(((MatrixOp) op).matrixValue);
                     }
                 }else if (PaintOp.OP_INSERT_PICTURE == op.type){
                     picOps.offer(op);
@@ -146,7 +156,6 @@ public class DefaultPainter implements IPainter {
                 }
             }
         }
-
     }
 
 
@@ -169,44 +178,55 @@ public class DefaultPainter implements IPainter {
         return paint;
     }
 
-    void setPostMan(IPostMan postMan){
-        this.postMan = postMan;
+    public static final int TOOL_PENCIL = 100;
+    public static final int TOOL_LINE = 101;
+    public static final int TOOL_RECT = 102;
+    public static final int TOOL_OVAL = 103;
+    public static final int TOOL_ERASER = 104;
+    public static final int TOOL_HAND = 105;
+
+    private int tool = TOOL_PENCIL;
+    void setTool(int tool){
+        this.tool = tool;
     }
 
+    private Paint authorPaint;
+    void setPaint(Paint paint){
+        authorPaint = paint;
+    }
+
+    public static final int ROLE_COPIER = 200;
+    public static final int ROLE_AUTHOR = 201;
+    private int role;
+    void setRole(int role){
+        this.role = role;
+    }
 
     public void onShapePaintViewMatrixChanged(Matrix newMatrix) {
-        synchronized (shapePaintViewMatrix) {
-            shapePaintViewMatrix.set(newMatrix);
+        synchronized (curShapePaintViewMatrix) {
+            curShapePaintViewMatrix.set(newMatrix);
         }
-        KLog.p("newMatrix=%s", shapePaintViewMatrix);
+        KLog.p("newMatrix=%s", curShapePaintViewMatrix);
         synchronized (renderThread) {
             needRender = true;
             if (Thread.State.WAITING == renderThread.getState()) {
                 KLog.p(KLog.WARN, "notify");
                 renderThread.notify();
             }
-        }
-
-        if (null != postMan){
-//            postMan.post(); TODO
         }
     }
 
     public void onPicPaintViewMatrixChanged(Matrix newMatrix) {
-        synchronized (picPaintViewMatrix) {
-            picPaintViewMatrix.set(newMatrix);
+        synchronized (curPicPaintViewMatrix) {
+            curPicPaintViewMatrix.set(newMatrix);
         }
-        KLog.p("newMatrix=%s", picPaintViewMatrix);
+        KLog.p("newMatrix=%s", curPicPaintViewMatrix);
         synchronized (renderThread) {
             needRender = true;
             if (Thread.State.WAITING == renderThread.getState()) {
                 KLog.p(KLog.WARN, "notify");
                 renderThread.notify();
             }
-        }
-
-        if (null != postMan){
-//            postMan.post(); TODO
         }
     }
 
@@ -267,8 +287,8 @@ public class DefaultPainter implements IPainter {
 
                 canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
 
-                synchronized (shapePaintViewMatrix){
-                    canvas.setMatrix(shapePaintViewMatrix);
+                synchronized (curShapePaintViewMatrix){
+                    canvas.setMatrix(curShapePaintViewMatrix);
                 }
 
                 synchronized (this){
@@ -331,8 +351,8 @@ public class DefaultPainter implements IPainter {
 
                 picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
-                synchronized (picPaintViewMatrix){
-                    picPaintViewCanvas.setMatrix(picPaintViewMatrix);
+                synchronized (curPicPaintViewMatrix){
+                    picPaintViewCanvas.setMatrix(curPicPaintViewMatrix);
                 }
                 picOps = paintBoard.getPicOps();
                 for (PaintOp op : picOps){
@@ -357,6 +377,5 @@ public class DefaultPainter implements IPainter {
             }
         }
     };
-
 
 }

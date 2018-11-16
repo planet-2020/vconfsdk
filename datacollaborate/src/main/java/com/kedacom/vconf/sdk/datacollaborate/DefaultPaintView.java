@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.PointF;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
@@ -11,7 +12,7 @@ import android.view.View;
 
 import com.kedacom.vconf.sdk.base.KLog;
 
-public class DefaultPaintView extends TextureView {
+public class DefaultPaintView extends TextureView implements IPaintView{
     private MyTouchListener myTouchListener;
     private GestureDetector gestureDetector;
     private OnMatrixChangedListener onMatrixChangedListener;
@@ -25,6 +26,26 @@ public class DefaultPaintView extends TextureView {
         myTouchListener = new MyTouchListener();
         setOnTouchListener(myTouchListener);
         gestureDetector = new GestureDetector(getContext(), new GestureListener(myTouchListener));
+    }
+
+    @Override
+    public int getMyId() {
+        return 0;
+    }
+
+    @Override
+    public void setToolType(int toolType) {
+
+    }
+
+    @Override
+    public void setPaint(Paint paint) {
+
+    }
+
+    @Override
+    public void setOnPaintOpGeneratedListener(IOnPaintOpGeneratedListener paintOpGeneratedListener) {
+
     }
 
     public class MyTouchListener implements OnTouchListener{
@@ -252,4 +273,5 @@ public class DefaultPaintView extends TextureView {
         onMatrixChangedListener.onMatrixChanged(myTouchListener.curMatrix);
     }
 
+    // TODO setPainter(IPainter)，implements IPaintView{setPaint(Paint)} 然后再在触屏事件时IPainter.paint();
 }

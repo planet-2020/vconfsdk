@@ -271,6 +271,7 @@ public enum Msg {
     DCSOperPencilOperInfoCmd,
 
     /**彩笔操作*/
+    @Deprecated
     @Request(para=MsgBeans.DCSOperColorPenOper.class)
     DCSOperColorPenOperInfoCmd,
 
