@@ -146,17 +146,22 @@ public class DataCollaborateManager extends RequestAgent {
         }
     }
 
-    private void onControlNtfs(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
+    private void onControlNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        for (INotificationListener listener : listeners) {
-            if (Msg.DcsCurrentWhiteBoard_Ntf.equals(ntfId)
-                    || Msg.DcsNewWhiteBoard_Ntf.equals(ntfId)
-                    || Msg.DcsSwitch_Ntf.equals(ntfId)) {
+        IPaintBoardLifecycleListener boardLifecycleListener;
+        for (Object listener : listeners) {
+            boardLifecycleListener = (IPaintBoardLifecycleListener) listener;
+            if (Msg.DcsCurrentWhiteBoard_Ntf.equals(ntfId)) {
                 MsgBeans.TDCSBoardInfo boardInfo = (MsgBeans.TDCSBoardInfo) ntfContent;
-//                listener.onNotification();
+                boardLifecycleListener.onBoardSwitched(new PaintBoardInfo(boardInfo.achTabId, boardInfo.achWbName));
+            } else if (Msg.DcsNewWhiteBoard_Ntf.equals(ntfId)) {
+                MsgBeans.TDCSBoardInfo boardInfo = (MsgBeans.TDCSBoardInfo) ntfContent;
+                boardLifecycleListener.onBoardCreated(new PaintBoardInfo(boardInfo.achTabId, boardInfo.achWbName));
+            } else if (Msg.DcsSwitch_Ntf.equals(ntfId)) {
+                MsgBeans.TDCSBoardInfo boardInfo = (MsgBeans.TDCSBoardInfo) ntfContent;
+                boardLifecycleListener.onBoardSwitched(new PaintBoardInfo(boardInfo.achTabId, boardInfo.achWbName));
             } else if (Msg.DcsDelWhiteBoard_Ntf.equals(ntfId)) {
-                MsgBeans.TDCSBoardInfo boardInfo = (MsgBeans.TDCSBoardInfo) ntfContent;
-//                listener.onNotification();
+                // TODO
             }
         }
     }
@@ -164,21 +169,21 @@ public class DataCollaborateManager extends RequestAgent {
     private Handler handler = new Handler();
     private final Runnable batchOpTimeout = () -> {
         KLog.p(KLog.ERROR,"wait batch paint ops timeout <<<<<<<<<<<<<<<<<<<<<<<");
-        Set<INotificationListener> listeners = getNtfListeners(Msg.DcsElementOperFinal_Ntf);
+        Set<Object> listeners = getNtfListeners(Msg.DcsElementOperFinal_Ntf);
         OpPaint op;
         while (!batchOps.isEmpty()) {
             op = batchOps.poll();
-            for (INotificationListener listener : listeners) {
-                listener.onNotification(op);
+            for (Object listener : listeners) {
+                ((IOnPaintOpListener)listener).onPaintOp(op);
             }
         }
 
         isRecvingBatchOps = false;
     };
-    private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners){
+    private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
 
-        for (INotificationListener listener : listeners) {
+        for (Object listener : listeners) {
             OpPaint paintOp = null;
             if (Msg.DcsElementOperBegin_Ntf.equals(ntfId)) {
                 if (isRecvingBatchOps) {
@@ -257,7 +262,7 @@ public class DataCollaborateManager extends RequestAgent {
                 KLog.p("batch paint ops <<<<<<<<<<<<<<<<<<<<<<<");
                 handler.removeCallbacks(batchOpTimeout);
                 while (!batchOps.isEmpty()) {
-                    listener.onNotification(batchOps.poll());
+                    ((IOnPaintOpListener)listener).onPaintOp(batchOps.poll());
                 }
                 isRecvingBatchOps = false;
                 return;
@@ -267,7 +272,7 @@ public class DataCollaborateManager extends RequestAgent {
                 batchOps.offer(paintOp);
             } else {
                 if (null != paintOp)
-                    listener.onNotification(paintOp);
+                    ((IOnPaintOpListener)listener).onPaintOp(paintOp);
             }
 
         }
@@ -300,12 +305,56 @@ public class DataCollaborateManager extends RequestAgent {
         }
     }
 
-    public void ejectNtfs(){
-        eject(new Msg[]{
+
+    public interface IOnPaintOpListener{
+        void onPaintOp(OpPaint op);
+    }
+
+    public interface IPaintBoardLifecycleListener{
+        void onBoardCreated(PaintBoardInfo boardInfo);
+        void onBoardDeleted(PaintBoardInfo boardInfo);
+        void onBoardSwitched(PaintBoardInfo boardInfo);
+    }
+
+
+    public void addPaintBoardLifecycleListener(IPaintBoardLifecycleListener boardLifecycleListener){
+        subscribe(new Msg[]{
                 Msg.DcsCurrentWhiteBoard_Ntf,
                 Msg.DcsNewWhiteBoard_Ntf,
                 Msg.DcsSwitch_Ntf,
+                Msg.DcsDelWhiteBoard_Ntf,
+        }, boardLifecycleListener);
+    }
+
+
+    public void addPaintOpListener(IOnPaintOpListener onPaintOpListener){
+        subscribe(new Msg[]{
                 Msg.DcsElementOperBegin_Ntf,
+                Msg.DcsOperLineOperInfo_Ntf,
+                Msg.DcsOperCircleOperInfo_Ntf,
+                Msg.DcsOperRectangleOperInfo_Ntf,
+                Msg.DcsOperPencilOperInfo_Ntf,
+                Msg.DcsOperInsertPic_Ntf,
+                Msg.DcsOperPitchPicDrag_Ntf,
+                Msg.DcsOperPitchPicDel_Ntf,
+                Msg.DcsOperEraseOperInfo_Ntf,
+                Msg.DcsOperFullScreen_Ntf,
+                Msg.DcsOperUndo_Ntf,
+                Msg.DcsOperRedo_Ntf,
+                Msg.DcsOperClearScreen_Ntf,
+                Msg.DcsElementOperFinal_Ntf,
+        }, onPaintOpListener);
+    }
+
+
+
+
+    public void ejectNtfs(){
+        eject(new Msg[]{
+                Msg.DcsNewWhiteBoard_Ntf,
+                Msg.DcsSwitch_Ntf,
+                Msg.DcsCurrentWhiteBoard_Ntf,
+//                Msg.DcsElementOperBegin_Ntf,
                 Msg.DcsOperLineOperInfo_Ntf,
                 Msg.DcsOperCircleOperInfo_Ntf,
 //                Msg.DcsOperUndo_Ntf,
@@ -322,47 +371,15 @@ public class DataCollaborateManager extends RequestAgent {
 //                Msg.DcsOperRedo_Ntf,
 //                Msg.DcsOperRedo_Ntf,
 //                Msg.DcsOperRedo_Ntf,
+                Msg.DcsNewWhiteBoard_Ntf,
+                Msg.DcsSwitch_Ntf,
                 Msg.DcsOperPencilOperInfo_Ntf,
                 Msg.DcsOperEraseOperInfo_Ntf,
                 Msg.DcsOperInsertPic_Ntf,
-                Msg.DcsElementOperFinal_Ntf,
+//                Msg.DcsElementOperFinal_Ntf,
         });
     }
 
-    public interface IOnPaintOpArrivedListener{
-        void onPaintOpArrived(OpPaint op);
-    }
 
-    public interface IPaintBoardLifecycleListener{
-        void onBoardCreated(PaintBoardInfo boardInfo);
-        void onBoardDeleted(PaintBoardInfo boardInfo);
-        void onBoardSwitched(PaintBoardInfo boardInfo);
-    }
-
-    public void addPaintBoardLifecycleListener(IPaintBoardLifecycleListener boardLifecycleListener){
-//        subscribe(Msg.DcsNewWhiteBoard_Ntf, boardLifecycleListener::onBoardCreated);
-//        subscribe(Msg.DcsDelWhiteBoard_Ntf, boardLifecycleListener::onBoardDeleted);
-//        subscribe(Msg.DcsSwitch_Ntf, boardLifecycleListener::onBoardSwitched);
-//        subscribe(Msg.DcsCurrentWhiteBoard_Ntf, boardLifecycleListener::onBoardSwitched);
-    }
-
-    public void addPaintOpListener(INotificationListener notificationListener){
-        subscribe(new Msg[]{
-                Msg.DcsElementOperBegin_Ntf,
-                Msg.DcsOperLineOperInfo_Ntf,
-                Msg.DcsOperCircleOperInfo_Ntf,
-                Msg.DcsOperRectangleOperInfo_Ntf,
-                Msg.DcsOperPencilOperInfo_Ntf,
-                Msg.DcsOperInsertPic_Ntf,
-                Msg.DcsOperPitchPicDrag_Ntf,
-                Msg.DcsOperPitchPicDel_Ntf,
-                Msg.DcsOperEraseOperInfo_Ntf,
-                Msg.DcsOperFullScreen_Ntf,
-                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperRedo_Ntf,
-                Msg.DcsOperClearScreen_Ntf,
-                Msg.DcsElementOperFinal_Ntf,
-        }, notificationListener);
-    }
 
 }

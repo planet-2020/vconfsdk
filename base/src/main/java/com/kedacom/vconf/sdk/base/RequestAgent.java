@@ -12,7 +12,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
     private int reqSn; // 请求序列号，唯一标识一次请求。
     private final Map<Integer, RequestBundle> rspListeners;
-    private final Map<String, Set<INotificationListener>> ntfListeners;
+    private final Map<String, Set<Object>> ntfListeners;
 
     private Map<Msg, RspProcessor> rspProcessorMap;
     private Map<Msg, NtfProcessor> ntfProcessorMap;
@@ -106,7 +106,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
     /**通知处理器*/
     protected interface NtfProcessor{
-        void process(Msg ntfId, Object ntfContent, Set<INotificationListener> listeners);
+        void process(Msg ntfId, Object ntfContent, Set<Object> listeners);
     }
 
 
@@ -168,7 +168,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     /**
      * 订阅通知
      * */
-    protected synchronized void subscribe(Msg ntfId, INotificationListener ntfListener){
+    protected synchronized void subscribe(Msg ntfId, Object ntfListener){
 //        Log.i(TAG, String.format("ntfListener=%s, ntfId=%s", ntfListener, ntfId));
         if (null == ntfListener){
             return;
@@ -180,7 +180,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         }
 
         String ntfName = ntfId.name();
-        Set<INotificationListener> listeners = ntfListeners.get(ntfName);
+        Set<Object> listeners = ntfListeners.get(ntfName);
         if (null == listeners) {
             listeners = new HashSet<>();
             ntfListeners.put(ntfName, listeners);
@@ -192,7 +192,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     /**
      * 订阅通知
      * */
-    protected synchronized void subscribe(Msg[] ntfIds, INotificationListener ntfListener){
+    protected synchronized void subscribe(Msg[] ntfIds, Object ntfListener){
         if (null == ntfIds){
             return;
         }
@@ -210,13 +210,13 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         }
 
         String ntfName = ntfId.name();
-        Set<INotificationListener> listeners = ntfListeners.get(ntfName);
+        Set<Object> listeners = ntfListeners.get(ntfName);
         if (null != listeners){
             listeners.remove(ntfListener);
         }
     }
 
-    protected Set<INotificationListener> getNtfListeners(Msg ntfId){
+    protected Set<Object> getNtfListeners(Msg ntfId){
         return ntfListeners.get(ntfId.name());
     }
 
