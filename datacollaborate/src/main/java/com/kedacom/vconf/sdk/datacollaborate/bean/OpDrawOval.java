@@ -1,11 +1,12 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public class DrawRectOp extends PaintOp {
+public class OpDrawOval extends OpPaint {
     public float left;
     public float top;
     public float right;
     public float bottom;
-    public DrawRectOp(float left, float top, float right, float bottom, int sn, PaintCfg paintCfg, String boardId){
+
+    public OpDrawOval(float left, float top, float right, float bottom, int sn, PaintCfg paintCfg, String boardId){
         this.left = left;
         this.top = top;
         this.right = right;
@@ -13,6 +14,6 @@ public class DrawRectOp extends PaintOp {
         this.sn = sn;
         this.paintCfg = paintCfg;
         this.boardId = boardId;
-        type = PaintOp.OP_DRAW_RECT;
+        type = OpPaint.OP_DRAW_OVAL;
     }
 }

@@ -1,18 +1,18 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public class EraseOp extends PaintOp {
+public class OpDrawRect extends OpPaint {
     public float left;
     public float top;
     public float right;
     public float bottom;
-    public EraseOp(float left, float top, float right, float bottom, int sn, String boardId){
+    public OpDrawRect(float left, float top, float right, float bottom, int sn, PaintCfg paintCfg, String boardId){
         this.left = left;
         this.top = top;
         this.right = right;
         this.bottom = bottom;
         this.sn = sn;
-        type = PaintOp.OP_ERASE;
+        this.paintCfg = paintCfg;
         this.boardId = boardId;
-        paintCfg = new PaintCfg(PaintCfg.MODE_ERASE);
+        type = OpPaint.OP_DRAW_RECT;
     }
 }

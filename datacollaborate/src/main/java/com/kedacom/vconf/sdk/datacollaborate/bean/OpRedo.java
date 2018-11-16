@@ -1,10 +1,10 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public class UndoOp extends PaintOp {
+public class OpRedo extends OpPaint {
 //    public boolean done;
-    public UndoOp(int sn, String boardId){
+    public OpRedo(int sn, String boardId){
         this.sn = sn;
         this.boardId = boardId;
-        type = PaintOp.OP_UNDO;
+        type = OpPaint.OP_REDO;
     }
 }

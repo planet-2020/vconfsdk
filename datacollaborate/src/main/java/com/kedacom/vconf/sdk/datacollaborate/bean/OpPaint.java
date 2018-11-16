@@ -1,6 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public abstract class PaintOp implements Comparable<PaintOp>{
+public abstract class OpPaint implements Comparable<OpPaint>{
     public static final int OP_DRAW_LINE = 1;
     public static final int OP_DRAW_RECT = 2;
     public static final int OP_DRAW_OVAL = 3;
@@ -21,7 +21,7 @@ public abstract class PaintOp implements Comparable<PaintOp>{
 
 
     @Override
-    public int compareTo(PaintOp o) {
+    public int compareTo(OpPaint o) {
         if (sn<o.sn){
             return -1;
         }else if (sn == o.sn){

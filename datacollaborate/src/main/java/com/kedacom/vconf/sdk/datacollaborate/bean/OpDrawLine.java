@@ -1,11 +1,11 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public class DrawLineOp extends PaintOp {
+public class OpDrawLine extends OpPaint {
     public float startX;
     public float startY;
     public float stopX;
     public float stopY;
-    public DrawLineOp(float startX, float startY, float stopX, float stopY, int sn, PaintCfg paintCfg, String boardId){
+    public OpDrawLine(float startX, float startY, float stopX, float stopY, int sn, PaintCfg paintCfg, String boardId){
         this.startX = startX;
         this.startY = startY;
         this.stopX = stopX;
@@ -13,6 +13,6 @@ public class DrawLineOp extends PaintOp {
         this.sn = sn;
         this.paintCfg = paintCfg;
         this.boardId = boardId;
-        type = PaintOp.OP_DRAW_LINE;
+        type = OpPaint.OP_DRAW_LINE;
     }
 }

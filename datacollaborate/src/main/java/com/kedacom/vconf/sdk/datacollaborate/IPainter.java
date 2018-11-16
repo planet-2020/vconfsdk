@@ -7,7 +7,7 @@
 
 package com.kedacom.vconf.sdk.datacollaborate;
 
-import com.kedacom.vconf.sdk.datacollaborate.bean.PaintOp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
 public interface IPainter {
     int getMyId();
@@ -22,6 +22,6 @@ public interface IPainter {
     void switchPaintBoard(String boardId);
 
     /**绘制操作*/
-    void paint(PaintOp op);
+    void paint(OpPaint op);
 
 }

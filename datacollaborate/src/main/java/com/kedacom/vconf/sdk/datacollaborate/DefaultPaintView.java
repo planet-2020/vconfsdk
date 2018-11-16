@@ -44,6 +44,11 @@ public class DefaultPaintView extends TextureView implements IPaintView{
     }
 
     @Override
+    public View snapshoot() {
+        return null;
+    }
+
+    @Override
     public void setOnPaintOpGeneratedListener(IOnPaintOpGeneratedListener paintOpGeneratedListener) {
 
     }

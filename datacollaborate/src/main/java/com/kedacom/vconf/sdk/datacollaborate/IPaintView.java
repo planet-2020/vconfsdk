@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.graphics.Paint;
+import android.view.View;
 
 public interface IPaintView {
     int STYLE_PENCIL = 0;
@@ -12,6 +13,7 @@ public interface IPaintView {
     int getMyId();
     void setToolType(int toolType);
     void setPaint(Paint paint);
+    View snapshoot();
     void setOnPaintOpGeneratedListener(IOnPaintOpGeneratedListener paintOpGeneratedListener);
 
     interface IOnPaintOpGeneratedListener{
