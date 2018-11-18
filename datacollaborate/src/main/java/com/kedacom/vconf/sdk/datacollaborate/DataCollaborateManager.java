@@ -4,7 +4,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.PointF;
 import android.os.Handler;
 
-import com.kedacom.vconf.sdk.base.INotificationListener;
 import com.kedacom.vconf.sdk.base.IResponseListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
@@ -32,6 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+
 
 public class DataCollaborateManager extends RequestAgent {
 
@@ -380,6 +380,9 @@ public class DataCollaborateManager extends RequestAgent {
         });
     }
 
+    public void ejectNtf(Msg msg){
+        eject(msg);
+    }
 
 
 }

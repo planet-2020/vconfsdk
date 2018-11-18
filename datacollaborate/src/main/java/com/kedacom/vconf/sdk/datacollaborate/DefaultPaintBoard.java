@@ -63,14 +63,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return false;
     }
 
-    DefaultPaintView getPicPaintView(){
-        return picPaintView;
-    }
-
-    DefaultPaintView getShapePaintView(){
-        return shapePaintView;
-    }
-
     ConcurrentLinkedDeque<OpPaint> getShapeOps(){   // TODO 放入画布
         return shapeOps;
     }
@@ -83,38 +75,36 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return repealedShapeOps;
     }
 
-    void focusLayer(int layer){
+    @Override
+    public View getBoardView() {
+        return this;
+    }
+
+    @Override
+    public void setPicPaintView(IPaintView paintView) {
+
+    }
+
+    @Override
+    public void setShapePaintView(IPaintView paintView) {
+
+    }
+
+    @Override
+    public DefaultPaintView getPicPaintView(){
+        return picPaintView;
+    }
+
+    @Override
+    public DefaultPaintView getShapePaintView(){
+        return shapePaintView;
+    }
+
+    @Override
+    public void focusLayer(int layer){
         if (LAYER_NONE<=layer && layer<=LAYER_ALL){
             focusedLayer = layer;
         }
     }
 
-    @Override
-    public int getMyId() {
-        return 0;
-    }
-
-    @Override
-    public void addPaintView(IPaintView paintView) {
-    }
-
-    @Override
-    public void delPaintView(int viewId) {
-
-    }
-
-    @Override
-    public IPaintView getPaintView(int viewId) {
-        return null;
-    }
-
-    @Override
-    public View getBoardView() {
-        return null;
-    }
-
-    @Override
-    public void focusPaintView(int viewId) {
-
-    }
 }

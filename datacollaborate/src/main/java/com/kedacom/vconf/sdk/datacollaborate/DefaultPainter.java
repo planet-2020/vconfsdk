@@ -75,13 +75,13 @@ public class DefaultPainter implements IPainter {
     }
 
     @Override
-    public void deletePaintBoard(String boardId) {
+    public IPaintBoard deletePaintBoard(String boardId) {
         KLog.p(LOG_LEVEL,"delete board %s", boardId);
-        paintBoards.remove(boardId);
+        return paintBoards.remove(boardId);
     }
 
     @Override
-    public void switchPaintBoard(String boardId) {
+    public IPaintBoard switchPaintBoard(String boardId) {
         KLog.p(LOG_LEVEL, "switch board from %s to %s", curBoardId, boardId);
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
         if(null == paintBoard){
@@ -89,6 +89,13 @@ public class DefaultPainter implements IPainter {
             paintBoards.put(boardId, paintBoard);
         }
         curBoardId = boardId;
+
+        return paintBoard;
+    }
+
+    @Override
+    public IPaintBoard getPaintBoard(String boardId) {
+        return paintBoards.get(boardId);
     }
 
     @Override
@@ -277,7 +284,7 @@ public class DefaultPainter implements IPainter {
                 if (null == paintBoard){
                     continue;
                 }
-                shapePaintView = paintBoard.getShapePaintView();
+                shapePaintView = paintBoard.getShapePaintView().getPaintView();
 
                 Canvas canvas = shapePaintView.lockCanvas();  // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
                 if (null == canvas){

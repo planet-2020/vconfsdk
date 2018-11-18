@@ -16,6 +16,7 @@ public class DefaultPaintView extends TextureView implements IPaintView{
     private MyTouchListener myTouchListener;
     private GestureDetector gestureDetector;
     private OnMatrixChangedListener onMatrixChangedListener;
+    private String boardId;
 
     public DefaultPaintView(Context context) {
         this(context, null);
@@ -28,9 +29,20 @@ public class DefaultPaintView extends TextureView implements IPaintView{
         gestureDetector = new GestureDetector(getContext(), new GestureListener(myTouchListener));
     }
 
+
     @Override
-    public int getMyId() {
-        return 0;
+    public String setBoardId(String boardId) {
+        return this.boardId = boardId;
+    }
+
+    @Override
+    public String getBoardId() {
+        return boardId;
+    }
+
+    @Override
+    public View getPaintView() {
+        return this;
     }
 
     @Override
@@ -278,5 +290,4 @@ public class DefaultPaintView extends TextureView implements IPaintView{
         onMatrixChangedListener.onMatrixChanged(myTouchListener.curMatrix);
     }
 
-    // TODO setPainter(IPainter)，implements IPaintView{setPaint(Paint)} 然后再在触屏事件时IPainter.paint();
 }

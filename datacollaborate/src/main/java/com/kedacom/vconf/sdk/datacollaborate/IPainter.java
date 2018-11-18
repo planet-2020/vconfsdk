@@ -10,18 +10,26 @@ package com.kedacom.vconf.sdk.datacollaborate;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
 public interface IPainter {
-    int getMyId();
+    default int getMyId() {
+        return 0;
+    }
 
     /**添加画板*/
     void addPaintBoard(IPaintBoard paintBoard);
 
     /**删除画板*/
-    void deletePaintBoard(String boardId);
+    IPaintBoard deletePaintBoard(String boardId);
 
-    /**切换画板。*/
-    void switchPaintBoard(String boardId);
+    /**切换画板*/
+    IPaintBoard switchPaintBoard(String boardId);
 
-    /**绘制操作*/
+    /**获取画板*/
+    IPaintBoard getPaintBoard(String boardId);
+
+    /**获取当前画板*/
+    IPaintBoard getCurrentPaintBoard();
+
+    /**绘制*/
     void paint(OpPaint op);
 
 }
