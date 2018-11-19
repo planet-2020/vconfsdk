@@ -30,11 +30,13 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 public class DefaultPainter implements IPainter {
 
     private Map<String, DefaultPaintBoard> paintBoards = new HashMap<>();
+
     private String curBoardId;
-    private Paint paint = new Paint();
+
+    private Paint paint = new Paint();  // TODO 不需要
+
     private boolean needRender = false;
 
-    private static int threadCount = 0;
 
     public DefaultPainter() {
         renderThread.start();
@@ -49,6 +51,7 @@ public class DefaultPainter implements IPainter {
 
     @Override
     public void addPaintBoard(IPaintBoard paintBoard) {
+        KLog.p(KLog.WARN,"add board %s", paintBoard.getBoardId());
         paintBoards.put(paintBoard.getBoardId(), (DefaultPaintBoard) paintBoard);  // TODO 只能强转吗。工厂模式怎样保证产品一致性的？
     }
 
@@ -73,11 +76,13 @@ public class DefaultPainter implements IPainter {
 
     @Override
     public IPaintBoard getPaintBoard(String boardId) {
+        KLog.p(KLog.WARN,"get board %s", boardId);
         return paintBoards.get(boardId);
     }
 
     @Override
     public IPaintBoard getCurrentPaintBoard(){
+        KLog.p(KLog.WARN,"get current board %s", curBoardId);
         return paintBoards.get(curBoardId);
     }
 
@@ -188,7 +193,7 @@ public class DefaultPainter implements IPainter {
     }
 
 
-    private final Thread renderThread = new Thread("DCRenderThr"+threadCount++){
+    private final Thread renderThread = new Thread("DCRenderThr"){
         @Override
         public void run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
