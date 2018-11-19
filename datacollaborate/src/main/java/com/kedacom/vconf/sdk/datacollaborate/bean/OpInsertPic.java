@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 import android.graphics.Bitmap;
 
 public class OpInsertPic extends OpPaint {
+    public String picId;
     public Bitmap pic;
     public int picWidth;
     public int picHeight;
@@ -10,7 +11,8 @@ public class OpInsertPic extends OpPaint {
     public float insertPosY;
     public float[] matrixValue = new float[9];
 
-    public OpInsertPic(Bitmap pic, int picWidth, int picHeight, float insertPosX, float insertPosY, String[] matrixValue, int sn, String boardId){
+    public OpInsertPic(String picId, Bitmap pic, int picWidth, int picHeight, float insertPosX, float insertPosY, String[] matrixValue, int sn, String boardId){
+        this.picId = picId;
         this.pic = pic;
         this.picWidth = picWidth;
         this.picHeight = picHeight;

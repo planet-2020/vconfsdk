@@ -62,6 +62,7 @@ publishing {
         "${project.name}"(MavenPublication) {
 //            artifact(sourceJar)
             artifact("$buildDir/outputs/aar/${project.name}-release.aar")
+//            artifact("$buildDir/outputs/aar/${project.name}-debug.aar")  // NOTE: 注意下面依赖assemble要同步修改
 
             // 生成依赖。（maven-publish插件针对android支持似乎有缺陷，不能将依赖自动写入pom文件中，故需要我们手动生成依赖信息写入pom）
             pom.withXml {
@@ -115,6 +116,8 @@ tasks.withType(AbstractPublishToMaven).all {  // AbstractPublishToMaven是Publis
 //    logger.quiet("publish task name: $it, name=$name, publicationName=$publicationName, matcher=$matcher")
 
         dependsOn "assembleRelease"
+
+//    dependsOn "assembleDebug"
 }
 
 //signing {

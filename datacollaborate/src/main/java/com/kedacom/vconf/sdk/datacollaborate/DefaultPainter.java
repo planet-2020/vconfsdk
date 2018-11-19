@@ -12,6 +12,7 @@ import android.graphics.RectF;
 import android.os.Process;
 
 import com.kedacom.vconf.sdk.base.KLog;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
@@ -22,7 +23,9 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.PaintCfg;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -113,6 +116,23 @@ public class DefaultPainter implements IPainter {
         switch (op.type){
             case OpPaint.OP_INSERT_PICTURE:
                 picRenderOps.offer(op);
+                break;
+
+            case OpPaint.OP_DELETE_PICTURE:
+                refresh = false;
+                OpPaint picRenderOp;
+                for (String picId : ((OpDeletePic)op).picIds) {
+                    Iterator it = picRenderOps.iterator();
+                    while (it.hasNext()) {
+                        picRenderOp = (OpPaint) it.next();
+                        if (OpPaint.OP_INSERT_PICTURE == picRenderOp.type
+                                && ((OpInsertPic) picRenderOp).picId.equals(picId)) {
+                            it.remove();
+                            refresh = true;
+                            break;
+                        }
+                    }
+                }
                 break;
 
             case OpPaint.OP_PIC_MATRIX:

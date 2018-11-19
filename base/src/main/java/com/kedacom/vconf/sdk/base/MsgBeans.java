@@ -483,6 +483,10 @@ public final class MsgBeans {
     public static final class DcsOperPitchPicDel_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbDelPicOperInfo AssParam;
+        DcsOperPitchPicDel_Ntf(){
+            MainParam = new TDCSOperContent();  //MainParam.dwMsgSequence = 2;
+            AssParam = new TDCSWbDelPicOperInfo();
+        }
     }
 
     public static final class DcsOperEraseOperInfo_Ntf{
@@ -736,6 +740,7 @@ public final class MsgBeans {
         public String achPicName;
         public String[] aachMatrixValue;
         public TDCSWbInsertPicOperInfo(){
+            achImgId = "picId";
             tPoint = new TDCSWbPoint(10, 50);
             aachMatrixValue = new String[]{
                     "0.500000",
@@ -768,6 +773,9 @@ public final class MsgBeans {
         public int dwSubPageId;         // 子页面id
         public int dwGraphsCount;
         public String[] achGraphsId;
+        TDCSWbDelPicOperInfo(){
+            achGraphsId = new String[]{"picId"};
+        }
     }
 
     public  static final class TDCSWbEraseOperInfo {

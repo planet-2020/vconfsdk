@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.PointF;
 import android.os.Handler;
 
+import com.kedacom.vconf.sdk.base.BuildConfig;
 import com.kedacom.vconf.sdk.base.IResponseListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
@@ -12,6 +13,7 @@ import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.CommonResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
@@ -228,12 +230,17 @@ public class DataCollaborateManager extends RequestAgent {
                 MsgBeans.DcsOperInsertPic_Ntf opInfo = (MsgBeans.DcsOperInsertPic_Ntf) ntfContent;
                 MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
                 MsgBeans.TDCSWbInsertPicOperInfo gp = opInfo.AssParam;
-                paintOp = new OpInsertPic(BitmapFactory.decodeFile("/data/local/tmp/wb.png"), gp.dwImgWidth, gp.dwImgHeight,
+                paintOp = new OpInsertPic(gp.achImgId,
+                        BitmapFactory.decodeFile("/data/local/tmp/wb.png"), gp.dwImgWidth, gp.dwImgHeight,
                         gp.tPoint.nPosx, gp.tPoint.nPosy, gp.aachMatrixValue, commonInfo.dwMsgSequence, commonInfo.achTabId);
             } else if (Msg.DcsOperPitchPicDrag_Ntf.equals(ntfId)) {
+                // TODO
                 paintOp = null;
             } else if (Msg.DcsOperPitchPicDel_Ntf.equals(ntfId)) {
-                paintOp = null;
+                MsgBeans.DcsOperPitchPicDel_Ntf opInfo = (MsgBeans.DcsOperPitchPicDel_Ntf) ntfContent;
+                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+                MsgBeans.TDCSWbDelPicOperInfo gp = opInfo.AssParam;
+                paintOp = new OpDeletePic(gp.achGraphsId, commonInfo.dwMsgSequence, commonInfo.achTabId);
             } else if (Msg.DcsOperEraseOperInfo_Ntf.equals(ntfId)) {
                 MsgBeans.DcsOperEraseOperInfo_Ntf opInfo = (MsgBeans.DcsOperEraseOperInfo_Ntf) ntfContent;
                 MsgBeans.TDCSWbEraseOperInfo gp = opInfo.AssParam;
@@ -348,39 +355,10 @@ public class DataCollaborateManager extends RequestAgent {
 
 
 
-
-    public void ejectNtfs(){
-        eject(new Msg[]{
-                Msg.DcsNewWhiteBoard_Ntf,
-                Msg.DcsSwitch_Ntf,
-                Msg.DcsCurrentWhiteBoard_Ntf,
-//                Msg.DcsElementOperBegin_Ntf,
-                Msg.DcsOperLineOperInfo_Ntf,
-                Msg.DcsOperCircleOperInfo_Ntf,
-//                Msg.DcsOperUndo_Ntf,
-//                Msg.DcsOperRedo_Ntf,
-//                Msg.DcsOperUndo_Ntf,
-//                Msg.DcsOperUndo_Ntf,
-//                Msg.DcsOperUndo_Ntf,
-                Msg.DcsOperFullScreen_Ntf,
-//                Msg.DcsOperUndo_Ntf,
-//                Msg.DcsOperUndo_Ntf,
-//                Msg.DcsOperUndo_Ntf,
-//                Msg.DcsOperClearScreen_Ntf,
-                Msg.DcsOperRectangleOperInfo_Ntf,
-//                Msg.DcsOperRedo_Ntf,
-//                Msg.DcsOperRedo_Ntf,
-//                Msg.DcsOperRedo_Ntf,
-                Msg.DcsNewWhiteBoard_Ntf,
-                Msg.DcsSwitch_Ntf,
-                Msg.DcsOperPencilOperInfo_Ntf,
-                Msg.DcsOperEraseOperInfo_Ntf,
-                Msg.DcsOperInsertPic_Ntf,
-//                Msg.DcsElementOperFinal_Ntf,
-        });
-    }
-
     public void ejectNtf(Msg msg){
+//        if (!BuildConfig.DEBUG){
+//            return;
+//        }
         eject(msg);
     }
 
