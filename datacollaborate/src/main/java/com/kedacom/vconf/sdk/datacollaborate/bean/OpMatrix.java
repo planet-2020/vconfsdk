@@ -10,10 +10,4 @@ public class OpMatrix extends OpPaint {
         this.boardId = boardId;
         type = OP_MATRIX;
     }
-    public OpMatrix(float[] matrixValue, int sn, String boardId){
-        this.matrixValue = matrixValue;
-        this.sn = sn;
-        this.boardId = boardId;
-        type = OP_MATRIX;
-    }
 }

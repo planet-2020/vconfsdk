@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
-import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -11,7 +10,6 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.os.Process;
-import android.view.View;
 
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
@@ -31,29 +29,16 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class DefaultPainter implements IPainter {
 
-    private static final int LOG_LEVEL = KLog.WARN;
-
-//    private Context context;
-
     private Map<String, DefaultPaintBoard> paintBoards = new HashMap<>();
     private String curBoardId;
     private Paint paint = new Paint();
     private boolean needRender = false;
-
-    private final Matrix curShapePaintViewMatrix = new Matrix();
-    private final Matrix curPicPaintViewMatrix = new Matrix();
 
     private static int threadCount = 0;
 
     public DefaultPainter() {
         renderThread.start();
     }
-
-//    public DefaultPainter(Context context) {
-//        this.context = context;
-//        renderThread.start();
-//    }
-
 
 
     @Override
@@ -69,14 +54,13 @@ public class DefaultPainter implements IPainter {
 
     @Override
     public IPaintBoard deletePaintBoard(String boardId) {
-        KLog.p(LOG_LEVEL,"delete board %s", boardId);
+        KLog.p(KLog.WARN,"delete board %s", boardId);
         return paintBoards.remove(boardId);
     }
 
-
     @Override
     public IPaintBoard switchPaintBoard(String boardId) {
-        KLog.p(LOG_LEVEL, "switch board from %s to %s", curBoardId, boardId);
+        KLog.p(KLog.WARN, "switch board from %s to %s", curBoardId, boardId);
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
         if(null == paintBoard){
             KLog.p(KLog.ERROR,"no such board %s", boardId);
@@ -107,52 +91,68 @@ public class DefaultPainter implements IPainter {
             return;
         }
 
-        boolean refresh = op.boardId.equals(curBoardId); // 操作属于当前board则需立即刷新
+        DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
+        ConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapePaintView.getRenderOps();
+        ConcurrentLinkedDeque<OpMatrix> shapeMatrixOps = shapePaintView.getMatrixOps();
+        Stack<OpPaint> shapeRepealedOps = shapePaintView.getRepealedOps();
 
-        ConcurrentLinkedDeque<OpPaint> shapeOps = paintBoard.getShapePaintView().getOps();
-        Stack<OpPaint> repealedShapeOps = paintBoard.getShapePaintView().getrepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
-        ConcurrentLinkedDeque<OpPaint> picOps = paintBoard.getPicPaintView().getOps();
+        DefaultPaintView picPaintView = paintBoard.getPicPaintView();
+        ConcurrentLinkedDeque<OpPaint> picRenderOps = picPaintView.getRenderOps();
+        ConcurrentLinkedDeque<OpMatrix> picMatrixOps = picPaintView.getMatrixOps();
+//        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
 
+
+        boolean refresh = op.boardId.equals(curBoardId); // 操作属于当前board则尝试立即刷新
         OpPaint tmpOp;
+
         switch (op.type){
-            case OpPaint.OP_UNDO:
-                tmpOp = shapeOps.pollLast(); // 撤销最近的操作
-                if (null != tmpOp){
-//                    KLog.p(KLog.WARN, "repeal %s",tmpOp);
-                    repealedShapeOps.push(tmpOp); // 缓存撤销的操作以供恢复
-                }else{
-                    refresh = false;
-                }
+            case OpPaint.OP_INSERT_PICTURE:
+                picRenderOps.offer(op);
                 break;
-            case OpPaint.OP_REDO:
-                if (!repealedShapeOps.empty()) {
-                    tmpOp = repealedShapeOps.pop();
-//                    KLog.p(KLog.WARN, "restore %s",tmpOp);
-                    shapeOps.offer(tmpOp); // 恢复最近操作
-                }else {
-                    refresh = false;
-                }
-                break;
-            default:
 
-                /* 只要不是redo或undo操作，被撤销操作缓存就得清空，因为此时redo操作已失效（
-                redo操作前面只能是redo操作或者undo操作），而撤销操作缓存仅供redo操作使用。*/
-                repealedShapeOps.clear();
-
-                if (OpPaint.OP_MATRIX == op.type){  // TODO matrix操作也当作普通操作对待。放到线程里面去遍历然后设置。
-                /* matrix操作不同于普通绘制操作。从它生效开始，
-                它作用于所有之前的以及之后的操作，不受时序的制约，所以需要特殊处理。*/
-                    synchronized (curShapePaintViewMatrix) {
-                        curShapePaintViewMatrix.setValues(((OpMatrix) op).matrixValue);
-                    }
-                }else
-                if (OpPaint.OP_INSERT_PICTURE == op.type){
-                    picOps.offer(op);
-                }else {
-                    shapeOps.offer(op);
-                }
-//                KLog.p(KLog.WARN, "need render op %s", op);
+            case OpPaint.OP_PIC_MATRIX:
+                picMatrixOps.offer((OpMatrix) op);
                 break;
+
+            default:  // 图形操作
+
+                switch (op.type){
+                    case OpPaint.OP_UNDO:
+                        tmpOp = shapeRenderOps.pollLast(); // 撤销最近的操作
+                        if (null != tmpOp){
+                            KLog.p(KLog.WARN, "repeal %s",tmpOp);
+                            shapeRepealedOps.push(tmpOp); // 缓存撤销的操作以供恢复
+                        }else{
+                            refresh = false;
+                        }
+                        break;
+                    case OpPaint.OP_REDO:
+                        if (!shapeRepealedOps.empty()) {
+                            tmpOp = shapeRepealedOps.pop();
+                            KLog.p(KLog.WARN, "restore %s",tmpOp);
+                            shapeRenderOps.offer(tmpOp); // 恢复最近操作
+                        }else {
+                            refresh = false;
+                        }
+                        break;
+                    case OpPaint.OP_MATRIX:
+                        shapeMatrixOps.offer((OpMatrix) op);
+                        break;
+                    default:
+
+                        /* 只要不是redo或undo操作，被撤销操作缓存就得清空，因为此时redo操作已失效（
+                        redo操作前面只能是redo操作或者undo操作），而撤销操作缓存仅供redo操作使用。*/
+                        KLog.p(KLog.WARN, "clean repealed ops");
+                        shapeRepealedOps.clear();
+
+                        shapeRenderOps.offer(op);
+
+        //                KLog.p(KLog.WARN, "need render op %s", op);
+                        break;
+
+                }
+
+            break;
 
         }
 
@@ -187,58 +187,6 @@ public class DefaultPainter implements IPainter {
         return paint;
     }
 
-    public static final int TOOL_PENCIL = 100;
-    public static final int TOOL_LINE = 101;
-    public static final int TOOL_RECT = 102;
-    public static final int TOOL_OVAL = 103;
-    public static final int TOOL_ERASER = 104;
-    public static final int TOOL_HAND = 105;
-
-    private int tool = TOOL_PENCIL;
-    void setTool(int tool){
-        this.tool = tool;
-    }
-
-    private Paint authorPaint;
-    void setPaint(Paint paint){
-        authorPaint = paint;
-    }
-
-    public static final int ROLE_COPIER = 200;
-    public static final int ROLE_AUTHOR = 201;
-    private int role;
-    void setRole(int role){
-        this.role = role;
-    }
-
-    public void onShapePaintViewMatrixChanged(Matrix newMatrix) {
-        synchronized (curShapePaintViewMatrix) {
-            curShapePaintViewMatrix.set(newMatrix);
-        }
-        KLog.p("newMatrix=%s", curShapePaintViewMatrix);
-        synchronized (renderThread) {
-            needRender = true;
-            if (Thread.State.WAITING == renderThread.getState()) {
-                KLog.p(KLog.WARN, "notify");
-                renderThread.notify();
-            }
-        }
-    }
-
-    public void onPicPaintViewMatrixChanged(Matrix newMatrix) {
-        synchronized (curPicPaintViewMatrix) {
-            curPicPaintViewMatrix.set(newMatrix);
-        }
-        KLog.p("newMatrix=%s", curPicPaintViewMatrix);
-        synchronized (renderThread) {
-            needRender = true;
-            if (Thread.State.WAITING == renderThread.getState()) {
-                KLog.p(KLog.WARN, "notify");
-                renderThread.notify();
-            }
-        }
-    }
-
 
     private final Thread renderThread = new Thread("DCRenderThr"+threadCount++){
         @Override
@@ -252,6 +200,7 @@ public class DefaultPainter implements IPainter {
             OpInsertPic insertPicOp;
             Path path = new Path();
             RectF rect = new RectF();
+            Matrix shapeMatrix = new Matrix();
             Matrix picMatrix = new Matrix();
 
             DefaultPaintBoard paintBoard;
@@ -296,8 +245,10 @@ public class DefaultPainter implements IPainter {
 
                 canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
 
-                synchronized (curShapePaintViewMatrix){
-                    canvas.setMatrix(curShapePaintViewMatrix);
+                OpMatrix opMatrix = shapePaintView.getMatrixOps().peekLast();
+                if (null != opMatrix) {
+                    shapeMatrix.setValues(opMatrix.matrixValue);
+                    canvas.setMatrix(shapeMatrix);
                 }
 
                 synchronized (this){
@@ -305,7 +256,7 @@ public class DefaultPainter implements IPainter {
                     接下来我们要开始遍历队列了，此处重新置needRender为false以避免下一轮无谓的重复刷新。*/
                     needRender = false;
                 }
-                shapeOps = shapePaintView.getOps();
+                shapeOps = shapePaintView.getRenderOps();
                 for (OpPaint op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
                     KLog.p("to render %s", op);
                     switch (op.type){
@@ -360,10 +311,13 @@ public class DefaultPainter implements IPainter {
 
                 picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
-                synchronized (curPicPaintViewMatrix){
-                    picPaintViewCanvas.setMatrix(curPicPaintViewMatrix);
+                opMatrix = picPaintView.getMatrixOps().peekLast();
+                if (null != opMatrix) {
+                    picMatrix.setValues(opMatrix.matrixValue);
+                    picPaintViewCanvas.setMatrix(picMatrix);
                 }
-                picOps = picPaintView.getOps();
+
+                picOps = picPaintView.getRenderOps();
                 for (OpPaint op : picOps){
                     switch (op.type){
                         case OpPaint.OP_INSERT_PICTURE:
