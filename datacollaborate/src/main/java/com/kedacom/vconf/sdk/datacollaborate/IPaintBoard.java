@@ -3,13 +3,10 @@ package com.kedacom.vconf.sdk.datacollaborate;
 import android.view.View;
 
 public interface IPaintBoard {
-    default String getMyId() {
-        return null;
-    }
-
+    String getBoardId();
     View getBoardView();
-    void setPicPaintView(IPaintView paintView);  //XXX 如何保证设置下去的是DefaultPaintView?
-    void setShapePaintView(IPaintView paintView);
+//    void setPicPaintView(IPaintView paintView);
+//    void setShapePaintView(IPaintView paintView);
     IPaintView getPicPaintView();
     IPaintView getShapePaintView();
     void focusLayer(int layer);

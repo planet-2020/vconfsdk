@@ -11,12 +11,19 @@ import android.view.TextureView;
 import android.view.View;
 
 import com.kedacom.vconf.sdk.base.KLog;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+
+import java.util.Stack;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class DefaultPaintView extends TextureView implements IPaintView{
     private MyTouchListener myTouchListener;
     private GestureDetector gestureDetector;
     private OnMatrixChangedListener onMatrixChangedListener;
     private String boardId;
+
+    private ConcurrentLinkedDeque<OpPaint> ops = new ConcurrentLinkedDeque<>(); // 待绘制的操作
+    private Stack<OpPaint> repealedOps = new Stack<>(); // 被撤销的操作
 
     public DefaultPaintView(Context context) {
         this(context, null);
@@ -29,6 +36,13 @@ public class DefaultPaintView extends TextureView implements IPaintView{
         gestureDetector = new GestureDetector(getContext(), new GestureListener(myTouchListener));
     }
 
+    ConcurrentLinkedDeque<OpPaint> getOps(){
+        return ops;
+    }
+
+    Stack<OpPaint> getrepealedOps(){
+        return repealedOps;
+    }
 
     @Override
     public String setBoardId(String boardId) {

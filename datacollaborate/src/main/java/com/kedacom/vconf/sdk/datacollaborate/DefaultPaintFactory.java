@@ -19,12 +19,14 @@ public class DefaultPaintFactory implements IPaintFactory {
 
     @Override
     public IPaintBoard createPaintBoard(PaintBoardInfo boardInfo) {
-        return new DefaultPaintBoard(context);
+        DefaultPaintBoard paintBoard = new DefaultPaintBoard(context);
+        paintBoard.setBoardInfo(boardInfo);
+        return paintBoard;
     }
 
-    @Override
-    public IPaintView createPaintView(String boardId) {
-        return new DefaultPaintView(context);
-    }
+//    @Override
+//    public IPaintView createPaintView(String boardId) {
+//        return new DefaultPaintView(context);
+//    }
 
 }

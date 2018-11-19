@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.FrameLayout;
 
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+import com.kedacom.vconf.sdk.datacollaborate.bean.PaintBoardInfo;
 
 import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -26,9 +27,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public static final int LAYER_ALL = 3;
     private int focusedLayer = LAYER_ALL;
 
-    private ConcurrentLinkedDeque<OpPaint> shapeOps = new ConcurrentLinkedDeque<>(); // 图形操作，如画线、画圆、画路径等。NOTE: require API 21 // TODO ops放入画布。
-    private ConcurrentLinkedDeque<OpPaint> picOps = new ConcurrentLinkedDeque<>(); // 图片操作，如插入图片、删除图片等。
-    private Stack<OpPaint> repealedShapeOps = new Stack<>();  // 被撤销的图形操作，缓存以供恢复。NOTE: 图片操作暂时不支持撤销。
+    private PaintBoardInfo boardInfo;
+
+//    private ConcurrentLinkedDeque<OpPaint> shapeOps = new ConcurrentLinkedDeque<>(); // 图形操作，如画线、画圆、画路径等。NOTE: require API 21 // TODO ops放入画布。
+//    private ConcurrentLinkedDeque<OpPaint> picOps = new ConcurrentLinkedDeque<>(); // 图片操作，如插入图片、删除图片等。
+//    private Stack<OpPaint> repealedShapeOps = new Stack<>();  // 被撤销的图形操作，缓存以供恢复。NOTE: 图片操作暂时不支持撤销。
 
     public DefaultPaintBoard(@NonNull Context context) {
         this(context, null);
@@ -45,6 +48,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         setBackgroundColor(Color.DKGRAY);
     }
 
+    void setBoardInfo(PaintBoardInfo boardInfo){
+        this.boardInfo = boardInfo;
+    }
+
+    PaintBoardInfo getBoardInfo(){
+        return boardInfo;
+    }
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
@@ -63,31 +73,26 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return false;
     }
 
-    ConcurrentLinkedDeque<OpPaint> getShapeOps(){   // TODO 放入画布
-        return shapeOps;
-    }
+//    ConcurrentLinkedDeque<OpPaint> getShapeOps(){   // TODO 放入画布
+//        return shapeOps;
+//    }
+//
+//    ConcurrentLinkedDeque<OpPaint> getPicOps(){
+//        return picOps;
+//    }
+//
+//    Stack<OpPaint> getRepealedShapeOps(){
+//        return repealedShapeOps;
+//    }
 
-    ConcurrentLinkedDeque<OpPaint> getPicOps(){
-        return picOps;
-    }
-
-    Stack<OpPaint> getRepealedShapeOps(){
-        return repealedShapeOps;
+    @Override
+    public String getBoardId() {
+        return null!=boardInfo ? boardInfo.id : null;
     }
 
     @Override
     public View getBoardView() {
         return this;
-    }
-
-    @Override
-    public void setPicPaintView(IPaintView paintView) {
-
-    }
-
-    @Override
-    public void setShapePaintView(IPaintView paintView) {
-
     }
 
     @Override

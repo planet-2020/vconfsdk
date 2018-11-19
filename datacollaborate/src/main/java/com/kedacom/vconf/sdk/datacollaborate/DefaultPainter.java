@@ -33,7 +33,7 @@ public class DefaultPainter implements IPainter {
 
     private static final int LOG_LEVEL = KLog.WARN;
 
-    private Context context;
+//    private Context context;
 
     private Map<String, DefaultPaintBoard> paintBoards = new HashMap<>();
     private String curBoardId;
@@ -46,22 +46,14 @@ public class DefaultPainter implements IPainter {
     private static int threadCount = 0;
 
     public DefaultPainter() {
-    }
-
-    public DefaultPainter(Context context) {
-        this.context = context;
         renderThread.start();
     }
 
+//    public DefaultPainter(Context context) {
+//        this.context = context;
+//        renderThread.start();
+//    }
 
-
-    public View getPaintBoard(int boardId){
-        return paintBoards.get(boardId);
-    }
-
-    public View getCurrentPaintBoard(){
-        return paintBoards.get(curBoardId);
-    }
 
 
     @Override
@@ -69,9 +61,10 @@ public class DefaultPainter implements IPainter {
         return 0;
     }
 
+
     @Override
     public void addPaintBoard(IPaintBoard paintBoard) {
-
+        paintBoards.put(paintBoard.getBoardId(), (DefaultPaintBoard) paintBoard);  // TODO 只能强转吗。工厂模式怎样保证产品一致性的？
     }
 
     @Override
@@ -80,13 +73,14 @@ public class DefaultPainter implements IPainter {
         return paintBoards.remove(boardId);
     }
 
+
     @Override
     public IPaintBoard switchPaintBoard(String boardId) {
         KLog.p(LOG_LEVEL, "switch board from %s to %s", curBoardId, boardId);
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
         if(null == paintBoard){
-            paintBoard = new DefaultPaintBoard(context);
-            paintBoards.put(boardId, paintBoard);
+            KLog.p(KLog.ERROR,"no such board %s", boardId);
+            return null;
         }
         curBoardId = boardId;
 
@@ -99,23 +93,30 @@ public class DefaultPainter implements IPainter {
     }
 
     @Override
+    public IPaintBoard getCurrentPaintBoard(){
+        return paintBoards.get(curBoardId);
+    }
+
+
+    @Override
     public void paint(OpPaint op){
         KLog.p(KLog.WARN, "for board %s op %s", op.boardId, op);
         DefaultPaintBoard paintBoard = paintBoards.get(op.boardId);
         if(null == paintBoard){
+            KLog.p(KLog.ERROR,"no board %s for op %s", op.boardId, op);
             return;
         }
 
-        boolean refresh = op.boardId.equals(curBoardId);
+        boolean refresh = op.boardId.equals(curBoardId); // 操作属于当前board则需立即刷新
 
-        ConcurrentLinkedDeque<OpPaint> shapeOps = paintBoard.getShapeOps();
-        ConcurrentLinkedDeque<OpPaint> picOps = paintBoard.getPicOps();
-        Stack<OpPaint> repealedShapeOps = paintBoard.getRepealedShapeOps();
+        ConcurrentLinkedDeque<OpPaint> shapeOps = paintBoard.getShapePaintView().getOps();
+        Stack<OpPaint> repealedShapeOps = paintBoard.getShapePaintView().getrepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
+        ConcurrentLinkedDeque<OpPaint> picOps = paintBoard.getPicPaintView().getOps();
 
         OpPaint tmpOp;
         switch (op.type){
             case OpPaint.OP_UNDO:
-                tmpOp = shapeOps.pollLast(); // 撤销最近的图形操作
+                tmpOp = shapeOps.pollLast(); // 撤销最近的操作
                 if (null != tmpOp){
 //                    KLog.p(KLog.WARN, "repeal %s",tmpOp);
                     repealedShapeOps.push(tmpOp); // 缓存撤销的操作以供恢复
@@ -138,13 +139,14 @@ public class DefaultPainter implements IPainter {
                 redo操作前面只能是redo操作或者undo操作），而撤销操作缓存仅供redo操作使用。*/
                 repealedShapeOps.clear();
 
-                if (OpPaint.OP_MATRIX == op.type){
+                if (OpPaint.OP_MATRIX == op.type){  // TODO matrix操作也当作普通操作对待。放到线程里面去遍历然后设置。
                 /* matrix操作不同于普通绘制操作。从它生效开始，
                 它作用于所有之前的以及之后的操作，不受时序的制约，所以需要特殊处理。*/
                     synchronized (curShapePaintViewMatrix) {
                         curShapePaintViewMatrix.setValues(((OpMatrix) op).matrixValue);
                     }
-                }else if (OpPaint.OP_INSERT_PICTURE == op.type){
+                }else
+                if (OpPaint.OP_INSERT_PICTURE == op.type){
                     picOps.offer(op);
                 }else {
                     shapeOps.offer(op);
@@ -284,7 +286,7 @@ public class DefaultPainter implements IPainter {
                 if (null == paintBoard){
                     continue;
                 }
-                shapePaintView = paintBoard.getShapePaintView().getPaintView();
+                shapePaintView = paintBoard.getShapePaintView();
 
                 Canvas canvas = shapePaintView.lockCanvas();  // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
                 if (null == canvas){
@@ -303,7 +305,7 @@ public class DefaultPainter implements IPainter {
                     接下来我们要开始遍历队列了，此处重新置needRender为false以避免下一轮无谓的重复刷新。*/
                     needRender = false;
                 }
-                shapeOps = paintBoard.getShapeOps();
+                shapeOps = shapePaintView.getOps();
                 for (OpPaint op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
                     KLog.p("to render %s", op);
                     switch (op.type){
@@ -361,7 +363,7 @@ public class DefaultPainter implements IPainter {
                 synchronized (curPicPaintViewMatrix){
                     picPaintViewCanvas.setMatrix(curPicPaintViewMatrix);
                 }
-                picOps = paintBoard.getPicOps();
+                picOps = picPaintView.getOps();
                 for (OpPaint op : picOps){
                     switch (op.type){
                         case OpPaint.OP_INSERT_PICTURE:

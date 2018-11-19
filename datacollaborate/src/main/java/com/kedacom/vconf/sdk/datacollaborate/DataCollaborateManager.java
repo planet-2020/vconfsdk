@@ -153,13 +153,13 @@ public class DataCollaborateManager extends RequestAgent {
             boardLifecycleListener = (IPaintBoardLifecycleListener) listener;
             if (Msg.DcsCurrentWhiteBoard_Ntf.equals(ntfId)) {
                 MsgBeans.TDCSBoardInfo boardInfo = (MsgBeans.TDCSBoardInfo) ntfContent;
-                boardLifecycleListener.onBoardSwitched(new PaintBoardInfo(boardInfo.achTabId, boardInfo.achWbName));
+                boardLifecycleListener.onBoardSwitched(boardInfo.achTabId);
             } else if (Msg.DcsNewWhiteBoard_Ntf.equals(ntfId)) {
                 MsgBeans.TDCSBoardInfo boardInfo = (MsgBeans.TDCSBoardInfo) ntfContent;
                 boardLifecycleListener.onBoardCreated(new PaintBoardInfo(boardInfo.achTabId, boardInfo.achWbName));
             } else if (Msg.DcsSwitch_Ntf.equals(ntfId)) {
                 MsgBeans.TDCSBoardInfo boardInfo = (MsgBeans.TDCSBoardInfo) ntfContent;
-                boardLifecycleListener.onBoardSwitched(new PaintBoardInfo(boardInfo.achTabId, boardInfo.achWbName));
+                boardLifecycleListener.onBoardSwitched(boardInfo.achTabId);
             } else if (Msg.DcsDelWhiteBoard_Ntf.equals(ntfId)) {
                 // TODO
             }
@@ -312,8 +312,8 @@ public class DataCollaborateManager extends RequestAgent {
 
     public interface IPaintBoardLifecycleListener{
         void onBoardCreated(PaintBoardInfo boardInfo);
-        void onBoardDeleted(PaintBoardInfo boardInfo);
-        void onBoardSwitched(PaintBoardInfo boardInfo);
+        void onBoardDeleted(String boardId);
+        void onBoardSwitched(String boardId);
     }
 
 
