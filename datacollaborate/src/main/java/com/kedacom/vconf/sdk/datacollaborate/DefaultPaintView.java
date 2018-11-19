@@ -24,7 +24,7 @@ public class DefaultPaintView extends TextureView implements IPaintView{
     private String boardId;
 
     private ConcurrentLinkedDeque<OpPaint> renderOps = new ConcurrentLinkedDeque<>(); // 绘制操作
-    private ConcurrentLinkedDeque<OpMatrix> matrixOps = new ConcurrentLinkedDeque<>(); // 缩放及位变操作
+    private ConcurrentLinkedDeque<OpPaint> matrixOps = new ConcurrentLinkedDeque<>(); // 缩放及位变操作
     private Stack<OpPaint> repealedOps = new Stack<>(); // 被撤销的操作
 
     public DefaultPaintView(Context context) {
@@ -42,7 +42,7 @@ public class DefaultPaintView extends TextureView implements IPaintView{
         return renderOps;
     }
 
-    ConcurrentLinkedDeque<OpMatrix> getMatrixOps() {
+    ConcurrentLinkedDeque<OpPaint> getMatrixOps() {
         return matrixOps;
     }
 

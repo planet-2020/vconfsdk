@@ -20,10 +20,10 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.PaintCfg;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -101,12 +101,12 @@ public class DefaultPainter implements IPainter {
 
         DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
         ConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapePaintView.getRenderOps();
-        ConcurrentLinkedDeque<OpMatrix> shapeMatrixOps = shapePaintView.getMatrixOps();
+        ConcurrentLinkedDeque<OpPaint> shapeMatrixOps = shapePaintView.getMatrixOps();
         Stack<OpPaint> shapeRepealedOps = shapePaintView.getRepealedOps();
 
         DefaultPaintView picPaintView = paintBoard.getPicPaintView();
         ConcurrentLinkedDeque<OpPaint> picRenderOps = picPaintView.getRenderOps();
-        ConcurrentLinkedDeque<OpMatrix> picMatrixOps = picPaintView.getMatrixOps();
+        ConcurrentLinkedDeque<OpPaint> picMatrixOps = picPaintView.getMatrixOps();
 //        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
 
 
@@ -135,8 +135,21 @@ public class DefaultPainter implements IPainter {
                 }
                 break;
 
-            case OpPaint.OP_PIC_MATRIX:
-                picMatrixOps.offer((OpMatrix) op);
+            case OpPaint.OP_DRAG_PIC:
+                for (Map.Entry<String, float[]> dragOp : ((OpDragPic)op).picsMatrix.entrySet()) {
+                    for (OpPaint opPaint : picRenderOps) {
+                        if (OpPaint.OP_INSERT_PICTURE == opPaint.type
+                                && ((OpInsertPic) opPaint).picId.equals(dragOp.getKey())) {
+                            ((OpInsertPic) opPaint).matrixValue = dragOp.getValue();
+                            break;
+                        }
+                    }
+                }
+                break;
+
+            case OpPaint.OP_MATRIX: // 全局放缩，包括图片和图形
+                picMatrixOps.offer(op);
+                shapeMatrixOps.offer(op);
                 break;
 
             default:  // 图形操作
@@ -159,9 +172,6 @@ public class DefaultPainter implements IPainter {
                         }else {
                             refresh = false;
                         }
-                        break;
-                    case OpPaint.OP_MATRIX:
-                        shapeMatrixOps.offer((OpMatrix) op);
                         break;
                     default:
 
@@ -217,7 +227,7 @@ public class DefaultPainter implements IPainter {
         @Override
         public void run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-            OpDrawLine lineOp;
+            OpDrawLine lineOp;   // TODO 清理冗余定义
             OpDrawRect rectOp;
             OpDrawOval ovalOp;
             OpDrawPath pathOp;
@@ -270,9 +280,9 @@ public class DefaultPainter implements IPainter {
 
                 canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
 
-                OpMatrix opMatrix = shapePaintView.getMatrixOps().peekLast();
+                OpPaint opMatrix = shapePaintView.getMatrixOps().peekLast();  // TODO 暂不考虑完整保存以供回放的功能。matrix就一个值就好。
                 if (null != opMatrix) {
-                    shapeMatrix.setValues(opMatrix.matrixValue);
+                    shapeMatrix.setValues( ((OpMatrix)opMatrix).matrixValue );
                     canvas.setMatrix(shapeMatrix);
                 }
 
@@ -338,7 +348,7 @@ public class DefaultPainter implements IPainter {
 
                 opMatrix = picPaintView.getMatrixOps().peekLast();
                 if (null != opMatrix) {
-                    picMatrix.setValues(opMatrix.matrixValue);
+                    picMatrix.setValues( ((OpMatrix)opMatrix).matrixValue);
                     picPaintViewCanvas.setMatrix(picMatrix);
                 }
 

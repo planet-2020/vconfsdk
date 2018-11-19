@@ -4,7 +4,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.PointF;
 import android.os.Handler;
 
-import com.kedacom.vconf.sdk.base.BuildConfig;
 import com.kedacom.vconf.sdk.base.IResponseListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
@@ -20,6 +19,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.PaintBoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.PaintCfg;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
@@ -182,6 +182,7 @@ public class DataCollaborateManager extends RequestAgent {
 
         isRecvingBatchOps = false;
     };
+    @SuppressWarnings("ConstantConditions")
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
 
@@ -234,8 +235,18 @@ public class DataCollaborateManager extends RequestAgent {
                         BitmapFactory.decodeFile("/data/local/tmp/wb.png"), gp.dwImgWidth, gp.dwImgHeight,
                         gp.tPoint.nPosx, gp.tPoint.nPosy, gp.aachMatrixValue, commonInfo.dwMsgSequence, commonInfo.achTabId);
             } else if (Msg.DcsOperPitchPicDrag_Ntf.equals(ntfId)) {
-                // TODO
-                paintOp = null;
+                MsgBeans.DcsOperPitchPicDrag_Ntf opInfo = (MsgBeans.DcsOperPitchPicDrag_Ntf) ntfContent;
+                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
+                MsgBeans.TDCSWbPitchPicOperInfo gp = opInfo.AssParam;
+                Map<String, float[]> picsMatrix = new HashMap<>();
+                for (MsgBeans.TDCSWbGraphsInfo picInfo : gp.atGraphsInfo){
+                    float[] matrixValue = new float[9];
+                    for (int i=0; i<picInfo.aachMatrixValue.length; ++i){
+                        matrixValue[i] = Float.valueOf(picInfo.aachMatrixValue[i]);
+                    }
+                    picsMatrix.put(picInfo.achGraphsId, matrixValue);
+                }
+                paintOp = new OpDragPic(picsMatrix, commonInfo.dwMsgSequence, commonInfo.achTabId);
             } else if (Msg.DcsOperPitchPicDel_Ntf.equals(ntfId)) {
                 MsgBeans.DcsOperPitchPicDel_Ntf opInfo = (MsgBeans.DcsOperPitchPicDel_Ntf) ntfContent;
                 MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
@@ -250,7 +261,11 @@ public class DataCollaborateManager extends RequestAgent {
                 MsgBeans.DcsOperFullScreen_Ntf opInfo = (MsgBeans.DcsOperFullScreen_Ntf) ntfContent;
                 MsgBeans.TDCSWbDisPlayInfo gp = opInfo.AssParam;
                 MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-                paintOp = new OpMatrix(gp.aachMatrixValue, commonInfo.dwMsgSequence, commonInfo.achTabId);
+                float[] matrixValue = new float[9];
+                for (int i=0; i<gp.aachMatrixValue.length; ++i){
+                    matrixValue[i] = Float.valueOf(gp.aachMatrixValue[i]);
+                }
+                paintOp = new OpMatrix(matrixValue, commonInfo.dwMsgSequence, commonInfo.achTabId);
             } else if (Msg.DcsOperUndo_Ntf.equals(ntfId)) {
                 MsgBeans.DcsOperUndo_Ntf opInfo = (MsgBeans.DcsOperUndo_Ntf) ntfContent;
                 MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;

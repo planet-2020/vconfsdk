@@ -478,6 +478,10 @@ public final class MsgBeans {
     public static final class DcsOperPitchPicDrag_Ntf{
         public TDCSOperContent MainParam;
         public TDCSWbPitchPicOperInfo AssParam;
+        DcsOperPitchPicDrag_Ntf(){
+            MainParam = new TDCSOperContent();  //MainParam.dwMsgSequence = 2;
+            AssParam = new TDCSWbPitchPicOperInfo();
+        }
     }
 
     public static final class DcsOperPitchPicDel_Ntf{
@@ -743,12 +747,12 @@ public final class MsgBeans {
             achImgId = "picId";
             tPoint = new TDCSWbPoint(10, 50);
             aachMatrixValue = new String[]{
-                    "0.500000",
+                    "1.000000",
                     "0.000000",
-                    "162.000000",
                     "0.000000",
-                    "0.500000",
-                    "155.250000",
+                    "0.000000",
+                    "1.00000",
+                    "0.250000",
                     "0.000000",
                     "0.000000",
                     "1.000000"
@@ -761,11 +765,30 @@ public final class MsgBeans {
         public int dwSubPageId;         // 子页面id
         public int dwGraphsCount;
         public TDCSWbGraphsInfo[] atGraphsInfo;
+        public TDCSWbPitchPicOperInfo(){
+            atGraphsInfo = new TDCSWbGraphsInfo[]{
+                    new TDCSWbGraphsInfo()
+            };
+        }
     }
 
     public static final class TDCSWbGraphsInfo {
         public String achGraphsId;        // 图元ID
         public String[] aachMatrixValue;
+        TDCSWbGraphsInfo(){
+            achGraphsId = "picId";
+            aachMatrixValue = new String[]{
+                    "1.000000",
+                    "0.000000",
+                    "200.000000",
+                    "0.000000",
+                    "1.000000",
+                    "200.250000",
+                    "0.000000",
+                    "0.000000",
+                    "1.000000"
+            };
+        }
     }
 
     public static final class TDCSWbDelPicOperInfo {
