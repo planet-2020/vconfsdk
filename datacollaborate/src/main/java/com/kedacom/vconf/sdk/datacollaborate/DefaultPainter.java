@@ -227,7 +227,6 @@ public class DefaultPainter implements IPainter {
         @Override
         public void run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-            OpDrawLine lineOp;   // TODO 清理冗余定义
             OpDrawRect rectOp;
             OpDrawOval ovalOp;
             OpDrawPath pathOp;
@@ -296,7 +295,7 @@ public class DefaultPainter implements IPainter {
                     KLog.p("to render %s", op);
                     switch (op.type){
                         case OpPaint.OP_DRAW_LINE:
-                            lineOp = (OpDrawLine) op;
+                            OpDrawLine lineOp = (OpDrawLine) op;
                             canvas.drawLine(lineOp.startX, lineOp.startY, lineOp.stopX, lineOp.stopY, cfgPaint(lineOp.paintCfg));
                             break;
                         case OpPaint.OP_DRAW_RECT:
