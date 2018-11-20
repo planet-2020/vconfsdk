@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Stack;
-import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class DefaultPainter implements IPainter {
 
@@ -40,11 +39,9 @@ public class DefaultPainter implements IPainter {
 
     private boolean needRender = false;
 
-
     public DefaultPainter() {
         renderThread.start();
     }
-
 
     @Override
     public int getMyId() {
@@ -100,13 +97,13 @@ public class DefaultPainter implements IPainter {
         }
 
         DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
-        ConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapePaintView.getRenderOps();
-        ConcurrentLinkedDeque<OpPaint> shapeMatrixOps = shapePaintView.getMatrixOps();
+        MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapePaintView.getRenderOps();
+        MyConcurrentLinkedDeque<OpPaint> shapeMatrixOps = shapePaintView.getMatrixOps();
         Stack<OpPaint> shapeRepealedOps = shapePaintView.getRepealedOps();
 
         DefaultPaintView picPaintView = paintBoard.getPicPaintView();
-        ConcurrentLinkedDeque<OpPaint> picRenderOps = picPaintView.getRenderOps();
-        ConcurrentLinkedDeque<OpPaint> picMatrixOps = picPaintView.getMatrixOps();
+        MyConcurrentLinkedDeque<OpPaint> picRenderOps = picPaintView.getRenderOps();
+        MyConcurrentLinkedDeque<OpPaint> picMatrixOps = picPaintView.getMatrixOps();
 //        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
 
 
@@ -115,7 +112,7 @@ public class DefaultPainter implements IPainter {
 
         switch (op.type){
             case OpPaint.OP_INSERT_PICTURE:
-                picRenderOps.offer(op);
+                picRenderOps.offerLast(op);
                 break;
 
             case OpPaint.OP_DELETE_PICTURE:
@@ -148,8 +145,8 @@ public class DefaultPainter implements IPainter {
                 break;
 
             case OpPaint.OP_MATRIX: // 全局放缩，包括图片和图形
-                picMatrixOps.offer(op);
-                shapeMatrixOps.offer(op);
+                picMatrixOps.offerLast(op);
+                shapeMatrixOps.offerLast(op);
                 break;
 
             default:  // 图形操作
@@ -168,7 +165,7 @@ public class DefaultPainter implements IPainter {
                         if (!shapeRepealedOps.empty()) {
                             tmpOp = shapeRepealedOps.pop();
                             KLog.p(KLog.WARN, "restore %s",tmpOp);
-                            shapeRenderOps.offer(tmpOp); // 恢复最近操作
+                            shapeRenderOps.offerLast(tmpOp); // 恢复最近操作
                         }else {
                             refresh = false;
                         }
@@ -180,7 +177,7 @@ public class DefaultPainter implements IPainter {
                         KLog.p(KLog.WARN, "clean repealed ops");
                         shapeRepealedOps.clear();
 
-                        shapeRenderOps.offer(op);
+                        shapeRenderOps.offerLast(op);
 
         //                KLog.p(KLog.WARN, "need render op %s", op);
                         break;
@@ -281,7 +278,7 @@ public class DefaultPainter implements IPainter {
                 }
 
                 // 图形绘制
-                ConcurrentLinkedDeque<OpPaint> shapeOps = shapePaintView.getRenderOps();
+                MyConcurrentLinkedDeque<OpPaint> shapeOps = shapePaintView.getRenderOps();
                 for (OpPaint op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
                     KLog.p("to render %s", op);
                     switch (op.type){
@@ -335,7 +332,7 @@ public class DefaultPainter implements IPainter {
                 }
 
                 // 图片绘制
-                ConcurrentLinkedDeque<OpPaint> picOps = picPaintView.getRenderOps();
+                MyConcurrentLinkedDeque<OpPaint> picOps = picPaintView.getRenderOps();
                 for (OpPaint op : picOps){
                     switch (op.type){
                         case OpPaint.OP_INSERT_PICTURE:

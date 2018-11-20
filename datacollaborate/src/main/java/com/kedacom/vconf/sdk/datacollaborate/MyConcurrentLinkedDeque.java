@@ -5,6 +5,8 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.os.Build;
 
+import com.kedacom.vconf.sdk.base.KLog;
+
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -18,9 +20,11 @@ public class MyConcurrentLinkedDeque<E> implements Iterable<E>{
 
     public MyConcurrentLinkedDeque(){
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
-            deque = new ConcurrentLinkedDeque<>(); // ConcurrentLinkedDeque API 21才加入
+            deque = new ConcurrentLinkedDeque<>();
+            KLog.p("deque is ConcurrentLinkedDeque");
         }else{
-            deque = new LinkedBlockingDeque<>();  // NOTE: API 21以下使用的是LinkedBlockingDeque，可能造成生产者或消费者阻塞，取前请判空。
+            deque = new LinkedBlockingDeque<>();
+            KLog.p("deque is LinkedBlockingDeque");
         }
     }
 
