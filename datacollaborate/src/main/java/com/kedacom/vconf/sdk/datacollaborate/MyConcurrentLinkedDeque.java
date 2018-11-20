@@ -1,3 +1,6 @@
+
+
+
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.os.Build;
@@ -15,9 +18,9 @@ public class MyConcurrentLinkedDeque<E> implements Iterable<E>{
 
     public MyConcurrentLinkedDeque(){
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
-            deque = new ConcurrentLinkedDeque<>();
+            deque = new ConcurrentLinkedDeque<>(); // ConcurrentLinkedDeque API 21才加入
         }else{
-            deque = new LinkedBlockingDeque<>();
+            deque = new LinkedBlockingDeque<>();  // NOTE: API 21以下使用的是LinkedBlockingDeque，可能造成生产者或消费者阻塞，取前请判空。
         }
     }
 
