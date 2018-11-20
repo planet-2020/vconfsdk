@@ -28,13 +28,19 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
         @Override
         public void onListenerPause(Object listener) {
-            KLog.p(""+ listener);
-            delListener(listener);
+//            KLog.p(""+ listener);
+//            delListener(listener);
         }
 
         @Override
         public void onListenerStop(Object listener) {
 
+        }
+
+        @Override
+        public void onListenerDestroy(Object listener) {
+            KLog.p(""+ listener);
+            delListener(listener);
         }
     };
 
