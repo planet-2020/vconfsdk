@@ -6,6 +6,6 @@ public class OpDeletePic extends OpPaint {
         this.picIds = picIds;
         this.sn = sn;
         this.boardId = boardId;
-        type = OpPaint.OP_DELETE_PICTURE;
+        type = OP_DELETE_PICTURE;
     }
 }

@@ -372,6 +372,13 @@ public final class MsgBeans {
         public String achFilePathName;
         public String achWbPicentityId;
         public String achTabid;
+        TDCSFileLoadResult(){
+            bSuccess = true;
+            achTabid = "boardId";
+            bElementFile = true;
+            achWbPicentityId = "picId";
+            achFilePathName = "/data/local/tmp/wb.png";
+        }
     }
 
 
@@ -544,9 +551,13 @@ public final class MsgBeans {
     }
 
 
-    public static final class DcsTransferImage {
+    public static final class DCTransferPicUrlRsp {
         public TDCSResult MainParam;
         public TDCSImageUrl AssParam;
+        public DCTransferPicUrlRsp(){
+            MainParam = new TDCSResult();
+            AssParam = new TDCSImageUrl();
+        }
     }
 
 //    public static final class DownloadImage_Ntf{
@@ -571,6 +582,9 @@ public final class MsgBeans {
         public boolean bSucces;
         public int dwErrorCode;
         public String achConfE164;
+        TDCSResult(){
+            bSucces = true;
+        }
     }
 
     public static final class DcsReleaseConf_Ntf{
@@ -837,12 +851,42 @@ public final class MsgBeans {
         int  dwSubPageId;
     }
 
+
+    public static final class DownloadFilePara{
+        public String boardId;
+        public String picId;  // 图片ID。为null则表示下载图元操作（画线、画圆、插入图片等），不为null则下载图片本身。
+        public String picSavePath;
+        public String url; // 下载地址
+        public DownloadFilePara(String boardId, String url){
+            this.boardId = boardId;
+            this.picId = null;
+            this.picSavePath = null;
+            this.url = url;
+        }
+        public DownloadFilePara(String boardId, String picId, String picSavePath, String url){
+            this.boardId = boardId;
+            this.picId = picId;
+            this.picSavePath = picSavePath;
+            this.url = url;
+        }
+    }
+
     public static final class TDCSImageUrl {
         public String achConfE164;
         public String achTabId;
         public int dwPageId;
         public String achPicUrl;
         public String achWbPicentityId;     // 图片ID
+
+        public TDCSImageUrl(){
+
+        }
+        public TDCSImageUrl(String confE164, String boardId, String picId){
+            achConfE164 = confE164;
+            achTabId = boardId;
+            dwPageId = 0;
+            achWbPicentityId = picId;
+        }
     }
 
     public  static final class TDCSConfUserInfo {

@@ -22,7 +22,7 @@ public class OpInsertPic extends OpPaint {
             this.matrixValue[i] = Float.valueOf(matrixValue[i]);
         }
         this.sn = sn;
-        type = OpPaint.OP_INSERT_PICTURE;
+        type = OP_INSERT_PICTURE;
         this.boardId = boardId;
         paintCfg = new PaintCfg(PaintCfg.MODE_PICTURE);
     }

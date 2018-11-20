@@ -8,6 +8,6 @@ public class OpDragPic extends OpPaint {
         this.picsMatrix = picsMatrix;
         this.sn = sn;
         this.boardId = boardId;
-        type = OP_DRAG_PIC;
+        type = OP_DRAG_PICTURE;
     }
 }

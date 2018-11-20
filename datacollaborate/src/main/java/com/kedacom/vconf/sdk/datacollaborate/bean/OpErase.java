@@ -11,7 +11,7 @@ public class OpErase extends OpPaint {
         this.right = right;
         this.bottom = bottom;
         this.sn = sn;
-        type = OpPaint.OP_ERASE;
+        type = OP_ERASE;
         this.boardId = boardId;
         paintCfg = new PaintCfg(PaintCfg.MODE_ERASE);
     }

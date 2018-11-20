@@ -5,6 +5,6 @@ public class OpRedo extends OpPaint {
     public OpRedo(int sn, String boardId){
         this.sn = sn;
         this.boardId = boardId;
-        type = OpPaint.OP_REDO;
+        type = OP_REDO;
     }
 }

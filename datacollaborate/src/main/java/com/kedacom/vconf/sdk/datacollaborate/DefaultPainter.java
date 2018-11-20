@@ -21,6 +21,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.PaintCfg;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 
@@ -132,7 +133,7 @@ public class DefaultPainter implements IPainter {
                 }
                 break;
 
-            case OpPaint.OP_DRAG_PIC:
+            case OpPaint.OP_DRAG_PICTURE:
                 for (Map.Entry<String, float[]> dragOp : ((OpDragPic)op).picsMatrix.entrySet()) {
                     for (OpPaint opPaint : picRenderOps) {
                         if (OpPaint.OP_INSERT_PICTURE == opPaint.type
@@ -143,7 +144,16 @@ public class DefaultPainter implements IPainter {
                     }
                 }
                 break;
-
+            case OpPaint.OP_UPDATE_PICTURE:
+                OpUpdatePic updatePic = (OpUpdatePic) op;
+                for (OpPaint opPaint : picRenderOps) {
+                    if (OpPaint.OP_INSERT_PICTURE == opPaint.type
+                            && ((OpInsertPic) opPaint).picId.equals(updatePic.picId)) {
+                        ((OpInsertPic) opPaint).pic = updatePic.pic;
+                        break;
+                    }
+                }
+                break;
             case OpPaint.OP_MATRIX: // 全局放缩，包括图片和图形
                 picMatrixOps.offerLast(op);
                 shapeMatrixOps.offerLast(op);
@@ -337,11 +347,13 @@ public class DefaultPainter implements IPainter {
                     switch (op.type){
                         case OpPaint.OP_INSERT_PICTURE:
                             OpInsertPic insertPicOp = (OpInsertPic) op;
+                            if (null != insertPicOp.pic) { // NOTE:图片一开始置空的，等到下载完成才填充，所以此处需做非空判断。
 //                            int w = insertPicOp.pic.getWidth();
 //                            int h = insertPicOp.pic.getHeight();
-                            picMatrix.setValues(insertPicOp.matrixValue);
-                            KLog.p("to render %s", op);
-                            picPaintViewCanvas.drawBitmap(insertPicOp.pic, picMatrix, cfgPaint(insertPicOp.paintCfg));
+                                picMatrix.setValues(insertPicOp.matrixValue);
+                                KLog.p("to render %s", op);
+                                picPaintViewCanvas.drawBitmap(insertPicOp.pic, picMatrix, cfgPaint(insertPicOp.paintCfg));
+                            }
                             break;
                     }
                 }

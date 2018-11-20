@@ -5,6 +5,6 @@ public class OpUndo extends OpPaint {
     public OpUndo(int sn, String boardId){
         this.sn = sn;
         this.boardId = boardId;
-        type = OpPaint.OP_UNDO;
+        type = OP_UNDO;
     }
 }

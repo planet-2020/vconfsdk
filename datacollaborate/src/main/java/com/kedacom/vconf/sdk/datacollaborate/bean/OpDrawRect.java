@@ -13,6 +13,6 @@ public class OpDrawRect extends OpPaint {
         this.sn = sn;
         this.paintCfg = paintCfg;
         this.boardId = boardId;
-        type = OpPaint.OP_DRAW_RECT;
+        type = OP_DRAW_RECT;
     }
 }

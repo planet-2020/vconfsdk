@@ -14,6 +14,6 @@ public class OpDrawOval extends OpPaint {
         this.sn = sn;
         this.paintCfg = paintCfg;
         this.boardId = boardId;
-        type = OpPaint.OP_DRAW_OVAL;
+        type = OP_DRAW_OVAL;
     }
 }

@@ -9,6 +9,6 @@ public class OpDrawPath extends OpPaint {
         this.sn = sn;
         this.paintCfg = paintCfg;
         this.boardId = boardId;
-        type = OpPaint.OP_DRAW_PATH;
+        type = OP_DRAW_PATH;
     }
 }

@@ -12,7 +12,8 @@ public abstract class OpPaint implements Comparable<OpPaint>{
     public static final int OP_CLEAR_SCREEN = 9;
     public static final int OP_INSERT_PICTURE = 10;
     public static final int OP_DELETE_PICTURE = 11;
-    public static final int OP_DRAG_PIC = 12;
+    public static final int OP_DRAG_PICTURE = 12;
+    public static final int OP_UPDATE_PICTURE = 13;
     public int type; // 类型：划线、画圈等。
     int sn; // 序号。操作的先后顺序，序号越小的操作越先发生。
     public PaintCfg paintCfg;

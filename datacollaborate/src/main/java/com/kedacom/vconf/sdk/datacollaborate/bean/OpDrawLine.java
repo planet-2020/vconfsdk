@@ -13,6 +13,6 @@ public class OpDrawLine extends OpPaint {
         this.sn = sn;
         this.paintCfg = paintCfg;
         this.boardId = boardId;
-        type = OpPaint.OP_DRAW_LINE;
+        type = OP_DRAW_LINE;
     }
 }

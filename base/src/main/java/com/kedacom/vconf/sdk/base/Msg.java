@@ -348,7 +348,7 @@ public enum Msg {
 //    /**下载图片地址*/
 //    @Request(para=MsgBeans.TDCSImageUrl.class,
 //            rspSeq = {"DcsTransferImage"})
-//    DCSDownloadImageReq,
+//    DCQueryPicAddr,
 //
 //    /**下载图片地址响应*/
 //    @Response(clz=MsgBeans.DcsTransferImage.class)
@@ -360,7 +360,7 @@ public enum Msg {
     DCSUploadImageReq,
 
     /**上传图片地址响应*/
-    @Response(clz= MsgBeans.DcsTransferImage.class)
+    @Response(clz= MsgBeans.DCTransferPicUrlRsp.class)
     DcsUploadImage_Rsp,
 
     /**拒绝申请协作方*/
@@ -391,24 +391,29 @@ public enum Msg {
 
 
 
-    /**下载图元*/
-    @Request
-    DCSDownloadFileReq,
+    /**下载（图元、图片等）*/
+    @Request(name = "DCSDownloadFileReq",
+            para = MsgBeans.DownloadFilePara.class,
+            rspSeq = {"DcsDownloadFile_Rsp"})
+    DCDownload,
 
-    /**下载图元响应*/
-    @Response
-    DcsDownloadFile_Rsp,
+    /**下载响应*/
+    @Response(name = "DcsDownloadFile_Rsp",
+            clz = MsgBeans.TDCSFileLoadResult.class)
+    DCDownloadRsp,
 
-    /**获取下载图片地址*/
-    @Request(para=MsgBeans.TDCSImageUrl.class,
-            rspSeq = {"DcsTransferImage"})
-    DCSDownloadImageReq,
+    /**获取图片下载地址*/
+    @Request(name = "DCSDownloadImageReq",
+            para=MsgBeans.TDCSImageUrl.class,
+            rspSeq = {"DcsDownloadImage_Rsp"})
+    DCQueryPicUrl,
 
     /**获取下载图片地址响应*/
-    @Notification(clz = MsgBeans.DcsTransferImage.class)
-    DcsDownloadImage_Rsp,
+    @Response(name = "DcsDownloadImage_Rsp",
+            clz = MsgBeans.DCTransferPicUrlRsp.class)
+    DCQueryPicUrlRsp,
 
-    /**下载图片通知*/
+    /**下载图片通知*/ //??? 干嘛的
     @Notification(clz = MsgBeans.TDCSImageUrl.class)
     DownloadImage_Ntf,
 
