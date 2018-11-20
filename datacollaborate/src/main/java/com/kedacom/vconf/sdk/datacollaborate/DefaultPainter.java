@@ -227,21 +227,10 @@ public class DefaultPainter implements IPainter {
         @Override
         public void run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-            OpDrawRect rectOp;
-            OpDrawOval ovalOp;
-            OpDrawPath pathOp;
-            OpErase eraseOp;
-            OpInsertPic insertPicOp;
             Path path = new Path();
             RectF rect = new RectF();
             Matrix shapeMatrix = new Matrix();
             Matrix picMatrix = new Matrix();
-
-            DefaultPaintBoard paintBoard;
-            DefaultPaintView shapePaintView;
-            DefaultPaintView picPaintView;
-            ConcurrentLinkedDeque<OpPaint> shapeOps;
-            ConcurrentLinkedDeque<OpPaint> picOps;
 
             while (true){
                 KLog.p("start loop run");
@@ -265,11 +254,11 @@ public class DefaultPainter implements IPainter {
                     }
                 }
 
-                paintBoard = paintBoards.get(curBoardId);
+                DefaultPaintBoard paintBoard = paintBoards.get(curBoardId);
                 if (null == paintBoard){
                     continue;
                 }
-                shapePaintView = paintBoard.getShapePaintView();
+                DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
 
                 Canvas canvas = shapePaintView.lockCanvas();  // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
                 if (null == canvas){
@@ -290,7 +279,9 @@ public class DefaultPainter implements IPainter {
                     接下来我们要开始遍历队列了，此处重新置needRender为false以避免下一轮无谓的重复刷新。*/
                     needRender = false;
                 }
-                shapeOps = shapePaintView.getRenderOps();
+
+                // 图形绘制
+                ConcurrentLinkedDeque<OpPaint> shapeOps = shapePaintView.getRenderOps();
                 for (OpPaint op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
                     KLog.p("to render %s", op);
                     switch (op.type){
@@ -299,16 +290,16 @@ public class DefaultPainter implements IPainter {
                             canvas.drawLine(lineOp.startX, lineOp.startY, lineOp.stopX, lineOp.stopY, cfgPaint(lineOp.paintCfg));
                             break;
                         case OpPaint.OP_DRAW_RECT:
-                            rectOp = (OpDrawRect) op;
+                            OpDrawRect rectOp = (OpDrawRect) op;
                             canvas.drawRect(rectOp.left, rectOp.top, rectOp.right, rectOp.bottom, cfgPaint(rectOp.paintCfg));
                             break;
                         case OpPaint.OP_DRAW_OVAL:
-                            ovalOp = (OpDrawOval) op;
+                            OpDrawOval ovalOp = (OpDrawOval) op;
                             rect.set(ovalOp.left, ovalOp.top, ovalOp.right, ovalOp.bottom);
                             canvas.drawOval(rect, cfgPaint(ovalOp.paintCfg));
                             break;
                         case OpPaint.OP_DRAW_PATH:
-                            pathOp = (OpDrawPath) op;
+                            OpDrawPath pathOp = (OpDrawPath) op;
                             path.reset();
                             path.moveTo(pathOp.points[0].x, pathOp.points[0].y);
                             for (PointF point : pathOp.points) {
@@ -317,7 +308,7 @@ public class DefaultPainter implements IPainter {
                             canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
                             break;
                         case OpPaint.OP_ERASE:
-                            eraseOp = (OpErase) op;
+                            OpErase eraseOp = (OpErase) op;
                             canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp.paintCfg));
                             break;
                         case OpPaint.OP_CLEAR_SCREEN:
@@ -325,17 +316,9 @@ public class DefaultPainter implements IPainter {
                             break;
                     }
 
-//                    try {
-//                        KLog.p("sleeping...");
-//                        sleep(1000);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                        KLog.p(KLog.WARN, "quit renderThread");
-//                    }
-
                 }
 
-                picPaintView = paintBoard.getPicPaintView();
+                DefaultPaintView picPaintView = paintBoard.getPicPaintView();
                 Canvas picPaintViewCanvas = picPaintView.lockCanvas();
                 if (null == picPaintViewCanvas){
                     KLog.p(KLog.ERROR, "lockCanvas failed");
@@ -351,11 +334,12 @@ public class DefaultPainter implements IPainter {
                     picPaintViewCanvas.setMatrix(picMatrix);
                 }
 
-                picOps = picPaintView.getRenderOps();
+                // 图片绘制
+                ConcurrentLinkedDeque<OpPaint> picOps = picPaintView.getRenderOps();
                 for (OpPaint op : picOps){
                     switch (op.type){
                         case OpPaint.OP_INSERT_PICTURE:
-                            insertPicOp = (OpInsertPic) op;
+                            OpInsertPic insertPicOp = (OpInsertPic) op;
 //                            int w = insertPicOp.pic.getWidth();
 //                            int h = insertPicOp.pic.getHeight();
                             picMatrix.setValues(insertPicOp.matrixValue);
