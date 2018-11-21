@@ -16,6 +16,7 @@ import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,33 +55,20 @@ import javax.tools.Diagnostic;
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class MessageProcessor extends AbstractProcessor {
-
     private boolean bDone = false;
 
     private Map<String, String> idNameMap = new HashMap<>();
-
     private Map<String, String> nameIdMap = new HashMap<>();
-
     private Map<String, String> reqParaMap = new HashMap<>();
-
     private Map<String, String[][]> reqRspsMap = new HashMap<>();
-
     private Map<String, Integer> reqTimeoutMap = new HashMap<>();
-
     private Map<String, Boolean> reqExclusiveMap = new HashMap<>();
-
     private Map<String, String> rspClazzMap = new HashMap<>();
-
     private Map<String, Integer> rspDelayMap = new HashMap<>();
-
     private Map<String, String> ntfClazzMap = new HashMap<>();
-
     private Map<String, Integer> ntfDelayMap = new HashMap<>();
-
     private Map<String, String> getParaClazzMap = new HashMap<>();
-
     private Map<String, String> getResultClazzMap = new HashMap<>();
-
     private Map<String, String> setParaClazzMap = new HashMap<>();
 
     private String packageName;
@@ -107,26 +95,47 @@ public class MessageProcessor extends AbstractProcessor {
     }
 
 
-    private boolean collectInfo(RoundEnvironment roundEnvironment){
-//        reqParaMap.clear();
-//        reqRspsMap.clear();
-//        reqTimeoutMap.clear();
-//        reqExclusiveMap.clear();
-//        rspClazzMap.clear();
-//        ntfClazzMap.clear();
-//        getParaClazzMap.clear();
-//        getResultClazzMap.clear();
-//        setParaClazzMap.clear();
-
+    private boolean collectInfo(RoundEnvironment roundEnvironment) {
         Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Message.class);
 
-        if (null==msgSet || !msgSet.iterator().hasNext()){
+        if (!check(msgSet)){
+            messager.printMessage(Diagnostic.Kind.ERROR, "check failed!");
             return false;
         }
 
-        TypeElement msgDefClass = (TypeElement) msgSet.iterator().next();
+        for (Element element : msgSet) {
+            parseMessage((TypeElement) element);
+        }
 
-        // 获取“请求-响应”相关信息
+        parsePackageName(roundEnvironment);
+
+        return true;
+    }
+
+    private boolean check(Set<? extends Element> msgAnnotatedElements) {
+        if (null==msgAnnotatedElements || msgAnnotatedElements.isEmpty()){
+            return false;
+        }
+
+        Message message;
+        Set<String> values = new HashSet<>();
+        String value;
+        for (Element element : msgAnnotatedElements){
+            message = element.getAnnotation(Message.class);
+            value = message.value();
+            if (values.contains(value)){ // XXX 注解处理器不能跨模块，这里达不到预期效果。比如A、B两模块是分别的注解处理器处理的。
+                messager.printMessage(Diagnostic.Kind.ERROR, "Duplicated message value: "+value);
+                return false; // Message的value必须全局唯一
+            }
+            values.add(value);
+        }
+
+        return true;
+    }
+
+
+    // 获取“请求-响应”相关信息
+    private void parseMessage(TypeElement msgDefClass){
         List<? extends Element> msgElements = msgDefClass.getEnclosedElements();
         Request request;
         Response response;
@@ -293,9 +302,10 @@ public class MessageProcessor extends AbstractProcessor {
             }
 
         }
+    }
 
-
-        // 获取待生成文件的包名
+    // 获取待生成文件的包名
+    private void parsePackageName(RoundEnvironment roundEnvironment){
         Set<? extends Element> consumerSet = roundEnvironment.getElementsAnnotatedWith(Consumer.class);
         Consumer consumer;
         Class[] clzs;
@@ -344,9 +354,7 @@ public class MessageProcessor extends AbstractProcessor {
 //                + "\ngen packageName="+packageName
 //                + "\ngen className="+className);
 
-        return true;
     }
-
 
     private void generateFile(){
         String fieldNameIdNameMap = "idNameMap";
