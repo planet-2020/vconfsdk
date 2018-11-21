@@ -68,6 +68,8 @@ public enum Msg {
 
     //>>>>>>>>>>>>>>>>>>> 数据协作
 
+    // 数据协作基础
+
     /**获取数据协作服务器地址*/
     @Get(name = "GetDCSCfg",
             result = MsgBeans.TMtDCSSvrAddr.class)
@@ -85,10 +87,10 @@ public enum Msg {
 
     /**登录数据协作服务器。
      * 注：登录前需先建链。*/
-    @Request(para = MsgBeans.TDCSRegInfo.class,
+    @Request(name = "DCSLoginSrvReq",
+            para = MsgBeans.TDCSRegInfo.class,
             /*执行DCSLoginSrvReq时，下层自动执行了DCSLoginConnectCmd并把DcsLoginResult_Ntf抛了上来，
             所以上层看起来就是DCSLoginSrvReq对应{"DcsLoginResult_Ntf", "DcsLoginSrv_Rsp"}响应序列*/
-            name = "DCSLoginSrvReq",
             rspSeq = {"DcsLoginResult_Ntf", "DcsLoginSrv_Rsp"})
     DCLogin,
 
@@ -139,6 +141,11 @@ public enum Msg {
     @Response(clz = MsgBeans.TDCSCreateConfResult.class, delay = 500)
     DcsCreateConf_Rsp,
 
+
+    /**加入会议时候，对会议地址的域名查询*/
+    @Request(para=MsgBeans.TDCSConfAddr.class)
+    DCSJoinConfDomainCmd,
+
     /**加入数据协作*/
     @Request(rspSeq = {"DcsJoinConf_Rsp"})
     DCSJoinConfReq,
@@ -167,45 +174,64 @@ public enum Msg {
     @Response(clz = MsgBeans.DcsReleaseConf_Ntf.class)
     DcsReleaseConf_Ntf,
 
+    /**当前终端拒绝入会*/
+    @Request
+    DCSRejectJoinConfCmd,
+
+
+    // 数据协作权限控制相关
+
     /**成员申请协作权通知*/
     @Notification(clz = MsgBeans.TDCSUserInfo.class)
     DcsUserApplyOper_Ntf,
 
     /**添加协作方*/
-    @Request(para = MsgBeans.TDCSOperator.class,
+    @Request(name = "DCSAddOperatorReq",
+            para = MsgBeans.TDCSOperator.class,
             rspSeq = {"DcsAddOperator_Rsp"})
-    DCSAddOperatorReq,
+    DCAddOperator,
 
     /**添加协作方响应*/
-    @Response(clz = MsgBeans.TDCSResult.class)
-    DcsAddOperator_Rsp,
+    @Response(name = "DcsAddOperator_Rsp",
+            clz = MsgBeans.TDCSResult.class)
+    DCAddOperatorRsp,
 
     /**删除协作方*/
-    @Request(para = MsgBeans.TDCSOperator.class,
+    @Request(name = "DCSDelOperatorReq",
+            para = MsgBeans.TDCSOperator.class,
             rspSeq = {"DcsDelOperator_Rsp"})
-    DCSDelOperatorReq,
+    DCDelOperator,
 
     /**删除协作方响应*/
-    @Response(clz = MsgBeans.TDCSResult.class)
-    DcsDelOperator_Rsp,
+    @Response(name = "DcsDelOperator_Rsp",
+            clz = MsgBeans.TDCSResult.class)
+    DCDelOperatorRsp,
 
     /**申请协作方*/
-    @Request(para =  MsgBeans.DCSBriefMemberInfo.class,
+    @Request(name = "DCSApplyOperReq",
+            para =  MsgBeans.DCSBriefMemberInfo.class,
             rspSeq = {"DcsApplyOper_Rsp"})
-    DCSApplyOperReq,
+    DCApplyOperator,
 
     /**申请协作方响应*/
-    @Response(clz = MsgBeans.TDCSResult.class)
-    DcsApplyOper_Rsp,
+    @Response(name = "DcsApplyOper_Rsp",
+            clz = MsgBeans.TDCSResult.class)
+    DCApplyOperatorRsp,
+
+    /**拒绝申请协作方*/
+    @Request(para=MsgBeans.TDCSOperator.class)
+    DCSRejectOperatorCmd,
 
     /**取消协作方*/
-    @Request(para =  MsgBeans.DCSBriefMemberInfo.class,
+    @Request(name = "DCSCancelOperReq",
+            para =  MsgBeans.DCSBriefMemberInfo.class,
             rspSeq = {"DcsCancelOper_Rsp"})
-    DCSCancelOperReq,
+    DCCancelOperator,
 
     /**取消协作方响应*/
-    @Response(clz = MsgBeans.TDCSResult.class)
-    DcsCancelOper_Rsp,
+    @Response(name = "DcsCancelOper_Rsp",
+            clz = MsgBeans.TDCSResult.class)
+    DCCancelOperatorRsp,
 
     /**获取数据协作成员列表*/
     @Request(para=MsgBeans.DCSBriefConfInfo.class,
@@ -216,6 +242,8 @@ public enum Msg {
     @Response(clz = MsgBeans.DCSGetUserListRsp.class)
     DcsGetUserList_Rsp,
 
+
+    // 数据协作画板相关
 
     /**新建白板*/
     @Request(para=MsgBeans.TDCSNewWhiteBoard.class,
@@ -253,6 +281,26 @@ public enum Msg {
     @Response(clz=MsgBeans.DCSGetAllWhiteBoardRsp.class)
     DcsGetAllWhiteBoard_Rsp,
 
+
+
+    /** 当前白板通知*/
+    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
+    DcsCurrentWhiteBoard_Ntf,
+
+    /**新建白板通知*/
+    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
+    DcsNewWhiteBoard_Ntf,
+
+    /**切换白板通知*/
+    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
+    DcsSwitch_Ntf,
+
+    /**删除白板通知*/
+    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
+    DcsDelWhiteBoard_Ntf,
+
+
+    // 数据协作图元操作
 
     /**线操作*/
     @Request(para=MsgBeans.DCSOperLineOper.class)
@@ -323,10 +371,6 @@ public enum Msg {
     @Request
     DCSGetImageUrlReq,
 
-    /**当前终端拒绝入会*/
-    @Request
-    DCSRejectJoinConfCmd,
-
     /**上传文件*/
     @Request(para=MsgBeans.DCSTransferFile.class,
             rspSeq = {"DcsUploadFile_Ntf"})
@@ -336,23 +380,6 @@ public enum Msg {
     @Response(clz= MsgBeans.BaseTypeBool.class)
     DcsUploadFile_Ntf,
 
-//    /**下载文件*/
-//    @Request(para=MsgBeans.DCSTransferFile.class,
-//            rspSeq = {"DcsDownloadFile_Rsp"})
-//    DCSDownloadFileReq,
-//
-//    /**下载文件响应*/
-//    @Response(clz= MsgBeans.TDCSFileLoadResult.class)
-//    DcsDownloadFile_Rsp,
-//
-//    /**下载图片地址*/
-//    @Request(para=MsgBeans.TDCSImageUrl.class,
-//            rspSeq = {"DcsTransferImage"})
-//    DCQueryPicAddr,
-//
-//    /**下载图片地址响应*/
-//    @Response(clz=MsgBeans.DcsTransferImage.class)
-//    DcsTransferImage,
 
     /**上传图片地址*/
     @Request(para=MsgBeans.TDCSImageUrl.class,
@@ -363,31 +390,6 @@ public enum Msg {
     @Response(clz= MsgBeans.DCTransferPicUrlRsp.class)
     DcsUploadImage_Rsp,
 
-    /**拒绝申请协作方*/
-    @Request(para=MsgBeans.TDCSOperator.class)
-    DCSRejectOperatorCmd,
-
-    /**加入会议时候，对会议地址的域名查询*/
-    @Request(para=MsgBeans.TDCSConfAddr.class)
-    DCSJoinConfDomainCmd,
-
-
-
-    /** 当前白板通知*/
-    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
-    DcsCurrentWhiteBoard_Ntf,
-
-    /**新建白板通知*/
-    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
-    DcsNewWhiteBoard_Ntf,
-
-    /**切换白板通知*/
-    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
-    DcsSwitch_Ntf,
-
-    /**删除白板通知*/
-    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
-    DcsDelWhiteBoard_Ntf,
 
 
 
@@ -416,6 +418,8 @@ public enum Msg {
     /**下载图片通知*/ //??? 干嘛的
     @Notification(clz = MsgBeans.TDCSImageUrl.class)
     DownloadImage_Ntf,
+
+
 
 
     /**图元序列开始通知。
