@@ -7,10 +7,10 @@ import android.os.Handler;
 import com.kedacom.vconf.sdk.base.IResponseListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
-import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.CommonResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
@@ -27,6 +27,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.TerminalType;
 
 //import static com.kedacom.vconf.sdk.base.MsgBeans.*; // TODO 使用static import？
 
@@ -38,16 +39,6 @@ import java.util.Set;
 
 public class DataCollaborateManager extends RequestAgent {
 
-    // 终端类型
-    public static final int Terminal_TrueLinkPc = 1; // 致邻PC版
-    public static final int Terminal_TrueLinkIosPhone = 2; // 致邻IOS手机版
-    public static final int Terminal_TrueLinkIosPad = 3; // 致邻IOS平板版
-    public static final int Terminal_TrueLinkAndroidPhone = 4; // 致邻Android手机版
-    public static final int Terminal_TrueLinkAndroidPad = 5; // 致邻Android平板版
-    public static final int Terminal_TrueSens = 6; // 硬终端
-    public static final int Terminal_Imix = 7; // 网呈IMIX
-    public static final int Terminal_Other = 8; // 其他终端
-
     // 是否正在接收批量上报的操作
     private boolean isRecvingBatchOps = false;
 
@@ -56,11 +47,24 @@ public class DataCollaborateManager extends RequestAgent {
     此处我们使用PriorityQueue结合该序列号字段来为我们自动排序。*/
     private PriorityQueue<OpPaint> batchOps = new PriorityQueue<>();
 
+    //当前数据协作会议的e164
+    private String curDcConfE164;  // TODO 赋值
+
     @Override
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> processorMap = new HashMap<>();
-        processorMap.put(Msg.DCLogin, this::onLoginRsps);
-        processorMap.put(Msg.DCSCreateConfReq, this::onCreateDcConfRsps);
+        processorMap.put(Msg.DCLogin, this::onSessionRsps);
+        processorMap.put(Msg.DCLogout, this::onSessionRsps);
+
+        processorMap.put(Msg.DCCreateConf, this::onDcConfLifecycleRsps);
+        processorMap.put(Msg.DCReleaseConf, this::onDcConfLifecycleRsps);
+        processorMap.put(Msg.DCQuitConf, this::onDcConfLifecycleRsps);
+
+        processorMap.put(Msg.DCAddOperator, this::onChangeOperatorsRsps);
+        processorMap.put(Msg.DCDelOperator, this::onChangeOperatorsRsps);
+        processorMap.put(Msg.DCApplyOperator, this::onChangeOperatorsRsps);
+        processorMap.put(Msg.DCCancelOperator, this::onChangeOperatorsRsps);
+
         processorMap.put(Msg.DCDownload, this::onDownloadRsp);
         processorMap.put(Msg.DCQueryPicUrl, this::onQueryPicUrlRsp);
         return processorMap;
@@ -95,21 +99,22 @@ public class DataCollaborateManager extends RequestAgent {
         return processorMap;
     }
 
-
-    public void login(String serverIp, int port, int terminalType, IResponseListener resultListener){
-        req(Msg.DCLogin, new MsgBeans.TDCSRegInfo(serverIp, port, convertTerminalType(terminalType)), resultListener);
-    }
-
-    public void createDcConf(IResponseListener resultListener){
-        req(Msg.DCSCreateConfReq, new MsgBeans.DCSCreateConf(), resultListener);
-    }
-
     /**发送绘制操作*/
     public void postPaintOp(OpPaint op){
 //        req();
     }
 
-    private void onLoginRsps(Msg rspId, Object rspContent, IResponseListener listener){
+    /**登录数据协作*/
+    public void login(String serverIp, int port, TerminalType terminalType, IResponseListener resultListener){
+        req(Msg.DCLogin, new MsgBeans.TDCSRegInfo(serverIp, port, terminalType.convert()), resultListener);
+    }
+
+    /**注销数据协作*/
+    public void logout(IResponseListener resultListener){
+        req(Msg.DCLogout, null, resultListener);
+    }
+
+    private void onSessionRsps(Msg rspId, Object rspContent, IResponseListener listener){
         KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
         if (Msg.DCBuildLink4LoginRsp.equals(rspId)){
             MsgBeans.DcsLinkCreationResult linkCreationResult = (MsgBeans.DcsLinkCreationResult) rspContent;
@@ -121,35 +126,139 @@ public class DataCollaborateManager extends RequestAgent {
         }else if (Msg.DCLoginRsp.equals(rspId)){
             MsgBeans.DcsLoginResult loginRes = (MsgBeans.DcsLoginResult) rspContent;
             if (null != listener){
-                if (loginRes.bSucces) {
+                if (loginRes.bSucces) {  // ??? 需要保存登录状态吗
                     listener.onResponse(CommonResultCode.SUCCESS, null);
                 }else{
                     listener.onResponse(CommonResultCode.FAILED, null);
+                }
+            }
+        }else if (Msg.DCLogoutRsp.equals(rspId)){
+            MsgBeans.TDCSResult result = (MsgBeans.TDCSResult) rspContent;
+            if (null != listener){
+                if (result.bSucces){
+                    listener.onResponse(CommonResultCode.SUCCESS, rspContent);
+                }else{
+                    listener.onResponse(CommonResultCode.FAILED, rspContent);
                 }
             }
         }
     }
 
 
-    private void onCreateDcConfRsps(Msg rspId, Object rspContent, IResponseListener listener){
-        if (Msg.DcsConfResult_Ntf.equals(rspId)){
+
+    /**创建数据协作*/
+    public void createDcConf(IResponseListener resultListener){
+        req(Msg.DCCreateConf, new MsgBeans.DCSCreateConf(), resultListener);
+    }
+
+    /**结束数据协作*/
+    public void releaseDcConf(IResponseListener resultListener){
+        req(Msg.DCReleaseConf, new MsgBeans.DCSBriefConfInfo(curDcConfE164), resultListener);
+        curDcConfE164 = null;
+    }
+
+    /**退出数据协作。
+     * 注：仅自己退出，协作仍存在，不影响其他人继续*/
+    public void quitDcConf(IResponseListener resultListener){
+        req(Msg.DCQuitConf, new MsgBeans.DCSQuitConf(curDcConfE164, true), resultListener);
+        curDcConfE164 = null;
+    }
+
+    private void onDcConfLifecycleRsps(Msg rspId, Object rspContent, IResponseListener listener){
+        if (Msg.DCBuildLink4ConfRsp.equals(rspId)){
             MsgBeans.DcsConfResult dcsConfResult = (MsgBeans.DcsConfResult) rspContent;
             if (!dcsConfResult.bSuccess
                     && null != listener){
-                cancelReq(Msg.DCSCreateConfReq, listener);  // 后续不会有DcsCreateConf_Rsp上来，取消该请求以防等待超时。
+                cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCCreateConfRsp上来，取消该请求以防等待超时。
                 listener.onResponse(CommonResultCode.FAILED, null);
             }
-        }else if (Msg.DcsCreateConf_Rsp.equals(rspId)){
-            MsgBeans.TDCSCreateConfResult createConfResult = (MsgBeans.TDCSCreateConfResult) rspContent;
+        }else if (Msg.DCCreateConfRsp.equals(rspId)){
+            MsgBeans.TDCSCreateConfResult confResult = (MsgBeans.TDCSCreateConfResult) rspContent;
+            curDcConfE164 = confResult.achConfE164;
             if (null != listener){
-                if (createConfResult.bSuccess) {
+                if (confResult.bSuccess) {
                     listener.onResponse(CommonResultCode.SUCCESS, null);
                 }else{
                     listener.onResponse(CommonResultCode.FAILED, null);
                 }
             }
+        }else if (Msg.DCReleaseConfRsp.equals(rspId)){
+            MsgBeans.TDCSResult result = (MsgBeans.TDCSResult) rspContent;
+            if (null != listener){
+                if (result.bSucces){
+                    listener.onResponse(CommonResultCode.SUCCESS, rspContent);
+                }else{
+                    listener.onResponse(CommonResultCode.FAILED, rspContent);
+                }
+            }
+        }else if (Msg.DCQuitConfRsp.equals(rspId)){
+            MsgBeans.TDCSResult result = (MsgBeans.TDCSResult) rspContent;
+            if (null != listener){
+                if (result.bSucces){
+                    listener.onResponse(CommonResultCode.SUCCESS, rspContent);
+                }else{
+                    listener.onResponse(CommonResultCode.FAILED, rspContent);
+                }
+            }
         }
     }
+
+
+
+    /**添加协作方*/
+    public void addOperator(DCMember[] members, IResponseListener resultListener){
+        if (null == curDcConfE164) {
+            KLog.p(KLog.ERROR,"not in DC conf yet!");
+            return;
+        }
+        MsgBeans.TDCSConfUserInfo[] confUserInfos = new MsgBeans.TDCSConfUserInfo[members.length];
+        for (int i=0; i<members.length; ++i){
+            confUserInfos[i] = members[i].convert();
+        }
+        req(Msg.DCAddOperator, new MsgBeans.TDCSOperator(curDcConfE164, confUserInfos), resultListener);
+    }
+
+    /**删除协作方*/
+    public void delOperator(DCMember[] members, IResponseListener resultListener){
+        if (null == curDcConfE164) {
+            KLog.p(KLog.ERROR,"not in DC conf yet!");
+            return;
+        }
+        MsgBeans.TDCSConfUserInfo[] confUserInfos = new MsgBeans.TDCSConfUserInfo[members.length];
+        for (int i=0; i<members.length; ++i){
+            confUserInfos[i] = members[i].convert();
+        }
+        req(Msg.DCDelOperator, new MsgBeans.TDCSOperator(curDcConfE164, confUserInfos), resultListener);
+    }
+
+    /**申请协作方*/
+    public void applyForOperator(String e164, IResponseListener resultListener){
+        if (null == curDcConfE164) {
+            KLog.p(KLog.ERROR,"not in DC conf yet!");
+            return;
+        }
+        req(Msg.DCApplyOperator, new MsgBeans.DCSBriefConfInfo(e164), resultListener);
+    }
+    /**取消协作方*/
+    public void cancelOperator(String e164, IResponseListener resultListener){
+        if (null == curDcConfE164) {
+            KLog.p(KLog.ERROR,"not in DC conf yet!");
+            return;
+        }
+        req(Msg.DCCancelOperator, new MsgBeans.DCSBriefConfInfo(e164), resultListener);
+    }
+
+    private void onChangeOperatorsRsps(Msg rspId, Object rspContent, IResponseListener listener){
+        MsgBeans.TDCSResult result = (MsgBeans.TDCSResult) rspContent;
+        if (null != listener){
+            if (result.bSucces){
+                listener.onResponse(CommonResultCode.SUCCESS, rspContent);
+            }else{
+                listener.onResponse(CommonResultCode.FAILED, rspContent);
+            }
+        }
+    }
+
 
 
     private void onDownloadRsp(Msg rspId, Object rspContent, IResponseListener listener){
@@ -372,28 +481,6 @@ public class DataCollaborateManager extends RequestAgent {
 
 
 
-
-    private MsgConst.EmDcsType convertTerminalType(int terminal){
-        switch (terminal){
-            case Terminal_TrueLinkPc:
-                return MsgConst.EmDcsType.emTypeTrueLink;
-            case Terminal_TrueLinkIosPhone:
-                return MsgConst.EmDcsType.emTypeTrueTouchPhoneIOS;
-            case Terminal_TrueLinkIosPad:
-                return MsgConst.EmDcsType.emTypeTrueTouchPadIOS;
-            case Terminal_TrueLinkAndroidPhone:
-                return MsgConst.EmDcsType.emTypeTrueTouchPhoneAndroid;
-            case Terminal_TrueLinkAndroidPad:
-                return MsgConst.EmDcsType.emTypeTrueTouchPadAndroid;
-            case Terminal_TrueSens:
-                return MsgConst.EmDcsType.emTypeTrueSens;
-            case Terminal_Imix:
-                return MsgConst.EmDcsType.emTypeIMIX;
-            case Terminal_Other:
-            default:
-                return MsgConst.EmDcsType.emTypeThirdPartyTer;
-        }
-    }
 
 
     public interface IOnPaintOpListener{

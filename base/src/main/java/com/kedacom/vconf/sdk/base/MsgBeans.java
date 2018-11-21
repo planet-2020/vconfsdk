@@ -603,8 +603,11 @@ public final class MsgBeans {
 
     public  static final class TDCSOperator{
         public String achConfE164;
-        public int dwListNum;
         public TDCSConfUserInfo[] atOperList;
+        public TDCSOperator(String confE164, TDCSConfUserInfo[] members){
+            achConfE164 = confE164;
+            atOperList = members;
+        }
     }
 
 
