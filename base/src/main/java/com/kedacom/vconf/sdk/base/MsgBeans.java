@@ -221,10 +221,6 @@ public final class MsgBeans {
         }
     }
 
-//    public static final class DCSGetUserListRsp {
-//        public TDCSResult MainParam;
-//        public TDCSGetUserList AssParam;
-//    }
     public static final class DCQueryAllMembersResult {
         public CommonResult commonResult;
         public DCMember[] AssParam;
@@ -459,15 +455,6 @@ public final class MsgBeans {
         public DCPaintCfg paintCfg;
     }
 
-//    public static final class DcsOperRectangleOperInfo_Ntf{
-//        public DCOpCommonInfo MainParam;
-//        public TDCSWbRectangleOperInfo AssParam;
-//        DcsOperRectangleOperInfo_Ntf(){
-//            MainParam = new DCOpCommonInfo(); //MainParam.dwMsgSequence = 3;
-//            AssParam = new TDCSWbRectangleOperInfo();
-//        }
-//    }
-
     public static final class DCRectOp {
         public int left;
         public int top;
@@ -476,16 +463,6 @@ public final class MsgBeans {
         public DCOpCommonInfo commonInfo;
         public DCPaintCfg paintCfg;
     }
-
-
-//    public static final class DcsOperPencilOperInfo_Ntf{
-//        public DCOpCommonInfo MainParam;
-//        public TDCSWbPencilOperInfo AssParam;
-//        DcsOperPencilOperInfo_Ntf(){
-//            MainParam = new DCOpCommonInfo(); //MainParam.dwMsgSequence = 4;
-//            AssParam = new TDCSWbPencilOperInfo();
-//        }
-//    }
 
     public static final class DCPathOp {
         public Point[] points;
@@ -512,15 +489,6 @@ public final class MsgBeans {
         }
     }
 
-//    public static final class DcsOperPitchPicDrag_Ntf{
-//        public DCOpCommonInfo MainParam;
-//        public DCDragPicOp AssParam;
-//        DcsOperPitchPicDrag_Ntf(){
-//            MainParam = new DCOpCommonInfo();  //MainParam.dwMsgSequence = 2;
-//            AssParam = new DCDragPicOp();
-//        }
-//    }
-
     public static final class DCDelPicOp {
         public String[] achGraphsId;
         public DCOpCommonInfo MainParam;
@@ -528,14 +496,6 @@ public final class MsgBeans {
         }
     }
 
-//    public static final class DcsOperEraseOperInfo_Ntf{
-//        public DCOpCommonInfo MainParam;
-//        public TDCSWbEraseOperInfo AssParam;
-//        public DcsOperEraseOperInfo_Ntf(){
-//            MainParam = new DCOpCommonInfo();  //MainParam.dwMsgSequence = 2;
-//            AssParam = new TDCSWbEraseOperInfo();
-//        }
-//    }
     public static final class DCRectEraseOp {
         public int left;
         public int top;
@@ -543,15 +503,6 @@ public final class MsgBeans {
         public int bottom;
         public DCOpCommonInfo commonInfo;
     }
-
-//    public static final class DcsOperFullScreen_Ntf{
-//        public DCOpCommonInfo MainParam;
-//        public TDCSWbDisPlayInfo AssParam;
-//        public DcsOperFullScreen_Ntf(){
-//            MainParam = new DCOpCommonInfo(); MainParam.dwMsgSequence = 14;
-//            AssParam = new TDCSWbDisPlayInfo();
-//        }
-//    }
 
     public static final class DCFullScreenMatrixOp {
         public float[] matrixValue;
@@ -576,14 +527,6 @@ public final class MsgBeans {
         }
     }
 
-//    public static final class DcsOperClearScreen_Ntf{
-//
-//    }
-
-//    public static final class DcsElementOperFinal_Ntf{
-//
-//    }
-
     public static final class TDcsCacheElementParseResult {
         public String achTabId;         // 子页所在的白板id
         public long dwMsgSequence;       // 最后一个图元的序号
@@ -597,23 +540,10 @@ public final class MsgBeans {
         public CommonResult commonResult;
     }
 
-//    public static final class DownloadImage_Ntf{
-//
-//    }
-
-//    public static final class DcsDownloadFile_Rsp{
-//
-//    }
-
 
     public static final class DcsDelWhiteBoard_Ntf{
 
     }
-
-
-//    public static final class DcsQuitConf_Rsp{
-//
-//    }
 
     public static final class TDCSResult { // XXX DCCommonResult
         public boolean bSucces;
@@ -627,10 +557,6 @@ public final class MsgBeans {
     public static final class DcsReleaseConf_Ntf{
 
     }
-
-//    public static final class DcsUserApplyOper_Ntf{
-//
-//    }
 
     public static final class TDCSUserInfo {
         public String achConfE164;
@@ -654,20 +580,6 @@ public final class MsgBeans {
         public int dwPort;
     }
 
-//    public static final class DCOpCommonInfo{
-//        public EmDcsOper emOper;
-//        public int dwMsgId;
-//        public String id;
-//        public int dwWbPageId;
-//        public int dwMsgSequence;
-//        public String achConfE164;
-//        public String achFromE164;      // 谁画的
-//        public boolean bCacheElement;   // 是否是服务器缓存的图元
-//        DCOpCommonInfo(){
-//            id = "boardId";
-//        }
-//    }
-
     public static final class DCOpCommonInfo {
         public int dwMsgId;
         public String boardId;  // 画板ID
@@ -677,15 +589,6 @@ public final class MsgBeans {
         public String authorE164;      // 操作发出者
         public boolean bCacheElement;   // 是否是服务器缓存的图元
     }
-
-//    public static final class DCLineOp {
-//        public String id;     // 白板tab id（guid）
-//        public int dwSubPageId;     // 子页面id
-//        public TDCSWbLine tLine;    // 线操作信息
-//        DCLineOp(){
-//            tLine = new TDCSWbLine();
-//        }
-//    }
 
     public static final class DCLineOp {
         public int startX;
@@ -838,17 +741,6 @@ public final class MsgBeans {
         }
     }
 
-//    public static final class DCDragPicOp {
-//        public String id;         // 白板tab id（guid）
-//        public int dwSubPageId;         // 子页面id
-//        public int dwGraphsCount;
-//        public DCPicMatrix[] atGraphsInfo;
-//        public DCDragPicOp(){
-//            atGraphsInfo = new DCPicMatrix[]{
-//                    new DCPicMatrix()
-//            };
-//        }
-//    }
 
     public static final class DCDragPicOp {
         public DCPicMatrix[] atGraphsInfo;
