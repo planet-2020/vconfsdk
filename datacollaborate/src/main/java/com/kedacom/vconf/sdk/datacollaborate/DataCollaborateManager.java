@@ -48,7 +48,7 @@ public class DataCollaborateManager extends RequestAgent {
     private PriorityQueue<OpPaint> batchOps = new PriorityQueue<>();
 
     //当前数据协作会议的e164
-    private String curDcConfE164;  // TODO 赋值
+    private String curDcConfE164;
 
     @Override
     protected Map<Msg, RspProcessor> rspProcessors() {
