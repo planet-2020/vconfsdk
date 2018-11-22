@@ -117,18 +117,18 @@ public class MessageProcessor extends AbstractProcessor {
             return false;
         }
 
-        Message message;
-        Set<String> values = new HashSet<>();
-        String value;
-        for (Element element : msgAnnotatedElements){
-            message = element.getAnnotation(Message.class);
-            value = message.value();
-            if (values.contains(value)){ // XXX 注解处理器不能跨模块，这里达不到预期效果。比如A、B两模块是分别的注解处理器处理的。
-                messager.printMessage(Diagnostic.Kind.ERROR, "Duplicated message value: "+value);
-                return false; // Message的value必须全局唯一
-            }
-            values.add(value);
-        }
+//        Message message;
+//        Set<String> values = new HashSet<>();
+//        String value;
+//        for (Element element : msgAnnotatedElements){
+//            message = element.getAnnotation(Message.class);
+//            value = message.value();
+//            if (values.contains(value)){ // XXX 注解处理器不能跨模块，这里达不到预期效果。比如A、B两模块是分别的注解处理器处理的。
+//                messager.printMessage(Diagnostic.Kind.ERROR, "Duplicated message value: "+value);
+//                return false; // Message的value必须全局唯一
+//            }
+//            values.add(value);
+//        }
 
         return true;
     }
