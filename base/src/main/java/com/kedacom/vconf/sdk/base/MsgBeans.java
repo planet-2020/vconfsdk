@@ -168,15 +168,6 @@ public final class MsgBeans {
         }
     }
 
-    /**数据协作会议链路建立结果响应消息体*/
-    public static final class DcsConfResult{ // XXX DCCommonResult
-        public boolean bSuccess;
-        public int emErrorCode;
-        private DcsConfResult(){
-            bSuccess = true;
-        }
-    }
-
     /**数据协作会议创建结果消息体*/
     public static final class DCCreateConfResult {
         public CommonResult commonResult;
@@ -216,10 +207,6 @@ public final class MsgBeans {
         public DCMember[] AssParam;
     }
 
-    public static final class TDCSGetUserList { // XXX 不需要num
-        public DCMember[] atUserList;
-        public int dwListNum;
-    }
 
 
     public  static final class DCPaintBoard {
@@ -245,23 +232,6 @@ public final class MsgBeans {
     }
 
 
-    public static final class TDCSNewWhiteBoard{
-        public String		 achConfE164;
-        public DCPaintBoard tBoardinfo;
-        public TDCSNewWhiteBoard(String confE164, DCPaintBoard boardInfo){
-            achConfE164 = confE164; tBoardinfo=boardInfo;
-        }
-    }
-
-    public static final class DCSWhiteBoardResult {
-        public TDCSBoardResult MainParam;
-        public DCPaintBoard AssParam;
-    }
-
-    public static final class DCPaintBoardId { // XXX
-        public String confE164;
-        public String boardId;
-    }
 
     public static final class TDCSBoardResult{ // XXX DCCommonResult
         public boolean     	bSucces;
@@ -270,17 +240,27 @@ public final class MsgBeans {
         public String  		achTabId;
         public int			dwPageId;
     }
-
-    public static final class DCSGetAllWhiteBoardRsp{
-        public TDCSResult MainParam;
-        public TDCSGetAllBoard AssParam;
+    public static final class DCSWhiteBoardResult {
+        public TDCSBoardResult MainParam;
+        public DCPaintBoard AssParam;
     }
+
+    public static final class DCPaintBoardId {
+        public String confE164;
+        public String boardId;
+    }
+
 
     public static final class TDCSGetAllBoard{ // XXX num不要，该结构体可简化为TDCSBoardInfo[].class（尝试下看这样行不行）， achConfE164作为para传下去，
         public String	achConfE164;
         public int	    dwBoardNum;
         public DCPaintBoard[] atBoardInfo;
     }
+    public static final class DCSGetAllWhiteBoardRsp{
+        public TDCSResult MainParam;
+        public TDCSGetAllBoard AssParam;
+    }
+
 
     public static final class DCSOperLineOper{
         public TDCSOperReq pageInfo;
@@ -306,11 +286,6 @@ public final class MsgBeans {
     public static final class DCSOperPencilOper{
         public TDCSOperReq pageInfo;
         public TDCSWbPencilOperInfo lineInfo;
-    }
-
-    public static final class DCSOperColorPenOper{
-        public TDCSOperReq pageInfo;
-        public TDCSWbColorPenOperInfo lineInfo;
     }
 
     public static final class DCSOperImageOper{
@@ -353,20 +328,20 @@ public final class MsgBeans {
         public TDCSFileInfo fileInfo;
     }
 
-    public static final class TDCSFileLoadResult {
-        public boolean bSuccess; //XXX 改为Common result
-        public boolean bElementFile;
-        public String achFilePathName;
-        public String achWbPicentityId;
-        public String achTabid;
-        TDCSFileLoadResult(){
-            bSuccess = true;
-            achTabid = "boardId";
-            bElementFile = true;
-            achWbPicentityId = "picId";
-            achFilePathName = "/data/local/tmp/wb.png";
-        }
-    }
+//    public static final class TDCSFileLoadResult {
+//        public boolean bSuccess; //XXX 改为Common result
+//        public boolean bElementFile;
+//        public String achFilePathName;
+//        public String achWbPicentityId;
+//        public String achTabid;
+//        TDCSFileLoadResult(){
+//            bSuccess = true;
+//            achTabid = "boardId";
+//            bElementFile = true;
+//            achWbPicentityId = "picId";
+//            achFilePathName = "/data/local/tmp/wb.png";
+//        }
+//    }
 
 
 
@@ -413,19 +388,6 @@ public final class MsgBeans {
         boolean	    bBkImg;	    // 是否文档底图
     }
 
-    public static final class DcsElementOperBegin_Ntf{
-        public BaseTypeString MainParam;
-        public BaseTypeInt AssParam;
-    }
-
-    public static final class DcsOperLineOperInfo_Ntf{
-        public DCOpCommonInfo MainParam;
-        public DCLineOp AssParam;
-        DcsOperLineOperInfo_Ntf(){
-            MainParam = new DCOpCommonInfo(); //MainParam.dwMsgSequence = 1;
-            AssParam = new DCLineOp();
-        }
-    }
 
 //    public static final class DCOvalOp{
 //        public DCOpCommonInfo MainParam;
@@ -460,10 +422,6 @@ public final class MsgBeans {
         public DCPaintCfg paintCfg;
     }
 
-    public static final class DcsOperColorPenOperInfo_Ntf{
-        public DCOpCommonInfo MainParam;
-        public TDCSWbColorPenOperInfo AssParam;
-    }
 
     public static final class DCInertPicOp {
         public String achImgId;         // 图元ID
@@ -499,29 +457,12 @@ public final class MsgBeans {
         public DCOpCommonInfo commonInfo;
     }
 
-    public static final class DcsOperUndo_Ntf{
-        public DCOpCommonInfo MainParam;
-        public TDCSWbTabPageIdInfo AssParam;
-        public DcsOperUndo_Ntf(){
-            MainParam = new DCOpCommonInfo(); // MainParam.dwMsgSequence = 4;
-            AssParam = new TDCSWbTabPageIdInfo();
-        }
-    }
 
-    public static final class DcsOperRedo_Ntf{
-        public DCOpCommonInfo MainParam;
-        public TDCSWbTabPageIdInfo AssParam;
-        public DcsOperRedo_Ntf(){
-            MainParam = new DCOpCommonInfo(); // MainParam.dwMsgSequence = 5;
-            AssParam = new TDCSWbTabPageIdInfo();
-        }
-    }
-
-    public static final class TDcsCacheElementParseResult {
-        public String achTabId;         // 子页所在的白板id
-        public long dwMsgSequence;       // 最后一个图元的序号
-        public boolean bParseSuccess;   // 解析成功
-    }
+//    public static final class TDcsCacheElementParseResult {
+//        public String achTabId;         // 子页所在的白板id
+//        public long dwMsgSequence;       // 最后一个图元的序号 NOTE：这个可以用来筛选出混入的操作
+//        public boolean bParseSuccess;   // 解析成功
+//    }
 
 
     public static final class DCQueryPicUrlResult {
@@ -530,10 +471,6 @@ public final class MsgBeans {
         public CommonResult commonResult;
     }
 
-
-    public static final class DcsDelWhiteBoard_Ntf{
-
-    }
 
     public static final class TDCSResult { // XXX DCCommonResult
         public boolean bSucces;
@@ -548,11 +485,6 @@ public final class MsgBeans {
 
     }
 
-    public static final class TDCSUserInfo {
-        public String achConfE164;
-        public String achConfName;
-        public DCMember tUserInfo;
-    }
 
     public  static final class DCMembers {
         public String achConfE164; // XXX 会议e164有必要吗？为什么申请/取消协作方都不需要？
@@ -595,19 +527,6 @@ public final class MsgBeans {
         public int color;           // 颜色值
     }
 
-    public static final class TDCSWbLine { // XXX TDCSWbPoint就用android的Point代替
-        public TDCSWbEntity tEntity;    // 基本信息
-        public TDCSWbPoint tBeginPt;    // 起点坐标
-        public TDCSWbPoint tEndPt;      // 终点坐标
-        public int dwLineWidth;         // 线宽
-        public long dwRgb;              // 颜色，强转成int类型就是颜色值了。比如long类型的4294967295强转成int就是0xFFFFFFFF（纯白色），即-1。
-        TDCSWbLine(){
-            tBeginPt = new TDCSWbPoint(0,0);
-            tEndPt = new TDCSWbPoint(500, 500);
-            dwLineWidth = 10;
-            dwRgb = 0xFF00FF00;
-        }
-    }
 
     public static final class TDCSWbCircleOperInfo {
         public String achTabId;         // 白板tab id（guid）
@@ -692,19 +611,6 @@ public final class MsgBeans {
         }
     }
 
-    public static final class TDCSWbColorPenOperInfo {
-        public String achTabId;             // 白板tab id（guid）
-        public int dwSubPageId;             // 子页面id
-        public TDCSWbColorPen tColoePen;    // 彩笔操作信息
-    }
-
-    public static final class TDCSWbColorPen {
-        public TDCSWbEntity tEntity;    // 基本信息
-        public int dwColorPenNum;
-        public TDCSWbPoint[] atCPList;  // 曲线点信息列表
-        public int dwLineWidth;         // 线宽
-        public long dwRgb;              // 颜色，强转成int类型就是颜色值了。比如long类型的4294967295强转成int就是0xFFFFFFFF（纯白色），即-1。
-    }
 
     public static final class TDCSWbInsertPicOperInfo {
         public String achImgId;         // 图元ID
@@ -776,25 +682,6 @@ public final class MsgBeans {
         }
     }
 
-    public  static final class TDCSWbDisPlayInfo {
-        public String achTabId;        //tab白板页
-        public int dwSubPageId;        //子页ID
-        public String[] aachMatrixValue;     //滚动到的目标点坐标
-        TDCSWbDisPlayInfo(){
-            aachMatrixValue = new String[]{
-                    "0.500000",
-                    "0.000000",
-                    "162.000000",
-                    "0.000000",
-                    "0.500000",
-                    "155.250000",
-                    "0.000000",
-                    "0.000000",
-                    "1.000000"
-            };
-        }
-    }
-
 
     public static final class TDCSWbTabPageIdInfo {
         String 	 achTabId;
@@ -829,18 +716,18 @@ public final class MsgBeans {
     }
 
     public  static final class DCMember {
-        public String achE164;
+        public String e164;
         /**
          * 只有在添加与会方，删除与会方用到
          */
-        public String achName;
-        public EmDcsType emMttype;
+        public String name;
+        public EmDcsType mtType;
         /**
          * 暂时只在获取与会人员列表中有效
          */
         public boolean bOnline;
-        public boolean bIsOper;
-        public boolean bIsConfAdmin;
+        public boolean bOperator;
+        public boolean bConfAdmin;
     }
 
 
