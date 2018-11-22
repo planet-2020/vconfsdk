@@ -134,8 +134,8 @@ public enum Msg {
      * 当会议中有人创建数据协作时，平台会发送一个邀请通知给各个与会方，
      * 下层（组件层）收到邀请会主动加入该数据协作，然后再上报该条消息给界面，
      * 所以该消息既是响应也是通知。*/
-    @Notification(clz = MsgBeans.TDCSCreateConfResult.class)
-    @Response(clz = MsgBeans.TDCSCreateConfResult.class, delay = 500)
+    @Notification(clz = MsgBeans.DCCreateConfResult.class)
+    @Response(clz = MsgBeans.DCCreateConfResult.class, delay = 500)
     DCCreateConfRsp,
 
 

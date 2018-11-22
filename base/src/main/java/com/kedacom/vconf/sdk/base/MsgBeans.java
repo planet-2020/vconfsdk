@@ -128,7 +128,7 @@ public final class MsgBeans {
     /**数据协作登录参数*/
     public static final class DCLoginPara {
         public String ip;  // 服务器IP
-        public int port;    // 服务器端口？
+        public int port;    // 服务器端口
         public EmDcsType terminalType; // 终端类型
         public DCLoginPara(String ip, int port, EmDcsType type){
             this.ip = ip; this.port = port; terminalType = type;
@@ -156,21 +156,15 @@ public final class MsgBeans {
 
     /**创建数据协作会议参数*/
     public static final class DCCreateConfPara {
-        public EmDcsConfType   emConfType; // XXX 放入SimpleConfInfo中？
-        public String	    achConfE164; // XXX 放入SimpleConfInfo中？
-        public String      achConfName; // XXX 放入SimpleConfInfo中？
-        public EmDcsConfMode   emConfMode; // XXX 放入SimpleConfInfo中？
-        public DCMember[] atUserList;
-        public int		    dwListNum;
-        public String  achConfAdminE164;
-        public EmDcsType   emAdminMtType; // XXX 放入SimpleConfInfo中？
+        public EmDcsConfType   confType;
+        public String	    confE164;
+        public String       confName;
+        public EmDcsConfMode confMode;
+        public DCMember[]   members;
+        public String       adminE164;  // 管理员e164
+        public EmDcsType   adminMtType; // 管理员终端类型
         public DCCreateConfPara(){
 
-        }
-        public DCCreateConfPara(EmDcsConfType type, String confE164, String confName, EmDcsConfMode mode,
-                                DCMember[] memberList, int num, String adminE164, EmDcsType dcsType){
-            emConfType=type; achConfE164=confE164; achConfName=confName; emConfMode=mode;
-            atUserList=memberList; dwListNum=num; achConfAdminE164=adminE164; emAdminMtType=dcsType;
         }
     }
 
@@ -184,18 +178,14 @@ public final class MsgBeans {
     }
 
     /**数据协作会议创建结果消息体*/
-    public static final class TDCSCreateConfResult {
-        public String achConfE164;
-        public String achConfName;
-        public boolean bSuccess;  // XXX 放进CommonResult
-        public int dwErrorCode;
-        public EmDcsConfMode emConfMode;
-        public EmDcsConfType emConfType;
-        public TDCSConfAddr tConfAddr;
-        public boolean bCreator;            // 自己是否是这个数据协作的创建者
-        private TDCSCreateConfResult(){
-            bSuccess = true;
-        }
+    public static final class DCCreateConfResult {
+        public CommonResult commonResult;
+        public String       confE164;
+        public String       confName;
+        public EmDcsConfMode confMode;
+        public EmDcsConfType confType;
+        public TDCSConfAddr confAddr;
+        public boolean      bCreator;   // 自己是否是这个数据协作的创建者。该消息既作为响应又作为通知，可用该字段加以区分这两种情形。
     }
 
     /**退出数据协作参数*/
@@ -581,13 +571,12 @@ public final class MsgBeans {
     }
 
     public static final class DCOpCommonInfo {
-        public int dwMsgId;
-        public String boardId;  // 画板ID
-        public int pageId;      // 文档页ID
-        public int sn;          // 操作序列号，用来表示操作的先后顺序，越小越靠前。
-        public String confE164; // 所属会议e164号
-        public String authorE164;      // 操作发出者
-        public boolean bCacheElement;   // 是否是服务器缓存的图元
+        public String   boardId;        // 画板ID
+        public int      pageId;      // 文档页ID
+        public int      sn;          // 操作序列号，用来表示操作的先后顺序，越小越靠前。
+        public String   confE164;       // 所属会议e164号
+        public String   authorE164;      // 操作发出者
+        public boolean  bCacheElement;   // 是否是服务器缓存的图元
     }
 
     public static final class DCLineOp {
