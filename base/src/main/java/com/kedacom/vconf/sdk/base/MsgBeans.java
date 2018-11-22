@@ -113,7 +113,7 @@ public final class MsgBeans {
     //>>>>>>>>>>>>>>>>>>>>>>>>>>> 数据协作
 
     /**数据协作服务器地址信息*/
-    public static final class TMtDCSSvrAddr{
+    public static final class DCServerAddr {
         public String achDomain;        // 域名
         public long dwIp;               // ip
         public boolean bUseDefAddr;     // 是否使用默认地址
