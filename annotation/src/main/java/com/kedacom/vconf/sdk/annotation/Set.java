@@ -9,6 +9,6 @@ package com.kedacom.vconf.sdk.annotation;
  */
 
 public @interface Set {
-    String name() default "";
+    String name() default ""; // 传递给下层的消息名称，若为空则使用被修饰的枚举的name。
     Class value(); // 传入参数对应的类
 }

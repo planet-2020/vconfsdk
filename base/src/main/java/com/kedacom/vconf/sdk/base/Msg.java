@@ -71,9 +71,8 @@ public enum Msg {
     // 数据协作基础
 
     /**获取数据协作服务器地址*/
-    @Get(name = "GetDCSCfg",
-            result = MsgBeans.TMtDCSSvrAddr.class)
-    GetDCServerAddrInfo,
+    @Get(result = MsgBeans.TMtDCSSvrAddr.class)
+    DCGetServerAddr,
 
     /**登录数据协作建链*/
     @Deprecated  // 下层自动调用了，上层不需感知
