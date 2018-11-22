@@ -70,9 +70,9 @@ public enum Msg {
 
     // 数据协作基础
 
-    /**获取数据协作服务器地址*/
-    @Get(result = MsgBeans.DCServerAddr.class)
-    DCGetServerAddr,
+//    /**获取数据协作服务器地址*/
+//    @Get(result = MsgBeans.DCServerAddr.class)
+//    DCGetServerAddr,
 
 //    /**登录数据协作建链*/
 //    @Deprecated  // 下层自动调用了，上层不需感知
@@ -80,18 +80,18 @@ public enum Msg {
 //    DCBuildLink4Login,
 
     /**登录数据协作建链响应*/
-    @Response(clz = MsgBeans.DcsLinkCreationResult.class)
+    @Response(clz = MsgBeans.CommonResult.class)
     DCBuildLink4LoginRsp,
 
     /**登录数据协作服务器。
      * 注：登录前需先建链。*/
-    @Request(para = MsgBeans.TDCSRegInfo.class,
+    @Request(para = MsgBeans.DCLoginPara.class,
             rspSeq = {"DCBuildLink4LoginRsp",  // 登录时下层自动建链，然后就抛了这条消息上来。NOTE: 对于失败的情形只会收到DCBuildLink4LoginRsp而没有DCLoginRsp。
                     "DCLoginRsp"})
     DCLogin,
 
     /**登录数据协作服务器响应*/
-    @Response(clz = MsgBeans.DcsLoginResult.class)
+    @Response(clz = MsgBeans.CommonResult.class)
     DCLoginRsp,
 
     /**注销数据协作服务器*/
@@ -99,7 +99,7 @@ public enum Msg {
     DCLogout,
 
     /**注销数据协作服务器响应*/
-    @Response(clz = MsgBeans.TDCSResult.class)
+    @Response(clz = MsgBeans.CommonResult.class)
     DCLogoutRsp,
 
 //    /**获取会议地址*/
@@ -118,12 +118,12 @@ public enum Msg {
 //    DCBuildLink4Conf,
 
     /**创建数据协作建链响应*/
-    @Response(clz = MsgBeans.DcsConfResult.class)
+    @Response(clz = MsgBeans.CommonResult.class)
     DCBuildLink4ConfRsp,
 
     /**创建数据协作。
      * 注：创建数据协作前需先建链。*/
-    @Request(para = MsgBeans.DCSCreateConf.class,
+    @Request(para = MsgBeans.DCCreateConfPara.class,
             rspSeq = {"DCBuildLink4ConfRsp",  // 创建数据协作时下层自动建链，然后就抛了这条消息上来。NOTE: 对于失败的情形只会收到DCBuildLink4ConfRsp而没有DCCreateConfRsp。
                     "DCCreateConfRsp"})
     DCCreateConf,
@@ -161,16 +161,16 @@ public enum Msg {
     DCQuitConf,
 
     /**退出数据协作响应*/
-    @Response(clz = MsgBeans.TDCSResult.class)
+    @Response(clz = MsgBeans.CommonResult.class)
     DCQuitConfRsp,
 
     /**结束数据协作*/
-    @Request(para = MsgBeans.DCSBriefConfInfo.class,
+    @Request(para = MsgBeans.DCConfId.class,
             rspSeq = {"DCReleaseConfRsp"})
     DCReleaseConf,
 
     /**结束数据协作响应*/
-    @Response(clz = MsgBeans.TDCSResult.class)
+    @Response(clz = MsgBeans.CommonResult.class)
     DCReleaseConfRsp,
 
     /**结束数据协作响应。
@@ -188,95 +188,95 @@ public enum Msg {
     // 数据协作权限控制相关
 
     /**（主席）添加协作方*/
-    @Request(para = MsgBeans.TDCSOperator.class,
+    @Request(para = MsgBeans.DCMember[].class,
             rspSeq = {"DCAddOperatorRsp"})
     DCAddOperator,
 
     /**添加协作方响应*/
-    @Response(clz = MsgBeans.TDCSResult.class)
+    @Response(clz = MsgBeans.CommonResult.class)
     DCAddOperatorRsp,
 
     /**（主席）删除协作方*/
-    @Request(para = MsgBeans.TDCSOperator.class,
+    @Request(para = MsgBeans.DCMember[].class,
             rspSeq = {"DCDelOperatorRsp"})
     DCDelOperator,
 
     /**删除协作方响应*/
-    @Response(clz = MsgBeans.TDCSResult.class)
+    @Response(clz = MsgBeans.CommonResult.class)
     DCDelOperatorRsp,
 
     /**（自己）申请作为协作方*/
-    @Request(para =  MsgBeans.DCSBriefMemberInfo.class,
+    @Request(para =  MsgBeans.DCMemberId.class,
             rspSeq = {"DCApplyOperatorRsp"})
     DCApplyOperator,
 
     /**申请作为协作方响应*/
-    @Response(clz = MsgBeans.TDCSResult.class)
+    @Response(clz = MsgBeans.CommonResult.class)
     DCApplyOperatorRsp,
 
     /**（自己）取消作为协作方*/
-    @Request(para =  MsgBeans.DCSBriefMemberInfo.class,
+    @Request(para =  MsgBeans.DCMemberId.class,
             rspSeq = {"DCCancelOperatorRsp"})
     DCCancelOperator,
 
     /**取消作为协作方响应*/
-    @Response(clz = MsgBeans.TDCSResult.class)
+    @Response(clz = MsgBeans.CommonResult.class)
     DCCancelOperatorRsp,
 
     /**成员（向主席）申请协作权通知*/
-    @Notification(clz = MsgBeans.TDCSUserInfo.class)
+    @Notification(clz = MsgBeans.DCMember[].class)
     DCApplyOperatorNtf,
 
     /**（主席）拒绝成员申请作为协作方的请求*/
-    @Request(para=MsgBeans.TDCSOperator.class)
+    @Request(para=MsgBeans.DCMember[].class)
     DCRejectApplyOperator,
 
     /**获取数据协作会议中的所有成员（包括协作方普通方）*/
-    @Request(para=MsgBeans.DCSBriefConfInfo.class,
+    @Request(para=MsgBeans.DCConfId.class,
             rspSeq = {"DCQueryAllMembersRsp"})
     DCQueryAllMembers,
 
     /**获取数据协作会议中的所有成员响应*/
-    @Response(clz = MsgBeans.DCSGetUserListRsp.class)
+    @Response(clz = MsgBeans.DCQueryAllMembersResult.class)  // 需单独定义的响应结构体名加Result后缀，需单独定义的参数名加para后缀
     DCQueryAllMembersRsp,
 
 
     // 数据协作画板相关
 
     /**新建画板*/
-    @Request(para=MsgBeans.TDCSNewWhiteBoard.class,
+    @Request(para=MsgBeans.DCPaintBoard.class,
             rspSeq = {"DCNewPaintBoardRsp"})
     DCNewPaintBoard,
 
     /**新建画板响应*/
-    @Response(clz=MsgBeans.DCSWhiteBoardResult.class)
+    @Response(clz=MsgBeans.CommonResult.class)
     DCNewPaintBoardRsp,
 
     /**删除画板*/
-    @Request(para=MsgBeans.DCSWhiteBoardIndex.class,
+    @Request(para=MsgBeans.DCPaintBoardId.class,
             rspSeq = {"DCDelPaintBoardRsp"})
     DCDelPaintBoard,
 
     /**删除画板响应*/
-    @Response(clz=MsgBeans.TDCSBoardResult.class)
+    @Response(clz=MsgBeans.CommonResult.class)
     DCDelPaintBoardRsp,
 
     /**查询画板*/
-    @Request(para=MsgBeans.DCSWhiteBoardIndex.class,
+    @Request(para=MsgBeans.DCPaintBoardId.class,
             rspSeq = {"DCQueryPaintBoardRsp"})
     DCQueryPaintBoard,
 
     /**查询画板响应*/
-    @Response(clz=MsgBeans.DCSWhiteBoardResult.class)
+    @Response(clz=MsgBeans.DCSWhiteBoardResult.class)  // TODO 响应需要接收两个消息体，一个是结果实体等，一个是内容实体。
     DCQueryPaintBoardRsp,
 
     /**查询所有画板*/
-    @Request(para= MsgBeans.DCSBriefConfInfo.class,
+    @Request(para= MsgBeans.DCConfId.class,
             rspSeq = {"DCQueryAllPaintBoardsRsp"})
     DCQueryAllPaintBoards,
 
-    /**获取所有白板响应*/
-    @Response(clz=MsgBeans.DCSGetAllWhiteBoardRsp.class)
+    /**查询所有白板响应*/
+    @Response(clz=MsgBeans.DCSGetAllWhiteBoardRsp.class)  // 响应需要接收两个消息体，一个是结果实体等，一个是内容实体。
     DCQueryAllPaintBoardsRsp,
 
     /**添加子页*/
@@ -285,19 +285,19 @@ public enum Msg {
 
 
     /** 当前画板通知*/
-    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
+    @Notification(clz = MsgBeans.DCPaintBoard.class)
     DCCurrentPaintBoardNtf,
 
     /**新建画板通知*/
-    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
+    @Notification(clz = MsgBeans.DCPaintBoard.class)
     DCNewPaintBoardNtf,
 
-    /**切换白板通知*/
-    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
+    /**切换画板通知*/
+    @Notification(clz = MsgBeans.DCPaintBoard.class)
     DCSwitchPaintBoardNtf,
 
-    /**删除白板通知*/
-    @Notification(clz = MsgBeans.TDCSBoardInfo.class)
+    /**删除画板通知*/
+    @Notification(clz = MsgBeans.DCPaintBoard.class)
     DCDelPaintBoardNtf,
 
 
@@ -325,8 +325,9 @@ public enum Msg {
 //    DCColorPenOp,
 
     /**图片操作*/
-    @Request(para=MsgBeans.DCSOperImageOper.class)
-    DCSOperImageOperInfoCmd,
+//    @Deprecated
+//    @Request(para=MsgBeans.DCSOperImageOper.class)
+//    DCSOperImageOperInfoCmd,
 
     /**矩形擦除*/
     @Request(para=MsgBeans.DCSOperEraseOper.class)
@@ -380,12 +381,12 @@ public enum Msg {
 
 
     /**上传图片地址*/
-    @Request(para=MsgBeans.TDCSImageUrl.class,
+    @Request(para=MsgBeans.DCQueryPicUrlPara.class,
             rspSeq = {"DcsUploadImage_Rsp"})
     DCSUploadImageReq, // TODO 待定
 
     /**上传图片地址响应*/
-    @Response(clz= MsgBeans.DCTransferPicUrlRsp.class)
+    @Response(clz= MsgBeans.DCQueryPicUrlResult.class)
     DcsUploadImage_Rsp, // TODO 待定
 
 
@@ -396,25 +397,25 @@ public enum Msg {
 
 
     /**下载（图元、图片等）*/
-    @Request(para = MsgBeans.DownloadFilePara.class,
+    @Request(para = MsgBeans.DownloadPara.class,
             rspSeq = {"DCDownloadRsp"})
     DCDownload,
 
     /**下载响应*/
-    @Response(clz = MsgBeans.TDCSFileLoadResult.class)
+    @Response(clz = MsgBeans.CommonResult.class)
     DCDownloadRsp,
 
     /**获取图片下载地址*/
-    @Request(para=MsgBeans.TDCSImageUrl.class,
+    @Request(para=MsgBeans.DCQueryPicUrlPara.class,
             rspSeq = {"DCQueryPicUrlRsp"})
     DCQueryPicUrl,
 
     /**获取下载图片地址响应*/
-    @Response(clz = MsgBeans.DCTransferPicUrlRsp.class)
+    @Response(clz = MsgBeans.DCQueryPicUrlResult.class)
     DCQueryPicUrlRsp,
 
     /**下载图片通知*/ //??? 干嘛的
-    @Notification(clz = MsgBeans.TDCSImageUrl.class)
+    @Notification(clz = MsgBeans.DCQueryPicUrlPara.class)
     DownloadImage_Ntf, // TODO 待定
 
 
@@ -423,23 +424,23 @@ public enum Msg {
 
     /**图元序列开始通知。
      * 注：新加入数据协作会议后，服务器会将当前数据协作会议中已存在的图元序列同步到新加入的与会方。*/
-    @Notification(clz = MsgBeans.DcsElementOperBegin_Ntf.class)
+    @Notification
     DCElementBeginNtf,
 
     /**画直线通知*/
-    @Notification(clz = MsgBeans.DcsOperLineOperInfo_Ntf.class)
+    @Notification(clz = MsgBeans.DCLineOp.class)
     DCLineDrawnNtf,
 
     /**画圆/椭圆通知*/
-    @Notification(clz = MsgBeans.DcsOperCircleOperInfo_Ntf.class)
+    @Notification(clz = MsgBeans.DCOvalOp.class)
     DCOvalDrawnNtf,
 
     /**画矩形通知*/
-    @Notification(clz = MsgBeans.DcsOperRectangleOperInfo_Ntf.class)
+    @Notification(clz = MsgBeans.DCRectOp.class)
     DCRectDrawnNtf,
 
     /**画路径（铅笔操作）通知*/
-    @Notification(clz = MsgBeans.DcsOperPencilOperInfo_Ntf.class)
+    @Notification(clz = MsgBeans.DCPathOp.class)
     DCPathDrawnNtf,
 
 //    /**彩笔操作通知*/
@@ -448,39 +449,39 @@ public enum Msg {
 //    DcsOperColorPenOperInfo_Ntf,
 
     /**图片插入通知*/
-    @Notification(clz = MsgBeans.DcsOperInsertPic_Ntf.class)
+    @Notification(clz = MsgBeans.DCInertPicOp.class)
     DCPicInsertedNtf,
 
     /**图片拖动通知*/
-    @Notification(clz = MsgBeans.DcsOperPitchPicDrag_Ntf.class)
+    @Notification(clz = MsgBeans.DCDragPicOp.class)
     DCPicDraggedNtf,
 
     /**图片删除通知*/
-    @Notification(clz = MsgBeans.DcsOperPitchPicDel_Ntf.class)
+    @Notification(clz = MsgBeans.DCDelPicOp.class)
     DCPicDeletedNtf,
 
     /**矩形擦除通知*/
-    @Notification(clz = MsgBeans.DcsOperEraseOperInfo_Ntf.class)
+    @Notification(clz = MsgBeans.DCRectEraseOp.class)
     DCRectErasedNtf,
 
     /**全屏matrix操作通知（缩放、移动、旋转）*/
-    @Notification(clz = MsgBeans.DcsOperFullScreen_Ntf.class)
+    @Notification(clz = MsgBeans.DCFullScreenMatrixOp.class)
     DCFullScreenMatrixOpNtf,
 
     /**撤销操作通知*/
-    @Notification(clz = MsgBeans.DcsOperUndo_Ntf.class)
+    @Notification(clz = MsgBeans.DCOpCommonInfo.class)
     DCUndoneNtf,
 
     /**恢复（恢复被撤销的操作）通知*/
-    @Notification(clz = MsgBeans.DcsOperRedo_Ntf.class)
+    @Notification(clz = MsgBeans.DCOpCommonInfo.class)
     DCRedoneNtf,
 
     /**清屏通知*/
-    @Notification(clz = MsgBeans.TDCSOperContent.class)
+    @Notification(clz = MsgBeans.DCOpCommonInfo.class)
     DCScreenClearedNtf,
 
     /**图元序列结束通知*/
-    @Notification(clz = MsgBeans.TDcsCacheElementParseResult.class)
+    @Notification
     DCElementEndNtf,
 
 

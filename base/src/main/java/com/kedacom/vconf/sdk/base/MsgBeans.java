@@ -1,5 +1,7 @@
 package com.kedacom.vconf.sdk.base;
 
+import android.graphics.Point;
+
 import androidx.annotation.RestrictTo;
 
 import static com.kedacom.vconf.sdk.base.MsgConst.*;
@@ -112,68 +114,68 @@ public final class MsgBeans {
 
     //>>>>>>>>>>>>>>>>>>>>>>>>>>> 数据协作
 
-    /**数据协作服务器地址信息*/
-    public static final class DCServerAddr {
-        public String achDomain;        // 域名
-        public long dwIp;               // ip
-        public boolean bUseDefAddr;     // 是否使用默认地址
-        public String achCustomDomain;  // 用户自定义域名
-        public long dwCustomIp;         // 用户自定义ip
-        public int dwPort;
-    }
+//    /**数据协作服务器地址信息*/
+//    public static final class DCServerAddr {
+//        public String domain;        // 域名
+//        public long ip;               // ip
+//        public boolean bUseDefAddr;     // 是否使用默认地址
+//        public String achCustomDomain;  // 用户自定义域名
+//        public long dwCustomIp;         // 用户自定义ip
+//        public int dwPort;
+//    }
 
 
     /**数据协作登录参数*/
-    public static final class TDCSRegInfo {
-        public String achIp;
-        public int dwPort;
-        public EmDcsType emMtType;
-        public TDCSRegInfo(String ip, int port, EmDcsType type){
-            achIp = ip; dwPort = port; emMtType = type;
+    public static final class DCLoginPara {
+        public String ip;  // 服务器IP
+        public int port;    // 服务器端口？
+        public EmDcsType terminalType; // 终端类型
+        public DCLoginPara(String ip, int port, EmDcsType type){
+            this.ip = ip; this.port = port; terminalType = type;
         }
     }
 
-    /**数据协作链路建立结果响应消息体*/
-    public static final class DcsLinkCreationResult{
-        public boolean bSuccess;
-        public int emErrorCode;
-        private DcsLinkCreationResult(){
-            bSuccess = true;
+    /**通用结果*/
+    public static final class CommonResult {
+        public boolean success;// 是否成功。true：成功
+        public int errorCode;   // （如果失败的）错误码
+        private CommonResult(){
+            success = true;
         }
     }
 
-    /**数据协作登录结果消息体*/
-    public static final class DcsLoginResult{
-        public String achConfE164;
-        public boolean bSucces;
-        public int dwErrorCode;
-        private DcsLoginResult(){
-            bSucces = true;
-        }
-    }
+//    /**数据协作通用结果*/
+//    public static final class DCCommonResult {
+//        public boolean bSucces;
+//        public int dwErrorCode;
+//        public String achConfE164;
+//        private DCCommonResult(){
+//            bSucces = true;
+//        }
+//    }
 
     /**创建数据协作会议参数*/
-    public static final class  DCSCreateConf{
-        public EmDcsConfType   emConfType;
-        public String	    achConfE164;
-        public String      achConfName;
-        public EmDcsConfMode   emConfMode;
-        public TDCSConfUserInfo[] atUserList;
+    public static final class DCCreateConfPara {
+        public EmDcsConfType   emConfType; // XXX 放入SimpleConfInfo中？
+        public String	    achConfE164; // XXX 放入SimpleConfInfo中？
+        public String      achConfName; // XXX 放入SimpleConfInfo中？
+        public EmDcsConfMode   emConfMode; // XXX 放入SimpleConfInfo中？
+        public DCMember[] atUserList;
         public int		    dwListNum;
         public String  achConfAdminE164;
-        public EmDcsType   emAdminMtType;
-        public DCSCreateConf(){
+        public EmDcsType   emAdminMtType; // XXX 放入SimpleConfInfo中？
+        public DCCreateConfPara(){
 
         }
-        public DCSCreateConf(EmDcsConfType type, String confE164, String confName, EmDcsConfMode mode,
-                             TDCSConfUserInfo[] memberList, int num, String adminE164, EmDcsType dcsType){
+        public DCCreateConfPara(EmDcsConfType type, String confE164, String confName, EmDcsConfMode mode,
+                                DCMember[] memberList, int num, String adminE164, EmDcsType dcsType){
             emConfType=type; achConfE164=confE164; achConfName=confName; emConfMode=mode;
             atUserList=memberList; dwListNum=num; achConfAdminE164=adminE164; emAdminMtType=dcsType;
         }
     }
 
     /**数据协作会议链路建立结果响应消息体*/
-    public static final class DcsConfResult{
+    public static final class DcsConfResult{ // XXX DCCommonResult
         public boolean bSuccess;
         public int emErrorCode;
         private DcsConfResult(){
@@ -185,7 +187,7 @@ public final class MsgBeans {
     public static final class TDCSCreateConfResult {
         public String achConfE164;
         public String achConfName;
-        public boolean bSuccess;
+        public boolean bSuccess;  // XXX 放进CommonResult
         public int dwErrorCode;
         public EmDcsConfMode emConfMode;
         public EmDcsConfType emConfType;
@@ -199,84 +201,83 @@ public final class MsgBeans {
     /**退出数据协作参数*/
     public static final class DCSQuitConf{
         public String e164;
-        public boolean  force;
+        public boolean  force; // true: 只退出数据协作；false：退出数据协作和会议
         public DCSQuitConf(String e164, boolean force){
             this.e164=e164; this.force=force;
         }
     }
 
-    public static final class DCSBriefMemberInfo {
+    public static final class DCMemberId {
         public String e164;
-        public DCSBriefMemberInfo(String e164){
+        public DCMemberId(String e164){
             this.e164 = e164;
         }
     }
 
-    public static final class DCSBriefConfInfo {
+    public static final class DCConfId { //XXX 就作为String传下去？
         public String e164;
-        public DCSBriefConfInfo(String e164){
+        public DCConfId(String e164){
             this.e164 = e164;
         }
     }
 
-    public static final class DCSGetUserListRsp {
-        public TDCSResult MainParam;
-        public TDCSGetUserList AssParam;
+//    public static final class DCSGetUserListRsp {
+//        public TDCSResult MainParam;
+//        public TDCSGetUserList AssParam;
+//    }
+    public static final class DCQueryAllMembersResult {
+        public CommonResult commonResult;
+        public DCMember[] AssParam;
     }
 
-    public static final class TDCSGetUserList {
-        public TDCSConfUserInfo[] atUserList;
+    public static final class TDCSGetUserList { // XXX 不需要num
+        public DCMember[] atUserList;
         public int dwListNum;
     }
 
-    public  static final class TDCSBoardInfo {
-        public String achWbName;
-        public EmDcsWbMode emWbMode;    // 模式（白板、文档）
-        public int dwWbPageNum;         // 总页数（限文档）——以TDCSWbAddSubPageInfo中的dwSubPageCount为准。
-        public int dwWbCreateTime;      // 平台成功响应后，平台填写
-        public String achTabId;         // 终端填写
-        public int dwPageId;            // 文档页id，平台成功响应后，平台填写（限文档）
-        public int dwWbSerialNumber;    // 白板序列号，递增，标记白板创建序号
-        public String achWbCreatorE164;
-        public int dwWbWidth;
-        public int dwWbHeight;
-        public String achElementUrl;    // 图元Url，*.json格式，由业务层负责解析，上层接收业务层推送的各图元通知即可（如：DcsOperLineOperInfo_Ntf）
-        public String achDownloadUrl;   // 图片下载Url（限文档）
-        public String achUploadUrl;     // 图片上传Url（限文档）
-        public int dwWbAnonyId;         // 平台成功响应后，平台填写（限白板）
-        TDCSBoardInfo(){
-            achWbName = "paint board";
-            achTabId = "boardId";
+
+    public  static final class DCPaintBoard {
+        public String id;           // 终端填写GUID（系统函数生成）
+        public String name;
+        public int sn;              // 序列号，递增，标记白板创建序号
+        public String creatorE164;
+        public int createTime;      // 平台成功响应后，平台填写
+        public String confE164;         // 所属会议e164号
+        public EmDcsWbMode mode;    // 模式（白板、文档）
+        public int pageNum;         // 总页数（限文档）——以TDCSWbAddSubPageInfo中的dwSubPageCount为准。
+        public int pageId;            // 文档页id，平台成功响应后，平台填写（限文档）
+        public int width;
+        public int height;
+        public String elementUrl;    // 图元Url，*.json格式，由业务层负责解析，上层接收业务层推送的各图元通知即可（如：DcsOperLineOperInfo_Ntf）
+        public String downloadUrl;   // 图片下载Url（限文档）
+        public String uploadUrl;     // 图片上传Url（限文档）
+        public int anonyId;         // 平台成功响应后，平台填写（限白板），白板1白板2后面的数字，平台裁决后分配的。
+        DCPaintBoard(){
+            name = "paint board";
+            id = "boardId";
         }
     }
 
-//    public static final class DcsNewWhiteBoard_Ntf{
-//
-//    }
-
-//    public static final class DcsSwitch_Ntf{
-//
-//    }
 
     public static final class TDCSNewWhiteBoard{
         public String		 achConfE164;
-        public TDCSBoardInfo tBoardinfo;
-        public TDCSNewWhiteBoard(String confE164, TDCSBoardInfo boardInfo){
+        public DCPaintBoard tBoardinfo;
+        public TDCSNewWhiteBoard(String confE164, DCPaintBoard boardInfo){
             achConfE164 = confE164; tBoardinfo=boardInfo;
         }
     }
 
     public static final class DCSWhiteBoardResult {
         public TDCSBoardResult MainParam;
-        public TDCSBoardInfo AssParam;
+        public DCPaintBoard AssParam;
     }
 
-    public static final class DCSWhiteBoardIndex {
+    public static final class DCPaintBoardId { // XXX
         public String confE164;
-        public String boardIndx;  // ??? 白板索引
+        public String boardId;
     }
 
-    public static final class TDCSBoardResult{
+    public static final class TDCSBoardResult{ // XXX DCCommonResult
         public boolean     	bSucces;
         public int			dwErrorCode;
         public String		achConfE164;
@@ -289,18 +290,18 @@ public final class MsgBeans {
         public TDCSGetAllBoard AssParam;
     }
 
-    public static final class TDCSGetAllBoard{
+    public static final class TDCSGetAllBoard{ // XXX num不要，该结构体可简化为TDCSBoardInfo[].class（尝试下看这样行不行）， achConfE164作为para传下去，
         public String	achConfE164;
         public int	    dwBoardNum;
-        public TDCSBoardInfo[] atBoardInfo;
+        public DCPaintBoard[] atBoardInfo;
     }
 
     public static final class DCSOperLineOper{
         public TDCSOperReq pageInfo;
-        public TDCSWbLineOperInfo lineInfo;
+        public DCLineOp lineInfo;
     }
 
-    public static final class TDCSOperReq{
+    public static final class TDCSOperReq{ // XXX CommonOpInfo
         public String   achConfE164;
         public String   achTabId;
         public int  dwWbPageid;
@@ -367,7 +368,7 @@ public final class MsgBeans {
     }
 
     public static final class TDCSFileLoadResult {
-        public boolean bSuccess;
+        public boolean bSuccess; //XXX 改为Common result
         public boolean bElementFile;
         public String achFilePathName;
         public String achWbPicentityId;
@@ -432,106 +433,145 @@ public final class MsgBeans {
     }
 
     public static final class DcsOperLineOperInfo_Ntf{
-        public TDCSOperContent MainParam;
-        public TDCSWbLineOperInfo AssParam;
+        public DCOpCommonInfo MainParam;
+        public DCLineOp AssParam;
         DcsOperLineOperInfo_Ntf(){
-            MainParam = new TDCSOperContent(); //MainParam.dwMsgSequence = 1;
-            AssParam = new TDCSWbLineOperInfo();
+            MainParam = new DCOpCommonInfo(); //MainParam.dwMsgSequence = 1;
+            AssParam = new DCLineOp();
         }
     }
 
-    public static final class DcsOperCircleOperInfo_Ntf{
-        public TDCSOperContent MainParam;
-        public TDCSWbCircleOperInfo AssParam;
-        DcsOperCircleOperInfo_Ntf(){
-            MainParam = new TDCSOperContent();  //MainParam.dwMsgSequence = 2;
-            AssParam = new TDCSWbCircleOperInfo();
-        }
+//    public static final class DCOvalOp{
+//        public DCOpCommonInfo MainParam;
+//        public TDCSWbCircleOperInfo AssParam;
+//        DCOvalOp(){
+//            MainParam = new DCOpCommonInfo();  //MainParam.dwMsgSequence = 2;
+//            AssParam = new TDCSWbCircleOperInfo();
+//        }
+//    }
+
+    public static final class DCOvalOp {
+        public int left;
+        public int top;
+        public int right;
+        public int bottom;
+        public DCOpCommonInfo commonInfo;
+        public DCPaintCfg paintCfg;
     }
 
-    public static final class DcsOperRectangleOperInfo_Ntf{
-        public TDCSOperContent MainParam;
-        public TDCSWbRectangleOperInfo AssParam;
-        DcsOperRectangleOperInfo_Ntf(){
-            MainParam = new TDCSOperContent(); //MainParam.dwMsgSequence = 3;
-            AssParam = new TDCSWbRectangleOperInfo();
-        }
+//    public static final class DcsOperRectangleOperInfo_Ntf{
+//        public DCOpCommonInfo MainParam;
+//        public TDCSWbRectangleOperInfo AssParam;
+//        DcsOperRectangleOperInfo_Ntf(){
+//            MainParam = new DCOpCommonInfo(); //MainParam.dwMsgSequence = 3;
+//            AssParam = new TDCSWbRectangleOperInfo();
+//        }
+//    }
+
+    public static final class DCRectOp {
+        public int left;
+        public int top;
+        public int right;
+        public int bottom;
+        public DCOpCommonInfo commonInfo;
+        public DCPaintCfg paintCfg;
     }
 
 
-    public static final class DcsOperPencilOperInfo_Ntf{
-        public TDCSOperContent MainParam;
-        public TDCSWbPencilOperInfo AssParam;
-        DcsOperPencilOperInfo_Ntf(){
-            MainParam = new TDCSOperContent(); //MainParam.dwMsgSequence = 4;
-            AssParam = new TDCSWbPencilOperInfo();
-        }
+//    public static final class DcsOperPencilOperInfo_Ntf{
+//        public DCOpCommonInfo MainParam;
+//        public TDCSWbPencilOperInfo AssParam;
+//        DcsOperPencilOperInfo_Ntf(){
+//            MainParam = new DCOpCommonInfo(); //MainParam.dwMsgSequence = 4;
+//            AssParam = new TDCSWbPencilOperInfo();
+//        }
+//    }
+
+    public static final class DCPathOp {
+        public Point[] points;
+        public DCOpCommonInfo commonInfo;
+        public DCPaintCfg paintCfg;
     }
 
     public static final class DcsOperColorPenOperInfo_Ntf{
-        public TDCSOperContent MainParam;
+        public DCOpCommonInfo MainParam;
         public TDCSWbColorPenOperInfo AssParam;
     }
 
-    public static final class DcsOperInsertPic_Ntf{
-        public TDCSOperContent MainParam;
-        public TDCSWbInsertPicOperInfo AssParam;
-        public DcsOperInsertPic_Ntf(){
-            MainParam = new TDCSOperContent(); //MainParam.dwMsgSequence = 4;
-            AssParam = new TDCSWbInsertPicOperInfo();
+    public static final class DCInertPicOp {
+        public String achImgId;         // 图元ID
+        public String achPicName;
+        public int dwImgWidth;
+        public int dwImgHeight;
+        public Point tPoint;
+        public String[] aachMatrixValue;
+
+        public DCOpCommonInfo MainParam;
+        public DCInertPicOp(){
+            MainParam = new DCOpCommonInfo(); //MainParam.dwMsgSequence = 4;
         }
     }
 
-    public static final class DcsOperPitchPicDrag_Ntf{
-        public TDCSOperContent MainParam;
-        public TDCSWbPitchPicOperInfo AssParam;
-        DcsOperPitchPicDrag_Ntf(){
-            MainParam = new TDCSOperContent();  //MainParam.dwMsgSequence = 2;
-            AssParam = new TDCSWbPitchPicOperInfo();
+//    public static final class DcsOperPitchPicDrag_Ntf{
+//        public DCOpCommonInfo MainParam;
+//        public DCDragPicOp AssParam;
+//        DcsOperPitchPicDrag_Ntf(){
+//            MainParam = new DCOpCommonInfo();  //MainParam.dwMsgSequence = 2;
+//            AssParam = new DCDragPicOp();
+//        }
+//    }
+
+    public static final class DCDelPicOp {
+        public String[] achGraphsId;
+        public DCOpCommonInfo MainParam;
+        DCDelPicOp(){
         }
     }
 
-    public static final class DcsOperPitchPicDel_Ntf{
-        public TDCSOperContent MainParam;
-        public TDCSWbDelPicOperInfo AssParam;
-        DcsOperPitchPicDel_Ntf(){
-            MainParam = new TDCSOperContent();  //MainParam.dwMsgSequence = 2;
-            AssParam = new TDCSWbDelPicOperInfo();
-        }
+//    public static final class DcsOperEraseOperInfo_Ntf{
+//        public DCOpCommonInfo MainParam;
+//        public TDCSWbEraseOperInfo AssParam;
+//        public DcsOperEraseOperInfo_Ntf(){
+//            MainParam = new DCOpCommonInfo();  //MainParam.dwMsgSequence = 2;
+//            AssParam = new TDCSWbEraseOperInfo();
+//        }
+//    }
+    public static final class DCRectEraseOp {
+        public int left;
+        public int top;
+        public int right;
+        public int bottom;
+        public DCOpCommonInfo commonInfo;
     }
 
-    public static final class DcsOperEraseOperInfo_Ntf{
-        public TDCSOperContent MainParam;
-        public TDCSWbEraseOperInfo AssParam;
-        public DcsOperEraseOperInfo_Ntf(){
-            MainParam = new TDCSOperContent();  //MainParam.dwMsgSequence = 2;
-            AssParam = new TDCSWbEraseOperInfo();
-        }
-    }
+//    public static final class DcsOperFullScreen_Ntf{
+//        public DCOpCommonInfo MainParam;
+//        public TDCSWbDisPlayInfo AssParam;
+//        public DcsOperFullScreen_Ntf(){
+//            MainParam = new DCOpCommonInfo(); MainParam.dwMsgSequence = 14;
+//            AssParam = new TDCSWbDisPlayInfo();
+//        }
+//    }
 
-    public static final class DcsOperFullScreen_Ntf{
-        public TDCSOperContent MainParam;
-        public TDCSWbDisPlayInfo AssParam;
-        public DcsOperFullScreen_Ntf(){
-            MainParam = new TDCSOperContent(); MainParam.dwMsgSequence = 14;
-            AssParam = new TDCSWbDisPlayInfo();
-        }
+    public static final class DCFullScreenMatrixOp {
+        public float[] matrixValue;
+        public DCOpCommonInfo commonInfo;
     }
 
     public static final class DcsOperUndo_Ntf{
-        public TDCSOperContent MainParam;
+        public DCOpCommonInfo MainParam;
         public TDCSWbTabPageIdInfo AssParam;
         public DcsOperUndo_Ntf(){
-            MainParam = new TDCSOperContent(); // MainParam.dwMsgSequence = 4;
+            MainParam = new DCOpCommonInfo(); // MainParam.dwMsgSequence = 4;
             AssParam = new TDCSWbTabPageIdInfo();
         }
     }
 
     public static final class DcsOperRedo_Ntf{
-        public TDCSOperContent MainParam;
+        public DCOpCommonInfo MainParam;
         public TDCSWbTabPageIdInfo AssParam;
         public DcsOperRedo_Ntf(){
-            MainParam = new TDCSOperContent(); // MainParam.dwMsgSequence = 5;
+            MainParam = new DCOpCommonInfo(); // MainParam.dwMsgSequence = 5;
             AssParam = new TDCSWbTabPageIdInfo();
         }
     }
@@ -551,13 +591,10 @@ public final class MsgBeans {
     }
 
 
-    public static final class DCTransferPicUrlRsp {
-        public TDCSResult MainParam;
-        public TDCSImageUrl AssParam;
-        public DCTransferPicUrlRsp(){
-            MainParam = new TDCSResult();
-            AssParam = new TDCSImageUrl();
-        }
+    public static final class DCQueryPicUrlResult {
+        public String picId;
+        public String url;
+        public CommonResult commonResult;
     }
 
 //    public static final class DownloadImage_Ntf{
@@ -578,7 +615,7 @@ public final class MsgBeans {
 //
 //    }
 
-    public static final class TDCSResult {
+    public static final class TDCSResult { // XXX DCCommonResult
         public boolean bSucces;
         public int dwErrorCode;
         public String achConfE164;
@@ -598,13 +635,13 @@ public final class MsgBeans {
     public static final class TDCSUserInfo {
         public String achConfE164;
         public String achConfName;
-        public TDCSConfUserInfo tUserInfo;
+        public DCMember tUserInfo;
     }
 
-    public  static final class TDCSOperator{
-        public String achConfE164;
-        public TDCSConfUserInfo[] atOperList;
-        public TDCSOperator(String confE164, TDCSConfUserInfo[] members){
+    public  static final class DCMembers {
+        public String achConfE164; // XXX 会议e164有必要吗？为什么申请/取消协作方都不需要？
+        public DCMember[] atOperList;
+        public DCMembers(String confE164, DCMember[] members){
             achConfE164 = confE164;
             atOperList = members;
         }
@@ -617,30 +654,56 @@ public final class MsgBeans {
         public int dwPort;
     }
 
-    public static final class TDCSOperContent{
-        public EmDcsOper emOper;
+//    public static final class DCOpCommonInfo{
+//        public EmDcsOper emOper;
+//        public int dwMsgId;
+//        public String id;
+//        public int dwWbPageId;
+//        public int dwMsgSequence;
+//        public String achConfE164;
+//        public String achFromE164;      // 谁画的
+//        public boolean bCacheElement;   // 是否是服务器缓存的图元
+//        DCOpCommonInfo(){
+//            id = "boardId";
+//        }
+//    }
+
+    public static final class DCOpCommonInfo {
         public int dwMsgId;
-        public String achTabId;
-        public int dwWbPageId;
-        public int dwMsgSequence;
-        public String achConfE164;
-        public String achFromE164;      // 谁画的
+        public String boardId;  // 画板ID
+        public int pageId;      // 文档页ID
+        public int sn;          // 操作序列号，用来表示操作的先后顺序，越小越靠前。
+        public String confE164; // 所属会议e164号
+        public String authorE164;      // 操作发出者
         public boolean bCacheElement;   // 是否是服务器缓存的图元
-        TDCSOperContent(){
-            achTabId = "boardId";
+    }
+
+//    public static final class DCLineOp {
+//        public String id;     // 白板tab id（guid）
+//        public int dwSubPageId;     // 子页面id
+//        public TDCSWbLine tLine;    // 线操作信息
+//        DCLineOp(){
+//            tLine = new TDCSWbLine();
+//        }
+//    }
+
+    public static final class DCLineOp {
+        public int startX;
+        public int stopX;
+        public int startY;
+        public int stopY;
+        public DCOpCommonInfo commonInfo;
+        public DCPaintCfg paintCfg;
+        DCLineOp(){
         }
     }
 
-    public static final class TDCSWbLineOperInfo {
-        public String achTabId;     // 白板tab id（guid）
-        public int dwSubPageId;     // 子页面id
-        public TDCSWbLine tLine;    // 线操作信息
-        TDCSWbLineOperInfo(){
-            tLine = new TDCSWbLine();
-        }
+    public static final class DCPaintCfg {
+        public int strokeWidth;     // 线宽
+        public int color;           // 颜色值
     }
 
-    public static final class TDCSWbLine {
+    public static final class TDCSWbLine { // XXX TDCSWbPoint就用android的Point代替
         public TDCSWbEntity tEntity;    // 基本信息
         public TDCSWbPoint tBeginPt;    // 起点坐标
         public TDCSWbPoint tEndPt;      // 终点坐标
@@ -752,8 +815,6 @@ public final class MsgBeans {
     }
 
     public static final class TDCSWbInsertPicOperInfo {
-        public String achTabId;         // 白板tab id（guid）
-        public int dwSubPageId;         // 子页面id
         public String achImgId;         // 图元ID
         public int dwImgWidth;
         public int dwImgHeight;
@@ -777,22 +838,27 @@ public final class MsgBeans {
         }
     }
 
-    public static final class TDCSWbPitchPicOperInfo {
-        public String achTabId;         // 白板tab id（guid）
-        public int dwSubPageId;         // 子页面id
-        public int dwGraphsCount;
-        public TDCSWbGraphsInfo[] atGraphsInfo;
-        public TDCSWbPitchPicOperInfo(){
-            atGraphsInfo = new TDCSWbGraphsInfo[]{
-                    new TDCSWbGraphsInfo()
-            };
-        }
+//    public static final class DCDragPicOp {
+//        public String id;         // 白板tab id（guid）
+//        public int dwSubPageId;         // 子页面id
+//        public int dwGraphsCount;
+//        public DCPicMatrix[] atGraphsInfo;
+//        public DCDragPicOp(){
+//            atGraphsInfo = new DCPicMatrix[]{
+//                    new DCPicMatrix()
+//            };
+//        }
+//    }
+
+    public static final class DCDragPicOp {
+        public DCPicMatrix[] atGraphsInfo;
+        public DCOpCommonInfo commonInfo;
     }
 
-    public static final class TDCSWbGraphsInfo {
+    public static final class DCPicMatrix {
         public String achGraphsId;        // 图元ID
         public String[] aachMatrixValue;
-        TDCSWbGraphsInfo(){
+        DCPicMatrix(){
             achGraphsId = "picId";
             aachMatrixValue = new String[]{
                     "1.000000",
@@ -855,18 +921,18 @@ public final class MsgBeans {
     }
 
 
-    public static final class DownloadFilePara{
+    public static final class DownloadPara {
         public String boardId;
         public String picId;  // 图片ID。为null则表示下载图元操作（画线、画圆、插入图片等），不为null则下载图片本身。
         public String picSavePath;
         public String url; // 下载地址
-        public DownloadFilePara(String boardId, String url){
+        public DownloadPara(String boardId, String url){
             this.boardId = boardId;
             this.picId = null;
             this.picSavePath = null;
             this.url = url;
         }
-        public DownloadFilePara(String boardId, String picId, String picSavePath, String url){
+        public DownloadPara(String boardId, String picId, String picSavePath, String url){
             this.boardId = boardId;
             this.picId = picId;
             this.picSavePath = picSavePath;
@@ -874,26 +940,14 @@ public final class MsgBeans {
         }
     }
 
-    public static final class TDCSImageUrl {
-        public String achConfE164;
-        public String achTabId;
-        public int dwPageId;
-        public String achPicUrl;
-        public String achWbPicentityId;     // 图片ID
-
-        public TDCSImageUrl(){
-
-        }
-        public TDCSImageUrl(String confE164, String boardId, String picId){
-            achConfE164 = confE164;
-            achTabId = boardId;
-            dwPageId = 0;
-            achWbPicentityId = picId;
-        }
+    public static final class DCQueryPicUrlPara {
+        public String picId;     // 图片ID
+        public String confE164;
+        public String boardId;
+        public int pageId;
     }
 
-    public  static final class TDCSConfUserInfo {
-        // @formatter:off
+    public  static final class DCMember {
         public String achE164;
         /**
          * 只有在添加与会方，删除与会方用到
