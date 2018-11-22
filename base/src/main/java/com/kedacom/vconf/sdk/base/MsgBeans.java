@@ -183,8 +183,8 @@ public final class MsgBeans {
     public static final class DCSQuitConf{
         public String e164;
         public boolean  force; // true: 只退出数据协作；false：退出数据协作和会议
-        public DCSQuitConf(String e164, boolean force){
-            this.e164=e164; this.force=force;
+        public DCSQuitConf(String e164){
+            this.e164=e164; force=true;
         }
     }
 
@@ -328,13 +328,13 @@ public final class MsgBeans {
         public TDCSFileInfo fileInfo;
     }
 
-//    public static final class TDCSFileLoadResult {
+//    public static final class DownloadResult {
 //        public boolean bSuccess; //XXX 改为Common result
 //        public boolean bElementFile;
 //        public String achFilePathName;
 //        public String achWbPicentityId;
 //        public String achTabid;
-//        TDCSFileLoadResult(){
+//        DownloadResult(){
 //            bSuccess = true;
 //            achTabid = "boardId";
 //            bElementFile = true;
@@ -468,6 +468,7 @@ public final class MsgBeans {
     public static final class DCQueryPicUrlResult {
         public String picId;
         public String url;
+        public String boardId;
         public CommonResult commonResult;
     }
 
@@ -706,6 +707,14 @@ public final class MsgBeans {
             this.picSavePath = picSavePath;
             this.url = url;
         }
+    }
+
+    public static final class DownloadResult {
+        public String boardId;
+        public boolean bElement;  // 是否普通图元（而非图片）
+        public String picId;
+        public String picSavePath;
+        public CommonResult commonResult;
     }
 
     public static final class DCQueryPicUrlPara {

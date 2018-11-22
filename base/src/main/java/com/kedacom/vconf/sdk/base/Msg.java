@@ -290,7 +290,7 @@ public enum Msg {
 
     /**新建画板通知*/
     @Notification(clz = MsgBeans.DCPaintBoard.class)
-    DCNewPaintBoardNtf,
+    DCNewPaintBoardNtf,      // TODO 通知命名规范：名词+动词分词+NTF，所以应该是DCPaintBoardCreatedNtf
 
     /**切换画板通知*/
     @Notification(clz = MsgBeans.DCPaintBoard.class)
@@ -402,7 +402,7 @@ public enum Msg {
     DCDownload,
 
     /**下载响应*/
-    @Response(clz = MsgBeans.CommonResult.class)
+    @Response(clz = MsgBeans.DownloadResult.class)
     DCDownloadRsp,
 
     /**获取图片下载地址*/

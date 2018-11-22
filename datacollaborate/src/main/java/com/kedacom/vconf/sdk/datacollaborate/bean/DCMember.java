@@ -16,13 +16,13 @@ public class DCMember {
     /**
      * 转为传给下层时需要使用的类型
      * */
-    public MsgBeans.TDCSConfUserInfo convert(){
-        MsgBeans.TDCSConfUserInfo confUserInfo = new MsgBeans.TDCSConfUserInfo();
-        confUserInfo.achE164 = e164;
-        confUserInfo.achName = name;
-        confUserInfo.emMttype = type.convert();
-        confUserInfo.bIsOper = isOperator;
-        confUserInfo.bIsConfAdmin = isChairman;
-        return confUserInfo;
-    }
+//    public MsgBeans.TDCSConfUserInfo convert(){
+//        MsgBeans.TDCSConfUserInfo confUserInfo = new MsgBeans.TDCSConfUserInfo();
+//        confUserInfo.achE164 = e164;
+//        confUserInfo.achName = name;
+//        confUserInfo.emMttype = type.convert();
+//        confUserInfo.bIsOper = isOperator;
+//        confUserInfo.bIsConfAdmin = isChairman;
+//        return confUserInfo;
+//    }
 }
