@@ -60,7 +60,7 @@ publishing {
 //        }
 
         "${project.name}"(MavenPublication) {
-//            artifact(sourceJar)
+            artifact(sourceJar)
             artifact("$buildDir/outputs/aar/${project.name}-release.aar")
 //            artifact("$buildDir/outputs/aar/${project.name}-debug.aar")  // NOTE: 注意下面依赖assemble要同步修改
 
