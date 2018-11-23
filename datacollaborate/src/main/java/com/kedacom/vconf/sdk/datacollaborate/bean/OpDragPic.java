@@ -10,10 +10,12 @@ public class OpDragPic extends OpPaint {
 
     private Map<String, float[]> picsMatrix;
 
-    public OpDragPic(Map<String, float[]> picsMatrix, int sn, String boardId) {
+    public OpDragPic(){
+        type = OP_DRAG_PICTURE;
+    }
+
+    public OpDragPic(Map<String, float[]> picsMatrix) {
         this.picsMatrix = picsMatrix;
-        this.sn = sn;
-        this.boardId = boardId;
         type = OP_DRAG_PICTURE;
     }
 
