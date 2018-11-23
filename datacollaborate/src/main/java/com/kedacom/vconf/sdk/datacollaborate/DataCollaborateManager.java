@@ -10,6 +10,8 @@ import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.CommonResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
@@ -325,7 +327,7 @@ public class DataCollaborateManager extends RequestAgent {
             } else if (Msg.DCBoardSwitchedNtf.equals(ntfId)) {
                 board = (MsgBeans.DCBoard) ntfContent;
                 onBoardOpListener.onBoardSwitched(board.id);
-                // 下载当前画板已有的图元操作。
+                // 下载当前画板已有的图元操作。NOTE:下载过程中可能有其他画板比如画板2的操作board2_ops也上报上来，然后切到画板2时又要批量下载已有图元，这时批量下载的操作时序上应该在board2_ops前面，但接收到的时序恰好相反，记得处理这种情形。
                 /* NOTE:对于下载下来的图片相关的操作，如插入图片、删除图片等，并不包含图片文件本身。
                 要获取图片文件本身，需在后续专门下载。*/
                 req(Msg.DCDownload,
@@ -354,9 +356,10 @@ public class DataCollaborateManager extends RequestAgent {
     @SuppressWarnings("ConstantConditions")
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+        MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
 
+        OpPaint paintOp = null;
         for (Object listener : listeners) {
-            OpPaint paintOp = null;
             if (Msg.DCElementBeginNtf.equals(ntfId)) {
                 if (isRecvingBatchOps) {  // TODO 多个画板切换会有多个DcsElementOperBegin_Ntf，此处应该要分boardId处理；另外在DcsElementOperBegin_Ntf之前就有可能有新的操作过来，或许要在开始download的时候就开启isRecvingBatchOps
                     return;
@@ -366,15 +369,11 @@ public class DataCollaborateManager extends RequestAgent {
                 handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
                 return;
             }
-//            else if (Msg.DCLineDrawnNtf.equals(ntfId)) {
-//                MsgBeans.DCLineOp Op = (MsgBeans.DCLineOp) ntfContent;
-//                paintOp = new OpDrawLine(Op.startX, Op.startY, Op.stopX, Op.stopY, Op.commonInfo.sn,
-//                        new PaintCfg(Op.paintCfg.strokeWidth, Op.paintCfg.color), Op.commonInfo.boardId);
-//            } else if (Msg.DCOvalDrawnNtf.equals(ntfId)) {
-//                MsgBeans.DCOvalOp Op = (MsgBeans.DCOvalOp) ntfContent;
-//                paintOp = new OpDrawOval(Op.left, Op.top, Op.right, Op.bottom,Op.commonInfo.sn,
-//                        new PaintCfg(Op.paintCfg.strokeWidth, Op.paintCfg.color), Op.commonInfo.boardId);
-//            }
+            else if (Msg.DCLineDrawnNtf.equals(ntfId)) {
+                paintOp = new OpDrawLine().fromTransferObj((MsgBeans.DCLineOp) ntfContent);
+            } else if (Msg.DCOvalDrawnNtf.equals(ntfId)) {
+                paintOp = new OpDrawOval().fromTransferObj((MsgBeans.DCOvalOp) ntfContent);
+            }
 //            else if (Msg.DcsOperRectangleOperInfo_Ntf.equals(ntfId)) {
 //                MsgBeans.DcsOperRectangleOperInfo_Ntf opInfo = (MsgBeans.DcsOperRectangleOperInfo_Ntf) ntfContent;
 //                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;

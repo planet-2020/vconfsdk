@@ -51,28 +51,20 @@ public abstract class OpPaint implements Comparable<OpPaint>{
         return to;
     }
 
-    protected float[] matrixValueStr2Float(String[] strMatrixValue){
-        float[] matrixValue = new float[9];
-        for (int i=0; i<9; ++i){
-            matrixValue[i] = Float.valueOf(strMatrixValue[i]);
-        }
-        return matrixValue;
-    }
-
-    protected String[] matrixValueFloat2Str(float[] matrixValue){
-        String[] strMatrixValue = new String[9];
-        for (int i=0; i<9; ++i){
-            strMatrixValue[i] = ""+matrixValue[i];
-        }
-        return strMatrixValue;
-    }
-
     public int getType() {
         return type;
     }
 
     public void setType(int type) {
         this.type = type;
+    }
+
+    public String getConfE164() {
+        return confE164;
+    }
+
+    public void setConfE164(String confE164) {
+        this.confE164 = confE164;
     }
 
     public String getBoardId() {
