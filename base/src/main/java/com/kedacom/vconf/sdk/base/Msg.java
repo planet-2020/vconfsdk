@@ -267,7 +267,7 @@ public enum Msg {
     DCQueryPaintBoard,
 
     /**查询画板响应*/
-    @Response(clz=MsgBeans.DCSWhiteBoardResult.class)  // TODO 响应需要接收两个消息体，一个是结果实体等，一个是内容实体。
+    @Response(clz=MsgBeans.DCQueryBoardResult.class)
     DCQueryPaintBoardRsp,
 
     /**查询所有画板*/
@@ -276,7 +276,7 @@ public enum Msg {
     DCQueryAllPaintBoards,
 
     /**查询所有白板响应*/
-    @Response(clz=MsgBeans.DCSGetAllWhiteBoardRsp.class)  // 响应需要接收两个消息体，一个是结果实体等，一个是内容实体。
+    @Response(clz=MsgBeans.DCQueryAllBoardsResult.class)
     DCQueryAllPaintBoardsRsp,
 
     /**添加子页*/
@@ -304,19 +304,19 @@ public enum Msg {
     // 数据协作图元操作
 
     /**画线*/
-    @Request(para=MsgBeans.DCSOperLineOper.class)
+    @Request(para=MsgBeans.DCLineOp.class)
     DCDrawLine,
 
     /**画圆/椭圆*/
-    @Request(para=MsgBeans.DCSOperCircleOper.class)
+    @Request(para=MsgBeans.DCOvalOp.class)
     DCDrawOval,
 
     /**画矩形*/
-    @Request(para=MsgBeans.DCSOperRectangleOper.class)
+    @Request(para=MsgBeans.DCRectOp.class)
     DCDrawRect,
 
     /**画路径（铅笔操作）*/
-    @Request(para=MsgBeans.DCSOperPencilOper.class)
+    @Request(para=MsgBeans.DCPathOp.class)
     DCDrawPath,
 
 //    /**彩笔操作*/
@@ -324,47 +324,47 @@ public enum Msg {
 //    @Request(para=MsgBeans.DCSOperColorPenOper.class)
 //    DCColorPenOp,
 
-    /**图片操作*/
+//    /**图片操作*/
 //    @Deprecated
 //    @Request(para=MsgBeans.DCSOperImageOper.class)
 //    DCSOperImageOperInfoCmd,
 
     /**矩形擦除*/
-    @Request(para=MsgBeans.DCSOperEraseOper.class)
+    @Request(para=MsgBeans.DCRectEraseOp.class)
     DCRectErase,
 
     /**清屏*/
-    @Request(para=MsgBeans.TDCSOperReq.class)
+    @Request(para=MsgBeans.DCPaintOp.class)
     DCClearScreen,
 
 
     // 数据协作矩阵操作
 
     /**放缩*/
-    @Request(para=MsgBeans.DCSOperZoomOper.class)
+    @Request(para=MsgBeans.DCZoomOp.class)
     DCZoom,
 
     /**左旋转*/
-    @Request(para=MsgBeans.TDCSOperReq.class)
+    @Request(para=MsgBeans.DCPaintOp.class)
     DCRotateLeft,
 
     /**右旋转*/
-    @Request(para=MsgBeans.TDCSOperReq.class)
+    @Request(para=MsgBeans.DCPaintOp.class)
     DCRotateRight,
 
     /**滚屏*/
-    @Request(para=MsgBeans.DCSOperScrollOper.class)
+    @Request(para=MsgBeans.DCScrollOp.class)
     DCScrollScreen,
 
 
     // 数据协作图元控制操作
 
     /**撤销*/
-    @Request(para=MsgBeans.DCSOperUndoOper.class)
+    @Request(para=MsgBeans.DCPaintOp.class)
     DCUndo,
 
     /**恢复（恢复被撤销的操作）*/
-    @Request(para=MsgBeans.DCSOperRedoOper.class)
+    @Request(para=MsgBeans.DCPaintOp.class)
     DCRedo,
 
 
@@ -469,15 +469,15 @@ public enum Msg {
     DCFullScreenMatrixOpNtf,
 
     /**撤销操作通知*/
-    @Notification(clz = MsgBeans.DCOpCommonInfo.class)
+    @Notification(clz = MsgBeans.DCPaintOp.class)
     DCUndoneNtf,
 
     /**恢复（恢复被撤销的操作）通知*/
-    @Notification(clz = MsgBeans.DCOpCommonInfo.class)
+    @Notification(clz = MsgBeans.DCPaintOp.class)
     DCRedoneNtf,
 
     /**清屏通知*/
-    @Notification(clz = MsgBeans.DCOpCommonInfo.class)
+    @Notification(clz = MsgBeans.DCPaintOp.class)
     DCScreenClearedNtf,
 
     /**图元序列结束通知*/

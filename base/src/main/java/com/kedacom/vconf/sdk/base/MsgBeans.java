@@ -136,7 +136,7 @@ public final class MsgBeans {
     }
 
     /**通用结果*/
-    public static final class CommonResult {
+    public static class CommonResult {
         public boolean success;// 是否成功。true：成功
         public int errorCode;   // （如果失败的）错误码
         private CommonResult(){
@@ -169,8 +169,7 @@ public final class MsgBeans {
     }
 
     /**数据协作会议创建结果消息体*/
-    public static final class DCCreateConfResult {
-        public CommonResult commonResult;
+    public static final class DCCreateConfResult extends CommonResult{
         public String       confE164;
         public String       confName;
         public EmDcsConfMode confMode;
@@ -202,8 +201,7 @@ public final class MsgBeans {
         }
     }
 
-    public static final class DCQueryAllMembersResult {
-        public CommonResult commonResult;
+    public static final class DCQueryAllMembersResult extends CommonResult{
         public DCMember[] AssParam;
     }
 
@@ -240,9 +238,13 @@ public final class MsgBeans {
         public String  		achTabId;
         public int			dwPageId;
     }
-    public static final class DCSWhiteBoardResult {
-        public TDCSBoardResult MainParam;
-        public DCPaintBoard AssParam;
+
+    public static final class DCQueryBoardResult extends CommonResult{
+        public DCPaintBoard board;
+    }
+
+    public static final class DCQueryAllBoardsResult extends CommonResult{
+        public DCPaintBoard[] boards;
     }
 
     public static final class DCPaintBoardId {
@@ -398,63 +400,50 @@ public final class MsgBeans {
 //        }
 //    }
 
-    public static final class DCOvalOp {
+    public static final class DCOvalOp extends DCDrawOp{
         public int left;
         public int top;
         public int right;
         public int bottom;
-        public DCOpCommonInfo commonInfo;
-        public DCPaintCfg paintCfg;
     }
 
-    public static final class DCRectOp {
+    public static final class DCRectOp extends DCDrawOp{
         public int left;
         public int top;
         public int right;
         public int bottom;
-        public DCOpCommonInfo commonInfo;
-        public DCPaintCfg paintCfg;
     }
 
-    public static final class DCPathOp {
+    public static final class DCPathOp extends DCDrawOp{
         public Point[] points;
-        public DCOpCommonInfo commonInfo;
-        public DCPaintCfg paintCfg;
     }
 
 
-    public static final class DCInertPicOp {
+    public static final class DCInertPicOp extends DCPaintOp{
         public String achImgId;         // 图元ID
         public String achPicName;
         public int dwImgWidth;
         public int dwImgHeight;
         public Point tPoint;
         public String[] aachMatrixValue;
-
-        public DCOpCommonInfo MainParam;
-        public DCInertPicOp(){
-            MainParam = new DCOpCommonInfo(); //MainParam.dwMsgSequence = 4;
-        }
     }
 
     public static final class DCDelPicOp {
         public String[] achGraphsId;
-        public DCOpCommonInfo MainParam;
+        public DCPaintOp MainParam;
         DCDelPicOp(){
         }
     }
 
-    public static final class DCRectEraseOp {
+    public static final class DCRectEraseOp extends DCPaintOp{
         public int left;
         public int top;
         public int right;
         public int bottom;
-        public DCOpCommonInfo commonInfo;
     }
 
-    public static final class DCFullScreenMatrixOp {
+    public static final class DCFullScreenMatrixOp extends DCPaintOp{
         public float[] matrixValue;
-        public DCOpCommonInfo commonInfo;
     }
 
 
@@ -465,11 +454,10 @@ public final class MsgBeans {
 //    }
 
 
-    public static final class DCQueryPicUrlResult {
+    public static final class DCQueryPicUrlResult extends CommonResult{
         public String picId;
         public String url;
         public String boardId;
-        public CommonResult commonResult;
     }
 
 
@@ -503,31 +491,55 @@ public final class MsgBeans {
         public int dwPort;
     }
 
-    public static final class DCOpCommonInfo {
-        public String   boardId;        // 画板ID
-        public int      pageId;      // 文档页ID
-        public int      sn;          // 操作序列号，用来表示操作的先后顺序，越小越靠前。
-        public String   confE164;       // 所属会议e164号
-        public String   authorE164;      // 操作发出者
-        public boolean  bCacheElement;   // 是否是服务器缓存的图元
+    /**
+     * 绘制操作基类。
+     * 包括线、圆等各种图形、图片、清屏、滚屏、撤销等涉及界面绘制的操作。
+     * */
+    public static class DCPaintOp {
+        public String   id;         // 操作ID，唯一标识该操作。由终端使用GUID来填写
+        public String   confE164;   // 所属会议e164号
+        public String   boardId;    // 画板ID
+        public int      pageId;     // 文档页ID（仅文档模式下有效）
+
+        public int      sn;             // 操作序列号，用来表示操作的先后顺序，越小越靠前。由平台填写。
+        public String   authorE164;      // 操作发出者。由平台填写。
+        public boolean  bCacheElement;   // 是否是服务器缓存的图元。由平台填写。
     }
 
-    public static final class DCLineOp {
-        public int startX;
-        public int stopX;
-        public int startY;
-        public int stopY;
-        public DCOpCommonInfo commonInfo;
-        public DCPaintCfg paintCfg;
-        DCLineOp(){
-        }
-    }
-
-    public static final class DCPaintCfg {
+    /**
+     * 图形绘制操作基类。
+     * 各种几何图形的绘制操作。
+     * */
+    public static class DCDrawOp extends DCPaintOp {
         public int strokeWidth;     // 线宽
         public int color;           // 颜色值
     }
 
+    /**
+     * 画线
+     * */
+    public static final class DCLineOp extends DCDrawOp{
+        public int startX;
+        public int stopX;
+        public int startY;
+        public int stopY;
+    }
+
+
+    /**
+     * 放缩
+     * */
+    public static class DCZoomOp extends DCPaintOp {
+        public int percentage;   // 放缩百分比。100%为没有放缩，50%为缩小一半。
+    }
+
+    /**
+     * 滚屏
+     * */
+    public static class DCScrollOp extends DCPaintOp {
+        public int stopX;   //??? 中心点？
+        public int stopY;
+    }
 
     public static final class TDCSWbCircleOperInfo {
         public String achTabId;         // 白板tab id（guid）
@@ -552,7 +564,7 @@ public final class MsgBeans {
         }
     }
 
-    public static final class TDCSWbEntity {
+    public static final class TDCSWbEntity { // ???
         public String achEntityId;  // 现在使用GUID来填写
         public boolean bLock;
     }
@@ -615,7 +627,7 @@ public final class MsgBeans {
 
     public static final class TDCSWbInsertPicOperInfo {
         public String achImgId;         // 图元ID
-        public int dwImgWidth;
+        public int dwImgWidth;  // ???
         public int dwImgHeight;
         public TDCSWbPoint tPoint;
         public String achPicName;
@@ -638,9 +650,8 @@ public final class MsgBeans {
     }
 
 
-    public static final class DCDragPicOp {
+    public static final class DCDragPicOp extends DCPaintOp{
         public DCPicMatrix[] atGraphsInfo;
-        public DCOpCommonInfo commonInfo;
     }
 
     public static final class DCPicMatrix {
@@ -709,12 +720,11 @@ public final class MsgBeans {
         }
     }
 
-    public static final class DownloadResult {
+    public static final class DownloadResult extends CommonResult{
         public String boardId;
         public boolean bElement;  // 是否普通图元（而非图片）
         public String picId;
         public String picSavePath;
-        public CommonResult commonResult;
     }
 
     public static final class DCQueryPicUrlPara {
