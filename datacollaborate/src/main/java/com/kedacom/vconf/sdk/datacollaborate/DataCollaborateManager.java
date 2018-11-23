@@ -1,7 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
-import android.graphics.BitmapFactory;
-import android.graphics.PointF;
 import android.os.Handler;
 
 import com.kedacom.vconf.sdk.base.IResponseListener;
@@ -11,22 +9,8 @@ import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.CommonResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.PaintBoardInfo;
-import com.kedacom.vconf.sdk.datacollaborate.bean.PaintCfg;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.TerminalType;
 
 //import static com.kedacom.vconf.sdk.base.MsgBeans.*; // TODO 使用static import？
@@ -51,10 +35,10 @@ public class DataCollaborateManager extends RequestAgent {
     private String curDcConfE164;
 
     private static final Msg[] boardOpNtfs = new Msg[]{
-            Msg.DCCurrentPaintBoardNtf,
-            Msg.DCNewPaintBoardNtf,
-            Msg.DCSwitchPaintBoardNtf,
-            Msg.DCDelPaintBoardNtf,
+            Msg.DCCurrentBoardNtf,
+            Msg.DCBoardCreatedNtf,
+            Msg.DCBoardSwitchedNtf,
+            Msg.DCBoardDeletedNtf,
     };
     private static final Msg[] paintOpNtfs = new Msg[]{
             Msg.DCElementBeginNtf,
@@ -79,9 +63,9 @@ public class DataCollaborateManager extends RequestAgent {
         processorMap.put(Msg.DCLogin, this::onSessionRsps);
         processorMap.put(Msg.DCLogout, this::onSessionRsps);
 
-        processorMap.put(Msg.DCCreateConf, this::onDcConfLifecycleRsps);
-        processorMap.put(Msg.DCReleaseConf, this::onDcConfLifecycleRsps);
-        processorMap.put(Msg.DCQuitConf, this::onDcConfLifecycleRsps);
+        processorMap.put(Msg.DCCreateConf, this::onConfOpRsps);
+        processorMap.put(Msg.DCReleaseConf, this::onConfOpRsps);
+        processorMap.put(Msg.DCQuitConf, this::onConfOpRsps);
 
         processorMap.put(Msg.DCAddOperator, this::onChangeOperatorsRsps);
         processorMap.put(Msg.DCDelOperator, this::onChangeOperatorsRsps);
@@ -125,26 +109,27 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onSessionRsps(Msg rspId, Object rspContent, IResponseListener listener){
         KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
+        MsgBeans.CommonResult result;
         if (Msg.DCBuildLink4LoginRsp.equals(rspId)){
-            MsgBeans.CommonResult linkCreationResult = (MsgBeans.CommonResult) rspContent;
-            if (!linkCreationResult.success
+            result = (MsgBeans.CommonResult) rspContent;
+            if (!result.bSuccess
                     && null != listener){
                 cancelReq(Msg.DCLogin, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
                 listener.onResponse(CommonResultCode.FAILED, null);
             }
         }else if (Msg.DCLoginRsp.equals(rspId)){
-            MsgBeans.CommonResult loginRes = (MsgBeans.CommonResult) rspContent;
+            result = (MsgBeans.CommonResult) rspContent;
             if (null != listener){
-                if (loginRes.success) {  // ??? 需要保存登录状态吗
+                if (result.bSuccess) {  // ??? 需要保存登录状态吗
                     listener.onResponse(CommonResultCode.SUCCESS, null);
                 }else{
                     listener.onResponse(CommonResultCode.FAILED, null);
                 }
             }
         }else if (Msg.DCLogoutRsp.equals(rspId)){
-            MsgBeans.CommonResult result = (MsgBeans.CommonResult) rspContent;
+            result = (MsgBeans.CommonResult) rspContent;
             if (null != listener){
-                if (result.success){
+                if (result.bSuccess){
                     listener.onResponse(CommonResultCode.SUCCESS, rspContent);
                 }else{
                     listener.onResponse(CommonResultCode.FAILED, rspContent);
@@ -173,7 +158,7 @@ public class DataCollaborateManager extends RequestAgent {
         curDcConfE164 = null;
     }
 
-    private void onDcConfLifecycleRsps(Msg rspId, Object rspContent, IResponseListener listener){
+    private void onConfOpRsps(Msg rspId, Object rspContent, IResponseListener listener){
 //        if (Msg.DCBuildLink4ConfRsp.equals(rspId)){
 //            MsgBeans.CommonResult dcsConfResult = (MsgBeans.CommonResult) rspContent;
 //            if (!dcsConfResult.success
@@ -260,7 +245,7 @@ public class DataCollaborateManager extends RequestAgent {
     private void onChangeOperatorsRsps(Msg rspId, Object rspContent, IResponseListener listener){
         MsgBeans.CommonResult result = (MsgBeans.CommonResult) rspContent;
         if (null != listener){
-            if (result.success){
+            if (result.bSuccess){
                 listener.onResponse(CommonResultCode.SUCCESS, rspContent);
             }else{
                 listener.onResponse(CommonResultCode.FAILED, rspContent);
@@ -323,25 +308,26 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onBoardNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        IOnBoardOpListener boardLifecycleListener;
+        IOnBoardOpListener onBoardOpListener;
+        MsgBeans.DCBoard board;
         for (Object listener : listeners) {
-            boardLifecycleListener = (IOnBoardOpListener) listener;
-            if (Msg.DCCurrentPaintBoardNtf.equals(ntfId)) {
-                MsgBeans.DCPaintBoard boardInfo = (MsgBeans.DCPaintBoard) ntfContent;
-                boardLifecycleListener.onBoardSwitched(boardInfo.id);
-            } else if (Msg.DCNewPaintBoardNtf.equals(ntfId)) {
-                MsgBeans.DCPaintBoard boardInfo = (MsgBeans.DCPaintBoard) ntfContent;
-                boardLifecycleListener.onBoardCreated(new PaintBoardInfo(boardInfo.id, boardInfo.name));
-            } else if (Msg.DCSwitchPaintBoardNtf.equals(ntfId)) {
-                MsgBeans.DCPaintBoard boardInfo = (MsgBeans.DCPaintBoard) ntfContent;
-                boardLifecycleListener.onBoardSwitched(boardInfo.id);
+            onBoardOpListener = (IOnBoardOpListener) listener;
+            if (Msg.DCCurrentBoardNtf.equals(ntfId)) {
+                board = (MsgBeans.DCBoard) ntfContent;
+                onBoardOpListener.onBoardSwitched(board.id);
+            } else if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
+                board = (MsgBeans.DCBoard) ntfContent;
+                onBoardOpListener.onBoardCreated(new PaintBoardInfo(board.id, board.name));
+            } else if (Msg.DCBoardSwitchedNtf.equals(ntfId)) {
+                board = (MsgBeans.DCBoard) ntfContent;
+                onBoardOpListener.onBoardSwitched(board.id);
                 // 下载当前画板已有的图元操作。
                 /* NOTE:对于下载下来的图片相关的操作，如插入图片、删除图片等，并不包含图片文件本身。
                 要获取图片文件本身，需在后续专门下载。*/
                 req(Msg.DCDownload,
-                        new MsgBeans.DownloadPara(boardInfo.id, boardInfo.elementUrl),
+                        new MsgBeans.DownloadPara(board.id, board.elementUrl),
                         null);  // TODO DcsSwitch_Ntf可以有多次，而下载只应该一次。在DcsCurrentWhiteBoard_Ntf中做？实测抓消息。
-            } else if (Msg.DCDelPaintBoardNtf.equals(ntfId)) {
+            } else if (Msg.DCBoardDeletedNtf.equals(ntfId)) {
                 // TODO
             }
         }
