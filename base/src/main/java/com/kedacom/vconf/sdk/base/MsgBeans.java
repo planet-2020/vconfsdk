@@ -1,6 +1,6 @@
 package com.kedacom.vconf.sdk.base;
 
-import android.graphics.Point;
+import android.graphics.PointF;
 
 import androidx.annotation.RestrictTo;
 
@@ -18,6 +18,8 @@ import static com.kedacom.vconf.sdk.base.MsgConst.*;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @SuppressWarnings({"WeakerAccess", "unused"})
 public final class MsgBeans {
+
+    private MsgBeans(){}
 
     public static final class BaseTypeInt{
         public int basetype;
@@ -280,7 +282,7 @@ public final class MsgBeans {
         public String achWbPicentityId;     // 如果是图片，则会有pic id，否则为空
         public String achTabid;
         public boolean bElementCacheFile;   // 是否为图元缓存文件，即，如果是图片图元，设置为false；非图片图元（线、圆、矩形等）为true
-        public int dwFileSize;
+        public long dwFileSize;
     }
 
     public static final class TDCSWbAddSubPageInfo{ // TODO
@@ -309,21 +311,21 @@ public final class MsgBeans {
 
 
     public static final class DCOvalOp extends DCDrawOp{
-        public int left;
-        public int top;
-        public int right;
-        public int bottom;
+        public float left;
+        public float top;
+        public float right;
+        public float bottom;
     }
 
     public static final class DCRectOp extends DCDrawOp{
-        public int left;
-        public int top;
-        public int right;
-        public int bottom;
+        public float left;
+        public float top;
+        public float right;
+        public float bottom;
     }
 
     public static final class DCPathOp extends DCDrawOp{
-        public Point[] points;
+        public PointF[] points;
     }
 
 
@@ -332,7 +334,7 @@ public final class MsgBeans {
         public String picName;
         public int  width;  //TODO 图片原始宽？
         public int  height; //TODO 图片原始高？
-        public Point dstPos; // 目标位置（左上角坐标点）
+        public PointF dstPos; // 目标位置（左上角坐标点）
         public String[] matrixValue; // TODO 放缩及位置信息？
     }
 
@@ -343,14 +345,14 @@ public final class MsgBeans {
     }
 
     public static final class DCRectEraseOp extends DCPaintOp{
-        public int left;
-        public int top;
-        public int right;
-        public int bottom;
+        public float left;
+        public float top;
+        public float right;
+        public float bottom;
     }
 
     public static final class DCFullScreenMatrixOp extends DCPaintOp{
-        public float[] matrixValue;
+        public String[] matrixValue;
     }
 
 // 批量图元结束通知
@@ -401,10 +403,10 @@ public final class MsgBeans {
      * 画线
      * */
     public static final class DCLineOp extends DCDrawOp{
-        public int startX;
-        public int stopX;
-        public int startY;
-        public int stopY;
+        public float startX;
+        public float stopX;
+        public float startY;
+        public float stopY;
     }
 
 
@@ -419,8 +421,8 @@ public final class MsgBeans {
      * 滚屏
      * */
     public static class DCScrollOp extends DCPaintOp {
-        public int stopX;   //TODO 中心点？
-        public int stopY;
+        public float stopX;   //TODO 中心点？
+        public float stopY;
     }
 
 
@@ -432,19 +434,9 @@ public final class MsgBeans {
     public static final class DCPicMatrix {
         public String picId;        // 图元ID
         public String[] matrixValue;
-        DCPicMatrix(){
-            picId = "picId";
-            matrixValue = new String[]{
-                    "1.000000",
-                    "0.000000",
-                    "200.000000",
-                    "0.000000",
-                    "1.000000",
-                    "200.250000",
-                    "0.000000",
-                    "0.000000",
-                    "1.000000"
-            };
+        public DCPicMatrix(String picId, String[] matrixValue){
+            this.picId = picId;
+            this.matrixValue = matrixValue;
         }
     }
 

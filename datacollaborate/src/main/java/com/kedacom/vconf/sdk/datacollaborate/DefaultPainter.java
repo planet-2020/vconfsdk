@@ -15,7 +15,7 @@ import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
@@ -315,7 +315,7 @@ public class DefaultPainter implements IPainter {
                             canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
                             break;
                         case OpPaint.OP_ERASE:
-                            OpErase eraseOp = (OpErase) op;
+                            OpRectErase eraseOp = (OpRectErase) op;
                             canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp.paintCfg));
                             break;
                         case OpPaint.OP_CLEAR_SCREEN:

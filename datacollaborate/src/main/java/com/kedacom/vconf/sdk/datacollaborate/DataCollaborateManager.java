@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import android.graphics.BitmapFactory;
 import android.os.Handler;
 
 import com.kedacom.vconf.sdk.base.IResponseListener;
@@ -9,7 +10,8 @@ import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.CommonResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
-import com.kedacom.vconf.sdk.datacollaborate.bean.PaintBoardInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.TerminalType;
 
@@ -99,7 +101,7 @@ public class DataCollaborateManager extends RequestAgent {
 
     /**登录数据协作*/
     public void login(String serverIp, int port, TerminalType terminalType, IResponseListener resultListener){
-        req(Msg.DCLogin, new MsgBeans.DCLoginPara(serverIp, port, terminalType.convert()), resultListener);
+        req(Msg.DCLogin, new MsgBeans.DCLoginPara(serverIp, port, terminalType.toTransferType()), resultListener);
     }
 
     /**注销数据协作*/
@@ -159,42 +161,43 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     private void onConfOpRsps(Msg rspId, Object rspContent, IResponseListener listener){
-//        if (Msg.DCBuildLink4ConfRsp.equals(rspId)){
-//            MsgBeans.CommonResult dcsConfResult = (MsgBeans.CommonResult) rspContent;
-//            if (!dcsConfResult.success
-//                    && null != listener){
-//                cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCCreateConfRsp上来，取消该请求以防等待超时。
-//                listener.onResponse(CommonResultCode.FAILED, null);
-//            }
-//        }else if (Msg.DCCreateConfRsp.equals(rspId)){
-//            MsgBeans.DCCreateConfResult confResult = (MsgBeans.DCCreateConfResult) rspContent;
-//            curDcConfE164 = confResult.confE164;
-//            if (null != listener){
-//                if (confResult.commonResult.success) {
-//                    listener.onResponse(CommonResultCode.SUCCESS, null);
-//                }else{
-//                    listener.onResponse(CommonResultCode.FAILED, null);
-//                }
-//            }
-//        }else if (Msg.DCReleaseConfRsp.equals(rspId)){
-//            MsgBeans.CommonResult result = (MsgBeans.CommonResult) rspContent;
-//            if (null != listener){
-//                if (result.success){
-//                    listener.onResponse(CommonResultCode.SUCCESS, rspContent);
-//                }else{
-//                    listener.onResponse(CommonResultCode.FAILED, rspContent);
-//                }
-//            }
-//        }else if (Msg.DCQuitConfRsp.equals(rspId)){
-//            MsgBeans.CommonResult result = (MsgBeans.CommonResult) rspContent;
-//            if (null != listener){
-//                if (result.success){
-//                    listener.onResponse(CommonResultCode.SUCCESS, rspContent);
-//                }else{
-//                    listener.onResponse(CommonResultCode.FAILED, rspContent);
-//                }
-//            }
-//        }
+        MsgBeans.CommonResult result;
+        if (Msg.DCBuildLink4ConfRsp.equals(rspId)){
+            result = (MsgBeans.CommonResult) rspContent;
+            if (!result.bSuccess
+                    && null != listener){
+                cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCCreateConfRsp上来，取消该请求以防等待超时。
+                listener.onResponse(CommonResultCode.FAILED, null);
+            }
+        }else if (Msg.DCConfCreated.equals(rspId)){
+            MsgBeans.DCCreateConfResult createConfResult = (MsgBeans.DCCreateConfResult) rspContent;
+            curDcConfE164 = createConfResult.confE164;
+            if (null != listener){
+                if (createConfResult.bSuccess) {
+                    listener.onResponse(CommonResultCode.SUCCESS, null);
+                }else{
+                    listener.onResponse(CommonResultCode.FAILED, null);
+                }
+            }
+        }else if (Msg.DCReleaseConfRsp.equals(rspId)){
+            result = (MsgBeans.CommonResult) rspContent;
+            if (null != listener){
+                if (result.bSuccess){
+                    listener.onResponse(CommonResultCode.SUCCESS, rspContent);
+                }else{
+                    listener.onResponse(CommonResultCode.FAILED, rspContent);
+                }
+            }
+        }else if (Msg.DCQuitConfRsp.equals(rspId)){
+            result = (MsgBeans.CommonResult) rspContent;
+            if (null != listener){
+                if (result.bSuccess){
+                    listener.onResponse(CommonResultCode.SUCCESS, rspContent);
+                }else{
+                    listener.onResponse(CommonResultCode.FAILED, rspContent);
+                }
+            }
+        }
     }
 
 
@@ -207,7 +210,7 @@ public class DataCollaborateManager extends RequestAgent {
         }
 //        MsgBeans.TDCSConfUserInfo[] confUserInfos = new MsgBeans.TDCSConfUserInfo[members.length];
 //        for (int i=0; i<members.length; ++i){
-//            confUserInfos[i] = members[i].convert();
+//            confUserInfos[i] = members[i].toTransferType();
 //        }
 //        req(Msg.DCAddOperator, new MsgBeans.TDCSOperator(curDcConfE164, confUserInfos), resultListener);
     }
@@ -220,7 +223,7 @@ public class DataCollaborateManager extends RequestAgent {
         }
 //        MsgBeans.TDCSConfUserInfo[] confUserInfos = new MsgBeans.TDCSConfUserInfo[members.length];
 //        for (int i=0; i<members.length; ++i){
-//            confUserInfos[i] = members[i].convert();
+//            confUserInfos[i] = members[i].toTransferType();
 //        }
 //        req(Msg.DCDelOperator, new MsgBeans.TDCSOperator(curDcConfE164, confUserInfos), resultListener);
     }
@@ -259,50 +262,51 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
+    private static final String SAVE_PATH = "/data/local/tmp/";
     private void onDownloadRsp(Msg rspId, Object rspContent, IResponseListener listener){
-//        MsgBeans.DownloadResult result = (MsgBeans.DownloadResult) rspContent;
-//        if (!result.commonResult.success){
-//            KLog.p(KLog.ERROR, "download file failed!");
-//            return;
-//        }
-//        if (result.bElement){
-//            /* 下载的是图元（而非图片本身）。
-//            * 后续会批量上报当前画板已有的图元：
-//            * DcsElementOperBegin_Ntf // 批量上报开始
-//            * ...  // 批量图元，如画线、画圆、插入图片等等
-//            *
-//            * ...ElementShouldAfterFinal  // 应该在该批次图元之后出现的图元。
-//            *                                NOTE: 批量上报过程中可能会混入画板中当前正在进行的操作，
-//            *                                这会导致图元上报的时序跟实际时序不一致，需要自行处理。
-//            *                                （实际时序应该是：在成功响应下载请求后的所有后续进行的操作都应出现在DcsElementOperFinal_Ntf之后）
-//            * ...// 批量图元
-//            * DcsElementOperFinal_Ntf // 批量结束
-//            *
-//            *
-//            * */
-//            return;
-//        }
-//
-//        // 下载的是图片
-//        OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
-//        IOnPaintOpListener onPaintOpListener = ((DownloadListener)listener).onPaintOpListener;
-//        KLog.p("download pic finished, onPaintOpListener=%s", onPaintOpListener);
-//        if (null != onPaintOpListener){
-//            onPaintOpListener.onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
-//        }
+        MsgBeans.DownloadResult result = (MsgBeans.DownloadResult) rspContent;
+        if (!result.bSuccess){
+            KLog.p(KLog.ERROR, "download file failed!");
+            return;
+        }
+        if (!result.bPic){
+            /* 下载的是图元（而非图片本身）。
+            * 后续会批量上报当前画板已有的图元：
+            * DcsElementOperBegin_Ntf // 批量上报开始
+            * ...  // 批量图元，如画线、画圆、插入图片等等
+            *
+            * ...ElementShouldAfterFinal  // 应该在该批次图元之后出现的图元。
+            *                                NOTE: 批量上报过程中可能会混入画板中当前正在进行的操作，
+            *                                这会导致图元上报的时序跟实际时序不一致，需要自行处理。
+            *                                （实际时序应该是：在成功响应下载请求后的所有后续进行的操作都应出现在DcsElementOperFinal_Ntf之后）
+            * ...// 批量图元
+            * DcsElementOperFinal_Ntf // 批量结束
+            *
+            *
+            * */
+            return;
+        }
+
+        // 下载的是图片
+        OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
+        IOnPaintOpListener onPaintOpListener = ((DownloadListener)listener).onPaintOpListener; // TODO 能不能自适应activity生命周期？
+        KLog.p("download pic finished, onPaintOpListener=%s", onPaintOpListener);
+        if (null != onPaintOpListener){
+            onPaintOpListener.onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+        }
     }
 
 
     private void onQueryPicUrlRsp(Msg rspId, Object rspContent, IResponseListener listener){
-//        MsgBeans.DCQueryPicUrlResult result = (MsgBeans.DCQueryPicUrlResult) rspContent;
-//        if (!result.commonResult.success){
-//            return;
-//        }
-//
-//        // 下载图片文件
-//        req(Msg.DCDownload,
-//                new MsgBeans.DownloadPara(result.boardId, result.picId, "/data/local/tmp/"+result.picId+".jpg", result.url),
-//                listener);
+        MsgBeans.DCQueryPicUrlResult result = (MsgBeans.DCQueryPicUrlResult) rspContent;
+        if (!result.bSuccess){
+            return;
+        }
+
+        // 下载图片文件
+        req(Msg.DCDownload,
+                new MsgBeans.DownloadPara(result.boardId, result.picId, SAVE_PATH+result.picId+".jpg", result.url),
+                listener);
     }
 
 
@@ -317,7 +321,7 @@ public class DataCollaborateManager extends RequestAgent {
                 onBoardOpListener.onBoardSwitched(board.id);
             } else if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
                 board = (MsgBeans.DCBoard) ntfContent;
-                onBoardOpListener.onBoardCreated(new PaintBoardInfo(board.id, board.name));
+                onBoardOpListener.onBoardCreated(new BoardInfo(board.id, board.name));
             } else if (Msg.DCBoardSwitchedNtf.equals(ntfId)) {
                 board = (MsgBeans.DCBoard) ntfContent;
                 onBoardOpListener.onBoardSwitched(board.id);
@@ -428,7 +432,7 @@ public class DataCollaborateManager extends RequestAgent {
 //                MsgBeans.DcsOperEraseOperInfo_Ntf opInfo = (MsgBeans.DcsOperEraseOperInfo_Ntf) ntfContent;
 //                MsgBeans.TDCSWbEraseOperInfo gp = opInfo.AssParam;
 //                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-//                paintOp = new OpErase(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, commonInfo.dwMsgSequence, commonInfo.achTabId);
+//                paintOp = new OpRectErase(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, commonInfo.dwMsgSequence, commonInfo.achTabId);
 //            } else if (Msg.DcsOperFullScreen_Ntf.equals(ntfId)) {
 //                MsgBeans.DcsOperFullScreen_Ntf opInfo = (MsgBeans.DcsOperFullScreen_Ntf) ntfContent;
 //                MsgBeans.TDCSWbDisPlayInfo gp = opInfo.AssParam;
@@ -484,7 +488,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     public interface IOnBoardOpListener {
-        void onBoardCreated(PaintBoardInfo boardInfo);
+        void onBoardCreated(BoardInfo boardInfo);
         void onBoardDeleted(String boardId);
         void onBoardSwitched(String boardId);
     }

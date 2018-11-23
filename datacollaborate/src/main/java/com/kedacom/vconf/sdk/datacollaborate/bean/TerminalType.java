@@ -15,7 +15,7 @@ public enum TerminalType {
     /**
      * 转为传给下层时需要使用的类型
      * */
-    public EmDcsType convert(){
+    public EmDcsType toTransferType(){
         switch (this){
             case TrueLinkWindows:
                 return EmDcsType.emTypeTrueLink;

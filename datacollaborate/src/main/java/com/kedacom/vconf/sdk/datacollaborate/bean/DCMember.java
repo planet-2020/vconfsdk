@@ -16,11 +16,11 @@ public class DCMember {
     /**
      * 转为传给下层时需要使用的类型
      * */
-//    public MsgBeans.TDCSConfUserInfo convert(){
+//    public MsgBeans.TDCSConfUserInfo toTransferType(){
 //        MsgBeans.TDCSConfUserInfo confUserInfo = new MsgBeans.TDCSConfUserInfo();
 //        confUserInfo.achE164 = e164;
 //        confUserInfo.achName = name;
-//        confUserInfo.emMttype = type.convert();
+//        confUserInfo.emMttype = type.toTransferType();
 //        confUserInfo.bIsOper = isOperator;
 //        confUserInfo.bIsConfAdmin = isChairman;
 //        return confUserInfo;
