@@ -125,7 +125,7 @@ public enum Msg {
      * 注：创建数据协作前需先建链。*/
     @Request(para = MsgBeans.DCCreateConfPara.class,
             rspSeq = {"DCBuildLink4ConfRsp",  // 创建数据协作时下层自动建链，然后就抛了这条消息上来。NOTE: 对于失败的情形只会收到DCBuildLink4ConfRsp而没有DCCreateConfRsp。
-                    "DCCreateConfRsp"})
+                    "DCConfCreated"})
     DCCreateConf,
 
     /**己端创建数据协作时的响应；
@@ -135,8 +135,8 @@ public enum Msg {
      * 下层（组件层）收到邀请会主动加入该数据协作，然后再上报该条消息给界面，
      * 所以该消息既是响应也是通知。*/
     @Notification(clz = MsgBeans.DCCreateConfResult.class)
-    @Response(clz = MsgBeans.DCCreateConfResult.class, delay = 500)
-    DCCreateConfRsp,
+    @Response(clz = MsgBeans.DCCreateConfResult.class)
+    DCConfCreated,  // 命名规范，对于响应、通知双重身份的消息命名规则为：名词+分词
 
 
 //    /**加入会议时候，对会议地址的域名查询*/
@@ -177,7 +177,7 @@ public enum Msg {
      * 注：该响应也会作为通知广播给其他与会者。*/
     @Notification(clz = MsgBeans.DcsReleaseConf_Ntf.class)
     @Response(clz = MsgBeans.DcsReleaseConf_Ntf.class) // TODO 确认是否确实需要作为response
-    DcsReleaseConf_Ntf,
+    DcsReleaseConf_Ntf, // TODO 重命名
 
 //    /**当前终端拒绝入会*/
 //    @Deprecated // 下层已经做掉了（目前是始终同意入数据协作）。入会后若当前会议存在数据协作，平台会通知各终端入数据协作，各终端可选择加入或拒绝。
@@ -244,61 +244,61 @@ public enum Msg {
     // 数据协作画板相关
 
     /**新建画板*/
-    @Request(para=MsgBeans.DCPaintBoard.class,
-            rspSeq = {"DCNewPaintBoardRsp"})
-    DCNewPaintBoard,
+    @Request(para=MsgBeans.DCBoard.class,
+            rspSeq = {"DCNewBoardRsp"})
+    DCNewBoard,
 
     /**新建画板响应*/
     @Response(clz=MsgBeans.CommonResult.class)
-    DCNewPaintBoardRsp,
+    DCNewBoardRsp,
 
     /**删除画板*/
-    @Request(para=MsgBeans.DCPaintBoardId.class,
-            rspSeq = {"DCDelPaintBoardRsp"})
-    DCDelPaintBoard,
+    @Request(para=MsgBeans.DCBoardId.class,
+            rspSeq = {"DCDelBoardRsp"})
+    DCDelBoard,
 
     /**删除画板响应*/
     @Response(clz=MsgBeans.CommonResult.class)
-    DCDelPaintBoardRsp,
+    DCDelBoardRsp,
 
     /**查询画板*/
-    @Request(para=MsgBeans.DCPaintBoardId.class,
-            rspSeq = {"DCQueryPaintBoardRsp"})
-    DCQueryPaintBoard,
+    @Request(para=MsgBeans.DCBoardId.class,
+            rspSeq = {"DCQueryBoardRsp"})
+    DCQueryBoard,
 
     /**查询画板响应*/
     @Response(clz=MsgBeans.DCQueryBoardResult.class)
-    DCQueryPaintBoardRsp,
+    DCQueryBoardRsp,
 
     /**查询所有画板*/
     @Request(para= MsgBeans.DCConfId.class,
-            rspSeq = {"DCQueryAllPaintBoardsRsp"})
-    DCQueryAllPaintBoards,
+            rspSeq = {"DCQueryAllBoardsRsp"})
+    DCQueryAllBoards,
 
     /**查询所有白板响应*/
     @Response(clz=MsgBeans.DCQueryAllBoardsResult.class)
-    DCQueryAllPaintBoardsRsp,
+    DCQueryAllBoardsRsp,
 
     /**添加子页*/
     @Request(para=MsgBeans.DCSOperAddSubPageOper.class)
-    DCAddSubPage,
+    DCAddSubPage,   // TODO 确认
 
 
     /** 当前画板通知*/
-    @Notification(clz = MsgBeans.DCPaintBoard.class)
-    DCCurrentPaintBoardNtf,
+    @Notification(clz = MsgBeans.DCBoard.class)
+    DCCurrentBoardNtf,
 
     /**新建画板通知*/
-    @Notification(clz = MsgBeans.DCPaintBoard.class)
-    DCNewPaintBoardNtf,      // TODO 通知命名规范：名词+动词分词+NTF，所以应该是DCPaintBoardCreatedNtf
+    @Notification(clz = MsgBeans.DCBoard.class)
+    DCBoardCreatedNtf,
 
     /**切换画板通知*/
-    @Notification(clz = MsgBeans.DCPaintBoard.class)
-    DCSwitchPaintBoardNtf,
+    @Notification(clz = MsgBeans.DCBoard.class)
+    DCBoardSwitchedNtf,
 
     /**删除画板通知*/
-    @Notification(clz = MsgBeans.DCPaintBoard.class)
-    DCDelPaintBoardNtf,
+    @Notification(clz = MsgBeans.DCBoard.class)
+    DCBoardDeletedNtf,
 
 
     // 数据协作图元操作

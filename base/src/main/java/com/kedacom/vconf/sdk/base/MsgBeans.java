@@ -207,7 +207,7 @@ public final class MsgBeans {
 
 
 
-    public  static final class DCPaintBoard {
+    public  static final class DCBoard {
         public String id;           // 终端填写GUID（系统函数生成）
         public String name;
         public int sn;              // 序列号，递增，标记白板创建序号
@@ -223,7 +223,7 @@ public final class MsgBeans {
         public String downloadUrl;   // 图片下载Url（限文档）
         public String uploadUrl;     // 图片上传Url（限文档）
         public int anonyId;         // 平台成功响应后，平台填写（限白板），白板1白板2后面的数字，平台裁决后分配的。
-        DCPaintBoard(){
+        DCBoard(){
             name = "paint board";
             id = "boardId";
         }
@@ -240,14 +240,14 @@ public final class MsgBeans {
     }
 
     public static final class DCQueryBoardResult extends CommonResult{
-        public DCPaintBoard board;
+        public DCBoard board;
     }
 
     public static final class DCQueryAllBoardsResult extends CommonResult{
-        public DCPaintBoard[] boards;
+        public DCBoard[] boards;
     }
 
-    public static final class DCPaintBoardId {
+    public static final class DCBoardId {
         public String confE164;
         public String boardId;
     }
@@ -256,7 +256,7 @@ public final class MsgBeans {
     public static final class TDCSGetAllBoard{ // XXX num不要，该结构体可简化为TDCSBoardInfo[].class（尝试下看这样行不行）， achConfE164作为para传下去，
         public String	achConfE164;
         public int	    dwBoardNum;
-        public DCPaintBoard[] atBoardInfo;
+        public DCBoard[] atBoardInfo;
     }
     public static final class DCSGetAllWhiteBoardRsp{
         public TDCSResult MainParam;
