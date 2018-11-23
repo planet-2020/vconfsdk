@@ -2,26 +2,25 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import com.kedacom.vconf.sdk.base.MsgBeans;
 
-public class OpDrawOval extends OpDraw {
-    private float left;
-    private float top;
-    private float right;
-    private float bottom;
+public class OpRectErase extends OpPaint {
+    public float left;
+    public float top;
+    public float right;
+    public float bottom;
 
-    public OpDrawOval(){
-        type = OP_DRAW_OVAL;
+    public OpRectErase(){
+        type = OP_ERASE;
     }
 
-    public OpDrawOval(float left, float top, float right, float bottom){
+    public OpRectErase(float left, float top, float right, float bottom){
         this.left = left;
         this.top = top;
         this.right = right;
         this.bottom = bottom;
-        type = OP_DRAW_OVAL;
+        type = OP_ERASE;
     }
 
-
-    public OpDrawOval fromTransferObj(MsgBeans.DCOvalOp to) {
+    public OpRectErase fromTransferObj(MsgBeans.DCRectEraseOp to) {
         super.fromTransferObj(to);
         left = to.left;
         top = to.top;
@@ -30,7 +29,7 @@ public class OpDrawOval extends OpDraw {
         return this;
     }
 
-    public MsgBeans.DCOvalOp toTransferObj(MsgBeans.DCOvalOp to) {
+    public MsgBeans.DCRectEraseOp toTransferObj(MsgBeans.DCRectEraseOp to) {
         super.toTransferObj(to);
         to.left=  left;
         to.top=  top;
@@ -38,7 +37,6 @@ public class OpDrawOval extends OpDraw {
         to.bottom= bottom;
         return to;
     }
-
 
 
     public float getLeft() {
@@ -72,6 +70,4 @@ public class OpDrawOval extends OpDraw {
     public void setBottom(float bottom) {
         this.bottom = bottom;
     }
-
-
 }

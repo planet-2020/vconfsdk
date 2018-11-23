@@ -8,11 +8,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
 
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
-import com.kedacom.vconf.sdk.datacollaborate.bean.PaintBoardInfo;
-
-import java.util.Stack;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -27,7 +23,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public static final int LAYER_ALL = 3;
     private int focusedLayer = LAYER_ALL;
 
-    private PaintBoardInfo boardInfo;
+    private BoardInfo boardInfo;
 
     public DefaultPaintBoard(@NonNull Context context) {
         this(context, null);
@@ -44,11 +40,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         setBackgroundColor(Color.DKGRAY);
     }
 
-    void setBoardInfo(PaintBoardInfo boardInfo){
+    void setBoardInfo(BoardInfo boardInfo){
         this.boardInfo = boardInfo;
     }
 
-    PaintBoardInfo getBoardInfo(){
+    BoardInfo getBoardInfo(){
         return boardInfo;
     }
 

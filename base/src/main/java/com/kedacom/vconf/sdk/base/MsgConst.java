@@ -49,7 +49,7 @@ public final class MsgConst {
     }
 
     public enum EmDcsOper {
-        emWbLineOperInfo,       // TDCSWbLineOperInfo
+        emWbLineOperInfo,       // DCLineOp
         emWbCircleOperInfo,     // TDCSWbCircleOperInfo
         emWbRectangleOperInfo,  // TDCSWbRectangleOperInfo
         emWbPencilOperInfo,     // TDCSWbPencilOperInfo

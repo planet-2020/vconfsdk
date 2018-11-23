@@ -15,12 +15,13 @@ import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.PaintCfg;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 
@@ -28,7 +29,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Stack;
-import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class DefaultPainter implements IPainter {
 
@@ -40,11 +40,9 @@ public class DefaultPainter implements IPainter {
 
     private boolean needRender = false;
 
-
     public DefaultPainter() {
         renderThread.start();
     }
-
 
     @Override
     public int getMyId() {
@@ -100,13 +98,13 @@ public class DefaultPainter implements IPainter {
         }
 
         DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
-        ConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapePaintView.getRenderOps();
-        ConcurrentLinkedDeque<OpPaint> shapeMatrixOps = shapePaintView.getMatrixOps();
+        MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapePaintView.getRenderOps();
+        MyConcurrentLinkedDeque<OpPaint> shapeMatrixOps = shapePaintView.getMatrixOps();
         Stack<OpPaint> shapeRepealedOps = shapePaintView.getRepealedOps();
 
         DefaultPaintView picPaintView = paintBoard.getPicPaintView();
-        ConcurrentLinkedDeque<OpPaint> picRenderOps = picPaintView.getRenderOps();
-        ConcurrentLinkedDeque<OpPaint> picMatrixOps = picPaintView.getMatrixOps();
+        MyConcurrentLinkedDeque<OpPaint> picRenderOps = picPaintView.getRenderOps();
+        MyConcurrentLinkedDeque<OpPaint> picMatrixOps = picPaintView.getMatrixOps();
 //        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
 
 
@@ -115,7 +113,7 @@ public class DefaultPainter implements IPainter {
 
         switch (op.type){
             case OpPaint.OP_INSERT_PICTURE:
-                picRenderOps.offer(op);
+                picRenderOps.offerLast(op);
                 break;
 
             case OpPaint.OP_DELETE_PICTURE:
@@ -135,7 +133,7 @@ public class DefaultPainter implements IPainter {
                 }
                 break;
 
-            case OpPaint.OP_DRAG_PIC:
+            case OpPaint.OP_DRAG_PICTURE:
                 for (Map.Entry<String, float[]> dragOp : ((OpDragPic)op).picsMatrix.entrySet()) {
                     for (OpPaint opPaint : picRenderOps) {
                         if (OpPaint.OP_INSERT_PICTURE == opPaint.type
@@ -146,10 +144,19 @@ public class DefaultPainter implements IPainter {
                     }
                 }
                 break;
-
+            case OpPaint.OP_UPDATE_PICTURE:
+                OpUpdatePic updatePic = (OpUpdatePic) op;
+                for (OpPaint opPaint : picRenderOps) {
+                    if (OpPaint.OP_INSERT_PICTURE == opPaint.type
+                            && ((OpInsertPic) opPaint).picId.equals(updatePic.picId)) {
+                        ((OpInsertPic) opPaint).pic = updatePic.pic;
+                        break;
+                    }
+                }
+                break;
             case OpPaint.OP_MATRIX: // 全局放缩，包括图片和图形
-                picMatrixOps.offer(op);
-                shapeMatrixOps.offer(op);
+                picMatrixOps.offerLast(op);
+                shapeMatrixOps.offerLast(op);
                 break;
 
             default:  // 图形操作
@@ -168,7 +175,7 @@ public class DefaultPainter implements IPainter {
                         if (!shapeRepealedOps.empty()) {
                             tmpOp = shapeRepealedOps.pop();
                             KLog.p(KLog.WARN, "restore %s",tmpOp);
-                            shapeRenderOps.offer(tmpOp); // 恢复最近操作
+                            shapeRenderOps.offerLast(tmpOp); // 恢复最近操作
                         }else {
                             refresh = false;
                         }
@@ -180,7 +187,7 @@ public class DefaultPainter implements IPainter {
                         KLog.p(KLog.WARN, "clean repealed ops");
                         shapeRepealedOps.clear();
 
-                        shapeRenderOps.offer(op);
+                        shapeRenderOps.offerLast(op);
 
         //                KLog.p(KLog.WARN, "need render op %s", op);
                         break;
@@ -229,7 +236,8 @@ public class DefaultPainter implements IPainter {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
             Path path = new Path();
             RectF rect = new RectF();
-            Matrix matrix = new Matrix();
+            Matrix shapeMatrix = new Matrix();
+            Matrix picMatrix = new Matrix();
 
             while (true){
                 KLog.p("start loop run");
@@ -269,8 +277,8 @@ public class DefaultPainter implements IPainter {
 
                 OpPaint opMatrix = shapePaintView.getMatrixOps().peekLast();  // TODO 暂不考虑完整保存以供回放的功能。matrix就一个值就好。
                 if (null != opMatrix) {
-                    matrix.setValues( ((OpMatrix)opMatrix).matrixValue );
-                    canvas.setMatrix(matrix);
+                    shapeMatrix.setValues( ((OpMatrix)opMatrix).matrixValue );
+                    canvas.setMatrix(shapeMatrix);
                 }
 
                 synchronized (this){
@@ -278,7 +286,9 @@ public class DefaultPainter implements IPainter {
                     接下来我们要开始遍历队列了，此处重新置needRender为false以避免下一轮无谓的重复刷新。*/
                     needRender = false;
                 }
-                ConcurrentLinkedDeque<OpPaint> shapeOps = shapePaintView.getRenderOps();
+
+                // 图形绘制
+                MyConcurrentLinkedDeque<OpPaint> shapeOps = shapePaintView.getRenderOps();
                 for (OpPaint op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
                     KLog.p("to render %s", op);
                     switch (op.type){
@@ -305,7 +315,7 @@ public class DefaultPainter implements IPainter {
                             canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
                             break;
                         case OpPaint.OP_ERASE:
-                            OpErase eraseOp = (OpErase) op;
+                            OpRectErase eraseOp = (OpRectErase) op;
                             canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp.paintCfg));
                             break;
                         case OpPaint.OP_CLEAR_SCREEN:
@@ -327,20 +337,23 @@ public class DefaultPainter implements IPainter {
 
                 opMatrix = picPaintView.getMatrixOps().peekLast();
                 if (null != opMatrix) {
-                    matrix.setValues( ((OpMatrix)opMatrix).matrixValue);
-                    picPaintViewCanvas.setMatrix(matrix);
+                    picMatrix.setValues( ((OpMatrix)opMatrix).matrixValue);
+                    picPaintViewCanvas.setMatrix(picMatrix);
                 }
 
-                ConcurrentLinkedDeque<OpPaint> picOps = picPaintView.getRenderOps();
+                // 图片绘制
+                MyConcurrentLinkedDeque<OpPaint> picOps = picPaintView.getRenderOps();
                 for (OpPaint op : picOps){
                     switch (op.type){
                         case OpPaint.OP_INSERT_PICTURE:
                             OpInsertPic insertPicOp = (OpInsertPic) op;
+                            if (null != insertPicOp.pic) { // NOTE:图片一开始置空的，等到下载完成才填充，所以此处需做非空判断。
 //                            int w = insertPicOp.pic.getWidth();
 //                            int h = insertPicOp.pic.getHeight();
-                            matrix.setValues(insertPicOp.matrixValue);
-                            KLog.p("to render %s", op);
-                            picPaintViewCanvas.drawBitmap(insertPicOp.pic, matrix, cfgPaint(insertPicOp.paintCfg));
+                                picMatrix.setValues(insertPicOp.matrixValue);
+                                KLog.p("to render %s", op);
+                                picPaintViewCanvas.drawBitmap(insertPicOp.pic, picMatrix, cfgPaint(insertPicOp.paintCfg));
+                            }
                             break;
                     }
                 }

@@ -8,13 +8,15 @@ import java.lang.annotation.Target;
 /**
  * 用来标记请求消息.
  *
+ * 请求是异步的，一般会有对应的响应。
+ *
  * Created by Sissi on 2018/9/3.
  */
 
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
 public @interface Request {
-    String name() default "";  // 请求名称
+    String name() default "";  // 传递给下层的消息名称，若为空则使用被修饰的枚举的name。
     Class para() default Void.class;  // 请求参数对应的类
     String[] rspSeq() default {}; // 请求对应的响应序列。注：请求也可能没有响应，此时不用填写让它默认为空就好。
     String[] rspSeq2() default {}; // 请求对应的另一个可能的响应序列

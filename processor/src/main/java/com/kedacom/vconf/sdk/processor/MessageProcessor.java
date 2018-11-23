@@ -32,6 +32,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.MirroredTypesException;
@@ -54,33 +55,20 @@ import javax.tools.Diagnostic;
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class MessageProcessor extends AbstractProcessor {
-
     private boolean bDone = false;
 
     private Map<String, String> idNameMap = new HashMap<>();
-
     private Map<String, String> nameIdMap = new HashMap<>();
-
     private Map<String, String> reqParaMap = new HashMap<>();
-
     private Map<String, String[][]> reqRspsMap = new HashMap<>();
-
     private Map<String, Integer> reqTimeoutMap = new HashMap<>();
-
     private Map<String, Boolean> reqExclusiveMap = new HashMap<>();
-
     private Map<String, String> rspClazzMap = new HashMap<>();
-
     private Map<String, Integer> rspDelayMap = new HashMap<>();
-
     private Map<String, String> ntfClazzMap = new HashMap<>();
-
     private Map<String, Integer> ntfDelayMap = new HashMap<>();
-
     private Map<String, String> getParaClazzMap = new HashMap<>();
-
     private Map<String, String> getResultClazzMap = new HashMap<>();
-
     private Map<String, String> setParaClazzMap = new HashMap<>();
 
     private String packageName;
@@ -107,26 +95,47 @@ public class MessageProcessor extends AbstractProcessor {
     }
 
 
-    private boolean collectInfo(RoundEnvironment roundEnvironment){
-//        reqParaMap.clear();
-//        reqRspsMap.clear();
-//        reqTimeoutMap.clear();
-//        reqExclusiveMap.clear();
-//        rspClazzMap.clear();
-//        ntfClazzMap.clear();
-//        getParaClazzMap.clear();
-//        getResultClazzMap.clear();
-//        setParaClazzMap.clear();
-
+    private boolean collectInfo(RoundEnvironment roundEnvironment) {
         Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Message.class);
 
-        if (null==msgSet || !msgSet.iterator().hasNext()){
+        if (!check(msgSet)){
+            messager.printMessage(Diagnostic.Kind.ERROR, "check failed!");
             return false;
         }
 
-        TypeElement msgDefClass = (TypeElement) msgSet.iterator().next();
+        for (Element element : msgSet) {
+            parseMessage((TypeElement) element);
+        }
 
-        // 获取“请求-响应”相关信息
+        parsePackageName(roundEnvironment);
+
+        return true;
+    }
+
+    private boolean check(Set<? extends Element> msgAnnotatedElements) {
+        if (null==msgAnnotatedElements || msgAnnotatedElements.isEmpty()){
+            return false;
+        }
+
+//        Message message;
+//        Set<String> values = new HashSet<>();
+//        String value;
+//        for (Element element : msgAnnotatedElements){
+//            message = element.getAnnotation(Message.class);
+//            value = message.value();
+//            if (values.contains(value)){ // XXX 注解处理器不能跨模块，这里达不到预期效果。该功能兹事体大，它能使代码组织结构得到很大的优化，期待解决方案。
+//                messager.printMessage(Diagnostic.Kind.ERROR, "Duplicated message value: "+value);
+//                return false; // Message的value必须全局唯一
+//            }
+//            values.add(value);
+//        }
+
+        return true;
+    }
+
+
+    // 获取“请求-响应”相关信息
+    private void parseMessage(TypeElement msgDefClass){
         List<? extends Element> msgElements = msgDefClass.getEnclosedElements();
         Request request;
         Response response;
@@ -158,10 +167,9 @@ public class MessageProcessor extends AbstractProcessor {
                     clz = request.para();
                     reqParaFullName = clz.getCanonicalName();
                 }catch (MirroredTypeException mte) {
-                    DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
-                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
-                    reqParaFullName = classTypeElement.getQualifiedName().toString();
+                    reqParaFullName = parseClassNameFromMirroredTypeException(mte);
                 }
+
 
                 reqParaMap.put(reqName, reqParaFullName);
 
@@ -196,10 +204,10 @@ public class MessageProcessor extends AbstractProcessor {
                     clz = response.clz();
                     rspClazzFullName = clz.getCanonicalName();
                 }catch (MirroredTypeException mte) {
-                    DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
-                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
-                    rspClazzFullName = classTypeElement.getQualifiedName().toString();
+                    rspClazzFullName = parseClassNameFromMirroredTypeException(mte);
                 }
+
+
 
 //                messager.printMessage(Diagnostic.Kind.NOTE, "response: "+rspName
 //                        + " rspClazzFullName: "+rspClazzFullName);
@@ -220,10 +228,9 @@ public class MessageProcessor extends AbstractProcessor {
                     clz = notification.clz();
                     ntfClazzFullName = clz.getCanonicalName();
                 }catch (MirroredTypeException mte) {
-                    DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
-                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
-                    ntfClazzFullName = classTypeElement.getQualifiedName().toString();
+                    ntfClazzFullName = parseClassNameFromMirroredTypeException(mte);
                 }
+
 
 //                messager.printMessage(Diagnostic.Kind.NOTE, "ntfName: "+ntfName
 //                        + " ntfClazzFullName: "+ntfClazzFullName);
@@ -243,10 +250,9 @@ public class MessageProcessor extends AbstractProcessor {
                     clz = get.para();
                     getParaFullName = clz.getCanonicalName();
                 }catch (MirroredTypeException mte) {
-                    DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
-                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
-                    getParaFullName = classTypeElement.getQualifiedName().toString();
+                    getParaFullName = parseClassNameFromMirroredTypeException(mte);
                 }
+
 
                 getParaClazzMap.put(getName, getParaFullName);
 
@@ -255,10 +261,10 @@ public class MessageProcessor extends AbstractProcessor {
                     clz = get.result();
                     getResultFullName = clz.getCanonicalName();
                 }catch (MirroredTypeException mte) {
-                    DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
-                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
-                    getResultFullName = classTypeElement.getQualifiedName().toString();
+                    getResultFullName = parseClassNameFromMirroredTypeException(mte);
                 }
+
+
                 getResultClazzMap.put(getName, getResultFullName);
 
                 idNameMap.put(element.getSimpleName().toString(), getName);
@@ -277,9 +283,7 @@ public class MessageProcessor extends AbstractProcessor {
                     clz = set.value();
                     setParaFullName = clz.getCanonicalName();
                 }catch (MirroredTypeException mte) {
-                    DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
-                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
-                    setParaFullName = classTypeElement.getQualifiedName().toString();
+                    setParaFullName = parseClassNameFromMirroredTypeException(mte);
                 }
 
 //                messager.printMessage(Diagnostic.Kind.NOTE, "setName: "+setName
@@ -293,9 +297,27 @@ public class MessageProcessor extends AbstractProcessor {
             }
 
         }
+    }
 
 
-        // 获取待生成文件的包名
+    private String parseClassNameFromMirroredTypeException(MirroredTypeException mte){
+        String className;
+
+        try { // 为普通类类型
+            DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
+            TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
+            className = classTypeElement.getQualifiedName().toString();
+        }catch (ClassCastException e){ // 为数组类型
+            ArrayType classTypeMirror = (ArrayType) mte.getTypeMirror();
+            className = classTypeMirror.getComponentType().toString()+"[]";
+        }
+
+        return className;
+    }
+
+
+    // 获取待生成文件的包名
+    private void parsePackageName(RoundEnvironment roundEnvironment){
         Set<? extends Element> consumerSet = roundEnvironment.getElementsAnnotatedWith(Consumer.class);
         Consumer consumer;
         Class[] clzs;
@@ -340,13 +362,11 @@ public class MessageProcessor extends AbstractProcessor {
         // 获取待生成文件的类名
         className = Message.class.getSimpleName()+"$$Generated";
 
-//        messager.printMessage(Diagnostic.Kind.NOTE, "msgDefClass="+msgDefClass.getQualifiedName()
-//                + "\ngen packageName="+packageName
-//                + "\ngen className="+className);
+        messager.printMessage(Diagnostic.Kind.NOTE,
+                "\ngen packageName="+packageName
+                + "\ngen className="+className);
 
-        return true;
     }
-
 
     private void generateFile(){
         String fieldNameIdNameMap = "idNameMap";

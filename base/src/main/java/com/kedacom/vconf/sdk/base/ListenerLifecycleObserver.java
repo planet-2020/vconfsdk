@@ -145,6 +145,10 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
     @Override
     public void onDestroy(@NonNull LifecycleOwner owner) {
+        if (null != cb){
+            notify(owner, cb::onListenerDestroy);
+        }
+        ownerEnclosedListeners.remove(owner);
     }
 
     private void notify(LifecycleOwner owner, Action action){
@@ -167,6 +171,9 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
         void onListenerPause(Object listener);
 
         default void onListenerStop(Object listener) {
+
+        }
+        default void onListenerDestroy(Object listener) {
 
         }
     }

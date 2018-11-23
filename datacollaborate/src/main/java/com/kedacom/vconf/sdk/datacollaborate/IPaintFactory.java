@@ -1,9 +1,9 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
-import com.kedacom.vconf.sdk.datacollaborate.bean.PaintBoardInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 
 public interface IPaintFactory {
     IPainter createPainter();
-    IPaintBoard createPaintBoard(PaintBoardInfo boardInfo);
+    IPaintBoard createPaintBoard(BoardInfo boardInfo);
 //    IPaintView createPaintView(String boardId);
 }
