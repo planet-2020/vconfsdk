@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-import com.kedacom.vconf.sdk.base.MsgBeans;
 
 public class OpDrawOval extends OpDraw {
     private float left;
@@ -19,26 +18,6 @@ public class OpDrawOval extends OpDraw {
         this.bottom = bottom;
         type = OP_DRAW_OVAL;
     }
-
-
-    public OpDrawOval fromTransferObj(MsgBeans.DCOvalOp to) {
-        super.fromTransferObj(to);
-        left = to.left;
-        top = to.top;
-        right = to.right;
-        bottom = to.bottom;
-        return this;
-    }
-
-    public MsgBeans.DCOvalOp toTransferObj(MsgBeans.DCOvalOp to) {
-        super.toTransferObj(to);
-        to.left=  left;
-        to.top=  top;
-        to.right=  right;
-        to.bottom= bottom;
-        return to;
-    }
-
 
 
     public float getLeft() {

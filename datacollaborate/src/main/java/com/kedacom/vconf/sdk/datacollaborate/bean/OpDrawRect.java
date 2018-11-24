@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-import com.kedacom.vconf.sdk.base.MsgBeans;
 
 public class OpDrawRect extends OpDraw {
     private float left;
@@ -19,25 +18,6 @@ public class OpDrawRect extends OpDraw {
         this.right = right;
         this.bottom = bottom;
         type = OP_DRAW_RECT;
-    }
-
-
-    public OpDrawRect fromTransferObj(MsgBeans.DCRectOp to) {
-        super.fromTransferObj(to);
-        left = to.left;
-        top = to.top;
-        right = to.right;
-        bottom = to.bottom;
-        return this;
-    }
-
-    public MsgBeans.DCRectOp toTransferObj(MsgBeans.DCRectOp to) {
-        super.toTransferObj(to);
-        to.left=  left;
-        to.top=  top;
-        to.right=  right;
-        to.bottom= bottom;
-        return to;
     }
 
 

@@ -334,7 +334,11 @@ public final class MsgBeans {
         public String picName;
         public int  width;  //TODO 图片原始宽？
         public int  height; //TODO 图片原始高？
-        public PointF dstPos; // 目标位置（左上角坐标点）
+
+        // 插入的目标位置（左上角坐标点）
+        public float insertPosX;
+        public float insertPosY;
+
         public String[] matrixValue; // TODO 放缩及位置信息？
     }
 
@@ -379,7 +383,7 @@ public final class MsgBeans {
      * 绘制操作基类。
      * 包括线、圆等各种图形、图片、清屏、滚屏、撤销等涉及界面绘制的操作。
      * */
-    public static class DCPaintOp {
+    public static class DCPaintOp implements Comparable<DCPaintOp>{
         public String   id;         // 操作ID，唯一标识该操作。由终端使用GUID来填写
         public String   confE164;   // 所属会议e164号
         public String   boardId;    // 画板ID
@@ -388,6 +392,18 @@ public final class MsgBeans {
         public int      sn;             // 操作序列号，用来表示操作的先后顺序，越小越靠前。由平台填写。
         public String   authorE164;      // 操作发出者。由平台填写。
         public boolean  bCached;   // 是否是服务器缓存的图元。由平台填写。
+
+        @Override
+        public int compareTo(DCPaintOp o) { // TODO 方法看对json有没有影响
+            if (sn<o.sn){
+                return -1;
+            }else if (sn == o.sn){
+                return 0;
+            }else{
+                return 1;
+            }
+        }
+
     }
 
     /**

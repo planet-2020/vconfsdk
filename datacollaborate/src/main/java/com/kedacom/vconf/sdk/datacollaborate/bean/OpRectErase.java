@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-import com.kedacom.vconf.sdk.base.MsgBeans;
 
 public class OpRectErase extends OpPaint {
     public float left;
@@ -18,24 +17,6 @@ public class OpRectErase extends OpPaint {
         this.right = right;
         this.bottom = bottom;
         type = OP_ERASE;
-    }
-
-    public OpRectErase fromTransferObj(MsgBeans.DCRectEraseOp to) {
-        super.fromTransferObj(to);
-        left = to.left;
-        top = to.top;
-        right = to.right;
-        bottom = to.bottom;
-        return this;
-    }
-
-    public MsgBeans.DCRectEraseOp toTransferObj(MsgBeans.DCRectEraseOp to) {
-        super.toTransferObj(to);
-        to.left=  left;
-        to.top=  top;
-        to.right=  right;
-        to.bottom= bottom;
-        return to;
     }
 
 

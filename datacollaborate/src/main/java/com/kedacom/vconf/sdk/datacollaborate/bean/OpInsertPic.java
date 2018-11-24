@@ -1,12 +1,10 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.Bitmap;
-import android.graphics.PointF;
-
-import com.kedacom.vconf.sdk.base.MsgBeans;
 
 public class OpInsertPic extends OpPaint {
     private String picId;
+    private String picName;
     private Bitmap pic;
     private int picWidth;
     private int picHeight;
@@ -18,37 +16,17 @@ public class OpInsertPic extends OpPaint {
         type = OP_INSERT_PICTURE;
     }
 
-    public OpInsertPic(String picId, Bitmap pic, int picWidth, int picHeight, float insertPosX, float insertPosY, String[] matrixValue){
+    public OpInsertPic(String picId, String picName, Bitmap pic, int picWidth, int picHeight,
+                       float insertPosX, float insertPosY, float[] matrixValue){
         this.picId = picId;
+        this.picName = picName;
         this.pic = pic;
         this.picWidth = picWidth;
         this.picHeight = picHeight;
         this.insertPosX = insertPosX;
         this.insertPosY = insertPosY;
-        this.matrixValue = matrixValueStr2Float(matrixValue);
+        this.matrixValue = matrixValue;
         type = OP_INSERT_PICTURE;
-    }
-
-
-    public OpInsertPic fromTransferObj(MsgBeans.DCInertPicOp to) {
-        super.fromTransferObj(to);
-        picId = to.picId;
-        picWidth = to.width;
-        picHeight = to.height;
-        insertPosX = to.dstPos.x;
-        insertPosY = to.dstPos.y;
-        matrixValue = matrixValueStr2Float(to.matrixValue);
-        return this;
-    }
-
-    public MsgBeans.DCInertPicOp toTransferObj(MsgBeans.DCInertPicOp to) {
-        super.toTransferObj(to);
-        to.picId = picId;
-        to.width = picWidth;
-        to.height = picHeight;
-        to.dstPos = new PointF(insertPosX, insertPosY);
-        to.matrixValue = matrixValueFloat2Str(matrixValue);
-        return to;
     }
 
 
@@ -58,6 +36,14 @@ public class OpInsertPic extends OpPaint {
 
     public void setPicId(String picId) {
         this.picId = picId;
+    }
+
+    public String getPicName() {
+        return picName;
+    }
+
+    public void setPicName(String picName) {
+        this.picName = picName;
     }
 
     public Bitmap getPic() {

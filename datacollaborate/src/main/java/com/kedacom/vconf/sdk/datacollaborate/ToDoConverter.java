@@ -18,16 +18,16 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class ToDoConverter {
 
-    public static <D extends OpPaint, T extends MsgBeans.DCPaintOp>
-    D fromTransferObj(MsgBeans.DCPaintOp transferObj, Class<D> d, Class<T> t) {
+    public static <T extends OpPaint> T fromTransferObj(MsgBeans.DCPaintOp transferObj, Class<T> t) {
 
-        D domainObj = null;
+        T domainObj = null;
         try {
-            domainObj = d.newInstance();
+            domainObj = t.newInstance();
         } catch (IllegalAccessException | InstantiationException e) {
             e.printStackTrace();
         }
@@ -35,37 +35,37 @@ public final class ToDoConverter {
         domainObj.setConfE164(transferObj.confE164);
         domainObj.setBoardId(transferObj.boardId);
         domainObj.setPageId(transferObj.pageId);
-        domainObj.setSn(transferObj.sn);
+//        domainObj.setSn(transferObj.sn);
 
-        if (OpDraw.class == d) {
+        if (OpDraw.class == t) {
 
             OpDraw opDraw = (OpDraw) domainObj;
             MsgBeans.DCDrawOp dcDrawOp = (MsgBeans.DCDrawOp) transferObj;
             opDraw.setStrokeWidth(dcDrawOp.strokeWidth);
             opDraw.setColor(dcDrawOp.color);
 
-            if (OpDrawLine.class == d) {
+            if (OpDrawLine.class == t) {
                 OpDrawLine opDrawLine = (OpDrawLine) domainObj;
                 MsgBeans.DCLineOp dcLineOp = (MsgBeans.DCLineOp) transferObj;
                 opDrawLine.setStartX(dcLineOp.startX);
                 opDrawLine.setStartY(dcLineOp.startY);
                 opDrawLine.setStopX(dcLineOp.stopX);
                 opDrawLine.setStopY(dcLineOp.stopY);
-            } else if (OpDrawOval.class == d) {
+            } else if (OpDrawOval.class == t) {
                 OpDrawOval opDrawOval = (OpDrawOval) domainObj;
                 MsgBeans.DCOvalOp dcOvalOp = (MsgBeans.DCOvalOp) transferObj;
                 opDrawOval.setLeft(dcOvalOp.left);
                 opDrawOval.setTop(dcOvalOp.top);
                 opDrawOval.setRight(dcOvalOp.right);
                 opDrawOval.setBottom(dcOvalOp.bottom);
-            } else if (OpDrawRect.class == d) {
+            } else if (OpDrawRect.class == t) {
                 OpDrawRect opDrawRect = (OpDrawRect) domainObj;
                 MsgBeans.DCRectOp dcRectOp = (MsgBeans.DCRectOp) transferObj;
                 opDrawRect.setLeft(dcRectOp.left);
                 opDrawRect.setTop(dcRectOp.top);
                 opDrawRect.setRight(dcRectOp.right);
                 opDrawRect.setBottom(dcRectOp.bottom);
-            } else if (OpDrawPath.class == d) {
+            } else if (OpDrawPath.class == t) {
                 OpDrawPath opDrawPath = (OpDrawPath) domainObj;
                 MsgBeans.DCPathOp dcPathOp = (MsgBeans.DCPathOp) transferObj;
                 opDrawPath.setPoints(dcPathOp.points);
@@ -73,78 +73,146 @@ public final class ToDoConverter {
 
         }else{
 
-            if (OpInsertPic.class == d) {
+            if (OpInsertPic.class == t) {
                 OpInsertPic opInsertPic = (OpInsertPic) domainObj;
                 MsgBeans.DCInertPicOp dcInertPicOp = (MsgBeans.DCInertPicOp) transferObj;
                 opInsertPic.setPicId(dcInertPicOp.picId);
+                opInsertPic.setPicName(dcInertPicOp.picName);
                 opInsertPic.setPicWidth(dcInertPicOp.width);
                 opInsertPic.setPicHeight(dcInertPicOp.height);
-                opInsertPic.setInsertPosX(dcInertPicOp.dstPos.x);
-                opInsertPic.setInsertPosY(dcInertPicOp.dstPos.y);
+                opInsertPic.setInsertPosX(dcInertPicOp.insertPosX);
+                opInsertPic.setInsertPosY(dcInertPicOp.insertPosY);
                 opInsertPic.setMatrixValue(matrixValueStr2Float(dcInertPicOp.matrixValue));
-            } else if (OpDeletePic.class == d) {
+            } else if (OpDeletePic.class == t) {
                 OpDeletePic opDeletePic = (OpDeletePic) domainObj;
                 MsgBeans.DCDelPicOp dcDelPicOp = (MsgBeans.DCDelPicOp) transferObj;
                 opDeletePic.setPicIds(dcDelPicOp.picIds);
-            } else if (OpDragPic.class == d) {
+            } else if (OpDragPic.class == t) {
                 OpDragPic opDragPic = (OpDragPic) domainObj;
                 MsgBeans.DCDragPicOp dcDragPicOp = (MsgBeans.DCDragPicOp) transferObj;
-                List list = new ArrayList<MsgBeans.DCPicMatrix>();
-                for (String picId : picsMatrix.keySet()){  // TODO
-                    list.add(new MsgBeans.DCPicMatrix(picId, matrixValueFloat2Str(picsMatrix.get(picId))));
+                Map<String, float[]> picMatrices = new HashMap<>();
+                for (MsgBeans.DCPicMatrix picMatrix : dcDragPicOp.picMatrices){
+                    picMatrices.put(picMatrix.picId, matrixValueStr2Float(picMatrix.matrixValue));
                 }
-                to.picMatrices = (MsgBeans.DCPicMatrix[]) list.toArray();
-                opDragPic.setPicsMatrix();
-            } else if (OpUpdatePic.class == d) {
+                opDragPic.setPicMatrices(picMatrices);
+            } else if (OpUpdatePic.class == t) {
+                // TODO
+            } else if (OpMatrix.class == t) {
+                OpMatrix opMatrix = (OpMatrix) domainObj;
+                MsgBeans.DCFullScreenMatrixOp dcFullScreenMatrixOp = (MsgBeans.DCFullScreenMatrixOp) transferObj;
+                opMatrix.setMatrixValue(matrixValueStr2Float(dcFullScreenMatrixOp.matrixValue));
+            } else if (OpRectErase.class == t) {
+                OpRectErase opRectErase = (OpRectErase) domainObj;
+                MsgBeans.DCRectEraseOp dcRectEraseOp = (MsgBeans.DCRectEraseOp) transferObj;
+                opRectErase.setLeft(dcRectEraseOp.left);
+                opRectErase.setTop(dcRectEraseOp.top);
+                opRectErase.setRight(dcRectEraseOp.right);
+                opRectErase.setBottom(dcRectEraseOp.bottom);
 
-            } else if (OpMatrix.class == d) {
-
-            } else if (OpRectErase.class == d) {
-
-            } else if (OpUndo.class == d) {
-
-            } else if (OpRedo.class == d) {
-
-            } else if (OpClearScreen.class == d) {
-
+            } else if (OpUndo.class == t) {
+                // Nothing to do
+            } else if (OpRedo.class == t) {
+                // Nothing to do
+            } else if (OpClearScreen.class == t) {
+                // Nothing to do
             }
 
         }
+
+        return domainObj;
 
     }
 
     public static <T extends MsgBeans.DCPaintOp> T toTransferObj(OpPaint domainObj, Class<T> t) {
-        if (domainObj instanceof OpDraw) {
-            if (domainObj instanceof OpDrawLine) {
+        T transferObj = null;
+        try {
+            transferObj = t.newInstance();
+        } catch (IllegalAccessException | InstantiationException e) {
+            e.printStackTrace();
+        }
 
-            } else if (domainObj instanceof OpDrawOval) {
+        transferObj.id = "todo";// TODO;
+        transferObj.confE164 = domainObj.getConfE164();
+        transferObj.boardId = domainObj.getBoardId();
+        transferObj.pageId = domainObj.getPageId();
 
-            } else if (domainObj instanceof OpDrawRect) {
+        //由平台填写
+//        transferObj.sn =
+//        transferObj.bCached =
+//        transferObj.authorE164 =
 
-            } else if (domainObj instanceof OpDrawPath) {
+        if (MsgBeans.DCDrawOp.class == t) {
+            MsgBeans.DCDrawOp dcDrawOp = (MsgBeans.DCDrawOp) transferObj;
+            OpDraw opDraw = (OpDraw) domainObj;
+            dcDrawOp.strokeWidth = opDraw.getStrokeWidth();
+            dcDrawOp.color = opDraw.getColor();
 
+            if (MsgBeans.DCLineOp.class == t) {
+                MsgBeans.DCLineOp dcLineOp = (MsgBeans.DCLineOp) transferObj;
+                OpDrawLine opDrawLine = (OpDrawLine) domainObj;
+                dcLineOp.startX = opDrawLine.getStartX();
+                dcLineOp.startY = opDrawLine.getStartY();
+                dcLineOp.stopX = opDrawLine.getStopX();
+                dcLineOp.stopY = opDrawLine.getStopY();
+            } else if (MsgBeans.DCOvalOp.class == t) {
+                MsgBeans.DCOvalOp dcOvalOp = (MsgBeans.DCOvalOp) transferObj;
+                OpDrawOval opDrawOval = (OpDrawOval) domainObj;
+                dcOvalOp.left = opDrawOval.getLeft();
+                dcOvalOp.top = opDrawOval.getTop();
+                dcOvalOp.right = opDrawOval.getRight();
+                dcOvalOp.bottom = opDrawOval.getBottom();
+            } else if (MsgBeans.DCRectOp.class == t) {
+                MsgBeans.DCRectOp dcRectOp = (MsgBeans.DCRectOp) transferObj;
+                OpDrawRect opDrawRect = (OpDrawRect) domainObj;
+                dcRectOp.left = opDrawRect.getLeft();
+                dcRectOp.top = opDrawRect.getTop();
+                dcRectOp.right = opDrawRect.getRight();
+                dcRectOp.bottom = opDrawRect.getBottom();
+            } else if (MsgBeans.DCPathOp.class == t) {
+                MsgBeans.DCPathOp dcRectOp = (MsgBeans.DCPathOp) transferObj;
+                OpDrawPath opDrawPath = (OpDrawPath) domainObj;
+                dcRectOp.points = opDrawPath.getPoints();
             }
         }else{
-            if (domainObj instanceof OpInsertPic) {
-
-            } else if (domainObj instanceof OpDeletePic) {
-
-            } else if (domainObj instanceof OpUpdatePic) {
-
-            } else if (domainObj instanceof OpDragPic) {
-
-            } else if (domainObj instanceof OpClearScreen) {
-
-            } else if (domainObj instanceof OpMatrix) {
-
-            } else if (domainObj instanceof OpRectErase) {
-
-            } else if (domainObj instanceof OpUndo) {
-
-            } else if (domainObj instanceof OpRedo) {
-
+            if (MsgBeans.DCInertPicOp.class == t) {
+                MsgBeans.DCInertPicOp dcInertPicOp = (MsgBeans.DCInertPicOp) transferObj;
+                OpInsertPic opInsertPic = (OpInsertPic) domainObj;
+                dcInertPicOp.picId = opInsertPic.getPicId();
+                dcInertPicOp.picName = opInsertPic.getPicName();
+                dcInertPicOp.width = opInsertPic.getPicWidth();
+                dcInertPicOp.height = opInsertPic.getPicHeight();
+                dcInertPicOp.insertPosX = opInsertPic.getInsertPosX();
+                dcInertPicOp.insertPosY = opInsertPic.getInsertPosY();
+                dcInertPicOp.matrixValue = matrixValueFloat2Str(opInsertPic.getMatrixValue());
+            } else if (MsgBeans.DCDelPicOp.class == t) {
+                MsgBeans.DCDelPicOp dcDelPicOp = (MsgBeans.DCDelPicOp) transferObj;
+                OpDeletePic opDeletePic = (OpDeletePic) domainObj;
+                dcDelPicOp.picIds = opDeletePic.getPicIds();
+            } else if (MsgBeans.DCDragPicOp.class == t) {
+                MsgBeans.DCDragPicOp dcDragPicOp = (MsgBeans.DCDragPicOp) transferObj;
+                OpDragPic opDragPic = (OpDragPic) domainObj;
+                ArrayList list = new ArrayList<MsgBeans.DCPicMatrix>();
+                for (String picId : opDragPic.getPicMatrices().keySet()){
+                    list.add(new MsgBeans.DCPicMatrix(picId, matrixValueFloat2Str(opDragPic.getPicMatrices().get(picId))));
+                }
+                dcDragPicOp.picMatrices = (MsgBeans.DCPicMatrix[]) list.toArray();
+            } else if (MsgBeans.DCFullScreenMatrixOp.class == t) {
+                MsgBeans.DCFullScreenMatrixOp dcFullScreenMatrixOp = (MsgBeans.DCFullScreenMatrixOp) transferObj;
+                OpMatrix opMatrix = (OpMatrix) domainObj;
+                dcFullScreenMatrixOp.matrixValue = matrixValueFloat2Str(opMatrix.getMatrixValue());
+            } else if (MsgBeans.DCRectEraseOp.class == t) {
+                MsgBeans.DCRectEraseOp dcRectEraseOp = (MsgBeans.DCRectEraseOp) transferObj;
+                OpRectErase opRectErase = (OpRectErase) domainObj;
+                dcRectEraseOp.left = opRectErase.getLeft();
+                dcRectEraseOp.top = opRectErase.getTop();
+                dcRectEraseOp.right = opRectErase.getRight();
+                dcRectEraseOp.bottom = opRectErase.getBottom();
+            } else if (MsgBeans.DCPaintOp.class == t) {
+                // Nothing to do for clearscreen,undo,redo.
             }
         }
+
+        return transferObj;
     }
 
 

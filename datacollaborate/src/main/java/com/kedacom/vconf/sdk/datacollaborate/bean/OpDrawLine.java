@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-import com.kedacom.vconf.sdk.base.MsgBeans;
 
 public class OpDrawLine extends OpDraw {
     private float startX;
@@ -20,23 +19,6 @@ public class OpDrawLine extends OpDraw {
         type = OP_DRAW_LINE;
     }
 
-    public OpDrawLine fromTransferObj(MsgBeans.DCLineOp to) {
-        super.fromTransferObj(to);
-        startX = to.startX;
-        startY = to.startY;
-        stopX = to.stopX;
-        stopY = to.stopY;
-        return this;
-    }
-
-    public MsgBeans.DCLineOp toTransferObj(MsgBeans.DCLineOp to) {
-        super.toTransferObj(to);
-        to.startX = startX;
-        to.startY = startY;
-        to.stopX = stopX;
-        to.stopY = stopY;
-        return to;
-    }
 
     public float getStartX() {
         return startX;

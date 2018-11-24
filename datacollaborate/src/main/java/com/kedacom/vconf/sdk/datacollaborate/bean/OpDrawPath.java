@@ -2,8 +2,6 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.PointF;
 
-import com.kedacom.vconf.sdk.base.MsgBeans;
-
 public class OpDrawPath extends OpDraw {
     private PointF[] points;
 
@@ -16,18 +14,6 @@ public class OpDrawPath extends OpDraw {
         type = OP_DRAW_PATH;
     }
 
-
-    protected MsgBeans.DCPathOp toTransferObj(MsgBeans.DCPathOp to) {
-        super.toTransferObj(to);
-        to.points = points;
-        return to;
-    }
-
-    protected OpDrawPath fromTransferObj(MsgBeans.DCPathOp to) {
-        super.fromTransferObj(to);
-        points = to.points;
-        return this;
-    }
 
     public PointF[] getPoints() {
         return points;

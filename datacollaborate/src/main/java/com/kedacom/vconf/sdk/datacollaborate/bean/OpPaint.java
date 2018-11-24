@@ -1,8 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-import com.kedacom.vconf.sdk.base.MsgBeans;
 
-public abstract class OpPaint implements Comparable<OpPaint>{
+public abstract class OpPaint /*implements Comparable<OpPaint>*/{
     public static final int OP_DRAW_LINE = 1;
     public static final int OP_DRAW_RECT = 2;
     public static final int OP_DRAW_OVAL = 3;
@@ -22,34 +21,19 @@ public abstract class OpPaint implements Comparable<OpPaint>{
     protected String   confE164;   // 所属会议e164号
     protected String   boardId;    // 画板ID
     protected int      pageId;     // 文档页ID（仅文档模式下有效）
-    protected int      sn;             // 操作序列号，用来表示操作的先后顺序，越小越靠前。由平台填写。
+//    protected int      sn;             // 操作序列号，用来表示操作的先后顺序，越小越靠前。由平台填写。
 
-    @Override
-    public int compareTo(OpPaint o) {
-        if (sn<o.sn){
-            return -1;
-        }else if (sn == o.sn){
-            return 0;
-        }else{
-            return 1;
-        }
-    }
+//    @Override
+//    public int compareTo(OpPaint o) {
+//        if (sn<o.sn){
+//            return -1;
+//        }else if (sn == o.sn){
+//            return 0;
+//        }else{
+//            return 1;
+//        }
+//    }
 
-    protected OpPaint fromTransferObj(MsgBeans.DCPaintOp to) {
-        confE164 = to.confE164;
-        boardId = to.boardId;
-        pageId = to.pageId;
-        sn = to.sn;
-        return this;
-    }
-
-    protected MsgBeans.DCPaintOp toTransferObj(MsgBeans.DCPaintOp to) {
-        to.confE164 = confE164;
-        to.boardId = boardId;
-        to.pageId = pageId;
-        to.sn = sn;
-        return to;
-    }
 
     public int getType() {
         return type;
@@ -83,11 +67,11 @@ public abstract class OpPaint implements Comparable<OpPaint>{
         this.pageId = pageId;
     }
 
-    public int getSn() {
-        return sn;
-    }
-
-    public void setSn(int sn) {
-        this.sn = sn;
-    }
+//    public int getSn() {
+//        return sn;
+//    }
+//
+//    public void setSn(int sn) {
+//        this.sn = sn;
+//    }
 }

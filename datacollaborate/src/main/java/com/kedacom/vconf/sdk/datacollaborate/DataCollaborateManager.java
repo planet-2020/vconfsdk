@@ -369,11 +369,11 @@ public class DataCollaborateManager extends RequestAgent {
                 handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
                 return;
             }
-            else if (Msg.DCLineDrawnNtf.equals(ntfId)) {
-                paintOp = new OpDrawLine().fromTransferObj((MsgBeans.DCLineOp) ntfContent);
-            } else if (Msg.DCOvalDrawnNtf.equals(ntfId)) {
-                paintOp = new OpDrawOval().fromTransferObj((MsgBeans.DCOvalOp) ntfContent);
-            }
+//            else if (Msg.DCLineDrawnNtf.equals(ntfId)) {
+//                paintOp = new OpDrawLine().fromTransferObj((MsgBeans.DCLineOp) ntfContent);
+//            } else if (Msg.DCOvalDrawnNtf.equals(ntfId)) {
+//                paintOp = new OpDrawOval().fromTransferObj((MsgBeans.DCOvalOp) ntfContent);
+//            }
 //            else if (Msg.DcsOperRectangleOperInfo_Ntf.equals(ntfId)) {
 //                MsgBeans.DcsOperRectangleOperInfo_Ntf opInfo = (MsgBeans.DcsOperRectangleOperInfo_Ntf) ntfContent;
 //                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
@@ -519,7 +519,7 @@ public class DataCollaborateManager extends RequestAgent {
 //        if (!BuildConfig.DEBUG){
 //            return;
 //        }
-        eject(Msg.DCApplyOperatorNtf);
+//        eject(Msg.DCApplyOperatorNtf);
         eject(msg);
     }
 
