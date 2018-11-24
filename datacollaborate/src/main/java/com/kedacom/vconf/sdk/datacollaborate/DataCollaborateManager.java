@@ -368,12 +368,23 @@ public class DataCollaborateManager extends RequestAgent {
                 isRecvingBatchOps = true;
                 handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
                 return;
+            } else if (Msg.DCElementEndNtf.equals(ntfId)) {
+                if (!isRecvingBatchOps) {
+                    return;
+                }
+                KLog.p("batch paint ops <<<<<<<<<<<<<<<<<<<<<<<");
+                handler.removeCallbacks(batchOpTimeout);
+                while (!batchOps.isEmpty()) {
+                    ((IOnPaintOpListener)listener).onPaintOp(batchOps.poll()); // TODO 需要区分boardId。需要记录每个boardId是否已经下载批量操作对于尚未下载的先缓存
+                }
+                isRecvingBatchOps = false;
+                return;
             }
-//            else if (Msg.DCLineDrawnNtf.equals(ntfId)) {
-//                paintOp = new OpDrawLine().fromTransferObj((MsgBeans.DCLineOp) ntfContent);
-//            } else if (Msg.DCOvalDrawnNtf.equals(ntfId)) {
-//                paintOp = new OpDrawOval().fromTransferObj((MsgBeans.DCOvalOp) ntfContent);
-//            }
+            else if (Msg.DCLineDrawnNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawLine.class);
+            } else if (Msg.DCOvalDrawnNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawOval.class);
+            }
 //            else if (Msg.DcsOperRectangleOperInfo_Ntf.equals(ntfId)) {
 //                MsgBeans.DcsOperRectangleOperInfo_Ntf opInfo = (MsgBeans.DcsOperRectangleOperInfo_Ntf) ntfContent;
 //                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
@@ -453,20 +464,9 @@ public class DataCollaborateManager extends RequestAgent {
 //                MsgBeans.TDCSOperContent opInfo = (MsgBeans.TDCSOperContent) ntfContent;
 //                paintOp = new OpClearScreen(opInfo.dwMsgSequence, opInfo.achTabId);
 //            }
-            else if (Msg.DCElementEndNtf.equals(ntfId)) {
-                if (!isRecvingBatchOps) {
-                    return;
-                }
-                KLog.p("batch paint ops <<<<<<<<<<<<<<<<<<<<<<<");
-                handler.removeCallbacks(batchOpTimeout);
-                while (!batchOps.isEmpty()) {
-                    ((IOnPaintOpListener)listener).onPaintOp(batchOps.poll());
-                }
-                isRecvingBatchOps = false;
-                return;
-            }
 
-            if (isRecvingBatchOps) {
+
+            if (isRecvingBatchOps) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
                 batchOps.offer(paintOp);
             } else {
                 if (null != paintOp)

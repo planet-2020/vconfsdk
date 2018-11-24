@@ -13,6 +13,7 @@ import android.os.Process;
 
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
@@ -90,10 +91,11 @@ public class DefaultPainter implements IPainter {
 
     @Override
     public void paint(OpPaint op){
-        KLog.p(KLog.WARN, "for board %s op %s", op.boardId, op);
-        DefaultPaintBoard paintBoard = paintBoards.get(op.boardId);
+        String boardId = op.getBoardId();
+        KLog.p(KLog.WARN, "for board %s op %s", boardId, op);
+        DefaultPaintBoard paintBoard = paintBoards.get(boardId);
         if(null == paintBoard){
-            KLog.p(KLog.ERROR,"no board %s for op %s", op.boardId, op);
+            KLog.p(KLog.ERROR,"no board %s for op %s", boardId, op);
             return;
         }
 
@@ -108,10 +110,10 @@ public class DefaultPainter implements IPainter {
 //        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
 
 
-        boolean refresh = op.boardId.equals(curBoardId); // 操作属于当前board则尝试立即刷新
+        boolean refresh = boardId.equals(curBoardId); // 操作属于当前board则尝试立即刷新
         OpPaint tmpOp;
 
-        switch (op.type){
+        switch (op.getType()){
             case OpPaint.OP_INSERT_PICTURE:
                 picRenderOps.offerLast(op);
                 break;
@@ -119,12 +121,12 @@ public class DefaultPainter implements IPainter {
             case OpPaint.OP_DELETE_PICTURE:
                 refresh = false;
                 OpPaint picRenderOp;
-                for (String picId : ((OpDeletePic)op).picIds) {
+                for (String picId : ((OpDeletePic)op).getPicIds()) {
                     Iterator it = picRenderOps.iterator();
                     while (it.hasNext()) {
                         picRenderOp = (OpPaint) it.next();
-                        if (OpPaint.OP_INSERT_PICTURE == picRenderOp.type
-                                && ((OpInsertPic) picRenderOp).picId.equals(picId)) {
+                        if (OpPaint.OP_INSERT_PICTURE == picRenderOp.getType()
+                                && ((OpInsertPic) picRenderOp).getPicId().equals(picId)) {
                             it.remove();
                             refresh = true;
                             break;
@@ -134,11 +136,11 @@ public class DefaultPainter implements IPainter {
                 break;
 
             case OpPaint.OP_DRAG_PICTURE:
-                for (Map.Entry<String, float[]> dragOp : ((OpDragPic)op).picsMatrix.entrySet()) {
+                for (Map.Entry<String, float[]> dragOp : ((OpDragPic)op).getPicMatrices().entrySet()) {
                     for (OpPaint opPaint : picRenderOps) {
-                        if (OpPaint.OP_INSERT_PICTURE == opPaint.type
-                                && ((OpInsertPic) opPaint).picId.equals(dragOp.getKey())) {
-                            ((OpInsertPic) opPaint).matrixValue = dragOp.getValue();
+                        if (OpPaint.OP_INSERT_PICTURE == opPaint.getType()
+                                && ((OpInsertPic) opPaint).getPicId().equals(dragOp.getKey())) {
+                            ((OpInsertPic) opPaint).setMatrixValue(dragOp.getValue());
                             break;
                         }
                     }
@@ -147,9 +149,9 @@ public class DefaultPainter implements IPainter {
             case OpPaint.OP_UPDATE_PICTURE:
                 OpUpdatePic updatePic = (OpUpdatePic) op;
                 for (OpPaint opPaint : picRenderOps) {
-                    if (OpPaint.OP_INSERT_PICTURE == opPaint.type
-                            && ((OpInsertPic) opPaint).picId.equals(updatePic.picId)) {
-                        ((OpInsertPic) opPaint).pic = updatePic.pic;
+                    if (OpPaint.OP_INSERT_PICTURE == opPaint.getType()
+                            && ((OpInsertPic) opPaint).getPicId().equals(updatePic.picId)) {
+                        ((OpInsertPic) opPaint).setPic(updatePic.pic);
                         break;
                     }
                 }
@@ -161,7 +163,7 @@ public class DefaultPainter implements IPainter {
 
             default:  // 图形操作
 
-                switch (op.type){
+                switch (op.getType()){
                     case OpPaint.OP_UNDO:
                         tmpOp = shapeRenderOps.pollLast(); // 撤销最近的操作
                         if (null != tmpOp){
@@ -213,17 +215,40 @@ public class DefaultPainter implements IPainter {
     private final PorterDuffXfermode DUFFMODE_SRCOVER = new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER);
     private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
     private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
-    private Paint cfgPaint(PaintCfg paintInfo){
+//    private Paint cfgPaint(PaintCfg paintInfo){
+//        paint.reset();
+//        if (PaintCfg.MODE_NORMAL == paintInfo.mode){
+//            paint.setStyle(Paint.Style.STROKE);
+//            paint.setStrokeWidth(paintInfo.strokeWidth);
+//            paint.setColor(paintInfo.color);
+//        }else if (PaintCfg.MODE_PICTURE == paintInfo.mode){
+//            paint.setStyle(Paint.Style.STROKE);
+//        }else if (PaintCfg.MODE_ERASE == paintInfo.mode){
+//            paint.setStyle(Paint.Style.FILL);
+//            paint.setXfermode(DUFFMODE_CLEAR);
+//        }
+//
+//        return paint;
+//    }
+
+    private Paint cfgPaint(OpPaint opPaint){
         paint.reset();
-        if (PaintCfg.MODE_NORMAL == paintInfo.mode){
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(paintInfo.strokeWidth);
-            paint.setColor(paintInfo.color);
-        }else if (PaintCfg.MODE_PICTURE == paintInfo.mode){
-            paint.setStyle(Paint.Style.STROKE);
-        }else if (PaintCfg.MODE_ERASE == paintInfo.mode){
-            paint.setStyle(Paint.Style.FILL);
-            paint.setXfermode(DUFFMODE_CLEAR);
+        switch (opPaint.getType()){
+            case OpPaint.OP_INSERT_PICTURE:
+                paint.setStyle(Paint.Style.STROKE);
+                break;
+            case OpPaint.OP_CLEAR_SCREEN:
+                paint.setStyle(Paint.Style.FILL);
+                paint.setXfermode(DUFFMODE_CLEAR);
+                break;
+            default:
+                if (opPaint instanceof OpDraw) {
+                    OpDraw opDraw = (OpDraw) opPaint;
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setStrokeWidth(opDraw.getStrokeWidth());
+                    paint.setColor(opDraw.getColor());
+                }
+                break;
         }
 
         return paint;
@@ -277,7 +302,7 @@ public class DefaultPainter implements IPainter {
 
                 OpPaint opMatrix = shapePaintView.getMatrixOps().peekLast();  // TODO 暂不考虑完整保存以供回放的功能。matrix就一个值就好。
                 if (null != opMatrix) {
-                    shapeMatrix.setValues( ((OpMatrix)opMatrix).matrixValue );
+                    shapeMatrix.setValues( ((OpMatrix)opMatrix).getMatrixValue() );
                     canvas.setMatrix(shapeMatrix);
                 }
 
@@ -291,32 +316,32 @@ public class DefaultPainter implements IPainter {
                 MyConcurrentLinkedDeque<OpPaint> shapeOps = shapePaintView.getRenderOps();
                 for (OpPaint op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
                     KLog.p("to render %s", op);
-                    switch (op.type){
+                    switch (op.getType()){
                         case OpPaint.OP_DRAW_LINE:
                             OpDrawLine lineOp = (OpDrawLine) op;
-                            canvas.drawLine(lineOp.startX, lineOp.startY, lineOp.stopX, lineOp.stopY, cfgPaint(lineOp.paintCfg));
+                            canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
                             break;
                         case OpPaint.OP_DRAW_RECT:
                             OpDrawRect rectOp = (OpDrawRect) op;
-                            canvas.drawRect(rectOp.left, rectOp.top, rectOp.right, rectOp.bottom, cfgPaint(rectOp.paintCfg));
+                            canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
                             break;
                         case OpPaint.OP_DRAW_OVAL:
                             OpDrawOval ovalOp = (OpDrawOval) op;
-                            rect.set(ovalOp.left, ovalOp.top, ovalOp.right, ovalOp.bottom);
-                            canvas.drawOval(rect, cfgPaint(ovalOp.paintCfg));
+                            rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
+                            canvas.drawOval(rect, cfgPaint(ovalOp));
                             break;
                         case OpPaint.OP_DRAW_PATH:
                             OpDrawPath pathOp = (OpDrawPath) op;
                             path.reset();
-                            path.moveTo(pathOp.points[0].x, pathOp.points[0].y);
-                            for (PointF point : pathOp.points) {
+                            path.moveTo(pathOp.getPoints()[0].x, pathOp.getPoints()[0].y);
+                            for (PointF point : pathOp.getPoints()) {
                                 path.lineTo(point.x, point.y);
                             }
-                            canvas.drawPath(path, cfgPaint(pathOp.paintCfg));
+                            canvas.drawPath(path, cfgPaint(pathOp));
                             break;
                         case OpPaint.OP_ERASE:
                             OpRectErase eraseOp = (OpRectErase) op;
-                            canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp.paintCfg));
+                            canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
                             break;
                         case OpPaint.OP_CLEAR_SCREEN:
                             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
@@ -337,22 +362,22 @@ public class DefaultPainter implements IPainter {
 
                 opMatrix = picPaintView.getMatrixOps().peekLast();
                 if (null != opMatrix) {
-                    picMatrix.setValues( ((OpMatrix)opMatrix).matrixValue);
+                    picMatrix.setValues( ((OpMatrix)opMatrix).getMatrixValue());
                     picPaintViewCanvas.setMatrix(picMatrix);
                 }
 
                 // 图片绘制
                 MyConcurrentLinkedDeque<OpPaint> picOps = picPaintView.getRenderOps();
                 for (OpPaint op : picOps){
-                    switch (op.type){
+                    switch (op.getType()){
                         case OpPaint.OP_INSERT_PICTURE:
                             OpInsertPic insertPicOp = (OpInsertPic) op;
-                            if (null != insertPicOp.pic) { // NOTE:图片一开始置空的，等到下载完成才填充，所以此处需做非空判断。
+                            if (null != insertPicOp.getPic()) { // NOTE:图片一开始置空的，等到下载完成才填充，所以此处需做非空判断。
 //                            int w = insertPicOp.pic.getWidth();
 //                            int h = insertPicOp.pic.getHeight();
-                                picMatrix.setValues(insertPicOp.matrixValue);
+                                picMatrix.setValues(insertPicOp.getMatrixValue());
                                 KLog.p("to render %s", op);
-                                picPaintViewCanvas.drawBitmap(insertPicOp.pic, picMatrix, cfgPaint(insertPicOp.paintCfg));
+                                picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
                             }
                             break;
                     }
