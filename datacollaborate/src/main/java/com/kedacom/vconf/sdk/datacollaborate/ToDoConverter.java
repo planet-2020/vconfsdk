@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.base.MsgBeans;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
@@ -37,7 +38,8 @@ final class ToDoConverter {
         domainObj.setPageId(transferObj.pageId);
 //        domainObj.setSn(transferObj.sn);
 
-        if (OpDraw.class == t) {
+        KLog.p("OpDraw.class=%s, t=%s", OpDraw.class, t);
+        if (OpDraw.class.isAssignableFrom(t)) {
 
             OpDraw opDraw = (OpDraw) domainObj;
             MsgBeans.DCDrawOp dcDrawOp = (MsgBeans.DCDrawOp) transferObj;
@@ -141,7 +143,7 @@ final class ToDoConverter {
 //        transferObj.bCached =
 //        transferObj.authorE164 =
 
-        if (MsgBeans.DCDrawOp.class == t) {
+        if (MsgBeans.DCDrawOp.class.isAssignableFrom(t)) {
             MsgBeans.DCDrawOp dcDrawOp = (MsgBeans.DCDrawOp) transferObj;
             OpDraw opDraw = (OpDraw) domainObj;
             dcDrawOp.strokeWidth = opDraw.getStrokeWidth();
