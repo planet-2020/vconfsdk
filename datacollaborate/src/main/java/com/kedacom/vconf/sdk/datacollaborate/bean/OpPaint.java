@@ -11,7 +11,7 @@ public abstract class OpPaint /*implements Comparable<OpPaint>*/{
     public static final int OP_UNDO = 5;
     public static final int OP_REDO = 6;
     public static final int OP_MATRIX = 7;
-    public static final int OP_ERASE = 8;
+    public static final int OP_RECT_ERASE = 8;
     public static final int OP_CLEAR_SCREEN = 9;
     public static final int OP_INSERT_PICTURE = 10;
     public static final int OP_DELETE_PICTURE = 11;

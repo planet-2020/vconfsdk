@@ -220,6 +220,7 @@ public class DefaultPainter implements IPainter {
             case OpPaint.OP_INSERT_PICTURE:
                 paint.setStyle(Paint.Style.STROKE);
                 break;
+            case OpPaint.OP_RECT_ERASE:
             case OpPaint.OP_CLEAR_SCREEN:
                 paint.setStyle(Paint.Style.FILL);
                 paint.setXfermode(DUFFMODE_CLEAR);
@@ -322,7 +323,7 @@ public class DefaultPainter implements IPainter {
                             }
                             canvas.drawPath(path, cfgPaint(pathOp));
                             break;
-                        case OpPaint.OP_ERASE:
+                        case OpPaint.OP_RECT_ERASE:
                             OpRectErase eraseOp = (OpRectErase) op;
                             canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
                             break;
