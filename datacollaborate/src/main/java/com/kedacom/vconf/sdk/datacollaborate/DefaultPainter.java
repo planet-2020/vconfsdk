@@ -214,22 +214,6 @@ public class DefaultPainter implements IPainter {
     private final PorterDuffXfermode DUFFMODE_SRCOVER = new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER);
     private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
     private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
-//    private Paint cfgPaint(PaintCfg paintInfo){
-//        paint.reset();
-//        if (PaintCfg.MODE_NORMAL == paintInfo.mode){
-//            paint.setStyle(Paint.Style.STROKE);
-//            paint.setStrokeWidth(paintInfo.strokeWidth);
-//            paint.setColor(paintInfo.color);
-//        }else if (PaintCfg.MODE_PICTURE == paintInfo.mode){
-//            paint.setStyle(Paint.Style.STROKE);
-//        }else if (PaintCfg.MODE_ERASE == paintInfo.mode){
-//            paint.setStyle(Paint.Style.FILL);
-//            paint.setXfermode(DUFFMODE_CLEAR);
-//        }
-//
-//        return paint;
-//    }
-
     private Paint cfgPaint(OpPaint opPaint){
         paint.reset();
         switch (opPaint.getType()){

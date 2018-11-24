@@ -344,7 +344,8 @@ public class DataCollaborateManager extends RequestAgent {
                         new MsgBeans.DownloadPara(board.id, board.elementUrl),
                         null);  // TODO DcsSwitch_Ntf可以有多次，而下载只应该一次。在DcsCurrentWhiteBoard_Ntf中做？实测抓消息。
             } else if (Msg.DCBoardDeletedNtf.equals(ntfId)) {
-                // TODO
+                board = (MsgBeans.DCBoard) ntfContent;
+                onBoardOpListener.onBoardDeleted(board.id);
             }
         }
     }
