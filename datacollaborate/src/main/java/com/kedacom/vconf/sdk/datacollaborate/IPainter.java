@@ -15,7 +15,7 @@ public interface IPainter {
     }
 
     /**添加画板*/
-    void addPaintBoard(IPaintBoard paintBoard);
+    boolean addPaintBoard(IPaintBoard paintBoard);
 
     /**删除画板*/
     IPaintBoard deletePaintBoard(String boardId);

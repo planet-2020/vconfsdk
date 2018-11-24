@@ -51,25 +51,34 @@ public class DefaultPainter implements IPainter {
 
 
     @Override
-    public void addPaintBoard(IPaintBoard paintBoard) {
-        KLog.p(KLog.WARN,"add board %s", paintBoard.getBoardId());
+    public boolean addPaintBoard(IPaintBoard paintBoard) {
+        String boardId = paintBoard.getBoardId();
+        if (paintBoards.containsKey(boardId)){
+            KLog.p(KLog.ERROR,"board %s already exist!", paintBoard.getBoardId());
+            return false;
+        }
         paintBoards.put(paintBoard.getBoardId(), (DefaultPaintBoard) paintBoard);  // TODO 只能强转吗。工厂模式怎样保证产品一致性的？
+        KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
+        return true;
     }
 
     @Override
     public IPaintBoard deletePaintBoard(String boardId) {
         KLog.p(KLog.WARN,"delete board %s", boardId);
+        if (boardId.equals(curBoardId)){
+            curBoardId = null;
+        }
         return paintBoards.remove(boardId);
     }
 
     @Override
     public IPaintBoard switchPaintBoard(String boardId) {
-        KLog.p(KLog.WARN, "switch board from %s to %s", curBoardId, boardId);
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
         if(null == paintBoard){
             KLog.p(KLog.ERROR,"no such board %s", boardId);
             return null;
         }
+        KLog.p(KLog.WARN, "switched board from %s to %s", curBoardId, boardId);
         curBoardId = boardId;
 
         return paintBoard;
@@ -77,13 +86,19 @@ public class DefaultPainter implements IPainter {
 
     @Override
     public IPaintBoard getPaintBoard(String boardId) {
-        KLog.p(KLog.WARN,"get board %s", boardId);
-        return paintBoards.get(boardId);
+        DefaultPaintBoard paintBoard = paintBoards.get(boardId);
+        if(null == paintBoard){
+            KLog.p(KLog.ERROR,"no such board %s", boardId);
+        }
+        return paintBoard;
     }
 
     @Override
     public IPaintBoard getCurrentPaintBoard(){
-        KLog.p(KLog.WARN,"get current board %s", curBoardId);
+        if (null == curBoardId) {
+            KLog.p(KLog.WARN, "current board is null");
+            return null;
+        }
         return paintBoards.get(curBoardId);
     }
 
@@ -211,8 +226,8 @@ public class DefaultPainter implements IPainter {
     }
 
 
-    private final PorterDuffXfermode DUFFMODE_SRCOVER = new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER);
-    private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
+//    private final PorterDuffXfermode DUFFMODE_SRCOVER = new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER);
+//    private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
     private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
     private Paint cfgPaint(OpPaint opPaint){
         paint.reset();
