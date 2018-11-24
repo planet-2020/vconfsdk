@@ -292,30 +292,22 @@ public final class MsgBeans {
     }
 
 
-
-
-//    public static final class TDCSWbImageOperInfo{
-//        public String  achTabId;
-//        public int     dwSubPageId; // ???
-//        public TDCSWbImage	 tImage;
-//    }
-
-//    public  static final class TDCSWbImage {
-//        TDCSWbEntity	tEntity;				// 基本信息
-//        TDCSWbPoint 	tBoardPt;				// 边界矩形左上角坐标
-//        int 	    dwWidth;				// 边界矩形宽度
-//        int 		    dwHeight;				// 边界矩形宽度
-//        EmDcsWbImageState   emNetworkstate;			// 网络状态信息
-//        String  achFileName;          // 文件名（utf8编码）
-//        boolean	    bBkImg;	    // 是否文档底图
-//    }
-
-
     public static final class DCOvalOp extends DCDrawOp{
         public float left;
         public float top;
         public float right;
         public float bottom;
+        DCOvalOp(){
+            left = 100;
+            top = 100;
+            right = 600;
+            bottom = 600;
+        }
+        @NonNull
+        @Override
+        public String toString() {
+            return "{"+String.format("left=%s, top=%s, right=%s, bottom=%s", left, top, right, bottom)+super.toString()+"}";
+        }
     }
 
     public static final class DCRectOp extends DCDrawOp{
@@ -323,10 +315,39 @@ public final class MsgBeans {
         public float top;
         public float right;
         public float bottom;
+        DCRectOp(){
+            left = 100;
+            top = 100;
+            right = 600;
+            bottom = 600;
+        }
+        @NonNull
+        @Override
+        public String toString() {
+            return "{"+String.format("left=%s, top=%s, right=%s, bottom=%s", left, top, right, bottom)+super.toString()+"}";
+        }
     }
 
     public static final class DCPathOp extends DCDrawOp{
         public PointF[] points;
+        DCPathOp(){
+            points = new PointF[]{
+                    new PointF(100, 600),
+                    new PointF(350, 350),
+                    new PointF(100, 350),
+                    new PointF(350, 600),
+            };
+        }
+        @NonNull
+        @Override
+        public String toString() {
+            StringBuffer stringBuffer = new StringBuffer();
+            for (PointF pointF : points){
+                stringBuffer.append("(").append(pointF.x).append(",").append(pointF.y).append(")");
+            }
+            return "{"+String.format("points=[%s] ", stringBuffer.toString())+super.toString()+"}";
+        }
+
     }
 
 
@@ -341,11 +362,45 @@ public final class MsgBeans {
         public float insertPosY;
 
         public String[] matrixValue; // TODO 放缩及位置信息？
+
+        DCInertPicOp(){
+            picId = "picId";
+            matrixValue = new String[]{
+                    "1","0","0",
+                    "0","1","0",
+                    "0","0","1",
+            };
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            StringBuffer stringBuffer = new StringBuffer();
+            stringBuffer.append("[");
+            for (String val : matrixValue){
+                stringBuffer.append(val).append(",");
+            }
+            stringBuffer.append("]");
+            return "{"+String.format("picId=%s, picName=%s, picWidth=%s, picHeight=%s, insertPosX=%s, insertPosY, matrix=%s",
+                    picId, picName, width, height, insertPosX, insertPosY, stringBuffer.toString())+super.toString()+"}";
+        }
     }
 
     public static final class DCDelPicOp extends DCPaintOp{
         public String[] picIds;
         DCDelPicOp(){
+            picIds = new String[]{"picId"};
+        }
+        @NonNull
+        @Override
+        public String toString() {
+            StringBuffer stringBuffer = new StringBuffer();
+            stringBuffer.append("(");
+            for (String picId : picIds){
+                stringBuffer.append(picId).append(",");
+            }
+            stringBuffer.append(")");
+            return "{"+String.format("picIds=%s", stringBuffer.toString())+super.toString()+"}";
         }
     }
 
@@ -354,10 +409,39 @@ public final class MsgBeans {
         public float top;
         public float right;
         public float bottom;
+        DCRectEraseOp(){
+            left = 100;
+            top = 400;
+            right = 600;
+            bottom = 500;
+        }
+        @NonNull
+        @Override
+        public String toString() {
+            return "{"+String.format("left=%s, top=%s, right=%s, bottom=%s", left, top, right, bottom)+super.toString()+"}";
+        }
     }
 
     public static final class DCFullScreenMatrixOp extends DCPaintOp{
         public String[] matrixValue;
+        DCFullScreenMatrixOp(){
+            matrixValue = new String[]{
+                    "0.5","0","0",
+                    "0","0.5","0",
+                    "0","0","1",
+            };
+        }
+        @NonNull
+        @Override
+        public String toString() {
+            StringBuffer stringBuffer = new StringBuffer();
+            stringBuffer.append("[");
+            for (String val : matrixValue){
+                stringBuffer.append(val).append(",");
+            }
+            stringBuffer.append("]");
+            return "{"+String.format("matrix=%s", stringBuffer.toString())+super.toString()+"}";
+        }
     }
 
 // 批量图元结束通知
@@ -395,7 +479,7 @@ public final class MsgBeans {
         public boolean  bCached;   // 是否是服务器缓存的图元。由平台填写。
 
         @Override
-        public int compareTo(DCPaintOp o) { // TODO 方法看对json有没有影响
+        public int compareTo(DCPaintOp o) {
             if (sn<o.sn){
                 return -1;
             }else if (sn == o.sn){
@@ -446,10 +530,10 @@ public final class MsgBeans {
         public float startY;
         public float stopY;
         DCLineOp(){
-            startX = 50;
-            startY = 50;
-            stopX = 200;
-            stopY = 200;
+            startX = 100;
+            startY = 100;
+            stopX = 600;
+            stopY = 600;
         }
 
         @NonNull
@@ -465,6 +549,14 @@ public final class MsgBeans {
      * */
     public static class DCZoomOp extends DCPaintOp {
         public int percentage;   // 放缩百分比。100%为没有放缩，50%为缩小一半。
+        DCZoomOp(){
+            percentage = 80;
+        }
+        @NonNull
+        @Override
+        public String toString() {
+            return "{"+String.format("percentage=%s", percentage)+super.toString()+"}";
+        }
     }
 
     /**
@@ -473,12 +565,48 @@ public final class MsgBeans {
     public static class DCScrollOp extends DCPaintOp {
         public float stopX;   //TODO 中心点？
         public float stopY;
+        DCScrollOp(){
+            stopX = 300;
+            stopY = 300;
+        }
+        @NonNull
+        @Override
+        public String toString() {
+            return "{"+String.format("stopX=%s, stopY=%s", stopX, stopY)+super.toString()+"}";
+        }
     }
 
 
     /**拖拽图片*/
     public static final class DCDragPicOp extends DCPaintOp{
         public DCPicMatrix[] picMatrices;
+        DCDragPicOp(){
+            picMatrices = new DCPicMatrix[]{
+                    new DCPicMatrix("picId",
+                            new String[]{"1","0","200",
+                                        "0","1","200",
+                                        "0","0","1"}
+                            ),
+                    new DCPicMatrix("picId2",
+                            new String[]{"1","0","300",
+                                    "0","1","300",
+                                    "0","0","1"}
+                    ),
+            };
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            StringBuffer stringBuffer = new StringBuffer();
+            stringBuffer.append("[");
+            for (DCPicMatrix picMatrix : picMatrices){
+                stringBuffer.append(picMatrix).append(", ");
+            }
+            stringBuffer.append("], ");
+            return "{"+String.format("picMatrices={%s}", stringBuffer.toString())+super.toString()+"}";
+        }
+
     }
 
     public static final class DCPicMatrix {
@@ -487,6 +615,18 @@ public final class MsgBeans {
         public DCPicMatrix(String picId, String[] matrixValue){
             this.picId = picId;
             this.matrixValue = matrixValue;
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            StringBuffer stringBuffer = new StringBuffer();
+            stringBuffer.append(picId).append("(");
+            for (String val : matrixValue){
+                stringBuffer.append(val).append(",");
+            }
+            stringBuffer.append(")");
+            return stringBuffer.toString();
         }
     }
 
