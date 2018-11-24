@@ -404,6 +404,10 @@ public final class MsgBeans {
             }
         }
 
+        DCPaintOp(){
+            boardId = "boardId";
+            confE164 = "confE164";
+        }
     }
 
     /**
@@ -413,6 +417,10 @@ public final class MsgBeans {
     public static class DCDrawOp extends DCPaintOp {
         public int strokeWidth;     // 线宽
         public int color;           // 颜色值
+        DCDrawOp(){
+            strokeWidth = 5;
+            color = 0xFF00FF00;
+        }
     }
 
     /**
@@ -423,6 +431,12 @@ public final class MsgBeans {
         public float stopX;
         public float startY;
         public float stopY;
+        DCLineOp(){
+            startX = 50;
+            startY = 50;
+            stopX = 200;
+            stopY = 200;
+        }
     }
 
 

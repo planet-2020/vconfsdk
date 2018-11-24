@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class ToDoConverter {
+final class ToDoConverter {
 
     public static <T extends OpPaint> T fromTransferObj(MsgBeans.DCPaintOp transferObj, Class<T> t) {
 
