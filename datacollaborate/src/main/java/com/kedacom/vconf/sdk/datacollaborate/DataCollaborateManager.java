@@ -12,6 +12,8 @@ import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
@@ -385,26 +387,12 @@ public class DataCollaborateManager extends RequestAgent {
             } else if (Msg.DCOvalDrawnNtf.equals(ntfId)) {
                 paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawOval.class);
             }
-//            else if (Msg.DcsOperRectangleOperInfo_Ntf.equals(ntfId)) {
-//                MsgBeans.DcsOperRectangleOperInfo_Ntf opInfo = (MsgBeans.DcsOperRectangleOperInfo_Ntf) ntfContent;
-//                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-//                MsgBeans.TDCSWbRectangle gp = opInfo.AssParam.tRectangle;
-//                paintOp = new OpDrawRect(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy,
-//                        commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb), commonInfo.achTabId);
-//            } else if (Msg.DcsOperPencilOperInfo_Ntf.equals(ntfId)) {
-//                MsgBeans.DcsOperPencilOperInfo_Ntf opInfo = (MsgBeans.DcsOperPencilOperInfo_Ntf) ntfContent;
-//                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-//                MsgBeans.TDCSWbPencil gp = opInfo.AssParam.tPencil;
-//                MsgBeans.TDCSWbPoint[] pl = gp.atPList;
-//                PointF[] points = new PointF[pl.length];
-//                if (0 == points.length) {
-//                    return;
-//                }
-//                for (int i = 0; i < points.length; ++i) {
-//                    points[i] = new PointF(pl[i].nPosx, pl[i].nPosy);
-//                }
-//                paintOp = new OpDrawPath(points, commonInfo.dwMsgSequence, new PaintCfg(gp.dwLineWidth, (int) gp.dwRgb), commonInfo.achTabId);
-//            } else if (Msg.DcsOperInsertPic_Ntf.equals(ntfId)) {
+            else if (Msg.DCRectDrawnNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawRect.class);
+            } else if (Msg.DCPathDrawnNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawPath.class);
+            }
+//            else if (Msg.DcsOperInsertPic_Ntf.equals(ntfId)) {
 //                MsgBeans.DcsOperInsertPic_Ntf opInfo = (MsgBeans.DcsOperInsertPic_Ntf) ntfContent;
 //                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
 //                MsgBeans.TDCSWbInsertPicOperInfo gp = opInfo.AssParam;
