@@ -10,10 +10,18 @@ import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.CommonResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
@@ -381,77 +389,38 @@ public class DataCollaborateManager extends RequestAgent {
                 }
                 isRecvingBatchOps = false;
                 return;
-            }
-            else if (Msg.DCLineDrawnNtf.equals(ntfId)) {
+            } else if (Msg.DCLineDrawnNtf.equals(ntfId)) {
                 paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawLine.class);
             } else if (Msg.DCOvalDrawnNtf.equals(ntfId)) {
                 paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawOval.class);
-            }
-            else if (Msg.DCRectDrawnNtf.equals(ntfId)) {
+            } else if (Msg.DCRectDrawnNtf.equals(ntfId)) {
                 paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawRect.class);
             } else if (Msg.DCPathDrawnNtf.equals(ntfId)) {
                 paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawPath.class);
-            }
-//            else if (Msg.DcsOperInsertPic_Ntf.equals(ntfId)) {
-//                MsgBeans.DcsOperInsertPic_Ntf opInfo = (MsgBeans.DcsOperInsertPic_Ntf) ntfContent;
-//                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-//                MsgBeans.TDCSWbInsertPicOperInfo gp = opInfo.AssParam;
-//
-//                paintOp = new OpInsertPic(gp.achImgId,
-//                        null/*BitmapFactory.decodeFile("/data/local/tmp/wb.png")*/, // NOTE: 此时图片还未下载到本地，先置空，等下载完成后再更新
-//                        gp.dwImgWidth, gp.dwImgHeight,
-//                        gp.tPoint.nPosx, gp.tPoint.nPosy, gp.aachMatrixValue, commonInfo.dwMsgSequence, commonInfo.achTabId);
-//
-//                // 获取图片下载地址（然后再下载图片）
-//                KLog.p("start download pic, onPaintOpListener=%s", listener);
+            } else if (Msg.DCPicInsertedNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpInsertPic.class); // NOTE: 此时图片还未下载到本地，先置空，等下载完成后再更新
+
+                // 获取图片下载地址（然后再下载图片）
+                KLog.p("start download pic, onPaintOpListener=%s", listener);
 //                req(Msg.DCQueryPicUrl,
 //                        new MsgBeans.TDCSImageUrl(commonInfo.achConfE164, commonInfo.achTabId, gp.achImgId),
 //                        new DownloadListener((IOnPaintOpListener) listener));
-//
-//            } else if (Msg.DcsOperPitchPicDrag_Ntf.equals(ntfId)) {
-//                MsgBeans.DcsOperPitchPicDrag_Ntf opInfo = (MsgBeans.DcsOperPitchPicDrag_Ntf) ntfContent;
-//                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-//                MsgBeans.TDCSWbPitchPicOperInfo gp = opInfo.AssParam;
-//                Map<String, float[]> picsMatrix = new HashMap<>();
-//                for (MsgBeans.TDCSWbGraphsInfo picInfo : gp.atGraphsInfo){
-//                    float[] matrixValue = new float[9];
-//                    for (int i=0; i<picInfo.aachMatrixValue.length; ++i){
-//                        matrixValue[i] = Float.valueOf(picInfo.aachMatrixValue[i]);
-//                    }
-//                    picsMatrix.put(picInfo.achGraphsId, matrixValue);
-//                }
-//                paintOp = new OpDragPic(picsMatrix, commonInfo.dwMsgSequence, commonInfo.achTabId);
-//            } else if (Msg.DcsOperPitchPicDel_Ntf.equals(ntfId)) {
-//                MsgBeans.DcsOperPitchPicDel_Ntf opInfo = (MsgBeans.DcsOperPitchPicDel_Ntf) ntfContent;
-//                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-//                MsgBeans.TDCSWbDelPicOperInfo gp = opInfo.AssParam;
-//                paintOp = new OpDeletePic(gp.achGraphsId, commonInfo.dwMsgSequence, commonInfo.achTabId);
-//            } else if (Msg.DcsOperEraseOperInfo_Ntf.equals(ntfId)) {
-//                MsgBeans.DcsOperEraseOperInfo_Ntf opInfo = (MsgBeans.DcsOperEraseOperInfo_Ntf) ntfContent;
-//                MsgBeans.TDCSWbEraseOperInfo gp = opInfo.AssParam;
-//                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-//                paintOp = new OpRectErase(gp.tBeginPt.nPosx, gp.tBeginPt.nPosy, gp.tEndPt.nPosx, gp.tEndPt.nPosy, commonInfo.dwMsgSequence, commonInfo.achTabId);
-//            } else if (Msg.DcsOperFullScreen_Ntf.equals(ntfId)) {
-//                MsgBeans.DcsOperFullScreen_Ntf opInfo = (MsgBeans.DcsOperFullScreen_Ntf) ntfContent;
-//                MsgBeans.TDCSWbDisPlayInfo gp = opInfo.AssParam;
-//                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-//                float[] matrixValue = new float[9];
-//                for (int i=0; i<gp.aachMatrixValue.length; ++i){
-//                    matrixValue[i] = Float.valueOf(gp.aachMatrixValue[i]);
-//                }
-//                paintOp = new OpMatrix(matrixValue, commonInfo.dwMsgSequence, commonInfo.achTabId);
-//            } else if (Msg.DcsOperUndo_Ntf.equals(ntfId)) {
-//                MsgBeans.DcsOperUndo_Ntf opInfo = (MsgBeans.DcsOperUndo_Ntf) ntfContent;
-//                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-//                paintOp = new OpUndo(commonInfo.dwMsgSequence, commonInfo.achTabId);
-//            } else if (Msg.DcsOperRedo_Ntf.equals(ntfId)) {
-//                MsgBeans.DcsOperRedo_Ntf opInfo = (MsgBeans.DcsOperRedo_Ntf) ntfContent;
-//                MsgBeans.TDCSOperContent commonInfo = opInfo.MainParam;
-//                paintOp = new OpRedo(commonInfo.dwMsgSequence, commonInfo.achTabId);
-//            } else if (Msg.DcsOperClearScreen_Ntf.equals(ntfId)) {
-//                MsgBeans.TDCSOperContent opInfo = (MsgBeans.TDCSOperContent) ntfContent;
-//                paintOp = new OpClearScreen(opInfo.dwMsgSequence, opInfo.achTabId);
-//            }
+
+            } else if (Msg.DCPicDraggedNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDragPic.class);
+            } else if (Msg.DCPicDeletedNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDeletePic.class);
+            } else if (Msg.DCRectErasedNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpRectErase.class);
+            } else if (Msg.DCFullScreenMatrixOpNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpMatrix.class);
+            } else if (Msg.DCUndoneNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpUndo.class);
+            } else if (Msg.DCRedoneNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpRedo.class);
+            } else if (Msg.DCScreenClearedNtf.equals(ntfId)) {
+                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpClearScreen.class);
+            }
 
 
             if (isRecvingBatchOps) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
