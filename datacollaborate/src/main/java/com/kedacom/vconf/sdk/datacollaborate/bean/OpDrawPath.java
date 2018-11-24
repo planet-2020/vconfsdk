@@ -2,6 +2,8 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.PointF;
 
+import androidx.annotation.NonNull;
+
 public class OpDrawPath extends OpDraw {
     private PointF[] points;
 
@@ -14,6 +16,15 @@ public class OpDrawPath extends OpDraw {
         type = OP_DRAW_PATH;
     }
 
+    @NonNull
+    @Override
+    public String toString() {
+        StringBuffer stringBuffer = new StringBuffer();
+        for (PointF pointF : points){
+            stringBuffer.append("(").append(pointF.x).append(",").append(pointF.y).append(")");
+        }
+        return "{"+String.format("points=[%s] ", stringBuffer.toString())+super.toString()+"}";
+    }
 
     public PointF[] getPoints() {
         return points;

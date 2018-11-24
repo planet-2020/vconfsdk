@@ -23,7 +23,6 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.PaintCfg;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 
 import java.util.HashMap;

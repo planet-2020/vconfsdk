@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import androidx.annotation.NonNull;
+
 public class OpRectErase extends OpPaint {
     public float left;
     public float top;
@@ -19,6 +21,11 @@ public class OpRectErase extends OpPaint {
         type = OP_ERASE;
     }
 
+    @NonNull
+    @Override
+    public String toString() {
+        return "{"+String.format("left=%s, top=%s, right=%s, bottom=%s", left, top, right, bottom)+super.toString()+"}";
+    }
 
     public float getLeft() {
         return left;

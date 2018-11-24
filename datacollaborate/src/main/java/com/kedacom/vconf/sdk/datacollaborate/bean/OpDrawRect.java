@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import androidx.annotation.NonNull;
+
 public class OpDrawRect extends OpDraw {
     private float left;
     private float top;
@@ -20,6 +22,11 @@ public class OpDrawRect extends OpDraw {
         type = OP_DRAW_RECT;
     }
 
+    @NonNull
+    @Override
+    public String toString() {
+        return "{"+String.format("left=%s, top=%s, right=%s, bottom=%s", left, top, right, bottom)+super.toString()+"}";
+    }
 
     public float getLeft() {
         return left;

@@ -38,7 +38,6 @@ final class ToDoConverter {
         domainObj.setPageId(transferObj.pageId);
 //        domainObj.setSn(transferObj.sn);
 
-        KLog.p("OpDraw.class=%s, t=%s", OpDraw.class, t);
         if (OpDraw.class.isAssignableFrom(t)) {
 
             OpDraw opDraw = (OpDraw) domainObj;

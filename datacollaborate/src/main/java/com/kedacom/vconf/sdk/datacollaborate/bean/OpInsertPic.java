@@ -2,6 +2,8 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.Bitmap;
 
+import androidx.annotation.NonNull;
+
 public class OpInsertPic extends OpPaint {
     private String picId;
     private String picName;
@@ -29,6 +31,18 @@ public class OpInsertPic extends OpPaint {
         type = OP_INSERT_PICTURE;
     }
 
+    @NonNull
+    @Override
+    public String toString() {
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("[");
+        for (float val : matrixValue){
+            stringBuffer.append(val).append(",");
+        }
+        stringBuffer.append("]");
+        return "{"+String.format("picId=%s, picName=%s, pic=%s, picWidth=%s, picHeight=%s, insertPosX=%s, insertPosY, matrix=%s",
+                picId, picName, pic, picWidth, picHeight, insertPosX, insertPosY, stringBuffer.toString())+super.toString()+"}";
+    }
 
     public String getPicId() {
         return picId;
