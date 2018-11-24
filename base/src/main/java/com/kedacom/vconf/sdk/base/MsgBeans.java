@@ -302,6 +302,7 @@ public final class MsgBeans {
             top = 100;
             right = 600;
             bottom = 600;
+            opType = EDcOpType.DRAW_OVAL;
         }
         @NonNull
         @Override
@@ -320,6 +321,7 @@ public final class MsgBeans {
             top = 100;
             right = 600;
             bottom = 600;
+            opType = EDcOpType.DRAW_RECT;
         }
         @NonNull
         @Override
@@ -337,6 +339,7 @@ public final class MsgBeans {
                     new PointF(100, 350),
                     new PointF(350, 600),
             };
+            opType = EDcOpType.DRAW_PATH;
         }
         @NonNull
         @Override
@@ -370,6 +373,7 @@ public final class MsgBeans {
                     "0","1","0",
                     "0","0","1",
             };
+            opType = EDcOpType.INSERT_PIC;
         }
 
         @NonNull
@@ -390,6 +394,7 @@ public final class MsgBeans {
         public String[] picIds;
         DCDelPicOp(){
             picIds = new String[]{"picId"};
+            opType = EDcOpType.DEL_PIC;
         }
         @NonNull
         @Override
@@ -414,6 +419,7 @@ public final class MsgBeans {
             top = 400;
             right = 600;
             bottom = 500;
+            opType = EDcOpType.RECT_ERASE;
         }
         @NonNull
         @Override
@@ -430,6 +436,7 @@ public final class MsgBeans {
                     "0","0.5","0",
                     "0","0","1",
             };
+            opType = EDcOpType.FULLSCREEN;
         }
         @NonNull
         @Override
@@ -473,6 +480,7 @@ public final class MsgBeans {
         public String   confE164;   // 所属会议e164号
         public String   boardId;    // 画板ID
         public int      pageId;     // 文档页ID（仅文档模式下有效）
+        public EDcOpType opType;
 
         public int      sn;             // 操作序列号，用来表示操作的先后顺序，越小越靠前。由平台填写。
         public String   authorE164;      // 操作发出者。由平台填写。
@@ -534,6 +542,7 @@ public final class MsgBeans {
             startY = 100;
             stopX = 600;
             stopY = 600;
+            opType = EDcOpType.DRAW_LINE;
         }
 
         @NonNull
@@ -551,6 +560,7 @@ public final class MsgBeans {
         public int percentage;   // 放缩百分比。100%为没有放缩，50%为缩小一半。
         DCZoomOp(){
             percentage = 80;
+            opType = EDcOpType.FULLSCREEN;
         }
         @NonNull
         @Override
@@ -568,6 +578,7 @@ public final class MsgBeans {
         DCScrollOp(){
             stopX = 300;
             stopY = 300;
+            opType = EDcOpType.FULLSCREEN;
         }
         @NonNull
         @Override
@@ -593,6 +604,7 @@ public final class MsgBeans {
                                     "0","0","1"}
                     ),
             };
+            opType = EDcOpType.DRAG_PIC;
         }
 
         @NonNull
@@ -656,6 +668,11 @@ public final class MsgBeans {
         public boolean bPic;  // 是否是图片
         public String picId;
         public String picSavePath;
+        DownloadResult(){
+            boardId = "boardId";
+            picId = "picId";
+            picSavePath = "/data/local/tmp/wb.png";
+        }
     }
 
     public static final class DCQueryPicUrlPara {
@@ -663,6 +680,12 @@ public final class MsgBeans {
         public String confE164;
         public String boardId;
         public int pageId;
+        public DCQueryPicUrlPara(String picId, String confE164, String boardId, int pageId) {
+            this.picId = picId;
+            this.confE164 = confE164;
+            this.boardId = boardId;
+            this.pageId = pageId;
+        }
     }
 
     public  static final class DCMember {
