@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import androidx.annotation.NonNull;
+
 public class OpDrawLine extends OpDraw {
     private float startX;
     private float startY;
@@ -19,6 +21,11 @@ public class OpDrawLine extends OpDraw {
         type = OP_DRAW_LINE;
     }
 
+    @NonNull
+    @Override
+    public String toString() {
+        return "{"+String.format("startX=%s, startY=%s, stopX=%s, stopY=%s", startX, startY, stopX, stopY)+super.toString()+"}";
+    }
 
     public float getStartX() {
         return startX;

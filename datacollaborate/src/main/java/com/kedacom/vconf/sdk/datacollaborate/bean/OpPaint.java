@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import androidx.annotation.NonNull;
+
 public abstract class OpPaint /*implements Comparable<OpPaint>*/{
     public static final int OP_DRAW_LINE = 1;
     public static final int OP_DRAW_RECT = 2;
@@ -34,6 +36,12 @@ public abstract class OpPaint /*implements Comparable<OpPaint>*/{
 //        }
 //    }
 
+
+    @NonNull
+    @Override
+    public String toString() {
+        return String.format(" type=%s, confE164=%s, boardId=%s, pageId=%s", type, confE164, boardId, pageId);
+    }
 
     public int getType() {
         return type;

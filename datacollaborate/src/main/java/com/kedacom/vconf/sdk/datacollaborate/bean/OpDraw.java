@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import androidx.annotation.NonNull;
+
 public abstract class OpDraw extends OpPaint {
     private int strokeWidth;     // 线宽
     private int color;           // 颜色值
@@ -20,5 +22,11 @@ public abstract class OpDraw extends OpPaint {
 
     public void setColor(int color) {
         this.color = color;
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return String.format(" strokeWidth=%s, color=%s ", strokeWidth, color)+super.toString();
     }
 }

@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.base;
 
 import android.graphics.PointF;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
 
 import static com.kedacom.vconf.sdk.base.MsgConst.*;
@@ -408,6 +409,13 @@ public final class MsgBeans {
             boardId = "boardId";
             confE164 = "confE164";
         }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return String.format(" id=%s, confE164=%s, boardId=%s, pageId=%s, sn=%s, authorE164=%s, bCached=%s",
+                    id, confE164, boardId, pageId, sn, authorE164, bCached);
+        }
     }
 
     /**
@@ -420,6 +428,12 @@ public final class MsgBeans {
         DCDrawOp(){
             strokeWidth = 5;
             color = 0xFF00FF00;
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return String.format(" strokeWidth=%s, color=%s ", strokeWidth, color)+super.toString();
         }
     }
 
@@ -436,6 +450,12 @@ public final class MsgBeans {
             startY = 50;
             stopX = 200;
             stopY = 200;
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return "{"+String.format("startX=%s, startY=%s, stopX=%s, stopY=%s", startX, startY, stopX, stopY)+super.toString()+"}";
         }
     }
 
