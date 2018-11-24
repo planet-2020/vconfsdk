@@ -48,11 +48,11 @@ public final class MsgConst {
         emWBModeDOC     // 文档
     }
 
-    public enum EmDcsOper {
-        emWbLineOperInfo,       // DCLineOp
-        emWbCircleOperInfo,     // TDCSWbCircleOperInfo
-        emWbRectangleOperInfo,  // TDCSWbRectangleOperInfo
-        emWbPencilOperInfo,     // TDCSWbPencilOperInfo
+    public enum EDcOpType {
+        DRAW_LINE,       // DCLineOp
+        DRAW_OVAL,     // TDCSWbCircleOperInfo
+        DRAW_RECT,  // TDCSWbRectangleOperInfo
+        DRAW_PATH,     // TDCSWbPencilOperInfo
         emWbColorPenOperInfo,   // TDCSWbColorPenOperInfo
         @Deprecated // 由emWbInsertPic、emWbPitchPicZoom、emWbPitchPicRotate、emWbPitchPicDrag、emWbPitchPicDel取代
                 emWbImageOperInfo,      // TDCSWbImageOperInfo
@@ -60,22 +60,22 @@ public final class MsgConst {
         emWbEraseOperInfo,      // TDCSWbEraseOperInfo
         @Deprecated // 由emWbFullScreen取代
                 emWbZoomInfo,           // TDCSWbZoomInfo
-        emWbUndo,
-        emWbRedo,
-        emWbRotateLeft,
-        emWbRotateRight,
-        emWbClearScreen,
+        UNDO,
+        REDO,
+        LEFT_ROTATE,
+        RIGHT_ROTATE,
+        CLEAR_SCREEN,
         @Deprecated // 由emWbFullScreen取代
                 emWbScrollScreen,
-        emWbFullScreen,
+        FULLSCREEN,
         @Deprecated // 由emWbFullScreen取代
                 emWb100ProportionScreen,
-        emWbReginErase,
-        emWbInsertPic,
-        emWbPitchPicZoom,
-        emWbPitchPicRotate,
-        emWbPitchPicDrag,
-        emWbPitchPicDel
+        RECT_ERASE,
+        INSERT_PIC,
+        ZOOM_PIC,
+        ROTATE_PIC,
+        DRAG_PIC,
+        DEL_PIC,
     }
 
     public enum EmDcsType {
