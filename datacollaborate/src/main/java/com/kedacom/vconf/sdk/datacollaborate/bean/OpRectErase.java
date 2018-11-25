@@ -10,7 +10,7 @@ public class OpRectErase extends OpPaint {
     public float bottom;
 
     public OpRectErase(){
-        type = OP_RECT_ERASE;
+        type = EOpType.RECT_ERASE;
     }
 
     public OpRectErase(float left, float top, float right, float bottom){
@@ -18,7 +18,7 @@ public class OpRectErase extends OpPaint {
         this.top = top;
         this.right = right;
         this.bottom = bottom;
-        type = OP_RECT_ERASE;
+        type = EOpType.RECT_ERASE;
     }
 
     @NonNull

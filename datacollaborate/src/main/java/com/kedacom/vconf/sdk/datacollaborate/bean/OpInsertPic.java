@@ -15,7 +15,7 @@ public class OpInsertPic extends OpPaint {
     private float[] matrixValue = new float[9];
 
     public OpInsertPic(){
-        type = OP_INSERT_PICTURE;
+        type = EOpType.INSERT_PICTURE;
     }
 
     public OpInsertPic(String picId, String picName, Bitmap pic, int picWidth, int picHeight,
@@ -28,7 +28,7 @@ public class OpInsertPic extends OpPaint {
         this.insertPosX = insertPosX;
         this.insertPosY = insertPosY;
         this.matrixValue = matrixValue;
-        type = OP_INSERT_PICTURE;
+        type = EOpType.INSERT_PICTURE;
     }
 
     @NonNull

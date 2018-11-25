@@ -11,7 +11,7 @@ public class OpDrawRect extends OpDraw {
 
 
     public OpDrawRect(){
-        type = OP_DRAW_RECT;
+        type = EOpType.DRAW_RECT;
     }
 
     public OpDrawRect(float left, float top, float right, float bottom){
@@ -19,7 +19,7 @@ public class OpDrawRect extends OpDraw {
         this.top = top;
         this.right = right;
         this.bottom = bottom;
-        type = OP_DRAW_RECT;
+        type = EOpType.DRAW_RECT;
     }
 
     @NonNull

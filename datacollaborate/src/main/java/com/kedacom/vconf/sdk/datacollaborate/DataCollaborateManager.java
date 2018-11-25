@@ -43,7 +43,7 @@ public class DataCollaborateManager extends RequestAgent {
     /*批量操作缓存。
     批量上报的操作到达的时序可能跟操作的实际时序不相符，平台特意为此加了序列号字段，
     此处我们使用PriorityQueue结合该序列号字段来为我们自动排序。*/
-    private PriorityQueue<OpPaint> batchOps = new PriorityQueue<>();
+    private PriorityQueue<MsgBeans.DCPaintOp> batchOps = new PriorityQueue<>();
 
     //当前数据协作会议的e164
     private String curDcConfE164;
@@ -281,6 +281,25 @@ public class DataCollaborateManager extends RequestAgent {
             KLog.p(KLog.ERROR, "download file failed!");
             return;
         }
+
+
+
+        // FIXME just for debug
+        if (null != listener){
+            // 下载的是图片
+            OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
+            IOnPaintOpListener onPaintOpListener = ((DownloadListener)listener).onPaintOpListener; // TODO 能不能自适应activity生命周期？
+            KLog.p("download pic finished, onPaintOpListener=%s", onPaintOpListener);
+            if (null != onPaintOpListener){
+                onPaintOpListener.onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+            }
+
+        }else{
+            pushCachedOps();
+        }
+
+
+
         if (!result.bPic){
             /* 下载的是图元（而非图片本身）。
             * 后续会批量上报当前画板已有的图元：
@@ -354,11 +373,12 @@ public class DataCollaborateManager extends RequestAgent {
     private final Runnable batchOpTimeout = () -> {
         KLog.p(KLog.ERROR,"wait batch paint ops timeout <<<<<<<<<<<<<<<<<<<<<<<");
         Set<Object> listeners = getNtfListeners(Msg.DCElementBeginNtf);
-        OpPaint op;
         while (!batchOps.isEmpty()) {
-            op = batchOps.poll();
-            for (Object listener : listeners) {
-                ((IOnPaintOpListener)listener).onPaintOp(op);
+            OpPaint op = ToDoConverter.fromTransferObj(batchOps.poll());
+            if (null != op) {
+                for (Object listener : listeners) {
+                    ((IOnPaintOpListener) listener).onPaintOp(op);
+                }
             }
         }
 
@@ -367,71 +387,116 @@ public class DataCollaborateManager extends RequestAgent {
     @SuppressWarnings("ConstantConditions")
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
-
-        OpPaint paintOp = null;
-        for (Object listener : listeners) {
-            if (Msg.DCElementBeginNtf.equals(ntfId)) {
+        switch (ntfId){
+            case DCElementBeginNtf:
                 if (isRecvingBatchOps) {  // TODO 多个画板切换会有多个DcsElementOperBegin_Ntf，此处应该要分boardId处理；另外在DcsElementOperBegin_Ntf之前就有可能有新的操作过来，或许要在开始download的时候就开启isRecvingBatchOps
                     return;
                 }
                 KLog.p("batch paint ops >>>>>>>>>>>>>>>>>>>>>>");
                 isRecvingBatchOps = true;
                 handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
-                return;
-            } else if (Msg.DCElementEndNtf.equals(ntfId)) {
+                break;
+            case DCElementEndNtf:
                 if (!isRecvingBatchOps) {
                     return;
                 }
                 KLog.p("batch paint ops <<<<<<<<<<<<<<<<<<<<<<<");
                 handler.removeCallbacks(batchOpTimeout);
                 while (!batchOps.isEmpty()) {
-                    ((IOnPaintOpListener)listener).onPaintOp(batchOps.poll()); // TODO 需要区分boardId。需要记录每个boardId是否已经下载批量操作对于尚未下载的先缓存
+                    OpPaint opPaint = ToDoConverter.fromTransferObj(batchOps.poll());
+                    if (null != opPaint) {
+                        for (Object listener : listeners) {
+                            ((IOnPaintOpListener) listener).onPaintOp(opPaint); // TODO 需要区分boardId。需要记录每个boardId是否已经下载批量操作对于尚未下载的先缓存
+                        }
+                    }
                 }
                 isRecvingBatchOps = false;
-                return;
-            } else if (Msg.DCLineDrawnNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawLine.class);
-            } else if (Msg.DCOvalDrawnNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawOval.class);
-            } else if (Msg.DCRectDrawnNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawRect.class);
-            } else if (Msg.DCPathDrawnNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawPath.class);
-            } else if (Msg.DCPicInsertedNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpInsertPic.class); // NOTE: 此时图片还未下载到本地，先置空，等下载完成后再更新
+                break;
 
-                // 获取图片下载地址（然后再下载图片）
-                KLog.p("start download pic, onPaintOpListener=%s", listener);
-//                req(Msg.DCQueryPicUrl,
-//                        new MsgBeans.TDCSImageUrl(commonInfo.achConfE164, commonInfo.achTabId, gp.achImgId),
-//                        new DownloadListener((IOnPaintOpListener) listener));
+            default:
+                if (ntfContent instanceof MsgBeans.DCPaintOp) {
+                    MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
+                    if (isRecvingBatchOps) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
+                        batchOps.offer(dcPaintOp);
+                    } else {
+                        OpPaint paintOp = ToDoConverter.fromTransferObj(dcPaintOp);
+                        if (null != paintOp) {
+                            for (Object listener : listeners) {
+                                ((IOnPaintOpListener) listener).onPaintOp(paintOp);
+                            }
+                        }
+                    }
+                }
 
-            } else if (Msg.DCPicDraggedNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDragPic.class);
-            } else if (Msg.DCPicDeletedNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDeletePic.class);
-            } else if (Msg.DCRectErasedNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpRectErase.class);
-            } else if (Msg.DCFullScreenMatrixOpNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpMatrix.class);
-            } else if (Msg.DCUndoneNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpUndo.class);
-            } else if (Msg.DCRedoneNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpRedo.class);
-            } else if (Msg.DCScreenClearedNtf.equals(ntfId)) {
-                paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpClearScreen.class);
-            }
-
-
-            if (isRecvingBatchOps) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
-                batchOps.offer(paintOp);
-            } else {
-                if (null != paintOp)
-                    ((IOnPaintOpListener)listener).onPaintOp(paintOp);
-            }
-
+                break;
         }
+
+
+//
+//        OpPaint paintOp = null;
+//        for (Object listener : listeners) {
+//            if (Msg.DCElementBeginNtf.equals(ntfId)) {
+//                if (isRecvingBatchOps) {  // TODO 多个画板切换会有多个DcsElementOperBegin_Ntf，此处应该要分boardId处理；另外在DcsElementOperBegin_Ntf之前就有可能有新的操作过来，或许要在开始download的时候就开启isRecvingBatchOps
+//                    return;
+//                }
+//                KLog.p("batch paint ops >>>>>>>>>>>>>>>>>>>>>>");
+//                isRecvingBatchOps = true;
+//                handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
+//                return;
+//            } else if (Msg.DCElementEndNtf.equals(ntfId)) {
+//                if (!isRecvingBatchOps) {
+//                    return;
+//                }
+//                KLog.p("batch paint ops <<<<<<<<<<<<<<<<<<<<<<<");
+//                handler.removeCallbacks(batchOpTimeout);
+//                while (!batchOps.isEmpty()) {
+//                    ((IOnPaintOpListener)listener).onPaintOp(batchOps.poll()); // TODO 需要区分boardId。需要记录每个boardId是否已经下载批量操作对于尚未下载的先缓存
+//                }
+//                isRecvingBatchOps = false;
+//                return;
+//            }
+//            else {
+//                MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
+//                if (Msg.DCLineDrawnNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawLine.class);
+//                } else if (Msg.DCOvalDrawnNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawOval.class);
+//                } else if (Msg.DCRectDrawnNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawRect.class);
+//                } else if (Msg.DCPathDrawnNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawPath.class);
+//                } else if (Msg.DCPicInsertedNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpInsertPic.class); // NOTE: 此时图片还未下载到本地，先置空，等下载完成后再更新
+//                    // 获取图片下载地址（然后再下载图片）
+//                    KLog.p("start download pic, onPaintOpListener=%s", listener);
+//                    req(Msg.DCQueryPicUrl,
+//                            new MsgBeans.DCQueryPicUrlPara("picId", "confE164", "boardId", 1),
+//                            new DownloadListener((IOnPaintOpListener) listener)); // FIXME DownloadListener还能感知原来listener宿主的生命周期吗？要怎么才能做到感知呢？
+//                } else if (Msg.DCPicDraggedNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDragPic.class);
+//                } else if (Msg.DCPicDeletedNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDeletePic.class);
+//                } else if (Msg.DCRectErasedNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpRectErase.class);
+//                } else if (Msg.DCFullScreenMatrixOpNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpMatrix.class);
+//                } else if (Msg.DCUndoneNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpUndo.class);
+//                } else if (Msg.DCRedoneNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpRedo.class);
+//                } else if (Msg.DCScreenClearedNtf.equals(ntfId)) {
+//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpClearScreen.class);
+//                }
+//            }
+//
+//            if (isRecvingBatchOps) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
+//                batchOps.offer(paintOp);
+//            } else {
+//                if (null != paintOp)
+//                    ((IOnPaintOpListener)listener).onPaintOp(paintOp);
+//            }
+
+//        }
     }
 
 
@@ -471,6 +536,11 @@ public class DataCollaborateManager extends RequestAgent {
         public void onResponse(int i, Object o) {
 
         }
+    }
+
+    // FIXME just for debug
+    private void pushCachedOps(){
+        eject(paintOpNtfs);
     }
 
     public void ejectNtf(Msg msg){

@@ -7,12 +7,12 @@ public class OpDeletePic extends OpPaint {
     private String[] picIds;
 
     public OpDeletePic(){
-        type = OP_DELETE_PICTURE;
+        type = EOpType.DELETE_PICTURE;
     }
 
     public OpDeletePic(String[] picIds){
         this.picIds = picIds;
-        type = OP_DELETE_PICTURE;
+        type = EOpType.DELETE_PICTURE;
     }
 
     @NonNull

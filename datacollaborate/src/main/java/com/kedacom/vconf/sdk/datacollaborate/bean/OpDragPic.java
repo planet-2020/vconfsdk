@@ -9,12 +9,12 @@ public class OpDragPic extends OpPaint {
     private Map<String, float[]> picMatrices;
 
     public OpDragPic(){
-        type = OP_DRAG_PICTURE;
+        type = EOpType.DRAG_PICTURE;
     }
 
     public OpDragPic(Map<String, float[]> picMatrices) {
         this.picMatrices = picMatrices;
-        type = OP_DRAG_PICTURE;
+        type = EOpType.DRAG_PICTURE;
     }
 
     @NonNull

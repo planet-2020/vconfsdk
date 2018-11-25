@@ -10,7 +10,7 @@ public class OpDrawLine extends OpDraw {
     private float stopY;
 
     public OpDrawLine(){
-        type = OP_DRAW_LINE;
+        type = EOpType.DRAW_LINE;
     }
 
     public OpDrawLine(float startX, float startY, float stopX, float stopY){
@@ -18,7 +18,7 @@ public class OpDrawLine extends OpDraw {
         this.startY =startY;
         this.stopX = stopX;
         this.startY = stopY;
-        type = OP_DRAW_LINE;
+        type = EOpType.DRAW_LINE;
     }
 
     @NonNull

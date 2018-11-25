@@ -76,6 +76,9 @@ public final class MsgConst {
         ROTATE_PIC,
         DRAG_PIC,
         DEL_PIC,
+
+
+        UNKNOWN,
     }
 
     public enum EmDcsType {

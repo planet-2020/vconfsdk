@@ -10,7 +10,7 @@ public class OpDrawOval extends OpDraw {
     private float bottom;
 
     public OpDrawOval(){
-        type = OP_DRAW_OVAL;
+        type = EOpType.DRAW_OVAL;
     }
 
     public OpDrawOval(float left, float top, float right, float bottom){
@@ -18,7 +18,7 @@ public class OpDrawOval extends OpDraw {
         this.top = top;
         this.right = right;
         this.bottom = bottom;
-        type = OP_DRAW_OVAL;
+        type = EOpType.DRAW_OVAL;
     }
 
     @NonNull

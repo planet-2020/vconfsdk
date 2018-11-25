@@ -17,7 +17,7 @@ public class OpUpdatePic extends OpPaint {
         this.boardId = boardId;
         this.picId = picId;
         this.pic = pic;
-        type = OP_UPDATE_PICTURE;
+        type = EOpType.UPDATE_PICTURE;
     }
 
     @NonNull

@@ -297,7 +297,7 @@ public final class MsgBeans {
         public float top;
         public float right;
         public float bottom;
-        DCOvalOp(){
+        public DCOvalOp(){
             left = 100;
             top = 100;
             right = 600;
@@ -316,7 +316,7 @@ public final class MsgBeans {
         public float top;
         public float right;
         public float bottom;
-        DCRectOp(){
+        public DCRectOp(){
             left = 100;
             top = 100;
             right = 600;
@@ -332,7 +332,7 @@ public final class MsgBeans {
 
     public static final class DCPathOp extends DCDrawOp{
         public PointF[] points;
-        DCPathOp(){
+        public DCPathOp(){
             points = new PointF[]{
                     new PointF(100, 600),
                     new PointF(350, 350),
@@ -366,7 +366,7 @@ public final class MsgBeans {
 
         public String[] matrixValue; // TODO 放缩及位置信息？
 
-        DCInertPicOp(){
+        public DCInertPicOp(){
             picId = "picId";
             matrixValue = new String[]{
                     "1","0","0",
@@ -392,7 +392,7 @@ public final class MsgBeans {
 
     public static final class DCDelPicOp extends DCPaintOp{
         public String[] picIds;
-        DCDelPicOp(){
+        public DCDelPicOp(){
             picIds = new String[]{"picId"};
             opType = EDcOpType.DEL_PIC;
         }
@@ -414,7 +414,7 @@ public final class MsgBeans {
         public float top;
         public float right;
         public float bottom;
-        DCRectEraseOp(){
+        public DCRectEraseOp(){
             left = 100;
             top = 400;
             right = 600;
@@ -430,7 +430,7 @@ public final class MsgBeans {
 
     public static final class DCFullScreenMatrixOp extends DCPaintOp{
         public String[] matrixValue;
-        DCFullScreenMatrixOp(){
+        public DCFullScreenMatrixOp(){
             matrixValue = new String[]{
                     "0.5","0","0",
                     "0","0.5","0",
@@ -497,16 +497,17 @@ public final class MsgBeans {
             }
         }
 
-        DCPaintOp(){
+        public DCPaintOp(){
             boardId = "boardId";
             confE164 = "confE164";
+            opType = EDcOpType.UNKNOWN;
         }
 
         @NonNull
         @Override
         public String toString() {
-            return String.format(" id=%s, confE164=%s, boardId=%s, pageId=%s, sn=%s, authorE164=%s, bCached=%s",
-                    id, confE164, boardId, pageId, sn, authorE164, bCached);
+            return String.format(" id=%s, opType=%s, confE164=%s, boardId=%s, pageId=%s, sn=%s, authorE164=%s, bCached=%s",
+                    id, opType, confE164, boardId, pageId, sn, authorE164, bCached);
         }
     }
 
@@ -537,7 +538,7 @@ public final class MsgBeans {
         public float stopX;
         public float startY;
         public float stopY;
-        DCLineOp(){
+        public DCLineOp(){
             startX = 100;
             startY = 100;
             stopX = 600;
@@ -558,7 +559,7 @@ public final class MsgBeans {
      * */
     public static class DCZoomOp extends DCPaintOp {
         public int percentage;   // 放缩百分比。100%为没有放缩，50%为缩小一半。
-        DCZoomOp(){
+        public DCZoomOp(){
             percentage = 80;
             opType = EDcOpType.FULLSCREEN;
         }
@@ -575,7 +576,7 @@ public final class MsgBeans {
     public static class DCScrollOp extends DCPaintOp {
         public float stopX;   //TODO 中心点？
         public float stopY;
-        DCScrollOp(){
+        public DCScrollOp(){
             stopX = 300;
             stopY = 300;
             opType = EDcOpType.FULLSCREEN;
@@ -591,7 +592,7 @@ public final class MsgBeans {
     /**拖拽图片*/
     public static final class DCDragPicOp extends DCPaintOp{
         public DCPicMatrix[] picMatrices;
-        DCDragPicOp(){
+        public DCDragPicOp(){
             picMatrices = new DCPicMatrix[]{
                     new DCPicMatrix("picId",
                             new String[]{"1","0","200",

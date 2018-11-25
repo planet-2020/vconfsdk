@@ -8,12 +8,12 @@ public class OpDrawPath extends OpDraw {
     private PointF[] points;
 
     public OpDrawPath(){
-        type = OP_DRAW_PATH;
+        type = EOpType.DRAW_PATH;
     }
 
     public OpDrawPath(PointF[] points){
         this.points = points;
-        type = OP_DRAW_PATH;
+        type = EOpType.DRAW_PATH;
     }
 
     @NonNull

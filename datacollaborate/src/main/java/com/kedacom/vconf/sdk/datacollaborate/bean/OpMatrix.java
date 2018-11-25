@@ -7,12 +7,12 @@ public class OpMatrix extends OpPaint {
     private float[] matrixValue;
 
     public OpMatrix(){
-        type = OP_MATRIX;
+        type = EOpType.FULLSCREEN_MATRIX;
     }
 
     public OpMatrix(float[] matrixValue){
         this.matrixValue = matrixValue;
-        type = OP_MATRIX;
+        type = EOpType.FULLSCREEN_MATRIX;
     }
 
     @NonNull
