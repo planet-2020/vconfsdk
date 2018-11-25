@@ -1,8 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
-import com.kedacom.vconf.sdk.base.MsgBeans;
+import static com.kedacom.vconf.sdk.base.MsgBeans.*;
 import static com.kedacom.vconf.sdk.base.MsgConst.*;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen; // TODO 改为static
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw;
@@ -22,24 +22,25 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+@SuppressWarnings("WeakerAccess")
 final class ToDoConverter {
 
-    public static OpPaint fromTransferObj(MsgBeans.DCPaintOp transferObj) {
+    public static OpPaint fromTransferObj(DCPaintOp transferObj) {
         switch (transferObj.opType){
             case DRAW_LINE:
-                return fromTransferObj((MsgBeans.DCLineOp)transferObj);
+                return fromTransferObj((DCLineOp)transferObj);
             case DRAW_RECT:
-                return fromTransferObj((MsgBeans.DCRectOp)transferObj);
+                return fromTransferObj((DCRectOp)transferObj);
             case DRAW_OVAL:
-                return fromTransferObj((MsgBeans.DCOvalOp)transferObj);
+                return fromTransferObj((DCOvalOp)transferObj);
             case DRAW_PATH:
-                return fromTransferObj((MsgBeans.DCPathOp)transferObj);
+                return fromTransferObj((DCPathOp)transferObj);
             case INSERT_PIC:
-                return fromTransferObj((MsgBeans.DCInertPicOp)transferObj);
+                return fromTransferObj((DCInertPicOp)transferObj);
             case DEL_PIC:
-                return fromTransferObj((MsgBeans.DCDelPicOp)transferObj);
+                return fromTransferObj((DCDelPicOp)transferObj);
             case DRAG_PIC:
-                return fromTransferObj((MsgBeans.DCDragPicOp)transferObj);
+                return fromTransferObj((DCDragPicOp)transferObj);
             case ZOOM_PIC:
             case ROTATE_PIC:
             case RIGHT_ROTATE:
@@ -58,16 +59,16 @@ final class ToDoConverter {
                 assignPaintDomainObj(transferObj, opClearScreen);
                 return opClearScreen;
             case RECT_ERASE:
-                return fromTransferObj((MsgBeans.DCRectEraseOp)transferObj);
+                return fromTransferObj((DCRectEraseOp)transferObj);
             case FULLSCREEN:
-                return fromTransferObj((MsgBeans.DCFullScreenMatrixOp)transferObj);
+                return fromTransferObj((DCFullScreenMatrixOp)transferObj);
             default:
                 return null;
         }
     }
 
 
-    public static MsgBeans.DCPaintOp toTransferObj(OpPaint domainObj) {
+    public static DCPaintOp toTransferObj(OpPaint domainObj) {
         switch (domainObj.getType()){
             case DRAW_LINE:
                 return toTransferObj((OpDrawLine)domainObj);
@@ -102,7 +103,7 @@ final class ToDoConverter {
 
 
 
-    public static OpDrawLine fromTransferObj(MsgBeans.DCLineOp dcLineOp) {
+    public static OpDrawLine fromTransferObj(DCLineOp dcLineOp) {
         OpDrawLine opDrawLine = new OpDrawLine();
         assignDrawDomainObj(dcLineOp, opDrawLine);
         opDrawLine.setStartX(dcLineOp.startX);
@@ -112,7 +113,7 @@ final class ToDoConverter {
         return opDrawLine;
     }
 
-    public static OpDrawRect fromTransferObj(MsgBeans.DCRectOp dcRectOp) {
+    public static OpDrawRect fromTransferObj(DCRectOp dcRectOp) {
         OpDrawRect opDrawRect = new OpDrawRect();
         assignDrawDomainObj(dcRectOp, opDrawRect);
         opDrawRect.setLeft(dcRectOp.left);
@@ -122,7 +123,7 @@ final class ToDoConverter {
         return opDrawRect;
     }
 
-    public static OpDrawOval fromTransferObj(MsgBeans.DCOvalOp dcOvalOp) {
+    public static OpDrawOval fromTransferObj(DCOvalOp dcOvalOp) {
         OpDrawOval opDrawOval = new OpDrawOval();
         assignDrawDomainObj(dcOvalOp, opDrawOval);
         opDrawOval.setLeft(dcOvalOp.left);
@@ -132,14 +133,14 @@ final class ToDoConverter {
         return opDrawOval;
     }
 
-    public static OpDrawPath fromTransferObj(MsgBeans.DCPathOp dcPathOp) {
+    public static OpDrawPath fromTransferObj(DCPathOp dcPathOp) {
         OpDrawPath opDrawPath = new OpDrawPath();
         assignDrawDomainObj(dcPathOp, opDrawPath);
         opDrawPath.setPoints(dcPathOp.points);
         return opDrawPath;
     }
 
-    public static OpInsertPic fromTransferObj(MsgBeans.DCInertPicOp dcInertPicOp) {
+    public static OpInsertPic fromTransferObj(DCInertPicOp dcInertPicOp) {
         OpInsertPic opInsertPic = new OpInsertPic();
         assignPaintDomainObj(dcInertPicOp, opInsertPic);
         opInsertPic.setPicId(dcInertPicOp.picId);
@@ -152,36 +153,36 @@ final class ToDoConverter {
         return opInsertPic;
     }
 
-    public static OpDeletePic fromTransferObj(MsgBeans.DCDelPicOp dcDelPicOp) {
+    public static OpDeletePic fromTransferObj(DCDelPicOp dcDelPicOp) {
         OpDeletePic opDeletePic = new OpDeletePic();
         assignPaintDomainObj(dcDelPicOp, opDeletePic);
         opDeletePic.setPicIds(dcDelPicOp.picIds);
         return opDeletePic;
     }
 
-    public static OpDragPic fromTransferObj(MsgBeans.DCDragPicOp dcDragPicOp) {
+    public static OpDragPic fromTransferObj(DCDragPicOp dcDragPicOp) {
         OpDragPic opDragPic = new OpDragPic();
         assignPaintDomainObj(dcDragPicOp, opDragPic);
         Map<String, float[]> picMatrices = new HashMap<>();
-        for (MsgBeans.DCPicMatrix picMatrix : dcDragPicOp.picMatrices){
+        for (DCPicMatrix picMatrix : dcDragPicOp.picMatrices){
             picMatrices.put(picMatrix.picId, matrixValueStr2Float(picMatrix.matrixValue));
         }
         opDragPic.setPicMatrices(picMatrices);
         return opDragPic;
     }
 
-//    public static OpUpdatePic fromTransferObj(MsgBeans.DCLineOp lineOp) {
+//    public static OpUpdatePic fromTransferObj(DCLineOp lineOp) {
 //
 //    }
 
-    public static OpMatrix fromTransferObj(MsgBeans.DCFullScreenMatrixOp dcFullScreenMatrixOp) {
+    public static OpMatrix fromTransferObj(DCFullScreenMatrixOp dcFullScreenMatrixOp) {
         OpMatrix opMatrix = new OpMatrix();
         assignPaintDomainObj(dcFullScreenMatrixOp, opMatrix);
         opMatrix.setMatrixValue(matrixValueStr2Float(dcFullScreenMatrixOp.matrixValue));
         return opMatrix;
     }
 
-    public static OpRectErase fromTransferObj(MsgBeans.DCRectEraseOp dcRectEraseOp) {
+    public static OpRectErase fromTransferObj(DCRectEraseOp dcRectEraseOp) {
         OpRectErase opRectErase = new OpRectErase();
         assignPaintDomainObj(dcRectEraseOp, opRectErase);
         opRectErase.setLeft(dcRectEraseOp.left);
@@ -194,8 +195,8 @@ final class ToDoConverter {
 
 
 
-    public static MsgBeans.DCLineOp toTransferObj(OpDrawLine domainObj) {
-        MsgBeans.DCLineOp transferObj = new MsgBeans.DCLineOp();
+    public static DCLineOp toTransferObj(OpDrawLine domainObj) {
+        DCLineOp transferObj = new DCLineOp();
         assignDrawTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.DRAW_LINE;
         transferObj.startX = domainObj.getStartX();
@@ -205,8 +206,8 @@ final class ToDoConverter {
         return transferObj;
     }
 
-    public static MsgBeans.DCRectOp toTransferObj(OpDrawRect domainObj) {
-        MsgBeans.DCRectOp transferObj = new MsgBeans.DCRectOp();
+    public static DCRectOp toTransferObj(OpDrawRect domainObj) {
+        DCRectOp transferObj = new DCRectOp();
         assignDrawTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.DRAW_RECT;
         transferObj.left    = domainObj.getLeft();
@@ -216,8 +217,8 @@ final class ToDoConverter {
         return transferObj;
     }
 
-    public static MsgBeans.DCOvalOp toTransferObj(OpDrawOval domainObj) {
-        MsgBeans.DCOvalOp transferObj = new MsgBeans.DCOvalOp();
+    public static DCOvalOp toTransferObj(OpDrawOval domainObj) {
+        DCOvalOp transferObj = new DCOvalOp();
         assignDrawTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.DRAW_OVAL;
         transferObj.left    = domainObj.getLeft();
@@ -227,16 +228,16 @@ final class ToDoConverter {
         return transferObj;
     }
 
-    public static MsgBeans.DCPathOp toTransferObj(OpDrawPath domainObj) {
-        MsgBeans.DCPathOp transferObj = new MsgBeans.DCPathOp();
+    public static DCPathOp toTransferObj(OpDrawPath domainObj) {
+        DCPathOp transferObj = new DCPathOp();
         assignDrawTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.DRAW_PATH;
         transferObj.points = domainObj.getPoints();
         return transferObj;
     }
 
-    public static MsgBeans.DCInertPicOp toTransferObj(OpInsertPic domainObj) {
-        MsgBeans.DCInertPicOp transferObj = new MsgBeans.DCInertPicOp();
+    public static DCInertPicOp toTransferObj(OpInsertPic domainObj) {
+        DCInertPicOp transferObj = new DCInertPicOp();
         assignPaintTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.INSERT_PIC;
         transferObj.picId = domainObj.getPicId();
@@ -249,36 +250,36 @@ final class ToDoConverter {
         return transferObj;
     }
 
-    public static MsgBeans.DCDelPicOp toTransferObj(OpDeletePic domainObj) {
-        MsgBeans.DCDelPicOp transferObj = new MsgBeans.DCDelPicOp();
+    public static DCDelPicOp toTransferObj(OpDeletePic domainObj) {
+        DCDelPicOp transferObj = new DCDelPicOp();
         assignPaintTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.DEL_PIC;
         transferObj.picIds = domainObj.getPicIds();
         return transferObj;
     }
 
-    public static MsgBeans.DCDragPicOp toTransferObj(OpDragPic domainObj) {
-        MsgBeans.DCDragPicOp transferObj = new MsgBeans.DCDragPicOp();
+    public static DCDragPicOp toTransferObj(OpDragPic domainObj) {
+        DCDragPicOp transferObj = new DCDragPicOp();
         assignPaintTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.DRAG_PIC;
-        ArrayList list = new ArrayList<MsgBeans.DCPicMatrix>();
+        ArrayList list = new ArrayList<DCPicMatrix>();
         for (String picId : domainObj.getPicMatrices().keySet()){
-            list.add(new MsgBeans.DCPicMatrix(picId, matrixValueFloat2Str(domainObj.getPicMatrices().get(picId))));
+            list.add(new DCPicMatrix(picId, matrixValueFloat2Str(domainObj.getPicMatrices().get(picId))));
         }
-        transferObj.picMatrices = (MsgBeans.DCPicMatrix[]) list.toArray();
+        transferObj.picMatrices = (DCPicMatrix[]) list.toArray();
         return transferObj;
     }
 
-    public static MsgBeans.DCFullScreenMatrixOp toTransferObj(OpMatrix domainObj) {
-        MsgBeans.DCFullScreenMatrixOp transferObj = new MsgBeans.DCFullScreenMatrixOp();
+    public static DCFullScreenMatrixOp toTransferObj(OpMatrix domainObj) {
+        DCFullScreenMatrixOp transferObj = new DCFullScreenMatrixOp();
         assignPaintTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.FULLSCREEN;
         transferObj.matrixValue = matrixValueFloat2Str(domainObj.getMatrixValue());
         return transferObj;
     }
 
-    public static MsgBeans.DCRectEraseOp toTransferObj(OpRectErase domainObj) {
-        MsgBeans.DCRectEraseOp transferObj = new MsgBeans.DCRectEraseOp();
+    public static DCRectEraseOp toTransferObj(OpRectErase domainObj) {
+        DCRectEraseOp transferObj = new DCRectEraseOp();
         assignPaintTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.RECT_ERASE;
         transferObj.left = domainObj.getLeft();
@@ -288,22 +289,22 @@ final class ToDoConverter {
         return transferObj;
     }
 
-    public static MsgBeans.DCPaintOp toTransferObj(OpClearScreen domainObj) {
-        MsgBeans.DCPaintOp transferObj = new MsgBeans.DCPaintOp();
+    public static DCPaintOp toTransferObj(OpClearScreen domainObj) {
+        DCPaintOp transferObj = new DCPaintOp();
         assignPaintTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.CLEAR_SCREEN;
         return transferObj;
     }
 
-    public static MsgBeans.DCPaintOp toTransferObj(OpUndo domainObj) {
-        MsgBeans.DCPaintOp transferObj = new MsgBeans.DCPaintOp();
+    public static DCPaintOp toTransferObj(OpUndo domainObj) {
+        DCPaintOp transferObj = new DCPaintOp();
         assignPaintTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.UNDO;
         return transferObj;
     }
 
-    public static MsgBeans.DCPaintOp toTransferObj(OpRedo domainObj) {
-        MsgBeans.DCPaintOp transferObj = new MsgBeans.DCPaintOp();
+    public static DCPaintOp toTransferObj(OpRedo domainObj) {
+        DCPaintOp transferObj = new DCPaintOp();
         assignPaintTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.REDO;
         return transferObj;
@@ -311,26 +312,26 @@ final class ToDoConverter {
 
 
 
-    public static void assignPaintDomainObj(MsgBeans.DCPaintOp transferObj, OpPaint domainObj){
+    public static void assignPaintDomainObj(DCPaintOp transferObj, OpPaint domainObj){
         domainObj.setConfE164(transferObj.confE164);
         domainObj.setBoardId(transferObj.boardId);
         domainObj.setPageId(transferObj.pageId);
     }
 
-    public static void assignDrawDomainObj(MsgBeans.DCDrawOp transferObj, OpDraw domainObj){
+    public static void assignDrawDomainObj(DCDrawOp transferObj, OpDraw domainObj){
         assignPaintDomainObj(transferObj, domainObj);
         domainObj.setStrokeWidth(transferObj.strokeWidth);
         domainObj.setColor(transferObj.color);
     }
 
-    public static void assignPaintTransferObj(OpPaint domainObj, MsgBeans.DCPaintOp transferObj){
+    public static void assignPaintTransferObj(OpPaint domainObj, DCPaintOp transferObj){
         transferObj.id = "todo";// TODO;
         transferObj.confE164 = domainObj.getConfE164();
         transferObj.boardId = domainObj.getBoardId();
         transferObj.pageId = domainObj.getPageId();
     }
 
-    public static void assignDrawTransferObj(OpDraw domainObj, MsgBeans.DCDrawOp transferObj){
+    public static void assignDrawTransferObj(OpDraw domainObj, DCDrawOp transferObj){
         assignPaintTransferObj(domainObj, transferObj);
         transferObj.strokeWidth = domainObj.getStrokeWidth();
         transferObj.color = domainObj.getColor();
