@@ -25,23 +25,24 @@ import java.util.Set;
 
 public class DataCollaborateManager extends RequestAgent {
 
-    // 是否正在接收批量上报的操作
-    private boolean isRecvingBatchOps = false;
+    // 是否正在同步当前数据协作中的操作
+    private boolean isSynchronizing = false;
 
-    /*批量操作缓存。
-    批量上报的操作到达的时序可能跟操作的实际时序不相符，平台特意为此加了序列号字段，
-    此处我们使用PriorityQueue结合该序列号字段来为我们自动排序。*/
-    private PriorityQueue<MsgBeans.DCPaintOp> batchOps = new PriorityQueue<>();
+    /*同步过程中缓存的操作*/
+    private PriorityQueue<MsgBeans.DCPaintOp> cachedOps = new PriorityQueue<>();
 
     //当前数据协作会议的e164
     private String curDcConfE164;
 
+    // 画板相关通知
     private static final Msg[] boardOpNtfs = new Msg[]{
             Msg.DCCurrentBoardNtf,
             Msg.DCBoardCreatedNtf,
             Msg.DCBoardSwitchedNtf,
             Msg.DCBoardDeletedNtf,
     };
+
+    // 绘制相关通知
     private static final Msg[] paintOpNtfs = new Msg[]{
             Msg.DCElementBeginNtf,
             Msg.DCLineDrawnNtf,
@@ -169,7 +170,7 @@ public class DataCollaborateManager extends RequestAgent {
                 cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCCreateConfRsp上来，取消该请求以防等待超时。
                 listener.onResponse(CommonResultCode.FAILED, null);
             }
-        }else if (Msg.DCConfCreated.equals(rspId)){
+        }else if (Msg.DCConfCreated.equals(rspId)){ // 创建数据协作会收到该消息，加入也会收到
             MsgBeans.DCCreateConfResult createConfResult = (MsgBeans.DCCreateConfResult) rspContent;
             curDcConfE164 = createConfResult.confE164;
             if (null != listener){
@@ -333,37 +334,34 @@ public class DataCollaborateManager extends RequestAgent {
     private void onBoardNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         IOnBoardOpListener onBoardOpListener;
-        MsgBeans.DCBoard board;
+        MsgBeans.DCBoard board = (MsgBeans.DCBoard) ntfContent;
         for (Object listener : listeners) {
             onBoardOpListener = (IOnBoardOpListener) listener;
             if (Msg.DCCurrentBoardNtf.equals(ntfId)) {
-                board = (MsgBeans.DCBoard) ntfContent;
                 onBoardOpListener.onBoardSwitched(board.id);
             } else if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
-                board = (MsgBeans.DCBoard) ntfContent;
                 onBoardOpListener.onBoardCreated(new BoardInfo(board.id, board.name));
             } else if (Msg.DCBoardSwitchedNtf.equals(ntfId)) {
-                board = (MsgBeans.DCBoard) ntfContent;
                 onBoardOpListener.onBoardSwitched(board.id);
-                // 下载当前画板已有的图元操作。NOTE:下载过程中可能有其他画板比如画板2的操作board2_ops也上报上来，然后切到画板2时又要批量下载已有图元，这时批量下载的操作时序上应该在board2_ops前面，但接收到的时序恰好相反，记得处理这种情形。
-                /* NOTE:对于下载下来的图片相关的操作，如插入图片、删除图片等，并不包含图片文件本身。
-                要获取图片文件本身，需在后续专门下载。*/
-                req(Msg.DCDownload,
-                        new MsgBeans.DownloadPara(board.id, board.elementUrl),
-                        null);  // TODO DcsSwitch_Ntf可以有多次，而下载只应该一次。在DcsCurrentWhiteBoard_Ntf中做？实测抓消息。
             } else if (Msg.DCBoardDeletedNtf.equals(ntfId)) {
-                board = (MsgBeans.DCBoard) ntfContent;
                 onBoardOpListener.onBoardDeleted(board.id);
             }
         }
+        // 下载当前画板已有的图元操作。NOTE:下载过程中可能有其他画板比如画板2的操作board2_ops也上报上来，然后切到画板2时又要批量下载已有图元，这时批量下载的操作时序上应该在board2_ops前面，但接收到的时序恰好相反，记得处理这种情形。
+                /* NOTE:对于下载下来的图片相关的操作，如插入图片、删除图片等，并不包含图片文件本身。
+                要获取图片文件本身，需在后续专门下载。*/
+        if (Msg.DCBoardCreatedNtf.equals(ntfId)) { // TODO 确定是不是这条消息
+            req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), null);  // TODO DcsSwitch_Ntf可以有多次，而下载只应该一次。在DcsCurrentWhiteBoard_Ntf中做？实测抓消息。
+        }
+
     }
 
     private Handler handler = new Handler();
     private final Runnable batchOpTimeout = () -> {
         KLog.p(KLog.ERROR,"wait batch paint ops timeout <<<<<<<<<<<<<<<<<<<<<<<");
         Set<Object> listeners = getNtfListeners(Msg.DCElementBeginNtf);
-        while (!batchOps.isEmpty()) {
-            OpPaint op = ToDoConverter.fromTransferObj(batchOps.poll());
+        while (!cachedOps.isEmpty()) {
+            OpPaint op = ToDoConverter.fromTransferObj(cachedOps.poll());
             if (null != op) {
                 for (Object listener : listeners) {
                     ((IOnPaintOpListener) listener).onPaintOp(op);
@@ -371,35 +369,35 @@ public class DataCollaborateManager extends RequestAgent {
             }
         }
 
-        isRecvingBatchOps = false;
+        isSynchronizing = false;
     };
     @SuppressWarnings("ConstantConditions")
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         switch (ntfId){
             case DCElementBeginNtf:
-                if (isRecvingBatchOps) {  // TODO 多个画板切换会有多个DcsElementOperBegin_Ntf，此处应该要分boardId处理；另外在DcsElementOperBegin_Ntf之前就有可能有新的操作过来，或许要在开始download的时候就开启isRecvingBatchOps
+                if (isSynchronizing) {  // TODO 多个画板切换会有多个DcsElementOperBegin_Ntf，此处应该要分boardId处理；另外在DcsElementOperBegin_Ntf之前就有可能有新的操作过来，或许要在开始download的时候就开启isRecvingBatchOps
                     return;
                 }
                 KLog.p("batch paint ops >>>>>>>>>>>>>>>>>>>>>>");
-                isRecvingBatchOps = true;
+                isSynchronizing = true;
                 handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
                 break;
             case DCElementEndNtf:
-                if (!isRecvingBatchOps) {
+                if (!isSynchronizing) {
                     return;
                 }
                 KLog.p("batch paint ops <<<<<<<<<<<<<<<<<<<<<<<");
                 handler.removeCallbacks(batchOpTimeout);
-                while (!batchOps.isEmpty()) {
-                    OpPaint opPaint = ToDoConverter.fromTransferObj(batchOps.poll());
+                while (!cachedOps.isEmpty()) {
+                    OpPaint opPaint = ToDoConverter.fromTransferObj(cachedOps.poll());
                     if (null != opPaint) {
                         for (Object listener : listeners) {
                             ((IOnPaintOpListener) listener).onPaintOp(opPaint); // TODO 需要区分boardId。需要记录每个boardId是否已经下载批量操作对于尚未下载的先缓存
                         }
                     }
                 }
-                isRecvingBatchOps = false;
+                isSynchronizing = false;
                 break;
             case DCPicInsertedNtf:
                 req(Msg.DCQueryPicUrl,
@@ -408,8 +406,8 @@ public class DataCollaborateManager extends RequestAgent {
             default:
                 if (ntfContent instanceof MsgBeans.DCPaintOp) {
                     MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
-                    if (isRecvingBatchOps) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
-                        batchOps.offer(dcPaintOp);
+                    if (isSynchronizing) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
+                        cachedOps.offer(dcPaintOp);
                     } else {
                         OpPaint paintOp = ToDoConverter.fromTransferObj(dcPaintOp);
                         if (null != paintOp) {
