@@ -131,6 +131,9 @@ public class DefaultPainter implements IPainter {
         switch (op.getType()){
             case INSERT_PICTURE:
                 picRenderOps.offerLast(op);
+                if (null == ((OpInsertPic)op).getPic()){
+                    refresh = false; // 图片为空不需刷新界面（图片可能正在下载）
+                }
                 break;
 
             case DELETE_PICTURE:

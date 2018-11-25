@@ -10,18 +10,6 @@ import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.CommonResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
@@ -288,43 +276,44 @@ public class DataCollaborateManager extends RequestAgent {
         if (null != listener){
             // 下载的是图片
             OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
-            IOnPaintOpListener onPaintOpListener = ((DownloadListener)listener).onPaintOpListener; // TODO 能不能自适应activity生命周期？
-            KLog.p("download pic finished, onPaintOpListener=%s", onPaintOpListener);
-            if (null != onPaintOpListener){
-                onPaintOpListener.onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+            Set<Object> onPaintOpListeners = ((DownloadListener)listener).onPaintOpListeners; // TODO 能不能自适应activity生命周期？
+            KLog.p("download pic finished, onPaintOpListeners=%s", onPaintOpListeners);
+            for (Object onPaintOpListener : onPaintOpListeners){
+                ((IOnPaintOpListener)onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
             }
 
         }else{
             pushCachedOps();
         }
+        return;
 
 
 
-        if (!result.bPic){
-            /* 下载的是图元（而非图片本身）。
-            * 后续会批量上报当前画板已有的图元：
-            * DcsElementOperBegin_Ntf // 批量上报开始
-            * ...  // 批量图元，如画线、画圆、插入图片等等
-            *
-            * ...ElementShouldAfterFinal  // 应该在该批次图元之后出现的图元。
-            *                                NOTE: 批量上报过程中可能会混入画板中当前正在进行的操作，
-            *                                这会导致图元上报的时序跟实际时序不一致，需要自行处理。
-            *                                （实际时序应该是：在成功响应下载请求后的所有后续进行的操作都应出现在DcsElementOperFinal_Ntf之后）
-            * ...// 批量图元
-            * DcsElementOperFinal_Ntf // 批量结束
-            *
-            *
-            * */
-            return;
-        }
-
-        // 下载的是图片
-        OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
-        IOnPaintOpListener onPaintOpListener = ((DownloadListener)listener).onPaintOpListener; // TODO 能不能自适应activity生命周期？
-        KLog.p("download pic finished, onPaintOpListener=%s", onPaintOpListener);
-        if (null != onPaintOpListener){
-            onPaintOpListener.onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
-        }
+//        if (!result.bPic){
+//            /* 下载的是图元（而非图片本身）。
+//            * 后续会批量上报当前画板已有的图元：
+//            * DcsElementOperBegin_Ntf // 批量上报开始
+//            * ...  // 批量图元，如画线、画圆、插入图片等等
+//            *
+//            * ...ElementShouldAfterFinal  // 应该在该批次图元之后出现的图元。
+//            *                                NOTE: 批量上报过程中可能会混入画板中当前正在进行的操作，
+//            *                                这会导致图元上报的时序跟实际时序不一致，需要自行处理。
+//            *                                （实际时序应该是：在成功响应下载请求后的所有后续进行的操作都应出现在DcsElementOperFinal_Ntf之后）
+//            * ...// 批量图元
+//            * DcsElementOperFinal_Ntf // 批量结束
+//            *
+//            *
+//            * */
+//            return;
+//        }
+//
+//        // 下载的是图片
+//        OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
+//        Set<Object> onPaintOpListeners = ((DownloadListener)listener).onPaintOpListeners; // TODO 能不能自适应activity生命周期？
+//        KLog.p("download pic finished, onPaintOpListeners=%s", onPaintOpListeners);
+//        for (Object onPaintOpListener : onPaintOpListeners){
+//            ((IOnPaintOpListener)onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+//        }
     }
 
 
@@ -412,7 +401,10 @@ public class DataCollaborateManager extends RequestAgent {
                 }
                 isRecvingBatchOps = false;
                 break;
-
+            case DCPicInsertedNtf:
+                req(Msg.DCQueryPicUrl,
+                        new MsgBeans.DCQueryPicUrlPara("picId", "confE164", "boardId", 1),
+                        new DownloadListener(listeners)); // FIXME DownloadListener还能感知原来listener宿主的生命周期吗？要怎么才能做到感知呢？
             default:
                 if (ntfContent instanceof MsgBeans.DCPaintOp) {
                     MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
@@ -431,72 +423,6 @@ public class DataCollaborateManager extends RequestAgent {
                 break;
         }
 
-
-//
-//        OpPaint paintOp = null;
-//        for (Object listener : listeners) {
-//            if (Msg.DCElementBeginNtf.equals(ntfId)) {
-//                if (isRecvingBatchOps) {  // TODO 多个画板切换会有多个DcsElementOperBegin_Ntf，此处应该要分boardId处理；另外在DcsElementOperBegin_Ntf之前就有可能有新的操作过来，或许要在开始download的时候就开启isRecvingBatchOps
-//                    return;
-//                }
-//                KLog.p("batch paint ops >>>>>>>>>>>>>>>>>>>>>>");
-//                isRecvingBatchOps = true;
-//                handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
-//                return;
-//            } else if (Msg.DCElementEndNtf.equals(ntfId)) {
-//                if (!isRecvingBatchOps) {
-//                    return;
-//                }
-//                KLog.p("batch paint ops <<<<<<<<<<<<<<<<<<<<<<<");
-//                handler.removeCallbacks(batchOpTimeout);
-//                while (!batchOps.isEmpty()) {
-//                    ((IOnPaintOpListener)listener).onPaintOp(batchOps.poll()); // TODO 需要区分boardId。需要记录每个boardId是否已经下载批量操作对于尚未下载的先缓存
-//                }
-//                isRecvingBatchOps = false;
-//                return;
-//            }
-//            else {
-//                MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
-//                if (Msg.DCLineDrawnNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawLine.class);
-//                } else if (Msg.DCOvalDrawnNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawOval.class);
-//                } else if (Msg.DCRectDrawnNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawRect.class);
-//                } else if (Msg.DCPathDrawnNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDrawPath.class);
-//                } else if (Msg.DCPicInsertedNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpInsertPic.class); // NOTE: 此时图片还未下载到本地，先置空，等下载完成后再更新
-//                    // 获取图片下载地址（然后再下载图片）
-//                    KLog.p("start download pic, onPaintOpListener=%s", listener);
-//                    req(Msg.DCQueryPicUrl,
-//                            new MsgBeans.DCQueryPicUrlPara("picId", "confE164", "boardId", 1),
-//                            new DownloadListener((IOnPaintOpListener) listener)); // FIXME DownloadListener还能感知原来listener宿主的生命周期吗？要怎么才能做到感知呢？
-//                } else if (Msg.DCPicDraggedNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDragPic.class);
-//                } else if (Msg.DCPicDeletedNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpDeletePic.class);
-//                } else if (Msg.DCRectErasedNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpRectErase.class);
-//                } else if (Msg.DCFullScreenMatrixOpNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpMatrix.class);
-//                } else if (Msg.DCUndoneNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpUndo.class);
-//                } else if (Msg.DCRedoneNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpRedo.class);
-//                } else if (Msg.DCScreenClearedNtf.equals(ntfId)) {
-//                    paintOp = ToDoConverter.fromTransferObj(dcPaintOp, OpClearScreen.class);
-//                }
-//            }
-//
-//            if (isRecvingBatchOps) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
-//                batchOps.offer(paintOp);
-//            } else {
-//                if (null != paintOp)
-//                    ((IOnPaintOpListener)listener).onPaintOp(paintOp);
-//            }
-
-//        }
     }
 
 
@@ -527,9 +453,9 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     private class DownloadListener implements IResponseListener{
-        private IOnPaintOpListener onPaintOpListener;
-        DownloadListener(IOnPaintOpListener onPaintOpListener){
-            this.onPaintOpListener = onPaintOpListener;
+        private Set<Object> onPaintOpListeners;
+        DownloadListener(Set<Object> listeners){
+            onPaintOpListeners = listeners;
         }
 
         @Override
