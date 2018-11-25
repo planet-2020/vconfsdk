@@ -6,6 +6,7 @@ import android.os.Handler;
 import com.kedacom.vconf.sdk.base.IResponseListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
+import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.CommonResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
@@ -406,6 +407,20 @@ public class DataCollaborateManager extends RequestAgent {
             default:
                 if (ntfContent instanceof MsgBeans.DCPaintOp) {
                     MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
+//
+//                    // FIXME just for debug
+//                    switch (ntfId){
+//                        case DCUndoneNtf:
+//                            dcPaintOp.opType = MsgConst.EDcOpType.UNDO;
+//                            break;
+//                        case DCRedoneNtf:
+//                            dcPaintOp.opType = MsgConst.EDcOpType.REDO;
+//                            break;
+//                        case DCScreenClearedNtf:
+//                            dcPaintOp.opType = MsgConst.EDcOpType.CLEAR_SCREEN;
+//                            break;
+//                    }
+
                     if (isSynchronizing) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
                         cachedOps.offer(dcPaintOp);
                     } else {

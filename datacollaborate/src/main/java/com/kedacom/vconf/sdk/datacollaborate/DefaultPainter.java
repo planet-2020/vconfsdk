@@ -204,7 +204,7 @@ public class DefaultPainter implements IPainter {
 
                         /* 只要不是redo或undo操作，被撤销操作缓存就得清空，因为此时redo操作已失效（
                         redo操作前面只能是redo操作或者undo操作），而撤销操作缓存仅供redo操作使用。*/
-                        KLog.p(KLog.WARN, "clean repealed ops");
+//                        KLog.p(KLog.WARN, "clean repealed ops");
                         shapeRepealedOps.clear();
 
                         shapeRenderOps.offerLast(op);
