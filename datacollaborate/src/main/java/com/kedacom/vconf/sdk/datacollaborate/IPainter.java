@@ -37,6 +37,17 @@ public interface IPainter {
     /**获取当前画板*/
     IPaintBoard getCurrentPaintBoard();
 
+    /**开始绘制*/
+    default void start(){}
+
+    /**暂停绘制*/
+    default void pause(){}
+
+    /**继续绘制*/
+    default void resume(){}
+
+    /**停止绘制*/
+    default void stop(){}
 
     /**绘制*/
     void paint(OpPaint op);
