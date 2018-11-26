@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -33,6 +34,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 
+import androidx.annotation.NonNull;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.LifecycleOwner;
+
 public class DefaultPainter implements IPainter {
 
     private Map<String, DefaultPaintBoard> paintBoards = new HashMap<>();
@@ -43,8 +48,48 @@ public class DefaultPainter implements IPainter {
 
     private boolean needRender = false;
 
-    public DefaultPainter() {
+
+
+    public DefaultPainter(Context context) {
+        if (context instanceof LifecycleOwner){
+            ((LifecycleOwner)context).getLifecycle().addObserver(new DefaultLifecycleObserver(){
+                @Override
+                public void onStart(@NonNull LifecycleOwner owner) {
+
+                }
+
+                @Override
+                public void onResume(@NonNull LifecycleOwner owner) {
+
+                }
+
+                @Override
+                public void onPause(@NonNull LifecycleOwner owner) {
+
+                }
+
+                @Override
+                public void onStop(@NonNull LifecycleOwner owner) {
+
+                }
+
+                @Override
+                public void onDestroy(@NonNull LifecycleOwner owner) {
+                    if (renderThread.isAlive()) {
+                        renderThread.interrupt();
+                    }
+                }
+            });
+        }
+
         renderThread.start();
+    }
+
+    @Override
+    public void stop() {
+        if (renderThread.isAlive()) {
+            renderThread.interrupt();
+        }
     }
 
     @Override

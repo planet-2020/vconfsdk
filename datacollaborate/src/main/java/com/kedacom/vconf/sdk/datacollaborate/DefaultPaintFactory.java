@@ -14,7 +14,7 @@ public class DefaultPaintFactory implements IPaintFactory {
 
     @Override
     public IPainter createPainter() {
-        return new DefaultPainter();
+        return new DefaultPainter(context);
     }
 
     @Override

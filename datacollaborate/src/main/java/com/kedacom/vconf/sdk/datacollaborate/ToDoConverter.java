@@ -262,7 +262,7 @@ final class ToDoConverter {
         DCDragPicOp transferObj = new DCDragPicOp();
         assignPaintTransferObj(domainObj, transferObj);
         transferObj.opType = EDcOpType.DRAG_PIC;
-        ArrayList list = new ArrayList<DCPicMatrix>();
+        ArrayList<DCPicMatrix> list = new ArrayList<>();
         for (String picId : domainObj.getPicMatrices().keySet()){
             list.add(new DCPicMatrix(picId, matrixValueFloat2Str(domainObj.getPicMatrices().get(picId))));
         }

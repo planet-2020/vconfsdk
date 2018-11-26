@@ -14,7 +14,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-class ListenerLifecycleObserver implements DefaultLifecycleObserver {
+public class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
     private Callback cb;
     private Map<LifecycleOwner, Set<Object>> ownerEnclosedListeners;
@@ -166,7 +166,7 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
         void act(Object listener);
     }
 
-    interface Callback{
+    public interface Callback{
         default void onListenerResumed(Object listener){}
         default void onListenerPause(Object listener){}
         default void onListenerStop(Object listener) {}
