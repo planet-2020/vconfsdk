@@ -140,7 +140,7 @@ public final class Witch {
 
         }else if (FeedbackBundle.RSP_TIMEOUT == type){
 
-            onFeedbackListener.onFeedbackTimeout(feedbackBundle.msgId, feedbackBundle.reqSn);
+            onFeedbackListener.onFeedbackTimeout(feedbackBundle.reqId, feedbackBundle.reqSn);
 
         }else if (FeedbackBundle.NTF == type){
 
