@@ -23,7 +23,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     private ListenerLifecycleObserver.Callback listenerLifecycleCallback = new ListenerLifecycleObserver.Callback(){
         @Override
         public void onListenerResumed(Object listener) { // 该事件是粘滞的，即便activity已经resume很久了，然后才注册生命周期观察者也会收到该事件。
-            KLog.p(""+ listener);
+//            KLog.p(""+ listener);
         }
 
         @Override

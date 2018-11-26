@@ -44,9 +44,11 @@ public class DefaultPainter implements IPainter {
 
     private String curBoardId;
 
-    private Paint paint = new Paint();  // TODO 不需要
+    private Paint paint = new Paint();
 
-    private boolean needRender = false;
+    private boolean bNeedRender = false;
+
+    private boolean bPaused = false;
 
 
 
@@ -54,35 +56,52 @@ public class DefaultPainter implements IPainter {
         if (context instanceof LifecycleOwner){
             ((LifecycleOwner)context).getLifecycle().addObserver(new DefaultLifecycleObserver(){
                 @Override
-                public void onStart(@NonNull LifecycleOwner owner) {
-
+                public void onCreate(@NonNull LifecycleOwner owner) {
+                    start();
                 }
 
                 @Override
                 public void onResume(@NonNull LifecycleOwner owner) {
-
+                    resume();
                 }
 
                 @Override
                 public void onPause(@NonNull LifecycleOwner owner) {
-
-                }
-
-                @Override
-                public void onStop(@NonNull LifecycleOwner owner) {
-
+                    pause();
                 }
 
                 @Override
                 public void onDestroy(@NonNull LifecycleOwner owner) {
-                    if (renderThread.isAlive()) {
-                        renderThread.interrupt();
-                    }
+                    stop();
                 }
             });
         }
 
+    }
+
+    @Override
+    public void start() {
+        if (renderThread.isAlive()){
+            return;
+        }
         renderThread.start();
+    }
+
+    @Override
+    public void pause() {
+        bPaused = true;
+    }
+
+    @Override
+    public void resume() {
+        bPaused = false;
+        synchronized (renderThread) {
+            bNeedRender = true;
+            if (Thread.State.WAITING == renderThread.getState()) {
+                KLog.p(KLog.WARN, "notify");
+                renderThread.notify();
+            }
+        }
     }
 
     @Override
@@ -281,7 +300,7 @@ public class DefaultPainter implements IPainter {
 
         if (refresh) {
             synchronized (renderThread) {
-                needRender = true;
+                bNeedRender = true;
                 if (Thread.State.WAITING == renderThread.getState()) {
                     KLog.p(KLog.WARN, "notify");
                     renderThread.notify();
@@ -337,14 +356,17 @@ public class DefaultPainter implements IPainter {
 
                 synchronized (this) {
                     try {
-                        if (!needRender) {
+                        if (!bNeedRender) {
                             KLog.p("waiting...");
                             wait();
                             KLog.p("resume run");
                         }
-                        needRender = false;
+                        bNeedRender = false;
+                        if (bPaused){
+                            KLog.p("paused");
+                            continue;
+                        }
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
                         KLog.p(KLog.WARN, "quit renderThread");
                         return;
                     }
@@ -373,7 +395,7 @@ public class DefaultPainter implements IPainter {
                 synchronized (this){
                     /* 从被唤醒到运行至此可能有新的操作入队列（意味着needRender被重新置为true了），
                     接下来我们要开始遍历队列了，此处重新置needRender为false以避免下一轮无谓的重复刷新。*/
-                    needRender = false;
+                    bNeedRender = false;
                 }
 
                 // 图形绘制
