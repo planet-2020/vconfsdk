@@ -335,7 +335,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         rspProcessorMap.get(Msg.valueOf(reqId))
                 .process(Msg.Timeout, null, resultListener);
         if (null != resultListener){
-            resultListener.onResponse(CommonResultCode.TIMEOUT, null);
+            resultListener.onTimeout(); // TODO 如需子类控制该上报行为则可让process返回boolean表示是否处理完，没处理完则此处继续处理
         }
     }
 

@@ -8,9 +8,7 @@ import com.kedacom.vconf.sdk.base.AgentManager;
 import com.kedacom.vconf.sdk.base.IResponseListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
-import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
-import com.kedacom.vconf.sdk.base.CommonResultCode;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
@@ -62,6 +60,11 @@ public class DataCollaborateManager extends RequestAgent {
             Msg.DCScreenClearedNtf,
             Msg.DCElementEndNtf,
     };
+
+
+    public static final int ErrCode_Failed = -1;
+    public static final int ErrCode_BuildLink4LoginFailed = -2;
+    public static final int ErrCode_BuildLink4ConfFailed = -3;
 
 
     public static DataCollaborateManager getInstance() {
@@ -122,32 +125,39 @@ public class DataCollaborateManager extends RequestAgent {
     private void onSessionRsps(Msg rspId, Object rspContent, IResponseListener listener){
         KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
         MsgBeans.CommonResult result;
-        if (Msg.DCBuildLink4LoginRsp.equals(rspId)){
-            result = (MsgBeans.CommonResult) rspContent;
-            if (!result.bSuccess
-                    && null != listener){
-                cancelReq(Msg.DCLogin, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
-                listener.onResponse(CommonResultCode.FAILED, null);
-            }
-        }else if (Msg.DCLoginRsp.equals(rspId)){
-            result = (MsgBeans.CommonResult) rspContent;
-            if (null != listener){
-                if (result.bSuccess) {  // ??? 需要保存登录状态吗
-                    listener.onResponse(CommonResultCode.SUCCESS, null);
-                }else{
-                    listener.onResponse(CommonResultCode.FAILED, null);
+        switch (rspId){
+            case DCBuildLink4LoginRsp:
+                result = (MsgBeans.CommonResult) rspContent;
+                if (!result.bSuccess
+                        && null != listener){
+                    cancelReq(Msg.DCLogin, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
+                    listener.onFailed(ErrCode_BuildLink4LoginFailed);
                 }
-            }
-        }else if (Msg.DCLogoutRsp.equals(rspId)){
-            result = (MsgBeans.CommonResult) rspContent;
-            if (null != listener){
-                if (result.bSuccess){
-                    listener.onResponse(CommonResultCode.SUCCESS, rspContent);
-                }else{
-                    listener.onResponse(CommonResultCode.FAILED, rspContent);
+                break;
+
+            case DCLoginRsp:
+                result = (MsgBeans.CommonResult) rspContent;
+                if (null != listener){
+                    if (result.bSuccess) {  // ??? 需要保存登录状态吗
+                        listener.onSuccess(null);
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
                 }
-            }
+                break;
+
+            case DCLogoutRsp:
+                result = (MsgBeans.CommonResult) rspContent;
+                if (null != listener){
+                    if (result.bSuccess){
+                        listener.onSuccess(null);
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
+                }
+                break;
         }
+
     }
 
 
@@ -172,42 +182,48 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onConfOpRsps(Msg rspId, Object rspContent, IResponseListener listener){
         MsgBeans.CommonResult result;
-        if (Msg.DCBuildLink4ConfRsp.equals(rspId)){
-            result = (MsgBeans.CommonResult) rspContent;
-            if (!result.bSuccess
-                    && null != listener){
-                cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCCreateConfRsp上来，取消该请求以防等待超时。
-                listener.onResponse(CommonResultCode.FAILED, null);
-            }
-        }else if (Msg.DCConfCreated.equals(rspId)){ // 创建数据协作会收到该消息，加入也会收到
-            MsgBeans.DCCreateConfResult createConfResult = (MsgBeans.DCCreateConfResult) rspContent;
-            curDcConfE164 = createConfResult.confE164;
-            if (null != listener){
-                if (createConfResult.bSuccess) {
-                    listener.onResponse(CommonResultCode.SUCCESS, null);
-                }else{
-                    listener.onResponse(CommonResultCode.FAILED, null);
+        switch (rspId){
+            case DCBuildLink4ConfRsp:
+                result = (MsgBeans.CommonResult) rspContent;
+                if (!result.bSuccess
+                        && null != listener){
+                    cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCCreateConfRsp上来，取消该请求以防等待超时。
+                    listener.onFailed(ErrCode_BuildLink4ConfFailed);
                 }
-            }
-        }else if (Msg.DCReleaseConfRsp.equals(rspId)){
-            result = (MsgBeans.CommonResult) rspContent;
-            if (null != listener){
-                if (result.bSuccess){
-                    listener.onResponse(CommonResultCode.SUCCESS, rspContent);
-                }else{
-                    listener.onResponse(CommonResultCode.FAILED, rspContent);
+                break;
+            case DCConfCreated:
+                MsgBeans.DCCreateConfResult createConfResult = (MsgBeans.DCCreateConfResult) rspContent;
+                curDcConfE164 = createConfResult.confE164;
+                if (null != listener){
+                    if (createConfResult.bSuccess) {
+                        listener.onSuccess(null);
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
                 }
-            }
-        }else if (Msg.DCQuitConfRsp.equals(rspId)){
-            result = (MsgBeans.CommonResult) rspContent;
-            if (null != listener){
-                if (result.bSuccess){
-                    listener.onResponse(CommonResultCode.SUCCESS, rspContent);
-                }else{
-                    listener.onResponse(CommonResultCode.FAILED, rspContent);
+                break;
+            case DCReleaseConfRsp:
+                result = (MsgBeans.CommonResult) rspContent;
+                if (null != listener){
+                    if (result.bSuccess){
+                        listener.onSuccess(null);
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
                 }
-            }
+                break;
+            case DCQuitConfRsp:
+                result = (MsgBeans.CommonResult) rspContent;
+                if (null != listener){
+                    if (result.bSuccess){
+                        listener.onSuccess(null);
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
+                }
+                break;
         }
+
     }
 
 
@@ -259,9 +275,9 @@ public class DataCollaborateManager extends RequestAgent {
         MsgBeans.CommonResult result = (MsgBeans.CommonResult) rspContent;
         if (null != listener){
             if (result.bSuccess){
-                listener.onResponse(CommonResultCode.SUCCESS, rspContent);
+                listener.onSuccess(null);
             }else{
-                listener.onResponse(CommonResultCode.FAILED, rspContent);
+                listener.onFailed(ErrCode_Failed);
             }
         }
     }
@@ -480,7 +496,17 @@ public class DataCollaborateManager extends RequestAgent {
         }
 
         @Override
-        public void onResponse(int i, Object o) {
+        public void onSuccess(Object result) {
+
+        }
+
+        @Override
+        public void onFailed(int errorCode) {
+
+        }
+
+        @Override
+        public void onTimeout() {
 
         }
     }
