@@ -22,49 +22,8 @@ import com.kedacom.vconf.sdk.annotation.Set;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @Message
 public enum Msg {
-
     @Response
     Timeout,
-
-    // startup
-    @Request(para = MsgBeans.StartupPara.class,  // para表示传入参数
-            rspSeq = {"StartupRsp"},
-            timeout = 4,
-            isMutualExclusive = true)
-    Startup, // 请求不带Req后缀
-
-    @Response(clz = MsgBeans.StartupResult.class, // Result表示反馈结果，注意区别Info
-            delay = 500)
-    StartupRsp,
-
-    // login
-    @Request(para = MsgBeans.LoginPara.class,
-            rspSeq = {"LoginRsp", "LoginRspFin"},
-            timeout = 6)
-    Login,
-
-    @Response(clz = MsgBeans.LoginResult.class, delay = 500)
-    LoginRsp,
-    @Response(clz = MsgBeans.LoginResult.class, delay = 500)
-    LoginRspFin,
-
-    // logout
-    @Request(para = MsgBeans.LogoutPara.class, rspSeq = {"LogoutRsp", "LogoutRspFin"}, timeout = 5)
-    Logout,
-    @Response(clz = String.class)
-    LogoutRsp,
-    @Response(clz = String.class)
-    LogoutRspFin,
-
-    @Get(result = MsgBeans.XmppServerInfo.class)
-    GetXmppServerInfo,
-
-    @Set(MsgBeans.NetConfig.class)
-    SetNetConfig,
-
-    @Notification(clz = MsgBeans.MemberState.class, delay = 500)
-    MemberStateChanged,
-
 
     //>>>>>>>>>>>>>>>>>>> 数据协作
 
@@ -376,7 +335,7 @@ public enum Msg {
     DCSUploadFileCmd, // TODO 待定
 
     /**上传文件响应*/
-    @Response(clz= MsgBeans.BaseTypeBool.class)
+    @Response/*(clz= MsgBeans.BaseTypeBool.class)*/
     DcsUploadFile_Ntf, // TODO 待定
 
 

@@ -22,96 +22,6 @@ public final class MsgBeans {
 
     private MsgBeans(){}
 
-    public static final class BaseTypeInt{
-        public int basetype;
-    }
-    public static final class BaseTypeBool{
-        public boolean basetype;
-    }
-    public static final class BaseTypeString{
-        public String basetype;
-    }
-
-
-    public static final class StartupPara {
-
-    }
-
-    public static final class StartupResult{
-
-    }
-
-    public static final class LoginPara {
-        public String serverAddr;
-        public String account;
-        public String passwd;
-        public SetType setType;
-        public LoginPara(String serverAddr, String account, String passwd, SetType setType){ //TODO 此类模版代码能否统一生成
-            this.serverAddr = serverAddr; this.account = account; this.passwd=passwd; this.setType=setType;
-        }
-
-        @Override
-        public String toString() { //TODO 此类模版代码能否统一生成, 直接使用json格式好了
-            return String.format(getClass().getSimpleName()
-                    +"{serverAddr=%s, account=%s, passwd=%s, setType=%s}", serverAddr, account, passwd, setType);
-        }
-    }
-
-    public static final class LoginResult {
-        public String sessionId;
-        public int result;
-    }
-
-    public static final class LogoutPara {
-        public String sessionId;
-        public LogoutPara(String sessionId){
-            this.sessionId = sessionId;
-        }
-    }
-
-    public static final class LogoutRsp {
-        public int result;
-    }
-
-    public static final class MemberState {
-        public int memberId;
-        public int preState;
-        public int curState;
-
-        private MemberState(){ // 我们不需要手动创建该类对象，默认构造方法仅用于框架生成模拟对象。
-            memberId = 1;
-            preState = 2;
-            curState = 3;
-        }
-
-        @Override
-        public String toString() { //TODO 此类模版代码能否统一生成
-            return String.format(getClass().getSimpleName()
-                    +"{memberId=%s, preState=%s, curState=%s}", memberId, preState, curState);
-        }
-    }
-
-
-    public static final class XmppServerInfo{
-        public String domain;
-        public long ip;
-        private XmppServerInfo(){
-            domain = "www.kedacom.com";
-            ip = 123445555;
-        }
-    }
-
-    public static final class NetConfig{
-        long ip;
-        int port;
-        public NetConfig(long ip, int port){
-            this.ip = ip; this.port = port;
-        }
-    }
-
-
-
-
 
 
 
@@ -260,22 +170,6 @@ public final class MsgBeans {
         public String url;
         public TDCSFileInfo fileInfo;
     }
-
-//    public static final class DownloadResult {
-//        public boolean bSuccess; //XXX 改为Common result
-//        public boolean bElementFile;
-//        public String achFilePathName;
-//        public String achWbPicentityId;
-//        public String achTabid;
-//        DownloadResult(){
-//            bSuccess = true;
-//            achTabid = "boardId";
-//            bElementFile = true;
-//            achWbPicentityId = "picId";
-//            achFilePathName = "/data/local/tmp/wb.png";
-//        }
-//    }
-
 
 
     public static final class TDCSFileInfo { // TODO
