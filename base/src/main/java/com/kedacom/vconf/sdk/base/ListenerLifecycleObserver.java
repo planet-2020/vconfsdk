@@ -140,7 +140,7 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
         if (null != cb){
             notify(owner, cb::onListenerStop);
         }
-        ownerEnclosedListeners.remove(owner);
+//        ownerEnclosedListeners.remove(owner);
     }
 
     @Override
@@ -167,15 +167,10 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
     }
 
     interface Callback{
-        void onListenerResumed(Object listener);
-        void onListenerPause(Object listener);
-
-        default void onListenerStop(Object listener) {
-
-        }
-        default void onListenerDestroy(Object listener) {
-
-        }
+        default void onListenerResumed(Object listener){}
+        default void onListenerPause(Object listener){}
+        default void onListenerStop(Object listener) {}
+        default void onListenerDestroy(Object listener) {}
     }
 
 }
