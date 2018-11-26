@@ -11,7 +11,7 @@ public class AgentManager {
 
     private static Map<Class<?>, RequestAgent> agents = new ConcurrentHashMap<>();
 
-    public static <T extends RequestAgent> T obtain(Class<T> clz){
+    public synchronized static <T extends RequestAgent> T obtain(Class<T> clz){
         RequestAgent agent = agents.get(clz);
         if (null == agent){
             try {
@@ -20,7 +20,16 @@ public class AgentManager {
                 agent = ctor.newInstance((Object[])null);
                 KLog.p(KLog.INFO,"create agent %s", agent);
                 agents.put(clz, agent);
-            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
+            } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+                return null;
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+                return null;
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+                return null;
+            } catch (InstantiationException e) {
                 e.printStackTrace();
                 return null;
             }

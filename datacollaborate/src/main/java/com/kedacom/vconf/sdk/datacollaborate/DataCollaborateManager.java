@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.kedacom.vconf.sdk.base.AgentManager;
 import com.kedacom.vconf.sdk.base.IResponseListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
@@ -61,6 +62,12 @@ public class DataCollaborateManager extends RequestAgent {
             Msg.DCScreenClearedNtf,
             Msg.DCElementEndNtf,
     };
+
+
+    public static DataCollaborateManager getInstance() {
+        return AgentManager.obtain(DataCollaborateManager.class);
+    }
+
 
     @Override
     protected Map<Msg, RspProcessor> rspProcessors() {
