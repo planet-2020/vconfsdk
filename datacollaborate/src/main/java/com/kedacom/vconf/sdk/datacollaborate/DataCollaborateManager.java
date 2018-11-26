@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.graphics.BitmapFactory;
 import android.os.Handler;
+import android.os.Looper;
 
 import com.kedacom.vconf.sdk.base.IResponseListener;
 import com.kedacom.vconf.sdk.base.Msg;
@@ -357,7 +358,7 @@ public class DataCollaborateManager extends RequestAgent {
 
     }
 
-    private Handler handler = new Handler();
+    private Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable batchOpTimeout = () -> {
         KLog.p(KLog.ERROR,"wait batch paint ops timeout <<<<<<<<<<<<<<<<<<<<<<<");
         Set<Object> listeners = getNtfListeners(Msg.DCElementBeginNtf);
