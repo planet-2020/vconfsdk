@@ -26,8 +26,10 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.Stack;
 
 public class DefaultPainter implements IPainter {
@@ -72,6 +74,13 @@ public class DefaultPainter implements IPainter {
     }
 
     @Override
+    public void deleteAllPaintBoards() {
+        KLog.p(KLog.WARN,"delete all boards");
+        paintBoards.clear();
+        curBoardId = null;
+    }
+
+    @Override
     public IPaintBoard switchPaintBoard(String boardId) {
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
         if(null == paintBoard){
@@ -91,6 +100,13 @@ public class DefaultPainter implements IPainter {
             KLog.p(KLog.ERROR,"no such board %s", boardId);
         }
         return paintBoard;
+    }
+
+    @Override
+    public Set<IPaintBoard> getAllPaintBoards() {
+        Set<IPaintBoard> boards = new HashSet<>();
+        boards.addAll(paintBoards.values());
+        return  boards;
     }
 
     @Override
