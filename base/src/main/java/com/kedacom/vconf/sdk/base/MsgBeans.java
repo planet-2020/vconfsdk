@@ -171,22 +171,6 @@ public final class MsgBeans {
         public TDCSFileInfo fileInfo;
     }
 
-//    public static final class DownloadResult {
-//        public boolean bSuccess; //XXX 改为Common result
-//        public boolean bElementFile;
-//        public String achFilePathName;
-//        public String achWbPicentityId;
-//        public String achTabid;
-//        DownloadResult(){
-//            bSuccess = true;
-//            achTabid = "boardId";
-//            bElementFile = true;
-//            achWbPicentityId = "picId";
-//            achFilePathName = "/data/local/tmp/wb.png";
-//        }
-//    }
-
-
 
     public static final class TDCSFileInfo { // TODO
         public String achFilePathName;
