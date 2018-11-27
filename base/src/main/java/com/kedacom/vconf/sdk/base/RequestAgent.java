@@ -128,13 +128,14 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
             return;
         }
 
+        listenerLifecycleObserver.tryObserve(rspListener);
+
         if (!witch.req(reqId.name(), ++reqSn, reqPara)){
             return;
         }
 
         if (null != rspListener) {
             rspListeners.put(reqSn, new RequestBundle(reqId, rspListener));
-            listenerLifecycleObserver.tryObserve(rspListener);  // 注意：如果同一个listener多次调用该接口注册，则该listener生命周期事件发生时会回调多次。
         }
     }
 
@@ -185,6 +186,8 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
             return;
         }
 
+        listenerLifecycleObserver.tryObserve(ntfListener);
+
         String ntfName = ntfId.name();
         Set<Object> listeners = ntfListeners.get(ntfName);
         if (null == listeners) {
@@ -192,7 +195,6 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
             ntfListeners.put(ntfName, listeners);
         }
         listeners.add(ntfListener);
-        listenerLifecycleObserver.tryObserve(ntfListener);
     }
 
     /**
