@@ -17,6 +17,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.TerminalType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -352,6 +353,31 @@ final class ToDoConverter {
             strMatrixValue[i] = ""+matrixValue[i];
         }
         return strMatrixValue;
+    }
+
+
+    public static EmDcsType toTransferObj(TerminalType type){
+        switch (type){
+            case TrueLinkWindows:
+                return EmDcsType.emTypeTrueLink;
+            case TrueLinkIosPhone:
+                return EmDcsType.emTypeTrueTouchPhoneIOS;
+            case TrueLinkIosPad:
+                return EmDcsType.emTypeTrueTouchPadIOS;
+            case TrueLinkAndroidPhone:
+                return EmDcsType.emTypeTrueTouchPhoneAndroid;
+            case TrueLinkAndroidPad:
+                return EmDcsType.emTypeTrueTouchPadAndroid;
+            case TrueSens:
+                return EmDcsType.emTypeTrueSens;
+            case Imix:
+                return EmDcsType.emTypeIMIX;
+            case ThirdParty:
+                return EmDcsType.emTypeThirdPartyTer;
+            case Unknown:
+            default:
+                return EmDcsType.emTypeUnknown;
+        }
     }
 
 }

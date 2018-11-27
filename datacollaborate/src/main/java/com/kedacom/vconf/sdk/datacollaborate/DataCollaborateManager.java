@@ -63,11 +63,13 @@ public class DataCollaborateManager extends RequestAgent {
     };
 
 
+    // 错误码
     public static final int ErrCode_Failed = -1;
     public static final int ErrCode_BuildLink4LoginFailed = -2;
     public static final int ErrCode_BuildLink4ConfFailed = -3;
 
 
+    private DataCollaborateManager(){}
     public static DataCollaborateManager getInstance() {
         return AgentManager.obtain(DataCollaborateManager.class);
     }
@@ -96,7 +98,8 @@ public class DataCollaborateManager extends RequestAgent {
     @Override
     protected Map<Msg, NtfProcessor> ntfProcessors() {
         Map<Msg, NtfProcessor> processorMap = new HashMap<>();
-        processorMap.put(Msg.DCApplyOperatorNtf, this::onOperatorsChangedNtfs);
+//        processorMap.put(Msg.DCApplyOperatorNtf, this::onOperatorsChangedNtfs);
+        processorMap.put(Msg.DCConfCreated, this::onNtfs);
         return processorMap;
     }
 
@@ -115,7 +118,7 @@ public class DataCollaborateManager extends RequestAgent {
 
     /**登录数据协作*/
     public void login(String serverIp, int port, TerminalType terminalType, IResultListener resultListener){
-        req(Msg.DCLogin, new MsgBeans.DCLoginPara(serverIp, port, terminalType.toTransferType()), resultListener);
+        req(Msg.DCLogin, new MsgBeans.DCLoginPara(serverIp, port, ToDoConverter.toTransferObj(terminalType)), resultListener);
     }
 
     /**注销数据协作*/
@@ -299,48 +302,48 @@ public class DataCollaborateManager extends RequestAgent {
 
 
 
-        // FIXME just for debug
-        if (null != listener){
-            // 下载的是图片
-            OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
-            Set<Object> onPaintOpListeners = ((DownloadListener)listener).onPaintOpListeners; // TODO 能不能自适应activity生命周期？
-            KLog.p("download pic finished, onPaintOpListeners=%s", onPaintOpListeners);
-            for (Object onPaintOpListener : onPaintOpListeners){
-                ((IOnPaintOpListener)onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
-            }
-
-        }else{
-            pushCachedOps();
-        }
-        return;
-
-
-
-//        if (!result.bPic){
-//            /* 下载的是图元（而非图片本身）。
-//            * 后续会批量上报当前画板已有的图元：
-//            * DcsElementOperBegin_Ntf // 批量上报开始
-//            * ...  // 批量图元，如画线、画圆、插入图片等等
-//            *
-//            * ...ElementShouldAfterFinal  // 应该在该批次图元之后出现的图元。
-//            *                                NOTE: 批量上报过程中可能会混入画板中当前正在进行的操作，
-//            *                                这会导致图元上报的时序跟实际时序不一致，需要自行处理。
-//            *                                （实际时序应该是：在成功响应下载请求后的所有后续进行的操作都应出现在DcsElementOperFinal_Ntf之后）
-//            * ...// 批量图元
-//            * DcsElementOperFinal_Ntf // 批量结束
-//            *
-//            *
-//            * */
-//            return;
-//        }
+//        // FIXME just for debug
+//        if (null != listener){
+//            // 下载的是图片
+//            OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
+//            Set<Object> onPaintOpListeners = ((DownloadListener)listener).onPaintOpListeners; // TODO 能不能自适应activity生命周期？
+//            KLog.p("download pic finished, onPaintOpListeners=%s", onPaintOpListeners);
+//            for (Object onPaintOpListener : onPaintOpListeners){
+//                ((IOnPaintOpListener)onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+//            }
 //
-//        // 下载的是图片
-//        OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
-//        Set<Object> onPaintOpListeners = ((DownloadListener)listener).onPaintOpListeners; // TODO 能不能自适应activity生命周期？
-//        KLog.p("download pic finished, onPaintOpListeners=%s", onPaintOpListeners);
-//        for (Object onPaintOpListener : onPaintOpListeners){
-//            ((IOnPaintOpListener)onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+//        }else{
+//            pushCachedOps();
 //        }
+//        return;
+
+
+
+        if (!result.bPic){
+            /* 下载的是图元（而非图片本身）。
+            * 后续会批量上报当前画板已有的图元：
+            * DcsElementOperBegin_Ntf // 批量上报开始
+            * ...  // 批量图元，如画线、画圆、插入图片等等
+            *
+            * ...ElementShouldAfterFinal  // 应该在该批次图元之后出现的图元。
+            *                                NOTE: 批量上报过程中可能会混入画板中当前正在进行的操作，
+            *                                这会导致图元上报的时序跟实际时序不一致，需要自行处理。
+            *                                （实际时序应该是：在成功响应下载请求后的所有后续进行的操作都应出现在DcsElementOperFinal_Ntf之后）
+            * ...// 批量图元
+            * DcsElementOperFinal_Ntf // 批量结束
+            *
+            *
+            * */
+            return;
+        }
+
+        // 下载的是图片
+        OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
+        Set<Object> onPaintOpListeners = ((DownloadListener)listener).onPaintOpListeners; // TODO 能不能自适应activity生命周期？
+        KLog.p("download pic finished, onPaintOpListeners=%s", onPaintOpListeners);
+        for (Object onPaintOpListener : onPaintOpListeners) { // TODO containsNtfListener的判断
+            ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+        }
     }
 
 
@@ -385,7 +388,7 @@ public class DataCollaborateManager extends RequestAgent {
     private Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable batchOpTimeout = () -> {
         KLog.p(KLog.ERROR,"wait batch paint ops timeout <<<<<<<<<<<<<<<<<<<<<<<");
-        Set<Object> listeners = getNtfListeners(Msg.DCElementBeginNtf);
+        Set<Object> listeners = getNtfListeners(Msg.DCElementEndNtf);
         while (!cachedOps.isEmpty()) {
             OpPaint op = ToDoConverter.fromTransferObj(cachedOps.poll());
             if (null != op) {
@@ -464,6 +467,12 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
+    private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
+        switch (ntfId){
+            case DCConfCreated:
+                break;
+        }
+    }
 
 
 

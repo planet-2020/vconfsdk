@@ -228,6 +228,14 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         return ntfListeners.get(ntfId.name());
     }
 
+    protected boolean containsNtfListener(Object ntfListener){
+        return false; // TODO
+    }
+
+    protected boolean containsRspListener(Object rspListener){
+        return false; // TODO
+    }
+
     /**
      * （驱使下层）发射通知。仅用于模拟模式。
      * */
