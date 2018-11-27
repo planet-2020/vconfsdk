@@ -1,10 +1,18 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
+import androidx.annotation.NonNull;
+
 public class CreateConfResult {
     private String       confE164;
     private String       confName;
     private EConfMode   confMode;
     private EConfType   confType;
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "{"+String.format("confE164=%s, confName=%s, confMode=%s, confType=%s", confE164, confName, confMode, confType)+"}";
+    }
 
     public String getConfE164() {
         return confE164;

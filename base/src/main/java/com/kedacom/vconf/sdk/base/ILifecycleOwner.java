@@ -10,5 +10,5 @@ interface ILifecycleOwner {
      * 监听器将自动销毁不再上报请求结果。
      *
      * @return 生命周期组件*/
-    default LifecycleOwner getLifecycleOwner(){return null;}
+    LifecycleOwner getLifecycleOwner();
 }

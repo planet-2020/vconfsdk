@@ -195,53 +195,6 @@ public class MessageProcessor extends AbstractProcessor {
 //                        + " rspSeq: "+request.rspSeq()
 //                        + " timeout: "+request.timeout());
 
-            }else if (null != (response = element.getAnnotation(Response.class))){
-                rspName = response.name();
-                rspName = !rspName.isEmpty() ? rspName : element.getSimpleName().toString();
-
-                // 获取响应对应的消息体类型
-                try {
-                    clz = response.clz();
-                    rspClazzFullName = clz.getCanonicalName();
-                }catch (MirroredTypeException mte) {
-                    rspClazzFullName = parseClassNameFromMirroredTypeException(mte);
-                }
-
-
-
-//                messager.printMessage(Diagnostic.Kind.NOTE, "response: "+rspName
-//                        + " rspClazzFullName: "+rspClazzFullName);
-
-                rspClazzMap.put(rspName, rspClazzFullName);
-
-                rspDelayMap.put(rspName, response.delay());
-
-                idNameMap.put(element.getSimpleName().toString(), rspName);
-                nameIdMap.put(rspName, element.getSimpleName().toString());
-
-            }else if (null != (notification = element.getAnnotation(Notification.class))){
-                ntfName = notification.name();
-                ntfName = !ntfName.isEmpty() ? ntfName : element.getSimpleName().toString();
-
-                // 获取通知对应的消息体类型
-                try {
-                    clz = notification.clz();
-                    ntfClazzFullName = clz.getCanonicalName();
-                }catch (MirroredTypeException mte) {
-                    ntfClazzFullName = parseClassNameFromMirroredTypeException(mte);
-                }
-
-
-//                messager.printMessage(Diagnostic.Kind.NOTE, "ntfName: "+ntfName
-//                        + " ntfClazzFullName: "+ntfClazzFullName);
-
-                ntfClazzMap.put(ntfName, ntfClazzFullName);
-
-                ntfDelayMap.put(ntfName, notification.delay());
-
-                idNameMap.put(element.getSimpleName().toString(), ntfName);
-                nameIdMap.put(ntfName, element.getSimpleName().toString());
-
             }else if (null != (get = element.getAnnotation(Get.class))){
                 getName = get.name();
                 getName = !getName.isEmpty() ? getName : element.getSimpleName().toString();
@@ -294,6 +247,57 @@ public class MessageProcessor extends AbstractProcessor {
                 idNameMap.put(element.getSimpleName().toString(), setName);
                 nameIdMap.put(setName, element.getSimpleName().toString());
 
+            }else{ // 响应或通知，或者既是响应也是通知
+                if (null != (response = element.getAnnotation(Response.class))){
+                    rspName = response.name();
+                    rspName = !rspName.isEmpty() ? rspName : element.getSimpleName().toString();
+
+                    // 获取响应对应的消息体类型
+                    try {
+                        clz = response.clz();
+                        rspClazzFullName = clz.getCanonicalName();
+                    }catch (MirroredTypeException mte) {
+                        rspClazzFullName = parseClassNameFromMirroredTypeException(mte);
+                    }
+
+
+
+//                messager.printMessage(Diagnostic.Kind.NOTE, "response: "+rspName
+//                        + " rspClazzFullName: "+rspClazzFullName);
+
+                    rspClazzMap.put(rspName, rspClazzFullName);
+
+                    rspDelayMap.put(rspName, response.delay());
+
+                    idNameMap.put(element.getSimpleName().toString(), rspName);
+                    nameIdMap.put(rspName, element.getSimpleName().toString());
+
+                }
+
+                if (null != (notification = element.getAnnotation(Notification.class))){ // 此处我们不用"else if"因为一个消息可能既是响应也是通知。
+                    ntfName = notification.name();
+                    ntfName = !ntfName.isEmpty() ? ntfName : element.getSimpleName().toString();
+
+                    // 获取通知对应的消息体类型
+                    try {
+                        clz = notification.clz();
+                        ntfClazzFullName = clz.getCanonicalName();
+                    }catch (MirroredTypeException mte) {
+                        ntfClazzFullName = parseClassNameFromMirroredTypeException(mte);
+                    }
+
+
+//                messager.printMessage(Diagnostic.Kind.NOTE, "ntfName: "+ntfName
+//                        + " ntfClazzFullName: "+ntfClazzFullName);
+
+                    ntfClazzMap.put(ntfName, ntfClazzFullName);
+
+                    ntfDelayMap.put(ntfName, notification.delay());
+
+                    idNameMap.put(element.getSimpleName().toString(), ntfName);
+                    nameIdMap.put(ntfName, element.getSimpleName().toString());
+
+                }
             }
 
         }

@@ -470,11 +470,13 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
+        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         switch (ntfId){
             case DCConfCreated:
                 MsgBeans.DCCreateConfResult dcCreateConfResult = (MsgBeans.DCCreateConfResult) ntfContent;
                 curDcConfE164 = dcCreateConfResult.confE164;
                 CreateConfResult createConfResult = ToDoConverter.fromTransferObj(dcCreateConfResult);
+                KLog.p("createConfResult=%s", createConfResult);
                 for (Object listener : listeners){
                     ((INotificationListener)listener).onNotification(createConfResult);
                 }

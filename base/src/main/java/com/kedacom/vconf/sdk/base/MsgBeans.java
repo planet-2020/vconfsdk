@@ -79,6 +79,12 @@ public final class MsgBeans {
         public EmDcsConfType confType;
         public TDCSConfAddr confAddr; // TODO 这个是否有必要？
         public boolean      bCreator;   // 自己是否是这个数据协作的创建者。该消息既作为响应又作为通知，可用该字段加以区分这两种情形。
+        DCCreateConfResult(){
+            confE164 = "confE164";
+            confName = "confName";
+            confType = EmDcsConfType.emConfTypeMCC;
+            confMode = EmDcsConfMode.emConfModeAuto;
+        }
     }
     public static final class TDCSConfAddr { // TODO 这个是否有必要？
         public String achIp;
