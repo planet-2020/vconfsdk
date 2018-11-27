@@ -1,6 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public enum TerminalType {
+public enum ETerminalType {
     TrueLinkWindows,    // 致邻Windows版
     TrueLinkIosPhone,   // 致邻IOS手机版
     TrueLinkIosPad,     // 致邻IOS平板版

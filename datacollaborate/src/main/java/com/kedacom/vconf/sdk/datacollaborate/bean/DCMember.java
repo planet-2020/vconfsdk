@@ -4,12 +4,10 @@
 
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-import com.kedacom.vconf.sdk.base.MsgBeans;
-
 public class DCMember {
     public String e164;
     public String name;
-    public TerminalType type; // 类型
+    public ETerminalType type; // 类型
     public boolean isOperator; // 是否协作方
     public boolean isChairman; // 是否主席
 //    public boolean isOnline;

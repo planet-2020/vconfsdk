@@ -16,8 +16,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.TerminalType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.ETerminalType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -356,7 +355,7 @@ final class ToDoConverter {
     }
 
 
-    public static EmDcsType toTransferObj(TerminalType type){
+    public static EmDcsType toTransferObj(ETerminalType type){
         switch (type){
             case TrueLinkWindows:
                 return EmDcsType.emTypeTrueLink;

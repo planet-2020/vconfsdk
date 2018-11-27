@@ -15,7 +15,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
-import com.kedacom.vconf.sdk.datacollaborate.bean.TerminalType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.ETerminalType;
 
 //import static com.kedacom.vconf.sdk.base.MsgBeans.*; // TODO 使用static import？
 
@@ -117,7 +117,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     /**登录数据协作*/
-    public void login(String serverIp, int port, TerminalType terminalType, IResultListener resultListener){
+    public void login(String serverIp, int port, ETerminalType terminalType, IResultListener resultListener){
         req(Msg.DCLogin, new MsgBeans.DCLoginPara(serverIp, port, ToDoConverter.toTransferObj(terminalType)), resultListener);
     }
 
