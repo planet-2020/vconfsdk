@@ -315,6 +315,10 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     @Override
     public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn) {
         RequestBundle requestBundle = rspListeners.get(reqSn);
+        if (null != requestBundle && !requestBundle.bResultArrived){
+            requestBundle.bResultArrived = true;
+            if(null != requestBundle.resultListener) requestBundle.resultListener.onResultArrived();
+        }
         IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
                 .process(Msg.valueOf(rspId), rspContent, resultListener);
@@ -323,6 +327,10 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     @Override
     public void onFeedbackRspFin(String rspId, Object rspContent, String reqId, int reqSn) {
         RequestBundle requestBundle = rspListeners.remove(reqSn);
+        if (null != requestBundle && !requestBundle.bResultArrived){
+            requestBundle.bResultArrived = true;
+            if(null != requestBundle.resultListener) requestBundle.resultListener.onResultArrived();
+        }
         IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
                 .process(Msg.valueOf(rspId), rspContent, resultListener);
@@ -331,6 +339,10 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     @Override
     public void onFeedbackTimeout(String reqId, int reqSn) {
         RequestBundle requestBundle = rspListeners.remove(reqSn);
+        if (null != requestBundle && !requestBundle.bResultArrived){
+            requestBundle.bResultArrived = true;
+            if(null != requestBundle.resultListener) requestBundle.resultListener.onResultArrived();
+        }
         IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
                 .process(Msg.Timeout, null, resultListener);
@@ -345,9 +357,11 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
                 .process(Msg.valueOf(ntfId), ntfContent, ntfListeners.get(ntfId));
     }
 
+
     private static class RequestBundle{
         private Msg reqId;
         private IResultListener resultListener;
+        private boolean bResultArrived = false;
         RequestBundle(Msg reqId, IResultListener resultListener){
             this.reqId = reqId;
             this.resultListener = resultListener;

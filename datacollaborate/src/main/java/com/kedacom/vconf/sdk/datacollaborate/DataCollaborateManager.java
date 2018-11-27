@@ -5,9 +5,10 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.kedacom.vconf.sdk.base.AgentManager;
-import com.kedacom.vconf.sdk.base.IResponseListener;
+import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
+import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
@@ -113,16 +114,16 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     /**登录数据协作*/
-    public void login(String serverIp, int port, TerminalType terminalType, IResponseListener resultListener){
+    public void login(String serverIp, int port, TerminalType terminalType, IResultListener resultListener){
         req(Msg.DCLogin, new MsgBeans.DCLoginPara(serverIp, port, terminalType.toTransferType()), resultListener);
     }
 
     /**注销数据协作*/
-    public void logout(IResponseListener resultListener){
+    public void logout(IResultListener resultListener){
         req(Msg.DCLogout, null, resultListener);
     }
 
-    private void onSessionRsps(Msg rspId, Object rspContent, IResponseListener listener){
+    private void onSessionRsps(Msg rspId, Object rspContent, IResultListener listener){
         KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
         MsgBeans.CommonResult result;
         switch (rspId){
@@ -163,24 +164,24 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     /**创建数据协作*/
-    public void createDcConf(IResponseListener resultListener){
+    public void createDcConf(IResultListener resultListener){
         req(Msg.DCCreateConf, new MsgBeans.DCCreateConfPara(), resultListener);
     }
 
     /**结束数据协作*/
-    public void releaseDcConf(IResponseListener resultListener){
+    public void releaseDcConf(IResultListener resultListener){
         req(Msg.DCReleaseConf, new MsgBeans.DCConfId(curDcConfE164), resultListener);
         curDcConfE164 = null;
     }
 
     /**退出数据协作。
      * 注：仅自己退出，协作仍存在，不影响其他人继续*/
-    public void quitDcConf(IResponseListener resultListener){
+    public void quitDcConf(IResultListener resultListener){
         req(Msg.DCQuitConf, new MsgBeans.DCSQuitConf(curDcConfE164), resultListener);
         curDcConfE164 = null;
     }
 
-    private void onConfOpRsps(Msg rspId, Object rspContent, IResponseListener listener){
+    private void onConfOpRsps(Msg rspId, Object rspContent, IResultListener listener){
         MsgBeans.CommonResult result;
         switch (rspId){
             case DCBuildLink4ConfRsp:
@@ -229,7 +230,7 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     /**添加协作方*/
-    public void addOperator(DCMember[] members, IResponseListener resultListener){
+    public void addOperator(DCMember[] members, IResultListener resultListener){
         if (null == curDcConfE164) {
             KLog.p(KLog.ERROR,"not in DC conf yet!");
             return;
@@ -242,7 +243,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     /**删除协作方*/
-    public void delOperator(DCMember[] members, IResponseListener resultListener){
+    public void delOperator(DCMember[] members, IResultListener resultListener){
         if (null == curDcConfE164) {
             KLog.p(KLog.ERROR,"not in DC conf yet!");
             return;
@@ -255,7 +256,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     /**申请协作方*/
-    public void applyForOperator(String e164, IResponseListener resultListener){
+    public void applyForOperator(String e164, IResultListener resultListener){
         if (null == curDcConfE164) {
             KLog.p(KLog.ERROR,"not in DC conf yet!");
             return;
@@ -263,7 +264,7 @@ public class DataCollaborateManager extends RequestAgent {
 //        req(Msg.DCApplyOperator, new MsgBeans.DCSBriefConfInfo(e164), resultListener);
     }
     /**取消协作方*/
-    public void cancelOperator(String e164, IResponseListener resultListener){
+    public void cancelOperator(String e164, IResultListener resultListener){
         if (null == curDcConfE164) {
             KLog.p(KLog.ERROR,"not in DC conf yet!");
             return;
@@ -271,7 +272,7 @@ public class DataCollaborateManager extends RequestAgent {
 //        req(Msg.DCCancelOperator, new MsgBeans.DCSBriefConfInfo(e164), resultListener);
     }
 
-    private void onChangeOperatorsRsps(Msg rspId, Object rspContent, IResponseListener listener){
+    private void onChangeOperatorsRsps(Msg rspId, Object rspContent, IResultListener listener){
         MsgBeans.CommonResult result = (MsgBeans.CommonResult) rspContent;
         if (null != listener){
             if (result.bSuccess){
@@ -289,7 +290,7 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     private static final String SAVE_PATH = "/data/local/tmp/";
-    private void onDownloadRsp(Msg rspId, Object rspContent, IResponseListener listener){
+    private void onDownloadRsp(Msg rspId, Object rspContent, IResultListener listener){
         MsgBeans.DownloadResult result = (MsgBeans.DownloadResult) rspContent;
         if (!result.bSuccess){
             KLog.p(KLog.ERROR, "download file failed!");
@@ -343,7 +344,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    private void onQueryPicUrlRsp(Msg rspId, Object rspContent, IResponseListener listener){
+    private void onQueryPicUrlRsp(Msg rspId, Object rspContent, IResultListener listener){
         MsgBeans.DCQueryPicUrlResult result = (MsgBeans.DCQueryPicUrlResult) rspContent;
         if (!result.bSuccess){
             return;
@@ -431,19 +432,19 @@ public class DataCollaborateManager extends RequestAgent {
             default:
                 if (ntfContent instanceof MsgBeans.DCPaintOp) {
                     MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
-//
-//                    // FIXME just for debug
-//                    switch (ntfId){
-//                        case DCUndoneNtf:
-//                            dcPaintOp.opType = MsgConst.EDcOpType.UNDO;
-//                            break;
-//                        case DCRedoneNtf:
-//                            dcPaintOp.opType = MsgConst.EDcOpType.REDO;
-//                            break;
-//                        case DCScreenClearedNtf:
-//                            dcPaintOp.opType = MsgConst.EDcOpType.CLEAR_SCREEN;
-//                            break;
-//                    }
+
+                    // FIXME just for debug
+                    switch (ntfId){
+                        case DCUndoneNtf:
+                            dcPaintOp.opType = MsgConst.EDcOpType.UNDO;
+                            break;
+                        case DCRedoneNtf:
+                            dcPaintOp.opType = MsgConst.EDcOpType.REDO;
+                            break;
+                        case DCScreenClearedNtf:
+                            dcPaintOp.opType = MsgConst.EDcOpType.CLEAR_SCREEN;
+                            break;
+                    }
 
                     if (isSynchronizing) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
                         cachedOps.offer(dcPaintOp);
@@ -489,7 +490,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    private class DownloadListener implements IResponseListener{
+    private class DownloadListener implements IResultListener{
         private Set<Object> onPaintOpListeners;
         DownloadListener(Set<Object> listeners){
             onPaintOpListeners = listeners;
