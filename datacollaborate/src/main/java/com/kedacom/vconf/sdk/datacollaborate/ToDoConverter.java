@@ -2,6 +2,10 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import static com.kedacom.vconf.sdk.base.MsgBeans.*;
 import static com.kedacom.vconf.sdk.base.MsgConst.*;
+
+import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EConfMode;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EConfType;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
@@ -378,5 +382,39 @@ final class ToDoConverter {
                 return EmDcsType.emTypeUnknown;
         }
     }
+
+    public static EConfType fromTransferObj(EmDcsConfType dcsConfType) {
+        switch (dcsConfType){
+            case emConfTypeP2P:
+                return EConfType.P2P;
+            case emConfTypeMCC:
+                return EConfType.MCC;
+            default:
+                return EConfType.P2P;
+        }
+    }
+
+    public static EConfMode fromTransferObj(EmDcsConfMode dcsConfModed) {
+        switch (dcsConfModed){
+            case emConfModeAuto:
+                return EConfMode.Auto;
+            case emConfModeManage:
+                return EConfMode.Manage;
+            case emConfModeStop:
+                return EConfMode.Stop;
+            default:
+                return EConfMode.Auto;
+        }
+    }
+
+    public static CreateConfResult fromTransferObj(DCCreateConfResult dcCreateConfResult) {
+        CreateConfResult createConfResult = new CreateConfResult();
+        createConfResult.setConfE164(dcCreateConfResult.confE164);
+        createConfResult.setConfName(dcCreateConfResult.confName);
+        createConfResult.setConfType(fromTransferObj(dcCreateConfResult.confType));
+        createConfResult.setConfMode(fromTransferObj(dcCreateConfResult.confMode));
+        return createConfResult;
+    }
+
 
 }

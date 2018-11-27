@@ -5,12 +5,14 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.kedacom.vconf.sdk.base.AgentManager;
+import com.kedacom.vconf.sdk.base.INotificationListener;
 import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
 import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.KLog;
+import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
@@ -200,7 +202,7 @@ public class DataCollaborateManager extends RequestAgent {
                 curDcConfE164 = createConfResult.confE164;
                 if (null != listener){
                     if (createConfResult.bSuccess) {
-                        listener.onSuccess(null);
+                        listener.onSuccess(ToDoConverter.fromTransferObj(createConfResult));
                     }else{
                         listener.onFailed(ErrCode_Failed);
                     }
@@ -470,6 +472,12 @@ public class DataCollaborateManager extends RequestAgent {
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
         switch (ntfId){
             case DCConfCreated:
+                MsgBeans.DCCreateConfResult dcCreateConfResult = (MsgBeans.DCCreateConfResult) ntfContent;
+                curDcConfE164 = dcCreateConfResult.confE164;
+                CreateConfResult createConfResult = ToDoConverter.fromTransferObj(dcCreateConfResult);
+                for (Object listener : listeners){
+                    ((INotificationListener)listener).onNotification(createConfResult);
+                }
                 break;
         }
     }
@@ -488,6 +496,9 @@ public class DataCollaborateManager extends RequestAgent {
         void onBoardSwitched(String boardId);
     }
 
+    public void addOnDcConfJoinedListener(INotificationListener onConfJoinedListener){
+        subscribe(Msg.DCConfCreated, onConfJoinedListener);
+    }
 
     public void addBoardOpListener(IOnBoardOpListener onBoardOpListener){
         subscribe(boardOpNtfs, onBoardOpListener);
