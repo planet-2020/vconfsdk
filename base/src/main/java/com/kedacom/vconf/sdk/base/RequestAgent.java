@@ -107,7 +107,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
     /**响应处理器*/
     protected interface RspProcessor{
-        void process(Msg rspId, Object rspContent, IResponseListener listener);
+        void process(Msg rspId, Object rspContent, IResultListener listener);
     }
 
     /**通知处理器*/
@@ -120,7 +120,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
      * 发送请求。
      * @param rspListener 响应监听者。
      * */
-    protected synchronized void req(Msg reqId, Object reqPara, IResponseListener rspListener){
+    protected synchronized void req(Msg reqId, Object reqPara, IResultListener rspListener){
 //        Log.i(TAG, String.format("rspListener=%s, reqId=%s, para=%s", rspListener, reqId, para));
 
         if (!rspProcessorMap.keySet().contains(reqId)){
@@ -141,7 +141,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     /**
      * 取消请求。
      * 若同样的请求id同样的响应监听者请求了多次，则取消的是最早的请求。*/
-    protected synchronized void cancelReq(Msg reqId, IResponseListener rspListener){
+    protected synchronized void cancelReq(Msg reqId, IResultListener rspListener){
         if (null == reqId || null == rspListener){
             return;
         }
@@ -292,7 +292,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         Iterator<Map.Entry<Integer,RequestBundle>> iter = rspListeners.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<Integer,RequestBundle> entry = iter.next();
-            IResponseListener resultListener = entry.getValue().resultListener;
+            IResultListener resultListener = entry.getValue().resultListener;
             if(rspListener.equals(resultListener)){
                 iter.remove();
             }
@@ -315,7 +315,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     @Override
     public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn) {
         RequestBundle requestBundle = rspListeners.get(reqSn);
-        IResponseListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
+        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
                 .process(Msg.valueOf(rspId), rspContent, resultListener);
     }
@@ -323,7 +323,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     @Override
     public void onFeedbackRspFin(String rspId, Object rspContent, String reqId, int reqSn) {
         RequestBundle requestBundle = rspListeners.remove(reqSn);
-        IResponseListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
+        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
                 .process(Msg.valueOf(rspId), rspContent, resultListener);
     }
@@ -331,7 +331,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     @Override
     public void onFeedbackTimeout(String reqId, int reqSn) {
         RequestBundle requestBundle = rspListeners.remove(reqSn);
-        IResponseListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
+        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
                 .process(Msg.Timeout, null, resultListener);
         if (null != resultListener){
@@ -347,8 +347,8 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
     private static class RequestBundle{
         private Msg reqId;
-        private IResponseListener resultListener;
-        RequestBundle(Msg reqId, IResponseListener resultListener){
+        private IResultListener resultListener;
+        RequestBundle(Msg reqId, IResultListener resultListener){
             this.reqId = reqId;
             this.resultListener = resultListener;
         }
