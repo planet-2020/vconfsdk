@@ -148,7 +148,7 @@ public enum Msg {
 
     /**（主席）添加协作方*/
     @Request(para = MsgBeans.DCMember[].class,
-            rspSeq = {"DCAddOperatorRsp"})
+            rspSeq = {"DCAddOperatorRsp"}) // TODO 需要confE164？为什么申请和取消时不需要？
     DCAddOperator,
 
     /**添加协作方响应*/
