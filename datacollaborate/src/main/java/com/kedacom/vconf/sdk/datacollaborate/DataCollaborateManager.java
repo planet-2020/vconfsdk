@@ -369,9 +369,10 @@ public class DataCollaborateManager extends RequestAgent {
         for (Object listener : listeners) {
             onBoardOpListener = (IOnBoardOpListener) listener;
             if (Msg.DCCurrentBoardNtf.equals(ntfId)) {
-                onBoardOpListener.onBoardSwitched(board.id);
+                onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board));
+//                onBoardOpListener.onBoardSwitched(board.id);
             } else if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
-                onBoardOpListener.onBoardCreated(new BoardInfo(board.id, board.name));
+                onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board));
             } else if (Msg.DCBoardSwitchedNtf.equals(ntfId)) {
                 onBoardOpListener.onBoardSwitched(board.id);
             } else if (Msg.DCBoardDeletedNtf.equals(ntfId)) {
@@ -381,8 +382,8 @@ public class DataCollaborateManager extends RequestAgent {
         // 下载当前画板已有的图元操作。NOTE:下载过程中可能有其他画板比如画板2的操作board2_ops也上报上来，然后切到画板2时又要批量下载已有图元，这时批量下载的操作时序上应该在board2_ops前面，但接收到的时序恰好相反，记得处理这种情形。
                 /* NOTE:对于下载下来的图片相关的操作，如插入图片、删除图片等，并不包含图片文件本身。
                 要获取图片文件本身，需在后续专门下载。*/
-        if (Msg.DCBoardCreatedNtf.equals(ntfId)) { // TODO 确定是不是这条消息
-            req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), null);  // TODO DcsSwitch_Ntf可以有多次，而下载只应该一次。在DcsCurrentWhiteBoard_Ntf中做？实测抓消息。
+        if (Msg.DCCurrentBoardNtf.equals(ntfId)) {
+            req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), null);
         }
 
     }

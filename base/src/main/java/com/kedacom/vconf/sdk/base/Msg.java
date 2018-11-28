@@ -243,7 +243,10 @@ public enum Msg {
     DCAddSubPage,   // TODO 确认
 
 
-    /** 当前画板通知*/
+    /** 当前画板通知。
+     * 该通知仅用于加入数据协作时通知入会方当前画板信息，其他场景下不会上报。
+     * 收到该通知后会从服务器拉取当前画板已有图元。
+     * */
     @Notification(clz = MsgBeans.DCBoard.class)
     DCCurrentBoardNtf,
 

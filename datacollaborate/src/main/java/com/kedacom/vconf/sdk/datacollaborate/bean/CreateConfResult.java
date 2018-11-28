@@ -11,7 +11,7 @@ public class CreateConfResult {
     @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("confE164=%s, confName=%s, confMode=%s, confType=%s", confE164, confName, confMode, confType)+"}";
+        return "{"+String.format("confE164=%s, confName=%s, mode=%s, confType=%s", confE164, confName, confMode, confType)+"}";
     }
 
     public String getConfE164() {

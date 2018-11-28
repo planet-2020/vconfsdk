@@ -3,7 +3,9 @@ package com.kedacom.vconf.sdk.datacollaborate;
 import static com.kedacom.vconf.sdk.base.MsgBeans.*;
 import static com.kedacom.vconf.sdk.base.MsgConst.*;
 
+import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EBoardMode;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EConfMode;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EConfType;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
@@ -416,5 +418,29 @@ final class ToDoConverter {
         return createConfResult;
     }
 
+
+    public static EBoardMode fromTransferObj(EmDcsWbMode dcsWbMode) {
+        switch (dcsWbMode){
+            case emWbModeWB:
+                return EBoardMode.Normal;
+            case emWBModeDOC:
+                return EBoardMode.Doc;
+            default:
+                return EBoardMode.Normal;
+        }
+    }
+
+    public static BoardInfo fromTransferObj(DCBoard dcBoard) {
+        BoardInfo boardInfo = new BoardInfo();
+        boardInfo.setId(dcBoard.id);
+        boardInfo.setConfE164(dcBoard.confE164);
+        boardInfo.setCreatorE164(dcBoard.creatorE164);
+        boardInfo.setCreateTime(dcBoard.createTime);
+        boardInfo.setMode(fromTransferObj(dcBoard.mode));
+        boardInfo.setPageNum(dcBoard.pageNum);
+        boardInfo.setPageId(dcBoard.pageId);
+        boardInfo.setAnonyId(dcBoard.anonyId);
+        return boardInfo;
+    }
 
 }
