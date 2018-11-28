@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.kedacom.vconf.sdk.base.AgentManager;
+import com.kedacom.vconf.sdk.base.ILifecycleOwner;
 import com.kedacom.vconf.sdk.base.INotificationListener;
 import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.Msg;
@@ -92,8 +93,8 @@ public class DataCollaborateManager extends RequestAgent {
         processorMap.put(Msg.DCApplyOperator, this::onChangeOperatorsRsps);
         processorMap.put(Msg.DCCancelOperator, this::onChangeOperatorsRsps);
 
-        processorMap.put(Msg.DCDownload, this::onDownloadRsp);
-        processorMap.put(Msg.DCQueryPicUrl, this::onQueryPicUrlRsp);
+        processorMap.put(Msg.DCDownload, this::onRsps);
+        processorMap.put(Msg.DCQueryPicUrl, this::onRsps);
         return processorMap;
     }
 
@@ -294,74 +295,6 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    private static final String SAVE_PATH = "/data/local/tmp/"; // FIXME DEBUG
-    private void onDownloadRsp(Msg rspId, Object rspContent, IResultListener listener){
-        MsgBeans.DownloadResult result = (MsgBeans.DownloadResult) rspContent;
-        if (!result.bSuccess){
-            KLog.p(KLog.ERROR, "download file failed!");
-            return;
-        }
-
-
-
-//        // FIXME just for debug
-//        if (null != listener){
-//            // 下载的是图片
-//            OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
-//            Set<Object> onPaintOpListeners = ((DownloadListener)listener).onPaintOpListeners; // TODO 能不能自适应activity生命周期？
-//            KLog.p("download pic finished, onPaintOpListeners=%s", onPaintOpListeners);
-//            for (Object onPaintOpListener : onPaintOpListeners){
-//                ((IOnPaintOpListener)onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
-//            }
-//
-//        }else{
-//            pushCachedOps();
-//        }
-//        return;
-
-        if (result.bPic) {
-            // 下载的是图片
-            OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
-            Set<Object> onPaintOpListeners = ((DownloadListener) listener).onPaintOpListeners; // TODO 能不能自适应activity生命周期？
-            KLog.p("download pic finished, onPaintOpListeners=%s", onPaintOpListeners);
-            for (Object onPaintOpListener : onPaintOpListeners) {
-                if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
-                    ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
-                }
-            }
-        }else{
-            /* 下载的是图元（而非图片本身）。
-             * 后续会批量上报当前画板已有的图元：
-             * DcsElementOperBegin_Ntf // 批量上报开始
-             * ...  // 批量图元，如画线、画圆、插入图片等等
-             *
-             * ...ElementShouldAfterFinal  // 应该在该批次图元之后出现的图元。
-             *                                NOTE: 批量上报过程中可能会混入画板中当前正在进行的操作，
-             *                                这会导致图元上报的时序跟实际时序不一致，需要自行处理。
-             *                                （实际时序应该是：在成功响应下载请求后的所有后续进行的操作都应出现在DcsElementOperFinal_Ntf之后）
-             * ...// 批量图元
-             * DcsElementOperFinal_Ntf // 批量结束
-             *
-             *
-             * */
-            return;
-        }
-    }
-
-
-    private void onQueryPicUrlRsp(Msg rspId, Object rspContent, IResultListener listener){
-        MsgBeans.DCQueryPicUrlResult result = (MsgBeans.DCQueryPicUrlResult) rspContent;
-        if (!result.bSuccess){
-            return;
-        }
-
-        // 下载图片文件
-        req(Msg.DCDownload,
-                new MsgBeans.DownloadPara(result.boardId, result.picId, SAVE_PATH+result.picId+".jpg", result.url),
-                listener);
-    }
-
-
     private void onBoardNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         IOnBoardOpListener onBoardOpListener;
@@ -370,7 +303,7 @@ public class DataCollaborateManager extends RequestAgent {
             onBoardOpListener = (IOnBoardOpListener) listener;
             if (Msg.DCCurrentBoardNtf.equals(ntfId)) {
                 onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board));
-//                onBoardOpListener.onBoardSwitched(board.id);
+                onBoardOpListener.onBoardSwitched(board.id);
             } else if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
                 onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board));
             } else if (Msg.DCBoardSwitchedNtf.equals(ntfId)) {
@@ -387,6 +320,57 @@ public class DataCollaborateManager extends RequestAgent {
         }
 
     }
+
+
+    private static final String SAVE_PATH = "/data/local/tmp/"; // FIXME DEBUG
+    private void onRsps(Msg rspId, Object rspContent, IResultListener listener){
+        switch (rspId){
+            case DCDownloadRsp:
+                MsgBeans.DownloadResult result = (MsgBeans.DownloadResult) rspContent;
+                if (!result.bSuccess){
+                    KLog.p(KLog.ERROR, "download file failed!");
+                    return;
+                }
+                if (result.bPic) {
+                    // 下载的是图片
+                    OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
+                    Set<Object> onPaintOpListeners = ((DownloadListener) listener).onPaintOpListeners; // TODO 能不能自适应activity生命周期？
+                    KLog.p("download pic finished, onPaintOpListeners=%s", onPaintOpListeners);
+                    for (Object onPaintOpListener : onPaintOpListeners) {
+                        if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
+                            ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+                        }
+                    }
+                }else{
+                    /* 下载的是图元（而非图片本身）。
+                     * 后续会批量上报当前画板已有的图元：
+                     * DcsElementOperBegin_Ntf // 批量上报开始
+                     * ...  // 批量图元，如画线、画圆、插入图片等等
+                     *
+                     * ...ElementShouldAfterFinal  // 应该在该批次图元之后出现的图元。
+                     *                                NOTE: 批量上报过程中可能会混入画板中当前正在进行的操作，
+                     *                                这会导致图元上报的时序跟实际时序不一致，需要自行处理。
+                     *                                （实际时序应该是：在成功响应下载请求后的所有后续进行的操作都应出现在DcsElementOperFinal_Ntf之后）
+                     * ...// 批量图元
+                     * DcsElementOperFinal_Ntf // 批量结束
+                     * */
+                    return;
+                }
+                break;
+            case DCQueryPicUrlRsp:
+                MsgBeans.DCQueryPicUrlResult queryPicUrlResult = (MsgBeans.DCQueryPicUrlResult) rspContent;
+                if (!queryPicUrlResult.bSuccess) {
+                    return;
+                }
+                // 下载图片文件
+                req(Msg.DCDownload,
+                        new MsgBeans.DownloadPara(queryPicUrlResult.boardId, queryPicUrlResult.picId, SAVE_PATH + queryPicUrlResult.picId + ".jpg", queryPicUrlResult.url),
+                        listener);
+                break;
+        }
+    }
+
+
 
     private Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable batchOpTimeout = () -> {
@@ -442,19 +426,6 @@ public class DataCollaborateManager extends RequestAgent {
                 if (ntfContent instanceof MsgBeans.DCPaintOp) {
                     MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
 
-//                    // FIXME just for debug
-//                    switch (ntfId){
-//                        case DCUndoneNtf:
-//                            dcPaintOp.opType = MsgConst.EDcOpType.UNDO;
-//                            break;
-//                        case DCRedoneNtf:
-//                            dcPaintOp.opType = MsgConst.EDcOpType.REDO;
-//                            break;
-//                        case DCScreenClearedNtf:
-//                            dcPaintOp.opType = MsgConst.EDcOpType.CLEAR_SCREEN;
-//                            break;
-//                    }
-
                     if (isSynchronizing) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
                         cachedOps.offer(dcPaintOp);
                     } else {
@@ -489,19 +460,6 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-
-
-
-    public interface IOnPaintOpListener{
-        void onPaintOp(OpPaint op);
-    }
-
-    public interface IOnBoardOpListener {
-        void onBoardCreated(BoardInfo boardInfo);
-        void onBoardDeleted(String boardId);
-        void onBoardSwitched(String boardId);
-    }
-
     public void addOnDcConfJoinedListener(INotificationListener onConfJoinedListener){
         subscribe(Msg.DCConfCreated, onConfJoinedListener);
     }
@@ -513,6 +471,19 @@ public class DataCollaborateManager extends RequestAgent {
 
     public void addPaintOpListener(IOnPaintOpListener onPaintOpListener){
         subscribe(paintOpNtfs, onPaintOpListener);
+    }
+
+
+
+
+    public interface IOnPaintOpListener extends ILifecycleOwner {
+        void onPaintOp(OpPaint op);
+    }
+
+    public interface IOnBoardOpListener{
+        void onBoardCreated(BoardInfo boardInfo);
+        void onBoardDeleted(String boardId);
+        void onBoardSwitched(String boardId);
     }
 
 

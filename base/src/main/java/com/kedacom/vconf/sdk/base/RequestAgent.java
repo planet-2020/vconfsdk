@@ -355,7 +355,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         }
         IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
-                .process(Msg.Timeout, null, resultListener);
+                .process(Msg.Timeout, Msg.valueOf(reqId), resultListener);
         if (null != resultListener){
             resultListener.onTimeout(); // TODO 如需子类控制该上报行为则可让process返回boolean表示是否处理完，没处理完则此处继续处理
         }

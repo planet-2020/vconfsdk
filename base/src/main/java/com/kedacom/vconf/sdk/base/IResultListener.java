@@ -1,14 +1,9 @@
 package com.kedacom.vconf.sdk.base;
 
-import androidx.lifecycle.LifecycleOwner;
-
 /**
  * 请求结果监听器。
  * */
 public interface IResultListener extends ILifecycleOwner{
-
-    @Override
-    default LifecycleOwner getLifecycleOwner(){return null;}
 
     /**结果已抵达，后续会根据情况回调onSuccess/onFailed/onTimeout
      * 此接口主要用于在收到结果后做一些公共处理，比如消隐进度条。
