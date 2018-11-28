@@ -12,7 +12,7 @@
 package com.kedacom.vconf.sdk.base.basement;
 
 public final class EmulationModeOnOff {
-    static boolean on = true;
+    static boolean on = false;
     public static void enable(boolean bEnable){
         on = bEnable;
     }
