@@ -543,7 +543,7 @@ public class DataCollaborateManager extends RequestAgent {
 //        if (!BuildConfig.DEBUG){
 //            return;
 //        }
-//        eject(Msg.DCApplyOperatorNtf);
+//        eject(Msg.DCConfCreated);
         eject(msg);
     }
 

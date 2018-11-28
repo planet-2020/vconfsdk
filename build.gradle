@@ -20,15 +20,16 @@ allprojects {
         google()
         jcenter()
 
-        mavenLocal()
-
-//        maven {
+        maven {
 //            url "http://localhost:8081/repository/maven-releases/"
-//        }
+            url "http://172.16.6.154:9081/repository/snapshots/" // 公司私服
+        }
 
 //        maven {
 //            url "file://C:\\Users\\Sissi\\.m2\\repository"
 //        }
+
+        mavenLocal()
     }
 
     tasks.withType(JavaCompile) {
