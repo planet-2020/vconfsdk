@@ -1,8 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.graphics.BitmapFactory;
-import android.os.Handler;
-import android.os.Looper;
 
 import com.kedacom.vconf.sdk.base.AgentManager;
 import com.kedacom.vconf.sdk.base.ILifecycleOwner;
@@ -29,9 +27,6 @@ import java.util.Set;
 
 public class DataCollaborateManager extends RequestAgent {
 
-    private int IDLE = 0;
-    private int SYNCHRONIZING = 1;
-    private int SYNCHRONIZED = 2;
     /*同步过程中缓存的操作*/
     private Map<String, PaintOpsBuffer> cachedPaintOps = new HashMap<>();
 
@@ -355,7 +350,7 @@ public class DataCollaborateManager extends RequestAgent {
                     cachedPaintOps.clear();
                     for (MsgBeans.DCBoard board : dcBoards){
                         paintOpsBuffer = new PaintOpsBuffer();
-                        paintOpsBuffer.state = SYNCHRONIZING;
+                        paintOpsBuffer.bSynchronizing = true;
                         cachedPaintOps.put(board.id, paintOpsBuffer);
                         // 下载每个画板已有的图元
                         req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), new IResultListener() {
@@ -459,7 +454,7 @@ public class DataCollaborateManager extends RequestAgent {
                 MsgBeans.DCBoardId boardId = (MsgBeans.DCBoardId) ntfContent;
                 PaintOpsBuffer paintOpsBuffer = cachedPaintOps.get(boardId.boardId);
                 if (null != paintOpsBuffer){
-                    paintOpsBuffer.state = SYNCHRONIZED;
+                    paintOpsBuffer.bSynchronizing = false;
                     PriorityQueue<MsgBeans.DCPaintOp> ops = paintOpsBuffer.cachedOps;
                     while (!ops.isEmpty()) {
                         OpPaint opPaint = ToDoConverter.fromTransferObj(ops.poll());
@@ -525,11 +520,7 @@ public class DataCollaborateManager extends RequestAgent {
                 if (ntfContent instanceof MsgBeans.DCPaintOp) {
                     MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
                     PaintOpsBuffer opsBuffer = cachedPaintOps.get(dcPaintOp.boardId);
-                    if (null == opsBuffer){
-                        return;
-                    }
-
-                    if (SYNCHRONIZING == opsBuffer.state) {
+                    if (null != opsBuffer && opsBuffer.bSynchronizing){
                         opsBuffer.cachedOps.offer(dcPaintOp);
                     } else {
                         OpPaint paintOp = ToDoConverter.fromTransferObj(dcPaintOp);
@@ -594,7 +585,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     private class PaintOpsBuffer{
-        private int state = IDLE;
+        private boolean bSynchronizing = false;
         private PriorityQueue<MsgBeans.DCPaintOp> cachedOps = new PriorityQueue<>();
     }
 
