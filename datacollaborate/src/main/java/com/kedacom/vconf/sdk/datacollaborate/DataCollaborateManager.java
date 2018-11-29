@@ -1,6 +1,9 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.graphics.BitmapFactory;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 
 import com.kedacom.vconf.sdk.base.AgentManager;
 import com.kedacom.vconf.sdk.base.ILifecycleOwner;
@@ -65,6 +68,32 @@ public class DataCollaborateManager extends RequestAgent {
     public static final int ErrCode_BuildLink4LoginFailed = -2;
     public static final int ErrCode_BuildLink4ConfFailed = -3;
 
+    private final int MsgID_SynchronizingTimeout = 10;
+    private Handler handler = new Handler(Looper.getMainLooper()){
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MsgID_SynchronizingTimeout:
+                    String boardId = (String) msg.obj;
+                    PaintOpsBuffer paintOpsBuffer = cachedPaintOps.get(boardId);
+                    Set<Object> listeners = getNtfListeners(Msg.DCElementEndNtf);
+                    if (null != paintOpsBuffer
+                            && (null != listeners && !listeners.isEmpty())){
+                        paintOpsBuffer.bSynchronizing = false;
+                        PriorityQueue<MsgBeans.DCPaintOp> ops = paintOpsBuffer.cachedOps;
+                        while (!ops.isEmpty()) {
+                            OpPaint opPaint = ToDoConverter.fromTransferObj(ops.poll());
+                            if (null != opPaint) {
+                                for (Object listener : listeners) {
+                                    ((IOnPaintOpListener) listener).onPaintOp(opPaint);
+                                }
+                            }
+                        }
+                    }
+                    break;
+            }
+        }
+    };
 
     private DataCollaborateManager(){}
     public static DataCollaborateManager getInstance() {
@@ -356,8 +385,8 @@ public class DataCollaborateManager extends RequestAgent {
                         req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), new IResultListener() {
                             @Override
                             public void onSuccess(Object result) {
-                                /* NOTHING TO DO.
-                                后续会批量上报当前画板已有的图元 */
+                                /* 后续会批量上报当前画板已有的图元，直到收到End消息为止。此处我们开启超时机制防止收不到End消息 */
+                                handler.sendEmptyMessageDelayed(MsgID_SynchronizingTimeout, 10*1000);
                             }
 
                             @Override
@@ -447,10 +476,9 @@ public class DataCollaborateManager extends RequestAgent {
             case DCElementEndNtf:
                 KLog.p("batch paint ops <<<<<<<<<<<<<<<<<<<<<<<");
 
+                handler.removeMessages(MsgID_SynchronizingTimeout);
+
                 // 批量图元推送结束，我们发给用户
-
-//                handler.removeCallbacks(batchOpTimeout); // TODO
-
                 MsgBeans.DCBoardId boardId = (MsgBeans.DCBoardId) ntfContent;
                 PaintOpsBuffer paintOpsBuffer = cachedPaintOps.get(boardId.boardId);
                 if (null != paintOpsBuffer){
@@ -601,6 +629,8 @@ public class DataCollaborateManager extends RequestAgent {
 //        eject(Msg.DCConfCreated);
         eject(msg);
     }
+
+
 
 
 }
