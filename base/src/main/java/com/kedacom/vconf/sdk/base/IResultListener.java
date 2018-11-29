@@ -15,8 +15,9 @@ public interface IResultListener extends ILifecycleOwner{
     default void onSuccess(Object result){}
 
     /**请求失败。
-     * @param errorCode 错误码。具体定义在各自模块查阅*/
-    default void onFailed(int errorCode){}
+     * @param errorCode 错误码。具体定义在各自模块查阅
+     * @param errorInfo 错误信息。具体定义在各自模块查阅*/
+    default void onFailed(int errorCode, Object errorInfo){}
 
     /**请求超时*/
     default void onTimeout(){}

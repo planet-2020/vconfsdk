@@ -10,7 +10,6 @@ import com.kedacom.vconf.sdk.base.INotificationListener;
 import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.MsgBeans;
-import com.kedacom.vconf.sdk.base.MsgConst;
 import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
@@ -34,7 +33,12 @@ public class DataCollaborateManager extends RequestAgent {
     private boolean isSynchronizing = false;
 
     /*同步过程中缓存的操作*/
-    private PriorityQueue<MsgBeans.DCPaintOp> cachedOps = new PriorityQueue<>();
+//    private PriorityQueue<MsgBeans.DCPaintOp> cachedOps = new PriorityQueue<>();
+
+    private int IDLE = 0;
+    private int SYNCHRONIZING = 1;
+    private int SYNCHRONIZED = 2;
+    private Map<String, PaintOpsBuffer> cachedPaintOps = new HashMap<>();
 
     //当前数据协作会议的e164
     private String curDcConfE164;
@@ -88,6 +92,9 @@ public class DataCollaborateManager extends RequestAgent {
         processorMap.put(Msg.DCReleaseConf, this::onConfOpRsps);
         processorMap.put(Msg.DCQuitConf, this::onConfOpRsps);
 
+
+        processorMap.put(Msg.DCQueryAllBoards, this::onBoardOpRsps);
+
         processorMap.put(Msg.DCAddOperator, this::onChangeOperatorsRsps);
         processorMap.put(Msg.DCDelOperator, this::onChangeOperatorsRsps);
         processorMap.put(Msg.DCApplyOperator, this::onChangeOperatorsRsps);
@@ -138,7 +145,7 @@ public class DataCollaborateManager extends RequestAgent {
                 if (!result.bSuccess
                         && null != listener){
                     cancelReq(Msg.DCLogin, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
-                    listener.onFailed(ErrCode_BuildLink4LoginFailed);
+                    listener.onFailed(ErrCode_BuildLink4LoginFailed, null);
                 }
                 break;
 
@@ -148,7 +155,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (result.bSuccess) {  // ??? 需要保存登录状态吗
                         listener.onSuccess(null);
                     }else{
-                        listener.onFailed(ErrCode_Failed);
+                        listener.onFailed(ErrCode_Failed, null);
                     }
                 }
                 break;
@@ -159,7 +166,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (result.bSuccess){
                         listener.onSuccess(null);
                     }else{
-                        listener.onFailed(ErrCode_Failed);
+                        listener.onFailed(ErrCode_Failed, null);
                     }
                 }
                 break;
@@ -195,7 +202,7 @@ public class DataCollaborateManager extends RequestAgent {
                 if (!result.bSuccess
                         && null != listener){
                     cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCCreateConfRsp上来，取消该请求以防等待超时。
-                    listener.onFailed(ErrCode_BuildLink4ConfFailed);
+                    listener.onFailed(ErrCode_BuildLink4ConfFailed, null);
                 }
                 break;
             case DCConfCreated:
@@ -205,7 +212,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (createConfResult.bSuccess) {
                         listener.onSuccess(ToDoConverter.fromTransferObj(createConfResult));
                     }else{
-                        listener.onFailed(ErrCode_Failed);
+                        listener.onFailed(ErrCode_Failed, null);
                     }
                 }
                 break;
@@ -215,7 +222,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (result.bSuccess){
                         listener.onSuccess(null);
                     }else{
-                        listener.onFailed(ErrCode_Failed);
+                        listener.onFailed(ErrCode_Failed, null);
                     }
                 }
                 break;
@@ -225,7 +232,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (result.bSuccess){
                         listener.onSuccess(null);
                     }else{
-                        listener.onFailed(ErrCode_Failed);
+                        listener.onFailed(ErrCode_Failed, null);
                     }
                 }
                 break;
@@ -284,7 +291,7 @@ public class DataCollaborateManager extends RequestAgent {
             if (result.bSuccess){
                 listener.onSuccess(null);
             }else{
-                listener.onFailed(ErrCode_Failed);
+                listener.onFailed(ErrCode_Failed, null);
             }
         }
     }
@@ -292,6 +299,33 @@ public class DataCollaborateManager extends RequestAgent {
     private void onOperatorsChangedNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
 
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+    }
+
+
+    private void onBoardOpRsps(Msg rspId, Object rspContent, IResultListener listener){
+        switch (rspId){
+            case DCQueryAllBoardsRsp:
+                MsgBeans.DCQueryAllBoardsResult queryAllBoardsResult = (MsgBeans.DCQueryAllBoardsResult) rspContent;
+                if (!queryAllBoardsResult.bSuccess){
+                    KLog.p(KLog.ERROR, "DCQueryAllBoards failed, errorCode=%s", queryAllBoardsResult.errorCode);
+                    if (null != listener) listener.onFailed(ErrCode_Failed, null);
+                    return;
+                }
+
+                if (null != listener) {
+                    if (listener instanceof QueryAllBoardsInnerListener) {
+                        listener.onSuccess(queryAllBoardsResult.boards);
+                    } else {
+                        BoardInfo[] boardInfos = new BoardInfo[queryAllBoardsResult.boards.length];
+                        for (int i = 0; i < boardInfos.length; ++i) {
+                            boardInfos[i] = ToDoConverter.fromTransferObj(queryAllBoardsResult.boards[i]);
+                        }
+                        listener.onSuccess(boardInfos);
+                    }
+                }
+
+                break;
+        }
     }
 
 
@@ -315,8 +349,54 @@ public class DataCollaborateManager extends RequestAgent {
         // 下载当前画板已有的图元操作。NOTE:下载过程中可能有其他画板比如画板2的操作board2_ops也上报上来，然后切到画板2时又要批量下载已有图元，这时批量下载的操作时序上应该在board2_ops前面，但接收到的时序恰好相反，记得处理这种情形。
                 /* NOTE:对于下载下来的图片相关的操作，如插入图片、删除图片等，并不包含图片文件本身。
                 要获取图片文件本身，需在后续专门下载。*/
-        if (Msg.DCCurrentBoardNtf.equals(ntfId)) {
-            req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), null);
+        if (Msg.DCCurrentBoardNtf.equals(ntfId)) { // TODO 获取所有画板，然后分别下载。
+//            req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), null);
+            req(Msg.DCQueryAllBoards, new MsgBeans.DCConfId(board.confE164), new QueryAllBoardsInnerListener() {
+                @Override
+                public void onSuccess(Object result) {
+                    MsgBeans.DCBoard[] dcBoards = (MsgBeans.DCBoard[]) result;
+                    PaintOpsBuffer paintOpsBuffer;
+                    cachedPaintOps.clear();
+                    for (MsgBeans.DCBoard board : dcBoards){
+                        paintOpsBuffer = new PaintOpsBuffer();
+                        paintOpsBuffer.state = SYNCHRONIZING;
+                        cachedPaintOps.put(board.id, paintOpsBuffer);
+
+                        req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), new IResultListener() {
+                            @Override
+                            public void onSuccess(Object result) {
+                                /* NOTHING TO DO.
+                                后续会批量上报当前画板已有的图元 */
+                            }
+
+                            @Override
+                            public void onFailed(int errorCode, Object info) {
+                                MsgBeans.DownloadResult downloadResult = (MsgBeans.DownloadResult) info;
+                                KLog.p(KLog.ERROR, "download paint element for board %s failed!", downloadResult.boardId);
+                                cachedPaintOps.remove(downloadResult.boardId);
+                            }
+
+                            @Override
+                            public void onTimeout() {
+
+                            }
+                        });
+
+                        // TODO
+//                        handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
+                    }
+                }
+
+                @Override
+                public void onFailed(int errorCode, Object info) {
+
+                }
+
+                @Override
+                public void onTimeout() {
+
+                }
+            });
         }
 
     }
@@ -324,110 +404,180 @@ public class DataCollaborateManager extends RequestAgent {
 
     private static final String SAVE_PATH = "/data/local/tmp/"; // FIXME DEBUG
     private void onRsps(Msg rspId, Object rspContent, IResultListener listener){
+        KLog.p("rspContent=%s", rspContent);
         switch (rspId){
             case DCDownloadRsp:
                 MsgBeans.DownloadResult result = (MsgBeans.DownloadResult) rspContent;
-                if (!result.bSuccess){
-                    KLog.p(KLog.ERROR, "download file failed!");
-                    return;
-                }
-                if (result.bPic) {
-                    // 下载的是图片
-                    OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
-                    Set<Object> onPaintOpListeners = ((DownloadListener) listener).onPaintOpListeners; // TODO 能不能自适应activity生命周期？
-                    KLog.p("download pic finished, onPaintOpListeners=%s", onPaintOpListeners);
-                    for (Object onPaintOpListener : onPaintOpListeners) {
-                        if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
-                            ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
-                        }
-                    }
+                if (result.bSuccess){
+                    listener.onSuccess(result);
                 }else{
-                    /* 下载的是图元（而非图片本身）。
-                     * 后续会批量上报当前画板已有的图元：
-                     * DcsElementOperBegin_Ntf // 批量上报开始
-                     * ...  // 批量图元，如画线、画圆、插入图片等等
-                     *
-                     * ...ElementShouldAfterFinal  // 应该在该批次图元之后出现的图元。
-                     *                                NOTE: 批量上报过程中可能会混入画板中当前正在进行的操作，
-                     *                                这会导致图元上报的时序跟实际时序不一致，需要自行处理。
-                     *                                （实际时序应该是：在成功响应下载请求后的所有后续进行的操作都应出现在DcsElementOperFinal_Ntf之后）
-                     * ...// 批量图元
-                     * DcsElementOperFinal_Ntf // 批量结束
-                     * */
-                    return;
+                    listener.onFailed(ErrCode_Failed, result);
                 }
+
+//                if (result.bPic) {
+//                    if (!result.bSuccess){
+//                        KLog.p(KLog.ERROR, "download pic failed!");
+//                        return;
+//                    }
+//                    // 下载的是图片
+//                    OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
+//                    for (Object onPaintOpListener : ((DownloadInnerListener) listener).onPaintOpListeners) {
+//                        if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
+//                            ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+//                        }
+//                    }
+//                }else{
+//                    if (!result.bSuccess){
+//                        KLog.p(KLog.ERROR, "download paint element failed!");
+//                        cachedPaintOps.remove(result.boardId);
+//                        return;
+//                    }
+//                    /* 下载的是图元（而非图片本身）。
+//                     * 后续会批量上报当前画板已有的图元
+//                     * */
+//                    return;
+//                }
                 break;
+
             case DCQueryPicUrlRsp:
                 MsgBeans.DCQueryPicUrlResult queryPicUrlResult = (MsgBeans.DCQueryPicUrlResult) rspContent;
-                if (!queryPicUrlResult.bSuccess) {
-                    return;
+                if (queryPicUrlResult.bSuccess){
+                    listener.onSuccess(queryPicUrlResult);
+                }else{
+                    listener.onFailed(ErrCode_Failed, queryPicUrlResult);
                 }
-                // 下载图片文件
-                req(Msg.DCDownload,
-                        new MsgBeans.DownloadPara(queryPicUrlResult.boardId, queryPicUrlResult.picId, SAVE_PATH + queryPicUrlResult.picId + ".jpg", queryPicUrlResult.url),
-                        listener);
+
+//
+//                if (!queryPicUrlResult.bSuccess) {
+//                    return;
+//                }
+//                // 下载图片文件
+//                req(Msg.DCDownload,
+//                        new MsgBeans.DownloadPara(queryPicUrlResult.boardId, queryPicUrlResult.picId, SAVE_PATH + queryPicUrlResult.picId + ".jpg", queryPicUrlResult.url),
+//                        listener);
                 break;
         }
     }
 
 
 
-    private Handler handler = new Handler(Looper.getMainLooper());
-    private final Runnable batchOpTimeout = () -> {
-        KLog.p(KLog.ERROR,"wait batch paint ops timeout <<<<<<<<<<<<<<<<<<<<<<<");
-        Set<Object> listeners = getNtfListeners(Msg.DCElementEndNtf);
-        if(!listeners.isEmpty()) {
-            while (!cachedOps.isEmpty()) {
-                OpPaint op = ToDoConverter.fromTransferObj(cachedOps.poll());
-                if (null != op) {
-                    for (Object listener : listeners) {
-                        ((IOnPaintOpListener) listener).onPaintOp(op);
-                    }
-                }
-            }
-        }
+//    private Handler handler = new Handler(Looper.getMainLooper());
+//    private final Runnable batchOpTimeout = () -> {
+//        KLog.p(KLog.ERROR,"wait batch paint ops timeout <<<<<<<<<<<<<<<<<<<<<<<");
+//        Set<Object> listeners = getNtfListeners(Msg.DCElementEndNtf);
+//        if(!listeners.isEmpty()) {
+//            while (!cachedOps.isEmpty()) {
+//                OpPaint op = ToDoConverter.fromTransferObj(cachedOps.poll());
+//                if (null != op) {
+//                    for (Object listener : listeners) {
+//                        ((IOnPaintOpListener) listener).onPaintOp(op);
+//                    }
+//                }
+//            }
+//        }
+//
+//        isSynchronizing = false;
+//    };
 
-        isSynchronizing = false;
-    };
     @SuppressWarnings("ConstantConditions")
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         switch (ntfId){
             case DCElementBeginNtf:
-                if (isSynchronizing) {  // TODO 多个画板切换会有多个DcsElementOperBegin_Ntf，此处应该要分boardId处理；另外在DcsElementOperBegin_Ntf之前就有可能有新的操作过来，或许要在开始download的时候就开启isRecvingBatchOps
-                    return;
-                }
-                KLog.p("batch paint ops >>>>>>>>>>>>>>>>>>>>>>");
-                isSynchronizing = true;
-                handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
+//                if (isSynchronizing) {  // TODO 多个画板切换会有多个DcsElementOperBegin_Ntf，此处应该要分boardId处理；另外在DcsElementOperBegin_Ntf之前就有可能有新的操作过来，或许要在开始download的时候就开启isRecvingBatchOps
+//                    return;
+//                }
+//                KLog.p("batch paint ops >>>>>>>>>>>>>>>>>>>>>>");
+//                isSynchronizing = true;
+//                handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
                 break;
             case DCElementEndNtf:
-                if (!isSynchronizing) {
-                    return;
-                }
+//                if (!isSynchronizing) {
+//                    return;
+//                }
                 KLog.p("batch paint ops <<<<<<<<<<<<<<<<<<<<<<<");
-                handler.removeCallbacks(batchOpTimeout);
-                while (!cachedOps.isEmpty()) {
-                    OpPaint opPaint = ToDoConverter.fromTransferObj(cachedOps.poll());
-                    if (null != opPaint) {
-                        for (Object listener : listeners) {
-                            ((IOnPaintOpListener) listener).onPaintOp(opPaint); // TODO 需要区分boardId。需要记录每个boardId是否已经下载批量操作对于尚未下载的先缓存
+
+//                handler.removeCallbacks(batchOpTimeout); // TODO
+
+                MsgBeans.DCBoardId boardId = (MsgBeans.DCBoardId) ntfContent;
+                PaintOpsBuffer paintOpsBuffer = cachedPaintOps.get(boardId.boardId);
+                if (null != paintOpsBuffer){
+                    paintOpsBuffer.state = SYNCHRONIZED;
+                    PriorityQueue<MsgBeans.DCPaintOp> ops = paintOpsBuffer.cachedOps;
+                    while (!ops.isEmpty()) {
+                        OpPaint opPaint = ToDoConverter.fromTransferObj(ops.poll());
+                        if (null != opPaint) {
+                            for (Object listener : listeners) {
+                                ((IOnPaintOpListener) listener).onPaintOp(opPaint);
+                            }
                         }
                     }
                 }
-                isSynchronizing = false;
+
+//                handler.removeCallbacks(batchOpTimeout);
+//                while (!cachedOps.isEmpty()) {
+//                    OpPaint opPaint = ToDoConverter.fromTransferObj(cachedOps.poll());
+//                    if (null != opPaint) {
+//                        for (Object listener : listeners) {
+//                            ((IOnPaintOpListener) listener).onPaintOp(opPaint); // TODO 需要区分boardId。需要记录每个boardId是否已经下载批量操作对于尚未下载的先缓存
+//                        }
+//                    }
+//                }
+//                isSynchronizing = false;
                 break;
             case DCPicInsertedNtf:
                 MsgBeans.DCInertPicOp dcInertPicOp = (MsgBeans.DCInertPicOp) ntfContent;
                 req(Msg.DCQueryPicUrl,
                         new MsgBeans.DCQueryPicUrlPara(dcInertPicOp.picId, dcInertPicOp.confE164, dcInertPicOp.boardId, dcInertPicOp.pageId),
-                        new DownloadListener(listeners));
+                        new IResultListener(){
+                            @Override
+                            public void onSuccess(Object result) {
+                                MsgBeans.DCQueryPicUrlResult queryPicUrlResult = (MsgBeans.DCQueryPicUrlResult) result;
+                                req(Msg.DCDownload, new MsgBeans.DownloadPara(queryPicUrlResult.boardId, queryPicUrlResult.picId, SAVE_PATH + queryPicUrlResult.picId + ".jpg", queryPicUrlResult.url),
+                                        new IResultListener() {
+                                            @Override
+                                            public void onSuccess(Object result) {
+                                                MsgBeans.DownloadResult downloadResult = (MsgBeans.DownloadResult) result;
+                                                OpPaint op = new OpUpdatePic(downloadResult.boardId, downloadResult.picId, BitmapFactory.decodeFile(downloadResult.picSavePath));
+                                                for (Object onPaintOpListener : listeners) {
+                                                    if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
+                                                        ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+                                                    }
+                                                }
+                                            }
+
+                                            @Override
+                                            public void onFailed(int errorCode, Object errorInfo) {
+
+                                            }
+
+                                            @Override
+                                            public void onTimeout() {
+
+                                            }
+                                        });
+                            }
+
+                            @Override
+                            public void onFailed(int errorCode, Object errorInfo) {
+
+                            }
+
+                            @Override
+                            public void onTimeout() {
+
+                            }
+                        });
             default:
                 if (ntfContent instanceof MsgBeans.DCPaintOp) {
                     MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
+                    PaintOpsBuffer opsBuffer = cachedPaintOps.get(dcPaintOp.boardId);
+                    if (null == opsBuffer){
+                        return;
+                    }
 
-                    if (isSynchronizing) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
-                        cachedOps.offer(dcPaintOp);
+                    if (SYNCHRONIZING == opsBuffer.state) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
+                        opsBuffer.cachedOps.offer(dcPaintOp);
                     } else {
                         OpPaint paintOp = ToDoConverter.fromTransferObj(dcPaintOp);
                         if (null != paintOp) {
@@ -487,11 +637,19 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    private class DownloadListener implements IResultListener{
-        private Set<Object> onPaintOpListeners;
-        DownloadListener(Set<Object> listeners){
+    private class DownloadInnerListener implements IResultListener{
+        Set<Object> onPaintOpListeners;
+        DownloadInnerListener(Set<Object> listeners){
             onPaintOpListeners = listeners;
         }
+    }
+
+    private class QueryAllBoardsInnerListener implements IResultListener{
+    }
+
+    private class PaintOpsBuffer{
+        private int state = IDLE;
+        private PriorityQueue<MsgBeans.DCPaintOp> cachedOps = new PriorityQueue<>();
     }
 
     // FIXME just for debug

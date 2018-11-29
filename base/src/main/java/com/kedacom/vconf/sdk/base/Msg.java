@@ -54,7 +54,7 @@ public enum Msg {
     DCLoginRsp,
 
     /**注销数据协作服务器*/
-    @Request(rspSeq = {"DCLogoutRsp"})
+    @Request(rspSeq = {"DCLogoutRsp"}, timeout = 5)
     DCLogout,
 
     /**注销数据协作服务器响应*/
@@ -386,7 +386,7 @@ public enum Msg {
 
     /**图元序列开始通知。
      * 注：新加入数据协作会议后，服务器会将当前数据协作会议中已存在的图元序列同步到新加入的与会方。*/
-    @Notification
+    @Notification(clz = MsgBeans.DCBoardId.class)
     DCElementBeginNtf,
 
     /**画直线通知*/
@@ -443,7 +443,7 @@ public enum Msg {
     DCScreenClearedNtf,
 
     /**图元序列结束通知*/
-    @Notification
+    @Notification(clz = MsgBeans.DCBoardId.class)
     DCElementEndNtf,
 
 
