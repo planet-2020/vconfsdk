@@ -29,15 +29,10 @@ import java.util.Set;
 
 public class DataCollaborateManager extends RequestAgent {
 
-    // 是否正在同步当前数据协作中的操作
-    private boolean isSynchronizing = false;
-
-    /*同步过程中缓存的操作*/
-//    private PriorityQueue<MsgBeans.DCPaintOp> cachedOps = new PriorityQueue<>();
-
     private int IDLE = 0;
     private int SYNCHRONIZING = 1;
     private int SYNCHRONIZED = 2;
+    /*同步过程中缓存的操作*/
     private Map<String, PaintOpsBuffer> cachedPaintOps = new HashMap<>();
 
     //当前数据协作会议的e164
@@ -142,8 +137,7 @@ public class DataCollaborateManager extends RequestAgent {
         switch (rspId){
             case DCBuildLink4LoginRsp:
                 result = (MsgBeans.CommonResult) rspContent;
-                if (!result.bSuccess
-                        && null != listener){
+                if (!result.bSuccess && null != listener){
                     cancelReq(Msg.DCLogin, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
                     listener.onFailed(ErrCode_BuildLink4LoginFailed, null);
                 }
@@ -199,8 +193,7 @@ public class DataCollaborateManager extends RequestAgent {
         switch (rspId){
             case DCBuildLink4ConfRsp:
                 result = (MsgBeans.CommonResult) rspContent;
-                if (!result.bSuccess
-                        && null != listener){
+                if (!result.bSuccess && null != listener){
                     cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCCreateConfRsp上来，取消该请求以防等待超时。
                     listener.onFailed(ErrCode_BuildLink4ConfFailed, null);
                 }
@@ -346,11 +339,14 @@ public class DataCollaborateManager extends RequestAgent {
                 onBoardOpListener.onBoardDeleted(board.id);
             }
         }
-        // 下载当前画板已有的图元操作。NOTE:下载过程中可能有其他画板比如画板2的操作board2_ops也上报上来，然后切到画板2时又要批量下载已有图元，这时批量下载的操作时序上应该在board2_ops前面，但接收到的时序恰好相反，记得处理这种情形。
-                /* NOTE:对于下载下来的图片相关的操作，如插入图片、删除图片等，并不包含图片文件本身。
-                要获取图片文件本身，需在后续专门下载。*/
-        if (Msg.DCCurrentBoardNtf.equals(ntfId)) { // TODO 获取所有画板，然后分别下载。
-//            req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), null);
+
+
+        if (Msg.DCCurrentBoardNtf.equals(ntfId)) {
+            /**
+             * 此条通知仅在刚入会时上报，我们开始下载当前会议中所有画板的所有已有图元
+             * */
+
+            // 获取所有画板
             req(Msg.DCQueryAllBoards, new MsgBeans.DCConfId(board.confE164), new QueryAllBoardsInnerListener() {
                 @Override
                 public void onSuccess(Object result) {
@@ -361,7 +357,7 @@ public class DataCollaborateManager extends RequestAgent {
                         paintOpsBuffer = new PaintOpsBuffer();
                         paintOpsBuffer.state = SYNCHRONIZING;
                         cachedPaintOps.put(board.id, paintOpsBuffer);
-
+                        // 下载每个画板已有的图元
                         req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), new IResultListener() {
                             @Override
                             public void onSuccess(Object result) {
@@ -378,7 +374,7 @@ public class DataCollaborateManager extends RequestAgent {
 
                             @Override
                             public void onTimeout() {
-
+                                KLog.p(KLog.ERROR, "download paint element for board %s timeout!", board.id);
                             }
                         });
 
@@ -389,12 +385,12 @@ public class DataCollaborateManager extends RequestAgent {
 
                 @Override
                 public void onFailed(int errorCode, Object info) {
-
+                    KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s failed!", board.confE164);
                 }
 
                 @Override
                 public void onTimeout() {
-
+                    KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s timeout!", board.confE164);
                 }
             });
         }
@@ -413,30 +409,6 @@ public class DataCollaborateManager extends RequestAgent {
                 }else{
                     listener.onFailed(ErrCode_Failed, result);
                 }
-
-//                if (result.bPic) {
-//                    if (!result.bSuccess){
-//                        KLog.p(KLog.ERROR, "download pic failed!");
-//                        return;
-//                    }
-//                    // 下载的是图片
-//                    OpPaint op = new OpUpdatePic(result.boardId, result.picId, BitmapFactory.decodeFile(result.picSavePath));
-//                    for (Object onPaintOpListener : ((DownloadInnerListener) listener).onPaintOpListeners) {
-//                        if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
-//                            ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
-//                        }
-//                    }
-//                }else{
-//                    if (!result.bSuccess){
-//                        KLog.p(KLog.ERROR, "download paint element failed!");
-//                        cachedPaintOps.remove(result.boardId);
-//                        return;
-//                    }
-//                    /* 下载的是图元（而非图片本身）。
-//                     * 后续会批量上报当前画板已有的图元
-//                     * */
-//                    return;
-//                }
                 break;
 
             case DCQueryPicUrlRsp:
@@ -446,15 +418,6 @@ public class DataCollaborateManager extends RequestAgent {
                 }else{
                     listener.onFailed(ErrCode_Failed, queryPicUrlResult);
                 }
-
-//
-//                if (!queryPicUrlResult.bSuccess) {
-//                    return;
-//                }
-//                // 下载图片文件
-//                req(Msg.DCDownload,
-//                        new MsgBeans.DownloadPara(queryPicUrlResult.boardId, queryPicUrlResult.picId, SAVE_PATH + queryPicUrlResult.picId + ".jpg", queryPicUrlResult.url),
-//                        listener);
                 break;
         }
     }
@@ -484,18 +447,12 @@ public class DataCollaborateManager extends RequestAgent {
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         switch (ntfId){
             case DCElementBeginNtf:
-//                if (isSynchronizing) {  // TODO 多个画板切换会有多个DcsElementOperBegin_Ntf，此处应该要分boardId处理；另外在DcsElementOperBegin_Ntf之前就有可能有新的操作过来，或许要在开始download的时候就开启isRecvingBatchOps
-//                    return;
-//                }
-//                KLog.p("batch paint ops >>>>>>>>>>>>>>>>>>>>>>");
-//                isSynchronizing = true;
-//                handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
+                // NOTE:此通知并不能准确标记批量图元的起点，我们以下载作为起点。
                 break;
             case DCElementEndNtf:
-//                if (!isSynchronizing) {
-//                    return;
-//                }
                 KLog.p("batch paint ops <<<<<<<<<<<<<<<<<<<<<<<");
+
+                // 批量图元推送结束，我们发给用户
 
 //                handler.removeCallbacks(batchOpTimeout); // TODO
 
@@ -514,25 +471,21 @@ public class DataCollaborateManager extends RequestAgent {
                     }
                 }
 
-//                handler.removeCallbacks(batchOpTimeout);
-//                while (!cachedOps.isEmpty()) {
-//                    OpPaint opPaint = ToDoConverter.fromTransferObj(cachedOps.poll());
-//                    if (null != opPaint) {
-//                        for (Object listener : listeners) {
-//                            ((IOnPaintOpListener) listener).onPaintOp(opPaint); // TODO 需要区分boardId。需要记录每个boardId是否已经下载批量操作对于尚未下载的先缓存
-//                        }
-//                    }
-//                }
-//                isSynchronizing = false;
                 break;
+
             case DCPicInsertedNtf:
+                /* NOTE:插入图片比较特殊，当前只获取到了插入操作的信息，图片本身还需进一步下载。*/
+
                 MsgBeans.DCInertPicOp dcInertPicOp = (MsgBeans.DCInertPicOp) ntfContent;
+
+                // 获取图片下载地址
                 req(Msg.DCQueryPicUrl,
                         new MsgBeans.DCQueryPicUrlPara(dcInertPicOp.picId, dcInertPicOp.confE164, dcInertPicOp.boardId, dcInertPicOp.pageId),
                         new IResultListener(){
                             @Override
                             public void onSuccess(Object result) {
                                 MsgBeans.DCQueryPicUrlResult queryPicUrlResult = (MsgBeans.DCQueryPicUrlResult) result;
+                                // 下载图片
                                 req(Msg.DCDownload, new MsgBeans.DownloadPara(queryPicUrlResult.boardId, queryPicUrlResult.picId, SAVE_PATH + queryPicUrlResult.picId + ".jpg", queryPicUrlResult.url),
                                         new IResultListener() {
                                             @Override
@@ -548,24 +501,24 @@ public class DataCollaborateManager extends RequestAgent {
 
                                             @Override
                                             public void onFailed(int errorCode, Object errorInfo) {
-
+                                                KLog.p(KLog.ERROR, "download pic %s for board %s failed!", queryPicUrlResult.picId, queryPicUrlResult.boardId);
                                             }
 
                                             @Override
                                             public void onTimeout() {
-
+                                                KLog.p(KLog.ERROR, "download pic %s for board %s timeout!", queryPicUrlResult.picId, queryPicUrlResult.boardId);
                                             }
                                         });
                             }
 
                             @Override
                             public void onFailed(int errorCode, Object errorInfo) {
-
+                                KLog.p(KLog.ERROR, "query url of pic %s for board %s failed!", dcInertPicOp.picId, dcInertPicOp.boardId);
                             }
 
                             @Override
                             public void onTimeout() {
-
+                                KLog.p(KLog.ERROR, "query url of pic %s for board %s timeout!", dcInertPicOp.picId, dcInertPicOp.boardId);
                             }
                         });
             default:
@@ -576,7 +529,7 @@ public class DataCollaborateManager extends RequestAgent {
                         return;
                     }
 
-                    if (SYNCHRONIZING == opsBuffer.state) {// todo 根据boarid判断isSynchronized(paintOp.getBoardId())
+                    if (SYNCHRONIZING == opsBuffer.state) {
                         opsBuffer.cachedOps.offer(dcPaintOp);
                     } else {
                         OpPaint paintOp = ToDoConverter.fromTransferObj(dcPaintOp);
@@ -636,13 +589,6 @@ public class DataCollaborateManager extends RequestAgent {
         void onBoardSwitched(String boardId);
     }
 
-
-    private class DownloadInnerListener implements IResultListener{
-        Set<Object> onPaintOpListeners;
-        DownloadInnerListener(Set<Object> listeners){
-            onPaintOpListeners = listeners;
-        }
-    }
 
     private class QueryAllBoardsInnerListener implements IResultListener{
     }
