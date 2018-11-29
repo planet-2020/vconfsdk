@@ -402,8 +402,6 @@ public class DataCollaborateManager extends RequestAgent {
                             }
                         });
 
-                        // TODO
-//                        handler.postDelayed(batchOpTimeout, 10000); // 起定时器防止final消息不到。
                     }
                 }
 
@@ -447,24 +445,6 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-
-//    private Handler handler = new Handler(Looper.getMainLooper());
-//    private final Runnable batchOpTimeout = () -> {
-//        KLog.p(KLog.ERROR,"wait batch paint ops timeout <<<<<<<<<<<<<<<<<<<<<<<");
-//        Set<Object> listeners = getNtfListeners(Msg.DCElementEndNtf);
-//        if(!listeners.isEmpty()) {
-//            while (!cachedOps.isEmpty()) {
-//                OpPaint op = ToDoConverter.fromTransferObj(cachedOps.poll());
-//                if (null != op) {
-//                    for (Object listener : listeners) {
-//                        ((IOnPaintOpListener) listener).onPaintOp(op);
-//                    }
-//                }
-//            }
-//        }
-//
-//        isSynchronizing = false;
-//    };
 
     @SuppressWarnings("ConstantConditions")
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
