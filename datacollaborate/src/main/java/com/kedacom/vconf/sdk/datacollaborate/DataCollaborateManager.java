@@ -480,7 +480,7 @@ public class DataCollaborateManager extends RequestAgent {
         void onPaintOp(OpPaint op);
     }
 
-    public interface IOnBoardOpListener{
+    public interface IOnBoardOpListener extends ILifecycleOwner{
         void onBoardCreated(BoardInfo boardInfo);
         void onBoardDeleted(String boardId);
         void onBoardSwitched(String boardId);
