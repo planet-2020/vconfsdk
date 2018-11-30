@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
@@ -95,8 +96,13 @@ public class DataCollaborateManager extends RequestAgent {
         }
     };
 
+    private static String PIC_SAVE_DIR;
+//    private static Context context;
     private DataCollaborateManager(){}
-    public static DataCollaborateManager getInstance() {
+    public static DataCollaborateManager getInstance(Context ctx) {
+        if (null != ctx && null == PIC_SAVE_DIR){
+            PIC_SAVE_DIR = ctx.getCacheDir().getAbsolutePath(); // TODO 1、清空；2、下载前判断是否存在已有文件。
+        }
         return AgentManager.obtain(DataCollaborateManager.class);
     }
 
@@ -348,19 +354,18 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onBoardNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
-        IOnBoardOpListener onBoardOpListener;
-        MsgBeans.DCBoard board = (MsgBeans.DCBoard) ntfContent;
+        MsgBeans.DCBoard dcBoard = (MsgBeans.DCBoard) ntfContent;
         for (Object listener : listeners) {
-            onBoardOpListener = (IOnBoardOpListener) listener;
+            IOnBoardOpListener onBoardOpListener = (IOnBoardOpListener) listener;
             if (Msg.DCCurrentBoardNtf.equals(ntfId)) {
-                onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board));
-                onBoardOpListener.onBoardSwitched(board.id);
+                onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(dcBoard));
+                onBoardOpListener.onBoardSwitched(dcBoard.id);
             } else if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
-                onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board));
+                onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(dcBoard));
             } else if (Msg.DCBoardSwitchedNtf.equals(ntfId)) {
-                onBoardOpListener.onBoardSwitched(board.id);
+                onBoardOpListener.onBoardSwitched(dcBoard.id);
             } else if (Msg.DCBoardDeletedNtf.equals(ntfId)) {
-                onBoardOpListener.onBoardDeleted(board.id);
+                onBoardOpListener.onBoardDeleted(dcBoard.id);
             }
         }
 
@@ -371,17 +376,24 @@ public class DataCollaborateManager extends RequestAgent {
              * */
 
             // 获取所有画板
-            req(Msg.DCQueryAllBoards, new MsgBeans.DCConfId(board.confE164), new QueryAllBoardsInnerListener() {
+            req(Msg.DCQueryAllBoards, new MsgBeans.DCConfId(dcBoard.confE164), new QueryAllBoardsInnerListener() {
                 @Override
                 public void onSuccess(Object result) {
                     MsgBeans.DCBoard[] dcBoards = (MsgBeans.DCBoard[]) result;
                     PaintOpsBuffer paintOpsBuffer;
                     cachedPaintOps.clear();
                     for (MsgBeans.DCBoard board : dcBoards){
+                        // 上报所有已创建的画板
+                        if (!dcBoard.id.equals(board.id)){
+                            for (Object listener : listeners) {
+                                ((IOnBoardOpListener)listener).onBoardCreated(ToDoConverter.fromTransferObj(board));
+                            }
+                        }
+
                         paintOpsBuffer = new PaintOpsBuffer();
                         paintOpsBuffer.bSynchronizing = true;
                         cachedPaintOps.put(board.id, paintOpsBuffer);
-                        // 下载每个画板已有的图元
+                        // 下载每个画板已有的图元 // TODO 优先下载当前画板的图元，因为下载是顺序的。
                         req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), new IResultListener() {
                             @Override
                             public void onSuccess(Object result) {
@@ -403,16 +415,17 @@ public class DataCollaborateManager extends RequestAgent {
                         });
 
                     }
+
                 }
 
                 @Override
                 public void onFailed(int errorCode, Object info) {
-                    KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s failed!", board.confE164);
+                    KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s failed!", dcBoard.confE164);
                 }
 
                 @Override
                 public void onTimeout() {
-                    KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s timeout!", board.confE164);
+                    KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s timeout!", dcBoard.confE164);
                 }
             });
         }
@@ -420,7 +433,6 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    private static final String SAVE_PATH = "/data/local/tmp/"; // FIXME DEBUG
     private void onRsps(Msg rspId, Object rspContent, IResultListener listener){
         KLog.p("rspContent=%s", rspContent);
         switch (rspId){
@@ -489,7 +501,7 @@ public class DataCollaborateManager extends RequestAgent {
                             public void onSuccess(Object result) {
                                 MsgBeans.DCQueryPicUrlResult queryPicUrlResult = (MsgBeans.DCQueryPicUrlResult) result;
                                 // 下载图片
-                                req(Msg.DCDownload, new MsgBeans.DownloadPara(queryPicUrlResult.boardId, queryPicUrlResult.picId, SAVE_PATH + queryPicUrlResult.picId + ".jpg", queryPicUrlResult.url),
+                                req(Msg.DCDownload, new MsgBeans.DownloadPara(queryPicUrlResult.boardId, queryPicUrlResult.picId, PIC_SAVE_DIR +"/"+ queryPicUrlResult.picId + ".jpg", queryPicUrlResult.url),
                                         new IResultListener() {
                                             @Override
                                             public void onSuccess(Object result) {

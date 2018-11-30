@@ -10,7 +10,10 @@ import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
+import android.graphics.SurfaceTexture;
 import android.os.Process;
+import android.view.TextureView;
+import android.view.View;
 
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
@@ -95,13 +98,7 @@ public class DefaultPainter implements IPainter {
     @Override
     public void resume() {
         bPaused = false;
-        synchronized (renderThread) {
-            bNeedRender = true;
-            if (Thread.State.WAITING == renderThread.getState()) {
-                KLog.p(KLog.WARN, "notify");
-                renderThread.notify();
-            }
-        }
+        refresh();
     }
 
     @Override
@@ -117,6 +114,52 @@ public class DefaultPainter implements IPainter {
     }
 
 
+    private void refresh(){
+        synchronized (renderThread) {
+            bNeedRender = true;
+            if (Thread.State.WAITING == renderThread.getState()) {
+                KLog.p(KLog.WARN, "notify");
+                renderThread.notify();
+            }
+        }
+    }
+    private View.OnAttachStateChangeListener onAttachStateChangeListener = new View.OnAttachStateChangeListener() {
+        @Override
+        public void onViewAttachedToWindow(View v) {
+            KLog.p("attached board view %s",v);
+            refresh();
+        }
+
+        @Override
+        public void onViewDetachedFromWindow(View v) {
+            KLog.p("detached board view %s",v);
+            refresh();
+        }
+    };
+
+    private TextureView.SurfaceTextureListener surfaceTextureListener = new TextureView.SurfaceTextureListener() {
+        @Override
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            KLog.p("surface available");
+            refresh();
+        }
+
+        @Override
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+            KLog.p("surface size changed");
+//            refresh();
+        }
+
+        @Override
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+            return false;
+        }
+
+        @Override
+        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+        }
+    };
+
     @Override
     public boolean addPaintBoard(IPaintBoard paintBoard) {
         String boardId = paintBoard.getBoardId();
@@ -124,8 +167,12 @@ public class DefaultPainter implements IPainter {
             KLog.p(KLog.ERROR,"board %s already exist!", paintBoard.getBoardId());
             return false;
         }
-        paintBoards.put(paintBoard.getBoardId(), (DefaultPaintBoard) paintBoard);  // TODO 只能强转吗。工厂模式怎样保证产品一致性的？
+        paintBoards.put(paintBoard.getBoardId(), (DefaultPaintBoard) paintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
+
+//        paintBoard.getBoardView().addOnAttachStateChangeListener(onAttachStateChangeListener);
+        ((TextureView)paintBoard.getShapePaintView()).setSurfaceTextureListener(surfaceTextureListener);
+
         return true;
     }
 
@@ -144,6 +191,7 @@ public class DefaultPainter implements IPainter {
         paintBoards.clear();
         curBoardId = null;
     }
+
 
     @Override
     public IPaintBoard switchPaintBoard(String boardId) {
@@ -205,19 +253,19 @@ public class DefaultPainter implements IPainter {
 //        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
 
 
-        boolean refresh = boardId.equals(curBoardId); // 操作属于当前board则尝试立即刷新
+        boolean bRefresh = boardId.equals(curBoardId); // 操作属于当前board则尝试立即刷新
         OpPaint tmpOp;
 
         switch (op.getType()){
             case INSERT_PICTURE:
                 picRenderOps.offerLast(op);
                 if (null == ((OpInsertPic)op).getPic()){
-                    refresh = false; // 图片为空不需刷新界面（图片可能正在下载）
+                    bRefresh = false; // 图片为空不需刷新界面（图片可能正在下载）
                 }
                 break;
 
             case DELETE_PICTURE:
-                refresh = false;
+                bRefresh = false;
                 OpPaint picRenderOp;
                 for (String picId : ((OpDeletePic)op).getPicIds()) {
                     Iterator it = picRenderOps.iterator();
@@ -226,7 +274,7 @@ public class DefaultPainter implements IPainter {
                         if (EOpType.INSERT_PICTURE == picRenderOp.getType()
                                 && ((OpInsertPic) picRenderOp).getPicId().equals(picId)) {
                             it.remove();
-                            refresh = true;
+                            bRefresh = true;
                             break;
                         }
                     }
@@ -268,7 +316,7 @@ public class DefaultPainter implements IPainter {
                             KLog.p(KLog.WARN, "repeal %s",tmpOp);
                             shapeRepealedOps.push(tmpOp); // 缓存撤销的操作以供恢复
                         }else{
-                            refresh = false;
+                            bRefresh = false;
                         }
                         break;
                     case REDO:
@@ -277,7 +325,7 @@ public class DefaultPainter implements IPainter {
                             KLog.p(KLog.WARN, "restore %s",tmpOp);
                             shapeRenderOps.offerLast(tmpOp); // 恢复最近操作
                         }else {
-                            refresh = false;
+                            bRefresh = false;
                         }
                         break;
                     default:
@@ -298,14 +346,8 @@ public class DefaultPainter implements IPainter {
 
         }
 
-        if (refresh) {
-            synchronized (renderThread) {
-                bNeedRender = true;
-                if (Thread.State.WAITING == renderThread.getState()) {
-                    KLog.p(KLog.WARN, "notify");
-                    renderThread.notify();
-                }
-            }
+        if (bRefresh) {
+            refresh();
         }
     }
 
