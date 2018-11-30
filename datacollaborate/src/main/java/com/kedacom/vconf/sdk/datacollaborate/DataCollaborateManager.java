@@ -505,6 +505,8 @@ public class DataCollaborateManager extends RequestAgent {
                                         new IResultListener() {
                                             @Override
                                             public void onSuccess(Object result) {
+                                                KLog.p(KLog.ERROR, "download pic %s for board %s success! save path=%s",
+                                                        queryPicUrlResult.picId, queryPicUrlResult.boardId, PIC_SAVE_DIR +"/"+ queryPicUrlResult.picId + ".jpg");
                                                 MsgBeans.DownloadResult downloadResult = (MsgBeans.DownloadResult) result;
                                                 OpPaint op = new OpUpdatePic(downloadResult.boardId, downloadResult.picId, BitmapFactory.decodeFile(downloadResult.picSavePath));
                                                 for (Object onPaintOpListener : listeners) {

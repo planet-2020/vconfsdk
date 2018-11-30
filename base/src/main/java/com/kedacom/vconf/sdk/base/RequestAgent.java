@@ -229,11 +229,24 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     }
 
     protected boolean containsNtfListener(Object ntfListener){
-        return false; // TODO
+        for (Set<Object> listeners : ntfListeners.values()){
+            for (Object listener : listeners){
+                if (listener.equals(ntfListener)){
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     protected boolean containsRspListener(Object rspListener){
-        return false; // TODO
+        for (RequestBundle bundle: rspListeners.values()){
+            if (bundle.resultListener.equals(rspListener)){
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

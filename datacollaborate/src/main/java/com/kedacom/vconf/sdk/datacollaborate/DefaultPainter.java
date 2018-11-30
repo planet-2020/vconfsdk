@@ -13,7 +13,6 @@ import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.os.Process;
 import android.view.TextureView;
-import android.view.View;
 
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
@@ -123,19 +122,6 @@ public class DefaultPainter implements IPainter {
             }
         }
     }
-    private View.OnAttachStateChangeListener onAttachStateChangeListener = new View.OnAttachStateChangeListener() {
-        @Override
-        public void onViewAttachedToWindow(View v) {
-            KLog.p("attached board view %s",v);
-            refresh();
-        }
-
-        @Override
-        public void onViewDetachedFromWindow(View v) {
-            KLog.p("detached board view %s",v);
-            refresh();
-        }
-    };
 
     private TextureView.SurfaceTextureListener surfaceTextureListener = new TextureView.SurfaceTextureListener() {
         @Override
@@ -170,7 +156,6 @@ public class DefaultPainter implements IPainter {
         paintBoards.put(paintBoard.getBoardId(), (DefaultPaintBoard) paintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 
-//        paintBoard.getBoardView().addOnAttachStateChangeListener(onAttachStateChangeListener);
         ((TextureView)paintBoard.getShapePaintView()).setSurfaceTextureListener(surfaceTextureListener);
 
         return true;

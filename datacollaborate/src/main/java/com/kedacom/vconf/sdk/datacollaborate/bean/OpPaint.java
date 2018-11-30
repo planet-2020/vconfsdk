@@ -15,7 +15,7 @@ public abstract class OpPaint {
     @NonNull
     @Override
     public String toString() {
-        return String.format(" type=%s, confE164=%s, boardId=%s, pageId=%s", type, confE164, boardId, pageId);
+        return String.format("\n type=%s, confE164=%s, boardId=%s, pageId=%s", type, confE164, boardId, pageId);
     }
 
     public EOpType getType() {
