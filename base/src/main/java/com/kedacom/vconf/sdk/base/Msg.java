@@ -3,12 +3,10 @@ package com.kedacom.vconf.sdk.base;
 
 import androidx.annotation.RestrictTo;
 
-import com.kedacom.vconf.sdk.annotation.Get;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
-import com.kedacom.vconf.sdk.annotation.Set;
 
 // TODO 使用import static MsgBeans.*？
 
@@ -376,9 +374,9 @@ public enum Msg {
     @Response(clz = MsgBeans.DCQueryPicUrlResult.class)
     DCQueryPicUrlRsp,
 
-    /**下载图片通知*/ //??? 干嘛的
-    @Notification(clz = MsgBeans.DCQueryPicUrlPara.class)
-    DownloadImage_Ntf, // TODO 待定
+    /**下载图片通知*/
+    @Notification(clz = MsgBeans.DCPicUrl.class)
+    DCPicDownloadableNtf,
 
 
 

@@ -23,6 +23,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.ETerminalType;
 
 //import static com.kedacom.vconf.sdk.base.MsgBeans.*; // TODO 使用static import？
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -135,6 +136,7 @@ public class DataCollaborateManager extends RequestAgent {
         Map<Msg, NtfProcessor> processorMap = new HashMap<>();
 //        processorMap.put(Msg.DCApplyOperatorNtf, this::onOperatorsChangedNtfs);
         processorMap.put(Msg.DCConfCreated, this::onNtfs);
+        processorMap.put(Msg.DCPicDownloadableNtf, this::onNtfs);
         return processorMap;
     }
 
@@ -457,6 +459,9 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
+    private String genPicFullName(String picId){
+        return PIC_SAVE_DIR +"/"+ picId + ".jpg";
+    }
 
     @SuppressWarnings("ConstantConditions")
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
@@ -493,19 +498,24 @@ public class DataCollaborateManager extends RequestAgent {
 
                 MsgBeans.DCInertPicOp dcInertPicOp = (MsgBeans.DCInertPicOp) ntfContent;
 
-                // 获取图片下载地址
-                req(Msg.DCQueryPicUrl,
+                /* 仅需要在刚入会同步会议中已有图元时需要主动请求获取图片的url，因为此种场景不会上报DCPicDownloadableNtf通知。
+                其他情形下都以DCPicDownloadableNtf通知为下载图片的时机，并且其他场景下主动获取图片url可能返回失败，因为插入的图片可能暂时未上传到平台*/
+                if (null != cachedPaintOps.get(dcInertPicOp.boardId)
+                        && cachedPaintOps.get(dcInertPicOp.boardId).bSynchronizing){
+
+                    // 获取图片下载地址
+                    req(Msg.DCQueryPicUrl,
                         new MsgBeans.DCQueryPicUrlPara(dcInertPicOp.picId, dcInertPicOp.confE164, dcInertPicOp.boardId, dcInertPicOp.pageId),
                         new IResultListener(){
                             @Override
                             public void onSuccess(Object result) {
                                 MsgBeans.DCQueryPicUrlResult queryPicUrlResult = (MsgBeans.DCQueryPicUrlResult) result;
                                 // 下载图片
-                                req(Msg.DCDownload, new MsgBeans.DownloadPara(queryPicUrlResult.boardId, queryPicUrlResult.picId, PIC_SAVE_DIR +"/"+ queryPicUrlResult.picId + ".jpg", queryPicUrlResult.url),
+                                req(Msg.DCDownload, new MsgBeans.DownloadPara(queryPicUrlResult.boardId, queryPicUrlResult.picId, genPicFullName(queryPicUrlResult.picId), queryPicUrlResult.url),
                                         new IResultListener() {
                                             @Override
                                             public void onSuccess(Object result) {
-                                                KLog.p(KLog.ERROR, "download pic %s for board %s success! save path=%s",
+                                                KLog.p("download pic %s for board %s success! save path=%s",
                                                         queryPicUrlResult.picId, queryPicUrlResult.boardId, PIC_SAVE_DIR +"/"+ queryPicUrlResult.picId + ".jpg");
                                                 MsgBeans.DownloadResult downloadResult = (MsgBeans.DownloadResult) result;
                                                 OpPaint op = new OpUpdatePic(downloadResult.boardId, downloadResult.picId, BitmapFactory.decodeFile(downloadResult.picSavePath));
@@ -538,6 +548,7 @@ public class DataCollaborateManager extends RequestAgent {
                                 KLog.p(KLog.ERROR, "query url of pic %s for board %s timeout!", dcInertPicOp.picId, dcInertPicOp.boardId);
                             }
                         });
+                }
             default:
                 if (ntfContent instanceof MsgBeans.DCPaintOp) {
                     MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
@@ -570,6 +581,28 @@ public class DataCollaborateManager extends RequestAgent {
                 KLog.p("createConfResult=%s", createConfResult);
                 for (Object listener : listeners){
                     ((INotificationListener)listener).onNotification(createConfResult);
+                }
+                break;
+
+            case DCPicDownloadableNtf:
+                MsgBeans.DCPicUrl dcPicUrl = (MsgBeans.DCPicUrl) ntfContent;
+                if (!new File(genPicFullName(dcPicUrl.picId)).exists()){
+                    // 下载图片
+                    req(Msg.DCDownload, new MsgBeans.DownloadPara(dcPicUrl.boardId, dcPicUrl.picId, genPicFullName(dcPicUrl.picId), dcPicUrl.url),
+                            new IResultListener() {
+                                @Override
+                                public void onSuccess(Object result) {
+                                    KLog.p("download pic %s for board %s success! save path=%s",
+                                            dcPicUrl.picId, dcPicUrl.boardId, genPicFullName(dcPicUrl.picId));
+                                    MsgBeans.DownloadResult downloadResult = (MsgBeans.DownloadResult) result;
+                                    OpPaint op = new OpUpdatePic(downloadResult.boardId, downloadResult.picId, BitmapFactory.decodeFile(downloadResult.picSavePath)); // 该通知一定是在插入图片通知之后，所以此处update的目标对象已经存在，不必担心。
+                                    for (Object onPaintOpListener : listeners) {
+                                        if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
+                                            ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+                                        }
+                                    }
+                                }
+                            });
                 }
                 break;
         }

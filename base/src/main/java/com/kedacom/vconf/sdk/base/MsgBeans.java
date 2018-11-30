@@ -365,6 +365,12 @@ public final class MsgBeans {
         public String boardId;
     }
 
+    public static final class DCPicUrl {
+        public String picId;
+        public String url;
+        public String boardId;
+    }
+
 
     public static final class DcsReleaseConf_Ntf{
 
