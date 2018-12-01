@@ -400,7 +400,10 @@ public class DataCollaborateManager extends RequestAgent {
                             @Override
                             public void onSuccess(Object result) {
                                 /* 后续会批量上报当前画板已有的图元，直到收到End消息为止。此处我们开启超时机制防止收不到End消息 */
-                                handler.sendEmptyMessageDelayed(MsgID_SynchronizingTimeout, 20*1000);
+                                Message msg = Message.obtain();
+                                msg.what = MsgID_SynchronizingTimeout;
+                                msg.obj = board.id;
+                                handler.sendMessageDelayed(msg, 20*1000);
                             }
 
                             @Override
