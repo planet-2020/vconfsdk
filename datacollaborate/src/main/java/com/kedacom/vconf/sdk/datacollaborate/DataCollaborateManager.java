@@ -483,7 +483,7 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     private String genPicFullName(String picId){
-        return PIC_SAVE_DIR +"/"+ picId + ".jpg";
+        return PIC_SAVE_DIR +File.pathSeparator+ picId + ".jpg";
     }
 
     @SuppressWarnings("ConstantConditions")
@@ -545,7 +545,7 @@ public class DataCollaborateManager extends RequestAgent {
                                         @Override
                                         public void onSuccess(Object result) {
                                             KLog.p("download pic %s for board %s success! save path=%s",
-                                                    queryPicUrlResult.picId, queryPicUrlResult.boardId, PIC_SAVE_DIR +"/"+ queryPicUrlResult.picId + ".jpg");
+                                                    queryPicUrlResult.picId, queryPicUrlResult.boardId, genPicFullName(queryPicUrlResult.picId));
                                             MsgBeans.DownloadResult downloadResult = (MsgBeans.DownloadResult) result;
                                             OpPaint op = new OpUpdatePic(downloadResult.boardId, downloadResult.picId, BitmapFactory.decodeFile(downloadResult.picSavePath)); // TODO 如果同步已结束则上报，否则不用上报因为同步完成后会统一刷新。不用解码，让painter去做。但是如果下载过程中painter尝试解码图片不会有问题吗？怎么判断已下载完？大小？
                                             for (Object onPaintOpListener : listeners) {
