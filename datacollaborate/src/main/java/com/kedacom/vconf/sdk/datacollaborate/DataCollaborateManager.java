@@ -101,10 +101,27 @@ public class DataCollaborateManager extends RequestAgent {
     private static Context context;
     private DataCollaborateManager(){}
     public static DataCollaborateManager getInstance(Context ctx) {
-        if (null != ctx){
+        if (null == context
+                && null != ctx){
             context = ctx;
-            if (null == PIC_SAVE_DIR) {
-                PIC_SAVE_DIR = ctx.getCacheDir().getAbsolutePath(); // TODO 1、清空；2、下载前判断是否存在已有文件。
+            File dir = new File(ctx.getCacheDir(), ".dc_pic");
+            if (!dir.exists()){
+                dir.mkdir();
+            }
+            PIC_SAVE_DIR = dir.getAbsolutePath();
+
+            // 检查图片缓存文件夹是否已超出大小上限，若超出则清空
+            long size = 0;
+            for (File file : dir.listFiles()) {
+                size += file.length();
+            }
+            long LIMIT = 50*1024*1024;
+            KLog.p("pic cache dir=%s, size=%s, limit=%s", PIC_SAVE_DIR, size, LIMIT);
+            if (size > LIMIT){
+                KLog.p(KLog.WARN, "clean cached pics");
+                for (File file : dir.listFiles()) {
+                    file.delete();
+                }
             }
         }
         return AgentManager.obtain(DataCollaborateManager.class);
@@ -396,6 +413,9 @@ public class DataCollaborateManager extends RequestAgent {
                         paintOpsBuffer.bSynchronizing = true;
                         cachedPaintOps.put(board.id, paintOpsBuffer);
                         // 下载每个画板已有的图元
+                        /* TODO 确认在入会后下载已有图元前，协作方的操作会不会广播到己方，如果会，则需对这种情形做处理
+                        （即不能直接上报用户要缓存。方案可以是在收到confCreated通知时置一个标志位，在获取所有画板的响应中遍历如果有对应的boardId则需将之前收到的操作缓存到cachedPaintOps,如果没有就丢弃），
+                        不过不会则改进cachedPaintOps，直接用PriorityQueue就好，而且bSyncing也不用了。*/
                         req(Msg.DCDownload, new MsgBeans.DownloadPara(board.id, board.elementUrl), new IResultListener() {
                             @Override
                             public void onSuccess(Object result) {
@@ -510,6 +530,7 @@ public class DataCollaborateManager extends RequestAgent {
                 if (null != cachedPaintOps.get(dcInertPicOp.boardId)
                         && cachedPaintOps.get(dcInertPicOp.boardId).bSynchronizing){
 
+                    // TODO 判断本地是否有图片，有的话直接获取否则下载
                     // 获取图片下载地址
                     req(Msg.DCQueryPicUrl,
                         new MsgBeans.DCQueryPicUrlPara(dcInertPicOp.picId, dcInertPicOp.confE164, dcInertPicOp.boardId, dcInertPicOp.pageId),
