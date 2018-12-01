@@ -191,7 +191,7 @@ public class DataCollaborateManager extends RequestAgent {
                 result = (MsgBeans.CommonResult) rspContent;
                 if (!result.bSuccess && null != listener){
                     cancelReq(Msg.DCLogin, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
-                    listener.onFailed(ErrCode_BuildLink4LoginFailed, null);
+                    listener.onFailed(ErrCode_BuildLink4LoginFailed);
                 }
                 break;
 
@@ -201,7 +201,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (result.bSuccess) {  // ??? 需要保存登录状态吗
                         listener.onSuccess(null);
                     }else{
-                        listener.onFailed(ErrCode_Failed, null);
+                        listener.onFailed(ErrCode_Failed);
                     }
                 }
                 break;
@@ -212,7 +212,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (result.bSuccess){
                         listener.onSuccess(null);
                     }else{
-                        listener.onFailed(ErrCode_Failed, null);
+                        listener.onFailed(ErrCode_Failed);
                     }
                 }
                 break;
@@ -247,7 +247,7 @@ public class DataCollaborateManager extends RequestAgent {
                 result = (MsgBeans.CommonResult) rspContent;
                 if (!result.bSuccess && null != listener){
                     cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCCreateConfRsp上来，取消该请求以防等待超时。
-                    listener.onFailed(ErrCode_BuildLink4ConfFailed, null);
+                    listener.onFailed(ErrCode_BuildLink4ConfFailed);
                 }
                 break;
             case DCConfCreated:
@@ -257,7 +257,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (createConfResult.bSuccess) {
                         listener.onSuccess(ToDoConverter.fromTransferObj(createConfResult));
                     }else{
-                        listener.onFailed(ErrCode_Failed, null);
+                        listener.onFailed(ErrCode_Failed);
                     }
                 }
                 break;
@@ -267,7 +267,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (result.bSuccess){
                         listener.onSuccess(null);
                     }else{
-                        listener.onFailed(ErrCode_Failed, null);
+                        listener.onFailed(ErrCode_Failed);
                     }
                 }
                 break;
@@ -277,7 +277,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (result.bSuccess){
                         listener.onSuccess(null);
                     }else{
-                        listener.onFailed(ErrCode_Failed, null);
+                        listener.onFailed(ErrCode_Failed);
                     }
                 }
                 break;
@@ -336,7 +336,7 @@ public class DataCollaborateManager extends RequestAgent {
             if (result.bSuccess){
                 listener.onSuccess(null);
             }else{
-                listener.onFailed(ErrCode_Failed, null);
+                listener.onFailed(ErrCode_Failed);
             }
         }
     }
@@ -353,7 +353,7 @@ public class DataCollaborateManager extends RequestAgent {
                 MsgBeans.DCQueryAllBoardsResult queryAllBoardsResult = (MsgBeans.DCQueryAllBoardsResult) rspContent;
                 if (!queryAllBoardsResult.bSuccess){
                     KLog.p(KLog.ERROR, "DCQueryAllBoards failed, errorCode=%s", queryAllBoardsResult.errorCode);
-                    if (null != listener) listener.onFailed(ErrCode_Failed, null);
+                    if (null != listener) listener.onFailed(ErrCode_Failed);
                     return;
                 }
 
@@ -427,7 +427,7 @@ public class DataCollaborateManager extends RequestAgent {
                             }
 
                             @Override
-                            public void onFailed(int errorCode, Object info) {
+                            public void onFailed(int errorCode) {
                                 KLog.p(KLog.ERROR, "download paint element for board %s failed!", board.id);
                                 cachedPaintOps.remove(board.id);
                             }
@@ -444,7 +444,7 @@ public class DataCollaborateManager extends RequestAgent {
                 }
 
                 @Override
-                public void onFailed(int errorCode, Object info) {
+                public void onFailed(int errorCode) {
                     KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s failed!", dcBoard.confE164);
                 }
 
@@ -466,7 +466,7 @@ public class DataCollaborateManager extends RequestAgent {
                 if (result.bSuccess){
                     listener.onSuccess(result);
                 }else{
-                    listener.onFailed(ErrCode_Failed, result);
+                    listener.onFailed(ErrCode_Failed);
                 }
                 break;
 
@@ -475,7 +475,7 @@ public class DataCollaborateManager extends RequestAgent {
                 if (queryPicUrlResult.bSuccess){
                     listener.onSuccess(queryPicUrlResult);
                 }else{
-                    listener.onFailed(ErrCode_Failed, queryPicUrlResult);
+                    listener.onFailed(ErrCode_Failed);
                 }
                 break;
         }
@@ -555,7 +555,7 @@ public class DataCollaborateManager extends RequestAgent {
                                         }
 
                                         @Override
-                                        public void onFailed(int errorCode, Object errorInfo) {
+                                        public void onFailed(int errorCode) {
                                             KLog.p(KLog.ERROR, "download pic %s for board %s failed!", queryPicUrlResult.picId, queryPicUrlResult.boardId);
                                         }
 
@@ -567,7 +567,7 @@ public class DataCollaborateManager extends RequestAgent {
                             }
 
                             @Override
-                            public void onFailed(int errorCode, Object errorInfo) {
+                            public void onFailed(int errorCode) {
                                 KLog.p(KLog.ERROR, "query url of pic %s for board %s failed!", dcInertPicOp.picId, dcInertPicOp.boardId);
                             }
 
