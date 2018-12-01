@@ -531,7 +531,6 @@ public class DataCollaborateManager extends RequestAgent {
                         && cachedPaintOps.get(dcInertPicOp.boardId).bSynchronizing
                         && !new File(genPicFullName(dcInertPicOp.picId)).exists()){
 
-                    // TODO 判断本地是否有图片，有的话直接获取否则下载
                     // 获取图片下载地址
                     req(Msg.DCQueryPicUrl,
                         new MsgBeans.DCQueryPicUrlPara(dcInertPicOp.picId, dcInertPicOp.confE164, dcInertPicOp.boardId, dcInertPicOp.pageId),
@@ -547,7 +546,7 @@ public class DataCollaborateManager extends RequestAgent {
                                             KLog.p("download pic %s for board %s success! save path=%s",
                                                     queryPicUrlResult.picId, queryPicUrlResult.boardId, genPicFullName(queryPicUrlResult.picId));
                                             MsgBeans.DownloadResult downloadResult = (MsgBeans.DownloadResult) result;
-                                            OpPaint op = new OpUpdatePic(downloadResult.boardId, downloadResult.picId, BitmapFactory.decodeFile(downloadResult.picSavePath)); // TODO 如果同步已结束则上报，否则不用上报因为同步完成后会统一刷新。不用解码，让painter去做。但是如果下载过程中painter尝试解码图片不会有问题吗？怎么判断已下载完？大小？
+                                            OpPaint op = new OpUpdatePic(downloadResult.boardId, downloadResult.picId, BitmapFactory.decodeFile(downloadResult.picSavePath)); // TODO 如果同步已结束则上报，否则不用上报因为同步完成后会统一刷新。不用解码，让painter去做（只需保证painter获取到图片路径）。但是如果下载过程中painter尝试解码图片不会有问题吗？怎么判断已下载完？大小？
                                             for (Object onPaintOpListener : listeners) {
                                                 if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
                                                     ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。

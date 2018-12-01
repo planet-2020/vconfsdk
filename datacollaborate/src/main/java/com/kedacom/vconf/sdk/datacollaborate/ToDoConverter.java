@@ -150,7 +150,7 @@ final class ToDoConverter {
         OpInsertPic opInsertPic = new OpInsertPic();
         assignPaintDomainObj(dcInertPicOp, opInsertPic);
         opInsertPic.setPicId(dcInertPicOp.picId);
-        opInsertPic.setPicName(dcInertPicOp.picName);
+        opInsertPic.setPicName(dcInertPicOp.picName); // TODO 确认此字段是否即为fullpath
         opInsertPic.setPicWidth(dcInertPicOp.width);
         opInsertPic.setPicHeight(dcInertPicOp.height);
         opInsertPic.setInsertPosX(dcInertPicOp.insertPosX);
