@@ -64,25 +64,6 @@ public class DefaultPaintView extends TextureView implements IPaintView{
         return this;
     }
 
-    @Override
-    public void setToolType(int toolType) {
-
-    }
-
-    @Override
-    public void setPaint(Paint paint) {
-
-    }
-
-    @Override
-    public View snapshoot() {
-        return null;
-    }
-
-    @Override
-    public void setOnPaintOpGeneratedListener(IOnPaintOpGeneratedListener paintOpGeneratedListener) {
-
-    }
 
     public class MyTouchListener implements OnTouchListener{
         private static final int MODE_DRAG = 1;		// 拖拽模式
@@ -294,19 +275,19 @@ public class DefaultPaintView extends TextureView implements IPaintView{
     }
 
     interface OnMatrixChangedListener{
-        void onMatrixChanged(Matrix matrix); //NOTE: 不要在该回调接口中做耗时操作
+        void onMatrixChanged(Matrix matrix);
     }
 
     void setOnMatrixChangedListener(OnMatrixChangedListener onMatrixChangedListener){
         this.onMatrixChangedListener = onMatrixChangedListener;
     }
 
-    void setMatrix(Matrix matrix){
-        if (null == onMatrixChangedListener){
-            return;
-        }
-        myTouchListener.curMatrix.postConcat(matrix);
-        onMatrixChangedListener.onMatrixChanged(myTouchListener.curMatrix);
-    }
+//    void setMatrix(Matrix matrix){
+//        if (null == onMatrixChangedListener){
+//            return;
+//        }
+//        myTouchListener.curMatrix.postConcat(matrix);
+//        onMatrixChangedListener.onMatrixChanged(myTouchListener.curMatrix);
+//    }
 
 }

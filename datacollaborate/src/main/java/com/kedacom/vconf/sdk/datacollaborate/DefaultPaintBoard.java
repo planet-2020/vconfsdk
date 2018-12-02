@@ -23,6 +23,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public static final int LAYER_ALL = 3;
     private int focusedLayer = LAYER_ALL;
 
+    private int style = IPaintBoard.STYLE_DEFAULT;
+
     private BoardInfo boardInfo;
 
     public DefaultPaintBoard(@NonNull Context context) {
@@ -90,6 +92,46 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         if (LAYER_NONE<=layer && layer<=LAYER_ALL){
             focusedLayer = layer;
         }
+    }
+
+    @Override
+    public void setStyle(int style) {
+        this.style = style;
+    }
+
+    @Override
+    public int getStyle() {
+        return style;
+    }
+
+    @Override
+    public void setPaintStrokeWidth(int width) {
+
+    }
+
+    @Override
+    public int getPaintStrokeWidth() {
+        return 0;
+    }
+
+    @Override
+    public void setPaintColor(int color) {
+
+    }
+
+    @Override
+    public int getPaintColor() {
+        return 0;
+    }
+
+    @Override
+    public View snapshot() {
+        return null;
+    }
+
+    @Override
+    public void setOnPaintOpGeneratedListener(IOnPaintOpGeneratedListener paintOpGeneratedListener) {
+
     }
 
 }
