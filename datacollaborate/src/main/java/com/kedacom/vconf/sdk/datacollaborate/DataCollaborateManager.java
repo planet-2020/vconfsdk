@@ -437,7 +437,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    private String genPicFullName(String picId){
+    private String getPicSavePath(String picId){
         return PIC_SAVE_DIR +File.pathSeparator+ picId + ".jpg";
     }
 
@@ -475,10 +475,11 @@ public class DataCollaborateManager extends RequestAgent {
 
                 MsgBeans.DCInertPicOp dcInertPicOp = (MsgBeans.DCInertPicOp) ntfContent;
 
-                /* 仅需要在刚入会同步会议中已有图元时需要主动请求获取图片的url，因为此种场景不会上报DCPicDownloadableNtf通知。
-                其他情形下都以DCPicDownloadableNtf通知为下载图片的时机*/
-                if (null != cachedPaintOps.get(dcInertPicOp.boardId)
-                        && !new File(genPicFullName(dcInertPicOp.picId)).exists()){
+                /* 查询图片下载地址然后下载图片。
+                NOTE: 仅在刚入会同步会议中已有图元时需要主动请求获取图片的url然后下载，因为此种场景不会上报“图片可下载”通知。
+                其他情形下均在收到“图片可下载”通知后开始下载图片。*/
+                if (null != cachedPaintOps.get(dcInertPicOp.boardId) // 正在同步图元
+                        && !new File(getPicSavePath(dcInertPicOp.picId)).exists()){ // 图片未被下载过
 
                     // 获取图片下载地址
                     req(Msg.DCQueryPicUrl,
@@ -486,16 +487,18 @@ public class DataCollaborateManager extends RequestAgent {
                         new IResultListener(){
                             @Override
                             public void onSuccess(Object result) {
-                                MsgBeans.DCQueryPicUrlResult queryPicUrlResult = (MsgBeans.DCQueryPicUrlResult) result;
+                                MsgBeans.DCQueryPicUrlResult picUrl = (MsgBeans.DCQueryPicUrlResult) result;
                                 // 下载图片
-                                req(Msg.DCDownload, new MsgBeans.DownloadPara(queryPicUrlResult.boardId, queryPicUrlResult.picId, genPicFullName(queryPicUrlResult.picId), queryPicUrlResult.url),
+                                req(Msg.DCDownload, new MsgBeans.DownloadPara(picUrl.boardId, picUrl.picId, getPicSavePath(picUrl.picId), picUrl.url),
                                     new IResultListener() {
                                         @Override
                                         public void onSuccess(Object result) {
-                                            KLog.p("download pic %s for board %s success! save path=%s",
-                                                    queryPicUrlResult.picId, queryPicUrlResult.boardId, genPicFullName(queryPicUrlResult.picId));
-                                            MsgBeans.DownloadResult downloadResult = (MsgBeans.DownloadResult) result;
-                                            OpPaint op = new OpUpdatePic(downloadResult.boardId, downloadResult.picId, BitmapFactory.decodeFile(downloadResult.picSavePath)); // TODO 如果同步已结束则上报，否则不用上报因为同步完成后会统一刷新。不用解码，让painter去做（只需保证painter获取到图片路径）。但是如果下载过程中painter尝试解码图片不会有问题吗？怎么判断已下载完？大小？
+                                            KLog.p("download pic %s for board %s success! save path=%s",picUrl.picId, picUrl.boardId, getPicSavePath(picUrl.picId));
+                                            MsgBeans.DownloadResult downRst = (MsgBeans.DownloadResult) result;
+//                                            PriorityQueue<MsgBeans.DCPaintOp> cachedOps = cachedPaintOps.get(downRst.boardId); // TODO 需要先将缓存的图元操作转换为DO
+//                                            if (null != cachedOps){ // 当前正在同步中，插入图片的操作被缓存尚未上报给用户，故我们直接更新“插入图片”的操作
+//                                            }
+                                            OpPaint op = new OpUpdatePic(downRst.boardId, downRst.picId, downRst.picSavePath); // TODO 如果同步已结束则上报，否则不用上报因为同步完成后会统一刷新。不用解码，让painter去做（只需保证painter获取到图片路径）。但是如果下载过程中painter尝试解码图片不会有问题吗？怎么判断已下载完？大小？
                                             for (Object onPaintOpListener : listeners) {
                                                 if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
                                                     ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
@@ -505,12 +508,12 @@ public class DataCollaborateManager extends RequestAgent {
 
                                         @Override
                                         public void onFailed(int errorCode) {
-                                            KLog.p(KLog.ERROR, "download pic %s for board %s failed!", queryPicUrlResult.picId, queryPicUrlResult.boardId);
+                                            KLog.p(KLog.ERROR, "download pic %s for board %s failed!", picUrl.picId, picUrl.boardId);
                                         }
 
                                         @Override
                                         public void onTimeout() {
-                                            KLog.p(KLog.ERROR, "download pic %s for board %s timeout!", queryPicUrlResult.picId, queryPicUrlResult.boardId);
+                                            KLog.p(KLog.ERROR, "download pic %s for board %s timeout!", picUrl.picId, picUrl.boardId);
                                         }
                                     });
                             }
@@ -618,7 +621,7 @@ public class DataCollaborateManager extends RequestAgent {
                         }
 
                         // 上报用户切换画板
-                        if (null != curBoardId){ // 当前画板通知已早于此到达，彼时还无法通知用户切换画板，因为彼时尚未上报用户画板已创建，所以此时我们补上。
+                        if (null != curBoardId){ // 当前画板通知已早于此到达，彼时还无法通知用户切换画板，因为彼时尚未上报用户画板已创建，所以此时我们补上通知用户切换画板。
                             Set<Object> boardSwitchedListeners = getNtfListeners(Msg.DCBoardSwitchedNtf);
                             if (null != boardSwitchedListeners && !boardSwitchedListeners.isEmpty()) {
                                 for (Object listener : boardSwitchedListeners) {
@@ -692,16 +695,16 @@ public class DataCollaborateManager extends RequestAgent {
             并针对其中的“插入图片”操作主动查询图片下载地址再根据下载地址下载图片。*/
             case DCPicDownloadableNtf:
                 MsgBeans.DCPicUrl dcPicUrl = (MsgBeans.DCPicUrl) ntfContent;
-                if (!new File(genPicFullName(dcPicUrl.picId)).exists()){
+                if (!new File(getPicSavePath(dcPicUrl.picId)).exists()){
                     // 下载图片
-                    req(Msg.DCDownload, new MsgBeans.DownloadPara(dcPicUrl.boardId, dcPicUrl.picId, genPicFullName(dcPicUrl.picId), dcPicUrl.url),
+                    req(Msg.DCDownload, new MsgBeans.DownloadPara(dcPicUrl.boardId, dcPicUrl.picId, getPicSavePath(dcPicUrl.picId), dcPicUrl.url),
                         new IResultListener() {
                             @Override
                             public void onSuccess(Object result) {
                                 KLog.p("download pic %s for board %s success! save path=%s",
-                                        dcPicUrl.picId, dcPicUrl.boardId, genPicFullName(dcPicUrl.picId));
+                                        dcPicUrl.picId, dcPicUrl.boardId, getPicSavePath(dcPicUrl.picId));
                                 MsgBeans.DownloadResult downloadResult = (MsgBeans.DownloadResult) result;
-                                OpPaint op = new OpUpdatePic(downloadResult.boardId, downloadResult.picId, BitmapFactory.decodeFile(downloadResult.picSavePath)); // 该通知一定是在插入图片通知之后，所以此处update的目标对象已经存在。
+                                OpPaint op = new OpUpdatePic(downloadResult.boardId, downloadResult.picId, downloadResult.picSavePath); // 该通知一定是在插入图片通知之后，所以此处update的目标对象已经存在。
                                 for (Object onPaintOpListener : listeners) {
                                     if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
                                         ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
@@ -715,7 +718,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    public void addOnDcConfJoinedListener(INotificationListener onConfJoinedListener){
+    public void addOnDcConfJoinedListener(INotificationListener onConfJoinedListener){ // TODO 改为addOnDcConfJoinResultListener，onSuccess, onFailed，通知响应消息体剔除掉bSuccess字段。
         subscribe(Msg.DCConfCreated, onConfJoinedListener);
     }
 

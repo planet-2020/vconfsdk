@@ -281,8 +281,8 @@ public class DefaultPainter implements IPainter {
                 OpUpdatePic updatePic = (OpUpdatePic) op;
                 for (OpPaint opPaint : picRenderOps) {
                     if (EOpType.INSERT_PICTURE == opPaint.getType()
-                            && ((OpInsertPic) opPaint).getPicId().equals(updatePic.picId)) {
-                        ((OpInsertPic) opPaint).setPic(updatePic.pic);
+                            && ((OpInsertPic) opPaint).getPicId().equals(updatePic.getPicId())) {
+//                        ((OpInsertPic) opPaint).setPic(updatePic.pic); // TODO 解码图片
                         break;
                     }
                 }

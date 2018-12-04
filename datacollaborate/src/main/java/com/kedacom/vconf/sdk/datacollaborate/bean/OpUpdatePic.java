@@ -11,18 +11,34 @@ import androidx.annotation.NonNull;
  * 插入图片操作本身也无实际效果只作占位用。等到图片下载完成后需用此“更新图片”操作更新前面插入的图片。
  * */
 public class OpUpdatePic extends OpPaint {
-    public String picId;
-    public Bitmap pic;
-    public OpUpdatePic(String boardId, String picId, Bitmap pic){
+    private String picId;
+    private String picSavePath;
+    public OpUpdatePic(String boardId, String picId, String picSavePath){
         this.boardId = boardId;
         this.picId = picId;
-        this.pic = pic;
+        this.picSavePath = picSavePath;
         type = EOpType.UPDATE_PICTURE;
     }
 
     @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("picId=%s, pic=%s", picId, pic)+super.toString()+"}";
+        return "{"+String.format("picId=%s, picSavePath=%s", picId, picSavePath)+super.toString()+"}";
+    }
+
+    public String getPicId() {
+        return picId;
+    }
+
+    public void setPicId(String picId) {
+        this.picId = picId;
+    }
+
+    public String getPicSavePath() {
+        return picSavePath;
+    }
+
+    public void setPicSavePath(String picSavePath) {
+        this.picSavePath = picSavePath;
     }
 }

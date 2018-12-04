@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 public class OpInsertPic extends OpPaint {
     private String picId;
     private String picName;
+    private String picSavePath;
     private Bitmap pic;
     private int picWidth;
     private int picHeight;
@@ -18,10 +19,11 @@ public class OpInsertPic extends OpPaint {
         type = EOpType.INSERT_PICTURE;
     }
 
-    public OpInsertPic(String picId, String picName, Bitmap pic, int picWidth, int picHeight,
+    public OpInsertPic(String picId, String picName, Bitmap pic, String picSavePath, int picWidth, int picHeight,
                        float insertPosX, float insertPosY, float[] matrixValue){
         this.picId = picId;
         this.picName = picName;
+        this.picSavePath = picSavePath;
         this.pic = pic;
         this.picWidth = picWidth;
         this.picHeight = picHeight;
@@ -40,8 +42,8 @@ public class OpInsertPic extends OpPaint {
             stringBuffer.append(val).append(",");
         }
         stringBuffer.append("]");
-        return "{"+String.format("picId=%s, picName=%s, pic=%s, picWidth=%s, picHeight=%s, insertPosX=%s, insertPosY, matrix=%s",
-                picId, picName, pic, picWidth, picHeight, insertPosX, insertPosY, stringBuffer.toString())+super.toString()+"}";
+        return "{"+String.format("picId=%s, picName=%s, picSavePath=%s, pic=%s, picWidth=%s, picHeight=%s, insertPosX=%s, insertPosY, matrix=%s",
+                picId, picName, picSavePath, pic, picWidth, picHeight, insertPosX, insertPosY, stringBuffer.toString())+super.toString()+"}";
     }
 
     public String getPicId() {
@@ -58,6 +60,14 @@ public class OpInsertPic extends OpPaint {
 
     public void setPicName(String picName) {
         this.picName = picName;
+    }
+
+    public String getPicSavePath() {
+        return picSavePath;
+    }
+
+    public void setPicSavePath(String picSavePath) {
+        this.picSavePath = picSavePath;
     }
 
     public Bitmap getPic() {
