@@ -16,8 +16,10 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
 public @interface Request {
-    String name() default "";  // 传递给下层的消息名称，若为空则使用被修饰的枚举的name。
+    String name() default "";      // 请求对应的方法名
+    Class methodOwner() default Void.class; // 请求对应的方法的所属类
     Class para() default Void.class;  // 请求参数对应的类
+    Class[] paras() default Void.class; // 请求对应的方法所需参数列表
     String[] rspSeq() default {}; // 请求对应的响应序列。注：请求也可能没有响应，此时不用填写让它默认为空就好。
     String[] rspSeq2() default {}; // 请求对应的另一个可能的响应序列
     String[] rspSeq3() default {}; // 请求对应的另一个可能的响应序列

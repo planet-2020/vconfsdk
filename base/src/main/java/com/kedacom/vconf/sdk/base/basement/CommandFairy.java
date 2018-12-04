@@ -59,9 +59,9 @@ final class CommandFairy implements IFairy.ICommandFairy{
 
         String getName = magicBook.getMsgName(getId);
 
-        if (!magicBook.isGet(getName)){ // XXX 用异常机制代替返回值机制
+        if (!magicBook.isGet(getName)){
             Log.e(TAG, "Unknown processGet "+getName);
-            return null; //TODO  throw Exception
+            return null;
         }
 
         StringBuffer buffer = new StringBuffer();

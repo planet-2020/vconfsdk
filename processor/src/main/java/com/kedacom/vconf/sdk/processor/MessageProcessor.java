@@ -15,6 +15,7 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,9 +58,11 @@ import javax.tools.Diagnostic;
 public class MessageProcessor extends AbstractProcessor {
     private boolean bDone = false;
 
+    private Map<String, String> reqMethodOwner = new HashMap<>();
     private Map<String, String> idNameMap = new HashMap<>();
     private Map<String, String> nameIdMap = new HashMap<>();
     private Map<String, String> reqParaMap = new HashMap<>();
+    private Map<String, String[]> reqParasMap = new HashMap<>();
     private Map<String, String[][]> reqRspsMap = new HashMap<>();
     private Map<String, Integer> reqTimeoutMap = new HashMap<>();
     private Map<String, Boolean> reqExclusiveMap = new HashMap<>();
@@ -170,8 +173,28 @@ public class MessageProcessor extends AbstractProcessor {
                     reqParaFullName = parseClassNameFromMirroredTypeException(mte);
                 }
 
-
                 reqParaMap.put(reqName, reqParaFullName);
+
+                String mo;
+                try {
+                    clz = request.methodOwner();
+                    mo = clz.getCanonicalName();
+                }catch (MirroredTypeException mte) {
+                    mo = parseClassNameFromMirroredTypeException(mte);
+                }
+                reqMethodOwner.put(reqName, mo);
+
+                // 获取请求参数列表
+                String[] paraClzNames = null;
+                try {
+                    Class[] paraClasses = request.paras();
+//                    for (Class cls : paraClasses){
+//    //                    String paraFullName = cls.getCanonicalName();
+//                    }
+                }catch (MirroredTypesException mte) {
+                    paraClzNames = parseClassNameFromMirroredTypesException(mte);
+                }
+                reqParasMap.put(reqName, paraClzNames);
 
                 // 获取响应序列
                 if (0 == request.rspSeq2().length){
@@ -319,6 +342,25 @@ public class MessageProcessor extends AbstractProcessor {
         return className;
     }
 
+    private String[] parseClassNameFromMirroredTypesException(MirroredTypesException mte){
+        List<String> paraClzNames = new ArrayList<>();
+        String className;
+        List<? extends TypeMirror> typeMirrors = mte.getTypeMirrors();
+        for (TypeMirror mirror : typeMirrors){
+            try { // 为普通类类型
+                DeclaredType classTypeMirror = (DeclaredType)mirror;
+                TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
+                className = classTypeElement.getQualifiedName().toString();
+            }catch (ClassCastException e){ // 为数组类型
+                ArrayType classTypeMirror = (ArrayType) mirror;
+                className = classTypeMirror.getComponentType().toString()+"[]";
+            }
+
+            paraClzNames.add(className);
+        }
+        return paraClzNames.toArray(new String[]{});
+    }
+
 
     // 获取待生成文件的包名
     private void parsePackageName(RoundEnvironment roundEnvironment){
@@ -375,7 +417,9 @@ public class MessageProcessor extends AbstractProcessor {
     private void generateFile(){
         String fieldNameIdNameMap = "idNameMap";
         String fieldNameNameIdMap = "nameIdMap";
+        String fieldNameReqMethodOwnerMap = "reqMethodOwner";
         String fieldNameReqParaMap = "reqParaMap";
+        String fieldNameReqParasMap = "reqParasMap";
         String fieldNameReqRspsMap = "reqRspsMap";
         String fieldNameReqTimeoutMap = "reqTimeoutMap";
         String fieldNameReqExclusiveMap = "reqExclusiveMap";
@@ -394,7 +438,9 @@ public class MessageProcessor extends AbstractProcessor {
         CodeBlock.Builder codeBlockBuilder = CodeBlock.builder()
                 .addStatement("$L = new $T<>()", fieldNameIdNameMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameNameIdMap, HashMap.class)
+                .addStatement("$L = new $T<>()", fieldNameReqMethodOwnerMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqParaMap, HashMap.class)
+                .addStatement("$L = new $T<>()", fieldNameReqParasMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqRspsMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqTimeoutMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqExclusiveMap, HashMap.class)
@@ -415,8 +461,21 @@ public class MessageProcessor extends AbstractProcessor {
             codeBlockBuilder.addStatement("$L.put($S, $S)", fieldNameNameIdMap, name, nameIdMap.get(name));
         }
 
+        for(String req : reqMethodOwner.keySet()){
+            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameReqMethodOwnerMap, req, reqMethodOwner.get(req));
+        }
+
         for(String req : reqParaMap.keySet()){
             codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameReqParaMap, req, reqParaMap.get(req));
+        }
+
+        for(String req : reqParasMap.keySet()){ // TODO 对于为Void.class的情况进行优化不要生成节省空间。
+            StringBuffer value = new StringBuffer();
+            String[] paras = reqParasMap.get(req);
+            for (String para : paras){
+                value.append(para).append(".class, ");
+            }
+            codeBlockBuilder.addStatement("$L.put($S, new Class[]{$L})", fieldNameReqParasMap, req, value);
         }
 
         for(String req : reqRspsMap.keySet()){
@@ -478,7 +537,13 @@ public class MessageProcessor extends AbstractProcessor {
                         fieldNameNameIdMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
+                        fieldNameReqMethodOwnerMap, Modifier.STATIC)
+                        .build())
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
                         fieldNameReqParaMap, Modifier.STATIC)
+                        .build())
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class[].class),
+                        fieldNameReqParasMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, String[][].class),
                         fieldNameReqRspsMap, Modifier.STATIC)

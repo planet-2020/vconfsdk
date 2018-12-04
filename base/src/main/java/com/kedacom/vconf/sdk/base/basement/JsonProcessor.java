@@ -63,4 +63,19 @@ final class JsonProcessor {
         return gson.fromJson(json, classOfT);
     }
 
+    boolean isNeedToJson(Object obj){
+        if (obj instanceof String
+                || obj instanceof StringBuffer
+                || obj instanceof Integer
+                || obj instanceof Double
+                || obj instanceof Float
+                || obj instanceof String[]
+                || obj instanceof StringBuffer[]
+                || obj instanceof Integer[]
+                || obj instanceof Double[]
+                || obj instanceof Float[]){
+            return false;
+        }
+        return true;
+    }
 }
