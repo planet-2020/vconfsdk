@@ -3,14 +3,26 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import androidx.annotation.NonNull;
 
-public abstract class OpPaint {
+public abstract class OpPaint implements Comparable<OpPaint>{
 
     protected EOpType type; // 类型：划线、画圈等。
 
     protected String   confE164;   // 所属会议e164号
     protected String   boardId;    // 画板ID
     protected int      pageId;     // 文档页ID（仅文档模式下有效）
+    protected int      sn;         // 操作序号，用来表示操作的先后顺序，越小越靠前。由平台填写。
 
+
+    @Override
+    public int compareTo(OpPaint o) {
+        if (sn<o.sn){
+            return -1;
+        }else if (sn == o.sn){
+            return 0;
+        }else{
+            return 1;
+        }
+    }
 
     @NonNull
     @Override
@@ -50,4 +62,11 @@ public abstract class OpPaint {
         this.pageId = pageId;
     }
 
+    public int getSn() {
+        return sn;
+    }
+
+    public void setSn(int sn) {
+        this.sn = sn;
+    }
 }

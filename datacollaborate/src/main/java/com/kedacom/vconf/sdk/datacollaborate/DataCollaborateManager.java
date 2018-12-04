@@ -1,7 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
-import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -34,7 +33,7 @@ import java.util.Set;
 public class DataCollaborateManager extends RequestAgent {
 
     /*同步过程中缓存的操作*/
-    private Map<String, PriorityQueue<MsgBeans.DCPaintOp>> cachedPaintOps = new HashMap<>();
+    private Map<String, PriorityQueue<OpPaint>> cachedPaintOps = new HashMap<>();
 
     //当前数据协作会议的e164
     private String curDcConfE164;
@@ -84,19 +83,21 @@ public class DataCollaborateManager extends RequestAgent {
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case MsgID_SynchronizingTimeout:
-                    String boardId = (String) msg.obj;
-                    PriorityQueue<MsgBeans.DCPaintOp> ops = cachedPaintOps.remove(boardId);
-                    if (null != ops){
-                        Set<Object> listeners = getNtfListeners(Msg.DCElementEndNtf);
-                        if(null != listeners && !listeners.isEmpty()){ // 判断监听者是否还在，因为监听者（如activity）可能已经销毁了
-                            while (!ops.isEmpty()) {
-                                OpPaint opPaint = ToDoConverter.fromTransferObj(ops.poll());
-                                if (null != opPaint) {
-                                    for (Object listener : listeners) {
-                                        ((IOnPaintOpListener) listener).onPaintOp(opPaint);
-                                    }
-                                }
-                            }
+                    PriorityQueue<OpPaint> ops = cachedPaintOps.remove(msg.obj);
+                    if (null == ops){
+                        KLog.p(KLog.ERROR, "unexpected MsgID_SynchronizingTimeout, no such synchronizing board(%s) exists", msg.obj);
+                        return;
+                    }
+                    Set<Object> listeners = getNtfListeners(Msg.DCElementEndNtf);
+                    if (null == listeners || listeners.isEmpty()){// 判断监听者是否还在，因为监听者（如activity）可能已经销毁了
+                        KLog.p(KLog.ERROR, "listeners for DCElementEndNtf not exists");
+                        return;
+                    }
+                    // 上报用户目前为止已同步的图元操作
+                    while (!ops.isEmpty()) {
+                        OpPaint opPaint = ops.poll();
+                        for (Object listener : listeners) {
+                            ((IOnPaintOpListener) listener).onPaintOp(opPaint);
                         }
                     }
                     break;
@@ -387,7 +388,7 @@ public class DataCollaborateManager extends RequestAgent {
     private String curBoardId;
     private boolean bGotAllBoard = false;
     private void onBoardNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+        KLog.p("listener==%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         MsgBeans.DCBoard dcBoard = (MsgBeans.DCBoard) ntfContent;
         for (Object listener : listeners) {
             IOnBoardOpListener onBoardOpListener = (IOnBoardOpListener) listener;
@@ -456,15 +457,16 @@ public class DataCollaborateManager extends RequestAgent {
                 若不做处理直接上报用户，用户界面展示的效果将是一条线。*/
                 MsgBeans.DCBoardId boardId = (MsgBeans.DCBoardId) ntfContent;
                 handler.removeMessages(MsgID_SynchronizingTimeout, boardId.boardId);
-                PriorityQueue<MsgBeans.DCPaintOp> ops = cachedPaintOps.remove(boardId.boardId);
-                if (null != ops){
-                    while (!ops.isEmpty()) {
-                        OpPaint opPaint = ToDoConverter.fromTransferObj(ops.poll());
-                        if (null != opPaint) {
-                            for (Object listener : listeners) {
-                                ((IOnPaintOpListener) listener).onPaintOp(opPaint);
-                            }
-                        }
+                PriorityQueue<OpPaint> ops = cachedPaintOps.remove(boardId.boardId);
+                if (null == ops){
+                    KLog.p(KLog.ERROR, "unexpected DCElementEndNtf, no such synchronizing board(%s) exists", boardId.boardId);
+                    return;
+                }
+                // 上报用户图元绘制操作
+                while (!ops.isEmpty()) {
+                    OpPaint opPaint = ops.poll();
+                    for (Object listener : listeners) {
+                        ((IOnPaintOpListener) listener).onPaintOp(opPaint);
                     }
                 }
 
@@ -479,7 +481,7 @@ public class DataCollaborateManager extends RequestAgent {
                 NOTE: 仅在刚入会同步会议中已有图元时需要主动请求获取图片的url然后下载，因为此种场景不会上报“图片可下载”通知。
                 其他情形下均在收到“图片可下载”通知后开始下载图片。*/
                 if (null != cachedPaintOps.get(dcInertPicOp.boardId) // 正在同步图元
-                        && !new File(getPicSavePath(dcInertPicOp.picId)).exists()){ // 图片未被下载过
+                        && !new File(getPicSavePath(dcInertPicOp.picId)).exists()){ // 图片尚未下载到本地
 
                     // 获取图片下载地址
                     req(Msg.DCQueryPicUrl,
@@ -531,23 +533,21 @@ public class DataCollaborateManager extends RequestAgent {
                 }
             default:
                 if (ntfContent instanceof MsgBeans.DCPaintOp) {
-                    MsgBeans.DCPaintOp dcPaintOp = (MsgBeans.DCPaintOp) ntfContent;
-                    PriorityQueue<MsgBeans.DCPaintOp> cachedOps = cachedPaintOps.get(dcPaintOp.boardId);
-                    if (null != cachedOps){ // 正在同步该画板的图元
-                        if (!cachedOps.contains(dcPaintOp)) {
-                            cachedOps.offer(dcPaintOp);
+                    OpPaint op = ToDoConverter.fromTransferObj((MsgBeans.DCPaintOp) ntfContent);
+                    PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(op.getBoardId());
+                    if (null != cachedOps){ // 正在同步该画板的图元则缓存期间收到的图元
+                        if (!cachedOps.contains(op)) { // 去重。 同步期间有可能收到重复的图元
+                            cachedOps.offer(op);
                         }
                     } else {
                         if (bPreparingSync){ // 入会后同步前收到的图元也需缓存下来
-                            PriorityQueue<MsgBeans.DCPaintOp> ops1 = new PriorityQueue<>();
-                            ops1.offer(dcPaintOp);
-                            cachedPaintOps.put(dcPaintOp.boardId, ops1);
+                            PriorityQueue<OpPaint> ops1 = new PriorityQueue<>();
+                            ops1.offer(op);
+                            cachedPaintOps.put(op.getBoardId(), ops1);
                         }else {
-                            OpPaint paintOp = ToDoConverter.fromTransferObj(dcPaintOp);
-                            if (null != paintOp) {
-                                for (Object listener : listeners) {
-                                    ((IOnPaintOpListener) listener).onPaintOp(paintOp);
-                                }
+                            // 过了同步阶段，直接上报用户图元操作
+                            for (Object listener : listeners) {
+                                ((IOnPaintOpListener) listener).onPaintOp(op);
                             }
                         }
                     }
@@ -633,7 +633,7 @@ public class DataCollaborateManager extends RequestAgent {
 
                         // 为各画板创建图元缓存队列
                         for (MsgBeans.DCBoard board : dcBoards){
-                            PriorityQueue<MsgBeans.DCPaintOp> ops = cachedPaintOps.get(board.id);
+                            PriorityQueue<OpPaint> ops = cachedPaintOps.get(board.id);
                             if (null == ops){ // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
                                 ops = new PriorityQueue<>();
                                 cachedPaintOps.put(board.id, ops);

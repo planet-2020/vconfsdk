@@ -65,6 +65,7 @@ final class ToDoConverter {
                 assignPaintDomainObj(transferObj, opClearScreen);
                 return opClearScreen;
             case RECT_ERASE:
+            case emWbEraseOperInfo:
                 return fromTransferObj((DCRectEraseOp)transferObj);
             case FULLSCREEN:
                 return fromTransferObj((DCFullScreenMatrixOp)transferObj);
@@ -322,6 +323,7 @@ final class ToDoConverter {
         domainObj.setConfE164(transferObj.confE164);
         domainObj.setBoardId(transferObj.boardId);
         domainObj.setPageId(transferObj.pageId);
+        domainObj.setSn(transferObj.sn);
     }
 
     public static void assignDrawDomainObj(DCDrawOp transferObj, OpDraw domainObj){
