@@ -15,6 +15,7 @@ import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
@@ -496,16 +497,7 @@ public class DataCollaborateManager extends RequestAgent {
                                         @Override
                                         public void onSuccess(Object result) {
                                             KLog.p("download pic %s for board %s success! save path=%s",picUrl.picId, picUrl.boardId, getPicSavePath(picUrl.picId));
-                                            MsgBeans.DownloadResult downRst = (MsgBeans.DownloadResult) result;
-//                                            PriorityQueue<MsgBeans.DCPaintOp> cachedOps = cachedPaintOps.get(downRst.boardId); // TODO 需要先将缓存的图元操作转换为DO
-//                                            if (null != cachedOps){ // 当前正在同步中，插入图片的操作被缓存尚未上报给用户，故我们直接更新“插入图片”的操作
-//                                            }
-                                            OpPaint op = new OpUpdatePic(downRst.boardId, downRst.picId, downRst.picSavePath); // TODO 如果同步已结束则上报，否则不用上报因为同步完成后会统一刷新。不用解码，让painter去做（只需保证painter获取到图片路径）。但是如果下载过程中painter尝试解码图片不会有问题吗？怎么判断已下载完？大小？
-                                            for (Object onPaintOpListener : listeners) {
-                                                if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
-                                                    ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
-                                                }
-                                            }
+                                            updatePic((MsgBeans.DownloadResult) result, listeners);
                                         }
 
                                         @Override
@@ -695,25 +687,59 @@ public class DataCollaborateManager extends RequestAgent {
             并针对其中的“插入图片”操作主动查询图片下载地址再根据下载地址下载图片。*/
             case DCPicDownloadableNtf:
                 MsgBeans.DCPicUrl dcPicUrl = (MsgBeans.DCPicUrl) ntfContent;
-                if (!new File(getPicSavePath(dcPicUrl.picId)).exists()){
+                if (!new File(getPicSavePath(dcPicUrl.picId)).exists()){ // 图片尚未下载到本地
                     // 下载图片
                     req(Msg.DCDownload, new MsgBeans.DownloadPara(dcPicUrl.boardId, dcPicUrl.picId, getPicSavePath(dcPicUrl.picId), dcPicUrl.url),
                         new IResultListener() {
                             @Override
                             public void onSuccess(Object result) {
-                                KLog.p("download pic %s for board %s success! save path=%s",
-                                        dcPicUrl.picId, dcPicUrl.boardId, getPicSavePath(dcPicUrl.picId));
-                                MsgBeans.DownloadResult downloadResult = (MsgBeans.DownloadResult) result;
-                                OpPaint op = new OpUpdatePic(downloadResult.boardId, downloadResult.picId, downloadResult.picSavePath); // 该通知一定是在插入图片通知之后，所以此处update的目标对象已经存在。
-                                for (Object onPaintOpListener : listeners) {
-                                    if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
-                                        ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
-                                    }
-                                }
+                                KLog.p("download pic %s for board %s success! save path=%s",dcPicUrl.picId, dcPicUrl.boardId, getPicSavePath(dcPicUrl.picId));
+                                updatePic((MsgBeans.DownloadResult) result, getNtfListeners(Msg.DCPicInsertedNtf));
+                            }
+
+                            @Override
+                            public void onFailed(int errorCode) {
+
+                            }
+
+                            @Override
+                            public void onTimeout() {
+
                             }
                         });
                 }
                 break;
+        }
+    }
+
+    // 图片下载完后更新图片
+    private void updatePic(MsgBeans.DownloadResult downRst, Set<Object> listeners){
+        PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(downRst.boardId);
+        if (null != cachedOps){ // 当前正在同步中，插入图片的操作被缓存尚未上报给用户，故我们直接更新“插入图片”的操作
+            boolean bUpdated = false;
+            for (OpPaint op : cachedOps){
+                if (op instanceof OpInsertPic && ((OpInsertPic)op).getPicId().equals(downRst.picId)){
+                    ((OpInsertPic)op).setPicSavePath(downRst.picSavePath); // 更新图片的所在路径，解码图片由用户去做。
+                    bUpdated = true;
+                    break;
+                }
+            }
+            if (!bUpdated){
+                KLog.p(KLog.ERROR, "update insert pic op failed");
+                return;
+            }
+
+        }else{ // 同步已结束则上报用户“更新图片”
+            OpPaint op = new OpUpdatePic(downRst.boardId, downRst.picId, downRst.picSavePath);
+            if (null == listeners || listeners.isEmpty()){
+                KLog.p(KLog.ERROR,"no listener for DCPicInsertedNtf");
+                return;
+            }
+            for (Object onPaintOpListener : listeners) {
+                if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
+                    ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+                }
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -244,7 +245,10 @@ public class DefaultPainter implements IPainter {
         switch (op.getType()){
             case INSERT_PICTURE:
                 picRenderOps.offerLast(op);
-                if (null == ((OpInsertPic)op).getPic()){
+                OpInsertPic opInsertPic = (OpInsertPic) op;
+                if (null != opInsertPic.getPicSavePath()){
+                    opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicSavePath())); // TODO 优化。比如大分辨率图片裁剪
+                }else {
                     bRefresh = false; // 图片为空不需刷新界面（图片可能正在下载）
                 }
                 break;
@@ -282,7 +286,8 @@ public class DefaultPainter implements IPainter {
                 for (OpPaint opPaint : picRenderOps) {
                     if (EOpType.INSERT_PICTURE == opPaint.getType()
                             && ((OpInsertPic) opPaint).getPicId().equals(updatePic.getPicId())) {
-//                        ((OpInsertPic) opPaint).setPic(updatePic.pic); // TODO 解码图片
+                        ((OpInsertPic) opPaint).setPicSavePath(updatePic.getPicSavePath());
+                        ((OpInsertPic) opPaint).setPic(BitmapFactory.decodeFile(updatePic.getPicSavePath())); // TODO 优化。比如大分辨率图片裁剪
                         break;
                     }
                 }
