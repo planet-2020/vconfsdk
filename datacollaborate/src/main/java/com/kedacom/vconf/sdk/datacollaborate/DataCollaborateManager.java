@@ -477,17 +477,20 @@ public class DataCollaborateManager extends RequestAgent {
                 // NOTE:插入图片比较特殊，当前只获取到了插入操作的基本信息，图片本身还需进一步下载
 
                 MsgBeans.DCInertPicOp dcInertPicOp = (MsgBeans.DCInertPicOp) ntfContent;
+                cacheOrReportPaintOp(ToDoConverter.fromTransferObj(dcInertPicOp), listeners);
 
-                /* 查询图片下载地址然后下载图片。
-                NOTE: 仅在刚入会同步会议中已有图元时需要主动请求获取图片的url然后下载，因为此种场景不会上报“图片可下载”通知。
-                其他情形下均在收到“图片可下载”通知后开始下载图片。*/
-                if (null != cachedPaintOps.get(dcInertPicOp.boardId) // 正在同步图元
-                        && !new File(getPicSavePath(dcInertPicOp.picId)).exists()){ // 图片尚未下载到本地
+                if (new File(getPicSavePath(dcInertPicOp.picId)).exists()){ // 图片已下载到本地
+                    KLog.p("pic already exists: %s", getPicSavePath(dcInertPicOp.picId));
+                    updateInsertPicOp(new OpUpdatePic(dcInertPicOp.boardId, dcInertPicOp.picId, getPicSavePath(dcInertPicOp.picId)), listeners);
 
-                    // 获取图片下载地址
+                }else if (null != cachedPaintOps.get(dcInertPicOp.boardId)){ // 图片尚未下载到本地且正在同步图元
+                    /* 获取图片下载地址。
+                    * NOTE: 仅在刚入会同步会议中已有图元时需要主动请求获取图片的url然后下载，
+                    其他情形下均在收到“图片可下载”通知后开始下载图片。
+                    （刚入会同步过程中不会上报“图片可下载”通知）*/
                     req(Msg.DCQueryPicUrl,
                         new MsgBeans.DCQueryPicUrlPara(dcInertPicOp.picId, dcInertPicOp.confE164, dcInertPicOp.boardId, dcInertPicOp.pageId),
-                        new IResultListener(){
+                        new IResultListener() {
                             @Override
                             public void onSuccess(Object result) {
                                 MsgBeans.DCQueryPicUrlResult picUrl = (MsgBeans.DCQueryPicUrlResult) result;
@@ -496,8 +499,9 @@ public class DataCollaborateManager extends RequestAgent {
                                     new IResultListener() {
                                         @Override
                                         public void onSuccess(Object result) {
-                                            KLog.p("download pic %s for board %s success! save path=%s",picUrl.picId, picUrl.boardId, getPicSavePath(picUrl.picId));
-                                            updatePic((MsgBeans.DownloadResult) result, listeners);
+                                            KLog.p("download pic %s for board %s success! save path=%s", picUrl.picId, picUrl.boardId, getPicSavePath(picUrl.picId));
+                                            MsgBeans.DownloadResult downRst = (MsgBeans.DownloadResult) result;
+                                            updateInsertPicOp(new OpUpdatePic(downRst.boardId, downRst.picId, downRst.picSavePath), listeners);
                                         }
 
                                         @Override
@@ -522,33 +526,68 @@ public class DataCollaborateManager extends RequestAgent {
                                 KLog.p(KLog.ERROR, "query url of pic %s for board %s timeout!", dcInertPicOp.picId, dcInertPicOp.boardId);
                             }
                         });
-                }
-            default:
-                if (ntfContent instanceof MsgBeans.DCPaintOp) {
-                    OpPaint op = ToDoConverter.fromTransferObj((MsgBeans.DCPaintOp) ntfContent);
-                    PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(op.getBoardId());
-                    if (null != cachedOps){ // 正在同步该画板的图元则缓存期间收到的图元
-                        if (!cachedOps.contains(op)) { // 去重。 同步期间有可能收到重复的图元
-                            cachedOps.offer(op);
-                        }
-                    } else {
-                        if (bPreparingSync){ // 入会后同步前收到的图元也需缓存下来
-                            PriorityQueue<OpPaint> ops1 = new PriorityQueue<>();
-                            ops1.offer(op);
-                            cachedPaintOps.put(op.getBoardId(), ops1);
-                        }else {
-                            // 过了同步阶段，直接上报用户图元操作
-                            for (Object listener : listeners) {
-                                ((IOnPaintOpListener) listener).onPaintOp(op);
-                            }
-                        }
                     }
-                }
+                    break;
+
+            default:
+
+                cacheOrReportPaintOp(ToDoConverter.fromTransferObj((MsgBeans.DCPaintOp) ntfContent), listeners);
 
                 break;
         }
 
     }
+
+
+    private void cacheOrReportPaintOp(OpPaint op, Set<Object> listeners){
+        PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(op.getBoardId());
+        if (null != cachedOps){ // 正在同步该画板的图元则缓存期间收到的图元
+            if (!cachedOps.contains(op)) { // 去重。 同步期间有可能收到重复的图元
+                cachedOps.offer(op);
+            }
+        } else {
+            if (bPreparingSync){ // 入会后同步前收到的图元也需缓存下来
+                PriorityQueue<OpPaint> ops1 = new PriorityQueue<>();
+                ops1.offer(op);
+                cachedPaintOps.put(op.getBoardId(), ops1);
+            }else {
+                // 过了同步阶段，直接上报用户图元操作
+                for (Object listener : listeners) {
+                    ((IOnPaintOpListener) listener).onPaintOp(op);
+                }
+            }
+        }
+    }
+
+    private void updateInsertPicOp(OpUpdatePic opUpdatePic, Set<Object> listeners){
+        PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(opUpdatePic.getBoardId());
+        if (null != cachedOps){ // 当前正在同步中，插入图片的操作被缓存尚未上报给用户，故我们直接更新“插入图片”的操作
+            boolean bUpdated = false;
+            for (OpPaint op : cachedOps){
+                if (op instanceof OpInsertPic && ((OpInsertPic)op).getPicId().equals(opUpdatePic.getPicId())){
+                    ((OpInsertPic)op).setPicSavePath(opUpdatePic.getPicSavePath()); // 更新图片的所在路径，解码图片由用户去做。
+                    bUpdated = true;
+                    break;
+                }
+            }
+            if (!bUpdated){
+                KLog.p(KLog.ERROR, "update insert pic op failed");
+                return;
+            }
+
+        }else{ // 同步已结束则上报用户“更新图片”
+            if (null == listeners || listeners.isEmpty()){
+                KLog.p(KLog.ERROR,"no listener for DCPicInsertedNtf");
+                return;
+            }
+            for (Object onPaintOpListener : listeners) {
+                if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
+                    ((IOnPaintOpListener) onPaintOpListener).onPaintOp(opUpdatePic);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+                }
+            }
+        }
+    }
+
 
 
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
@@ -694,7 +733,8 @@ public class DataCollaborateManager extends RequestAgent {
                             @Override
                             public void onSuccess(Object result) {
                                 KLog.p("download pic %s for board %s success! save path=%s",dcPicUrl.picId, dcPicUrl.boardId, getPicSavePath(dcPicUrl.picId));
-                                updatePic((MsgBeans.DownloadResult) result, getNtfListeners(Msg.DCPicInsertedNtf));
+                                MsgBeans.DownloadResult downRst = (MsgBeans.DownloadResult) result;
+                                updateInsertPicOp(new OpUpdatePic(downRst.boardId, downRst.picId, downRst.picSavePath), getNtfListeners(Msg.DCPicInsertedNtf));
                             }
 
                             @Override
@@ -707,41 +747,13 @@ public class DataCollaborateManager extends RequestAgent {
 
                             }
                         });
+                }else{
+                    KLog.p("pic already exists: %s", getPicSavePath(dcPicUrl.picId));
                 }
                 break;
         }
     }
 
-    // 图片下载完后更新图片
-    private void updatePic(MsgBeans.DownloadResult downRst, Set<Object> listeners){
-        PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(downRst.boardId);
-        if (null != cachedOps){ // 当前正在同步中，插入图片的操作被缓存尚未上报给用户，故我们直接更新“插入图片”的操作
-            boolean bUpdated = false;
-            for (OpPaint op : cachedOps){
-                if (op instanceof OpInsertPic && ((OpInsertPic)op).getPicId().equals(downRst.picId)){
-                    ((OpInsertPic)op).setPicSavePath(downRst.picSavePath); // 更新图片的所在路径，解码图片由用户去做。
-                    bUpdated = true;
-                    break;
-                }
-            }
-            if (!bUpdated){
-                KLog.p(KLog.ERROR, "update insert pic op failed");
-                return;
-            }
-
-        }else{ // 同步已结束则上报用户“更新图片”
-            OpPaint op = new OpUpdatePic(downRst.boardId, downRst.picId, downRst.picSavePath);
-            if (null == listeners || listeners.isEmpty()){
-                KLog.p(KLog.ERROR,"no listener for DCPicInsertedNtf");
-                return;
-            }
-            for (Object onPaintOpListener : listeners) {
-                if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
-                    ((IOnPaintOpListener) onPaintOpListener).onPaintOp(op);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
-                }
-            }
-        }
-    }
 
 
     public void addOnDcConfJoinedListener(INotificationListener onConfJoinedListener){ // TODO 改为addOnDcConfJoinResultListener，onSuccess, onFailed，通知响应消息体剔除掉bSuccess字段。
@@ -773,11 +785,6 @@ public class DataCollaborateManager extends RequestAgent {
     private class QueryAllBoardsInnerListener implements IResultListener{
     }
 
-//    private class PaintOpsBuffer{
-//        private boolean bSynchronizing = false;
-//        /*使用优先级队列自动为图元操作排序*/
-//        private PriorityQueue<MsgBeans.DCPaintOp> cachedOps = new PriorityQueue<>();
-//    }
 
     // FIXME just for debug
     private void pushCachedOps(){
