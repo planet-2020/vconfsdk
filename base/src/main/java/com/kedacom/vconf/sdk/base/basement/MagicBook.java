@@ -26,7 +26,9 @@ final class MagicBook {
 
     private Map<String, String> nameIdMap; // 消息名称——消息ID
 
-    private Map<String, Class> reqParaMap; // 请求——请求参数对应的类
+    private Map<String, Class> reqMethodOwner; // 请求——请求对应的方法所在类
+
+    private Map<String, Class[]> reqParasMap; // 请求——请求参数对应的类
 
     private Map<String, String[][]> reqRspSeqsMap; // 请求——响应序列
 
@@ -55,7 +57,8 @@ final class MagicBook {
     private MagicBook(){
         idNameMap = Message$$Generated.idNameMap;
         nameIdMap = Message$$Generated.nameIdMap;
-        reqParaMap = Message$$Generated.reqParaMap;
+        reqMethodOwner = Message$$Generated.reqMethodOwner;
+        reqParasMap = Message$$Generated.reqParasMap;
         reqRspSeqsMap = Message$$Generated.reqRspsMap;
         reqTimeoutMap = Message$$Generated.reqTimeoutMap;
         reqExclusiveMap = Message$$Generated.reqExclusiveMap;
@@ -67,7 +70,7 @@ final class MagicBook {
         getResultClazzMap = Message$$Generated.getResultClazzMap;
         setParaClazzMap = Message$$Generated.setParaClazzMap;
 
-        reqSet = reqParaMap.keySet();
+        reqSet = reqTimeoutMap.keySet();
         rspSet = rspClazzMap.keySet();
         ntfSet = ntfClazzMap.keySet();
         gets = getParaClazzMap.keySet();
@@ -110,9 +113,12 @@ final class MagicBook {
         return sets.contains(msg);
     }
 
+    Class<?> getReqMethodOwner(String req){
+        return reqMethodOwner.get(req);
+    }
 
-    Class<?> getReqParaClazz(String req){
-        return reqParaMap.get(req);
+    Class[] getReqParaClasses(String req){
+        return reqParasMap.get(req);
     }
 
     String[][] getRspSeqs(String req){

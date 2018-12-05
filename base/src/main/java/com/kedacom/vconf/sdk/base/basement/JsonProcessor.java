@@ -64,7 +64,8 @@ final class JsonProcessor {
     }
 
     boolean isNeedToJson(Object obj){
-        if (obj instanceof String
+        if (null == obj
+                || obj instanceof String
                 || obj instanceof StringBuffer
                 || obj instanceof Integer
                 || obj instanceof Double

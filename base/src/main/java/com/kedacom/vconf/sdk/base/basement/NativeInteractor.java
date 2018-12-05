@@ -5,16 +5,26 @@
 
 package com.kedacom.vconf.sdk.base.basement;
 
+import android.util.Log;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+
 @SuppressWarnings("JniMissingFunction")
-class NativeInteractor implements ICrystalBall, INativeCallback{
+public class NativeInteractor implements ICrystalBall, INativeCallback{
+    private static final String TAG = NativeInteractor.class.getSimpleName();
     private static NativeInteractor instance;
     private IYellback yb;
+
+    private final Map<String, Method> cachedMethods = new HashMap<>();
 
     private NativeInteractor(){
         setCallback(this);
     }
 
-    synchronized static NativeInteractor instance() {
+    public synchronized static NativeInteractor instance() {
         if (null == instance) {
             instance = new NativeInteractor();
         }
@@ -27,19 +37,56 @@ class NativeInteractor implements ICrystalBall, INativeCallback{
     }
 
     @Override
-    public int yell(String msgName, String para) {
-        return call(msgName, para);
+    public int yell(Class clz, String methodName, Object... para) {
+        Log.d(TAG, "####yell");
+        Method method = cachedMethods.get(methodName);
+        if (null != method){
+            try {
+                method.invoke(para);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
+            Log.d(TAG, "####call cached method: "+method);
+            return 0;
+        }
+
+        try {
+            Class[] classes = new Class[para.length];
+            for(int i=0; i<classes.length; ++i){
+                classes[i] = para[i].getClass();
+            }
+            method = clz.getDeclaredMethod(methodName, classes);
+            method.invoke(null, para);
+            cachedMethods.put(methodName, method);
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+
+        Log.d(TAG, "####call method: "+method);
+
+        return 0;
     }
 
-    @Override
-    public int yell(String msgName, StringBuffer output) {
-        return call(msgName, output);
-    }
-
-    @Override
-    public int yell(String msgName, String para, StringBuffer output) {
-        return call(msgName, para, output);
-    }
+//    @Override
+//    public int request(String msgName, String para) {
+//        return call(msgName, para);
+//    }
+//
+//    @Override
+//    public int get(String msgName, StringBuffer output) {
+//        return call(msgName, output);
+//    }
+//
+//    @Override
+//    public int get(String msgName, String para, StringBuffer output) {
+//        return call(msgName, para, output);
+//    }
 
 
     private native int call(String msgName, String para);  // request/set

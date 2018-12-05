@@ -10,9 +10,11 @@ public interface ICrystalBall {
         void yellback(String msgName, String msgBody);
     }
     void setYellback(IYellback yb);
-    int yell(String msgName, String para);  // request/processSet
-    int yell(String msgName, StringBuffer output); // processGet
-    int yell(String msgName, String para, StringBuffer output); // processGet
+//    int request(String msgName, Object... para);
+//    int set(String msgName, String para);
+//    int get(String msgName, StringBuffer output);
+//    int get(String msgName, String para, StringBuffer output);
+    int yell(Class clz, String methodName, Object... para);
 
     default boolean eject(String ntfName) { //NOTE: 仅用于仿真模式
         return false;

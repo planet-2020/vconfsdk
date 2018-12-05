@@ -61,7 +61,6 @@ public class MessageProcessor extends AbstractProcessor {
     private Map<String, String> reqMethodOwner = new HashMap<>();
     private Map<String, String> idNameMap = new HashMap<>();
     private Map<String, String> nameIdMap = new HashMap<>();
-    private Map<String, String> reqParaMap = new HashMap<>();
     private Map<String, String[]> reqParasMap = new HashMap<>();
     private Map<String, String[][]> reqRspsMap = new HashMap<>();
     private Map<String, Integer> reqTimeoutMap = new HashMap<>();
@@ -165,15 +164,6 @@ public class MessageProcessor extends AbstractProcessor {
             if (null != (request = element.getAnnotation(Request.class))){
                 reqName = request.name();
                 reqName = !reqName.isEmpty() ? reqName : element.getSimpleName().toString();
-                // 获取请求参数
-                try {
-                    clz = request.para();
-                    reqParaFullName = clz.getCanonicalName();
-                }catch (MirroredTypeException mte) {
-                    reqParaFullName = parseClassNameFromMirroredTypeException(mte);
-                }
-
-                reqParaMap.put(reqName, reqParaFullName);
 
                 String mo;
                 try {
@@ -418,7 +408,6 @@ public class MessageProcessor extends AbstractProcessor {
         String fieldNameIdNameMap = "idNameMap";
         String fieldNameNameIdMap = "nameIdMap";
         String fieldNameReqMethodOwnerMap = "reqMethodOwner";
-        String fieldNameReqParaMap = "reqParaMap";
         String fieldNameReqParasMap = "reqParasMap";
         String fieldNameReqRspsMap = "reqRspsMap";
         String fieldNameReqTimeoutMap = "reqTimeoutMap";
@@ -439,7 +428,6 @@ public class MessageProcessor extends AbstractProcessor {
                 .addStatement("$L = new $T<>()", fieldNameIdNameMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameNameIdMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqMethodOwnerMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameReqParaMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqParasMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqRspsMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqTimeoutMap, HashMap.class)
@@ -463,10 +451,6 @@ public class MessageProcessor extends AbstractProcessor {
 
         for(String req : reqMethodOwner.keySet()){
             codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameReqMethodOwnerMap, req, reqMethodOwner.get(req));
-        }
-
-        for(String req : reqParaMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameReqParaMap, req, reqParaMap.get(req));
         }
 
         for(String req : reqParasMap.keySet()){ // TODO 对于为Void.class的情况进行优化不要生成节省空间。
@@ -538,9 +522,6 @@ public class MessageProcessor extends AbstractProcessor {
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
                         fieldNameReqMethodOwnerMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameReqParaMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class[].class),
                         fieldNameReqParasMap, Modifier.STATIC)

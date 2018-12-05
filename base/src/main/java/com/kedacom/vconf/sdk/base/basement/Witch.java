@@ -64,8 +64,8 @@ public final class Witch {
     }
 
 
-    public boolean req(String reqId, int reqSn, Object reqPara){
-        return requestFairy.processRequest(feedbackHandler, reqId, reqPara, reqSn);
+    public boolean req(String reqId, int reqSn, Object... reqPara){
+        return requestFairy.processRequest(feedbackHandler, reqId, reqSn, reqPara);
     }
 
     public boolean cancelReq(int reqSn){

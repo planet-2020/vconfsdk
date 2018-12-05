@@ -32,6 +32,8 @@ final class MagicStick implements IStick,
     private IFairy.INotificationFairy notificationFairy;
     private ICrystalBall crystalBall;
 
+    private MagicBook magicBook = MagicBook.instance();
+
     private MagicStick(){
         initHandler();
     }
@@ -44,35 +46,39 @@ final class MagicStick implements IStick,
     }
 
     @Override
-    public int request(String reqName, String reqPara){
+    public int request(String reqName, Object... reqPara){
         if (null == crystalBall){
             return -1;
         }
-        return crystalBall.yell(reqName, reqPara);
+
+        return crystalBall.yell(magicBook.getReqMethodOwner(reqName), reqName, reqPara);
     }
 
     @Override
     public int set(String setName, String setPara){
-        if (null == crystalBall){
-            return -1;
-        }
-        return crystalBall.yell(setName, setPara);
+//        if (null == crystalBall){
+//            return -1;
+//        }
+//        return crystalBall.yell(setName, setPara);
+        return 0;
     }
 
     @Override
     public int get(String getName, String para, StringBuffer output){
-        if (null == crystalBall){
-            return -1;
-        }
-        return crystalBall.yell(getName, para, output);
+//        if (null == crystalBall){
+//            return -1;
+//        }
+//        return crystalBall.yell(getName, para, output);
+        return 0;
     }
 
     @Override
     public int get(String getName, StringBuffer output){
-        if (null == crystalBall){
-            return -1;
-        }
-        return crystalBall.yell(getName, output);
+//        if (null == crystalBall){
+//            return -1;
+//        }
+//        return crystalBall.yell(getName, output);
+        return 0;
     }
 
     @Override

@@ -53,53 +53,59 @@ class FakeCrystalBall implements ICrystalBall {
     }
 
     @Override
-    public int yell(String msgName, String para) {
-        if (magicBook.isSet(msgName)){
-            set(msgName, para);
-            return 0;
-        }
-
-        if (null == yb){
-            return -1;
-        }
-
-        Log.d(TAG, String.format("receive REQ %s, para=%s", msgName, para));
-
-        String[] rspIds = magicBook.getRspSeqs(msgName)[0]; // 若有多路响应序列默认返回第一路
-        Object rspBody;
-        int delay = 0;
-        for (String rspId : rspIds) {
-            delay += magicBook.getRspDelay(rspId);
-
-            rspBody = createInstanceFromClass(magicBook.getRspClazz(rspId));
-
-            String jsonRspBody = jsonProcessor.toJson(rspBody);
-            // 上报响应
-            handler.postDelayed(() -> {
-                Log.d(TAG, String.format("send RSP %s, rspContent=%s", rspId, jsonRspBody));
-                yb.yellback(rspId, jsonRspBody);
-            }, delay);
-
-        }
-
+    public int yell(Class clz, String methodName, Object... para) {
         return 0;
     }
 
-    @Override
-    public int yell(String msgName, StringBuffer output) {
-        return yell(msgName, null, output);
-    }
-
-    @Override
-    public int yell(String msgName, String para, StringBuffer output) {
-        Object result = createInstanceFromClass(magicBook.getGetResultClazz(msgName));
-
-        Log.d(TAG, String.format("GET %s, para= %s, result=%s", msgName, para, jsonProcessor.toJson(result)));
-
-        output.append(jsonProcessor.toJson(result));
-
-        return 0;
-    }
+//    @Override
+//    public int request(String msgName, Object... para) {
+//        if (null == yb){
+//            return -1;
+//        }
+//
+//        Log.d(TAG, String.format("receive REQ %s, para=%s", msgName, para));
+//
+//        String[] rspIds = magicBook.getRspSeqs(msgName)[0]; // 若有多路响应序列默认返回第一路
+//        Object rspBody;
+//        int delay = 0;
+//        for (String rspId : rspIds) {
+//            delay += magicBook.getRspDelay(rspId);
+//
+//            rspBody = createInstanceFromClass(magicBook.getRspClazz(rspId));
+//
+//            String jsonRspBody = jsonProcessor.toJson(rspBody);
+//            // 上报响应
+//            handler.postDelayed(() -> {
+//                Log.d(TAG, String.format("send RSP %s, rspContent=%s", rspId, jsonRspBody));
+//                yb.yellback(rspId, jsonRspBody);
+//            }, delay);
+//
+//        }
+//
+//        return 0;
+//    }
+//
+//    @Override
+//    public int get(String msgName, StringBuffer output) {
+//        return get(msgName, null, output);
+//    }
+//
+//    @Override
+//    public int get(String msgName, String para, StringBuffer output) {
+//        Object result = createInstanceFromClass(magicBook.getGetResultClazz(msgName));
+//
+//        Log.d(TAG, String.format("GET %s, para= %s, result=%s", msgName, para, jsonProcessor.toJson(result)));
+//
+//        output.append(jsonProcessor.toJson(result));
+//
+//        return 0;
+//    }
+//
+//    @Override
+//    public int set(String msgName, String para){
+//        Log.d(TAG, String.format("SET %s, para= %s", msgName, para));
+//        return 0;
+//    }
 
     @Override
     public boolean eject(String ntfName) {
@@ -152,7 +158,16 @@ class FakeCrystalBall implements ICrystalBall {
                 ctor.setAccessible(true);
                 instance = ctor.newInstance((Object[]) null);
             }
-        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+            return null;
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+            return null;
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+            return null;
+        } catch (InvocationTargetException e) {
             e.printStackTrace();
             return null;
         }
@@ -160,8 +175,6 @@ class FakeCrystalBall implements ICrystalBall {
         return instance;
     }
 
-    private void set(String msgName, String para){
-        Log.d(TAG, String.format("SET %s, para= %s", msgName, para));
-    }
+
 
 }

@@ -3,7 +3,7 @@ package com.kedacom.vconf.sdk.base.basement;
 interface IStick {
 
     interface IRequestStick{
-        int request(String reqName, String reqPara);
+        int request(String reqName, Object... reqPara);
     }
 
     interface IResponseStick{

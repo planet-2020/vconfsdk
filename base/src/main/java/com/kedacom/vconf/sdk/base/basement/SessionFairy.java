@@ -56,15 +56,18 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
 
 
     @Override
-    public synchronized boolean processRequest(Handler requester, String reqId, Object reqPara, int reqSn) {
+    public synchronized boolean processRequest(Handler requester, String reqId, int reqSn, Object... reqPara) {
 
         if (null == stick){
             Log.e(TAG, "no request stick ");
             return false;
         }
-
         if (null == requester){
             Log.e(TAG, "requester is null");
+            return false;
+        }
+        if (null == reqPara){
+            Log.e(TAG, "reqPara is null");
             return false;
         }
 
@@ -75,10 +78,18 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
             return false;
         }
 
-        if (null != reqPara
-                && reqPara.getClass() != magicBook.getReqParaClazz(reqName)){
-            Log.e(TAG, String.format("invalid request para type %s, expect %s", reqPara.getClass(), magicBook.getReqParaClazz(reqName)));
+        // 检查参数合法性
+        Class[] classes = magicBook.getReqParaClasses(reqName);
+        if (classes.length != reqPara.length){
+            Log.e(TAG, String.format("invalid para nums, expect #%s but got #%s", classes.length, reqPara.length));
             return false;
+        }
+        for(int i=0; i<classes.length; ++i){
+            if (null != reqPara[i]
+                    && classes[i] != reqPara[i].getClass()){
+                Log.e(TAG, String.format("invalid para type, expect %s but got %s", classes[i], reqPara[i].getClass()));
+                return false;
+            }
         }
 
         // 检查是否存在未完成的同类请求
@@ -295,10 +306,19 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
             return -1;
         }
 
-        String jsonReqPara = jsonProcessor.toJson(s.reqPara);
-        Log.d(TAG, String.format("-=-> %s (session %d START) \n%s", s.reqName, s.id, jsonReqPara));
-
-        stick.request(s.reqName, jsonReqPara);
+        Object[] paras;
+        paras = new Object[s.reqPara.length];
+        StringBuffer sb = new StringBuffer();
+        for (int i=0; i<paras.length; ++i){
+            if (jsonProcessor.isNeedToJson(s.reqPara[i])){
+                paras[i] = new StringBuffer(jsonProcessor.toJson(s.reqPara[i])); // XXX UGLY, HELPLESS, BUT 原本只需String的下层接口傲娇的需要StringBuffer类型!!! 如果他们将来信手又插入了几个需要String类型的!!??...
+            }else{
+                paras[i] = s.reqPara[i];
+            }
+            sb.append(paras[i]).append(", ");
+        }
+        Log.d(TAG, String.format("-=-> %s (session %d START) \nparas={%s}", s.reqName, s.id, sb));
+        stick.request(s.reqName, paras);
 
         if (null==s.rspSeqs || 0==s.rspSeqs.length){
             s.state = Session.END; // 请求没有响应，会话结束
@@ -310,11 +330,13 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
 
         s.state = Session.WAITING; // 请求已发出正在等待响应
 
-        // 启动超时
-        Message msg = Message.obtain();
-        msg.what = MSG_ID_TIMEOUT;
-        msg.obj = s.id;
-        timeoutHandler.sendMessageDelayed(msg, s.timeoutVal);
+        if (s.timeoutVal > 0) {
+            // 启动超时
+            Message msg = Message.obtain();
+            msg.what = MSG_ID_TIMEOUT;
+            msg.obj = s.id;
+            timeoutHandler.sendMessageDelayed(msg, s.timeoutVal);
+        }
 
         return 0;
     }
@@ -409,7 +431,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
         private final Handler requester;// 请求者
         private final int reqSn;        // 请求序列号。上层用来唯一标识一次请求，会话不使用不处理该字段，上报响应时带回给请求者。
         private final String reqName;   // 请求名称。
-        private final Object reqPara;   // 请求参数。
+        private final Object[] reqPara;   // 请求参数。
         private final int timeoutVal;   // 超时时限。单位：毫秒
         private final String[][] rspSeqs;  // 响应名称序列组。一条请求可能对应多条响应序列，如reqXX——{{rsp1, rsp2},{rsp1,rsp3}}，一次会话只能匹配其中一条序列。
         private SparseIntArray candidates; // 候选的响应序列记录。记录当前可被用来匹配的响应序列组及各响应序列中的下一条待匹配响应（的位置）。“键”对应响应序列组的行下标，“值”对应列下标。每收到一条响应后该记录会更新。
@@ -422,7 +444,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
         private static final int RECVING = 4; // 接收。收到第一条响应后，收到最后一条响应之前。
         private static final int END = 5;   // 结束。最终状态。会话已成功结束（接收到最后一个响应）或者已失败（超时或其它失败原因）。
 
-        private Session(int id, Handler requester, int reqSn, String reqName, Object reqPara, int timeoutVal, String[][] rspSeqs){
+        private Session(int id, Handler requester, int reqSn, String reqName, Object[] reqPara, int timeoutVal, String[][] rspSeqs){
             this.id = id;
             this.requester = requester;
             this.reqSn = reqSn;

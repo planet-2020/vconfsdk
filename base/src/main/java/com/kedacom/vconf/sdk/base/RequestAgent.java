@@ -120,7 +120,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
      * 发送请求。
      * @param rspListener 响应监听者。
      * */
-    protected synchronized void req(Msg reqId, Object reqPara, IResultListener rspListener){
+    protected synchronized void req(Msg reqId, IResultListener rspListener, Object... reqPara){
 //        Log.i(TAG, String.format("rspListener=%s, reqId=%s, para=%s", rspListener, reqId, para));
 
         if (!rspProcessorMap.keySet().contains(reqId)){
