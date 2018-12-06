@@ -56,7 +56,7 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
             Class clz = Class.forName(methodOwner);
             Class[] classes = new Class[para.length];
             for(int i=0; i<classes.length; ++i){
-                classes[i] = para[i].getClass();
+                classes[i] = para[i].getClass();  // TODO 如果上层传null参数此处会崩溃，有需要null的场景吗？如果后续有则此方法加个参数——“参数的类型”
             }
             method = clz.getDeclaredMethod(methodName, classes);
             method.invoke(null, para);

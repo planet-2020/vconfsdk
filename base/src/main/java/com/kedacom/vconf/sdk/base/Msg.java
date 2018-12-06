@@ -171,7 +171,7 @@ public enum Msg {
      * 注：仅自己退出，协作仍存在，不影响其他人继续*/
     @Request( name = "DCSQuitConfReq",       //参数1：StringBuffer类型 e164,参数2：int类型 nForceFlag
             methodOwner = DcsCtrl,
-              paras = {StringBuffer.class, Integer.class},
+              paras = {String.class, Integer.class},
               rspSeq = {"DcsQuitConf_Rsp"})
     DCQuitConf,
 
@@ -183,7 +183,7 @@ public enum Msg {
     /**结束数据协作*/
     @Request( name = "DCSReleaseConfReq",  //参数1：StringBuffer类型 e164,参数2：int类型 nForceFlag
             methodOwner = DcsCtrl,
-            paras = {StringBuffer.class, Integer.class},
+            paras = {String.class, Integer.class},
              rspSeq = {"DcsReleaseConf_Rsp"})
     DCReleaseConf,
 
@@ -235,7 +235,7 @@ public enum Msg {
     /**（自己）申请作为协作方*/
     @Request( name = "DCSApplyOperReq",  //参数：StringBuffer类型 e164
             methodOwner = DcsCtrl,
-            paras = StringBuffer.class,
+            paras = String.class,
             rspSeq = {"DcsApplyOper_Rsp"})
     DCApplyOperator,
 
@@ -247,7 +247,7 @@ public enum Msg {
     /**（自己）取消作为协作方*/
     @Request( name = "DCSCancelOperReq", //参数：StringBuffer类型 e164
             methodOwner = DcsCtrl,
-            paras = StringBuffer.class,
+            paras = String.class,
             rspSeq = {"DcsCancelOper_Rsp"})
     DCCancelOperator,
 
@@ -270,7 +270,7 @@ public enum Msg {
     /**获取数据协作会议中的所有成员（包括协作方普通方）*/
     @Request( name = "DCSGetUserListReq",   //参数：StringBuffer类型 e164
             methodOwner = DcsCtrl,
-            paras = StringBuffer.class,
+            paras = String.class,
             rspSeq = {"DcsGetUserList_Rsp"})
     DCQueryAllMembers,
 
@@ -297,7 +297,7 @@ public enum Msg {
     /**删除画板*/
     @Request(	name = "DCSDelWhiteBoardReq", //参数1：StringBuffer类型 e164	参数2 StringBuffer类型 白板索引
             methodOwner = DcsCtrl,
-            paras = {StringBuffer.class, StringBuffer.class},
+            paras = {String.class, String.class},
             rspSeq = {"DcsDelWhiteBoard_Rsp"})
     DCDelBoard,
 
@@ -309,7 +309,7 @@ public enum Msg {
     /**查询画板*/
     @Request(	name = "DCSGetWhiteBoardReq",//参数1：StringBuffer类型 e164	参数2 StringBuffer类型 白板索引
             methodOwner = DcsCtrl,
-            paras = {StringBuffer.class, StringBuffer.class},
+            paras = {String.class, String.class},
             rspSeq = {"DcsGetWhiteBoard_Rsp"})
     DCQueryBoard,
 
@@ -321,7 +321,7 @@ public enum Msg {
     /**查询所有画板*/
     @Request(	name = "DCSGetAllWhiteBoardReq", //参数：StringBuffer类型 e164
             methodOwner = DcsCtrl,
-            paras = StringBuffer.class,
+            paras = String.class,
             rspSeq = {"DcsGetAllWhiteBoard_Rsp"})
     DCQueryAllBoards,
 

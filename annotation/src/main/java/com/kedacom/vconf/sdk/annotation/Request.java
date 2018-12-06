@@ -18,7 +18,11 @@ import java.lang.annotation.Target;
 public @interface Request {
     String name();      // 请求对应的方法名
     String methodOwner(); // 请求对应的方法的所属类
-    Class[] paras() default Void.class; // 请求对应的方法所需参数列表
+    Class[] paras() default Void.class; // 请求者需传入的参数列表。NOTE：为了易用性，此参数列表不一定跟下层方法实际需要的参数列表类型一致。不一致的情形有映射规则如下：
+                                        // 1、列表参数为自定义类型则传给下层接口前将被转为StringBuffer类型json字符串；
+                                        // 2、列表参数为String则传给下层接口前将被转为StringBuffer类型；
+                                        // 3、其余类型不做转换；
+                                        // 4、之所以是StringBuffer而非String并非有什么特别的理由，就是下层的龟腚；
     String[] rspSeq() default {}; // 请求对应的响应序列。注：请求也可能没有响应，此时不用填写让它默认为空就好。
     String[] rspSeq2() default {}; // 请求对应的另一个可能的响应序列
     String[] rspSeq3() default {}; // 请求对应的另一个可能的响应序列
