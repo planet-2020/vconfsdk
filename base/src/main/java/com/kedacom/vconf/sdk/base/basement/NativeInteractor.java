@@ -21,7 +21,7 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
     private final Map<String, Method> cachedMethods = new HashMap<>();
 
     private NativeInteractor(){
-        setCallback(this);
+//        setCallback(this);
     }
 
     public synchronized static NativeInteractor instance() {
@@ -90,11 +90,11 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
 //    }
 
 
-    private native int call(String msgName, String para);  // request/set
-    private native int call(String msgName, StringBuffer output); // get
-    private native int call(String msgName, String para, StringBuffer output); // get
-
-    private native int setCallback(INativeCallback callback);
+//    private native int call(String msgName, String para);  // request/set
+//    private native int call(String msgName, StringBuffer output); // get
+//    private native int call(String msgName, String para, StringBuffer output); // get
+//
+//    private native int setCallback(INativeCallback callback);
 
     @Override
     public void callback(String msgName, String msgBody) {

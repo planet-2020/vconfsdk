@@ -30,8 +30,11 @@ android {
 dependencies {
 //    implementation fileTree(dir: 'libs', include: ['*.jar'])
 //    implementation project(':base')
-    implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"
-    implementation 'com.kedacom.vconf.sdk:base:0.4.13-SNAPSHOT@aar'
+//    implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"
+    implementation 'com.kedacom.vconf.sdk:base:0.4.13-SNAPSHOT'
+//    implementation ('com.kedacom.vconf.sdk:base:0.4.13-SNAPSHOT@aar'){
+//        transitive = true
+//    }
 //    implementation ('com.kedacom.vconf.sdk:base:0.2.25'){
 //        changing = true
 //    }
