@@ -9,7 +9,6 @@ import androidx.annotation.NonNull;
 public class BoardInfo {
     public String id;           // 终端填写GUID（系统函数生成）
     public String name;
-    public String confE164;         // 所属会议e164号
     public String creatorE164;
     public int createTime;      // 平台成功响应后，平台填写
     public EBoardMode mode;    // 模式（白板、文档）
@@ -17,12 +16,27 @@ public class BoardInfo {
     public int pageId;            // 文档页id，平台成功响应后，平台填写（限文档）
     public int anonyId;         // 平台成功响应后，平台填写（限白板），白板1白板2后面的数字，平台裁决后分配的。
 
+    public BoardInfo() {
+    }
+
+    public BoardInfo(String id, String name, String creatorE164, int createTime, EBoardMode mode, int pageNum, int pageId, int anonyId) {
+        this.id = id;
+        this.name = name;
+        this.creatorE164 = creatorE164;
+        this.createTime = createTime;
+        this.mode = mode;
+        this.pageNum = pageNum;
+        this.pageId = pageId;
+        this.anonyId = anonyId;
+    }
+
+
     @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("id=%s, name=%s, confE164=%s, creatorE164=%s, createTime=%s, " +
+        return "{"+String.format("id=%s, name=%s, creatorE164=%s, createTime=%s, " +
                 "mode=%s, pageNum=%s, pageId=%s, anonyId",
-                id, name, confE164, creatorE164, createTime,
+                id, name, creatorE164, createTime,
                 mode, pageNum, pageId, anonyId)+"}";
     }
 
@@ -40,14 +54,6 @@ public class BoardInfo {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String getConfE164() {
-        return confE164;
-    }
-
-    public void setConfE164(String confE164) {
-        this.confE164 = confE164;
     }
 
     public String getCreatorE164() {

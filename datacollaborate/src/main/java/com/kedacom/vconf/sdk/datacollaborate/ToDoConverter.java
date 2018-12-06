@@ -1,9 +1,23 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import android.graphics.PointF;
+
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperCircleOperInfoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperLineOperInfoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperPencilOperInfoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRectangleOperInfoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsConfMode;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsConfType;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
+import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperContent;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircle;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbLine;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPencil;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPoint;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbRectangle;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EBoardMode;
@@ -32,9 +46,26 @@ import java.util.Map;
 @SuppressWarnings("WeakerAccess")
 final class ToDoConverter {
 
-//    public static OpPaint fromTransferObj(DCPaintOp transferObj) {
-//        switch (transferObj.opType){
-//            case DRAW_LINE:
+    public static OpPaint fromTransferObj(Object transferObj) {
+        if (transferObj instanceof DcsOperLineOperInfoNtf){
+            return fromTransferObj((DcsOperLineOperInfoNtf)transferObj);
+        }else if (transferObj instanceof DcsOperRectangleOperInfoNtf){
+            return fromTransferObj((DcsOperRectangleOperInfoNtf)transferObj);
+        }else if (transferObj instanceof DcsOperCircleOperInfoNtf){
+            return fromTransferObj((DcsOperCircleOperInfoNtf)transferObj);
+        }else if (transferObj instanceof DcsOperPencilOperInfoNtf){
+            return fromTransferObj((DcsOperPencilOperInfoNtf)transferObj);
+        }
+//        else if (transferObj instanceof DcsOperLineOperInfoNtf){
+//            return fromTransferObj((DcsOperLineOperInfoNtf)transferObj);
+//        }else if (transferObj instanceof DcsOperLineOperInfoNtf){
+//            return fromTransferObj((DcsOperLineOperInfoNtf)transferObj);
+//        }
+        else{
+            return null;
+        }
+//        switch (transferObj.getClass()){
+//            case DcsOperLineOperInfoNtf.class:
 //                return fromTransferObj((DCLineOp)transferObj);
 //            case DRAW_RECT:
 //                return fromTransferObj((DCRectOp)transferObj);
@@ -73,7 +104,7 @@ final class ToDoConverter {
 //            default:
 //                return null;
 //        }
-//    }
+    }
 //
 //
 //    public static DCPaintOp toTransferObj(OpPaint domainObj) {
@@ -111,43 +142,43 @@ final class ToDoConverter {
 //
 //
 //
-//    public static OpDrawLine fromTransferObj(DCLineOp dcLineOp) {
-//        OpDrawLine opDrawLine = new OpDrawLine();
-//        assignDrawDomainObj(dcLineOp, opDrawLine);
-//        opDrawLine.setStartX(dcLineOp.startX);
-//        opDrawLine.setStartY(dcLineOp.startY);
-//        opDrawLine.setStopX(dcLineOp.stopX);
-//        opDrawLine.setStopY(dcLineOp.stopY);
-//        return opDrawLine;
-//    }
-//
-//    public static OpDrawRect fromTransferObj(DCRectOp dcRectOp) {
-//        OpDrawRect opDrawRect = new OpDrawRect();
-//        assignDrawDomainObj(dcRectOp, opDrawRect);
-//        opDrawRect.setLeft(dcRectOp.left);
-//        opDrawRect.setTop(dcRectOp.top);
-//        opDrawRect.setRight(dcRectOp.right);
-//        opDrawRect.setBottom(dcRectOp.bottom);
-//        return opDrawRect;
-//    }
-//
-//    public static OpDrawOval fromTransferObj(DCOvalOp dcOvalOp) {
-//        OpDrawOval opDrawOval = new OpDrawOval();
-//        assignDrawDomainObj(dcOvalOp, opDrawOval);
-//        opDrawOval.setLeft(dcOvalOp.left);
-//        opDrawOval.setTop(dcOvalOp.top);
-//        opDrawOval.setRight(dcOvalOp.right);
-//        opDrawOval.setBottom(dcOvalOp.bottom);
-//        return opDrawOval;
-//    }
-//
-//    public static OpDrawPath fromTransferObj(DCPathOp dcPathOp) {
-//        OpDrawPath opDrawPath = new OpDrawPath();
-//        assignDrawDomainObj(dcPathOp, opDrawPath);
-//        opDrawPath.setPoints(dcPathOp.points);
-//        return opDrawPath;
-//    }
-//
+
+    public static PointF[] fromTransferObj(TDCSWbPoint[] tdcsWbPoints) {
+        PointF[] pointFS = new PointF[tdcsWbPoints.length];
+        for (int i=0; i<pointFS.length; ++i){
+            pointFS[i] = new PointF(tdcsWbPoints[i].nPosx, tdcsWbPoints[i].nPosy);
+        }
+        return pointFS;
+    }
+
+    public static OpDrawLine fromTransferObj(DcsOperLineOperInfoNtf dcLineOp) {
+        TDCSWbLine tdcsWbLine = dcLineOp.AssParam.tLine;
+        OpDrawLine opDrawLine = new OpDrawLine(tdcsWbLine.tBeginPt.nPosx, tdcsWbLine.tBeginPt.nPosy, tdcsWbLine.tEndPt.nPosx, tdcsWbLine.tEndPt.nPosy);
+        assignDrawDomainObj(dcLineOp.MainParam, tdcsWbLine.dwLineWidth, (int) tdcsWbLine.dwRgb, opDrawLine);
+        return opDrawLine;
+    }
+
+    public static OpDrawRect fromTransferObj(DcsOperRectangleOperInfoNtf dcRectOp) {
+        TDCSWbRectangle rectangle = dcRectOp.AssParam.tRectangle;
+        OpDrawRect opDrawRect = new OpDrawRect(rectangle.tBeginPt.nPosx, rectangle.tBeginPt.nPosy, rectangle.tEndPt.nPosx, rectangle.tEndPt.nPosy);
+        assignDrawDomainObj(dcRectOp.MainParam, rectangle.dwLineWidth, (int) rectangle.dwRgb, opDrawRect);
+        return opDrawRect;
+    }
+
+    public static OpDrawOval fromTransferObj(DcsOperCircleOperInfoNtf dcOvalOp) {
+        TDCSWbCircle circle = dcOvalOp.AssParam.tCircle;
+        OpDrawOval opDrawOval = new OpDrawOval(circle.tBeginPt.nPosx, circle.tBeginPt.nPosy, circle.tEndPt.nPosx, circle.tEndPt.nPosy);
+        assignDrawDomainObj(dcOvalOp.MainParam, circle.dwLineWidth, (int) circle.dwRgb, opDrawOval);
+        return opDrawOval;
+    }
+
+    public static OpDrawPath fromTransferObj(DcsOperPencilOperInfoNtf dcPathOp) {
+        TDCSWbPencil pencil = dcPathOp.AssParam.tPencil;
+        OpDrawPath opDrawPath = new OpDrawPath(fromTransferObj(pencil.atPList));
+        assignDrawDomainObj(dcPathOp.MainParam, pencil.dwLineWidth, (int) pencil.dwRgb, opDrawPath);
+        return opDrawPath;
+    }
+
 //    public static OpInsertPic fromTransferObj(DCInertPicOp dcInertPicOp) {
 //        OpInsertPic opInsertPic = new OpInsertPic();
 //        assignPaintDomainObj(dcInertPicOp, opInsertPic);
@@ -199,6 +230,8 @@ final class ToDoConverter {
 //        opRectErase.setBottom(dcRectEraseOp.bottom);
 //        return opRectErase;
 //    }
+
+
 //
 //
 //
@@ -320,18 +353,18 @@ final class ToDoConverter {
 //
 //
 //
-//    public static void assignPaintDomainObj(DCPaintOp transferObj, OpPaint domainObj){
-//        domainObj.setConfE164(transferObj.confE164);
-//        domainObj.setBoardId(transferObj.boardId);
-//        domainObj.setPageId(transferObj.pageId);
-//        domainObj.setSn(transferObj.sn);
-//    }
-//
-//    public static void assignDrawDomainObj(DCDrawOp transferObj, OpDraw domainObj){
-//        assignPaintDomainObj(transferObj, domainObj);
-//        domainObj.setStrokeWidth(transferObj.strokeWidth);
-//        domainObj.setColor(transferObj.color);
-//    }
+    public static void assignPaintDomainObj(TDCSOperContent transferObj, OpPaint domainObj){
+        domainObj.setConfE164(transferObj.achConfE164);
+        domainObj.setBoardId(transferObj.achTabId);
+        domainObj.setPageId(transferObj.dwWbPageId);
+        domainObj.setSn(transferObj.dwMsgSequence);
+    }
+
+    public static void assignDrawDomainObj(TDCSOperContent transferObj, int strokeWidth, int color, OpDraw domainObj){
+        assignPaintDomainObj(transferObj, domainObj);
+        domainObj.setStrokeWidth(strokeWidth);
+        domainObj.setColor(color);
+    }
 //
 //    public static void assignPaintTransferObj(OpPaint domainObj, DCPaintOp transferObj){
 //        transferObj.id = "todo";// TODO;
@@ -422,29 +455,21 @@ final class ToDoConverter {
 //    }
 //
 //
-//    public static EBoardMode fromTransferObj(EmDcsWbMode dcsWbMode) {
-//        switch (dcsWbMode){
-//            case emWbModeWB:
-//                return EBoardMode.Normal;
-//            case emWBModeDOC:
-//                return EBoardMode.Doc;
-//            default:
-//                return EBoardMode.Normal;
-//        }
-//    }
-//
-//    public static BoardInfo fromTransferObj(DCBoard dcBoard) {
-//        BoardInfo boardInfo = new BoardInfo();
-//        boardInfo.setId(dcBoard.id);
-//        boardInfo.setConfE164(dcBoard.confE164);
-//        boardInfo.setCreatorE164(dcBoard.creatorE164);
-//        boardInfo.setCreateTime(dcBoard.createTime);
-//        boardInfo.setMode(fromTransferObj(dcBoard.mode));
-//        boardInfo.setPageNum(dcBoard.pageNum);
-//        boardInfo.setPageId(dcBoard.pageId);
-//        boardInfo.setAnonyId(dcBoard.anonyId);
-//        return boardInfo;
-//    }
+    public static EBoardMode fromTransferObj(EmDcsWbMode dcsWbMode) {
+        switch (dcsWbMode){
+            case emWbModeWB:
+                return EBoardMode.Normal;
+            case emWBModeDOC:
+                return EBoardMode.Doc;
+            default:
+                return EBoardMode.Normal;
+        }
+    }
+
+    public static BoardInfo fromTransferObj(TDCSBoardInfo dcBoard) {
+        return new BoardInfo(dcBoard.achTabId, dcBoard.achWbName, dcBoard.achWbCreatorE164, dcBoard.dwWbCreateTime,
+                fromTransferObj(dcBoard.emWbMode), dcBoard.dwWbPageNum, dcBoard.dwPageId, dcBoard.dwWbAnonyId);
+    }
 
     public static CreateConfResult fromTransferObj(TDCSCreateConfResult to) {
         return new CreateConfResult(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType));
