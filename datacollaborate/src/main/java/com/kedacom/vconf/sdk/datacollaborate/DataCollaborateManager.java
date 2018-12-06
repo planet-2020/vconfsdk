@@ -19,7 +19,6 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsOperInsertPicNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSDelWhiteBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSFileInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSFileLoadResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSImageUrl;
@@ -279,7 +278,7 @@ public class DataCollaborateManager extends RequestAgent {
 //                TDCSCreateConfResult createConfResult = (TDCSCreateConfResult) rspContent;
 //                if (null != listener){
 //                    if (createConfResult.bSuccess) {
-//                        listener.onSuccess(ToDoConverter.fromTransferObj(createConfResult));
+//                        listener.onSuccess(ToDoConverter.fromPaintTransferObj(createConfResult));
 //                    }else{
 //                        listener.onFailed(ErrCode_Failed);
 //                    }
@@ -414,7 +413,7 @@ public class DataCollaborateManager extends RequestAgent {
             for (Object listener : listeners) {
                 ((IOnBoardOpListener) listener).onBoardDeleted(((TDCSBoardInfo) ntfContent).achTabId);
             }
-        } else if (Msg.DCCurrentBoardNtf.equals(ntfId)) { // NOTE: 入会通知一定是早于当前画板通知到达
+        } else if (Msg.DCCurrentBoardNtf.equals(ntfId)) {
             curBoardId = ((TDCSBoardInfo) ntfContent).achTabId;
             if (bGotAllBoard){ // 已获取当前会议中所有画板则我们可以上报用户切换画板。
                 for (Object listener : listeners) {
@@ -485,75 +484,74 @@ public class DataCollaborateManager extends RequestAgent {
 
                 break;
 
-//            case DCPicInsertedNtf:
-//                // NOTE:插入图片比较特殊，当前只获取到了插入操作的基本信息，图片本身还需进一步下载
-//                DcsOperInsertPicNtf dcInertPicOp = (DcsOperInsertPicNtf) ntfContent;
-//                cacheOrReportPaintOp(ToDoConverter.fromTransferObj(dcInertPicOp), listeners);
-//
-//                String confE164 = dcInertPicOp.MainParam.achConfE164;
-//                String boardId = dcInertPicOp.MainParam.achTabId;
-//                int pageId = dcInertPicOp.MainParam.dwWbPageId;
-//                String picId = dcInertPicOp.AssParam.achImgId;
-//                if (new File(getPicSavePath(picId)).exists()){ // 图片已下载到本地
-//                    KLog.p("pic already exists: %s", getPicSavePath(picId));
-//                    updateInsertPicOp(new OpUpdatePic(boardId, picId, getPicSavePath(picId)), listeners);
-//
-//                }else if (null != cachedPaintOps.get(boardId)){ // 图片尚未下载到本地且正在同步图元
-//                    /* 获取图片下载地址。
-//                    * NOTE: 仅在刚入会同步会议中已有图元时需要主动请求获取图片的url然后下载，
-//                    其他情形下均在收到“图片可下载”通知后开始下载图片。
-//                    （刚入会同步过程中不会上报“图片可下载”通知）*/
-//                    req(Msg.DCQueryPicUrl,
-//                        new IResultListener() {
-//                            @Override
-//                            public void onSuccess(Object result) {
-//                                DcsDownloadImageRsp picUrl = (DcsDownloadImageRsp) result;
-//                                // 下载图片
-//                                req(Msg.DCDownload,
-//                                    new IResultListener() {
-//                                        @Override
-//                                        public void onSuccess(Object result) {
-////                                            KLog.p("download pic %s for board %s success! save path=%s", picUrl.picId, picUrl.boardId, getPicSavePath(picUrl.picId));
-//                                            TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
-//                                            updateInsertPicOp(new OpUpdatePic(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName), listeners);
-//                                        }
-//
-//                                        @Override
-//                                        public void onFailed(int errorCode) {
-////                                            KLog.p(KLog.ERROR, "download pic %s for board %s failed!", picUrl.picId, picUrl.boardId);
-//                                        }
-//
-//                                        @Override
-//                                        public void onTimeout() {
-////                                            KLog.p(KLog.ERROR, "download pic %s for board %s timeout!", picUrl.picId, picUrl.boardId);
-//                                        }
-//                                    },
-//
-//                                    new BaseTypeString(picUrl.AssParam.achPicUrl),
-//                                new TDCSFileInfo(getPicSavePath(picUrl.AssParam.achWbPicentityId), picUrl.AssParam.achWbPicentityId, picUrl.AssParam.achTabId, false),
-//
-//                                    );
-//                            }
-//
-//                            @Override
-//                            public void onFailed(int errorCode) {
-////                                KLog.p(KLog.ERROR, "query url of pic %s for board %s failed!", dcInertPicOp.picId, dcInertPicOp.boardId);
-//                            }
-//
-//                            @Override
-//                            public void onTimeout() {
-////                                KLog.p(KLog.ERROR, "query url of pic %s for board %s timeout!", dcInertPicOp.picId, dcInertPicOp.boardId);
-//                            }
-//                        },
-//
-//                        new TDCSImageUrl(confE164, boardId, pageId, picId)
-//                        );
-//                    }
-//                    break;
-//
+            case DCPicInsertedNtf:
+                // NOTE:插入图片比较特殊，当前只获取到了插入操作的基本信息，图片本身还需进一步下载
+                DcsOperInsertPicNtf dcInertPicOp = (DcsOperInsertPicNtf) ntfContent;
+                cacheOrReportPaintOp(ToDoConverter.fromTransferObj(dcInertPicOp), listeners);
+
+                String confE164 = dcInertPicOp.MainParam.achConfE164;
+                String boardId = dcInertPicOp.MainParam.achTabId;
+                int pageId = dcInertPicOp.MainParam.dwWbPageId;
+                String picId = dcInertPicOp.AssParam.achImgId;
+                if (new File(getPicSavePath(picId)).exists()){ // 图片已下载到本地
+                    KLog.p("pic already exists: %s", getPicSavePath(picId));
+                    updateInsertPicOp(new OpUpdatePic(boardId, picId, getPicSavePath(picId)), listeners);
+
+                }else if (null != cachedPaintOps.get(boardId)){ // 图片尚未下载到本地且正在同步图元
+                    /* 获取图片下载地址。
+                    * NOTE: 仅在刚入会同步会议中已有图元时需要主动请求获取图片的url然后下载，
+                    其他情形下均在收到“图片可下载”通知后开始下载图片。
+                    （刚入会同步过程中不会上报“图片可下载”通知）*/
+                    req(Msg.DCQueryPicUrl,
+                        new IResultListener() {
+                            @Override
+                            public void onSuccess(Object result) {
+                                DcsDownloadImageRsp picUrl = (DcsDownloadImageRsp) result;
+                                // 下载图片
+                                req(Msg.DCDownload,
+                                    new IResultListener() {
+                                        @Override
+                                        public void onSuccess(Object result) {
+//                                            KLog.p("download pic %s for board %s success! save path=%s", picUrl.picId, picUrl.boardId, getPicSavePath(picUrl.picId));
+                                            TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
+                                            updateInsertPicOp(new OpUpdatePic(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName), listeners);
+                                        }
+
+                                        @Override
+                                        public void onFailed(int errorCode) {
+//                                            KLog.p(KLog.ERROR, "download pic %s for board %s failed!", picUrl.picId, picUrl.boardId);
+                                        }
+
+                                        @Override
+                                        public void onTimeout() {
+//                                            KLog.p(KLog.ERROR, "download pic %s for board %s timeout!", picUrl.picId, picUrl.boardId);
+                                        }
+                                    },
+
+                                    new BaseTypeString(picUrl.AssParam.achPicUrl),
+                                    new TDCSFileInfo(getPicSavePath(picUrl.AssParam.achWbPicentityId), picUrl.AssParam.achWbPicentityId, picUrl.AssParam.achTabId, false)
+                                    );
+                            }
+
+                            @Override
+                            public void onFailed(int errorCode) {
+//                                KLog.p(KLog.ERROR, "query url of pic %s for board %s failed!", dcInertPicOp.picId, dcInertPicOp.boardId);
+                            }
+
+                            @Override
+                            public void onTimeout() {
+//                                KLog.p(KLog.ERROR, "query url of pic %s for board %s timeout!", dcInertPicOp.picId, dcInertPicOp.boardId);
+                            }
+                        },
+
+                        new TDCSImageUrl(confE164, boardId, pageId, picId)
+                        );
+                    }
+                    break;
+
             default:
 
-                cacheOrReportPaintOp(ToDoConverter.fromTransferObj(ntfContent), listeners);
+                cacheOrReportPaintOp(ToDoConverter.fromPaintTransferObj(ntfContent), listeners);
 
                 break;
         }
@@ -753,31 +751,34 @@ public class DataCollaborateManager extends RequestAgent {
             NOTE：有例外。己端刚加入数据协作时，平台不会给己端发送该通知，己端需要先拉取协作中已有的图元操作
             并针对其中的“插入图片”操作主动查询图片下载地址再根据下载地址下载图片。*/
             case DCPicDownloadableNtf:
-//                MsgBeans.DCPicUrl dcPicUrl = (MsgBeans.DCPicUrl) ntfContent;
-//                if (!new File(getPicSavePath(dcPicUrl.picId)).exists()){ // 图片尚未下载到本地
-//                    // 下载图片
-//                    req(Msg.DCDownload, new MsgBeans.DownloadPara(dcPicUrl.boardId, dcPicUrl.picId, getPicSavePath(dcPicUrl.picId), dcPicUrl.url),
-//                        new IResultListener() {
-//                            @Override
-//                            public void onSuccess(Object result) {
-//                                KLog.p("download pic %s for board %s success! save path=%s",dcPicUrl.picId, dcPicUrl.boardId, getPicSavePath(dcPicUrl.picId));
-//                                MsgBeans.DownloadResult downRst = (MsgBeans.DownloadResult) result;
-//                                updateInsertPicOp(new OpUpdatePic(downRst.boardId, downRst.picId, downRst.picSavePath), getNtfListeners(Msg.DCPicInsertedNtf));
-//                            }
-//
-//                            @Override
-//                            public void onFailed(int errorCode) {
-//
-//                            }
-//
-//                            @Override
-//                            public void onTimeout() {
-//
-//                            }
-//                        });
-//                }else{
-//                    KLog.p("pic already exists: %s", getPicSavePath(dcPicUrl.picId));
-//                }
+                TDCSImageUrl dcPicUrl = (TDCSImageUrl) ntfContent;
+                if (!new File(getPicSavePath(dcPicUrl.achWbPicentityId)).exists()){ // 图片尚未下载到本地
+                    // 下载图片
+                    req(Msg.DCDownload,
+                        new IResultListener() {
+                            @Override
+                            public void onSuccess(Object result) {
+                                KLog.p("download pic %s for board %s success! save path=%s",dcPicUrl.achWbPicentityId, dcPicUrl.achTabId, getPicSavePath(dcPicUrl.achWbPicentityId));
+                                TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
+                                updateInsertPicOp(new OpUpdatePic(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName), getNtfListeners(Msg.DCPicInsertedNtf));
+                            }
+
+                            @Override
+                            public void onFailed(int errorCode) {
+
+                            }
+
+                            @Override
+                            public void onTimeout() {
+
+                            }
+                        },
+                        new BaseTypeString(dcPicUrl.achPicUrl),
+                        new TDCSFileInfo(getPicSavePath(dcPicUrl.achWbPicentityId), dcPicUrl.achWbPicentityId, dcPicUrl.achTabId, false)
+                    );
+                }else{
+                    KLog.p("pic already exists: %s", getPicSavePath(dcPicUrl.achWbPicentityId));
+                }
                 break;
         }
     }
@@ -812,22 +813,6 @@ public class DataCollaborateManager extends RequestAgent {
 
     private class QueryAllBoardsInnerListener implements IResultListener{
     }
-
-
-    // FIXME just for debug
-    private void pushCachedOps(){
-        eject(paintOpNtfs);
-    }
-
-    public void ejectNtf(Msg msg){
-//        if (!BuildConfig.DEBUG){
-//            return;
-//        }
-//        eject(Msg.DCConfCreated);
-        eject(msg);
-    }
-
-
 
 
 }

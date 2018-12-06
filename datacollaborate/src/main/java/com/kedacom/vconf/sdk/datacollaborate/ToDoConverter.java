@@ -3,17 +3,28 @@ package com.kedacom.vconf.sdk.datacollaborate;
 import android.graphics.PointF;
 
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperCircleOperInfoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperEraseOperInfoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperFullScreenNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperInsertPicNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperLineOperInfoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperPencilOperInfoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperPitchPicDelNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperPitchPicDragNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRectangleOperInfoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRedoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperUndoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsConfMode;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsConfType;
+import com.kedacom.vconf.sdk.base.bean.dc.EmDcsOper;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperContent;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircle;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbEraseOperInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbGraphsInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbInsertPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbLine;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPencil;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPoint;
@@ -46,7 +57,7 @@ import java.util.Map;
 @SuppressWarnings("WeakerAccess")
 final class ToDoConverter {
 
-    public static OpPaint fromTransferObj(Object transferObj) {
+    public static OpPaint fromPaintTransferObj(Object transferObj) {
         if (transferObj instanceof DcsOperLineOperInfoNtf){
             return fromTransferObj((DcsOperLineOperInfoNtf)transferObj);
         }else if (transferObj instanceof DcsOperRectangleOperInfoNtf){
@@ -55,30 +66,47 @@ final class ToDoConverter {
             return fromTransferObj((DcsOperCircleOperInfoNtf)transferObj);
         }else if (transferObj instanceof DcsOperPencilOperInfoNtf){
             return fromTransferObj((DcsOperPencilOperInfoNtf)transferObj);
+        }else if (transferObj instanceof DcsOperInsertPicNtf){
+            return fromTransferObj((DcsOperInsertPicNtf)transferObj);
+        }else if (transferObj instanceof DcsOperPitchPicDragNtf){
+            return fromTransferObj((DcsOperPitchPicDragNtf)transferObj);
+        }else if (transferObj instanceof DcsOperPitchPicDelNtf){
+            return fromTransferObj((DcsOperPitchPicDelNtf)transferObj);
+        }else if (transferObj instanceof DcsOperFullScreenNtf){
+            return fromTransferObj((DcsOperFullScreenNtf)transferObj);
+        }else if (transferObj instanceof DcsOperEraseOperInfoNtf){
+            return fromTransferObj((DcsOperEraseOperInfoNtf)transferObj);
+        }else if (transferObj instanceof DcsOperUndoNtf){
+            return fromTransferObj((DcsOperUndoNtf)transferObj);
+        }else if (transferObj instanceof DcsOperRedoNtf){
+            return fromTransferObj((DcsOperRedoNtf)transferObj);
+        }else if (transferObj instanceof TDCSOperContent){
+            if (((TDCSOperContent)transferObj).emOper.equals(EmDcsOper.emWbClearScreen)){
+                OpClearScreen opClearScreen = new OpClearScreen();
+                assignPaintDomainObj((TDCSOperContent)transferObj, opClearScreen);
+                return opClearScreen;
+            }else {
+                return null;
+            }
         }
-//        else if (transferObj instanceof DcsOperLineOperInfoNtf){
-//            return fromTransferObj((DcsOperLineOperInfoNtf)transferObj);
-//        }else if (transferObj instanceof DcsOperLineOperInfoNtf){
-//            return fromTransferObj((DcsOperLineOperInfoNtf)transferObj);
-//        }
         else{
             return null;
         }
 //        switch (transferObj.getClass()){
 //            case DcsOperLineOperInfoNtf.class:
-//                return fromTransferObj((DCLineOp)transferObj);
+//                return fromPaintTransferObj((DCLineOp)transferObj);
 //            case DRAW_RECT:
-//                return fromTransferObj((DCRectOp)transferObj);
+//                return fromPaintTransferObj((DCRectOp)transferObj);
 //            case DRAW_OVAL:
-//                return fromTransferObj((DCOvalOp)transferObj);
+//                return fromPaintTransferObj((DCOvalOp)transferObj);
 //            case DRAW_PATH:
-//                return fromTransferObj((DCPathOp)transferObj);
+//                return fromPaintTransferObj((DCPathOp)transferObj);
 //            case INSERT_PIC:
-//                return fromTransferObj((DCInertPicOp)transferObj);
+//                return fromPaintTransferObj((DCInertPicOp)transferObj);
 //            case DEL_PIC:
-//                return fromTransferObj((DCDelPicOp)transferObj);
+//                return fromPaintTransferObj((DCDelPicOp)transferObj);
 //            case DRAG_PIC:
-//                return fromTransferObj((DCDragPicOp)transferObj);
+//                return fromPaintTransferObj((DCDragPicOp)transferObj);
 //            case ZOOM_PIC:
 //            case ROTATE_PIC:
 //            case RIGHT_ROTATE:
@@ -98,9 +126,9 @@ final class ToDoConverter {
 //                return opClearScreen;
 //            case RECT_ERASE:
 //            case emWbEraseOperInfo:
-//                return fromTransferObj((DCRectEraseOp)transferObj);
+//                return fromPaintTransferObj((DCRectEraseOp)transferObj);
 //            case FULLSCREEN:
-//                return fromTransferObj((DCFullScreenMatrixOp)transferObj);
+//                return fromPaintTransferObj((DCFullScreenMatrixOp)transferObj);
 //            default:
 //                return null;
 //        }
@@ -179,57 +207,56 @@ final class ToDoConverter {
         return opDrawPath;
     }
 
-//    public static OpInsertPic fromTransferObj(DCInertPicOp dcInertPicOp) {
-//        OpInsertPic opInsertPic = new OpInsertPic();
-//        assignPaintDomainObj(dcInertPicOp, opInsertPic);
-//        opInsertPic.setPicId(dcInertPicOp.picId);
-//        opInsertPic.setPicName(dcInertPicOp.picName); // TODO 确认此字段是否即为fullpath
-//        opInsertPic.setPicWidth(dcInertPicOp.width);
-//        opInsertPic.setPicHeight(dcInertPicOp.height);
-//        opInsertPic.setInsertPosX(dcInertPicOp.insertPosX);
-//        opInsertPic.setInsertPosY(dcInertPicOp.insertPosY);
-//        opInsertPic.setMatrixValue(matrixValueStr2Float(dcInertPicOp.matrixValue));
-//        return opInsertPic;
-//    }
-//
-//    public static OpDeletePic fromTransferObj(DCDelPicOp dcDelPicOp) {
-//        OpDeletePic opDeletePic = new OpDeletePic();
-//        assignPaintDomainObj(dcDelPicOp, opDeletePic);
-//        opDeletePic.setPicIds(dcDelPicOp.picIds);
-//        return opDeletePic;
-//    }
-//
-//    public static OpDragPic fromTransferObj(DCDragPicOp dcDragPicOp) {
-//        OpDragPic opDragPic = new OpDragPic();
-//        assignPaintDomainObj(dcDragPicOp, opDragPic);
-//        Map<String, float[]> picMatrices = new HashMap<>();
-//        for (DCPicMatrix picMatrix : dcDragPicOp.picMatrices){
-//            picMatrices.put(picMatrix.picId, matrixValueStr2Float(picMatrix.matrixValue));
-//        }
-//        opDragPic.setPicMatrices(picMatrices);
-//        return opDragPic;
-//    }
-//
-////    public static OpUpdatePic fromTransferObj(DCLineOp lineOp) {
-////
-////    }
-//
-//    public static OpMatrix fromTransferObj(DCFullScreenMatrixOp dcFullScreenMatrixOp) {
-//        OpMatrix opMatrix = new OpMatrix();
-//        assignPaintDomainObj(dcFullScreenMatrixOp, opMatrix);
-//        opMatrix.setMatrixValue(matrixValueStr2Float(dcFullScreenMatrixOp.matrixValue));
-//        return opMatrix;
-//    }
-//
-//    public static OpRectErase fromTransferObj(DCRectEraseOp dcRectEraseOp) {
-//        OpRectErase opRectErase = new OpRectErase();
-//        assignPaintDomainObj(dcRectEraseOp, opRectErase);
-//        opRectErase.setLeft(dcRectEraseOp.left);
-//        opRectErase.setTop(dcRectEraseOp.top);
-//        opRectErase.setRight(dcRectEraseOp.right);
-//        opRectErase.setBottom(dcRectEraseOp.bottom);
-//        return opRectErase;
-//    }
+    public static OpInsertPic fromTransferObj(DcsOperInsertPicNtf dcInertPicOp) {
+        TDCSWbInsertPicOperInfo ip = dcInertPicOp.AssParam;
+        OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight,
+                ip.tPoint.nPosx, ip.tPoint.nPosy, matrixValueStr2Float(ip.aachMatrixValue));
+        assignPaintDomainObj(dcInertPicOp.MainParam, opInsertPic);
+        return opInsertPic;
+    }
+
+    public static OpDeletePic fromTransferObj(DcsOperPitchPicDelNtf dcDelPicOp) {
+        OpDeletePic opDeletePic = new OpDeletePic(dcDelPicOp.AssParam.achGraphsId);
+        assignPaintDomainObj(dcDelPicOp.MainParam, opDeletePic);
+        return opDeletePic;
+    }
+
+    public static OpDragPic fromTransferObj(DcsOperPitchPicDragNtf dcDragPicOp) {
+        Map<String, float[]> picMatrices = new HashMap<>();
+        for (TDCSWbGraphsInfo picMatrix : dcDragPicOp.AssParam.atGraphsInfo){
+            picMatrices.put(picMatrix.achGraphsId, matrixValueStr2Float(picMatrix.aachMatrixValue));
+        }
+        OpDragPic opDragPic = new OpDragPic(picMatrices);
+        assignPaintDomainObj(dcDragPicOp.MainParam, opDragPic);
+        return opDragPic;
+    }
+
+
+    public static OpMatrix fromTransferObj(DcsOperFullScreenNtf dcFullScreenMatrixOp) {
+        OpMatrix opMatrix = new OpMatrix(matrixValueStr2Float(dcFullScreenMatrixOp.AssParam.aachMatrixValue));
+        assignPaintDomainObj(dcFullScreenMatrixOp.MainParam, opMatrix);
+        return opMatrix;
+    }
+
+    public static OpRectErase fromTransferObj(DcsOperEraseOperInfoNtf dcRectEraseOp) {
+        TDCSWbEraseOperInfo eraseOperInfo = dcRectEraseOp.AssParam;
+        OpRectErase opRectErase = new OpRectErase(eraseOperInfo.tBeginPt.nPosx, eraseOperInfo.tBeginPt.nPosy, eraseOperInfo.tEndPt.nPosx, eraseOperInfo.tEndPt.nPosy);
+        assignPaintDomainObj(dcRectEraseOp.MainParam, opRectErase);
+        return opRectErase;
+    }
+
+
+    public static OpUndo fromTransferObj(DcsOperUndoNtf dcsOperUndoNtf) {
+        OpUndo opUndo = new OpUndo();
+        assignPaintDomainObj(dcsOperUndoNtf.MainParam, opUndo);
+        return opUndo;
+    }
+
+    public static OpRedo fromTransferObj(DcsOperRedoNtf dcsOperRedoNtf) {
+        OpRedo opRedo = new OpRedo();
+        assignPaintDomainObj(dcsOperRedoNtf.MainParam, opRedo);
+        return opRedo;
+    }
 
 
 //
@@ -380,23 +407,23 @@ final class ToDoConverter {
 //    }
 //
 //
-//    private static float[] matrixValueStr2Float(String[] strMatrixValue){
-//        float[] matrixValue = new float[9];
-//        for (int i=0; i<9; ++i){
-//            matrixValue[i] = Float.valueOf(strMatrixValue[i]);
-//        }
-//        return matrixValue;
-//    }
-//
-//    private static String[] matrixValueFloat2Str(float[] matrixValue){
-//        String[] strMatrixValue = new String[9];
-//        for (int i=0; i<9; ++i){
-//            strMatrixValue[i] = ""+matrixValue[i];
-//        }
-//        return strMatrixValue;
-//    }
-//
-//
+    private static float[] matrixValueStr2Float(String[] strMatrixValue){
+        float[] matrixValue = new float[9];
+        for (int i=0; i<9; ++i){
+            matrixValue[i] = Float.valueOf(strMatrixValue[i]);
+        }
+        return matrixValue;
+    }
+
+    private static String[] matrixValueFloat2Str(float[] matrixValue){
+        String[] strMatrixValue = new String[9];
+        for (int i=0; i<9; ++i){
+            strMatrixValue[i] = ""+matrixValue[i];
+        }
+        return strMatrixValue;
+    }
+
+
     public static EmDcsType toTransferObj(ETerminalType type){
         switch (type){
             case TrueLinkWindows:
@@ -445,12 +472,12 @@ final class ToDoConverter {
         }
     }
 //
-//    public static CreateConfResult fromTransferObj(DCCreateConfResult dcCreateConfResult) {
+//    public static CreateConfResult fromPaintTransferObj(DCCreateConfResult dcCreateConfResult) {
 //        CreateConfResult createConfResult = new CreateConfResult();
 //        createConfResult.setConfE164(dcCreateConfResult.confE164);
 //        createConfResult.setConfName(dcCreateConfResult.confName);
-//        createConfResult.setConfType(fromTransferObj(dcCreateConfResult.confType));
-//        createConfResult.setConfMode(fromTransferObj(dcCreateConfResult.confMode));
+//        createConfResult.setConfType(fromPaintTransferObj(dcCreateConfResult.confType));
+//        createConfResult.setConfMode(fromPaintTransferObj(dcCreateConfResult.confMode));
 //        return createConfResult;
 //    }
 //
