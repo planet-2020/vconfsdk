@@ -9,4 +9,10 @@ public class TDCSImageUrl {
     public int dwPageId;
     public String achPicUrl;
     public String achWbPicentityId;     // 图片ID
+    public TDCSImageUrl(String confE164, String boardId, int pageId, String picId){
+        achConfE164 = confE164;
+        achTabId = boardId;
+        dwPageId = pageId;
+        achWbPicentityId = picId;
+    }
 }

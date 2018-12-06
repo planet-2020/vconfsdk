@@ -8,4 +8,9 @@ public class TDCSRegInfo{
     public String achIp;
     public int dwPort;
     public EmDcsType emMtType;
+    public TDCSRegInfo(String ip, int port, EmDcsType type){
+        achIp = ip;
+        dwPort = port;
+        emMtType = type;
+    }
 }

@@ -8,6 +8,13 @@ public class CreateConfResult {
     private EConfMode   confMode;
     private EConfType   confType;
 
+    public CreateConfResult(String confE164, String confName, EConfMode confMode, EConfType confType) {
+        this.confE164 = confE164;
+        this.confName = confName;
+        this.confMode = confMode;
+        this.confType = confType;
+    }
+
     @NonNull
     @Override
     public String toString() {

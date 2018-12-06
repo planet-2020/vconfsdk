@@ -17,6 +17,7 @@ buildscript {
 
 allprojects {
     repositories {
+        mavenLocal()
         google()
         jcenter()
 
@@ -29,7 +30,6 @@ allprojects {
 //            url "file://C:\\Users\\Sissi\\.m2\\repository"
 //        }
 
-        mavenLocal()
     }
 
     tasks.withType(JavaCompile) {

@@ -41,13 +41,13 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
         Log.d(TAG, "####yell");
         Method method = cachedMethods.get(methodName);
         if (null != method){
-            try {
-                method.invoke(para);
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-            }
+//            try {
+//                method.invoke(para);
+//            } catch (IllegalAccessException e) {
+//                e.printStackTrace();
+//            } catch (InvocationTargetException e) {
+//                e.printStackTrace();
+//            } // TODO 先不真正调用
             Log.d(TAG, "####call cached method: "+method);
             return 0;
         }
@@ -58,15 +58,16 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
                 classes[i] = para[i].getClass();
             }
             method = clz.getDeclaredMethod(methodName, classes);
-            method.invoke(null, para);
+//            method.invoke(null, para); // TODO 先不真正调用
             cachedMethods.put(methodName, method);
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
         }
+//        catch (InvocationTargetException e) {
+//            e.printStackTrace();
+//        } catch (IllegalAccessException e) {
+//            e.printStackTrace();
+//        }
 
         Log.d(TAG, "####call method: "+method);
 
