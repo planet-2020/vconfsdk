@@ -26,7 +26,7 @@ final class MagicBook {
 
     private Map<String, String> nameIdMap; // 消息名称——消息ID
 
-    private Map<String, Class> reqMethodOwner; // 请求——请求对应的方法所在类
+    private Map<String, String> reqMethodOwner; // 请求——请求对应的方法所在类
 
     private Map<String, Class[]> reqParasMap; // 请求——请求参数对应的类
 
@@ -113,7 +113,7 @@ final class MagicBook {
         return sets.contains(msg);
     }
 
-    Class<?> getReqMethodOwner(String req){
+    String getReqMethodOwner(String req){
         return reqMethodOwner.get(req);
     }
 

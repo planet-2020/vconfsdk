@@ -37,7 +37,7 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
     }
 
     @Override
-    public int yell(Class clz, String methodName, Object... para) {
+    public int yell(String methodOwner, String methodName, Object... para) {
         Log.d(TAG, "####yell");
         Method method = cachedMethods.get(methodName);
         if (null != method){
@@ -53,6 +53,7 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
         }
 
         try {
+            Class clz = Class.forName(methodName);
             Class[] classes = new Class[para.length];
             for(int i=0; i<classes.length; ++i){
                 classes[i] = para[i].getClass();
@@ -61,6 +62,8 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
 //            method.invoke(null, para); // TODO 先不真正调用
             cachedMethods.put(methodName, method);
         } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
 //        catch (InvocationTargetException e) {

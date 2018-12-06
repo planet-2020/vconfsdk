@@ -145,7 +145,6 @@ public class MessageProcessor extends AbstractProcessor {
         Get get;
         com.kedacom.vconf.sdk.annotation.Set set;
         Class clz;
-        String reqParaFullName;
         String rspClazzFullName;
         String ntfClazzFullName;
         String getParaFullName;
@@ -165,13 +164,13 @@ public class MessageProcessor extends AbstractProcessor {
                 reqName = request.name();
                 reqName = !reqName.isEmpty() ? reqName : element.getSimpleName().toString();
 
-                String mo;
-                try {
-                    clz = request.methodOwner();
-                    mo = clz.getCanonicalName();
-                }catch (MirroredTypeException mte) {
-                    mo = parseClassNameFromMirroredTypeException(mte);
-                }
+                String mo = request.methodOwner();
+//                try {
+//                    clz = request.methodOwner();
+//                    mo = clz.getCanonicalName();
+//                }catch (MirroredTypeException mte) {
+//                    mo = parseClassNameFromMirroredTypeException(mte);
+//                }
                 reqMethodOwner.put(reqName, mo);
 
                 // 获取请求参数列表
@@ -450,7 +449,7 @@ public class MessageProcessor extends AbstractProcessor {
         }
 
         for(String req : reqMethodOwner.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameReqMethodOwnerMap, req, reqMethodOwner.get(req));
+            codeBlockBuilder.addStatement("$L.put($S, $S)", fieldNameReqMethodOwnerMap, req, reqMethodOwner.get(req));
         }
 
         for(String req : reqParasMap.keySet()){ // TODO 对于为Void.class的情况进行优化不要生成节省空间。
@@ -520,7 +519,7 @@ public class MessageProcessor extends AbstractProcessor {
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, String.class),
                         fieldNameNameIdMap, Modifier.STATIC)
                         .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, String.class),
                         fieldNameReqMethodOwnerMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class[].class),
