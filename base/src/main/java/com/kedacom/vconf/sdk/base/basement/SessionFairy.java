@@ -81,13 +81,13 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
         // 检查参数合法性
         Class[] classes = magicBook.getReqParaClasses(reqName);
         if (classes.length != reqPara.length){
-            Log.e(TAG, String.format("invalid para nums, expect #%s but got #%s", classes.length, reqPara.length));
+            Log.e(TAG, String.format("invalid para nums for %s, expect #%s but got #%s", reqId, classes.length, reqPara.length));
             return false;
         }
         for(int i=0; i<classes.length; ++i){
             if (null != reqPara[i]
                     && classes[i] != reqPara[i].getClass()){
-                Log.e(TAG, String.format("invalid para type, expect %s but got %s", classes[i], reqPara[i].getClass()));
+                Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", reqId, classes[i], reqPara[i].getClass()));
                 return false;
             }
         }

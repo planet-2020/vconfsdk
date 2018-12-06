@@ -18,7 +18,7 @@ import java.lang.annotation.Target;
 public @interface Request {
     String name();      // 请求对应的方法名
     String methodOwner(); // 请求对应的方法的所属类
-    Class[] paras() default Void.class; // 请求者需传入的参数列表。NOTE：为了易用性，此参数列表不一定跟下层方法实际需要的参数列表类型一致。不一致的情形有映射规则如下：
+    Class[] paras() default {}; // 请求者需传入的参数列表。NOTE：为了易用性，此参数列表不一定跟下层方法实际需要的参数列表类型一致。不一致的情形有映射规则如下：
                                         // 1、列表参数为自定义类型则传给下层接口前将被转为StringBuffer类型json字符串；
                                         // 2、列表参数为String则传给下层接口前将被转为StringBuffer类型；
                                         // 3、其余类型不做转换；

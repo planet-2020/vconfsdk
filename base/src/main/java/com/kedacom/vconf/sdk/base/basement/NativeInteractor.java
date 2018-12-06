@@ -38,7 +38,7 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
 
     @Override
     public int yell(String methodOwner, String methodName, Object... para) {
-        Log.d(TAG, "####==yell methodOwner="+methodOwner+" methodName="+methodName);
+        Log.d(TAG, "####=yell methodOwner="+methodOwner+" methodName="+methodName+" paras="+para);
         Method method = cachedMethods.get(methodName);
         if (null != method){
             try {
