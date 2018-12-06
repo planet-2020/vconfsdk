@@ -42,7 +42,7 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
         Method method = cachedMethods.get(methodName);
         if (null != method){
             try {
-                method.invoke(para);
+                method.invoke(null, para);
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             } catch (InvocationTargetException e) {
