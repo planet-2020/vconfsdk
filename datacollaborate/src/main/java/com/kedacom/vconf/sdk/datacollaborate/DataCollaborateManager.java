@@ -34,8 +34,6 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.ETerminalType;
 
-//import static com.kedacom.vconf.sdk.base.MsgBeans.*; // TODO 使用static import？
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,10 +48,6 @@ public class DataCollaborateManager extends RequestAgent {
 
     /*同步过程中缓存的操作*/
     private Map<String, PriorityQueue<OpPaint>> cachedPaintOps = new HashMap<>();
-
-    //当前数据协作会议的e164
-    private String curDcConfE164;
-
 
     /* 是否正在准备同步。
     标记从入会成功到开始同步会议中已有图元这段时间，对这段时间内到达的图元
@@ -313,10 +307,6 @@ public class DataCollaborateManager extends RequestAgent {
 
     /**添加协作方*/
     public void addOperator(DCMember[] members, IResultListener resultListener){
-        if (null == curDcConfE164) {
-            KLog.p(KLog.ERROR,"not in DC conf yet!");
-            return;
-        }
 //        MsgBeans.TDCSConfUserInfo[] confUserInfos = new MsgBeans.TDCSConfUserInfo[members.length];
 //        for (int i=0; i<members.length; ++i){
 //            confUserInfos[i] = members[i].toTransferType();
@@ -326,10 +316,6 @@ public class DataCollaborateManager extends RequestAgent {
 
     /**删除协作方*/
     public void delOperator(DCMember[] members, IResultListener resultListener){
-        if (null == curDcConfE164) {
-            KLog.p(KLog.ERROR,"not in DC conf yet!");
-            return;
-        }
 //        MsgBeans.TDCSConfUserInfo[] confUserInfos = new MsgBeans.TDCSConfUserInfo[members.length];
 //        for (int i=0; i<members.length; ++i){
 //            confUserInfos[i] = members[i].toTransferType();
@@ -339,18 +325,10 @@ public class DataCollaborateManager extends RequestAgent {
 
     /**申请协作方*/
     public void applyForOperator(String e164, IResultListener resultListener){
-        if (null == curDcConfE164) {
-            KLog.p(KLog.ERROR,"not in DC conf yet!");
-            return;
-        }
 //        req(Msg.DCApplyOperator, new MsgBeans.DCSBriefConfInfo(e164), resultListener);
     }
     /**取消协作方*/
     public void cancelOperator(String e164, IResultListener resultListener){
-        if (null == curDcConfE164) {
-            KLog.p(KLog.ERROR,"not in DC conf yet!");
-            return;
-        }
 //        req(Msg.DCCancelOperator, new MsgBeans.DCSBriefConfInfo(e164), resultListener);
     }
 
