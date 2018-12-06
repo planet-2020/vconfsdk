@@ -19,6 +19,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsOperInsertPicNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSDelWhiteBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSFileInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSFileLoadResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSImageUrl;
@@ -411,7 +412,7 @@ public class DataCollaborateManager extends RequestAgent {
             }
         } else if (Msg.DCBoardDeletedNtf.equals(ntfId)) {
             for (Object listener : listeners) {
-                ((IOnBoardOpListener) listener).onBoardDeleted(((TDCSBoardInfo) ntfContent).achTabId);
+                ((IOnBoardOpListener) listener).onBoardDeleted(((TDCSDelWhiteBoardInfo) ntfContent).achTabId);
             }
         } else if (Msg.DCCurrentBoardNtf.equals(ntfId)) {
             curBoardId = ((TDCSBoardInfo) ntfContent).achTabId;
