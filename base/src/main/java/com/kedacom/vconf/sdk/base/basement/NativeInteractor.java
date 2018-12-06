@@ -38,39 +38,39 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
 
     @Override
     public int yell(String methodOwner, String methodName, Object... para) {
-        Log.d(TAG, "####yell");
+        Log.d(TAG, "####==yell methodOwner="+methodOwner+" methodName="+methodName);
         Method method = cachedMethods.get(methodName);
         if (null != method){
-//            try {
-//                method.invoke(para);
-//            } catch (IllegalAccessException e) {
-//                e.printStackTrace();
-//            } catch (InvocationTargetException e) {
-//                e.printStackTrace();
-//            } // TODO 先不真正调用
+            try {
+                method.invoke(para);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
             Log.d(TAG, "####call cached method: "+method);
             return 0;
         }
 
         try {
-            Class clz = Class.forName(methodName);
+            Class clz = Class.forName(methodOwner);
             Class[] classes = new Class[para.length];
             for(int i=0; i<classes.length; ++i){
                 classes[i] = para[i].getClass();
             }
             method = clz.getDeclaredMethod(methodName, classes);
-//            method.invoke(null, para); // TODO 先不真正调用
+            method.invoke(null, para);
             cachedMethods.put(methodName, method);
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
-//        catch (InvocationTargetException e) {
-//            e.printStackTrace();
-//        } catch (IllegalAccessException e) {
-//            e.printStackTrace();
-//        }
+        catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
 
         Log.d(TAG, "####call method: "+method);
 

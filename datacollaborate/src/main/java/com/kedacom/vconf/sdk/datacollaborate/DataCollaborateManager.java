@@ -204,7 +204,7 @@ public class DataCollaborateManager extends RequestAgent {
 
     /**注销数据协作*/
     public void logout(IResultListener resultListener){
-        req(Msg.DCLogout, null, resultListener);
+        req(Msg.DCLogout, resultListener);
         cachedPaintOps.clear();
     }
 
