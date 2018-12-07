@@ -8,7 +8,7 @@ public interface IResultListener extends ILifecycleOwner{
     /**结果已抵达，后续会根据情况回调onSuccess/onFailed/onTimeout
      * 此接口主要用于在收到结果后做一些公共处理，比如消隐进度条。
      * */
-    default void onResultArrived(){}
+    default void onArrive(){}
 
     /**请求成功。
      * @param result 请求对应的结果。具体定义在各自模块查阅*/

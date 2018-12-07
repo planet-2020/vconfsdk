@@ -340,7 +340,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         RequestBundle requestBundle = rspListeners.get(reqSn);
         if (null != requestBundle && !requestBundle.bResultArrived){
             requestBundle.bResultArrived = true;
-            if(null != requestBundle.resultListener) requestBundle.resultListener.onResultArrived();
+            if(null != requestBundle.resultListener) requestBundle.resultListener.onArrive();
         }
         IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
@@ -352,7 +352,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         RequestBundle requestBundle = rspListeners.remove(reqSn);
         if (null != requestBundle && !requestBundle.bResultArrived){
             requestBundle.bResultArrived = true;
-            if(null != requestBundle.resultListener) requestBundle.resultListener.onResultArrived();
+            if(null != requestBundle.resultListener) requestBundle.resultListener.onArrive();
         }
         IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))
@@ -364,7 +364,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         RequestBundle requestBundle = rspListeners.remove(reqSn);
         if (null != requestBundle && !requestBundle.bResultArrived){
             requestBundle.bResultArrived = true;
-            if(null != requestBundle.resultListener) requestBundle.resultListener.onResultArrived();
+            if(null != requestBundle.resultListener) requestBundle.resultListener.onArrive();
         }
         IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
         rspProcessorMap.get(Msg.valueOf(reqId))

@@ -615,7 +615,7 @@ public class DataCollaborateManager extends RequestAgent {
                 // 获取所有画板
                 req(Msg.DCQueryAllBoards, new QueryAllBoardsInnerListener() {
                     @Override
-                    public void onResultArrived() {
+                    public void onArrive() {
                         /* 获取所有画板结束，准备阶段结束*/
                         bPreparingSync = false;
                     }
