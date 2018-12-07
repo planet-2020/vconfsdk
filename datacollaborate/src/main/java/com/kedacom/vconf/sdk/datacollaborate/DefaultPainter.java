@@ -41,7 +41,7 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 
-public class DefaultPainter implements IPainter {
+public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGeneratedListener {
 
     private Map<String, DefaultPaintBoard> paintBoards = new HashMap<>();
 
@@ -154,10 +154,13 @@ public class DefaultPainter implements IPainter {
             KLog.p(KLog.ERROR,"board %s already exist!", paintBoard.getBoardId());
             return false;
         }
-        paintBoards.put(paintBoard.getBoardId(), (DefaultPaintBoard) paintBoard);
+        DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
+        defaultPaintBoard.setOnPaintOpGeneratedListener(this);
+        paintBoards.put(paintBoard.getBoardId(), defaultPaintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 
         ((TextureView)paintBoard.getShapePaintView()).setSurfaceTextureListener(surfaceTextureListener);
+        ((TextureView)paintBoard.getPicPaintView()).setSurfaceTextureListener(surfaceTextureListener);
 
         return true;
     }
@@ -510,5 +513,10 @@ public class DefaultPainter implements IPainter {
             }
         }
     };
+
+    @Override
+    public void onPaintOpGenerated(OpPaint opPaint) {
+        paint(opPaint);
+    }
 
 }

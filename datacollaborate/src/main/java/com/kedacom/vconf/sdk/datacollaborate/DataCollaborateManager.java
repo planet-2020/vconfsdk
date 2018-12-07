@@ -186,8 +186,9 @@ public class DataCollaborateManager extends RequestAgent {
         return processorMap;
     }
 
-    /**发送绘制操作*/
-    public void postPaintOp(OpPaint op){
+    /**发布绘制操作*/
+    public void publishPaintOp(OpPaint op){
+        KLog.p("publish op=%s", op);
 //        req();
     }
 

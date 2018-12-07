@@ -33,7 +33,7 @@ public class DefaultPaintView extends TextureView implements IPaintView{
     public DefaultPaintView(Context context, AttributeSet attrs) {
         super(context, attrs);
         myTouchListener = new MyTouchListener();
-        setOnTouchListener(myTouchListener);
+//        setOnTouchListener(myTouchListener);
         gestureDetector = new GestureDetector(getContext(), new GestureListener(myTouchListener));
     }
 

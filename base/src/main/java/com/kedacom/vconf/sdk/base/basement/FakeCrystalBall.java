@@ -53,37 +53,32 @@ class FakeCrystalBall implements ICrystalBall {
     }
 
     @Override
-    public int yell(String methodOwner, String methodName, Object... para) {
+    public int yell(String methodOwner, String msgName, Object... para) {
+        if (null == yb){
+            return -1;
+        }
+
+        Log.d(TAG, String.format("receive REQ %s, para=%s", msgName, para));
+
+        String[] rspIds = magicBook.getRspSeqs(msgName)[0]; // 若有多路响应序列默认返回第一路
+        Object rspBody;
+        int delay = 0;
+        for (String rspId : rspIds) {
+            delay += magicBook.getRspDelay(rspId);
+
+            rspBody = createInstanceFromClass(magicBook.getRspClazz(rspId));
+
+            String jsonRspBody = jsonProcessor.toJson(rspBody);
+            // 上报响应
+            handler.postDelayed(() -> {
+                Log.d(TAG, String.format("send RSP %s, rspContent=%s", rspId, jsonRspBody));
+                yb.yellback(rspId, jsonRspBody);
+            }, delay);
+
+        }
+
         return 0;
     }
-
-//    @Override
-//    public int request(String msgName, Object... para) {
-//        if (null == yb){
-//            return -1;
-//        }
-//
-//        Log.d(TAG, String.format("receive REQ %s, para=%s", msgName, para));
-//
-//        String[] rspIds = magicBook.getRspSeqs(msgName)[0]; // 若有多路响应序列默认返回第一路
-//        Object rspBody;
-//        int delay = 0;
-//        for (String rspId : rspIds) {
-//            delay += magicBook.getRspDelay(rspId);
-//
-//            rspBody = createInstanceFromClass(magicBook.getRspClazz(rspId));
-//
-//            String jsonRspBody = jsonProcessor.toJson(rspBody);
-//            // 上报响应
-//            handler.postDelayed(() -> {
-//                Log.d(TAG, String.format("send RSP %s, rspContent=%s", rspId, jsonRspBody));
-//                yb.yellback(rspId, jsonRspBody);
-//            }, delay);
-//
-//        }
-//
-//        return 0;
-//    }
 //
 //    @Override
 //    public int get(String msgName, StringBuffer output) {
