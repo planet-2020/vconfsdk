@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.graphics.PointF;
 
+import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperCircleOperInfoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperEraseOperInfoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperFullScreenNtf;
@@ -86,53 +87,16 @@ final class ToDoConverter {
                 assignPaintDomainObj((TDCSOperContent)transferObj, opClearScreen);
                 return opClearScreen;
             }else {
+                KLog.p(KLog.ERROR, "unknown paint op %s", transferObj);
                 return null;
             }
         }
         else{
+            KLog.p(KLog.ERROR, "unknown paint op %s", transferObj);
             return null;
         }
-//        switch (transferObj.getClass()){
-//            case DcsOperLineOperInfoNtf.class:
-//                return fromPaintTransferObj((DCLineOp)transferObj);
-//            case DRAW_RECT:
-//                return fromPaintTransferObj((DCRectOp)transferObj);
-//            case DRAW_OVAL:
-//                return fromPaintTransferObj((DCOvalOp)transferObj);
-//            case DRAW_PATH:
-//                return fromPaintTransferObj((DCPathOp)transferObj);
-//            case INSERT_PIC:
-//                return fromPaintTransferObj((DCInertPicOp)transferObj);
-//            case DEL_PIC:
-//                return fromPaintTransferObj((DCDelPicOp)transferObj);
-//            case DRAG_PIC:
-//                return fromPaintTransferObj((DCDragPicOp)transferObj);
-//            case ZOOM_PIC:
-//            case ROTATE_PIC:
-//            case RIGHT_ROTATE:
-//            case LEFT_ROTATE:
-//                return null; // TODO
-//            case UNDO:
-//                OpUndo opUndo = new OpUndo();
-//                assignPaintDomainObj(transferObj, opUndo);
-//                return opUndo;
-//            case REDO:
-//                OpRedo opRedo = new OpRedo();
-//                assignPaintDomainObj(transferObj, opRedo);
-//                return opRedo;
-//            case CLEAR_SCREEN:
-//                OpClearScreen opClearScreen = new OpClearScreen();
-//                assignPaintDomainObj(transferObj, opClearScreen);
-//                return opClearScreen;
-//            case RECT_ERASE:
-//            case emWbEraseOperInfo:
-//                return fromPaintTransferObj((DCRectEraseOp)transferObj);
-//            case FULLSCREEN:
-//                return fromPaintTransferObj((DCFullScreenMatrixOp)transferObj);
-//            default:
-//                return null;
-//        }
     }
+
 //
 //
 //    public static DCPaintOp toTransferObj(OpPaint domainObj) {
@@ -501,4 +465,5 @@ final class ToDoConverter {
     public static CreateConfResult fromTransferObj(TDCSCreateConfResult to) {
         return new CreateConfResult(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType));
     }
+
 }

@@ -23,8 +23,6 @@ android {
         sourceCompatibility javaVersion
         targetCompatibility javaVersion
     }
-
-    println "group=${getGroup()}, name=${getName()}, version=${getVersion()}"
 }
 
 dependencies {
