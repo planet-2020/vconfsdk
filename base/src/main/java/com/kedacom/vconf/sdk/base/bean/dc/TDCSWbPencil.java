@@ -10,6 +10,9 @@ public class TDCSWbPencil {
     public int dwLineWidth;         // 线宽
     public long dwRgb;              // 颜色，强转成int类型就是颜色值了。比如long类型的4294967295强转成int就是0xFFFFFFFF（纯白色），即-1。
 
+    public TDCSWbPencil(TDCSWbEntity tEntity, TDCSWbPoint[] atPList, int dwLineWidth, long dwRgb) {
+        this(tEntity, atPList.length, atPList, dwLineWidth, dwRgb);
+    }
     public TDCSWbPencil(TDCSWbEntity tEntity, int dwPointNum, TDCSWbPoint[] atPList, int dwLineWidth, long dwRgb) {
         this.tEntity = tEntity;
         this.dwPointNum = dwPointNum;
