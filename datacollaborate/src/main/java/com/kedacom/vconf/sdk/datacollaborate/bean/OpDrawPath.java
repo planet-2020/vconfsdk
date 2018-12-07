@@ -2,16 +2,19 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.PointF;
 
+import java.util.Iterator;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import androidx.annotation.NonNull;
 
 public class OpDrawPath extends OpDraw {
-    private PointF[] points;
+    private ConcurrentLinkedQueue<PointF> points;
 
     public OpDrawPath(){
         type = EOpType.DRAW_PATH;
     }
 
-    public OpDrawPath(PointF[] points){
+    public OpDrawPath(ConcurrentLinkedQueue<PointF> points){
         this.points = points;
         type = EOpType.DRAW_PATH;
     }
@@ -20,17 +23,20 @@ public class OpDrawPath extends OpDraw {
     @Override
     public String toString() {
         StringBuffer stringBuffer = new StringBuffer();
-        for (PointF pointF : points){
+        Iterator it = points.iterator();
+        PointF pointF;
+        while (it.hasNext()){
+            pointF = (PointF) it.next();
             stringBuffer.append("(").append(pointF.x).append(",").append(pointF.y).append(")");
         }
         return "{"+String.format("points=[%s] ", stringBuffer.toString())+super.toString()+"}";
     }
 
-    public PointF[] getPoints() {
+    public ConcurrentLinkedQueue<PointF> getPoints() {
         return points;
     }
 
-    public void setPoints(PointF[] points) {
+    public void setPoints(ConcurrentLinkedQueue<PointF> points) {
         this.points = points;
     }
 }

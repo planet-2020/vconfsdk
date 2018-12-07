@@ -58,8 +58,10 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.ETerminalType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 @SuppressWarnings("WeakerAccess")
 final class ToDoConverter {
@@ -141,17 +143,18 @@ final class ToDoConverter {
 //
 //
 
-    public static PointF[] fromTransferObj(TDCSWbPoint[] tdcsWbPoints) {
-        PointF[] pointFS = new PointF[tdcsWbPoints.length];
-        for (int i=0; i<pointFS.length; ++i){
-            pointFS[i] = new PointF(tdcsWbPoints[i].nPosx, tdcsWbPoints[i].nPosy);
+    public static ConcurrentLinkedQueue<PointF> fromTransferObj(TDCSWbPoint[] tdcsWbPoints) {
+        ConcurrentLinkedQueue<PointF> pointFS = new ConcurrentLinkedQueue<>();
+        for (int i=0; i<tdcsWbPoints.length; ++i){
+            pointFS.offer( new PointF(tdcsWbPoints[i].nPosx, tdcsWbPoints[i].nPosy));
         }
         return pointFS;
     }
-    public static TDCSWbPoint[] toTransferObj(PointF[]  pointFS) {
-        TDCSWbPoint[] tdcsWbPoints = new TDCSWbPoint[pointFS.length];
-        for (int i=0; i<tdcsWbPoints.length; ++i){
-            tdcsWbPoints[i] = new TDCSWbPoint((int)pointFS[i].x, (int)pointFS[i].y);
+    public static TDCSWbPoint[] toTransferObj(ConcurrentLinkedQueue<PointF>  pointFS) {
+        TDCSWbPoint[] tdcsWbPoints = new TDCSWbPoint[pointFS.size()];
+        int i=0;
+        for (PointF pointF : pointFS){
+            tdcsWbPoints[i++] = new TDCSWbPoint((int)pointF.x, (int)pointF.y);
         }
         return tdcsWbPoints;
     }

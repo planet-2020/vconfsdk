@@ -454,9 +454,12 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
                         case DRAW_PATH:
                             OpDrawPath pathOp = (OpDrawPath) op;
                             path.reset();
-                            path.moveTo(pathOp.getPoints()[0].x, pathOp.getPoints()[0].y);
-                            for (PointF point : pathOp.getPoints()) {
-                                path.lineTo(point.x, point.y);
+                            Iterator it = pathOp.getPoints().iterator();
+                            PointF pointF = (PointF) it.next();
+                            path.moveTo(pointF.x, pointF.y);
+                            while (it.hasNext()){
+                                pointF = (PointF) it.next();
+                                path.lineTo(pointF.x, pointF.y);
                             }
                             canvas.drawPath(path, cfgPaint(pathOp));
                             break;

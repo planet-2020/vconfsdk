@@ -18,6 +18,9 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.DefaultLifecycleObserver;
@@ -31,7 +34,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private int focusedLayer = LAYER_SHAPE;
 
     // 工具
-    private int tool = TOOL_OVAL;
+    private int tool = TOOL_PENCIL;
 
     // 画笔粗细W（像素值）
     private int paintStrokeWidth = 5;
@@ -107,7 +110,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     startPoint.set(event.getX(), event.getY()); // 记录起始点
                     KLog.p("ACTION_DOWN{%s}", event);
                     if (null != paintOpGeneratedListener) {
-                        createPaintOp();
+                        createPaintOp(event);
                     }
                     break;
 
@@ -134,10 +137,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                        }
 //                    }
                     if (null != paintOpGeneratedListener) {
-                        OpPaint op = adjustPaintOp(event);
-                        if (null != op) {
-                            paintOpGeneratedListener.onPaintOpGenerated(op);
-                        }
+                        adjustPaintOp(event);
                     }
                     break;
 
@@ -147,7 +147,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                        needRefresh = false;
 //                    }
                     KLog.p("ACTION_UP{%s}", event);
-                    confirmPaintOp();
+                    if (null != paintOpGeneratedListener) {
+                        confirmPaintOp(event);
+                    }
                     break;
 
                 case MotionEvent.ACTION_CANCEL:
@@ -192,31 +194,37 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private OpDrawRect opDrawRect;
         private OpDrawOval opDrawOval;
         private OpDrawPath opDrawPath;
-        private OpPaint createPaintOp(){
+        private OpPaint createPaintOp(MotionEvent event){
             switch (tool){
                 case TOOL_PENCIL:
-                    opDrawPath = new OpDrawPath();
+                    opDrawPath = new OpDrawPath(new ConcurrentLinkedQueue<>());
+                    opDrawPath.getPoints().offer(new PointF(event.getX(), event.getY()));
+                    opDrawPath.setBoardId(boardInfo.id);
                     return opDrawPath;
                 case TOOL_LINE:
                     opDrawLine = new OpDrawLine();
+                    opDrawLine.setBoardId(boardInfo.id);
                     return opDrawLine;
                 case TOOL_RECT:
                     opDrawRect = new OpDrawRect();
+                    opDrawRect.setBoardId(boardInfo.id);
                     return opDrawRect;
                 case TOOL_OVAL:
                     opDrawOval = new OpDrawOval();
+                    opDrawOval.setBoardId(boardInfo.id);
                     return opDrawOval;
                 default:
                     return null;
             }
         }
 
-        private OpPaint adjustPaintOp(MotionEvent event){
+        private void adjustPaintOp(MotionEvent event){
             OpPaint opPaint;
             switch (tool){
                 case TOOL_PENCIL:
                     opDrawPath.setStrokeWidth(paintStrokeWidth);
                     opDrawPath.setColor(paintColor);
+                    opDrawPath.getPoints().offer(new PointF(event.getX(), event.getY()));
                     opPaint = opDrawPath;
                     break;
                 case TOOL_LINE:
@@ -247,14 +255,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     opPaint = opDrawOval;
                     break;
                 default:
-                    return null;
+                    return;
             }
 
-            opPaint.setBoardId(boardInfo.id);
-            return opPaint;
+            paintOpGeneratedListener.onPaintOpGenerated(opPaint);
+
         }
 
-        private void confirmPaintOp(){
+        private void confirmPaintOp(MotionEvent event){
             OpPaint opPaint;
             switch (tool){
                 case TOOL_PENCIL:
