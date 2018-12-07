@@ -27,6 +27,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbEraseOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbGraphsInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbInsertPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbLine;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbLineOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPencil;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPoint;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbRectangle;
@@ -150,6 +151,17 @@ final class ToDoConverter {
         return opDrawLine;
     }
 
+    public static TDCSWbLineOperInfo toTransferObj(OpDrawLine domainObj) {
+        DCLineOp transferObj = new DCLineOp();
+        assignDrawTransferObj(domainObj, transferObj);
+        transferObj.opType = EDcOpType.DRAW_LINE;
+        transferObj.startX = domainObj.getStartX();
+        transferObj.startY = domainObj.getStartY();
+        transferObj.stopX = domainObj.getStopX();
+        transferObj.stopY = domainObj.getStopY();
+        return transferObj;
+    }
+
     public static OpDrawRect fromTransferObj(DcsOperRectangleOperInfoNtf dcRectOp) {
         TDCSWbRectangle rectangle = dcRectOp.AssParam.tRectangle;
         OpDrawRect opDrawRect = new OpDrawRect(rectangle.tBeginPt.nPosx, rectangle.tBeginPt.nPosy, rectangle.tEndPt.nPosx, rectangle.tEndPt.nPosy);
@@ -227,16 +239,7 @@ final class ToDoConverter {
 //
 //
 //
-//    public static DCLineOp toTransferObj(OpDrawLine domainObj) {
-//        DCLineOp transferObj = new DCLineOp();
-//        assignDrawTransferObj(domainObj, transferObj);
-//        transferObj.opType = EDcOpType.DRAW_LINE;
-//        transferObj.startX = domainObj.getStartX();
-//        transferObj.startY = domainObj.getStartY();
-//        transferObj.stopX = domainObj.getStopX();
-//        transferObj.stopY = domainObj.getStopY();
-//        return transferObj;
-//    }
+
 //
 //    public static DCRectOp toTransferObj(OpDrawRect domainObj) {
 //        DCRectOp transferObj = new DCRectOp();

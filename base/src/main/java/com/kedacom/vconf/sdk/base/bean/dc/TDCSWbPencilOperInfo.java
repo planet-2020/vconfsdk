@@ -8,6 +8,9 @@ public class TDCSWbPencilOperInfo {
     public int dwSubPageId;         // 子页面id
     public TDCSWbPencil tPencil;    // 铅笔操作信息
 
+    public TDCSWbPencilOperInfo(String achTabId, TDCSWbPencil tPencil) {
+        this(achTabId, 0, tPencil);
+    }
     public TDCSWbPencilOperInfo(String achTabId, int dwSubPageId, TDCSWbPencil tPencil) {
         this.achTabId = achTabId;
         this.dwSubPageId = dwSubPageId;

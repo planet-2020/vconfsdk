@@ -8,6 +8,9 @@ public class TDCSScrollScreenInfo {
     public int  dwSubPageId;        //子页ID
     public TDCSWbPoint  tPoint;     //滚动到的目标点坐标
 
+    public TDCSScrollScreenInfo(String achTabId, TDCSWbPoint tPoint) {
+        this(achTabId, 0, tPoint);
+    }
     public TDCSScrollScreenInfo(String achTabId, int dwSubPageId, TDCSWbPoint tPoint) {
         this.achTabId = achTabId;
         this.dwSubPageId = dwSubPageId;
