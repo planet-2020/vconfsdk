@@ -383,7 +383,7 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
             Matrix picMatrix = new Matrix();
 
             while (true){
-                KLog.p("start loop run");
+//                KLog.p("start loop run");
                 if (isInterrupted()){
                     KLog.p(KLog.WARN, "quit renderThread");
                     return;
@@ -392,9 +392,9 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
                 synchronized (this) {
                     try {
                         if (!bNeedRender) {
-                            KLog.p("waiting...");
+//                            KLog.p("waiting...");
                             wait();
-                            KLog.p("resume run");
+//                            KLog.p("resume run");
                         }
                         bNeedRender = false;
                         if (bPaused){
@@ -436,7 +436,7 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
                 // 图形绘制
                 MyConcurrentLinkedDeque<OpPaint> shapeOps = shapePaintView.getRenderOps();
                 for (OpPaint op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
-                    KLog.p("to render %s", op);
+//                    KLog.p("to render %s", op);
                     switch (op.getType()){
                         case DRAW_LINE:
                             OpDrawLine lineOp = (OpDrawLine) op;
@@ -500,7 +500,7 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
 //                            int w = insertPicOp.pic.getWidth();
 //                            int h = insertPicOp.pic.getHeight();
                                 picMatrix.setValues(insertPicOp.getMatrixValue());
-                                KLog.p("to render %s", op);
+//                                KLog.p("to render %s", op);
                                 picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
                             }
                             break;
@@ -512,7 +512,7 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
 
                 picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
 
-                KLog.p("end of loop run, go render!");
+//                KLog.p("end of loop run, go render!");
             }
         }
     };

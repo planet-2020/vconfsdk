@@ -19,5 +19,9 @@ public class TDCSBoardInfo {
     public String achDownloadUrl;   // 图片下载Url（限文档）
     public String achUploadUrl;     // 图片上传Url（限文档）
     public int dwWbAnonyId;         // 平台成功响应后，平台填写（限白板）
+    TDCSBoardInfo(){
+        achTabId = "boardId";
+        emWbMode = EmDcsWbMode.emWbModeWB;
+    }
 
 }
