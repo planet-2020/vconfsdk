@@ -7,4 +7,9 @@ public class TDCSWbLineOperInfo {
     public String achTabId;     // 白板tab id（guid）
     public int dwSubPageId;     // 子页面id
     public TDCSWbLine tLine;    // 线操作信息
+    public TDCSWbLineOperInfo(String boardId, int pageId, TDCSWbLine line){
+        achTabId = boardId;
+        dwSubPageId = pageId;
+        tLine = line;
+    }
 }

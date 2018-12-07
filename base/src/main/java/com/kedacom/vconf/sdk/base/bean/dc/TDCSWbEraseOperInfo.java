@@ -9,4 +9,12 @@ public class TDCSWbEraseOperInfo {
     public TDCSWbPoint tBeginPt;    // 矩形擦除区域的开始坐标（此参数矩形擦除使用）
     public TDCSWbPoint tEndPt;      // 矩形擦除区域的结束坐标（此参数矩形擦除使用）
     public boolean bNexVision;
+
+    public TDCSWbEraseOperInfo(String achTabId, int dwSubPageId, TDCSWbPoint tBeginPt, TDCSWbPoint tEndPt, boolean bNexVision) {
+        this.achTabId = achTabId;
+        this.dwSubPageId = dwSubPageId;
+        this.tBeginPt = tBeginPt;
+        this.tEndPt = tEndPt;
+        this.bNexVision = bNexVision;
+    }
 }

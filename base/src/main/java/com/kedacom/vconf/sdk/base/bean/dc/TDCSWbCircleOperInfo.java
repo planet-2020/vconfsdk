@@ -7,4 +7,10 @@ public class TDCSWbCircleOperInfo {
     public String achTabId;         // 白板tab id（guid）
     public int dwSubPageId;         // 子页面id
     public TDCSWbCircle tCircle;    // 圆操作信息
+
+    public TDCSWbCircleOperInfo(String achTabId, int dwSubPageId, TDCSWbCircle tCircle) {
+        this.achTabId = achTabId;
+        this.dwSubPageId = dwSubPageId;
+        this.tCircle = tCircle;
+    }
 }

@@ -6,4 +6,9 @@ package com.kedacom.vconf.sdk.base.bean.dc;
 public class TDCSWbPoint {
     public int nPosx;
     public int nPosy;
+
+    public TDCSWbPoint(int nPosx, int nPosy) {
+        this.nPosx = nPosx;
+        this.nPosy = nPosy;
+    }
 }
