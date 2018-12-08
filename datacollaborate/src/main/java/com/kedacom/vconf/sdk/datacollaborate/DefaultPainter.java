@@ -398,10 +398,10 @@ public class DefaultPainter implements IPainter {
         @Override
         public void run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-            Path path = new Path();
-            RectF rect = new RectF();
-            Matrix shapeMatrix = new Matrix();
-            Matrix picMatrix = new Matrix();
+//            Path path = new Path();
+//            RectF rect = new RectF();
+//            Matrix shapeMatrix = new Matrix();
+//            Matrix picMatrix = new Matrix();
 
             while (true){
                 KLog.p("start loop run");
@@ -544,6 +544,9 @@ public class DefaultPainter implements IPainter {
     };
 
 
+    private RectF rect = new RectF();
+    private Matrix shapeMatrix = new Matrix();
+    private Matrix picMatrix = new Matrix();
     private void render(OpPaint op, Canvas canvas){
         switch (op.getType()) {
             case DRAW_LINE:
@@ -555,21 +558,13 @@ public class DefaultPainter implements IPainter {
                 canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
                 break;
             case DRAW_OVAL:
-//                    OpDrawOval ovalOp = (OpDrawOval) op;
-//                    rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
-//                    canvas.drawOval(rect, cfgPaint(ovalOp));
+                OpDrawOval ovalOp = (OpDrawOval) op;
+                rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
+                canvas.drawOval(rect, cfgPaint(ovalOp));
                 break;
             case DRAW_PATH:
-//                    OpDrawPath pathOp = (OpDrawPath) op;
-//                    path.reset();
-//                    Iterator it = pathOp.getPoints().iterator();
-//                    PointF pointF = (PointF) it.next();
-//                    path.moveTo(pointF.x, pointF.y);
-//                    while (it.hasNext()){
-//                        pointF = (PointF) it.next();
-//                        path.lineTo(pointF.x, pointF.y);
-//                    }
-//                    canvas.drawPath(path, cfgPaint(pathOp));
+                OpDrawPath pathOp = (OpDrawPath) op;
+                canvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
                 break;
             case RECT_ERASE:
                 OpRectErase eraseOp = (OpRectErase) op;
@@ -579,14 +574,14 @@ public class DefaultPainter implements IPainter {
                 canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
                 break;
             case INSERT_PICTURE:
-//                    OpInsertPic insertPicOp = (OpInsertPic) op;
-//                    if (null != insertPicOp.getPic()) {
-////                            int w = insertPicOp.pic.getWidth();
-////                            int h = insertPicOp.pic.getHeight();
-//                        picMatrix.setValues(insertPicOp.getMatrixValue());
-////                                KLog.p("to render %s", op);
-//                        picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
-//                    }
+                OpInsertPic insertPicOp = (OpInsertPic) op;
+                if (null != insertPicOp.getPic()) {
+//                            int w = insertPicOp.pic.getWidth();
+//                            int h = insertPicOp.pic.getHeight();
+                    picMatrix.setValues(insertPicOp.getMatrixValue());
+//                                KLog.p("to render %s", op);
+                    canvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
+                }
                 break;
         }
     }
@@ -604,21 +599,13 @@ public class DefaultPainter implements IPainter {
                     canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
                     break;
                 case DRAW_OVAL:
-//                    OpDrawOval ovalOp = (OpDrawOval) op;
-//                    rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
-//                    canvas.drawOval(rect, cfgPaint(ovalOp));
+                    OpDrawOval ovalOp = (OpDrawOval) op;
+                    rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
+                    canvas.drawOval(rect, cfgPaint(ovalOp));
                     break;
                 case DRAW_PATH:
-//                    OpDrawPath pathOp = (OpDrawPath) op;
-//                    path.reset();
-//                    Iterator it = pathOp.getPoints().iterator();
-//                    PointF pointF = (PointF) it.next();
-//                    path.moveTo(pointF.x, pointF.y);
-//                    while (it.hasNext()){
-//                        pointF = (PointF) it.next();
-//                        path.lineTo(pointF.x, pointF.y);
-//                    }
-//                    canvas.drawPath(path, cfgPaint(pathOp));
+                    OpDrawPath pathOp = (OpDrawPath) op;
+                    canvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
                     break;
                 case RECT_ERASE:
                     OpRectErase eraseOp = (OpRectErase) op;
@@ -628,14 +615,14 @@ public class DefaultPainter implements IPainter {
                     canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
                     break;
                 case INSERT_PICTURE:
-//                    OpInsertPic insertPicOp = (OpInsertPic) op;
-//                    if (null != insertPicOp.getPic()) {
-////                            int w = insertPicOp.pic.getWidth();
-////                            int h = insertPicOp.pic.getHeight();
-//                        picMatrix.setValues(insertPicOp.getMatrixValue());
-////                                KLog.p("to render %s", op);
-//                        picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
-//                    }
+                    OpInsertPic insertPicOp = (OpInsertPic) op;
+                    if (null != insertPicOp.getPic()) {
+//                            int w = insertPicOp.pic.getWidth();
+//                            int h = insertPicOp.pic.getHeight();
+                        picMatrix.setValues(insertPicOp.getMatrixValue());
+//                                KLog.p("to render %s", op);
+                        canvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
+                    }
                     break;
             }
         }

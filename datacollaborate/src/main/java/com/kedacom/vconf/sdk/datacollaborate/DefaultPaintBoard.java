@@ -201,8 +201,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             OpPaint opPaint;
             switch (tool){
                 case TOOL_PENCIL:
-                    opDrawPath = new OpDrawPath(new ConcurrentLinkedQueue<>());
-                    opDrawPath.getPoints().offer(new PointF(event.getX(), event.getY()));
+                    opDrawPath = new OpDrawPath(new ArrayList<>());
+                    opDrawPath.getPoints().add(new PointF(event.getX(), event.getY()));
+                    opDrawPath.getPath().moveTo(event.getX(), event.getY());
                     opPaint = opDrawPath;
                     break;
                 case TOOL_LINE:
@@ -231,7 +232,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 case TOOL_PENCIL:
                     opDrawPath.setStrokeWidth(paintStrokeWidth);
                     opDrawPath.setColor(paintColor);
-                    opDrawPath.getPoints().offer(new PointF(event.getX(), event.getY()));
+                    opDrawPath.getPoints().add(new PointF(event.getX(), event.getY()));
+                    opDrawPath.getPath().lineTo(event.getX(), event.getY());
                     opPaint = opDrawPath;
                     break;
                 case TOOL_LINE:

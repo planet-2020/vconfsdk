@@ -143,14 +143,14 @@ final class ToDoConverter {
 //
 //
 
-    public static ConcurrentLinkedQueue<PointF> fromTransferObj(TDCSWbPoint[] tdcsWbPoints) {
-        ConcurrentLinkedQueue<PointF> pointFS = new ConcurrentLinkedQueue<>();
+    public static List<PointF> fromTransferObj(TDCSWbPoint[] tdcsWbPoints) {
+        List<PointF> pointFS = new ArrayList<>();
         for (int i=0; i<tdcsWbPoints.length; ++i){
-            pointFS.offer( new PointF(tdcsWbPoints[i].nPosx, tdcsWbPoints[i].nPosy));
+            pointFS.add( new PointF(tdcsWbPoints[i].nPosx, tdcsWbPoints[i].nPosy));
         }
         return pointFS;
     }
-    public static TDCSWbPoint[] toTransferObj(ConcurrentLinkedQueue<PointF>  pointFS) {
+    public static TDCSWbPoint[] toTransferObj(List<PointF>  pointFS) {
         TDCSWbPoint[] tdcsWbPoints = new TDCSWbPoint[pointFS.size()];
         int i=0;
         for (PointF pointF : pointFS){
