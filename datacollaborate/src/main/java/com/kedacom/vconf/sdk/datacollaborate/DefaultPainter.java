@@ -167,9 +167,15 @@ public class DefaultPainter implements IPainter {
 
     @Override
     public void setRole(String boardId, int role) {
-        if (!paintBoards.keySet().contains(boardId)){
+        DefaultPaintBoard board = paintBoards.get(boardId);
+        if (null == board){
             KLog.p(KLog.ERROR, "no such board %s", boardId);
             return;
+        }
+        if (ROLE_AUTHOR == role) {
+            board.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
+        }else{
+            board.setOnPaintOpGeneratedListener(null);
         }
         roles.put(boardId, role);
     }
