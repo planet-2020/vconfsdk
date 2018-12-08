@@ -1,7 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-import android.graphics.Bitmap;
-
 import androidx.annotation.NonNull;
 
 /**

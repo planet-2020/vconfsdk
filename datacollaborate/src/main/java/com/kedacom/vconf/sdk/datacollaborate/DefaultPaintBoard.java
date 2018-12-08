@@ -19,7 +19,6 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
 import java.util.ArrayList;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;

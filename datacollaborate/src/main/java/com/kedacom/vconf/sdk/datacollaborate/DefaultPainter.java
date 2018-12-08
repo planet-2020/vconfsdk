@@ -6,8 +6,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
@@ -53,6 +51,9 @@ public class DefaultPainter implements IPainter {
 
     private boolean bPaused = false;
 
+    /* 自己作为创作者，正在创作中尚未定型的临时绘制。
+    比如画线，从手指按下到手指移动过程中会产生很多线操作，这些操作都是临时存在的，
+    直到最终抬起手指该画线操作才最终定型。*/
     private OpPaint tmpPaintOp;
 
     private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener(){
@@ -154,7 +155,6 @@ public class DefaultPainter implements IPainter {
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
             KLog.p("surface size changed");
-//            refresh();
         }
 
         @Override
@@ -175,7 +175,7 @@ public class DefaultPainter implements IPainter {
             return false;
         }
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
-        defaultPaintBoard.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
+        defaultPaintBoard.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener); // TODO 增加角色的概念仅Author设置该监听器addPaintBoard(IPaintBoard paintBoard, int role)
         paintBoards.put(paintBoard.getBoardId(), defaultPaintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 
@@ -395,13 +395,16 @@ public class DefaultPainter implements IPainter {
 
 
     private final Thread renderThread = new Thread("DCRenderThr"){
+        private Canvas shapePaintViewCanvas;
+        private Canvas picPaintViewCanvas;
+        private RectF rect = new RectF();
+        private Matrix shapeMatrix = new Matrix();
+        private Matrix picMatrix = new Matrix();
+
+
         @Override
         public void run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-//            Path path = new Path();
-//            RectF rect = new RectF();
-//            Matrix shapeMatrix = new Matrix();
-//            Matrix picMatrix = new Matrix();
 
             while (true){
                 KLog.p("start loop run");
@@ -410,6 +413,7 @@ public class DefaultPainter implements IPainter {
                     return;
                 }
 
+                // 判断当前是否有渲染任务
                 synchronized (this) {
                     try {
                         if (!bNeedRender) {
@@ -428,84 +432,56 @@ public class DefaultPainter implements IPainter {
                     }
                 }
 
+                // 获取当前画板
                 DefaultPaintBoard paintBoard = paintBoards.get(curBoardId);
                 if (null == paintBoard){
                     continue;
                 }
+
+
                 DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
 
-                Canvas shapePaintViewCanvas = shapePaintView.lockCanvas();  // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
+                // 获取图形层画布
+                shapePaintViewCanvas = shapePaintView.lockCanvas();  // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
                 if (null == shapePaintViewCanvas){
                     KLog.p(KLog.ERROR, "lockCanvas failed");
                     continue;
                 }
+                // 每次绘制前先清空画布以避免残留
+                shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
-                shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
-
+                // 设置图形层画布的缩放比例
                 OpPaint opMatrix = shapePaintView.getMatrixOps().peekLast();  // TODO 暂不考虑完整保存以供回放的功能。matrix就一个值就好。
                 if (null != opMatrix) {
                     shapeMatrix.setValues( ((OpMatrix)opMatrix).getMatrixValue() );
                     shapePaintViewCanvas.setMatrix(shapeMatrix);
                 }
 
+                /* 刷新渲染标志。
+                从被唤醒到运行至此可能有新的操作入队列（意味着needRender被重新置为true了），
+                接下来我们要开始遍历队列了，此处重新置needRender为false以避免下一轮无谓的重复刷新。*/
                 synchronized (this){
-                    /* 从被唤醒到运行至此可能有新的操作入队列（意味着needRender被重新置为true了），
-                    接下来我们要开始遍历队列了，此处重新置needRender为false以避免下一轮无谓的重复刷新。*/
                     bNeedRender = false;
                 }
 
                 // 图形绘制
-                MyConcurrentLinkedDeque<OpPaint> shapeOps = shapePaintView.getRenderOps();
-                render(shapeOps, shapePaintViewCanvas);
-//                for (OpPaint op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
-//                    KLog.p("to render %s", op);
-//                    switch (op.getType()){
-//                        case DRAW_LINE:
-//                            OpDrawLine lineOp = (OpDrawLine) op;
-//                            canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
-//                            break;
-//                        case DRAW_RECT:
-//                            OpDrawRect rectOp = (OpDrawRect) op;
-//                            canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
-//                            break;
-//                        case DRAW_OVAL:
-//                            OpDrawOval ovalOp = (OpDrawOval) op;
-//                            rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
-//                            canvas.drawOval(rect, cfgPaint(ovalOp));
-//                            break;
-//                        case DRAW_PATH:
-//                            OpDrawPath pathOp = (OpDrawPath) op;
-//                            path.reset();
-//                            Iterator it = pathOp.getPoints().iterator();
-//                            PointF pointF = (PointF) it.next();
-//                            path.moveTo(pointF.x, pointF.y);
-//                            while (it.hasNext()){
-//                                pointF = (PointF) it.next();
-//                                path.lineTo(pointF.x, pointF.y);
-//                            }
-//                            canvas.drawPath(path, cfgPaint(pathOp));
-//                            break;
-//                        case RECT_ERASE:
-//                            OpRectErase eraseOp = (OpRectErase) op;
-//                            canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
-//                            break;
-//                        case CLEAR_SCREEN:
-//                            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-//                            break;
-//                    }
-//
-//                }
+                render(shapePaintView.getRenderOps());
 
+
+
+                // 获取图片层画布
                 DefaultPaintView picPaintView = paintBoard.getPicPaintView();
-                Canvas picPaintViewCanvas = picPaintView.lockCanvas();
+                picPaintViewCanvas = picPaintView.lockCanvas();
                 if (null == picPaintViewCanvas){
                     KLog.p(KLog.ERROR, "lockCanvas failed");
                     shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
                     continue;
                 }
 
+                // 清空画布
                 picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
+                // 设置画布的缩放比例
                 opMatrix = picPaintView.getMatrixOps().peekLast();
                 if (null != opMatrix) {
                     picMatrix.setValues( ((OpMatrix)opMatrix).getMatrixValue());
@@ -513,106 +489,48 @@ public class DefaultPainter implements IPainter {
                 }
 
                 // 图片绘制
-                MyConcurrentLinkedDeque<OpPaint> picOps = picPaintView.getRenderOps();
-                render(picOps, picPaintViewCanvas);
-//                for (OpPaint op : picOps){
-//                    switch (op.getType()){
-//                        case INSERT_PICTURE:
-//                            OpInsertPic insertPicOp = (OpInsertPic) op;
-//                            if (null != insertPicOp.getPic()) {
-////                            int w = insertPicOp.pic.getWidth();
-////                            int h = insertPicOp.pic.getHeight();
-//                                picMatrix.setValues(insertPicOp.getMatrixValue());
-////                                KLog.p("to render %s", op);
-//                                picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
-//                            }
-//                            break;
-//                    }
-//                }
+                render(picPaintView.getRenderOps());
 
+                // 临时的绘制任务
                 if (null != tmpPaintOp){
-                    render(tmpPaintOp, shapePaintViewCanvas);
+                    render(tmpPaintOp);
                 }
 
+                // 提交绘制任务，执行绘制
+                KLog.p("go render!");
                 shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
-
                 picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
 
-                KLog.p("end of loop run, go render!");
             }
         }
-    };
 
 
-    private RectF rect = new RectF();
-    private Matrix shapeMatrix = new Matrix();
-    private Matrix picMatrix = new Matrix();
-    private void render(OpPaint op, Canvas canvas){
-        switch (op.getType()) {
-            case DRAW_LINE:
-                OpDrawLine lineOp = (OpDrawLine) op;
-                canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
-                break;
-            case DRAW_RECT:
-                OpDrawRect rectOp = (OpDrawRect) op;
-                canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
-                break;
-            case DRAW_OVAL:
-                OpDrawOval ovalOp = (OpDrawOval) op;
-                rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
-                canvas.drawOval(rect, cfgPaint(ovalOp));
-                break;
-            case DRAW_PATH:
-                OpDrawPath pathOp = (OpDrawPath) op;
-                canvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
-                break;
-            case RECT_ERASE:
-                OpRectErase eraseOp = (OpRectErase) op;
-                canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
-                break;
-            case CLEAR_SCREEN:
-                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-                break;
-            case INSERT_PICTURE:
-                OpInsertPic insertPicOp = (OpInsertPic) op;
-                if (null != insertPicOp.getPic()) {
-//                            int w = insertPicOp.pic.getWidth();
-//                            int h = insertPicOp.pic.getHeight();
-                    picMatrix.setValues(insertPicOp.getMatrixValue());
-//                                KLog.p("to render %s", op);
-                    canvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
-                }
-                break;
-        }
-    }
 
-    private void render(MyConcurrentLinkedDeque<OpPaint> ops, Canvas canvas){
-        for (OpPaint op : ops) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
-            KLog.p("to render %s", op);
+        private void render(OpPaint op){
             switch (op.getType()) {
                 case DRAW_LINE:
                     OpDrawLine lineOp = (OpDrawLine) op;
-                    canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
+                    shapePaintViewCanvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
                     break;
                 case DRAW_RECT:
                     OpDrawRect rectOp = (OpDrawRect) op;
-                    canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
+                    shapePaintViewCanvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
                     break;
                 case DRAW_OVAL:
                     OpDrawOval ovalOp = (OpDrawOval) op;
                     rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
-                    canvas.drawOval(rect, cfgPaint(ovalOp));
+                    shapePaintViewCanvas.drawOval(rect, cfgPaint(ovalOp));
                     break;
                 case DRAW_PATH:
                     OpDrawPath pathOp = (OpDrawPath) op;
-                    canvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
+                    shapePaintViewCanvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
                     break;
                 case RECT_ERASE:
                     OpRectErase eraseOp = (OpRectErase) op;
-                    canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
+                    shapePaintViewCanvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
                     break;
                 case CLEAR_SCREEN:
-                    canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+                    shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
                     break;
                 case INSERT_PICTURE:
                     OpInsertPic insertPicOp = (OpInsertPic) op;
@@ -621,11 +539,59 @@ public class DefaultPainter implements IPainter {
 //                            int h = insertPicOp.pic.getHeight();
                         picMatrix.setValues(insertPicOp.getMatrixValue());
 //                                KLog.p("to render %s", op);
-                        canvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
+                        picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
                     }
                     break;
             }
         }
-    }
+
+        private void render(MyConcurrentLinkedDeque<OpPaint> ops){
+            for (OpPaint op : ops) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
+                KLog.p("to render %s", op);
+                switch (op.getType()) {
+                    case DRAW_LINE:
+                        OpDrawLine lineOp = (OpDrawLine) op;
+                        shapePaintViewCanvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
+                        break;
+                    case DRAW_RECT:
+                        OpDrawRect rectOp = (OpDrawRect) op;
+                        shapePaintViewCanvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
+                        break;
+                    case DRAW_OVAL:
+                        OpDrawOval ovalOp = (OpDrawOval) op;
+                        rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
+                        shapePaintViewCanvas.drawOval(rect, cfgPaint(ovalOp));
+                        break;
+                    case DRAW_PATH:
+                        OpDrawPath pathOp = (OpDrawPath) op;
+                        shapePaintViewCanvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
+                        break;
+                    case RECT_ERASE:
+                        OpRectErase eraseOp = (OpRectErase) op;
+                        shapePaintViewCanvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
+                        break;
+                    case CLEAR_SCREEN:
+                        shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+                        break;
+                    case INSERT_PICTURE:
+                        OpInsertPic insertPicOp = (OpInsertPic) op;
+                        if (null != insertPicOp.getPic()) {
+//                            int w = insertPicOp.pic.getWidth();
+//                            int h = insertPicOp.pic.getHeight();
+                            picMatrix.setValues(insertPicOp.getMatrixValue());
+//                                KLog.p("to render %s", op);
+                            picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
+                        }
+                        break;
+                }
+            }
+        }
+
+
+    };
+
+
+
+
 
 }
