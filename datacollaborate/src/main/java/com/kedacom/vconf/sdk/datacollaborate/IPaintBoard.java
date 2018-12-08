@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.view.View;
 
+import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
 public interface IPaintBoard {
@@ -22,12 +23,8 @@ public interface IPaintBoard {
     int LAYER_ALL =  109;
 
     String getBoardId();
+    BoardInfo getBoardInfo();
     View getBoardView();
-//    void setPicPaintView(IPaintView paintView);
-//    void setShapePaintView(IPaintView paintView);
-    IPaintView getPicPaintView();
-    IPaintView getShapePaintView();
-//    void focusLayer(int layer);
 
     void setTool(int style);
     int getTool();

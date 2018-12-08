@@ -204,8 +204,8 @@ public class DefaultPainter implements IPainter {
         paintBoards.put(paintBoard.getBoardId(), defaultPaintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 
-        ((TextureView)paintBoard.getShapePaintView()).setSurfaceTextureListener(surfaceTextureListener);
-        ((TextureView)paintBoard.getPicPaintView()).setSurfaceTextureListener(surfaceTextureListener);
+        defaultPaintBoard.getShapePaintView().setSurfaceTextureListener(surfaceTextureListener);
+        defaultPaintBoard.getPicPaintView().setSurfaceTextureListener(surfaceTextureListener);
 
         return true;
     }

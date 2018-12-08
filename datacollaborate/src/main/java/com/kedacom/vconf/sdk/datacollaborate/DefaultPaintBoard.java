@@ -46,12 +46,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private IOnPaintOpGeneratedListener paintOpGeneratedListener;
     private IPublisher publisher;
 
-    public DefaultPaintBoard(@NonNull Context context) {
-        this(context, null);
-    }
-
-    public DefaultPaintBoard(@NonNull Context context, @Nullable AttributeSet attrs) {
-        super(context, attrs);
+    public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
+        super(context);
+        this.boardInfo = boardInfo;
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         View whiteBoard = layoutInflater.inflate(R.layout.default_whiteboard_layout, this);
         picPaintView = whiteBoard.findViewById(R.id.wb_pic_paint_view);
@@ -62,6 +59,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         picPaintView.setOnTouchListener(myTouchListener);  // XXX 默认情形下onClick事件将被屏蔽
         shapePaintView.setOnTouchListener(myTouchListener);
         setBackgroundColor(Color.DKGRAY);
+    }
+
+    public DefaultPaintBoard(@NonNull Context context, @Nullable AttributeSet attrs) {
+        super(context, attrs);
     }
 
     @Override
@@ -356,14 +357,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-
-    void setBoardInfo(BoardInfo boardInfo){
-        this.boardInfo = boardInfo;
+    public DefaultPaintView getPicPaintView(){
+        return picPaintView;
     }
 
-    BoardInfo getBoardInfo(){
-        return boardInfo;
+    public DefaultPaintView getShapePaintView(){
+        return shapePaintView;
     }
+
 
     @Override
     public String getBoardId() {
@@ -371,26 +372,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     @Override
+    public BoardInfo getBoardInfo(){
+        return boardInfo;
+    }
+
+    @Override
     public View getBoardView() {
         return this;
     }
 
-    @Override
-    public DefaultPaintView getPicPaintView(){
-        return picPaintView;
-    }
-
-    @Override
-    public DefaultPaintView getShapePaintView(){
-        return shapePaintView;
-    }
-
-//    @Override
-//    public void focusLayer(int layer){
-//        if (LAYER_NONE<=layer && layer<=LAYER_ALL){
-//            focusedLayer = layer;
-//        }
-//    }
 
     @Override
     public void setTool(int style) {

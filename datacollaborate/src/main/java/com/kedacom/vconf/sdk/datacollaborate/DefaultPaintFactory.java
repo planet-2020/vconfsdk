@@ -4,6 +4,8 @@ import android.content.Context;
 
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 
+import androidx.annotation.NonNull;
+
 public class DefaultPaintFactory implements IPaintFactory {
 
     Context context;
@@ -12,21 +14,15 @@ public class DefaultPaintFactory implements IPaintFactory {
         this.context = context;
     }
 
+
     @Override
     public IPainter createPainter() {
         return new DefaultPainter(context);
     }
 
     @Override
-    public IPaintBoard createPaintBoard(BoardInfo boardInfo) {
-        DefaultPaintBoard paintBoard = new DefaultPaintBoard(context);
-        paintBoard.setBoardInfo(boardInfo);
-        return paintBoard;
+    public IPaintBoard createPaintBoard(@NonNull BoardInfo boardInfo) {
+        return new DefaultPaintBoard(context, boardInfo);
     }
-
-//    @Override
-//    public IPaintView createPaintView(String boardId) {
-//        return new DefaultPaintView(context);
-//    }
 
 }
