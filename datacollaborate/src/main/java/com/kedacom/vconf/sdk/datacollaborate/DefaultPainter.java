@@ -41,6 +41,8 @@ import androidx.lifecycle.LifecycleOwner;
 
 public class DefaultPainter implements IPainter {
 
+    private Map<String, Integer> roles = new HashMap<>();
+
     private Map<String, DefaultPaintBoard> paintBoards = new HashMap<>();
 
     private String curBoardId;
@@ -129,10 +131,6 @@ public class DefaultPainter implements IPainter {
         }
     }
 
-    @Override
-    public int getMyId() {
-        return 0;
-    }
 
 
     private void refresh(){
@@ -168,14 +166,35 @@ public class DefaultPainter implements IPainter {
     };
 
     @Override
-    public boolean addPaintBoard(IPaintBoard paintBoard) {
+    public void setRole(String boardId, int role) {
+        if (!paintBoards.keySet().contains(boardId)){
+            KLog.p(KLog.ERROR, "no such board %s", boardId);
+            return;
+        }
+        roles.put(boardId, role);
+    }
+
+    @Override
+    public int getRole(String boardId) {
+        if (!paintBoards.keySet().contains(boardId)){
+            KLog.p(KLog.ERROR, "no such board %s", boardId);
+            return ROLE_UNKNOWN;
+        }
+        return roles.get(boardId);
+    }
+
+    @Override
+    public boolean addPaintBoard(IPaintBoard paintBoard, int role) {
         String boardId = paintBoard.getBoardId();
         if (paintBoards.containsKey(boardId)){
             KLog.p(KLog.ERROR,"board %s already exist!", paintBoard.getBoardId());
             return false;
         }
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
-        defaultPaintBoard.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener); // TODO 增加角色的概念仅Author设置该监听器addPaintBoard(IPaintBoard paintBoard, int role)
+        if (ROLE_AUTHOR == role) {
+            defaultPaintBoard.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
+        }
+        roles.put(boardId, role);
         paintBoards.put(paintBoard.getBoardId(), defaultPaintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 
@@ -191,6 +210,7 @@ public class DefaultPainter implements IPainter {
         if (boardId.equals(curBoardId)){
             curBoardId = null;
         }
+        roles.remove(boardId);
         return paintBoards.remove(boardId);
     }
 
@@ -198,6 +218,7 @@ public class DefaultPainter implements IPainter {
     public void deleteAllPaintBoards() {
         KLog.p(KLog.WARN,"delete all boards");
         paintBoards.clear();
+        roles.clear();
         curBoardId = null;
     }
 
