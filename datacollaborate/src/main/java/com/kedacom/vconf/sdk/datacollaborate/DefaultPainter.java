@@ -41,7 +41,7 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 
-public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGeneratedListener {
+public class DefaultPainter implements IPainter {
 
     private Map<String, DefaultPaintBoard> paintBoards = new HashMap<>();
 
@@ -53,7 +53,27 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
 
     private boolean bPaused = false;
 
+    private OpPaint tmpPaintOp;
 
+    private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener(){
+        @Override
+        public void onCreated(OpPaint opPaint) {
+            tmpPaintOp = opPaint;
+            refresh();
+        }
+
+        @Override
+        public void onAdjust(OpPaint opPaint) {
+            tmpPaintOp = opPaint;
+            refresh();
+        }
+
+        @Override
+        public void onConfirm(OpPaint opPaint) {
+            tmpPaintOp = null;
+            paint(opPaint);
+        }
+    };
 
     public DefaultPainter(Context context) {
         if (context instanceof LifecycleOwner){
@@ -155,7 +175,7 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
             return false;
         }
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
-        defaultPaintBoard.setOnPaintOpGeneratedListener(this);
+        defaultPaintBoard.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
         paintBoards.put(paintBoard.getBoardId(), defaultPaintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 
@@ -224,8 +244,8 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
     @Override
     public void paint(OpPaint op){
         String boardId = op.getBoardId();
-        KLog.p(KLog.WARN, "for board %s op %s", boardId, op);
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
+        KLog.p(KLog.WARN, "for board %s(op size=%s) op %s", boardId, paintBoard.getShapePaintView().getRenderOps().size(), op);
         if(null == paintBoard){
             KLog.p(KLog.ERROR,"no board %s for op %s", boardId, op);
             return;
@@ -363,6 +383,7 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
                 if (opPaint instanceof OpDraw) {
                     OpDraw opDraw = (OpDraw) opPaint;
                     paint.setStyle(Paint.Style.STROKE);
+                    paint.setAntiAlias(true);
                     paint.setStrokeWidth(opDraw.getStrokeWidth());
                     paint.setColor(opDraw.getColor());
                 }
@@ -383,7 +404,7 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
             Matrix picMatrix = new Matrix();
 
             while (true){
-//                KLog.p("start loop run");
+                KLog.p("start loop run");
                 if (isInterrupted()){
                     KLog.p(KLog.WARN, "quit renderThread");
                     return;
@@ -392,9 +413,9 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
                 synchronized (this) {
                     try {
                         if (!bNeedRender) {
-//                            KLog.p("waiting...");
+                            KLog.p("waiting...");
                             wait();
-//                            KLog.p("resume run");
+                            KLog.p("resume run");
                         }
                         bNeedRender = false;
                         if (bPaused){
@@ -413,18 +434,18 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
                 }
                 DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
 
-                Canvas canvas = shapePaintView.lockCanvas();  // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
-                if (null == canvas){
+                Canvas shapePaintViewCanvas = shapePaintView.lockCanvas();  // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
+                if (null == shapePaintViewCanvas){
                     KLog.p(KLog.ERROR, "lockCanvas failed");
                     continue;
                 }
 
-                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
+                shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); // 每次绘制前清空画布。
 
                 OpPaint opMatrix = shapePaintView.getMatrixOps().peekLast();  // TODO 暂不考虑完整保存以供回放的功能。matrix就一个值就好。
                 if (null != opMatrix) {
                     shapeMatrix.setValues( ((OpMatrix)opMatrix).getMatrixValue() );
-                    canvas.setMatrix(shapeMatrix);
+                    shapePaintViewCanvas.setMatrix(shapeMatrix);
                 }
 
                 synchronized (this){
@@ -435,50 +456,51 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
 
                 // 图形绘制
                 MyConcurrentLinkedDeque<OpPaint> shapeOps = shapePaintView.getRenderOps();
-                for (OpPaint op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
+                render(shapeOps, shapePaintViewCanvas);
+//                for (OpPaint op : shapeOps) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
 //                    KLog.p("to render %s", op);
-                    switch (op.getType()){
-                        case DRAW_LINE:
-                            OpDrawLine lineOp = (OpDrawLine) op;
-                            canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
-                            break;
-                        case DRAW_RECT:
-                            OpDrawRect rectOp = (OpDrawRect) op;
-                            canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
-                            break;
-                        case DRAW_OVAL:
-                            OpDrawOval ovalOp = (OpDrawOval) op;
-                            rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
-                            canvas.drawOval(rect, cfgPaint(ovalOp));
-                            break;
-                        case DRAW_PATH:
-                            OpDrawPath pathOp = (OpDrawPath) op;
-                            path.reset();
-                            Iterator it = pathOp.getPoints().iterator();
-                            PointF pointF = (PointF) it.next();
-                            path.moveTo(pointF.x, pointF.y);
-                            while (it.hasNext()){
-                                pointF = (PointF) it.next();
-                                path.lineTo(pointF.x, pointF.y);
-                            }
-                            canvas.drawPath(path, cfgPaint(pathOp));
-                            break;
-                        case RECT_ERASE:
-                            OpRectErase eraseOp = (OpRectErase) op;
-                            canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
-                            break;
-                        case CLEAR_SCREEN:
-                            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-                            break;
-                    }
-
-                }
+//                    switch (op.getType()){
+//                        case DRAW_LINE:
+//                            OpDrawLine lineOp = (OpDrawLine) op;
+//                            canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
+//                            break;
+//                        case DRAW_RECT:
+//                            OpDrawRect rectOp = (OpDrawRect) op;
+//                            canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
+//                            break;
+//                        case DRAW_OVAL:
+//                            OpDrawOval ovalOp = (OpDrawOval) op;
+//                            rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
+//                            canvas.drawOval(rect, cfgPaint(ovalOp));
+//                            break;
+//                        case DRAW_PATH:
+//                            OpDrawPath pathOp = (OpDrawPath) op;
+//                            path.reset();
+//                            Iterator it = pathOp.getPoints().iterator();
+//                            PointF pointF = (PointF) it.next();
+//                            path.moveTo(pointF.x, pointF.y);
+//                            while (it.hasNext()){
+//                                pointF = (PointF) it.next();
+//                                path.lineTo(pointF.x, pointF.y);
+//                            }
+//                            canvas.drawPath(path, cfgPaint(pathOp));
+//                            break;
+//                        case RECT_ERASE:
+//                            OpRectErase eraseOp = (OpRectErase) op;
+//                            canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
+//                            break;
+//                        case CLEAR_SCREEN:
+//                            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+//                            break;
+//                    }
+//
+//                }
 
                 DefaultPaintView picPaintView = paintBoard.getPicPaintView();
                 Canvas picPaintViewCanvas = picPaintView.lockCanvas();
                 if (null == picPaintViewCanvas){
                     KLog.p(KLog.ERROR, "lockCanvas failed");
-                    shapePaintView.unlockCanvasAndPost(canvas);
+                    shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
                     continue;
                 }
 
@@ -492,34 +514,131 @@ public class DefaultPainter implements IPainter, DefaultPaintBoard.IOnPaintOpGen
 
                 // 图片绘制
                 MyConcurrentLinkedDeque<OpPaint> picOps = picPaintView.getRenderOps();
-                for (OpPaint op : picOps){
-                    switch (op.getType()){
-                        case INSERT_PICTURE:
-                            OpInsertPic insertPicOp = (OpInsertPic) op;
-                            if (null != insertPicOp.getPic()) { // NOTE:图片一开始置空的，等到下载完成才填充，所以此处需做非空判断。
-//                            int w = insertPicOp.pic.getWidth();
-//                            int h = insertPicOp.pic.getHeight();
-                                picMatrix.setValues(insertPicOp.getMatrixValue());
-//                                KLog.p("to render %s", op);
-                                picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
-                            }
-                            break;
-                    }
+                render(picOps, picPaintViewCanvas);
+//                for (OpPaint op : picOps){
+//                    switch (op.getType()){
+//                        case INSERT_PICTURE:
+//                            OpInsertPic insertPicOp = (OpInsertPic) op;
+//                            if (null != insertPicOp.getPic()) {
+////                            int w = insertPicOp.pic.getWidth();
+////                            int h = insertPicOp.pic.getHeight();
+//                                picMatrix.setValues(insertPicOp.getMatrixValue());
+////                                KLog.p("to render %s", op);
+//                                picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
+//                            }
+//                            break;
+//                    }
+//                }
+
+                if (null != tmpPaintOp){
+                    render(tmpPaintOp, shapePaintViewCanvas);
                 }
 
-
-                shapePaintView.unlockCanvasAndPost(canvas);
+                shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
 
                 picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
 
-//                KLog.p("end of loop run, go render!");
+                KLog.p("end of loop run, go render!");
             }
         }
     };
 
-    @Override
-    public void onPaintOpGenerated(OpPaint opPaint) {
-        paint(opPaint);
+
+    private void render(OpPaint op, Canvas canvas){
+        switch (op.getType()) {
+            case DRAW_LINE:
+                OpDrawLine lineOp = (OpDrawLine) op;
+                canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
+                break;
+            case DRAW_RECT:
+                OpDrawRect rectOp = (OpDrawRect) op;
+                canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
+                break;
+            case DRAW_OVAL:
+//                    OpDrawOval ovalOp = (OpDrawOval) op;
+//                    rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
+//                    canvas.drawOval(rect, cfgPaint(ovalOp));
+                break;
+            case DRAW_PATH:
+//                    OpDrawPath pathOp = (OpDrawPath) op;
+//                    path.reset();
+//                    Iterator it = pathOp.getPoints().iterator();
+//                    PointF pointF = (PointF) it.next();
+//                    path.moveTo(pointF.x, pointF.y);
+//                    while (it.hasNext()){
+//                        pointF = (PointF) it.next();
+//                        path.lineTo(pointF.x, pointF.y);
+//                    }
+//                    canvas.drawPath(path, cfgPaint(pathOp));
+                break;
+            case RECT_ERASE:
+                OpRectErase eraseOp = (OpRectErase) op;
+                canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
+                break;
+            case CLEAR_SCREEN:
+                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+                break;
+            case INSERT_PICTURE:
+//                    OpInsertPic insertPicOp = (OpInsertPic) op;
+//                    if (null != insertPicOp.getPic()) {
+////                            int w = insertPicOp.pic.getWidth();
+////                            int h = insertPicOp.pic.getHeight();
+//                        picMatrix.setValues(insertPicOp.getMatrixValue());
+////                                KLog.p("to render %s", op);
+//                        picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
+//                    }
+                break;
+        }
+    }
+
+    private void render(MyConcurrentLinkedDeque<OpPaint> ops, Canvas canvas){
+        for (OpPaint op : ops) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
+            KLog.p("to render %s", op);
+            switch (op.getType()) {
+                case DRAW_LINE:
+                    OpDrawLine lineOp = (OpDrawLine) op;
+                    canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
+                    break;
+                case DRAW_RECT:
+                    OpDrawRect rectOp = (OpDrawRect) op;
+                    canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
+                    break;
+                case DRAW_OVAL:
+//                    OpDrawOval ovalOp = (OpDrawOval) op;
+//                    rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
+//                    canvas.drawOval(rect, cfgPaint(ovalOp));
+                    break;
+                case DRAW_PATH:
+//                    OpDrawPath pathOp = (OpDrawPath) op;
+//                    path.reset();
+//                    Iterator it = pathOp.getPoints().iterator();
+//                    PointF pointF = (PointF) it.next();
+//                    path.moveTo(pointF.x, pointF.y);
+//                    while (it.hasNext()){
+//                        pointF = (PointF) it.next();
+//                        path.lineTo(pointF.x, pointF.y);
+//                    }
+//                    canvas.drawPath(path, cfgPaint(pathOp));
+                    break;
+                case RECT_ERASE:
+                    OpRectErase eraseOp = (OpRectErase) op;
+                    canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
+                    break;
+                case CLEAR_SCREEN:
+                    canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+                    break;
+                case INSERT_PICTURE:
+//                    OpInsertPic insertPicOp = (OpInsertPic) op;
+//                    if (null != insertPicOp.getPic()) {
+////                            int w = insertPicOp.pic.getWidth();
+////                            int h = insertPicOp.pic.getHeight();
+//                        picMatrix.setValues(insertPicOp.getMatrixValue());
+////                                KLog.p("to render %s", op);
+//                        picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
+//                    }
+                    break;
+            }
+        }
     }
 
 }

@@ -148,7 +148,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                    }
                     KLog.p("ACTION_UP{%s}", event);
                     if (null != paintOpGeneratedListener) {
-                        confirmPaintOp(event);
+                        OpPaint opPaint = confirmPaintOp(event);
+                        if (null != publisher && null != opPaint){
+                            publisher.publish(opPaint);
+                        }
                     }
                     break;
 
@@ -195,27 +198,31 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private OpDrawOval opDrawOval;
         private OpDrawPath opDrawPath;
         private OpPaint createPaintOp(MotionEvent event){
+            OpPaint opPaint;
             switch (tool){
                 case TOOL_PENCIL:
                     opDrawPath = new OpDrawPath(new ConcurrentLinkedQueue<>());
                     opDrawPath.getPoints().offer(new PointF(event.getX(), event.getY()));
-                    opDrawPath.setBoardId(boardInfo.id);
-                    return opDrawPath;
+                    opPaint = opDrawPath;
+                    break;
                 case TOOL_LINE:
                     opDrawLine = new OpDrawLine();
-                    opDrawLine.setBoardId(boardInfo.id);
-                    return opDrawLine;
+                    opPaint = opDrawLine;
+                    break;
                 case TOOL_RECT:
                     opDrawRect = new OpDrawRect();
-                    opDrawRect.setBoardId(boardInfo.id);
-                    return opDrawRect;
+                    opPaint = opDrawRect;
+                    break;
                 case TOOL_OVAL:
                     opDrawOval = new OpDrawOval();
-                    opDrawOval.setBoardId(boardInfo.id);
-                    return opDrawOval;
+                    opPaint = opDrawOval;
+                    break;
                 default:
                     return null;
             }
+            opPaint.setBoardId(boardInfo.id);
+            paintOpGeneratedListener.onCreated(opPaint);
+            return opPaint;
         }
 
         private void adjustPaintOp(MotionEvent event){
@@ -258,11 +265,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     return;
             }
 
-            paintOpGeneratedListener.onPaintOpGenerated(opPaint);
+            paintOpGeneratedListener.onAdjust(opPaint);
 
         }
 
-        private void confirmPaintOp(MotionEvent event){
+        private OpPaint confirmPaintOp(MotionEvent event){
             OpPaint opPaint;
             switch (tool){
                 case TOOL_PENCIL:
@@ -283,11 +290,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     break;
                 default:
                     KLog.p(KLog.ERROR,"unknown tool %s", tool);
-                    return;
+                    return null;
             }
-            if (null != publisher){
-                publisher.publish(opPaint);
-            }
+
+            paintOpGeneratedListener.onConfirm(opPaint);
+
+            return opPaint;
         }
 
 
@@ -435,7 +443,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         this.paintOpGeneratedListener = paintOpGeneratedListener;
     }
     interface IOnPaintOpGeneratedListener{
-        void onPaintOpGenerated(OpPaint opPaint);
+        void onCreated(OpPaint opPaint);
+        void onAdjust(OpPaint opPaint);
+        void onConfirm(OpPaint opPaint);
     }
 
 }
