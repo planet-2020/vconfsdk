@@ -12,11 +12,14 @@ import android.widget.FrameLayout;
 
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 
 import java.util.ArrayList;
 
@@ -40,6 +43,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     // 画笔颜色
     private int paintColor = Color.GREEN;
+
+    private static final int MIN_ZOOM = 50;
+    private static final int MAX_ZOOM = 300;
+    private int zoom = 100;
 
     private BoardInfo boardInfo;
 
@@ -366,6 +373,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
+    private void feedback(OpPaint op){
+        if (null != paintOpGeneratedListener){
+            op.setBoardId(boardInfo.id);
+            paintOpGeneratedListener.onConfirm(op);
+            if (null != publisher){
+                publisher.publish(op);
+            }
+        }
+    }
+
+
     @Override
     public String getBoardId() {
         return null!=boardInfo ? boardInfo.id : null;
@@ -418,6 +436,52 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     @Override
+    public void undo() {
+        if (null != paintOpGeneratedListener){
+            OpPaint op = new OpUndo();
+            op.setBoardId(boardInfo.id);
+            paintOpGeneratedListener.onConfirm(op);
+            if (null != publisher){
+                publisher.publish(op);
+            }
+        }
+    }
+
+    @Override
+    public void redo() {
+        if (null != paintOpGeneratedListener){
+            OpPaint op = new OpRedo();
+            op.setBoardId(boardInfo.id);
+            paintOpGeneratedListener.onConfirm(op);
+            if (null != publisher){
+                publisher.publish(op);
+            }
+        }
+    }
+
+    @Override
+    public void clearScreen() {
+        if (null != paintOpGeneratedListener){
+            OpPaint op = new OpClearScreen();
+            op.setBoardId(boardInfo.id);
+            paintOpGeneratedListener.onConfirm(op);
+            if (null != publisher){
+                publisher.publish(op);
+            }
+        }
+    }
+
+    @Override
+    public void zoom(int percentage) {
+        zoom = (MIN_ZOOM<=percentage && percentage<=MAX_ZOOM) ? percentage : (percentage<MIN_ZOOM ? MIN_ZOOM : MAX_ZOOM);
+    }
+
+    @Override
+    public int getZoom() {
+        return zoom;
+    }
+
+    @Override
     public void setPublisher(IPublisher publisher) {
         this.publisher = publisher;
         if (publisher instanceof LifecycleOwner){
@@ -436,6 +500,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     interface IOnPaintOpGeneratedListener{
         void onCreated(OpPaint opPaint);
         void onAdjust(OpPaint opPaint);
+        void onCancel(OpPaint opPaint);
         void onConfirm(OpPaint opPaint);
     }
 

@@ -62,12 +62,18 @@ public class DefaultPainter implements IPainter {
         @Override
         public void onCreated(OpPaint opPaint) {
             tmpPaintOp = opPaint;
-            refresh();
+//            refresh();
         }
 
         @Override
         public void onAdjust(OpPaint opPaint) {
             tmpPaintOp = opPaint;
+            refresh();
+        }
+
+        @Override
+        public void onCancel(OpPaint opPaint) {
+            tmpPaintOp = null;
             refresh();
         }
 
@@ -370,10 +376,10 @@ public class DefaultPainter implements IPainter {
                         break;
                     default:
 
-                        /* 只要不是redo或undo操作，被撤销操作缓存就得清空，因为此时redo操作已失效（
-                        redo操作前面只能是redo操作或者undo操作），而撤销操作缓存仅供redo操作使用。*/
-//                        KLog.p(KLog.WARN, "clean repealed ops");
-                        shapeRepealedOps.clear();
+//                        /* 只要不是redo或undo操作，被撤销操作缓存就得清空，因为此时redo操作已失效（
+//                        redo操作前面只能是redo操作或者undo操作），而撤销操作缓存仅供redo操作使用。*/
+////                        KLog.p(KLog.WARN, "clean repealed ops");
+//                        shapeRepealedOps.clear(); // NOTE: 这个应该留给用户决策。
 
                         shapeRenderOps.offerLast(op);
 

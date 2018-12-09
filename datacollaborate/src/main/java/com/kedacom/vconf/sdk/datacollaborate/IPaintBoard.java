@@ -8,10 +8,12 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 public interface IPaintBoard {
     // 工具
     int TOOL_NONE = 0;
+    int TOOL_HAND = 7;
     int TOOL_PENCIL = 1;
     int TOOL_LINE = 2;
     int TOOL_RECT = 3;
     int TOOL_OVAL = 4;
+    int TOOL_ERASER = 8;
     int TOOL_RECT_ERASER = 5;
     int TOOL_PIC_SELECTOR = 6;
 
@@ -33,6 +35,11 @@ public interface IPaintBoard {
     void setPaintColor(int color);
     int getPaintColor();
     View snapshot(int layer);
+    void undo();
+    void redo();
+    void clearScreen();
+    void zoom(int percentage);
+    int getZoom();
 
     void setPublisher(IPublisher publisher);
     interface IPublisher{
