@@ -105,7 +105,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private PointF startPoint = new PointF();	// 起始点
         private float startDis = 0;	// 起始距离
 
-        private boolean needRefresh = false; // 是否需要刷新
+        private boolean bMovingFarEnough = false;
 
         @Override
         public boolean onTouch(View v, MotionEvent event) {
@@ -115,6 +115,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 case MotionEvent.ACTION_DOWN:
 //                    mode=MODE_DRAG;
                     startPoint.set(event.getX(), event.getY()); // 记录起始点
+                    bMovingFarEnough = false;
                     KLog.p("ACTION_DOWN{%s}", event);
                     if (null != paintOpGeneratedListener) {
                         createPaintOp(event);
@@ -143,7 +144,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                            KLog.p("ACTION_DRAG{%s}", event);
 //                        }
 //                    }
-                    if (null != paintOpGeneratedListener) {
+                    if (!bMovingFarEnough){
+                        int dx = (int) (event.getX() - startPoint.x);
+                        int dy = (int) (event.getY() - startPoint.y);
+                        KLog.p("cur distance=%s", Math.sqrt(dx*dx+dy*dy));
+                        bMovingFarEnough =  Math.sqrt(dx*dx+dy*dy) > 15;
+                    }
+                    if (bMovingFarEnough && null != paintOpGeneratedListener) {
                         adjustPaintOp(event);
                     }
                     break;
@@ -173,7 +180,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
 
-//        private boolean isMoveDistanceEnough(MotionEvent event){
+//        private boolean isMovingFarEnough(MotionEvent event){
 //            int dx = (int) (event.getX() - startPoint.x);
 //            int dy = (int) (event.getY() - startPoint.y);
 //            return Math.sqrt(dx*dx+dy*dy) > 10;
