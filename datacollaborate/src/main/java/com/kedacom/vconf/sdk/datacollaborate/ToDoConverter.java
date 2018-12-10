@@ -498,17 +498,8 @@ final class ToDoConverter {
                 return EConfMode.Auto;
         }
     }
-//
-//    public static CreateConfResult fromPaintTransferObj(DCCreateConfResult dcCreateConfResult) {
-//        CreateConfResult createConfResult = new CreateConfResult();
-//        createConfResult.setConfE164(dcCreateConfResult.confE164);
-//        createConfResult.setConfName(dcCreateConfResult.confName);
-//        createConfResult.setConfType(fromPaintTransferObj(dcCreateConfResult.confType));
-//        createConfResult.setConfMode(fromPaintTransferObj(dcCreateConfResult.confMode));
-//        return createConfResult;
-//    }
-//
-//
+
+
     public static EBoardMode fromTransferObj(EmDcsWbMode dcsWbMode) {
         switch (dcsWbMode){
             case emWbModeWB:
