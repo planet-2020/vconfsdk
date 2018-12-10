@@ -54,6 +54,10 @@ public class DataCollaborateManager extends RequestAgent {
     我们也需像同步图元一样先缓存起来而不是直接上报给用户。*/
     private boolean bPreparingSync = false;
 
+    private String curDcConfE164;
+    public String getCurDcConfE164(){
+        return curDcConfE164;
+    }
 
     // 画板相关通知
     private static final Msg[] boardOpNtfs = new Msg[]{
@@ -189,7 +193,8 @@ public class DataCollaborateManager extends RequestAgent {
     /**发布绘制操作*/
     public void publishPaintOp(OpPaint op){
         KLog.p("publish op=%s", op);
-//        req();
+        req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
+                ToDoConverter.toCommonPaintTransferObj(op), ToDoConverter.toPaintTransferObj(op));
     }
 
     /**登录数据协作*/
@@ -201,6 +206,7 @@ public class DataCollaborateManager extends RequestAgent {
     public void logout(IResultListener resultListener){
         req(Msg.DCLogout, resultListener);
         cachedPaintOps.clear();
+        curDcConfE164 = null;
     }
 
     private void onSessionRsps(Msg rspId, Object rspContent, IResultListener listener){
@@ -249,20 +255,20 @@ public class DataCollaborateManager extends RequestAgent {
     /**结束数据协作*/
     public void releaseDcConf(IResultListener resultListener){
 //        req(Msg.DCReleaseConf, new MsgBeans.DCConfId(curDcConfE164), resultListener);
-//        curDcConfE164 = null;
-//        cachedPaintOps.clear();
+        curDcConfE164 = null;
+        cachedPaintOps.clear();
     }
 
     /**退出数据协作。
      * 注：仅自己退出，协作仍存在，不影响其他人继续*/
     public void quitDcConf(IResultListener resultListener){
 //        req(Msg.DCQuitConf, new MsgBeans.DCSQuitConf(curDcConfE164), resultListener);
-//        curDcConfE164 = null;
-//        cachedPaintOps.clear();
+        curDcConfE164 = null;
+        cachedPaintOps.clear();
     }
 
     private void onConfOpRsps(Msg rspId, Object rspContent, IResultListener listener){
-//        switch (rspId){
+        switch (rspId){
 //            case DCBuildLink4ConfRsp:
 //                TDCSConnectResult result = (TDCSConnectResult) rspContent;
 //                if (!result.bSuccess && null != listener){
@@ -270,16 +276,19 @@ public class DataCollaborateManager extends RequestAgent {
 //                    listener.onFailed(ErrCode_BuildLink4ConfFailed);
 //                }
 //                break;
-//            case DCConfCreated:
-//                TDCSCreateConfResult createConfResult = (TDCSCreateConfResult) rspContent;
-//                if (null != listener){
-//                    if (createConfResult.bSuccess) {
-//                        listener.onSuccess(ToDoConverter.fromPaintTransferObj(createConfResult));
-//                    }else{
-//                        listener.onFailed(ErrCode_Failed);
-//                    }
-//                }
-//                break;
+            case DCConfCreated:
+                TDCSCreateConfResult createConfResult = (TDCSCreateConfResult) rspContent;
+                if (createConfResult.bSuccess){
+                    curDcConfE164 = createConfResult.achConfE164;
+                }
+                if (null != listener){
+                    if (createConfResult.bSuccess) {
+                        listener.onSuccess(ToDoConverter.fromPaintTransferObj(createConfResult));
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
+                }
+                break;
 //            case DCReleaseConfRsp:
 //                TDCSResult releaseRes = (TDCSResult) rspContent;
 //                if (null != listener){
@@ -300,7 +309,7 @@ public class DataCollaborateManager extends RequestAgent {
 //                    }
 //                }
 //                break;
-//        }
+        }
 
     }
 
@@ -620,6 +629,7 @@ public class DataCollaborateManager extends RequestAgent {
                     KLog.p(KLog.ERROR,"join data collaborate conf{%s, %s} failed", createConfResult.getConfName(), createConfResult.getConfE164());
                     return; // 入会失败
                 }
+                curDcConfE164 = dcConfinfo.achConfE164;
 
                 // 入会成功后准备同步会议中已有的图元。（入会成功后实时的图元操作可能在任意时间点到达）
                 bPreparingSync = true;

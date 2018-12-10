@@ -235,7 +235,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 default:
                     return null;
             }
-            opPaint.setBoardId(boardInfo.id);
+            opPaint.setBoardId(boardInfo.getId());
+            opPaint.setConfE164(boardInfo.getConfE164());
             paintOpGeneratedListener.onCreated(opPaint);
             return opPaint;
         }
@@ -382,7 +383,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private void feedback(OpPaint op){
         if (null != paintOpGeneratedListener){
-            op.setBoardId(boardInfo.id);
+            op.setBoardId(boardInfo.getId());
             paintOpGeneratedListener.onConfirm(op);
             if (null != publisher){
                 publisher.publish(op);
@@ -393,7 +394,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public String getBoardId() {
-        return null!=boardInfo ? boardInfo.id : null;
+        return null!=boardInfo ? boardInfo.getId() : null;
     }
 
     @Override
@@ -446,7 +447,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public void undo() {
         if (null != paintOpGeneratedListener){
             OpPaint op = new OpUndo();
-            op.setBoardId(boardInfo.id);
+            op.setBoardId(boardInfo.getId());
             paintOpGeneratedListener.onConfirm(op);
             if (null != publisher){
                 publisher.publish(op);
@@ -458,7 +459,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public void redo() {
         if (null != paintOpGeneratedListener){
             OpPaint op = new OpRedo();
-            op.setBoardId(boardInfo.id);
+            op.setBoardId(boardInfo.getId());
             paintOpGeneratedListener.onConfirm(op);
             if (null != publisher){
                 publisher.publish(op);
@@ -470,7 +471,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public void clearScreen() {
         if (null != paintOpGeneratedListener){
             OpPaint op = new OpClearScreen();
-            op.setBoardId(boardInfo.id);
+            op.setBoardId(boardInfo.getId());
             paintOpGeneratedListener.onConfirm(op);
             if (null != publisher){
                 publisher.publish(op);

@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.datacollaborate;
 import android.graphics.PointF;
 
 import com.kedacom.vconf.sdk.base.KLog;
+import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperCircleOperInfoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperEraseOperInfoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperFullScreenNtf;
@@ -22,6 +23,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperContent;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircle;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircleOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbEntity;
@@ -40,6 +42,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EBoardMode;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EConfMode;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EConfType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
@@ -61,10 +64,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 @SuppressWarnings("WeakerAccess")
 final class ToDoConverter {
+    private static DataCollaborateManager dcMan = DataCollaborateManager.getInstance(null);
 
     public static OpPaint fromPaintTransferObj(Object transferObj) {
         if (transferObj instanceof DcsOperLineOperInfoNtf){
@@ -105,18 +108,18 @@ final class ToDoConverter {
         }
     }
 
-//
-//
-//    public static DCPaintOp toTransferObj(OpPaint domainObj) {
-//        switch (domainObj.getType()){
-//            case DRAW_LINE:
-//                return toTransferObj((OpDrawLine)domainObj);
-//            case DRAW_RECT:
-//                return toTransferObj((OpDrawRect) domainObj);
-//            case DRAW_OVAL:
-//                return toTransferObj((OpDrawOval) domainObj);
-//            case DRAW_PATH:
-//                return toTransferObj((OpDrawPath) domainObj);
+
+
+    public static Object toPaintTransferObj(OpPaint domainObj) {
+        switch (domainObj.getType()){
+            case DRAW_LINE:
+                return toTransferObj((OpDrawLine)domainObj);
+            case DRAW_RECT:
+                return toTransferObj((OpDrawRect) domainObj);
+            case DRAW_OVAL:
+                return toTransferObj((OpDrawOval) domainObj);
+            case DRAW_PATH:
+                return toTransferObj((OpDrawPath) domainObj);
 //            case UNDO:
 //                return toTransferObj((OpUndo) domainObj);
 //            case REDO:
@@ -133,15 +136,37 @@ final class ToDoConverter {
 //                return toTransferObj((OpDeletePic) domainObj);
 //            case DRAG_PICTURE:
 //                return toTransferObj((OpDragPic) domainObj);
-//            case UPDATE_PICTURE:
-////                return toTransferObj((OpUpdatePic)domainObj);
-//            default:
-//                return null;
-//        }
-//    }
-//
-//
-//
+            default:
+                return null;
+        }
+    }
+
+
+    public static TDCSOperReq toCommonPaintTransferObj(OpPaint domainObj) {
+        return new TDCSOperReq(domainObj.getConfE164(), domainObj.getBoardId(), domainObj.getPageId());
+    }
+
+
+    public static Msg opTypeToReqMsg(EOpType type){
+        switch (type){
+            case DRAW_LINE:
+                return Msg.DCDrawLine;
+            case DRAW_RECT:
+                return Msg.DCDrawRect;
+            case DRAW_OVAL:
+                return Msg.DCDrawOval;
+            case DRAW_PATH:
+                return Msg.DCDrawPath;
+//            case DRAW_LINE:
+//                return Msg.DCDrawLine;
+//            case DRAW_LINE:
+//                return Msg.DCDrawLine;
+//            case DRAW_LINE:
+//                return Msg.DCDrawLine;
+            default:
+                return null;
+        }
+    }
 
     public static List<PointF> fromTransferObj(TDCSWbPoint[] tdcsWbPoints) {
         List<PointF> pointFS = new ArrayList<>();
@@ -496,7 +521,7 @@ final class ToDoConverter {
     }
 
     public static BoardInfo fromTransferObj(TDCSBoardInfo dcBoard) {
-        return new BoardInfo(dcBoard.achTabId, dcBoard.achWbName, dcBoard.achWbCreatorE164, dcBoard.dwWbCreateTime,
+        return new BoardInfo(dcBoard.achTabId, dcBoard.achWbName, dcMan.getCurDcConfE164(), dcBoard.achWbCreatorE164, dcBoard.dwWbCreateTime,
                 fromTransferObj(dcBoard.emWbMode), dcBoard.dwWbPageNum, dcBoard.dwPageId, dcBoard.dwWbAnonyId);
     }
 

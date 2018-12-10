@@ -7,21 +7,23 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 import androidx.annotation.NonNull;
 
 public class BoardInfo {
-    public String id;           // 终端填写GUID（系统函数生成）
-    public String name;
-    public String creatorE164;
-    public int createTime;      // 平台成功响应后，平台填写
-    public EBoardMode mode;    // 模式（白板、文档）
-    public int pageNum;         // 总页数（限文档）——以TDCSWbAddSubPageInfo中的dwSubPageCount为准。
-    public int pageId;            // 文档页id，平台成功响应后，平台填写（限文档）
-    public int anonyId;         // 平台成功响应后，平台填写（限白板），白板1白板2后面的数字，平台裁决后分配的。
+    private String id;           // 终端填写GUID（系统函数生成）
+    private String name;
+    private String confE164;
+    private String creatorE164;
+    private int createTime;      // 平台成功响应后，平台填写
+    private EBoardMode mode;    // 模式（白板、文档）
+    private int pageNum;         // 总页数（限文档）——以TDCSWbAddSubPageInfo中的dwSubPageCount为准。
+    private int pageId;            // 文档页id，平台成功响应后，平台填写（限文档）
+    private int anonyId;         // 平台成功响应后，平台填写（限白板），白板1白板2后面的数字，平台裁决后分配的。
 
     public BoardInfo() {
     }
 
-    public BoardInfo(String id, String name, String creatorE164, int createTime, EBoardMode mode, int pageNum, int pageId, int anonyId) {
+    public BoardInfo(String id, String name, String confE164, String creatorE164, int createTime, EBoardMode mode, int pageNum, int pageId, int anonyId) {
         this.id = id;
         this.name = name;
+        this.confE164 = confE164;
         this.creatorE164 = creatorE164;
         this.createTime = createTime;
         this.mode = mode;
@@ -54,6 +56,14 @@ public class BoardInfo {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getConfE164() {
+        return confE164;
+    }
+
+    public void setConfE164(String confE164) {
+        this.confE164 = confE164;
     }
 
     public String getCreatorE164() {
