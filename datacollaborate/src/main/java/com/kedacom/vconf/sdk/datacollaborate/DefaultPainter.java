@@ -84,6 +84,14 @@ public class DefaultPainter implements IPainter {
         }
     };
 
+    private DefaultPaintBoard.IOnMatrixOpGeneratedListener onMatrixOpGeneratedListener = opPaint -> {
+        DefaultPaintBoard board = paintBoards.get(opPaint.getBoardId());
+        board.getPicPaintView().getMatrixOps().offerLast(opPaint);
+        board.getShapePaintView().getMatrixOps().offerLast(opPaint);
+        refresh();
+    };
+
+
     public DefaultPainter(Context context) {
         if (context instanceof LifecycleOwner){
             ((LifecycleOwner)context).getLifecycle().addObserver(new DefaultLifecycleObserver(){
@@ -180,8 +188,10 @@ public class DefaultPainter implements IPainter {
         }
         if (ROLE_AUTHOR == role) {
             board.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
+            board.setOnMatrixOpGeneratedListener(onMatrixOpGeneratedListener);
         }else{
             board.setOnPaintOpGeneratedListener(null);
+            board.setOnMatrixOpGeneratedListener(null);
         }
         roles.put(boardId, role);
     }
@@ -205,6 +215,7 @@ public class DefaultPainter implements IPainter {
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
         if (ROLE_AUTHOR == role) {
             defaultPaintBoard.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
+            defaultPaintBoard.setOnMatrixOpGeneratedListener(onMatrixOpGeneratedListener);
         }
         roles.put(boardId, role);
         paintBoards.put(paintBoard.getBoardId(), defaultPaintBoard);
@@ -484,10 +495,9 @@ public class DefaultPainter implements IPainter {
                 shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
                 // 设置图形层画布的缩放比例
-                OpPaint opMatrix = shapePaintView.getMatrixOps().peekLast();  // TODO 暂不考虑完整保存以供回放的功能。matrix就一个值就好。
+                OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();  // TODO 暂不考虑完整保存以供回放的功能。matrix就一个值就好。
                 if (null != opMatrix) {
-                    shapeMatrix.setValues( ((OpMatrix)opMatrix).getMatrixValue() );
-                    shapePaintViewCanvas.setMatrix(shapeMatrix);
+                    shapePaintViewCanvas.setMatrix(opMatrix.getMatrix());
                 }
 
                 /* 刷新渲染标志。
@@ -515,10 +525,9 @@ public class DefaultPainter implements IPainter {
                 picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
                 // 设置画布的缩放比例
-                opMatrix = picPaintView.getMatrixOps().peekLast();
+                opMatrix = (OpMatrix) picPaintView.getMatrixOps().peekLast();
                 if (null != opMatrix) {
-                    picMatrix.setValues( ((OpMatrix)opMatrix).getMatrixValue());
-                    picPaintViewCanvas.setMatrix(picMatrix);
+                    picPaintViewCanvas.setMatrix(opMatrix.getMatrix());
                 }
 
                 // 图片绘制

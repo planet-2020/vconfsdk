@@ -1,17 +1,19 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import android.graphics.Matrix;
+
 import androidx.annotation.NonNull;
 
 public class OpMatrix extends OpPaint {
-    private float[] matrixValue;
+    private Matrix matrix = new Matrix();
 
     public OpMatrix(){
         type = EOpType.FULLSCREEN_MATRIX;
     }
 
     public OpMatrix(float[] matrixValue){
-        this.matrixValue = matrixValue;
+        matrix.setValues(matrixValue);
         type = EOpType.FULLSCREEN_MATRIX;
     }
 
@@ -19,6 +21,8 @@ public class OpMatrix extends OpPaint {
     @Override
     public String toString() {
         StringBuffer stringBuffer = new StringBuffer();
+        float[] matrixValue = new float[9];
+        matrix.getValues(matrixValue);
         stringBuffer.append("[");
         for (float val : matrixValue){
             stringBuffer.append(val).append(",");
@@ -28,10 +32,13 @@ public class OpMatrix extends OpPaint {
     }
 
     public float[] getMatrixValue() {
+        float[] matrixValue = new float[9];
+        matrix.getValues(matrixValue);
         return matrixValue;
     }
 
-    public void setMatrixValue(float[] matrixValue) {
-        this.matrixValue = matrixValue;
+    public Matrix getMatrix() {
+        return matrix;
     }
+
 }
