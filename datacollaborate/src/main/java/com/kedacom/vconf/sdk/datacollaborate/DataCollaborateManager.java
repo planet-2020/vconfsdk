@@ -326,22 +326,35 @@ public class DataCollaborateManager extends RequestAgent {
 
     /**申请协作方*/
     public void applyForOperator(String e164, IResultListener resultListener){
-//        req(Msg.DCApplyOperator, new MsgBeans.DCSBriefConfInfo(e164), resultListener);
+        req(Msg.DCApplyOperator, resultListener, e164);
     }
     /**取消协作方*/
     public void cancelOperator(String e164, IResultListener resultListener){
-//        req(Msg.DCCancelOperator, new MsgBeans.DCSBriefConfInfo(e164), resultListener);
+        req(Msg.DCCancelOperator, resultListener, e164);
     }
 
     private void onChangeOperatorsRsps(Msg rspId, Object rspContent, IResultListener listener){
-//        MsgBeans.CommonResult result = (MsgBeans.CommonResult) rspContent;
-//        if (null != listener){
-//            if (result.bSuccess){
-//                listener.onSuccess(null);
-//            }else{
-//                listener.onFailed(ErrCode_Failed);
-//            }
-//        }
+        TDCSResult result = (TDCSResult) rspContent;
+        switch (rspId){
+            case DCApplyOperatorRsp:
+                if (null != listener){
+                    if (result.bSucces){
+                        listener.onSuccess(null);
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
+                }
+                break;
+            case DCCancelOperatorRsp:
+                if (null != listener){
+                    if (result.bSucces){
+                        listener.onSuccess(null);
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
+                }
+                break;
+        }
     }
 
     private void onOperatorsChangedNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
