@@ -250,6 +250,8 @@ public class DataCollaborateManager extends RequestAgent {
     /**创建数据协作*/
     public void createDcConf(IResultListener resultListener){
 //        req(Msg.DCCreateConf, new MsgBeans.DCCreateConfPara(), resultListener);
+        cachedPaintOps.clear();
+        curDcConfE164 = null;
     }
 
     /**结束数据协作*/
@@ -618,18 +620,23 @@ public class DataCollaborateManager extends RequestAgent {
             // 入会通知
             case DCConfCreated:
                 TDCSCreateConfResult dcConfinfo = (TDCSCreateConfResult) ntfContent;
-                CreateConfResult createConfResult = ToDoConverter.fromTransferObj(dcConfinfo);
-                KLog.p("createConfResult: %s", createConfResult);
-                // 上报用户入会通知
-                for (Object listener : listeners){
-                    ((INotificationListener)listener).onNotification(createConfResult); // TODO 入会通知分为onSuccess, onFailed
-                }
 
                 if (!dcConfinfo.bSuccess){
-                    KLog.p(KLog.ERROR,"join data collaborate conf{%s, %s} failed", createConfResult.getConfName(), createConfResult.getConfE164());
-                    return; // 入会失败
+                    // 入会失败
+                    curDcConfE164 = null;
+                    KLog.p(KLog.ERROR,"join data collaborate conf{%s, %s} failed", dcConfinfo.achConfName, dcConfinfo.achConfE164);
+                    for (Object listener : listeners){
+                        ((IOnDcConfJoinResultListener)listener).onFailed(ErrCode_Failed);
+                    }
+                    return;
                 }
+
                 curDcConfE164 = dcConfinfo.achConfE164;
+                CreateConfResult createConfResult = ToDoConverter.fromTransferObj(dcConfinfo);
+                KLog.p("createConfResult: %s", createConfResult);
+                for (Object listener : listeners){
+                    ((IOnDcConfJoinResultListener)listener).onSuccess(createConfResult);
+                }
 
                 // 入会成功后准备同步会议中已有的图元。（入会成功后实时的图元操作可能在任意时间点到达）
                 bPreparingSync = true;
@@ -788,8 +795,8 @@ public class DataCollaborateManager extends RequestAgent {
 
 
 
-    public void addOnDcConfJoinedListener(INotificationListener onConfJoinedListener){ // TODO 改为addOnDcConfJoinResultListener，onSuccess, onFailed，通知响应消息体剔除掉bSuccess字段。
-        subscribe(Msg.DCConfCreated, onConfJoinedListener);
+    public void addOnDcConfJoinResultListener(IOnDcConfJoinResultListener onDcConfJoinResultListener){
+        subscribe(Msg.DCConfCreated, onDcConfJoinResultListener);
     }
 
     public void addBoardOpListener(IOnBoardOpListener onBoardOpListener){
@@ -813,9 +820,16 @@ public class DataCollaborateManager extends RequestAgent {
         void onBoardSwitched(String boardId);
     }
 
+    public interface IOnDcConfJoinResultListener extends ILifecycleOwner{
+        void onSuccess(CreateConfResult result);
+        void onFailed(int errCode);
+    }
 
     private class QueryAllBoardsInnerListener implements IResultListener{
     }
 
+    public void ejectNtf(Msg msg){
+        eject(msg);
+    }
 
 }
