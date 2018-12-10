@@ -102,6 +102,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private static final int MODE_SCALE_AND_DRAG = 4;
         private int mode = MODE_NORMAL;
 
+        private static final int STATE_IDLE = 0;
+        private static final int STATE_DRAWING = 1;
+        private static final int STATE_SCALING = 2;
+        private static final int STATE_DRAGING = 3;
+        private static final int STATE_SCALING_AND_DRAGING = 4;
+        private int state = STATE_IDLE;
+
         private static final float DOUBLE_CLICK_SCALE = 2;	// 双击时的缩放倍数
         private float maxScale = 3.0f;	// 缩放倍数上限
         private float minScale = 0.5f; // 缩放倍数下限
@@ -109,8 +116,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private Matrix initMatrix = new Matrix();  	// 初始matrix
         private Matrix curMatrix = new Matrix();    // 当前matrix
 
-        private PointF startPoint = new PointF();	// 起始点
-        private float startDis = 0;	// 起始距离
+        private PointF startPoint = new PointF();	// 起始绘制点
+        private PointF startDragPoint = new PointF();	// 起始拖拽点
 
         private boolean bMovingFarEnough = false;
 
@@ -119,8 +126,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(context, new ScaleGestureDetector.SimpleOnScaleGestureListener(){
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
-                KLog.p("focusX = " + detector.getFocusX());
-                KLog.p("focusY = " + detector.getFocusY());
+                KLog.p("focusX= " + detector.getFocusX());
+                KLog.p("focusY= " + detector.getFocusY());
                 KLog.p("scale=%s, lastScale=%s, |scale-lastScale|=%s", scaleFactor, lastScaleFactor, Math.abs(scaleFactor-lastScaleFactor));
                 scaleFactor *= detector.getScaleFactor();
 //                if (scaleFactor == lastScaleFactor){
@@ -140,7 +147,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             public boolean onScaleBegin(ScaleGestureDetector detector) {
                 KLog.p("focusX = " + detector.getFocusX());
                 KLog.p("focusY = " + detector.getFocusY());
-                mode = MODE_SCALE_AND_DRAG;
+                state = STATE_SCALING_AND_DRAGING;
                 if (null != paintOpGeneratedListener){
                     opPaint = new OpMatrix();
                     assignBasicInfo(opPaint);
@@ -153,24 +160,26 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 KLog.p("focusX = " + detector.getFocusX());
                 KLog.p("focusY = " + detector.getFocusY());
                 KLog.p("scale = " + scaleFactor);
-//                mode = MODE_NORMAL;
+                state = STATE_IDLE;
                 opPaint = null;
             }
         });
 
         @Override
         public boolean onTouch(View v, MotionEvent event) {
-            KLog.p("mode = %s", mode);
             scaleGestureDetector.onTouchEvent(event);
-            if (MODE_SCALE == mode || MODE_SCALE_AND_DRAG == mode){
+            if (STATE_SCALING == state
+                    || STATE_SCALING_AND_DRAGING == state){
                 return true;
             }
+
 
             switch (event.getActionMasked()) {
 
                 case MotionEvent.ACTION_DOWN:
                     KLog.p("ACTION_DOWN{%s}", event);
 //                    mode=MODE_ONE_FINGER;
+                    state = STATE_DRAWING;
                     startPoint.set(event.getX(), event.getY()); // 记录起始点
                     bMovingFarEnough = false;
                     if (null != paintOpGeneratedListener) {
@@ -180,6 +189,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                 case MotionEvent.ACTION_POINTER_DOWN:
                     KLog.p("ACTION_POINTER_DOWN{%s}", event);
+//                    if (STATE_DRAWING == state){
+//                        state = STATE_DRAGING;
+//                        event.getX(1) + event.getX(0)
+//                        startDragPoint = distance(event); // 记录起始距离
+//                        if (null != paintOpGeneratedListener) {
+////                            createPaintOp(event); // TODO 拖动操作。matrix操作。
+//                        }
+//                    }
 //                    if (2 == event.getPointerCount()){
 //                        mode=MODE_TWO_FINGER;
 //                        if (null != paintOpGeneratedListener) {
@@ -190,7 +207,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                            }
 //                        }
 //                    }
-//                    startDis = distance(event); // 记录起始距离
+//                    startDragPoint = distance(event); // 记录起始距离
                     break;
 
                 case MotionEvent.ACTION_POINTER_UP:
@@ -207,25 +224,19 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     break;
 
                 case MotionEvent.ACTION_MOVE:
-//                    if (mode == MODE_ZOOM) {
-//                        if (setZoomMatrix(event)){
-//                            needRefresh = true;
-////                            KLog.p("ACTION_ZOOM{%s}", event);
-//                        }
-//                    }else if (mode==MODE_DRAG) {
-//                        if (setDragMatrix(event)){
-//                            needRefresh = true;
-//                            KLog.p("ACTION_DRAG{%s}", event);
-//                        }
-//                    }
-                    if (!bMovingFarEnough){  // TODO 包含多个点全部放进op里面
-                        int dx = (int) (event.getX() - startPoint.x);
-                        int dy = (int) (event.getY() - startPoint.y);
+
+                    if (STATE_DRAWING == state) {
+                        if (!bMovingFarEnough) {  // TODO 包含多个点全部放进op里面
+                            int dx = (int) (event.getX() - startPoint.x);
+                            int dy = (int) (event.getY() - startPoint.y);
 //                        KLog.p("cur distance=%s", Math.sqrt(dx*dx+dy*dy));
-                        bMovingFarEnough =  Math.sqrt(dx*dx+dy*dy) > 15;
-                    }
-                    if (bMovingFarEnough && null != paintOpGeneratedListener) {
-                        adjustPaintOp(event);
+                            bMovingFarEnough = Math.sqrt(dx * dx + dy * dy) > 15;
+                        }
+                        if (bMovingFarEnough && null != paintOpGeneratedListener) {
+                            adjustPaintOp(event);
+                        }
+                    }else if (STATE_DRAGING == state){
+
                     }
                     break;
 
@@ -235,8 +246,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                        needRefresh = false;
 //                    }
                     KLog.p("ACTION_UP{%s}", event);
-                    if (null != paintOpGeneratedListener) {
-                        confirmPaintOp(event);
+                    if (STATE_DRAWING == state) {
+                        if (null != paintOpGeneratedListener) {
+                            confirmPaintOp(event);
+                        }
                     }
                     break;
 
@@ -372,24 +385,24 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
         // 设置放缩
-        private boolean setZoomMatrix(MotionEvent event) {
-            if(event.getPointerCount()<2) {
-                return false;
-            }
-
-            float endDis = distance(event);// 结束距离
-            if (endDis < 10f){
-                return false;
-            }
-
-            float scale = endDis / startDis;// 得到缩放倍数
-            startDis=endDis;//重置距离
-            curMatrix.postScale(scale, scale, getWidth()/2,getHeight()/2);
-
-//            onMatrixChangedListener.onMatrixChanged(curMatrix);
-
-            return true;
-        }
+//        private boolean setZoomMatrix(MotionEvent event) {
+//            if(event.getPointerCount()<2) {
+//                return false;
+//            }
+//
+//            float endDis = distance(event);// 结束距离
+//            if (endDis < 10f){
+//                return false;
+//            }
+//
+//            float scale = endDis / startDragPoint;// 得到缩放倍数
+//            startDragPoint =endDis;//重置距离
+//            curMatrix.postScale(scale, scale, getWidth()/2,getHeight()/2);
+//
+////            onMatrixChangedListener.onMatrixChanged(curMatrix);
+//
+//            return true;
+//        }
 
 
         private void refresh(){
