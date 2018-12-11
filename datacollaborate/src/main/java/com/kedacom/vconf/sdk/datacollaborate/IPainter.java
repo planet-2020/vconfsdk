@@ -21,15 +21,19 @@ public interface IPainter {
 
     int ROLE_UNKNOWN = 9;
 
+    /**为所有画板设置角色。
+     * setRole也调用的情况下，后调用的覆盖先调用的*/
+    void setRoleForAllBoards(int role);
 
-    /**设置角色*/
+    /**为指定画板设置角色。
+     * setRoleForAllBoards也调用的情况下，后调用的覆盖先调用的*/
     void setRole(String boardId, int role);
 
-    /**获取角色*/
+    /**获取在指定画板的角色*/
     int getRole(String boardId);
 
     /**添加画板*/
-    boolean addPaintBoard(IPaintBoard paintBoard, int role);
+    boolean addPaintBoard(IPaintBoard paintBoard);
 
     /**删除画板*/
     IPaintBoard deletePaintBoard(String boardId);

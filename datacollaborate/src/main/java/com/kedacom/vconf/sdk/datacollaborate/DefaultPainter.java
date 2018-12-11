@@ -161,6 +161,19 @@ public class DefaultPainter implements IPainter {
         }
     };
 
+
+    @Override
+    public void setRoleForAllBoards(int role) {
+        for (String boardId : roles.keySet()){
+            if (ROLE_AUTHOR == role) {
+                paintBoards.get(boardId).setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
+            }else{
+                paintBoards.get(boardId).setOnPaintOpGeneratedListener(null);
+            }
+            roles.put(boardId, role);
+        }
+    }
+
     @Override
     public void setRole(String boardId, int role) {
         DefaultPaintBoard board = paintBoards.get(boardId);
@@ -186,17 +199,14 @@ public class DefaultPainter implements IPainter {
     }
 
     @Override
-    public boolean addPaintBoard(IPaintBoard paintBoard, int role) {
+    public boolean addPaintBoard(IPaintBoard paintBoard) {
         String boardId = paintBoard.getBoardId();
         if (paintBoards.containsKey(boardId)){
             KLog.p(KLog.ERROR,"board %s already exist!", paintBoard.getBoardId());
             return false;
         }
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
-        if (ROLE_AUTHOR == role) {
-            defaultPaintBoard.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
-        }
-        roles.put(boardId, role);
+        roles.put(boardId, ROLE_COPYER);
         paintBoards.put(paintBoard.getBoardId(), defaultPaintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 

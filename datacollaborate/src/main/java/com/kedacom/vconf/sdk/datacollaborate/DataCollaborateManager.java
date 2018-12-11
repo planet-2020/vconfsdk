@@ -150,6 +150,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
+    @SuppressWarnings("ConstantConditions")
     @Override
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> processorMap = new HashMap<>();
@@ -170,6 +171,12 @@ public class DataCollaborateManager extends RequestAgent {
 
         processorMap.put(Msg.DCDownload, this::onRsps);
         processorMap.put(Msg.DCQueryPicUrl, this::onRsps);
+
+        processorMap.put(Msg.DCDrawLine, null);
+        processorMap.put(Msg.DCDrawOval, null);
+        processorMap.put(Msg.DCDrawRect, null);
+        processorMap.put(Msg.DCDrawPath, null);
+
         return processorMap;
     }
 
@@ -345,11 +352,10 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     private void onChangeOperatorsRsps(Msg rspId, Object rspContent, IResultListener listener){
-        TDCSResult result = (TDCSResult) rspContent;
         switch (rspId){
             case DCApplyOperatorRsp:
                 if (null != listener){
-                    if (result.bSucces){
+                    if (((TDCSResult) rspContent).bSucces){
                         listener.onSuccess(null);
                     }else{
                         listener.onFailed(ErrCode_Failed);
@@ -358,7 +364,7 @@ public class DataCollaborateManager extends RequestAgent {
                 break;
             case DCCancelOperatorRsp:
                 if (null != listener){
-                    if (result.bSucces){
+                    if (((TDCSResult) rspContent).bSucces){
                         listener.onSuccess(null);
                     }else{
                         listener.onFailed(ErrCode_Failed);
