@@ -7,6 +7,9 @@ public abstract class OpDraw extends OpPaint {
     private int strokeWidth;     // 线宽
     private long color;           // 颜色值
 
+    public static final int SOLID = 1; // 实线
+    public static final int DASH = 2;  // 虚线
+    private int lineStyle = SOLID;
 
     public int getStrokeWidth() {
         return strokeWidth;
@@ -22,6 +25,14 @@ public abstract class OpDraw extends OpPaint {
 
     public void setColor(long color) {
         this.color = color;
+    }
+
+    public int getLineStyle() {
+        return lineStyle;
+    }
+
+    public void setLineStyle(int lineStyle) {
+        this.lineStyle = lineStyle;
     }
 
     @NonNull

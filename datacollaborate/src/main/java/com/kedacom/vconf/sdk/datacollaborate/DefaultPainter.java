@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
@@ -419,6 +420,9 @@ public class DefaultPainter implements IPainter {
                     paint.setAntiAlias(true);
                     paint.setStrokeWidth(opDraw.getStrokeWidth());
                     paint.setColor((int) opDraw.getColor());
+                    if (OpDraw.DASH == opDraw.getLineStyle()){
+                        paint.setPathEffect(new DashPathEffect( new float[]{10, 4},0));
+                    }
                 }
                 break;
         }

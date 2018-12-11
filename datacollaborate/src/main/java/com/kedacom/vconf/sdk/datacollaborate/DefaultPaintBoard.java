@@ -14,12 +14,14 @@ import android.widget.FrameLayout;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 
@@ -101,12 +103,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     private class MyTouchListener implements OnTouchListener{
-        private static final int MODE_NORMAL = 1;
-        private static final int MODE_SCALE = 2;
-        private static final int MODE_DRAG = 3;
-        private static final int MODE_SCALE_AND_DRAG = 4;
-        private int mode = MODE_NORMAL;
-
         private static final int STATE_IDLE = 0;
         private static final int STATE_SHAKING = 1;
         private static final int STATE_DRAWING = 2;
@@ -125,8 +121,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private PointF startPoint = new PointF();	// 起始绘制点
         private PointF startDragPoint = new PointF();	// 起始拖拽点
         private PointF zoomCenter = new PointF();
-
-        private boolean bMovingFarEnough = false;
 
         private float scaleFactor = 1.0f;
         private float lastScaleFactor = scaleFactor;
@@ -166,7 +160,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 if (null != publisher){
                     publisher.publish(shapePaintView.getMatrixOp());
                 }
-                state = STATE_IDLE;  // TODO STATE_SHAKING ?
+                state = STATE_IDLE;
             }
         });
 
@@ -197,38 +191,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                         }else if (STATE_SHAKING == state){
                             cancelPaintOp();
                         }
-///                        event.getX(1) + event.getX(0)
-//                        startDragPoint = distance(event); // 记录起始距离
-//                        if (null != paintOpGeneratedListener) {
-////                            createPaintOp(event); // TODO 拖动操作。matrix操作。
-//                        }
                         startDragPoint.set((event.getX(1) + event.getX(0))/2,
                                 (event.getY(1) + event.getY(0))/2);
                         state = STATE_DRAGING;
                     }
-//                    if (2 == event.getPointerCount()){
-//                        mode=MODE_TWO_FINGER;
-//                        if (null != paintOpGeneratedListener) {
-//                            if (bMovingFarEnough){
-//                                confirmPaintOp(event);
-//                            }else{
-//                                cancelPaintOp(event);
-//                            }
-//                        }
-//                    }
-//                    startDragPoint = distance(event); // 记录起始距离
                     break;
 
                 case MotionEvent.ACTION_POINTER_UP:
                     KLog.p("state=%s, ACTION_POINTER_UP{%s}", state, event);
-                    if (2 == event.getPointerCount()){ // 二个手指其中一个抬起，只剩一个手指了，切换到单手指模式
-//                        mode=MODE_ONE_FINGER;
-//                        bMovingFarEnough = false;
-////                        startPoint.set(event.getX(), event.getY()); // 记录起始点  // TODO 获取仅剩的手指坐标
-//                        if (null != paintOpGeneratedListener) {
-//                            confirmPaintOp(event);     // 确认之前的操作
-//                            createPaintOp(event);       // 重新创建新的操作
-//                        }
+                    if (2 == event.getPointerCount()){ // 二个手指其中一个抬起，只剩一个手指了
                         state = STATE_SHAKING;
                         int indx = 1==event.getActionIndex() ? 0 : 1;
                         createPaintOp(event.getX(indx), event.getY(indx));
@@ -236,7 +207,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     break;
 
                 case MotionEvent.ACTION_MOVE:
-                    KLog.p("state=%s, ACTION_MOVE{%s}", state, event);
+//                    KLog.p("state=%s, ACTION_MOVE{%s}", state, event);
                     if (STATE_SHAKING == state) {
                         int dx = (int) (event.getX() - startPoint.x);
                         int dy = (int) (event.getY() - startPoint.y);
@@ -244,15 +215,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                             state = STATE_DRAWING;
                             adjustPaintOp(event);
                         }
-//                        if (!bMovingFarEnough) {  // TODO 包含多个点全部放进op里面
-//                            int dx = (int) (event.getX() - startPoint.x);
-//                            int dy = (int) (event.getY() - startPoint.y);
-////                        KLog.p("cur distance=%s", Math.sqrt(dx*dx+dy*dy));
-//                            bMovingFarEnough = Math.sqrt(dx * dx + dy * dy) > 15;
-//                        }
-//                        if (bMovingFarEnough && null != paintOpGeneratedListener) {
-//                            adjustPaintOp(event);
-//                        }
                     }else if (STATE_DRAWING == state){
                         adjustPaintOp(event);
                     }else if (STATE_DRAGING == state){
@@ -266,10 +228,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     break;
 
                 case MotionEvent.ACTION_UP:
-//                    if (needRefresh) {
-//                        refresh();
-//                        needRefresh = false;
-//                    }
                     KLog.p("state=%s, ACTION_UP{%s}", state, event);
                     if (STATE_DRAWING == state) {
                         confirmPaintOp();
@@ -283,39 +241,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     KLog.p("ACTION_CANCEL{%s}", event);
                     break;
                 default:
-//                    KLog.p("Discarded ACTION{%s}", event.getActionMasked());
+                    KLog.p("Discarded ACTION{%s}", event.getActionMasked());
                     break;
             }
 
             return true;
         }
 
-
-//        private boolean isMovingFarEnough(MotionEvent event){
-//            int dx = (int) (event.getX() - startPoint.x);
-//            int dy = (int) (event.getY() - startPoint.y);
-//            return Math.sqrt(dx*dx+dy*dy) > 10;
-//        }
-
-
-        // 设置拖拽
-        public boolean setDragMatrix(MotionEvent event) {
-            float dx = event.getX() - startPoint.x; // 得到x轴的移动距离
-            float dy = event.getY() - startPoint.y; // 得到x轴的移动距离
-
-            if (Math.sqrt(dx*dx+dy*dy) < 10f){//避免和双击冲突,大于10f才算是拖动
-                return false;
-            }
-
-            startPoint.set(event.getX(), event.getY()); //重置起始位置
-
-            curMatrix.postTranslate(dx, dy);
-
-
-//            onMatrixChangedListener.onMatrixChanged(curMatrix);
-
-            return true;
-        }
 
         private void assignBasicInfo(OpPaint op){
             op.setConfE164(boardInfo.getConfE164());
@@ -340,6 +272,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     break;
                 case TOOL_OVAL:
                     opPaint = new OpDrawOval();
+                    break;
+//                case TOOL_ERASER:
+//                    opPaint = new OpErase();
+//                    break;
+                case TOOL_RECT_ERASER:
+                    // 矩形擦除先绘制一个虚线矩形框
+                    OpDrawRect opDrawRect = new OpDrawRect();
+                    opDrawRect.setLineStyle(OpDraw.DASH);
+                    opPaint = opDrawRect;
+//                    OpRectErase opRectErase = new OpRectErase();
+//                    opPaint = opRectErase;
                     break;
                 default:
                     KLog.p(KLog.ERROR, "unknown TOOL %s", tool);
@@ -385,6 +328,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     opDrawOval.setStrokeWidth(paintStrokeWidth);
                     opDrawOval.setColor(paintColor);
                     break;
+                case TOOL_RECT_ERASER:
+                    OpDrawRect opDrawRect1 = (OpDrawRect) opPaint;
+                    opDrawRect1.setLeft(startPoint.x); // TODO 这些重复的操作都在create里面做
+                    opDrawRect1.setTop(startPoint.y);
+                    opDrawRect1.setRight(event.getX());
+                    opDrawRect1.setBottom(event.getY());
+                    opDrawRect1.setStrokeWidth(2);
+                    opDrawRect1.setColor(0xFF08b1f2L);
+                    break;
                 default:
                     return;
             }
@@ -405,65 +357,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         private void confirmPaintOp(){
+            if (TOOL_RECT_ERASER == tool){
+                OpDrawRect opDrawRect = (OpDrawRect) opPaint;
+                opPaint = new OpRectErase(opDrawRect.getLeft(), opDrawRect.getTop(), opDrawRect.getRight(), opDrawRect.getBottom());
+                assignBasicInfo(opPaint);
+            }
             paintOpGeneratedListener.onConfirm(opPaint);
             if (null != publisher){
                 publisher.publish(opPaint);
             }
             opPaint = null;
-        }
-
-
-        // 设置放缩
-//        private boolean setZoomMatrix(MotionEvent event) {
-//            if(event.getPointerCount()<2) {
-//                return false;
-//            }
-//
-//            float endDis = distance(event);// 结束距离
-//            if (endDis < 10f){
-//                return false;
-//            }
-//
-//            float scale = endDis / startDragPoint;// 得到缩放倍数
-//            startDragPoint =endDis;//重置距离
-//            curMatrix.postScale(scale, scale, getWidth()/2,getHeight()/2);
-//
-////            onMatrixChangedListener.onMatrixChanged(curMatrix);
-//
-//            return true;
-//        }
-
-
-        private void refresh(){
-
-            rectifyOverZoom();	// 矫正放缩过度
-
-//            onMatrixChangedListener.onMatrixChanged(curMatrix);
-        }
-
-
-        // 矫正放缩过度
-        private void rectifyOverZoom(){
-            float curScale = getScale(curMatrix);
-            if (curScale > maxScale){  // 放大过头
-                curMatrix.postScale(maxScale/curScale, maxScale/curScale, getWidth()/2, getHeight()/2);
-            } else if (curScale < minScale){ // 缩小过头
-                curMatrix.postScale(minScale/curScale, minScale/curScale, getWidth()/2,getHeight()/2);
-            }
-        }
-
-        // 获取Matrix的缩放倍数
-        private float getScale(Matrix matrix){
-            float[] values = new float[9];
-            matrix.getValues(values);
-            return values[Matrix.MSCALE_X];
-        }
-
-        // 计算两个手指间的距离
-        private float distance(MotionEvent event) {
-            float dx = event.getX(1) - event.getX(0);
-            float dy = event.getY(1) - event.getY(0);
-            return (float) Math.sqrt(dx * dx + dy * dy);
         }
 
     }
@@ -475,17 +378,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     public DefaultPaintView getShapePaintView(){
         return shapePaintView;
-    }
-
-
-    private void feedback(OpPaint op){
-        if (null != paintOpGeneratedListener){
-            op.setBoardId(boardInfo.getId());
-            paintOpGeneratedListener.onConfirm(op);
-            if (null != publisher){
-                publisher.publish(op);
-            }
-        }
     }
 
 
