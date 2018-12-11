@@ -45,7 +45,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private int paintStrokeWidth = 5;
 
     // 画笔颜色
-    private long paintColor = Color.WHITE;
+    private long paintColor = 0xFFFFFFFFL;
 
     private static final int MIN_ZOOM = 50;
     private static final int MAX_ZOOM = 300;
@@ -69,6 +69,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         MyTouchListener myTouchListener = new MyTouchListener();
         picPaintView.setOnTouchListener(myTouchListener);  // XXX 默认情形下onClick事件将被屏蔽
         shapePaintView.setOnTouchListener(myTouchListener);
+        picPaintView.getMatrixOp().setConfE164(boardInfo.getConfE164());
+        picPaintView.getMatrixOp().setBoardId(boardInfo.getId());
+        picPaintView.getMatrixOp().setPageId(boardInfo.getPageId());
+        shapePaintView.getMatrixOp().setConfE164(boardInfo.getConfE164());
+        shapePaintView.getMatrixOp().setBoardId(boardInfo.getId());
+        shapePaintView.getMatrixOp().setPageId(boardInfo.getPageId());
         setBackgroundColor(Color.DKGRAY);
     }
 
@@ -136,7 +142,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
                 lastScaleFactor = scaleFactor;
 
-                OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();
+                OpMatrix opMatrix = shapePaintView.getMatrixOp();
                 KLog.p("zoomCenter={%s, %s} ",  zoomCenter.x, zoomCenter.y);
                 opMatrix.getMatrix().postScale(scaleFactor, scaleFactor, zoomCenter.x, zoomCenter.y);
                 opMatrix.getMatrix().postTranslate(detector.getFocusX()-startDragPoint.x, detector.getFocusY()-startDragPoint.y);
@@ -148,16 +154,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             @Override
             public boolean onScaleBegin(ScaleGestureDetector detector) {
                 KLog.p("state=%s, focusX = %s, focusY =%s", state, detector.getFocusX(), detector.getFocusY());
-
                 state = STATE_SCALING_AND_DRAGING;
                 startDragPoint.set(detector.getFocusX(), detector.getFocusY());
                 zoomCenter.set(getWidth()/2, getHeight()/2);
-                OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();
-                if (null == opMatrix){
-                    opMatrix = new OpMatrix();
-                    assignBasicInfo(opMatrix);
-                    shapePaintView.getMatrixOps().offerLast(opMatrix);
-                }
                 return true;
             }
 
@@ -165,7 +164,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             public void onScaleEnd(ScaleGestureDetector detector) {
                 KLog.p("state=%s, focusX = %s, focusY =%s, scale = %s", state, detector.getFocusX(), detector.getFocusY(), scaleFactor);
                 if (null != publisher){
-                    publisher.publish(shapePaintView.getMatrixOps().peekLast());
+                    publisher.publish(shapePaintView.getMatrixOp());
                 }
                 state = STATE_IDLE;  // TODO STATE_SHAKING ?
             }
@@ -257,12 +256,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     }else if (STATE_DRAWING == state){
                         adjustPaintOp(event);
                     }else if (STATE_DRAGING == state){
-                        OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();
-                        if (null == opMatrix){
-                            opMatrix = new OpMatrix();
-                            assignBasicInfo(opMatrix);
-                            shapePaintView.getMatrixOps().offerLast(opMatrix);
-                        }
+                        OpMatrix opMatrix = shapePaintView.getMatrixOp();
                         opMatrix.getMatrix().postTranslate((event.getX(1) + event.getX(0))/2 -startDragPoint.x,
                                 (event.getY(1) + event.getY(0))/2-startDragPoint.y);
                         startDragPoint.set((event.getX(1) + event.getX(0))/2,

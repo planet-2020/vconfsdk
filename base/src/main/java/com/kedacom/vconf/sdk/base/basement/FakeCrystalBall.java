@@ -59,7 +59,10 @@ class FakeCrystalBall implements ICrystalBall {
         }
 
         Log.d(TAG, String.format("receive REQ %s, para=%s", msgName, para));
-
+        String[][] rspSeqs = magicBook.getRspSeqs(msgName);
+        if (null == rspSeqs || 0==rspSeqs.length){
+            return 0;
+        }
         String[] rspIds = magicBook.getRspSeqs(msgName)[0]; // 若有多路响应序列默认返回第一路
         Object rspBody;
         int delay = 0;

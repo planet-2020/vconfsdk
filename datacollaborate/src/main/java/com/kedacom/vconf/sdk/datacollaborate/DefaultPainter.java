@@ -286,12 +286,12 @@ public class DefaultPainter implements IPainter {
 
         DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
         MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapePaintView.getRenderOps();
-        MyConcurrentLinkedDeque<OpPaint> shapeMatrixOps = shapePaintView.getMatrixOps();
+        OpMatrix shapeMatrixOp = shapePaintView.getMatrixOp();
         Stack<OpPaint> shapeRepealedOps = shapePaintView.getRepealedOps();
 
         DefaultPaintView picPaintView = paintBoard.getPicPaintView();
         MyConcurrentLinkedDeque<OpPaint> picRenderOps = picPaintView.getRenderOps();
-        MyConcurrentLinkedDeque<OpPaint> picMatrixOps = picPaintView.getMatrixOps();
+        OpMatrix picMatrixOp = picPaintView.getMatrixOp();
 //        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
 
 
@@ -349,8 +349,8 @@ public class DefaultPainter implements IPainter {
                 }
                 break;
             case FULLSCREEN_MATRIX: // 全局放缩，包括图片和图形
-                picMatrixOps.offerLast(op);
-                shapeMatrixOps.offerLast(op);
+                picMatrixOp.getMatrix().set(((OpMatrix)op).getMatrix());
+                shapeMatrixOp.getMatrix().set(((OpMatrix)op).getMatrix());
                 break;
 
             default:  // 图形操作
@@ -484,10 +484,7 @@ public class DefaultPainter implements IPainter {
                 shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
                 // 设置图形层画布的缩放比例
-                OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();  // TODO 暂不考虑完整保存以供回放的功能。matrix就一个值就好。
-                if (null != opMatrix) {
-                    shapePaintViewCanvas.setMatrix(opMatrix.getMatrix());
-                }
+                shapePaintViewCanvas.setMatrix(shapePaintView.getMatrixOp().getMatrix());
 
                 /* 刷新渲染标志。
                 从被唤醒到运行至此可能有新的操作入队列（意味着needRender被重新置为true了），
@@ -514,10 +511,7 @@ public class DefaultPainter implements IPainter {
                 picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
                 // 设置画布的缩放比例
-                opMatrix = (OpMatrix) picPaintView.getMatrixOps().peekLast();
-                if (null != opMatrix) {
-                    picPaintViewCanvas.setMatrix(opMatrix.getMatrix());
-                }
+                picPaintViewCanvas.setMatrix(picPaintView.getMatrixOp().getMatrix());
 
                 // 图片绘制
                 render(picPaintView.getRenderOps());

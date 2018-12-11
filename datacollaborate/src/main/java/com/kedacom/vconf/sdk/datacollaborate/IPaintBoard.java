@@ -32,6 +32,11 @@ public interface IPaintBoard {
     int getTool();
     void setPaintStrokeWidth(int width);
     int getPaintStrokeWidth();
+
+    /**
+     * 设置画笔颜色。
+     * @param color 颜色值。NOTE:必须为正整数，如果是字面值注意加后缀"L"，如0xFFFFFFFFL。
+     * */
     void setPaintColor(long color);
     long getPaintColor();
     View snapshot(int layer);

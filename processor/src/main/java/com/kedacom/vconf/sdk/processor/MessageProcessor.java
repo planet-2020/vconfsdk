@@ -186,7 +186,9 @@ public class MessageProcessor extends AbstractProcessor {
                 reqParasMap.put(reqName, paraClzNames);
 
                 // 获取响应序列
-                if (0 == request.rspSeq2().length){
+                if (0 == request.rspSeq().length){
+                    reqRspsMap.put(reqName, new String[][]{});
+                }else if (0 == request.rspSeq2().length){
                     reqRspsMap.put(reqName, new String[][]{request.rspSeq()});
                 }else if (0 == request.rspSeq3().length){
                     reqRspsMap.put(reqName, new String[][]{request.rspSeq(), request.rspSeq2()});
