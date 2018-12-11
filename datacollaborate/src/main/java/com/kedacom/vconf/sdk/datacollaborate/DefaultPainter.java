@@ -59,11 +59,6 @@ public class DefaultPainter implements IPainter {
     private OpPaint tmpPaintOp;
 
     private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener(){
-//        @Override
-//        public void onCreated(OpPaint opPaint) {
-//            tmpPaintOp = opPaint;
-////            refresh();
-//        }
 
         @Override
         public void onAdjust(OpPaint opPaint) {
@@ -71,24 +66,11 @@ public class DefaultPainter implements IPainter {
             refresh();
         }
 
-//        @Override
-//        public void onCancel(OpPaint opPaint) {
-//            tmpPaintOp = null;
-//            refresh();
-//        }
-
         @Override
         public void onConfirm(OpPaint opPaint) {
             tmpPaintOp = null;
             paint(opPaint);
         }
-    };
-
-    private DefaultPaintBoard.IOnMatrixChangedListener onMatrixOpGeneratedListener = () -> {
-//        DefaultPaintBoard board = paintBoards.get(opPaint.getBoardId());
-//        board.getPicPaintView().getMatrixOps().offerLast(opPaint);
-//        board.getShapePaintView().getMatrixOps().offerLast(opPaint);
-        refresh();
     };
 
 
@@ -188,10 +170,8 @@ public class DefaultPainter implements IPainter {
         }
         if (ROLE_AUTHOR == role) {
             board.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
-            board.setOnMatrixOpGeneratedListener(onMatrixOpGeneratedListener);
         }else{
             board.setOnPaintOpGeneratedListener(null);
-            board.setOnMatrixOpGeneratedListener(null);
         }
         roles.put(boardId, role);
     }
@@ -215,7 +195,6 @@ public class DefaultPainter implements IPainter {
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
         if (ROLE_AUTHOR == role) {
             defaultPaintBoard.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
-            defaultPaintBoard.setOnMatrixOpGeneratedListener(onMatrixOpGeneratedListener);
         }
         roles.put(boardId, role);
         paintBoards.put(paintBoard.getBoardId(), defaultPaintBoard);
@@ -390,7 +369,7 @@ public class DefaultPainter implements IPainter {
 //                        /* 只要不是redo或undo操作，被撤销操作缓存就得清空，因为此时redo操作已失效（
 //                        redo操作前面只能是redo操作或者undo操作），而撤销操作缓存仅供redo操作使用。*/
 ////                        KLog.p(KLog.WARN, "clean repealed ops");
-//                        shapeRepealedOps.clear(); // NOTE: 这个应该留给用户决策。
+//                        shapeRepealedOps.clear(); // NOTE: 这个留给用户决策。
 
                         shapeRenderOps.offerLast(op);
 

@@ -54,7 +54,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private BoardInfo boardInfo;
 
     private IOnPaintOpGeneratedListener paintOpGeneratedListener;
-    private IOnMatrixChangedListener matrixOpGeneratedListener;
     private IPublisher publisher;
 
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
@@ -127,10 +126,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(context, new ScaleGestureDetector.SimpleOnScaleGestureListener(){
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
-                KLog.p("focusX= " + detector.getFocusX());
-                KLog.p("focusY= " + detector.getFocusY());
-                KLog.p("scale=%s, lastScale=%s, |scale-lastScale|=%s", scaleFactor, lastScaleFactor, Math.abs(scaleFactor-lastScaleFactor));
-//                scaleFactor *= detector.getScaleFactor();
+//                KLog.p("focusX= " + detector.getFocusX());
+//                KLog.p("focusY= " + detector.getFocusY());
+//                KLog.p("scale=%s, lastScale=%s, |scale-lastScale|=%s", scaleFactor, lastScaleFactor, Math.abs(scaleFactor-lastScaleFactor));
                 scaleFactor = detector.getScaleFactor();
                 if (Math.abs(scaleFactor-lastScaleFactor) < 0.00001){
                     return true;
@@ -139,25 +137,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                 OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();
                 opMatrix.getMatrix().postScale(scaleFactor, scaleFactor, detector.getFocusX(), detector.getFocusY());
-//                if (null != matrixOpGeneratedListener){
-//                    ((OpMatrix)opPaint).getMatrix().setScale(scaleFactor, scaleFactor, detector.getFocusX(), detector.getFocusY());  // TODO 直接修改view的matrix然后通知matrixChanged刷新。
-//                    matrixOpGeneratedListener.onMatrixChanged(opPaint);
-//                }
-                if (null != paintOpGeneratedListener){
-                    paintOpGeneratedListener.onAdjust(null);
-                }
+                refreshPaintOp();
                 return  true;
             }
 
             @Override
             public boolean onScaleBegin(ScaleGestureDetector detector) {
-                KLog.p("focusX = " + detector.getFocusX());
-                KLog.p("focusY = " + detector.getFocusY());
-                if (STATE_DRAWING == state){
-                    confirmPaintOp();
-                }else if (STATE_SHAKING == state){
-                    cancelPaintOp();
-                }
+                KLog.p("state=%s, focusX = %s, focusY =%s", state, detector.getFocusX(), detector.getFocusY());
+
                 state = STATE_SCALING_AND_DRAGING;
                 OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();
                 if (null == opMatrix){
@@ -165,25 +152,24 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     assignBasicInfo(opMatrix);
                     shapePaintView.getMatrixOps().offerLast(opMatrix);
                 }
-//                if (null != paintOpGeneratedListener){
-//                    opPaint = new OpMatrix();
-//                    assignBasicInfo(opPaint);
-//                }
                 return true;
             }
 
             @Override
             public void onScaleEnd(ScaleGestureDetector detector) {
-                KLog.p("focusX = " + detector.getFocusX());
-                KLog.p("focusY = " + detector.getFocusY());
-                KLog.p("scale = " + scaleFactor);
-                state = STATE_IDLE;
-//                opPaint = null;
+                KLog.p("state=%s, focusX = %s, focusY =%s, scale = %s", state, detector.getFocusX(), detector.getFocusY(), scaleFactor);
+                if (null != publisher){
+                    publisher.publish(shapePaintView.getMatrixOps().peekLast());
+                }
+                state = STATE_IDLE;  // TODO STATE_SHAKING ?
             }
         });
 
         @Override
         public boolean onTouch(View v, MotionEvent event) {
+            if (null == paintOpGeneratedListener){
+                return false;
+            }
             scaleGestureDetector.onTouchEvent(event);
             if (STATE_SCALING == state
                     || STATE_SCALING_AND_DRAGING == state){
@@ -193,23 +179,26 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             switch (event.getActionMasked()) {
 
                 case MotionEvent.ACTION_DOWN:
-                    KLog.p("ACTION_DOWN{%s}", event);
-//                    mode=MODE_ONE_FINGER;
+                    KLog.p("state=%s, ACTION_DOWN{%s}", state, event);
                     state = STATE_SHAKING;
-                    startPoint.set(event.getX(), event.getY()); // 记录起始点
-                    createPaintOp(event);
+                    createPaintOp(event.getX(), event.getY());
                     break;
 
                 case MotionEvent.ACTION_POINTER_DOWN:
-                    KLog.p("ACTION_POINTER_DOWN{%s}", event);
-//                    if (STATE_DRAWING == state){
-//                        state = STATE_DRAGING;
-//                        event.getX(1) + event.getX(0)
+                    KLog.p("state=%s, ACTION_POINTER_DOWN{%s}", state, event);
+                    if (2 == event.getPointerCount()) {
+                        if (STATE_DRAWING == state) {
+                            confirmPaintOp();
+                        }else if (STATE_SHAKING == state){
+                            cancelPaintOp();
+                        }
+///                        event.getX(1) + event.getX(0)
 //                        startDragPoint = distance(event); // 记录起始距离
 //                        if (null != paintOpGeneratedListener) {
 ////                            createPaintOp(event); // TODO 拖动操作。matrix操作。
 //                        }
-//                    }
+                        state = STATE_DRAGING;
+                    }
 //                    if (2 == event.getPointerCount()){
 //                        mode=MODE_TWO_FINGER;
 //                        if (null != paintOpGeneratedListener) {
@@ -224,8 +213,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     break;
 
                 case MotionEvent.ACTION_POINTER_UP:
-                    KLog.p("ACTION_POINTER_UP{%s}", event);
-//                    if (2 == event.getPointerCount()){ // 二个手指其中一个抬起，只剩一个手指了，切换到单手指模式
+                    KLog.p("state=%s, ACTION_POINTER_UP{%s}", state, event);
+                    if (2 == event.getPointerCount()){ // 二个手指其中一个抬起，只剩一个手指了，切换到单手指模式
 //                        mode=MODE_ONE_FINGER;
 //                        bMovingFarEnough = false;
 ////                        startPoint.set(event.getX(), event.getY()); // 记录起始点  // TODO 获取仅剩的手指坐标
@@ -233,11 +222,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                            confirmPaintOp(event);     // 确认之前的操作
 //                            createPaintOp(event);       // 重新创建新的操作
 //                        }
-//                    }
+                        state = STATE_SHAKING;
+                        int indx = 1==event.getActionIndex() ? 0 : 1;
+                        createPaintOp(event.getX(indx), event.getY(indx));
+                    }
                     break;
 
                 case MotionEvent.ACTION_MOVE:
-
+                    KLog.p("state=%s, ACTION_MOVE{%s}", state, event);
                     if (STATE_SHAKING == state) {
                         int dx = (int) (event.getX() - startPoint.x);
                         int dy = (int) (event.getY() - startPoint.y);
@@ -266,10 +258,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                        refresh();
 //                        needRefresh = false;
 //                    }
-                    KLog.p("ACTION_UP{%s}", event);
+                    KLog.p("state=%s, ACTION_UP{%s}", state, event);
                     if (STATE_DRAWING == state) {
                         confirmPaintOp();
+                    }else if (STATE_SHAKING == state){
+                        cancelPaintOp();
                     }
+                    state = STATE_IDLE;
                     break;
 
                 case MotionEvent.ACTION_CANCEL:
@@ -317,15 +312,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         private OpPaint opPaint;
-        private void createPaintOp(MotionEvent event){
-            if (null == paintOpGeneratedListener){
-                return;
-            }
+        private void createPaintOp(float startX, float startY){
             switch (tool){
                 case TOOL_PENCIL:
                     OpDrawPath opDrawPath = new OpDrawPath(new ArrayList<>());
-                    opDrawPath.getPoints().add(new PointF(event.getX(), event.getY()));
-                    opDrawPath.getPath().moveTo(event.getX(), event.getY());
+                    opDrawPath.getPoints().add(new PointF(startX, startY));
+                    opDrawPath.getPath().moveTo(startX, startY);
                     opPaint = opDrawPath;
                     break;
                 case TOOL_LINE:
@@ -341,14 +333,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     KLog.p(KLog.ERROR, "unknown TOOL %s", tool);
                     return;
             }
+            startPoint.set(startX, startY); // 记录起始点
             assignBasicInfo(opPaint);
-//            paintOpGeneratedListener.onCreated(opPaint);
         }
 
         private void adjustPaintOp(MotionEvent event){
-            if (null == paintOpGeneratedListener){
-                return;
-            }
             switch (tool){ // TODO 事件会打包多个进而造成图形轨迹不平滑，getHistorySize
                 case TOOL_PENCIL:
                     OpDrawPath opDrawPath = (OpDrawPath) opPaint;
@@ -400,17 +389,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         private void cancelPaintOp(){
-//            if (null == paintOpGeneratedListener){
-//                return;
-//            }
-//            paintOpGeneratedListener.onAdjust(null);
             opPaint = null;
         }
 
         private void confirmPaintOp(){
-            if (null == paintOpGeneratedListener){
-                return;
-            }
             paintOpGeneratedListener.onConfirm(opPaint);
             if (null != publisher){
                 publisher.publish(opPaint);
@@ -609,17 +591,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         this.paintOpGeneratedListener = paintOpGeneratedListener;
     }
     interface IOnPaintOpGeneratedListener{
-//        void onCreated(OpPaint opPaint);
         void onAdjust(OpPaint opPaint);
-//        void onCancel(OpPaint opPaint);
         void onConfirm(OpPaint opPaint);
-    }
-
-    void setOnMatrixOpGeneratedListener(IOnMatrixChangedListener onMatrixOpGeneratedListener) {
-        matrixOpGeneratedListener = onMatrixOpGeneratedListener;
-    }
-    interface IOnMatrixChangedListener {
-        void onMatrixChanged();
     }
 
 }
