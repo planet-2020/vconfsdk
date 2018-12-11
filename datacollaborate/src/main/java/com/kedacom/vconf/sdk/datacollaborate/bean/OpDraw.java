@@ -5,7 +5,7 @@ import androidx.annotation.NonNull;
 
 public abstract class OpDraw extends OpPaint {
     private int strokeWidth;     // 线宽
-    private int color;           // 颜色值
+    private long color;           // 颜色值
 
 
     public int getStrokeWidth() {
@@ -16,11 +16,11 @@ public abstract class OpDraw extends OpPaint {
         this.strokeWidth = strokeWidth;
     }
 
-    public int getColor() {
+    public long getColor() {
         return color;
     }
 
-    public void setColor(int color) {
+    public void setColor(long color) {
         this.color = color;
     }
 

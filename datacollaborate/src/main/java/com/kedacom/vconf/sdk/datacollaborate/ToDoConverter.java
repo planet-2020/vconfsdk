@@ -187,7 +187,7 @@ final class ToDoConverter {
     public static OpDrawLine fromTransferObj(DcsOperLineOperInfoNtf dcLineOp) {
         TDCSWbLine tdcsWbLine = dcLineOp.AssParam.tLine;
         OpDrawLine opDrawLine = new OpDrawLine(tdcsWbLine.tBeginPt.nPosx, tdcsWbLine.tBeginPt.nPosy, tdcsWbLine.tEndPt.nPosx, tdcsWbLine.tEndPt.nPosy);
-        assignDrawDomainObj(dcLineOp.MainParam, tdcsWbLine.dwLineWidth, (int) tdcsWbLine.dwRgb, opDrawLine);
+        assignDrawDomainObj(dcLineOp.MainParam, tdcsWbLine.dwLineWidth, tdcsWbLine.dwRgb, opDrawLine);
         return opDrawLine;
     }
 
@@ -202,7 +202,7 @@ final class ToDoConverter {
     public static OpDrawRect fromTransferObj(DcsOperRectangleOperInfoNtf dcRectOp) {
         TDCSWbRectangle rectangle = dcRectOp.AssParam.tRectangle;
         OpDrawRect opDrawRect = new OpDrawRect(rectangle.tBeginPt.nPosx, rectangle.tBeginPt.nPosy, rectangle.tEndPt.nPosx, rectangle.tEndPt.nPosy);
-        assignDrawDomainObj(dcRectOp.MainParam, rectangle.dwLineWidth, (int) rectangle.dwRgb, opDrawRect);
+        assignDrawDomainObj(dcRectOp.MainParam, rectangle.dwLineWidth, rectangle.dwRgb, opDrawRect);
         return opDrawRect;
     }
 
@@ -217,7 +217,7 @@ final class ToDoConverter {
     public static OpDrawOval fromTransferObj(DcsOperCircleOperInfoNtf dcOvalOp) {
         TDCSWbCircle circle = dcOvalOp.AssParam.tCircle;
         OpDrawOval opDrawOval = new OpDrawOval(circle.tBeginPt.nPosx, circle.tBeginPt.nPosy, circle.tEndPt.nPosx, circle.tEndPt.nPosy);
-        assignDrawDomainObj(dcOvalOp.MainParam, circle.dwLineWidth, (int) circle.dwRgb, opDrawOval);
+        assignDrawDomainObj(dcOvalOp.MainParam, circle.dwLineWidth, circle.dwRgb, opDrawOval);
         return opDrawOval;
     }
 
@@ -232,7 +232,7 @@ final class ToDoConverter {
     public static OpDrawPath fromTransferObj(DcsOperPencilOperInfoNtf dcPathOp) {
         TDCSWbPencil pencil = dcPathOp.AssParam.tPencil;
         OpDrawPath opDrawPath = new OpDrawPath(fromTransferObj(pencil.atPList));
-        assignDrawDomainObj(dcPathOp.MainParam, pencil.dwLineWidth, (int) pencil.dwRgb, opDrawPath);
+        assignDrawDomainObj(dcPathOp.MainParam, pencil.dwLineWidth, pencil.dwRgb, opDrawPath);
         return opDrawPath;
     }
 
@@ -414,7 +414,7 @@ final class ToDoConverter {
         domainObj.setSn(transferObj.dwMsgSequence);
     }
 
-    public static void assignDrawDomainObj(TDCSOperContent transferObj, int strokeWidth, int color, OpDraw domainObj){
+    public static void assignDrawDomainObj(TDCSOperContent transferObj, int strokeWidth, long color, OpDraw domainObj){
         assignPaintDomainObj(transferObj, domainObj);
         domainObj.setStrokeWidth(strokeWidth);
         domainObj.setColor(color);

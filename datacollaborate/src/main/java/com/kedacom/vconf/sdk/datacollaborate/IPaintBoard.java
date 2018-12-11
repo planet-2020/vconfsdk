@@ -32,8 +32,8 @@ public interface IPaintBoard {
     int getTool();
     void setPaintStrokeWidth(int width);
     int getPaintStrokeWidth();
-    void setPaintColor(int color);
-    int getPaintColor();
+    void setPaintColor(long color);
+    long getPaintColor();
     View snapshot(int layer);
     void undo();
     void redo();

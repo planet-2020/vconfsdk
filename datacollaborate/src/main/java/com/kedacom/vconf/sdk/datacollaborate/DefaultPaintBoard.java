@@ -45,7 +45,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private int paintStrokeWidth = 5;
 
     // 画笔颜色
-    private int paintColor = Color.WHITE;
+    private long paintColor = Color.WHITE;
 
     private static final int MIN_ZOOM = 50;
     private static final int MAX_ZOOM = 300;
@@ -532,12 +532,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     @Override
-    public void setPaintColor(int color) {
+    public void setPaintColor(long color) {
         this.paintColor = color;
     }
 
     @Override
-    public int getPaintColor() {
+    public long getPaintColor() {
         return paintColor;
     }
 

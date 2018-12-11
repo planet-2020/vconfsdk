@@ -418,7 +418,7 @@ public class DefaultPainter implements IPainter {
                     paint.setStyle(Paint.Style.STROKE);
                     paint.setAntiAlias(true);
                     paint.setStrokeWidth(opDraw.getStrokeWidth());
-                    paint.setColor(opDraw.getColor());
+                    paint.setColor((int) opDraw.getColor());
                 }
                 break;
         }
