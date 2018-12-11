@@ -203,6 +203,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                        if (null != paintOpGeneratedListener) {
 ////                            createPaintOp(event); // TODO 拖动操作。matrix操作。
 //                        }
+                        startDragPoint.set((event.getX(1) + event.getX(0))/2,
+                                (event.getY(1) + event.getY(0))/2);
                         state = STATE_DRAGING;
                     }
 //                    if (2 == event.getPointerCount()){
@@ -255,7 +257,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     }else if (STATE_DRAWING == state){
                         adjustPaintOp(event);
                     }else if (STATE_DRAGING == state){
-                        // TODO
+                        OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();
+                        if (null == opMatrix){
+                            opMatrix = new OpMatrix();
+                            assignBasicInfo(opMatrix);
+                            shapePaintView.getMatrixOps().offerLast(opMatrix);
+                        }
+                        opMatrix.getMatrix().postTranslate((event.getX(1) + event.getX(0))/2 -startDragPoint.x,
+                                (event.getY(1) + event.getY(0))/2-startDragPoint.y);
+                        startDragPoint.set((event.getX(1) + event.getX(0))/2,
+                                (event.getY(1) + event.getY(0))/2);
+                        refreshPaintOp();
                     }
                     break;
 
