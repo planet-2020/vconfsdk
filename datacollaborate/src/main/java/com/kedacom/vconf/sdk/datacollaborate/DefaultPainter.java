@@ -59,11 +59,11 @@ public class DefaultPainter implements IPainter {
     private OpPaint tmpPaintOp;
 
     private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener(){
-        @Override
-        public void onCreated(OpPaint opPaint) {
-            tmpPaintOp = opPaint;
-//            refresh();
-        }
+//        @Override
+//        public void onCreated(OpPaint opPaint) {
+//            tmpPaintOp = opPaint;
+////            refresh();
+//        }
 
         @Override
         public void onAdjust(OpPaint opPaint) {
@@ -71,11 +71,11 @@ public class DefaultPainter implements IPainter {
             refresh();
         }
 
-        @Override
-        public void onCancel(OpPaint opPaint) {
-            tmpPaintOp = null;
-            refresh();
-        }
+//        @Override
+//        public void onCancel(OpPaint opPaint) {
+//            tmpPaintOp = null;
+//            refresh();
+//        }
 
         @Override
         public void onConfirm(OpPaint opPaint) {
@@ -84,10 +84,10 @@ public class DefaultPainter implements IPainter {
         }
     };
 
-    private DefaultPaintBoard.IOnMatrixOpGeneratedListener onMatrixOpGeneratedListener = opPaint -> {
-        DefaultPaintBoard board = paintBoards.get(opPaint.getBoardId());
-        board.getPicPaintView().getMatrixOps().offerLast(opPaint);
-        board.getShapePaintView().getMatrixOps().offerLast(opPaint);
+    private DefaultPaintBoard.IOnMatrixChangedListener onMatrixOpGeneratedListener = () -> {
+//        DefaultPaintBoard board = paintBoards.get(opPaint.getBoardId());
+//        board.getPicPaintView().getMatrixOps().offerLast(opPaint);
+//        board.getShapePaintView().getMatrixOps().offerLast(opPaint);
         refresh();
     };
 

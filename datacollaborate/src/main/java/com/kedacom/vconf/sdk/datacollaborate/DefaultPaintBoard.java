@@ -54,7 +54,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private BoardInfo boardInfo;
 
     private IOnPaintOpGeneratedListener paintOpGeneratedListener;
-    private IOnMatrixOpGeneratedListener matrixOpGeneratedListener;
+    private IOnMatrixChangedListener matrixOpGeneratedListener;
     private IPublisher publisher;
 
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
@@ -130,16 +130,21 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 KLog.p("focusX= " + detector.getFocusX());
                 KLog.p("focusY= " + detector.getFocusY());
                 KLog.p("scale=%s, lastScale=%s, |scale-lastScale|=%s", scaleFactor, lastScaleFactor, Math.abs(scaleFactor-lastScaleFactor));
-                scaleFactor *= detector.getScaleFactor();
-                if (scaleFactor == lastScaleFactor){
+//                scaleFactor *= detector.getScaleFactor();
+                scaleFactor = detector.getScaleFactor();
+                if (Math.abs(scaleFactor-lastScaleFactor) < 0.00001){
                     return true;
                 }
-//                if (Math.abs(scaleFactor-lastScaleFactor) > 0.01) {
-                    lastScaleFactor = scaleFactor;
+                lastScaleFactor = scaleFactor;
+
+                OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();
+                opMatrix.getMatrix().postScale(scaleFactor, scaleFactor, detector.getFocusX(), detector.getFocusY());
+//                if (null != matrixOpGeneratedListener){
+//                    ((OpMatrix)opPaint).getMatrix().setScale(scaleFactor, scaleFactor, detector.getFocusX(), detector.getFocusY());  // TODO 直接修改view的matrix然后通知matrixChanged刷新。
+//                    matrixOpGeneratedListener.onMatrixChanged(opPaint);
 //                }
-                if (null != matrixOpGeneratedListener){
-                    ((OpMatrix)opPaint).getMatrix().setScale(scaleFactor, scaleFactor, detector.getFocusX(), detector.getFocusY());
-                    matrixOpGeneratedListener.onMatrix(opPaint);
+                if (null != paintOpGeneratedListener){
+                    paintOpGeneratedListener.onAdjust(null);
                 }
                 return  true;
             }
@@ -154,10 +159,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     cancelPaintOp();
                 }
                 state = STATE_SCALING_AND_DRAGING;
-                if (null != paintOpGeneratedListener){
-                    opPaint = new OpMatrix();
-                    assignBasicInfo(opPaint);
+                OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();
+                if (null == opMatrix){
+                    opMatrix = new OpMatrix();
+                    assignBasicInfo(opMatrix);
+                    shapePaintView.getMatrixOps().offerLast(opMatrix);
                 }
+//                if (null != paintOpGeneratedListener){
+//                    opPaint = new OpMatrix();
+//                    assignBasicInfo(opPaint);
+//                }
                 return true;
             }
 
@@ -167,7 +178,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 KLog.p("focusY = " + detector.getFocusY());
                 KLog.p("scale = " + scaleFactor);
                 state = STATE_IDLE;
-                opPaint = null;
+//                opPaint = null;
             }
         });
 
@@ -306,9 +317,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         private OpPaint opPaint;
-        private OpPaint createPaintOp(MotionEvent event){
+        private void createPaintOp(MotionEvent event){
             if (null == paintOpGeneratedListener){
-                return null;
+                return;
             }
             switch (tool){
                 case TOOL_PENCIL:
@@ -318,30 +329,27 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     opPaint = opDrawPath;
                     break;
                 case TOOL_LINE:
-                    OpDrawLine opDrawLine = new OpDrawLine();
-                    opPaint = opDrawLine;
+                    opPaint = new OpDrawLine();
                     break;
                 case TOOL_RECT:
-                    OpDrawRect opDrawRect = new OpDrawRect();
-                    opPaint = opDrawRect;
+                    opPaint = new OpDrawRect();
                     break;
                 case TOOL_OVAL:
-                    OpDrawOval opDrawOval = new OpDrawOval();
-                    opPaint = opDrawOval;
+                    opPaint = new OpDrawOval();
                     break;
                 default:
-                    return null;
+                    KLog.p(KLog.ERROR, "unknown TOOL %s", tool);
+                    return;
             }
             assignBasicInfo(opPaint);
-            paintOpGeneratedListener.onCreated(opPaint);
-            return opPaint;
+//            paintOpGeneratedListener.onCreated(opPaint);
         }
 
         private void adjustPaintOp(MotionEvent event){
             if (null == paintOpGeneratedListener){
                 return;
             }
-            switch (tool){
+            switch (tool){ // TODO 事件会打包多个进而造成图形轨迹不平滑，getHistorySize
                 case TOOL_PENCIL:
                     OpDrawPath opDrawPath = (OpDrawPath) opPaint;
                     opDrawPath.setStrokeWidth(paintStrokeWidth);
@@ -384,11 +392,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         }
 
-        private void cancelPaintOp(){
+        private void refreshPaintOp(){
             if (null == paintOpGeneratedListener){
                 return;
             }
-            paintOpGeneratedListener.onCancel(opPaint);
+            paintOpGeneratedListener.onAdjust(null);
+        }
+
+        private void cancelPaintOp(){
+//            if (null == paintOpGeneratedListener){
+//                return;
+//            }
+//            paintOpGeneratedListener.onAdjust(null);
             opPaint = null;
         }
 
@@ -594,17 +609,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         this.paintOpGeneratedListener = paintOpGeneratedListener;
     }
     interface IOnPaintOpGeneratedListener{
-        void onCreated(OpPaint opPaint);
+//        void onCreated(OpPaint opPaint);
         void onAdjust(OpPaint opPaint);
-        void onCancel(OpPaint opPaint);
+//        void onCancel(OpPaint opPaint);
         void onConfirm(OpPaint opPaint);
     }
 
-    void setOnMatrixOpGeneratedListener(IOnMatrixOpGeneratedListener onMatrixOpGeneratedListener) {
+    void setOnMatrixOpGeneratedListener(IOnMatrixChangedListener onMatrixOpGeneratedListener) {
         matrixOpGeneratedListener = onMatrixOpGeneratedListener;
     }
-    interface IOnMatrixOpGeneratedListener{
-        void onMatrix(OpPaint opPaint);
+    interface IOnMatrixChangedListener {
+        void onMatrixChanged();
     }
 
 }
