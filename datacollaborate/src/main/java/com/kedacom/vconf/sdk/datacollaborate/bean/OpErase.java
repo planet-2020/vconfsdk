@@ -8,11 +8,11 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 
-public class OpDrawPath extends OpDraw {
+public class OpErase extends OpDraw {
     private List<PointF> points;
     private Path path;
 
-    public OpDrawPath(List<PointF> points){
+    public OpErase(List<PointF> points){
         if (null != points) {
             path = new Path();
             if (!points.isEmpty()) {
@@ -26,7 +26,7 @@ public class OpDrawPath extends OpDraw {
             }
         }
         this.points = points;
-        type = EOpType.DRAW_PATH;
+        type = EOpType.ERASE;
     }
 
     @NonNull

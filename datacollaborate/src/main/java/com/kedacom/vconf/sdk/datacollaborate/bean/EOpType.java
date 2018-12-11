@@ -8,6 +8,7 @@ public enum EOpType {
     UNDO,
     REDO,
     FULLSCREEN_MATRIX,
+    ERASE,
     RECT_ERASE,
     CLEAR_SCREEN,
     INSERT_PICTURE,

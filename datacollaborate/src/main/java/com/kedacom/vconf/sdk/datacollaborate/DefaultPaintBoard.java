@@ -19,6 +19,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
@@ -273,16 +274,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 case TOOL_OVAL:
                     opPaint = new OpDrawOval();
                     break;
-//                case TOOL_ERASER:
-//                    opPaint = new OpErase();
-//                    break;
+                case TOOL_ERASER:
+                    OpErase opErase = new OpErase(new ArrayList<>());
+                    opErase.getPoints().add(new PointF(startX, startY));
+                    opErase.getPath().moveTo(startX, startY);
+                    opPaint = opErase;
+                    break;
                 case TOOL_RECT_ERASER:
-                    // 矩形擦除先绘制一个虚线矩形框
+                    // 矩形擦除先绘制一个虚线矩形框选择擦除区域
                     OpDrawRect opDrawRect = new OpDrawRect();
                     opDrawRect.setLineStyle(OpDraw.DASH);
                     opPaint = opDrawRect;
-//                    OpRectErase opRectErase = new OpRectErase();
-//                    opPaint = opRectErase;
                     break;
                 default:
                     KLog.p(KLog.ERROR, "unknown TOOL %s", tool);
@@ -328,14 +330,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     opDrawOval.setStrokeWidth(paintStrokeWidth);
                     opDrawOval.setColor(paintColor);
                     break;
+                case TOOL_ERASER:
+                    OpErase opErase = (OpErase) opPaint;
+                    opErase.setStrokeWidth(25); // XXX
+                    opErase.getPoints().add(new PointF(event.getX(), event.getY()));
+                    opErase.getPath().lineTo(event.getX(), event.getY());
+                    break;
                 case TOOL_RECT_ERASER:
                     OpDrawRect opDrawRect1 = (OpDrawRect) opPaint;
                     opDrawRect1.setLeft(startPoint.x); // TODO 这些重复的操作都在create里面做
                     opDrawRect1.setTop(startPoint.y);
                     opDrawRect1.setRight(event.getX());
                     opDrawRect1.setBottom(event.getY());
-                    opDrawRect1.setStrokeWidth(2);
-                    opDrawRect1.setColor(0xFF08b1f2L);
+                    opDrawRect1.setStrokeWidth(2); // XXX
+                    opDrawRect1.setColor(0xFF08b1f2L); // XXX
                     break;
                 default:
                     return;

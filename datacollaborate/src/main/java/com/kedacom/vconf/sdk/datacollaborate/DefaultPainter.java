@@ -20,6 +20,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
@@ -399,7 +400,7 @@ public class DefaultPainter implements IPainter {
     }
 
 
-//    private final PorterDuffXfermode DUFFMODE_SRCOVER = new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER);
+    private final PorterDuffXfermode DUFFMODE_SRCIN = new PorterDuffXfermode(PorterDuff.Mode.SRC_IN);
 //    private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
     private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
     private Paint cfgPaint(OpPaint opPaint){
@@ -422,6 +423,11 @@ public class DefaultPainter implements IPainter {
                     paint.setColor((int) opDraw.getColor());
                     if (OpDraw.DASH == opDraw.getLineStyle()){
                         paint.setPathEffect(new DashPathEffect( new float[]{10, 4},0));
+                    }
+                    if (EOpType.ERASE == opPaint.getType()){
+                        KLog.p(KLog.WARN, "ERASE %s",opPaint);
+                        paint.setAlpha(0);
+                        paint.setXfermode(DUFFMODE_SRCIN);
                     }
                 }
                 break;
@@ -554,6 +560,10 @@ public class DefaultPainter implements IPainter {
                     OpDrawPath pathOp = (OpDrawPath) op;
                     shapePaintViewCanvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
                     break;
+                case ERASE:
+                    OpErase opErase = (OpErase) op;
+                    shapePaintViewCanvas.drawPath(opErase.getPath(), cfgPaint(opErase));
+                    break;
                 case RECT_ERASE:
                     OpRectErase eraseOp = (OpRectErase) op;
                     shapePaintViewCanvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
@@ -594,6 +604,10 @@ public class DefaultPainter implements IPainter {
                     case DRAW_PATH:
                         OpDrawPath pathOp = (OpDrawPath) op;
                         shapePaintViewCanvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
+                        break;
+                    case ERASE:
+                        OpErase opErase = (OpErase) op;
+                        shapePaintViewCanvas.drawPath(opErase.getPath(), cfgPaint(opErase));
                         break;
                     case RECT_ERASE:
                         OpRectErase eraseOp = (OpRectErase) op;
