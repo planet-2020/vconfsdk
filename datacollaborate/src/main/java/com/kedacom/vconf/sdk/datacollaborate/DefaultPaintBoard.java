@@ -118,6 +118,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         private PointF startPoint = new PointF();	// 起始绘制点
         private PointF startDragPoint = new PointF();	// 起始拖拽点
+        private PointF zoomCenter = new PointF();
 
         private boolean bMovingFarEnough = false;
 
@@ -136,7 +137,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 lastScaleFactor = scaleFactor;
 
                 OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();
-                opMatrix.getMatrix().postScale(scaleFactor, scaleFactor, detector.getFocusX(), detector.getFocusY());
+                KLog.p("zoomCenter={%s, %s} ",  zoomCenter.x, zoomCenter.y);
+                opMatrix.getMatrix().postScale(scaleFactor, scaleFactor, zoomCenter.x, zoomCenter.y);
                 refreshPaintOp();
                 return  true;
             }
@@ -146,6 +148,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 KLog.p("state=%s, focusX = %s, focusY =%s", state, detector.getFocusX(), detector.getFocusY());
 
                 state = STATE_SCALING_AND_DRAGING;
+                zoomCenter.set(getWidth()/2, getHeight()/2);
                 OpMatrix opMatrix = (OpMatrix) shapePaintView.getMatrixOps().peekLast();
                 if (null == opMatrix){
                     opMatrix = new OpMatrix();
