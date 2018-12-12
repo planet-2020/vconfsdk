@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.PointF;
@@ -49,6 +51,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     // 画笔颜色
     private long paintColor = 0xFFFFFFFFL;
+
+    // 橡皮擦尺寸。单位：pixel
+    private int eraserSize = 25;
 
     private static final int MIN_ZOOM = 50;
     private static final int MAX_ZOOM = 300;
@@ -305,10 +310,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (opPaint instanceof OpDraw){
                 OpDraw opDraw = (OpDraw) opPaint;
                 if (TOOL_ERASER == tool){
-                    opDraw.setStrokeWidth(25); // XXX
+                    opDraw.setStrokeWidth(eraserSize);
                 }else if(TOOL_RECT_ERASER == tool){
-                    opDraw.setStrokeWidth(2);
                     opDraw.setLineStyle(OpDraw.DASH);
+                    opDraw.setStrokeWidth(2);
                     opDraw.setColor(0xFF08b1f2L);
                 } else {
                     opDraw.setStrokeWidth(paintStrokeWidth);
@@ -441,8 +446,30 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     @Override
-    public View snapshot(int layer) {
-        return null;
+    public void setEraserSize(int size) {
+        eraserSize = size;
+    }
+
+    @Override
+    public int getEraserSize() {
+        return eraserSize;
+    }
+
+    @Override
+    public Bitmap snapshot(int layer) {
+        Bitmap shot = null;
+        if (LAYER_PIC_AND_SHAPE == layer || LAYER_ALL == layer) {
+            shot = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
+            draw(new Canvas(shot));
+        }else if (LAYER_SHAPE == layer){
+            shot = Bitmap.createBitmap(shapePaintView.getWidth(), shapePaintView.getHeight(), Bitmap.Config.ARGB_8888);
+            shapePaintView.draw(new Canvas(shot));
+        }else if (LAYER_PIC == layer){
+            shot = Bitmap.createBitmap(picPaintView.getWidth(), picPaintView.getHeight(), Bitmap.Config.ARGB_8888);
+            picPaintView.draw(new Canvas(shot));
+        }
+
+        return shot;
     }
 
     @Override

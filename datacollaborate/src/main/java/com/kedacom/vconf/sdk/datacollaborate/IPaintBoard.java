@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import android.graphics.Bitmap;
 import android.view.View;
 
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
@@ -39,7 +40,19 @@ public interface IPaintBoard {
      * */
     void setPaintColor(long color);
     long getPaintColor();
-    View snapshot(int layer);
+
+    /**
+     * 设置橡皮擦尺寸（size*size）。
+     * @param size 橡皮擦尺寸。单位：pixel
+     * */
+    void setEraserSize(int size);
+    int getEraserSize();
+
+    /**
+     * 截屏。
+     * @param layer 图层。
+     * */
+    Bitmap snapshot(int layer);
     void undo();
     void redo();
     void clearScreen();
