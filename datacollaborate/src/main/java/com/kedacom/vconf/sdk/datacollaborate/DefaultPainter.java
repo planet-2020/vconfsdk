@@ -304,10 +304,12 @@ public class DefaultPainter implements IPainter {
             case INSERT_PICTURE:
                 picRenderOps.offerLast(op);
                 OpInsertPic opInsertPic = (OpInsertPic) op;
-                if (null != opInsertPic.getPicSavePath()){
-                    opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicSavePath())); // TODO 优化。比如大分辨率图片裁剪
-                }else {
-                    bRefresh = false; // 图片为空不需刷新界面（图片可能正在下载）
+                if (null == opInsertPic.getPic()) {
+                    if (null != opInsertPic.getPicSavePath()) {
+                        opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicSavePath())); // TODO 优化。比如大分辨率图片裁剪
+                    } else {
+                        bRefresh = false; // 图片为空不需刷新界面（图片可能正在下载）
+                    }
                 }
                 break;
 
@@ -623,7 +625,8 @@ public class DefaultPainter implements IPainter {
 //                            int h = insertPicOp.pic.getHeight();
                             picMatrix.setValues(insertPicOp.getMatrixValue());
 //                                KLog.p("to render %s", op);
-                            picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
+//                            picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
+                            picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), 0, 0, cfgPaint(insertPicOp));
                         }
                         break;
                 }

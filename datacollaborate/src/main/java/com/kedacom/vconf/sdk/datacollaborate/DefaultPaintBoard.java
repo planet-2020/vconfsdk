@@ -22,6 +22,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
@@ -142,8 +143,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
                 lastScaleFactor = scaleFactor;
 
-                OpMatrix opMatrix = shapePaintView.getMatrixOp();
 //                KLog.p("zoomCenter={%s, %s} ",  zoomCenter.x, zoomCenter.y);
+                OpMatrix opMatrix = shapePaintView.getMatrixOp();
+                opMatrix.getMatrix().postScale(scaleFactor, scaleFactor, zoomCenter.x, zoomCenter.y);
+                opMatrix.getMatrix().postTranslate(detector.getFocusX()-startDragPoint.x, detector.getFocusY()-startDragPoint.y);
+                opMatrix = picPaintView.getMatrixOp();
                 opMatrix.getMatrix().postScale(scaleFactor, scaleFactor, zoomCenter.x, zoomCenter.y);
                 opMatrix.getMatrix().postTranslate(detector.getFocusX()-startDragPoint.x, detector.getFocusY()-startDragPoint.y);
                 startDragPoint.set(detector.getFocusX(), detector.getFocusY());
@@ -164,7 +168,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             public void onScaleEnd(ScaleGestureDetector detector) {
                 KLog.p("state=%s, focusX = %s, focusY =%s, scale = %s", state, detector.getFocusX(), detector.getFocusY(), scaleFactor);
                 if (null != publisher){
-                    publisher.publish(shapePaintView.getMatrixOp());
+                    publisher.publish(shapePaintView.getMatrixOp()); // TODO 判断当前缩放图层
                 }
                 state = STATE_IDLE;
             }
@@ -229,6 +233,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                         OpMatrix opMatrix = shapePaintView.getMatrixOp();
                         opMatrix.getMatrix().postTranslate((event.getX(1) + event.getX(0))/2 -startDragPoint.x,
                                 (event.getY(1) + event.getY(0))/2-startDragPoint.y);
+                        opMatrix = picPaintView.getMatrixOp();
+                        opMatrix.getMatrix().postTranslate((event.getX(1) + event.getX(0))/2 -startDragPoint.x,
+                                (event.getY(1) + event.getY(0))/2-startDragPoint.y);
                         startDragPoint.set((event.getX(1) + event.getX(0))/2,
                                 (event.getY(1) + event.getY(0))/2);
                         refreshPaintOp();
@@ -256,12 +263,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             return true;
         }
 
-
-        private void assignBasicInfo(OpPaint op){
-            op.setConfE164(boardInfo.getConfE164());
-            op.setBoardId(boardInfo.getId());
-            op.setPageId(boardInfo.getPageId());
-        }
 
         private OpPaint opPaint;
         private void createPaintOp(float startX, float startY){
@@ -389,6 +390,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     }
 
+    private void assignBasicInfo(OpPaint op){
+        op.setConfE164(boardInfo.getConfE164());
+        op.setBoardId(boardInfo.getId());
+        op.setPageId(boardInfo.getPageId());
+    }
 
     public DefaultPaintView getPicPaintView(){
         return picPaintView;
@@ -456,17 +462,39 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     @Override
+    public void insertPic(Bitmap pic) {
+        if (null == pic){
+            KLog.p(KLog.ERROR, "null pic");
+            return;
+        }
+        if (null != paintOpGeneratedListener){
+            OpInsertPic op = new OpInsertPic();
+            op.setPic(pic);
+            float[] values = new float[9];
+            new Matrix().getValues(values);
+            op.setMatrixValue(values);
+            assignBasicInfo(op); // TODO 更多赋值
+            paintOpGeneratedListener.onConfirm(op);
+            if (null != publisher){
+                publisher.publish(op);
+            }
+        }
+    }
+
+    @Override
     public Bitmap snapshot(int layer) {
+        KLog.p("layer=%s", layer);
         Bitmap shot = null;
         if (LAYER_PIC_AND_SHAPE == layer || LAYER_ALL == layer) {
             shot = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
-            draw(new Canvas(shot));
+            Canvas canvas = new Canvas(shot);
+            draw(canvas);
+            canvas.drawBitmap(picPaintView.getBitmap(), 0, 0, null);
+            canvas.drawBitmap(shapePaintView.getBitmap(), 0, 0, null);
         }else if (LAYER_SHAPE == layer){
-            shot = Bitmap.createBitmap(shapePaintView.getWidth(), shapePaintView.getHeight(), Bitmap.Config.ARGB_8888);
-            shapePaintView.draw(new Canvas(shot));
+            shot = shapePaintView.getBitmap();
         }else if (LAYER_PIC == layer){
-            shot = Bitmap.createBitmap(picPaintView.getWidth(), picPaintView.getHeight(), Bitmap.Config.ARGB_8888);
-            picPaintView.draw(new Canvas(shot));
+            shot = picPaintView.getBitmap();
         }
 
         return shot;
@@ -476,7 +504,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public void undo() {
         if (null != paintOpGeneratedListener){
             OpPaint op = new OpUndo();
-            op.setBoardId(boardInfo.getId());
+            assignBasicInfo(op);
             paintOpGeneratedListener.onConfirm(op);
             if (null != publisher){
                 publisher.publish(op);
@@ -488,7 +516,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public void redo() {
         if (null != paintOpGeneratedListener){
             OpPaint op = new OpRedo();
-            op.setBoardId(boardInfo.getId());
+            assignBasicInfo(op);
             paintOpGeneratedListener.onConfirm(op);
             if (null != publisher){
                 publisher.publish(op);
@@ -500,7 +528,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public void clearScreen() {
         if (null != paintOpGeneratedListener){
             OpPaint op = new OpClearScreen();
-            op.setBoardId(boardInfo.getId());
+            assignBasicInfo(op);
             paintOpGeneratedListener.onConfirm(op);
             if (null != publisher){
                 publisher.publish(op);

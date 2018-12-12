@@ -31,6 +31,11 @@ public interface IPaintBoard {
 
     void setTool(int style);
     int getTool();
+
+    /**
+     * 设置画笔粗细。
+     * @param width 粗细。单位：pixel
+     * */
     void setPaintStrokeWidth(int width);
     int getPaintStrokeWidth();
 
@@ -47,6 +52,8 @@ public interface IPaintBoard {
      * */
     void setEraserSize(int size);
     int getEraserSize();
+
+    void insertPic(Bitmap pic);
 
     /**
      * 截屏。
