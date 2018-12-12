@@ -138,7 +138,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 lastScaleFactor = scaleFactor;
 
                 OpMatrix opMatrix = shapePaintView.getMatrixOp();
-                KLog.p("zoomCenter={%s, %s} ",  zoomCenter.x, zoomCenter.y);
+//                KLog.p("zoomCenter={%s, %s} ",  zoomCenter.x, zoomCenter.y);
                 opMatrix.getMatrix().postScale(scaleFactor, scaleFactor, zoomCenter.x, zoomCenter.y);
                 opMatrix.getMatrix().postTranslate(detector.getFocusX()-startDragPoint.x, detector.getFocusY()-startDragPoint.y);
                 startDragPoint.set(detector.getFocusX(), detector.getFocusY());
@@ -181,6 +181,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 case MotionEvent.ACTION_DOWN:
                     KLog.p("state=%s, ACTION_DOWN{%s}", state, event);
                     state = STATE_SHAKING;
+                    startPoint.set(event.getX(), event.getY()); // 记录起始点
                     createPaintOp(event.getX(), event.getY());
                     break;
 
@@ -203,6 +204,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     if (2 == event.getPointerCount()){ // 二个手指其中一个抬起，只剩一个手指了
                         state = STATE_SHAKING;
                         int indx = 1==event.getActionIndex() ? 0 : 1;
+                        startPoint.set(event.getX(indx), event.getY(indx)); // 记录起始点
                         createPaintOp(event.getX(indx), event.getY(indx));
                     }
                     break;
@@ -266,13 +268,22 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     opPaint = opDrawPath;
                     break;
                 case TOOL_LINE:
-                    opPaint = new OpDrawLine();
+                    OpDrawLine opDrawLine = new OpDrawLine();
+                    opDrawLine.setStartX(startX);
+                    opDrawLine.setStartY(startY);
+                    opPaint = opDrawLine;
                     break;
                 case TOOL_RECT:
-                    opPaint = new OpDrawRect();
+                    OpDrawRect opDrawRect = new OpDrawRect();
+                    opDrawRect.setLeft(startX);
+                    opDrawRect.setTop(startY);
+                    opPaint = opDrawRect;
                     break;
                 case TOOL_OVAL:
-                    opPaint = new OpDrawOval();
+                    OpDrawOval opDrawOval = new OpDrawOval();
+                    opDrawOval.setLeft(startX);
+                    opDrawOval.setTop(startY);
+                    opPaint = opDrawOval;
                     break;
                 case TOOL_ERASER:
                     OpErase opErase = new OpErase(new ArrayList<>());
@@ -282,15 +293,28 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     break;
                 case TOOL_RECT_ERASER:
                     // 矩形擦除先绘制一个虚线矩形框选择擦除区域
-                    OpDrawRect opDrawRect = new OpDrawRect();
-                    opDrawRect.setLineStyle(OpDraw.DASH);
-                    opPaint = opDrawRect;
+                    OpDrawRect opDrawRect1 = new OpDrawRect();
+                    opDrawRect1.setLeft(startX);
+                    opDrawRect1.setTop(startY);
+                    opPaint = opDrawRect1;
                     break;
                 default:
                     KLog.p(KLog.ERROR, "unknown TOOL %s", tool);
                     return;
             }
-            startPoint.set(startX, startY); // 记录起始点
+            if (opPaint instanceof OpDraw){
+                OpDraw opDraw = (OpDraw) opPaint;
+                if (TOOL_ERASER == tool){
+                    opDraw.setStrokeWidth(25); // XXX
+                }else if(TOOL_RECT_ERASER == tool){
+                    opDraw.setStrokeWidth(2);
+                    opDraw.setLineStyle(OpDraw.DASH);
+                    opDraw.setColor(0xFF08b1f2L);
+                } else {
+                    opDraw.setStrokeWidth(paintStrokeWidth);
+                    opDraw.setColor(paintColor);
+                }
+            }
             assignBasicInfo(opPaint);
         }
 
@@ -298,52 +322,33 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             switch (tool){ // TODO 事件会打包多个进而造成图形轨迹不平滑，getHistorySize
                 case TOOL_PENCIL:
                     OpDrawPath opDrawPath = (OpDrawPath) opPaint;
-                    opDrawPath.setStrokeWidth(paintStrokeWidth);
-                    opDrawPath.setColor(paintColor);
                     opDrawPath.getPoints().add(new PointF(event.getX(), event.getY()));
                     opDrawPath.getPath().lineTo(event.getX(), event.getY());
                     break;
                 case TOOL_LINE:
                     OpDrawLine opDrawLine = (OpDrawLine) opPaint;
-                    opDrawLine.setStartX(startPoint.x);
-                    opDrawLine.setStartY(startPoint.y);
                     opDrawLine.setStopX(event.getX());
                     opDrawLine.setStopY(event.getY());
-                    opDrawLine.setStrokeWidth(paintStrokeWidth);
-                    opDrawLine.setColor(paintColor);
                     break;
                 case TOOL_RECT:
                     OpDrawRect opDrawRect = (OpDrawRect) opPaint;
-                    opDrawRect.setLeft(startPoint.x);
-                    opDrawRect.setTop(startPoint.y);
                     opDrawRect.setRight(event.getX());
                     opDrawRect.setBottom(event.getY());
-                    opDrawRect.setStrokeWidth(paintStrokeWidth);
-                    opDrawRect.setColor(paintColor);
                     break;
                 case TOOL_OVAL:
                     OpDrawOval opDrawOval = (OpDrawOval) opPaint;
-                    opDrawOval.setLeft(startPoint.x);
-                    opDrawOval.setTop(startPoint.y);
                     opDrawOval.setRight(event.getX());
                     opDrawOval.setBottom(event.getY());
-                    opDrawOval.setStrokeWidth(paintStrokeWidth);
-                    opDrawOval.setColor(paintColor);
                     break;
                 case TOOL_ERASER:
                     OpErase opErase = (OpErase) opPaint;
-                    opErase.setStrokeWidth(25); // XXX
                     opErase.getPoints().add(new PointF(event.getX(), event.getY()));
                     opErase.getPath().lineTo(event.getX(), event.getY());
                     break;
                 case TOOL_RECT_ERASER:
                     OpDrawRect opDrawRect1 = (OpDrawRect) opPaint;
-                    opDrawRect1.setLeft(startPoint.x); // TODO 这些重复的操作都在create里面做
-                    opDrawRect1.setTop(startPoint.y);
                     opDrawRect1.setRight(event.getX());
                     opDrawRect1.setBottom(event.getY());
-                    opDrawRect1.setStrokeWidth(2); // XXX
-                    opDrawRect1.setColor(0xFF08b1f2L); // XXX
                     break;
                 default:
                     return;
