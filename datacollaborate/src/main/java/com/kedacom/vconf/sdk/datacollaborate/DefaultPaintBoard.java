@@ -56,9 +56,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     // 橡皮擦尺寸。单位：pixel
     private int eraserSize = 25;
 
-    private static final int MIN_ZOOM = 50;
-    private static final int MAX_ZOOM = 300;
-    private int zoom = 100;
+    private static final int MIN_ZOOM = 25;
+    private static final int MAX_ZOOM = 400;
 
     private BoardInfo boardInfo;
 
@@ -558,7 +557,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void zoom(int percentage) {
-        zoom = (MIN_ZOOM<=percentage && percentage<=MAX_ZOOM) ? percentage : (percentage<MIN_ZOOM ? MIN_ZOOM : MAX_ZOOM);
+        int zoom = (MIN_ZOOM<=percentage && percentage<=MAX_ZOOM) ? percentage : (percentage<MIN_ZOOM ? MIN_ZOOM : MAX_ZOOM);
         KLog.p("zoom=%s, width=%s, height=%s", zoom, getWidth(), getHeight());
         shapePaintView.getMatrixOp().getMatrix().setScale(zoom/100f, zoom/100f, getWidth()/2, getHeight()/2);
         if (null != paintOpGeneratedListener){
@@ -571,7 +570,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public int getZoom() {
-        return zoom;
+        float[] vals = new float[9];
+        shapePaintView.getMatrixOp().getMatrix().getValues(vals);
+        return (int) (vals[Matrix.MSCALE_X]*100);
     }
 
     @Override
