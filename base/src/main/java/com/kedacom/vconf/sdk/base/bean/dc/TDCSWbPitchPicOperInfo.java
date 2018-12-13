@@ -8,4 +8,10 @@ public class TDCSWbPitchPicOperInfo {
     public int dwSubPageId;         // 子页面id
     public int dwGraphsCount;
     public TDCSWbGraphsInfo[] atGraphsInfo;
+    public TDCSWbPitchPicOperInfo(String boardId, int pageId, TDCSWbGraphsInfo[] picInfos){
+        achTabId = boardId;
+        dwSubPageId = pageId;
+        atGraphsInfo = picInfos;
+        dwGraphsCount = atGraphsInfo.length;
+    }
 }

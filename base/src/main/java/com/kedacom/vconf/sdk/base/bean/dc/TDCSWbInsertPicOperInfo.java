@@ -12,4 +12,14 @@ public class TDCSWbInsertPicOperInfo {
     public TDCSWbPoint tPoint;
     public String achPicName;
     public String[] aachMatrixValue;
+    public TDCSWbInsertPicOperInfo(String boardId, int pageId, String picId, int picWidth, int picHeight, TDCSWbPoint insertPos, String picName, String[] matrix){
+        achTabId = boardId;
+        dwSubPageId = pageId;
+        achImgId = picId;
+        dwImgWidth = picWidth;
+        dwImgHeight = picHeight;
+        tPoint = insertPos;
+        achPicName = picName;
+        aachMatrixValue = matrix;
+    }
 }

@@ -8,4 +8,10 @@ public class TDCSWbDelPicOperInfo {
     public int dwSubPageId;         // 子页面id
     public int dwGraphsCount;
     public String[] achGraphsId;
+    public TDCSWbDelPicOperInfo(String boardId, int pageId, String[] picIds){
+        achTabId = boardId;
+        dwSubPageId = pageId;
+        achGraphsId = picIds;
+        dwGraphsCount = achGraphsId.length;
+    }
 }

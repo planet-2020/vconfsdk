@@ -44,9 +44,12 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSScrollScreenInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbAddSubPageInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircleOperInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbDelPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbEraseOperInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbInsertPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbLineOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPencilOperInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPitchPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbRectangleOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbTabPageIdInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbZoomInfo;
@@ -396,6 +399,20 @@ public enum Msg {
 //    @Deprecated
 //    @Request(para=MsgBeans.DCSOperImageOper.class)
 //    DCSOperImageOperInfoCmd,
+
+    @Request(name = "DCSOperInsertPicCmd",
+            methodOwner = DcsCtrl,
+            paras = {TDCSOperReq.class, TDCSWbInsertPicOperInfo.class})
+    DCInsertPic,
+    @Request(name = "DCSOperPitchPicDelCmd",
+            methodOwner = DcsCtrl,
+            paras = {TDCSOperReq.class, TDCSWbDelPicOperInfo.class})
+    DCDeletePic,
+    @Request(name = "DCSOperPitchPicDragCmd",
+            methodOwner = DcsCtrl,
+            paras = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class})
+    DCDragPic,
+
 
     /**矩形擦除*/
     @Request(	name="DCSOperEraseOperInfoCmd",

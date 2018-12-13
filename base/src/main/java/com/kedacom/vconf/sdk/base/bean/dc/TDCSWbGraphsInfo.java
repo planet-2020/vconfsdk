@@ -6,4 +6,8 @@ package com.kedacom.vconf.sdk.base.bean.dc;
 public class TDCSWbGraphsInfo {
     public String achGraphsId;        // 图元ID
     public String[] aachMatrixValue;
+    public TDCSWbGraphsInfo(String picId, String[] matrixVal){
+        achGraphsId = picId;
+        aachMatrixValue = matrixVal;
+    }
 }
