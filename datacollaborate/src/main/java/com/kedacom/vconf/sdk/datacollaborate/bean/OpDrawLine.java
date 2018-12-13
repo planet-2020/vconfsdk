@@ -17,7 +17,7 @@ public class OpDrawLine extends OpDraw {
         this.startX = startX;
         this.startY =startY;
         this.stopX = stopX;
-        this.startY = stopY;
+        this.stopY = stopY;
         type = EOpType.DRAW_LINE;
     }
 
