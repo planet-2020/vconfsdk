@@ -200,8 +200,14 @@ public class DataCollaborateManager extends RequestAgent {
     /**发布绘制操作*/
     public void publishPaintOp(OpPaint op){
         KLog.p("publish op=%s", op);
-        req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
-                ToDoConverter.toCommonPaintTransferObj(op), ToDoConverter.toPaintTransferObj(op));
+        Object to = ToDoConverter.toPaintTransferObj(op);
+        if (null != to) {
+            req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
+                    ToDoConverter.toCommonPaintTransferObj(op), ToDoConverter.toPaintTransferObj(op));
+        }else{
+            req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
+                    ToDoConverter.toCommonPaintTransferObj(op));
+        }
     }
 
     /**登录数据协作*/

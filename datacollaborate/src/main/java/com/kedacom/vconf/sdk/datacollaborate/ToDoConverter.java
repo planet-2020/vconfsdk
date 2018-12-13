@@ -26,6 +26,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperContent;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircle;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircleOperInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbDelPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbEntity;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbEraseOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbGraphsInfo;
@@ -34,9 +35,11 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbLine;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbLineOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPencil;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPencilOperInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPitchPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPoint;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbRectangle;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbRectangleOperInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbTabPageIdInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EBoardMode;
@@ -120,22 +123,21 @@ final class ToDoConverter {
                 return toTransferObj((OpDrawOval) domainObj);
             case DRAW_PATH:
                 return toTransferObj((OpDrawPath) domainObj);
-//            case UNDO:
-//                return toTransferObj((OpUndo) domainObj);
-//            case REDO:
-//                return toTransferObj((OpRedo) domainObj);
+            case UNDO:
+                return toTransferObj((OpUndo) domainObj);
+            case REDO:
+                return toTransferObj((OpRedo) domainObj);
 //            case FULLSCREEN_MATRIX:
 //                return toTransferObj((OpMatrix) domainObj);
-//            case RECT_ERASE:
-//                return toTransferObj((OpRectErase) domainObj);
-//            case CLEAR_SCREEN:
-//                return toTransferObj((OpClearScreen)domainObj);
-//            case INSERT_PICTURE:
-//                return toTransferObj((OpInsertPic) domainObj);
-//            case DELETE_PICTURE:
-//                return toTransferObj((OpDeletePic) domainObj);
-//            case DRAG_PICTURE:
-//                return toTransferObj((OpDragPic) domainObj);
+            case RECT_ERASE:
+                return toTransferObj((OpRectErase) domainObj);
+            case INSERT_PICTURE:
+                return toTransferObj((OpInsertPic) domainObj);
+            case DELETE_PICTURE:
+                return toTransferObj((OpDeletePic) domainObj);
+            case DRAG_PICTURE:
+                return toTransferObj((OpDragPic) domainObj);
+            case CLEAR_SCREEN:
             default:
                 return null;
         }
@@ -251,10 +253,21 @@ final class ToDoConverter {
         return opInsertPic;
     }
 
+    public static TDCSWbInsertPicOperInfo toTransferObj(OpInsertPic domainObj) {
+        return new TDCSWbInsertPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), domainObj.getPicId(),
+                domainObj.getPicWidth(), domainObj.getPicHeight(),
+                new TDCSWbPoint((int)domainObj.getInsertPosX(), (int)domainObj.getInsertPosY()),
+                domainObj.getPicName(), matrixValueFloat2Str(domainObj.getMatrixValue()));
+    }
+
     public static OpDeletePic fromTransferObj(DcsOperPitchPicDelNtf dcDelPicOp) {
         OpDeletePic opDeletePic = new OpDeletePic(dcDelPicOp.AssParam.achGraphsId);
         assignPaintDomainObj(dcDelPicOp.MainParam, opDeletePic);
         return opDeletePic;
+    }
+
+    public static TDCSWbDelPicOperInfo toTransferObj(OpDeletePic domainObj) {
+        return new TDCSWbDelPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), domainObj.getPicIds());
     }
 
     public static OpDragPic fromTransferObj(DcsOperPitchPicDragNtf dcDragPicOp) {
@@ -265,6 +278,17 @@ final class ToDoConverter {
         OpDragPic opDragPic = new OpDragPic(picMatrices);
         assignPaintDomainObj(dcDragPicOp.MainParam, opDragPic);
         return opDragPic;
+    }
+
+    public static TDCSWbPitchPicOperInfo toTransferObj(OpDragPic domainObj) {
+        Map<String, float[]> matrices = domainObj.getPicMatrices();
+        TDCSWbGraphsInfo[] tdcsWbGraphsInfos = new TDCSWbGraphsInfo[matrices.size()];
+        int i=0;
+        for (String picId : matrices.keySet()){
+            tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, matrixValueFloat2Str(matrices.get(picId)));
+            ++i;
+        }
+        return new TDCSWbPitchPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), tdcsWbGraphsInfos);
     }
 
 
@@ -281,6 +305,12 @@ final class ToDoConverter {
         return opRectErase;
     }
 
+    public static TDCSWbEraseOperInfo toTransferObj(OpRectErase domainObj) {
+        return new TDCSWbEraseOperInfo(domainObj.getBoardId(),
+                new TDCSWbPoint((int)domainObj.getLeft(), (int)domainObj.getTop()),
+                new TDCSWbPoint((int)domainObj.getRight(), (int)domainObj.getBottom()));
+    }
+
 
     public static OpUndo fromTransferObj(DcsOperUndoNtf dcsOperUndoNtf) {
         OpUndo opUndo = new OpUndo();
@@ -288,10 +318,18 @@ final class ToDoConverter {
         return opUndo;
     }
 
+    public static TDCSWbTabPageIdInfo toTransferObj(OpUndo domainObj) {
+        return new TDCSWbTabPageIdInfo(domainObj.getBoardId(), domainObj.getPageId());
+    }
+
     public static OpRedo fromTransferObj(DcsOperRedoNtf dcsOperRedoNtf) {
         OpRedo opRedo = new OpRedo();
         assignPaintDomainObj(dcsOperRedoNtf.MainParam, opRedo);
         return opRedo;
+    }
+
+    public static TDCSWbTabPageIdInfo toTransferObj(OpRedo domainObj) {
+        return new TDCSWbTabPageIdInfo(domainObj.getBoardId(), domainObj.getPageId());
     }
 
 

@@ -58,7 +58,7 @@ public interface IPaintBoard {
      * 聚焦图层后，放缩、位移、擦除、清屏、截屏等操作均针对该图层，并且触屏事件只被该图层处理。
      * 默认是LAYER_ALL。
      * */
-    void focusLayer(int layer);
+    void focusLayer(int layer);  // TODO 删除，改为每个接口添加layer参数
 
     void insertPic(Bitmap pic);
 
