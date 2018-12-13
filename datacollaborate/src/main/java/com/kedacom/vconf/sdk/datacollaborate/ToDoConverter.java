@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import android.content.Context;
 import android.graphics.PointF;
 
 import com.kedacom.vconf.sdk.base.KLog;
@@ -71,6 +72,39 @@ import java.util.UUID;
 @SuppressWarnings("WeakerAccess")
 final class ToDoConverter {
     private static DataCollaborateManager dcMan = DataCollaborateManager.getInstance(null);
+    private static float density = DataCollaborateManager.getContext().getResources().getDisplayMetrics().density;
+
+    /**
+     * 将坐标值由本设备实际使用的转为传输的
+     * */
+    private static float tt(float val){
+        return val/density;
+    }
+
+    /**
+     * 将坐标值由传输过来的转为在本设备上实际使用的
+     * */
+    private static float ft(float val){
+        return val*density;
+    }
+
+
+    private static float[] matrixValueStr2Float(String[] strMatrixValue){
+        float[] matrixValue = new float[9];
+        for (int i=0; i<9; ++i){
+            matrixValue[i] = Float.valueOf(strMatrixValue[i]);
+        }
+        return matrixValue;
+    }
+
+    private static String[] matrixValueFloat2Str(float[] matrixValue){
+        String[] strMatrixValue = new String[9];
+        for (int i=0; i<9; ++i){
+            strMatrixValue[i] = ""+matrixValue[i];
+        }
+        return strMatrixValue;
+    }
+
 
     public static OpPaint fromPaintTransferObj(Object transferObj) {
         if (transferObj instanceof DcsOperLineOperInfoNtf){
@@ -203,7 +237,8 @@ final class ToDoConverter {
 
     public static OpDrawRect fromTransferObj(DcsOperRectangleOperInfoNtf dcRectOp) {
         TDCSWbRectangle rectangle = dcRectOp.AssParam.tRectangle;
-        OpDrawRect opDrawRect = new OpDrawRect(rectangle.tBeginPt.nPosx, rectangle.tBeginPt.nPosy, rectangle.tEndPt.nPosx, rectangle.tEndPt.nPosy);
+        OpDrawRect opDrawRect = new OpDrawRect(ft(rectangle.tBeginPt.nPosx), ft(rectangle.tBeginPt.nPosy),
+                ft(rectangle.tEndPt.nPosx), ft(rectangle.tEndPt.nPosy));
         assignDrawDomainObj(dcRectOp.MainParam, rectangle.dwLineWidth, rectangle.dwRgb, opDrawRect);
         return opDrawRect;
     }
@@ -454,7 +489,7 @@ final class ToDoConverter {
 
     public static void assignDrawDomainObj(TDCSOperContent transferObj, int strokeWidth, long color, OpDraw domainObj){
         assignPaintDomainObj(transferObj, domainObj);
-        domainObj.setStrokeWidth(strokeWidth);
+        domainObj.setStrokeWidth((int) ft(strokeWidth));
         domainObj.setColor(color);
     }
 //
@@ -472,23 +507,6 @@ final class ToDoConverter {
 //    }
 //
 //
-    private static float[] matrixValueStr2Float(String[] strMatrixValue){
-        float[] matrixValue = new float[9];
-        for (int i=0; i<9; ++i){
-            matrixValue[i] = Float.valueOf(strMatrixValue[i]);
-        }
-        return matrixValue;
-    }
-
-    private static String[] matrixValueFloat2Str(float[] matrixValue){
-        String[] strMatrixValue = new String[9];
-        for (int i=0; i<9; ++i){
-            strMatrixValue[i] = ""+matrixValue[i];
-        }
-        return strMatrixValue;
-    }
-
-
     public static EmDcsType toTransferObj(ETerminalType type){
         switch (type){
             case TrueLinkWindows:

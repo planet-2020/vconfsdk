@@ -121,6 +121,11 @@ public class DataCollaborateManager extends RequestAgent {
 
     private static String PIC_SAVE_DIR;
     private static Context context;
+
+    static Context getContext() {
+        return context;
+    }
+
     private DataCollaborateManager(){}
     public static DataCollaborateManager getInstance(Context ctx) {
         if (null == context
