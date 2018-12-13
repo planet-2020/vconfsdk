@@ -53,6 +53,13 @@ public interface IPaintBoard {
     void setEraserSize(int size);
     int getEraserSize();
 
+    /**
+     * 聚焦图层。
+     * 聚焦图层后，放缩、位移、擦除、清屏、截屏等操作均针对该图层，并且触屏事件只被该图层处理。
+     * 默认是LAYER_ALL。
+     * */
+    void focusLayer(int layer);
+
     void insertPic(Bitmap pic);
 
     /**

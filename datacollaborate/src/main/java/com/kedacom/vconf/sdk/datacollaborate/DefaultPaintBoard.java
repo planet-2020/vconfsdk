@@ -462,6 +462,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     @Override
+    public void focusLayer(int layer) {
+        focusedLayer = layer;
+    }
+
+    @Override
     public void insertPic(Bitmap pic) {
         if (null == pic){
             KLog.p(KLog.ERROR, "null pic");
@@ -485,13 +490,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public Bitmap snapshot(int layer) {
         KLog.p("layer=%s", layer);
         Bitmap shot = null;
-        if (LAYER_PIC_AND_SHAPE == layer || LAYER_ALL == layer) {
+        if (LAYER_ALL == layer) {
             shot = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(shot);
             draw(canvas);
             canvas.drawBitmap(picPaintView.getBitmap(), 0, 0, null);
             canvas.drawBitmap(shapePaintView.getBitmap(), 0, 0, null);
-        }else if (LAYER_SHAPE == layer){
+        }else if (LAYER_PIC_AND_SHAPE == layer){
+            shot = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(shot);
+            canvas.drawBitmap(picPaintView.getBitmap(), 0, 0, null);
+            canvas.drawBitmap(shapePaintView.getBitmap(), 0, 0, null);
+        } else if (LAYER_SHAPE == layer){
             shot = shapePaintView.getBitmap();
         }else if (LAYER_PIC == layer){
             shot = picPaintView.getBitmap();

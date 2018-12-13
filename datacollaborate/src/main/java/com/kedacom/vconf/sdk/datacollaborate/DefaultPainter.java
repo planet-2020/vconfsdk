@@ -280,7 +280,7 @@ public class DefaultPainter implements IPainter {
     public void paint(OpPaint op){
         String boardId = op.getBoardId();
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
-        KLog.p(KLog.WARN, "for board %s(op size=%s) op %s", boardId, paintBoard.getShapePaintView().getRenderOps().size(), op);
+        KLog.p(KLog.WARN, "for board %s op %s", boardId, op);
         if(null == paintBoard){
             KLog.p(KLog.ERROR,"no board %s for op %s", boardId, op);
             return;
