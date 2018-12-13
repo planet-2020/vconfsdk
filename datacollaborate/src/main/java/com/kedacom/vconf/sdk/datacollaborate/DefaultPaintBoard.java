@@ -47,7 +47,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     // 工具
     private int tool = TOOL_PENCIL;
 
-    // 画笔粗细W（像素值）
+    // 画笔粗细。单位：pixel
     private int paintStrokeWidth = 5;
 
     // 画笔颜色
@@ -84,6 +84,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         shapePaintView.getMatrixOp().setConfE164(boardInfo.getConfE164());
         shapePaintView.getMatrixOp().setBoardId(boardInfo.getId());
         shapePaintView.getMatrixOp().setPageId(boardInfo.getPageId());
+
         setBackgroundColor(Color.DKGRAY);
     }
 
@@ -117,13 +118,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private static final int STATE_DRAGING = 4;
         private static final int STATE_SCALING_AND_DRAGING = 5;
         private int state = STATE_IDLE;
-
-        private static final float DOUBLE_CLICK_SCALE = 2;	// 双击时的缩放倍数
-        private float maxScale = 3.0f;	// 缩放倍数上限
-        private float minScale = 0.5f; // 缩放倍数下限
-
-        private Matrix initMatrix = new Matrix();  	// 初始matrix
-        private Matrix curMatrix = new Matrix();    // 当前matrix
 
         private PointF startPoint = new PointF();	// 起始绘制点
         private PointF startDragPoint = new PointF();	// 起始拖拽点
@@ -161,6 +155,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 state = STATE_SCALING_AND_DRAGING;
                 startDragPoint.set(detector.getFocusX(), detector.getFocusY());
                 zoomCenter.set(getWidth()/2, getHeight()/2);
+                KLog.p("zoomCenter={%s, %s}", zoomCenter.x, zoomCenter.y);
                 return true;
             }
 
@@ -265,7 +260,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
         private OpPaint opPaint;
+        private Matrix shapeInvertMatrix = new Matrix();
+        private float[] mapPoint= new float[2];
         private void createPaintOp(float startX, float startY){
+            boolean suc = shapePaintView.getMatrixOp().getMatrix().invert(shapeInvertMatrix);
+            KLog.p("invert success?=%s, orgX=%s, orgY=%s", suc, startX, startY);
+            mapPoint[0] = startX;
+            mapPoint[1] = startY;
+            shapeInvertMatrix.mapPoints(mapPoint);
+            startX = mapPoint[0];
+            startY = mapPoint[1];
+//            KLog.p("startX=%s, startY=%s, shapeScaleX=%s, shapeScaleY=%s", startX, startY, shapeScaleX, shapeScaleY);
             switch (tool){
                 case TOOL_PENCIL:
                     OpDrawPath opDrawPath = new OpDrawPath(new ArrayList<>());
@@ -325,36 +330,41 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         private void adjustPaintOp(MotionEvent event){
+            mapPoint[0] = event.getX();
+            mapPoint[1] = event.getY();
+            shapeInvertMatrix.mapPoints(mapPoint);
+            float x = mapPoint[0];
+            float y = mapPoint[1];
             switch (tool){ // TODO 事件会打包多个进而造成图形轨迹不平滑，getHistorySize
                 case TOOL_PENCIL:
                     OpDrawPath opDrawPath = (OpDrawPath) opPaint;
-                    opDrawPath.getPoints().add(new PointF(event.getX(), event.getY()));
-                    opDrawPath.getPath().lineTo(event.getX(), event.getY());
+                    opDrawPath.getPoints().add(new PointF(x, y));
+                    opDrawPath.getPath().lineTo(x, y);
                     break;
                 case TOOL_LINE:
                     OpDrawLine opDrawLine = (OpDrawLine) opPaint;
-                    opDrawLine.setStopX(event.getX());
-                    opDrawLine.setStopY(event.getY());
+                    opDrawLine.setStopX(x);
+                    opDrawLine.setStopY(y);
                     break;
                 case TOOL_RECT:
                     OpDrawRect opDrawRect = (OpDrawRect) opPaint;
-                    opDrawRect.setRight(event.getX());
-                    opDrawRect.setBottom(event.getY());
+                    opDrawRect.setRight(x);
+                    opDrawRect.setBottom(y);
                     break;
                 case TOOL_OVAL:
                     OpDrawOval opDrawOval = (OpDrawOval) opPaint;
-                    opDrawOval.setRight(event.getX());
-                    opDrawOval.setBottom(event.getY());
+                    opDrawOval.setRight(x);
+                    opDrawOval.setBottom(y);
                     break;
                 case TOOL_ERASER:
                     OpErase opErase = (OpErase) opPaint;
-                    opErase.getPoints().add(new PointF(event.getX(), event.getY()));
-                    opErase.getPath().lineTo(event.getX(), event.getY());
+                    opErase.getPoints().add(new PointF(x, y));
+                    opErase.getPath().lineTo(x, y);
                     break;
                 case TOOL_RECT_ERASER:
                     OpDrawRect opDrawRect1 = (OpDrawRect) opPaint;
-                    opDrawRect1.setRight(event.getX());
-                    opDrawRect1.setBottom(event.getY());
+                    opDrawRect1.setRight(x);
+                    opDrawRect1.setBottom(y);
                     break;
                 default:
                     return;
@@ -549,6 +559,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     @Override
     public void zoom(int percentage) {
         zoom = (MIN_ZOOM<=percentage && percentage<=MAX_ZOOM) ? percentage : (percentage<MIN_ZOOM ? MIN_ZOOM : MAX_ZOOM);
+        KLog.p("zoom=%s, width=%s, height=%s", zoom, getWidth(), getHeight());
+        shapePaintView.getMatrixOp().getMatrix().setScale(zoom/100f, zoom/100f, getWidth()/2, getHeight()/2);
+        if (null != paintOpGeneratedListener){
+            paintOpGeneratedListener.onAdjust(null);
+        }
+//        if (null != publisher){
+//            publisher.publish(op);
+//        }
     }
 
     @Override
