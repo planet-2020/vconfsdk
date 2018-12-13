@@ -176,6 +176,9 @@ public class DataCollaborateManager extends RequestAgent {
         processorMap.put(Msg.DCDrawOval, null);
         processorMap.put(Msg.DCDrawRect, null);
         processorMap.put(Msg.DCDrawPath, null);
+        processorMap.put(Msg.DCInsertPic, null);
+        processorMap.put(Msg.DCDeletePic, null);
+        processorMap.put(Msg.DCDragPic, null);
 
         return processorMap;
     }
