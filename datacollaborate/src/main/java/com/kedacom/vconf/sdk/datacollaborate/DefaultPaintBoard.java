@@ -542,53 +542,47 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return shot;
     }
 
+    private void dealSimpleOp(OpPaint op){
+        assignBasicInfo(op);
+        paintOpGeneratedListener.onConfirm(op);
+        if (null != publisher){
+            publisher.publish(op);
+        }
+    }
+
     @Override
     public void undo() {
         if (null != paintOpGeneratedListener){
-            OpPaint op = new OpUndo();
-            assignBasicInfo(op);
-            paintOpGeneratedListener.onConfirm(op);
-            if (null != publisher){
-                publisher.publish(op);
-            }
+            dealSimpleOp(new OpUndo());
         }
     }
 
     @Override
     public void redo() {
         if (null != paintOpGeneratedListener){
-            OpPaint op = new OpRedo();
-            assignBasicInfo(op);
-            paintOpGeneratedListener.onConfirm(op);
-            if (null != publisher){
-                publisher.publish(op);
-            }
+            dealSimpleOp(new OpRedo());
         }
     }
 
     @Override
     public void clearScreen() {
         if (null != paintOpGeneratedListener){
-            OpPaint op = new OpClearScreen();
-            assignBasicInfo(op);
-            paintOpGeneratedListener.onConfirm(op);
-            if (null != publisher){
-                publisher.publish(op);
-            }
+            dealSimpleOp(new OpClearScreen());
         }
     }
 
     @Override
     public void zoom(int percentage) {
+        if (null == paintOpGeneratedListener){
+            return;
+        }
         int zoom = (MIN_ZOOM<=percentage && percentage<=MAX_ZOOM) ? percentage : (percentage<MIN_ZOOM ? MIN_ZOOM : MAX_ZOOM);
         KLog.p("zoom=%s, width=%s, height=%s", zoom, getWidth(), getHeight());
         shapePaintView.getMatrixOp().getMatrix().setScale(zoom/100f, zoom/100f, getWidth()/2, getHeight()/2);
-        if (null != paintOpGeneratedListener){
-            paintOpGeneratedListener.onAdjust(null);
+        paintOpGeneratedListener.onAdjust(null);
+        if (null != publisher){
+            publisher.publish(shapePaintView.getMatrixOp());
         }
-//        if (null != publisher){
-//            publisher.publish(op);
-//        }
     }
 
     @Override
@@ -617,6 +611,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     interface IOnPaintOpGeneratedListener{
         void onAdjust(OpPaint opPaint);
         void onConfirm(OpPaint opPaint);
+    }
+    void setOnRepealedOpsCountChangedListener(IOnRepealedOpsCountChangedListener onRepealedOpsCountChangedListener) {
+        this.paintOpGeneratedListener = paintOpGeneratedListener;
     }
 
 }

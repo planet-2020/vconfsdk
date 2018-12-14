@@ -67,14 +67,50 @@ public interface IPaintBoard {
      * @param layer 图层。
      * */
     Bitmap snapshot(int layer);
+
+    /**
+     * 撤销。
+     * */
     void undo();
+    /**
+     * 恢复被撤销的操作。
+     * */
     void redo();
     void clearScreen();
     void zoom(int percentage);
     int getZoom();
 
-    void setPublisher(IPublisher publisher);
+    /**
+     * 发布者。
+     * 己端作为“创作者”角色完成创作后通过发布者将内容（绘制操作）发布出去。
+     * */
     interface IPublisher{
         void publish(OpPaint Op);
     }
+    void setPublisher(IPublisher publisher);
+
+    /**
+     * 被撤销操作数量变化监听器。
+     * */
+    interface IOnRepealedOpsCountChangedListener{
+        void onRepealedOpsCountChanged(int count);
+    }
+    IPaintBoard setOnRepealedOpsCountChangedListener(IOnRepealedOpsCountChangedListener onRepealedOpsCountChangedListener);
+
+    /**
+     * 图片数量变化监听器
+     * */
+    interface IOnPictureCountChanged{
+        void onPictureCountChanged(int count);
+    }
+    IPaintBoard setOnPictureCountChangedListener(IOnPictureCountChanged onPictureCountChangedListener);
+
+    /**
+     * 缩放比例变化监听器
+     * */
+    interface IOnZoomRateChangedListener{
+        void onZoomRateChanged(int percentage);
+    }
+    IPaintBoard setOnZoomRateChangedListener(IOnZoomRateChangedListener onZoomRateChangedListener);
+
 }

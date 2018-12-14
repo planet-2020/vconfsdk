@@ -209,6 +209,7 @@ public class DataCollaborateManager extends RequestAgent {
     public void publishPaintOp(OpPaint op){
         KLog.p("publish op=%s", op);
         Object to = ToDoConverter.toPaintTransferObj(op);
+        // TODO 对于插入图片还需调用插入图片然后查询图片地址然后上传图片。
         if (null != to) {
             req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
                     ToDoConverter.toCommonPaintTransferObj(op), ToDoConverter.toPaintTransferObj(op));

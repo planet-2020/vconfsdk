@@ -207,7 +207,7 @@ final class ToDoConverter {
     public static List<PointF> fromTransferObj(TDCSWbPoint[] tdcsWbPoints) {
         List<PointF> pointFS = new ArrayList<>();
         for (int i=0; i<tdcsWbPoints.length; ++i){
-            pointFS.add( new PointF(tdcsWbPoints[i].nPosx, tdcsWbPoints[i].nPosy));
+            pointFS.add( new PointF(ft(tdcsWbPoints[i].nPosx), ft(tdcsWbPoints[i].nPosy)));
         }
         return pointFS;
     }
@@ -215,23 +215,24 @@ final class ToDoConverter {
         TDCSWbPoint[] tdcsWbPoints = new TDCSWbPoint[pointFS.size()];
         int i=0;
         for (PointF pointF : pointFS){
-            tdcsWbPoints[i++] = new TDCSWbPoint((int)pointF.x, (int)pointF.y);
+            tdcsWbPoints[i++] = new TDCSWbPoint((int)tt(pointF.x), (int)tt(pointF.y));
         }
         return tdcsWbPoints;
     }
 
     public static OpDrawLine fromTransferObj(DcsOperLineOperInfoNtf dcLineOp) {
         TDCSWbLine tdcsWbLine = dcLineOp.AssParam.tLine;
-        OpDrawLine opDrawLine = new OpDrawLine(tdcsWbLine.tBeginPt.nPosx, tdcsWbLine.tBeginPt.nPosy, tdcsWbLine.tEndPt.nPosx, tdcsWbLine.tEndPt.nPosy);
+        OpDrawLine opDrawLine = new OpDrawLine(ft(tdcsWbLine.tBeginPt.nPosx), ft(tdcsWbLine.tBeginPt.nPosy),
+                ft(tdcsWbLine.tEndPt.nPosx), ft(tdcsWbLine.tEndPt.nPosy));
         assignDrawDomainObj(dcLineOp.MainParam, tdcsWbLine.dwLineWidth, tdcsWbLine.dwRgb, opDrawLine);
         return opDrawLine;
     }
 
     public static TDCSWbLineOperInfo toTransferObj(OpDrawLine domainObj) {
         TDCSWbLine tdcsWbLine = new TDCSWbLine(new TDCSWbEntity(UUID.randomUUID().toString()),
-                new TDCSWbPoint((int)domainObj.getStartX(), (int)domainObj.getStartY()),
-                new TDCSWbPoint((int)domainObj.getStopX(), (int)domainObj.getStopY()),
-                domainObj.getStrokeWidth(), domainObj.getColor());
+                new TDCSWbPoint((int)tt(domainObj.getStartX()), (int)tt(domainObj.getStartY())),
+                new TDCSWbPoint((int)tt(domainObj.getStopX()), (int)tt(domainObj.getStopY())),
+                (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
         return new TDCSWbLineOperInfo(domainObj.getBoardId(), tdcsWbLine);
     }
 
@@ -245,24 +246,25 @@ final class ToDoConverter {
 
     public static TDCSWbRectangleOperInfo toTransferObj(OpDrawRect domainObj) {
         TDCSWbRectangle tdcsWbRectangle = new TDCSWbRectangle(new TDCSWbEntity(UUID.randomUUID().toString()),
-                new TDCSWbPoint((int)domainObj.getLeft(), (int)domainObj.getTop()),
-                new TDCSWbPoint((int)domainObj.getRight(), (int)domainObj.getBottom()),
-                domainObj.getStrokeWidth(), domainObj.getColor());
+                new TDCSWbPoint((int)tt(domainObj.getLeft()), (int)tt(domainObj.getTop())),
+                new TDCSWbPoint((int)tt(domainObj.getRight()), (int)tt(domainObj.getBottom())),
+                (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
         return new TDCSWbRectangleOperInfo(domainObj.getBoardId(), tdcsWbRectangle);
     }
 
     public static OpDrawOval fromTransferObj(DcsOperCircleOperInfoNtf dcOvalOp) {
         TDCSWbCircle circle = dcOvalOp.AssParam.tCircle;
-        OpDrawOval opDrawOval = new OpDrawOval(circle.tBeginPt.nPosx, circle.tBeginPt.nPosy, circle.tEndPt.nPosx, circle.tEndPt.nPosy);
+        OpDrawOval opDrawOval = new OpDrawOval(ft(circle.tBeginPt.nPosx), ft(circle.tBeginPt.nPosy),
+                ft(circle.tEndPt.nPosx), ft(circle.tEndPt.nPosy));
         assignDrawDomainObj(dcOvalOp.MainParam, circle.dwLineWidth, circle.dwRgb, opDrawOval);
         return opDrawOval;
     }
 
     public static TDCSWbCircleOperInfo toTransferObj(OpDrawOval domainObj) {
         TDCSWbCircle tdcsWbCircle = new TDCSWbCircle(new TDCSWbEntity(UUID.randomUUID().toString()),
-                new TDCSWbPoint((int)domainObj.getLeft(), (int)domainObj.getTop()),
-                new TDCSWbPoint((int)domainObj.getRight(), (int)domainObj.getBottom()),
-                domainObj.getStrokeWidth(), domainObj.getColor());
+                new TDCSWbPoint((int)tt(domainObj.getLeft()), (int)tt(domainObj.getTop())),
+                new TDCSWbPoint((int)tt(domainObj.getRight()), (int)tt(domainObj.getBottom())),
+                (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
         return new TDCSWbCircleOperInfo(domainObj.getBoardId(), tdcsWbCircle);
     }
 
@@ -276,7 +278,7 @@ final class ToDoConverter {
     public static TDCSWbPencilOperInfo toTransferObj(OpDrawPath domainObj) {
         TDCSWbPencil tdcsWbPencil = new TDCSWbPencil(new TDCSWbEntity(UUID.randomUUID().toString()),
                 toTransferObj(domainObj.getPoints()),
-                domainObj.getStrokeWidth(), domainObj.getColor());
+                (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
         return new TDCSWbPencilOperInfo(domainObj.getBoardId(), tdcsWbPencil);
     }
 
