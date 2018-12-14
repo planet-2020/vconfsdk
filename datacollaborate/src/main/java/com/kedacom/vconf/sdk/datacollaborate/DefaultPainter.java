@@ -426,8 +426,9 @@ public class DefaultPainter implements IPainter {
                     if (OpDraw.DASH == opDraw.getLineStyle()){
                         paint.setPathEffect(new DashPathEffect( new float[]{10, 4},0));
                     }
-                    if (EOpType.ERASE == opPaint.getType()){
-                        KLog.p(KLog.WARN, "ERASE %s",opPaint);
+                    if (EOpType.DRAW_PATH == opPaint.getType()){
+                        paint.setStrokeJoin(Paint.Join.ROUND);
+                    } else if (EOpType.ERASE == opPaint.getType()){
                         paint.setAlpha(0);
                         paint.setXfermode(DUFFMODE_SRCIN);
                     }

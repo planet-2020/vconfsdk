@@ -30,6 +30,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -334,11 +335,33 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             shapeInvertMatrix.mapPoints(mapPoint);
             float x = mapPoint[0];
             float y = mapPoint[1];
-            switch (tool){ // TODO 事件会打包多个进而造成图形轨迹不平滑，getHistorySize
+            switch (tool){
                 case TOOL_PENCIL:
                     OpDrawPath opDrawPath = (OpDrawPath) opPaint;
-                    opDrawPath.getPoints().add(new PointF(x, y));
-                    opDrawPath.getPath().lineTo(x, y);
+//                    KLog.p("event.getX()=%s, event.getY()=%s, history size=%s", event.getX(), event.getY(), event.getHistorySize());
+                    float preX, preY, midX, midY;
+                    List<PointF> pointFS = opDrawPath.getPoints();
+                    for (int i = 0; i < event.getHistorySize(); ++i) {
+                        preX = pointFS.get(pointFS.size()-1).x;
+                        preY = pointFS.get(pointFS.size()-1).y;
+                        mapPoint[0] = event.getHistoricalX(i);
+                        mapPoint[1] = event.getHistoricalY(i);
+//                        KLog.p("historicalX=%s, historicalY=%s", mapPoint[0], mapPoint[1]);
+                        shapeInvertMatrix.mapPoints(mapPoint);
+                        pointFS.add(new PointF(mapPoint[0], mapPoint[1]));
+                        midX = (preX + mapPoint[0]) / 2;
+                        midY = (preY + mapPoint[1]) / 2;
+//                        KLog.p("pathPreX=%s, pathPreY=%s, midX=%s, midY=%s", preX, preY, midX, midY);
+                        opDrawPath.getPath().quadTo(preX, preY, midX, midY);
+                    }
+                    preX = pointFS.get(pointFS.size()-1).x;
+                    preY = pointFS.get(pointFS.size()-1).y;
+                    pointFS.add(new PointF(x, y));
+                    midX = (preX + x) / 2;
+                    midY = (preY + y) / 2;
+//                    KLog.p("=pathPreX=%s, pathPreY=%s, midX=%s, midY=%s", preX, preY, midX, midY);
+                    opDrawPath.getPath().quadTo(preX, preY, midX, midY);
+
                     break;
                 case TOOL_LINE:
                     OpDrawLine opDrawLine = (OpDrawLine) opPaint;
@@ -357,7 +380,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     break;
                 case TOOL_ERASER:
                     OpErase opErase = (OpErase) opPaint;
-                    opErase.getPoints().add(new PointF(x, y));
+                    opErase.getPoints().add(new PointF(x, y)); // TODO historySize
                     opErase.getPath().lineTo(x, y);
                     break;
                 case TOOL_RECT_ERASER:
