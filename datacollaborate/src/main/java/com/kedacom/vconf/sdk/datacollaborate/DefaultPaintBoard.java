@@ -380,8 +380,28 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     break;
                 case TOOL_ERASER:
                     OpErase opErase = (OpErase) opPaint;
-                    opErase.getPoints().add(new PointF(x, y)); // TODO historySize
-                    opErase.getPath().lineTo(x, y);
+                    pointFS = opErase.getPoints();
+                    for (int i = 0; i < event.getHistorySize(); ++i) {
+                        preX = pointFS.get(pointFS.size()-1).x;
+                        preY = pointFS.get(pointFS.size()-1).y;
+                        mapPoint[0] = event.getHistoricalX(i);
+                        mapPoint[1] = event.getHistoricalY(i);
+//                        KLog.p("historicalX=%s, historicalY=%s", mapPoint[0], mapPoint[1]);
+                        shapeInvertMatrix.mapPoints(mapPoint);
+                        pointFS.add(new PointF(mapPoint[0], mapPoint[1]));
+                        midX = (preX + mapPoint[0]) / 2;
+                        midY = (preY + mapPoint[1]) / 2;
+//                        KLog.p("pathPreX=%s, pathPreY=%s, midX=%s, midY=%s", preX, preY, midX, midY);
+                        opErase.getPath().quadTo(preX, preY, midX, midY);
+                    }
+                    preX = pointFS.get(pointFS.size()-1).x;
+                    preY = pointFS.get(pointFS.size()-1).y;
+                    pointFS.add(new PointF(x, y));
+                    midX = (preX + x) / 2;
+                    midY = (preY + y) / 2;
+//                    KLog.p("=pathPreX=%s, pathPreY=%s, midX=%s, midY=%s", preX, preY, midX, midY);
+                    opErase.getPath().quadTo(preX, preY, midX, midY);
+
                     break;
                 case TOOL_RECT_ERASER:
                     OpDrawRect opDrawRect1 = (OpDrawRect) opPaint;
@@ -605,15 +625,27 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     }
 
+    @Override
+    public IPaintBoard setOnRepealedOpsCountChangedListener(IOnRepealedOpsCountChangedListener onRepealedOpsCountChangedListener) {
+        return null;
+    }
+
+    @Override
+    public IPaintBoard setOnPictureCountChangedListener(IOnPictureCountChanged onPictureCountChangedListener) {
+        return null;
+    }
+
+    @Override
+    public IPaintBoard setOnZoomRateChangedListener(IOnZoomRateChangedListener onZoomRateChangedListener) {
+        return null;
+    }
+
     void setOnPaintOpGeneratedListener(IOnPaintOpGeneratedListener paintOpGeneratedListener) {
         this.paintOpGeneratedListener = paintOpGeneratedListener;
     }
     interface IOnPaintOpGeneratedListener{
         void onAdjust(OpPaint opPaint);
         void onConfirm(OpPaint opPaint);
-    }
-    void setOnRepealedOpsCountChangedListener(IOnRepealedOpsCountChangedListener onRepealedOpsCountChangedListener) {
-        this.paintOpGeneratedListener = paintOpGeneratedListener;
     }
 
 }
