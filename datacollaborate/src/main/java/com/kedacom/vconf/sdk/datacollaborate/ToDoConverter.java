@@ -55,6 +55,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
@@ -161,8 +162,12 @@ final class ToDoConverter {
                 return toTransferObj((OpUndo) domainObj);
             case REDO:
                 return toTransferObj((OpRedo) domainObj);
+            // TODO 缩放位移
 //            case FULLSCREEN_MATRIX:
 //                return toTransferObj((OpMatrix) domainObj);
+            // TODO 黑板擦擦除
+//            case ERASE:
+//                return toTransferObj((OpErase) domainObj);
             case RECT_ERASE:
                 return toTransferObj((OpRectErase) domainObj);
             case INSERT_PICTURE:
@@ -290,7 +295,7 @@ final class ToDoConverter {
         return opInsertPic;
     }
 
-    public static TDCSWbInsertPicOperInfo toTransferObj(OpInsertPic domainObj) {
+    public static TDCSWbInsertPicOperInfo toTransferObj(OpInsertPic domainObj) { // TODO UUID
         return new TDCSWbInsertPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), domainObj.getPicId(),
                 domainObj.getPicWidth(), domainObj.getPicHeight(),
                 new TDCSWbPoint((int)domainObj.getInsertPosX(), (int)domainObj.getInsertPosY()),
@@ -348,6 +353,13 @@ final class ToDoConverter {
                 new TDCSWbPoint((int)domainObj.getRight(), (int)domainObj.getBottom()));
     }
 
+    // TODO 黑板擦擦除
+//    public static TDCSWbEraseOperInfo toTransferObj(OpErase domainObj) {
+//        return new TDCSWbEraseOperInfo(domainObj.getBoardId(),
+//                new TDCSWbPoint((int)domainObj.getLeft(), (int)domainObj.getTop()),
+//                new TDCSWbPoint((int)domainObj.getRight(), (int)domainObj.getBottom()));
+//    }
+
 
     public static OpUndo fromTransferObj(DcsOperUndoNtf dcsOperUndoNtf) {
         OpUndo opUndo = new OpUndo();
@@ -371,75 +383,6 @@ final class ToDoConverter {
 
 
 //
-//
-//
-//
-
-//
-//    public static DCRectOp toTransferObj(OpDrawRect domainObj) {
-//        DCRectOp transferObj = new DCRectOp();
-//        assignDrawTransferObj(domainObj, transferObj);
-//        transferObj.opType = EDcOpType.DRAW_RECT;
-//        transferObj.left    = domainObj.getLeft();
-//        transferObj.top     = domainObj.getTop();
-//        transferObj.right   = domainObj.getRight();
-//        transferObj.bottom  = domainObj.getBottom();
-//        return transferObj;
-//    }
-//
-//    public static DCOvalOp toTransferObj(OpDrawOval domainObj) {
-//        DCOvalOp transferObj = new DCOvalOp();
-//        assignDrawTransferObj(domainObj, transferObj);
-//        transferObj.opType = EDcOpType.DRAW_OVAL;
-//        transferObj.left    = domainObj.getLeft();
-//        transferObj.top     = domainObj.getTop();
-//        transferObj.right   = domainObj.getRight();
-//        transferObj.bottom  = domainObj.getBottom();
-//        return transferObj;
-//    }
-//
-//    public static DCPathOp toTransferObj(OpDrawPath domainObj) {
-//        DCPathOp transferObj = new DCPathOp();
-//        assignDrawTransferObj(domainObj, transferObj);
-//        transferObj.opType = EDcOpType.DRAW_PATH;
-//        transferObj.points = domainObj.getPoints();
-//        return transferObj;
-//    }
-//
-//    public static DCInertPicOp toTransferObj(OpInsertPic domainObj) {
-//        DCInertPicOp transferObj = new DCInertPicOp();
-//        assignPaintTransferObj(domainObj, transferObj);
-//        transferObj.opType = EDcOpType.INSERT_PIC;
-//        transferObj.picId = domainObj.getPicId();
-//        transferObj.picName = domainObj.getPicName();
-//        transferObj.width = domainObj.getPicWidth();
-//        transferObj.height = domainObj.getPicHeight();
-//        transferObj.insertPosX = domainObj.getInsertPosX();
-//        transferObj.insertPosY = domainObj.getInsertPosY();
-//        transferObj.matrixValue = matrixValueFloat2Str(domainObj.getMatrixValue());
-//        return transferObj;
-//    }
-//
-//    public static DCDelPicOp toTransferObj(OpDeletePic domainObj) {
-//        DCDelPicOp transferObj = new DCDelPicOp();
-//        assignPaintTransferObj(domainObj, transferObj);
-//        transferObj.opType = EDcOpType.DEL_PIC;
-//        transferObj.picIds = domainObj.getPicIds();
-//        return transferObj;
-//    }
-//
-//    public static DCDragPicOp toTransferObj(OpDragPic domainObj) {
-//        DCDragPicOp transferObj = new DCDragPicOp();
-//        assignPaintTransferObj(domainObj, transferObj);
-//        transferObj.opType = EDcOpType.DRAG_PIC;
-//        ArrayList<DCPicMatrix> list = new ArrayList<>();
-//        for (String picId : domainObj.getPicMatrices().keySet()){
-//            list.add(new DCPicMatrix(picId, matrixValueFloat2Str(domainObj.getPicMatrices().get(picId))));
-//        }
-//        transferObj.picMatrices = (DCPicMatrix[]) list.toArray();
-//        return transferObj;
-//    }
-//
 //    public static DCFullScreenMatrixOp toTransferObj(OpMatrix domainObj) {
 //        DCFullScreenMatrixOp transferObj = new DCFullScreenMatrixOp();
 //        assignPaintTransferObj(domainObj, transferObj);
@@ -459,29 +402,7 @@ final class ToDoConverter {
 //        return transferObj;
 //    }
 //
-//    public static DCPaintOp toTransferObj(OpClearScreen domainObj) {
-//        DCPaintOp transferObj = new DCPaintOp();
-//        assignPaintTransferObj(domainObj, transferObj);
-//        transferObj.opType = EDcOpType.CLEAR_SCREEN;
-//        return transferObj;
-//    }
-//
-//    public static DCPaintOp toTransferObj(OpUndo domainObj) {
-//        DCPaintOp transferObj = new DCPaintOp();
-//        assignPaintTransferObj(domainObj, transferObj);
-//        transferObj.opType = EDcOpType.UNDO;
-//        return transferObj;
-//    }
-//
-//    public static DCPaintOp toTransferObj(OpRedo domainObj) {
-//        DCPaintOp transferObj = new DCPaintOp();
-//        assignPaintTransferObj(domainObj, transferObj);
-//        transferObj.opType = EDcOpType.REDO;
-//        return transferObj;
-//    }
-//
-//
-//
+
     public static void assignPaintDomainObj(TDCSOperContent transferObj, OpPaint domainObj){
         domainObj.setConfE164(transferObj.achConfE164);
         domainObj.setBoardId(transferObj.achTabId);
@@ -494,21 +415,8 @@ final class ToDoConverter {
         domainObj.setStrokeWidth((int) ft(strokeWidth));
         domainObj.setColor(color);
     }
-//
-//    public static void assignPaintTransferObj(OpPaint domainObj, DCPaintOp transferObj){
-//        transferObj.id = "todo";// TODO;
-//        transferObj.confE164 = domainObj.getConfE164();
-//        transferObj.boardId = domainObj.getBoardId();
-//        transferObj.pageId = domainObj.getPageId();
-//    }
-//
-//    public static void assignDrawTransferObj(OpDraw domainObj, DCDrawOp transferObj){
-//        assignPaintTransferObj(domainObj, transferObj);
-//        transferObj.strokeWidth = domainObj.getStrokeWidth();
-//        transferObj.color = domainObj.getColor();
-//    }
-//
-//
+
+
     public static EmDcsType toTransferObj(ETerminalType type){
         switch (type){
             case TrueLinkWindows:

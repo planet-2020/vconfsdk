@@ -201,7 +201,7 @@ public enum Msg {
 					name = "DcsReleaseConf_Ntf")
     @Response(clz = BaseTypeString.class,
 				name = "DcsReleaseConf_Ntf")
-    DcsReleaseConf_Ntf, // TODO 重命名
+    DCReleaseConfNtf,
 
 //    /**当前终端拒绝入会*/
 //    @Deprecated // 下层已经做掉了（目前是始终同意入数据协作）。入会后若当前会议存在数据协作，平台会通知各终端入数据协作，各终端可选择加入或拒绝。
@@ -413,6 +413,11 @@ public enum Msg {
             paras = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class})
     DCDragPic,
 
+    /**黑板擦擦除*/ // TODO
+//    @Request(	name="DCSOperEraseOperInfoCmd",
+//            methodOwner = DcsCtrl,
+//            paras={TDCSOperReq.class, TDCSWbEraseOperInfo.class})
+    DCErase,
 
     /**矩形擦除*/
     @Request(	name="DCSOperEraseOperInfoCmd",
@@ -476,12 +481,12 @@ public enum Msg {
             methodOwner = DcsCtrl,
             paras = {BaseTypeString.class, TDCSFileInfo.class},
             rspSeq = {"DcsUploadFile_Ntf"})
-    DCSUploadFileCmd,
+    DCUpload,
 
     /**上传文件响应*/
     @Response(	clz= TDCSFileLoadResult.class,
 				name="DcsUploadFile_Ntf")
-    DcsUploadFile_Ntf,
+    DCUploadNtf,
 
 
     /**上传图片地址*/

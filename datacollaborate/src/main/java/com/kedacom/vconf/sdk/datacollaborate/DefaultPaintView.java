@@ -12,8 +12,7 @@ import java.util.Stack;
 public class DefaultPaintView extends TextureView{
 
     private MyConcurrentLinkedDeque<OpPaint> renderOps = new MyConcurrentLinkedDeque<>(); // 绘制操作
-//    private MyConcurrentLinkedDeque<OpPaint> matrixOps = new MyConcurrentLinkedDeque<>(); // 缩放及位变操作 // TODO 改为一个OpMatrix
-    private OpMatrix matrixOp = new OpMatrix();
+    private OpMatrix matrixOp = new OpMatrix(); // 缩放及位移
     private Stack<OpPaint> repealedOps = new Stack<>(); // 被撤销的操作
 
     public DefaultPaintView(Context context) {
@@ -31,10 +30,6 @@ public class DefaultPaintView extends TextureView{
     OpMatrix getMatrixOp() {
         return matrixOp;
     }
-
-//    MyConcurrentLinkedDeque<OpPaint> getMatrixOps() {
-//        return matrixOps;
-//    }
 
     Stack<OpPaint> getRepealedOps(){
         return repealedOps;
