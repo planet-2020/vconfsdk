@@ -81,21 +81,25 @@ public class DefaultPainter implements IPainter {
             ((LifecycleOwner)context).getLifecycle().addObserver(new DefaultLifecycleObserver(){
                 @Override
                 public void onCreate(@NonNull LifecycleOwner owner) {
+                    KLog.p("LifecycleOwner %s created", owner);
                     start();
                 }
 
                 @Override
                 public void onResume(@NonNull LifecycleOwner owner) {
+                    KLog.p("LifecycleOwner %s resumed", owner);
                     resume();
                 }
 
                 @Override
                 public void onPause(@NonNull LifecycleOwner owner) {
+                    KLog.p("LifecycleOwner %s to be paused", owner);
                     pause();
                 }
 
                 @Override
                 public void onDestroy(@NonNull LifecycleOwner owner) {
+                    KLog.p("LifecycleOwner %s to be destroyed", owner);
                     stop();
                 }
             });
@@ -204,12 +208,12 @@ public class DefaultPainter implements IPainter {
     public boolean addPaintBoard(IPaintBoard paintBoard) {
         String boardId = paintBoard.getBoardId();
         if (paintBoards.containsKey(boardId)){
-            KLog.p(KLog.ERROR,"board %s already exist!", paintBoard.getBoardId());
+            KLog.p(KLog.ERROR,"board %s already exist!", boardId);
             return false;
         }
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
+        paintBoards.put(boardId, defaultPaintBoard);
         roles.put(boardId, ROLE_COPYER);
-        paintBoards.put(paintBoard.getBoardId(), defaultPaintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 
         defaultPaintBoard.getShapePaintView().setSurfaceTextureListener(surfaceTextureListener);
@@ -252,11 +256,7 @@ public class DefaultPainter implements IPainter {
 
     @Override
     public IPaintBoard getPaintBoard(String boardId) {
-        DefaultPaintBoard paintBoard = paintBoards.get(boardId);
-        if(null == paintBoard){
-            KLog.p(KLog.ERROR,"no such board %s", boardId);
-        }
-        return paintBoard;
+        return paintBoards.get(boardId);
     }
 
     @Override
@@ -280,11 +280,11 @@ public class DefaultPainter implements IPainter {
     public void paint(OpPaint op){
         String boardId = op.getBoardId();
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
-        KLog.p(KLog.WARN, "for board %s op %s", boardId, op);
         if(null == paintBoard){
             KLog.p(KLog.ERROR,"no board %s for op %s", boardId, op);
             return;
         }
+        KLog.p(KLog.WARN, "for board %s op %s", boardId, op);
 
         DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
         MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapePaintView.getRenderOps();
@@ -295,7 +295,6 @@ public class DefaultPainter implements IPainter {
         MyConcurrentLinkedDeque<OpPaint> picRenderOps = picPaintView.getRenderOps();
         OpMatrix picMatrixOp = picPaintView.getMatrixOp();
 //        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
-
 
         boolean bRefresh = boardId.equals(curBoardId); // 操作属于当前board则尝试立即刷新
         OpPaint tmpOp;
@@ -529,6 +528,7 @@ public class DefaultPainter implements IPainter {
 
                 // 图片绘制
                 render(picPaintView.getRenderOps());
+
 
                 // 临时的绘制任务
                 if (null != tmpPaintOp){

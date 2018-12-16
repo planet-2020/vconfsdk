@@ -146,7 +146,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 opMatrix.getMatrix().postTranslate(detector.getFocusX()-startDragPoint.x, detector.getFocusY()-startDragPoint.y);
                 startDragPoint.set(detector.getFocusX(), detector.getFocusY());
                 refreshPaintOp();
-                return  true;
+                return true;
             }
 
             @Override
@@ -432,6 +432,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 OpDrawRect opDrawRect = (OpDrawRect) opPaint;
                 opPaint = new OpRectErase(opDrawRect.getLeft(), opDrawRect.getTop(), opDrawRect.getRight(), opDrawRect.getBottom());
                 assignBasicInfo(opPaint);
+            }else if (TOOL_PENCIL == tool){
+                OpDrawPath opDrawPath = (OpDrawPath) opPaint;
+                List<PointF> points = opDrawPath.getPoints();
+                PointF lastPoint = points.get(points.size()-1);
+                opDrawPath.getPath().lineTo(lastPoint.x, lastPoint.y);
+            }else if (TOOL_ERASER == tool){
+                OpErase opErase = (OpErase) opPaint;
+                List<PointF> points = opErase.getPoints();
+                PointF lastPoint = points.get(points.size()-1);
+                opErase.getPath().lineTo(lastPoint.x, lastPoint.y);
             }
             paintOpGeneratedListener.onConfirm(opPaint);
             if (null != publisher){
