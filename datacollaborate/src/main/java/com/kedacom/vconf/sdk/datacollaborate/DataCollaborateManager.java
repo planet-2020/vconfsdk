@@ -367,15 +367,20 @@ public class DataCollaborateManager extends RequestAgent {
 //        req(Msg.DCDelOperator, new MsgBeans.TDCSOperator(curDcConfE164, confUserInfos), resultListener);
     }
 
-    /**申请协作方*/
+    /**申请协作方
+     * @param e164 申请者e164*/
     public void applyForOperator(String e164, IResultListener resultListener){
         req(Msg.DCApplyOperator, resultListener, e164);
     }
-    /**取消协作方*/
+    /**取消协作方
+     * @param e164 申请者e164*/
     public void cancelOperator(String e164, IResultListener resultListener){
         req(Msg.DCCancelOperator, resultListener, e164);
     }
 
+    /**
+     * 协作方变更（添加/删除/申请/取消）响应处理
+     * */
     private void onChangeOperatorsRsps(Msg rspId, Object rspContent, IResultListener listener){
         switch (rspId){
             case DCApplyOperatorRsp:
@@ -434,6 +439,9 @@ public class DataCollaborateManager extends RequestAgent {
 
     private String curBoardId;
     private boolean bGotAllBoard;
+    /**
+     * 画板操作（创建/删除/切换）通知处理
+     * */
     private void onBoardNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener==%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
