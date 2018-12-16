@@ -80,7 +80,7 @@ public class DefaultPainter implements IPainter {
         if (context instanceof LifecycleOwner){
             ((LifecycleOwner)context).getLifecycle().addObserver(new DefaultLifecycleObserver(){
                 @Override
-                public void onCreate(@NonNull LifecycleOwner owner) {
+                public void onCreate(@NonNull LifecycleOwner owner) { // TODO 为什么我们的sky没走这？难道要通过onResume？
                     KLog.p("LifecycleOwner %s created", owner);
                     start();
                 }
@@ -612,7 +612,7 @@ public class DefaultPainter implements IPainter {
                         rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
                         shapePaintViewCanvas.drawOval(rect, cfgPaint(ovalOp));
                         break;
-                    case DRAW_PATH:
+                    case DRAW_PATH: //TODO 绘制曲线时起毛？
                         OpDrawPath pathOp = (OpDrawPath) op;
                         shapePaintViewCanvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
                         break;
