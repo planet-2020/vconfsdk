@@ -155,7 +155,6 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    @SuppressWarnings("ConstantConditions")
     @Override
     protected Map<Msg, RspProcessor> rspProcessors() {
         Map<Msg, RspProcessor> processorMap = new HashMap<>();
@@ -434,7 +433,7 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     private String curBoardId;
-    private boolean bGotAllBoard = false;
+    private boolean bGotAllBoard;
     private void onBoardNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener==%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
@@ -449,9 +448,9 @@ public class DataCollaborateManager extends RequestAgent {
             for (Object listener : listeners) {
                 ((IOnBoardOpListener) listener).onBoardDeleted(((TDCSDelWhiteBoardInfo) ntfContent).achTabId);
             }
-        } else if (Msg.DCCurrentBoardNtf.equals(ntfId)) {
+        } else if (Msg.DCCurrentBoardNtf.equals(ntfId)) { //NOTE: 该通知仅在刚入会时会收到
             curBoardId = ((TDCSBoardInfo) ntfContent).achTabId;
-            if (bGotAllBoard){ // 已获取当前会议中所有画板则我们可以上报用户切换画板。
+            if (bGotAllBoard){ // 已获取当前会议中所有画板则我们可以上报用户“切换画板”。
                 for (Object listener : listeners) {
                     ((IOnBoardOpListener) listener).onBoardSwitched(curBoardId);
                 }
