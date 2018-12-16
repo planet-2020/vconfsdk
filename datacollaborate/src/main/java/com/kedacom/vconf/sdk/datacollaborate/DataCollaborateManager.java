@@ -219,18 +219,29 @@ public class DataCollaborateManager extends RequestAgent {
         }
     }
 
-    /**登录数据协作*/
+    /**登录数据协作
+     * @param serverIp 数据协作服务器Ip
+     * @param port 数据协作服务器port
+     * @param terminalType 己端终端类型
+     * @param resultListener 登陆结果监听器*/
     public void login(String serverIp, int port, ETerminalType terminalType, IResultListener resultListener){
         req(Msg.DCLogin, resultListener, new TDCSRegInfo(serverIp, port, ToDoConverter.toTransferObj(terminalType)));
     }
 
-    /**注销数据协作*/
+    /**注销数据协作
+     * @param resultListener 注销结果监听器*/
     public void logout(IResultListener resultListener){
         req(Msg.DCLogout, resultListener);
         cachedPaintOps.clear();
         curDcConfE164 = null;
     }
 
+    /**
+     * 会话（登陆/注销）响应处理
+     * @param rspId 响应消息Id
+     * @param rspContent 响应内容
+     * @param listener 结果监听器（为请求时传下的）
+     * */
     private void onSessionRsps(Msg rspId, Object rspContent, IResultListener listener){
         KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
         switch (rspId){
@@ -479,13 +490,16 @@ public class DataCollaborateManager extends RequestAgent {
         return PIC_SAVE_DIR +File.pathSeparator+ picId + ".jpg";
     }
 
-    @SuppressWarnings("ConstantConditions")
+    /**
+     * 绘制操作通知处理
+     * */
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         switch (ntfId){
 //            case DCElementBeginNtf:
 //                // NOTHING TO DO. NOTE:此通知并不能准确标记批量图元推送的起点。
 //                break;
+            // 图元同步结束通知
             case DCElementEndNtf:
                 /*当前画板已有图元推送结束，我们上报给用户。
                 NOTE：之所以推送结束时才上报而不是边收到推送边上报，是因为推送的这些图元操作到达时序可能跟图元操作顺序不一致，
@@ -509,9 +523,10 @@ public class DataCollaborateManager extends RequestAgent {
 
                 break;
 
+            // 插入图片通知。 NOTE:插入图片比较特殊，通知中只有插入图片操作的基本信息，图片本身还需进一步下载
             case DCPicInsertedNtf:
-                // NOTE:插入图片比较特殊，当前只获取到了插入操作的基本信息，图片本身还需进一步下载
                 DcsOperInsertPicNtf dcInertPicOp = (DcsOperInsertPicNtf) ntfContent;
+
                 cacheOrReportPaintOp(ToDoConverter.fromTransferObj(dcInertPicOp), listeners);
 
                 String confE164 = dcInertPicOp.MainParam.achConfE164;
@@ -524,9 +539,9 @@ public class DataCollaborateManager extends RequestAgent {
 
                 }else if (null != cachedPaintOps.get(boardId)){ // 图片尚未下载到本地且正在同步图元
                     /* 获取图片下载地址。
-                    * NOTE: 仅在刚入会同步会议中已有图元时需要主动请求获取图片的url然后下载，
-                    其他情形下均在收到“图片可下载”通知后开始下载图片。
-                    （刚入会同步过程中不会上报“图片可下载”通知）*/
+                    * NOTE: 仅在同步图元阶段需要如下这样操作——获取图片的url，然后下载。其他情形均在收到“图片可下载”通知后开始下载图片。
+                     之所以要分情形而无法统一处理是因为：一方面刚入会同步过程中不会收到“图片可下载”通知所以需要主动获取下载url然后下载；
+                     另一方面除了刚入会同步的场景其它场景下主动获取图片下载url均可能失败，因为图片可能尚未上传到服务器，所以需要等到“图片可下载通知”方可下载*/
                     req(Msg.DCQueryPicUrl,
                         new IResultListener() {
                             @Override
@@ -555,7 +570,7 @@ public class DataCollaborateManager extends RequestAgent {
 
                                     new BaseTypeString(picUrl.AssParam.achPicUrl),
                                     new TDCSFileInfo(getPicSavePath(picUrl.AssParam.achWbPicentityId), picUrl.AssParam.achWbPicentityId, picUrl.AssParam.achTabId, false)
-                                    );
+                                );
                             }
 
                             @Override
@@ -570,9 +585,10 @@ public class DataCollaborateManager extends RequestAgent {
                         },
 
                         new TDCSImageUrl(confE164, boardId, pageId, picId)
-                        );
-                    }
-                    break;
+                    );
+                }
+
+                break;
 
             default:
 
@@ -586,7 +602,7 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void cacheOrReportPaintOp(OpPaint op, Set<Object> listeners){
         PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(op.getBoardId());
-        if (null != cachedOps){ // 正在同步该画板的图元则缓存期间收到的图元
+        if (null != cachedOps){ // 当前正在同步该画板的图元则缓存图元
             if (!cachedOps.contains(op)) { // 去重。 同步期间有可能收到重复的图元
                 cachedOps.offer(op);
             }
@@ -610,13 +626,13 @@ public class DataCollaborateManager extends RequestAgent {
             boolean bUpdated = false;
             for (OpPaint op : cachedOps){
                 if (op instanceof OpInsertPic && ((OpInsertPic)op).getPicId().equals(opUpdatePic.getPicId())){
-                    ((OpInsertPic)op).setPicSavePath(opUpdatePic.getPicSavePath()); // 更新图片的所在路径，解码图片由用户去做。
+                    ((OpInsertPic)op).setPicSavePath(opUpdatePic.getPicSavePath()); // 更新图片的所在路径
                     bUpdated = true;
                     break;
                 }
             }
             if (!bUpdated){
-                KLog.p(KLog.ERROR, "update insert pic op failed");
+                KLog.p(KLog.ERROR, "update pic %s failed", opUpdatePic.getPicId());
                 return;
             }
 
@@ -626,9 +642,11 @@ public class DataCollaborateManager extends RequestAgent {
                 return;
             }
             for (Object onPaintOpListener : listeners) {
-                if (containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener销毁了删除了，所以需做此判断
-                    ((IOnPaintOpListener) onPaintOpListener).onPaintOp(opUpdatePic);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+                if (!containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener被销毁了删除了
+                    KLog.p(KLog.ERROR,"listener %s for DCPicInsertedNtf has been destroyed", onPaintOpListener);
+                    continue;
                 }
+                ((IOnPaintOpListener) onPaintOpListener).onPaintOp(opUpdatePic);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
             }
         }
     }
@@ -638,7 +656,7 @@ public class DataCollaborateManager extends RequestAgent {
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         switch (ntfId){
-            // 入会通知
+            // 入会结果通知
             case DCConfCreated:
                 TDCSCreateConfResult dcConfinfo = (TDCSCreateConfResult) ntfContent;
 
@@ -692,17 +710,18 @@ public class DataCollaborateManager extends RequestAgent {
                         }
 
                         // 上报用户所有已创建的画板
-                        Set<Object> boardCreateddListeners = getNtfListeners(Msg.DCBoardCreatedNtf);
-                        if (null != boardCreateddListeners && !boardCreateddListeners.isEmpty()){
-                            for (Object listener : boardCreateddListeners) {
-                                for (TDCSBoardInfo board : dcBoards) {
-                                    ((IOnBoardOpListener) listener).onBoardCreated(ToDoConverter.fromTransferObj(board));
+                        Set<Object> boardCreatedListeners = getNtfListeners(Msg.DCBoardCreatedNtf);
+                        if (null != boardCreatedListeners && !boardCreatedListeners.isEmpty()){
+                            for (TDCSBoardInfo board : dcBoards) {
+                                BoardInfo boardInfo = ToDoConverter.fromTransferObj(board);
+                                for (Object listener : boardCreatedListeners) {
+                                    ((IOnBoardOpListener) listener).onBoardCreated(boardInfo);
                                 }
                             }
                         }
 
                         // 上报用户切换画板
-                        if (null != curBoardId){ // 当前画板通知已早于此到达，彼时还无法通知用户切换画板，因为彼时尚未上报用户画板已创建，所以此时我们补上通知用户切换画板。
+                        if (null != curBoardId){ // “当前画板”通知已早于此到达，彼时还无法通知用户“切换画板”，因为彼时尚未上报用户画板已创建，所以此时我们补上通知“切换画板”。
                             Set<Object> boardSwitchedListeners = getNtfListeners(Msg.DCBoardSwitchedNtf);
                             if (null != boardSwitchedListeners && !boardSwitchedListeners.isEmpty()) {
                                 for (Object listener : boardSwitchedListeners) {
@@ -712,7 +731,7 @@ public class DataCollaborateManager extends RequestAgent {
                             curBoardId = null;
                         }
 
-                        // 为各画板创建图元缓存队列
+                        // 为各画板创建图元缓存队列（刚入会需同步会议中已有图元）
                         for (TDCSBoardInfo board : dcBoards){
                             PriorityQueue<OpPaint> ops = cachedPaintOps.get(board.achTabId);
                             if (null == ops){ // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
@@ -721,14 +740,14 @@ public class DataCollaborateManager extends RequestAgent {
                             }
                         }
 
-                        // 开始同步所有画板已有图元
+                        // 开始同步所有画板的已有图元
                         for (TDCSBoardInfo board : dcBoards){
 
-                            // 下载每个画板已有的图元
+                            // 下载每个画板的已有图元
                             req(Msg.DCDownload, new IResultListener() {
                                 @Override
                                 public void onSuccess(Object result) {
-                                    // 后续会批量上报当前画板已有的图元，直到收到End消息为止。此处我们开启超时机制防止收不到End消息
+                                    // 后续会批量上报当前画板已有图元，直到收到End消息为止。此处我们开启超时机制防止收不到End消息
                                     Message msg = Message.obtain();
                                     msg.what = MsgID_SynchronizingTimeout;
                                     msg.obj = board.achTabId;
@@ -772,7 +791,7 @@ public class DataCollaborateManager extends RequestAgent {
 
                 break;
 
-            // 图片可下载。
+            // 图片可下载通知。
             /*己端展示图片的过程：
             协作方发出“插入图片”的操作并将图片上传服务器；
             己端先收到“插入图片”的通知，然后需等待“图片可下载”通知；
