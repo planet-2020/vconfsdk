@@ -310,6 +310,7 @@ public class DefaultPainter implements IPainter {
                         bRefresh = false; // 图片为空不需刷新界面（图片可能正在下载）
                     }
                 }
+                paintBoard.picCountChanged();
                 break;
 
             case DELETE_PICTURE:
@@ -326,6 +327,9 @@ public class DefaultPainter implements IPainter {
                             break;
                         }
                     }
+                }
+                if (bRefresh){
+                    paintBoard.picCountChanged();
                 }
                 break;
 
@@ -354,6 +358,7 @@ public class DefaultPainter implements IPainter {
             case FULLSCREEN_MATRIX: // 全局放缩，包括图片和图形
                 picMatrixOp.getMatrix().set(((OpMatrix)op).getMatrix());
                 shapeMatrixOp.getMatrix().set(((OpMatrix)op).getMatrix());
+                paintBoard.zoomRateChanged();
                 break;
 
             default:  // 图形操作
@@ -364,6 +369,7 @@ public class DefaultPainter implements IPainter {
                         if (null != tmpOp){
                             KLog.p(KLog.WARN, "repeal %s",tmpOp);
                             shapeRepealedOps.push(tmpOp); // 缓存撤销的操作以供恢复
+                            paintBoard.repealedOpsCountChanged();
                         }else{
                             bRefresh = false;
                         }
@@ -373,6 +379,7 @@ public class DefaultPainter implements IPainter {
                             tmpOp = shapeRepealedOps.pop();
                             KLog.p(KLog.WARN, "restore %s",tmpOp);
                             shapeRenderOps.offerLast(tmpOp); // 恢复最近操作
+                            paintBoard.repealedOpsCountChanged();
                         }else {
                             bRefresh = false;
                         }

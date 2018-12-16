@@ -15,6 +15,7 @@ import android.widget.FrameLayout;
 
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
@@ -62,6 +63,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private BoardInfo boardInfo;
 
+    private IOnPictureCountChanged onPictureCountChangedListener;
+    private IOnRepealedOpsCountChangedListener onRepealedOpsCountChangedListener;
+    private IOnZoomRateChangedListener onZoomRateChangedListener;
     private IOnPaintOpGeneratedListener paintOpGeneratedListener;
     private IPublisher publisher;
 
@@ -145,7 +149,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 opMatrix.getMatrix().postScale(scaleFactor, scaleFactor, zoomCenter.x, zoomCenter.y);
                 opMatrix.getMatrix().postTranslate(detector.getFocusX()-startDragPoint.x, detector.getFocusY()-startDragPoint.y);
                 startDragPoint.set(detector.getFocusX(), detector.getFocusY());
+
                 refreshPaintOp();
+
+                zoomRateChanged();
+
                 return true;
             }
 
@@ -618,12 +626,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     @Override
     public int getZoom() {
         float[] vals = new float[9];
-        shapePaintView.getMatrixOp().getMatrix().getValues(vals);
+        shapePaintView.getMatrixOp().getMatrix().getValues(vals); // TODO 考虑图片层缩放率不一致的情形？
         return (int) (vals[Matrix.MSCALE_X]*100);
     }
 
     @Override
-    public void setPublisher(IPublisher publisher) {
+    public IPaintBoard setPublisher(IPublisher publisher) {
         this.publisher = publisher;
         if (publisher instanceof LifecycleOwner){
             ((LifecycleOwner)publisher).getLifecycle().addObserver(new DefaultLifecycleObserver(){
@@ -633,22 +641,53 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
             });
         }
+        return this;
     }
 
     @Override
     public IPaintBoard setOnRepealedOpsCountChangedListener(IOnRepealedOpsCountChangedListener onRepealedOpsCountChangedListener) {
-        return null;
+        this.onRepealedOpsCountChangedListener = onRepealedOpsCountChangedListener;
+        return this;
     }
 
     @Override
     public IPaintBoard setOnPictureCountChangedListener(IOnPictureCountChanged onPictureCountChangedListener) {
-        return null;
+        this.onPictureCountChangedListener = onPictureCountChangedListener;
+        return this;
     }
 
     @Override
     public IPaintBoard setOnZoomRateChangedListener(IOnZoomRateChangedListener onZoomRateChangedListener) {
-        return null;
+        this.onZoomRateChangedListener = onZoomRateChangedListener;
+        return this;
     }
+
+
+    void repealedOpsCountChanged(){
+        if (null != onRepealedOpsCountChangedListener){
+            onRepealedOpsCountChangedListener.onRepealedOpsCountChanged(shapePaintView.getRepealedOps().size());
+        }
+    }
+
+    void picCountChanged(){
+        if (null != onPictureCountChangedListener){
+            MyConcurrentLinkedDeque<OpPaint> ops = picPaintView.getRenderOps();
+            int count = 0;
+            for (OpPaint op : ops){
+                if (EOpType.INSERT_PICTURE == op.getType()){
+                    ++count;
+                }
+            }
+            onPictureCountChangedListener.onPictureCountChanged(count);
+        }
+    }
+
+    void zoomRateChanged(){
+        if (null != onZoomRateChangedListener){
+            onZoomRateChangedListener.onZoomRateChanged(getZoom());
+        }
+    }
+
 
     void setOnPaintOpGeneratedListener(IOnPaintOpGeneratedListener paintOpGeneratedListener) {
         this.paintOpGeneratedListener = paintOpGeneratedListener;

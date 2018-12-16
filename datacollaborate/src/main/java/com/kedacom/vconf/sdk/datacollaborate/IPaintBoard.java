@@ -87,7 +87,7 @@ public interface IPaintBoard {
     interface IPublisher{
         void publish(OpPaint Op);
     }
-    void setPublisher(IPublisher publisher);
+    IPaintBoard setPublisher(IPublisher publisher);
 
     /**
      * 被撤销操作数量变化监听器。
