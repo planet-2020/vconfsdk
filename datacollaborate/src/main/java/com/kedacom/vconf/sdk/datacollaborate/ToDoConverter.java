@@ -210,8 +210,8 @@ final class ToDoConverter {
                 return Msg.DCRedo;
             case CLEAR_SCREEN:
                 return Msg.DCClearScreen;
-//            case ERASE:
-//                return Msg.DCEra;
+            case ERASE:
+                return Msg.DCErase;
             case RECT_ERASE:
                 return Msg.DCRectErase;
 //            case DRAW_LINE:

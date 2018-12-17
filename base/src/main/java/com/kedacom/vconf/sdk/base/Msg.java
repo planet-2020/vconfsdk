@@ -424,7 +424,7 @@ public enum Msg {
     @Request(	name="DCSOperEraseOperInfoCmd",
             methodOwner = DcsCtrl,
             paras={TDCSOperReq.class, TDCSWbEraseOperInfo.class})
-    DCRectErase, // TODO 待调
+    DCRectErase,
 
     /**清屏*/
     @Request(	name="DCSOperClearScreenCmd",
@@ -591,7 +591,11 @@ public enum Msg {
 					name="DcsOperPitchPicDel_Ntf")
     DCPicDeletedNtf,
 
-    /**矩形擦除通知*/ // TODO 黑板擦擦除通知呢？
+    /**黑板擦擦除通知*/
+//    @Notification(clz = ) // TODO
+    DcsOperReginErase_Ntf,
+
+    /**矩形擦除通知*/
     @Notification(clz = DcsOperEraseOperInfoNtf.class,
 					name="DcsOperEraseOperInfo_Ntf")
     DCRectErasedNtf,

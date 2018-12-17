@@ -55,9 +55,6 @@ public class DefaultPainter implements IPainter {
 
     private boolean bPaused = false;
 
-    /* 自己作为创作者，正在创作中尚未定型的临时绘制。
-    比如画线，从手指按下到手指移动过程中会产生很多线操作，这些操作都是临时存在的，
-    直到最终抬起手指该画线操作才最终定型。*/
     private OpPaint tmpPaintOp;
 
     private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener(){
