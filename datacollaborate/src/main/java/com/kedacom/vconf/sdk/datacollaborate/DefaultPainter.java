@@ -56,19 +56,16 @@ public class DefaultPainter implements IPainter {
     private boolean bPaused = false;
 
     private OpPaint tmpPaintOp;
+    private final Object tmpPaintOpLock = new Object();
 
     private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener(){
 
         @Override
-        public void onAdjust(OpPaint opPaint) {
-            tmpPaintOp = opPaint;
+        public void onPaintOpGenerated(OpPaint opPaint) {
+            synchronized (tmpPaintOpLock){
+                tmpPaintOp = opPaint;
+            }
             refresh();
-        }
-
-        @Override
-        public void onConfirm(OpPaint opPaint) {
-            tmpPaintOp = null;
-            paint(opPaint);
         }
     };
 
@@ -538,8 +535,11 @@ public class DefaultPainter implements IPainter {
 
 
                 // 临时的绘制任务
-                if (null != tmpPaintOp){
-                    render(tmpPaintOp);
+                synchronized (tmpPaintOpLock){
+                    if (null != tmpPaintOp){
+                        render(tmpPaintOp);
+                        tmpPaintOp = null;
+                    }
                 }
 
                 // 提交绘制任务，执行绘制

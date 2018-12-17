@@ -420,7 +420,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     return;
             }
 
-            paintOpGeneratedListener.onAdjust(opPaint);
+            paintOpGeneratedListener.onPaintOpGenerated(opPaint);
 
         }
 
@@ -428,7 +428,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (null == paintOpGeneratedListener){
                 return;
             }
-            paintOpGeneratedListener.onAdjust(null);
+            paintOpGeneratedListener.onPaintOpGenerated(null);
         }
 
         private void cancelPaintOp(){
@@ -451,7 +451,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 PointF lastPoint = points.get(points.size()-1);
                 opErase.getPath().lineTo(lastPoint.x, lastPoint.y);
             }
-            paintOpGeneratedListener.onConfirm(opPaint);
+            paintOpGeneratedListener.onPaintOpGenerated(opPaint);
             if (null != publisher){
                 publisher.publish(opPaint);
             }
@@ -549,7 +549,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             new Matrix().getValues(values);
             op.setMatrixValue(values);
             assignBasicInfo(op); // TODO 更多赋值
-            paintOpGeneratedListener.onConfirm(op);
+            paintOpGeneratedListener.onPaintOpGenerated(op);
             if (null != publisher){
                 publisher.publish(op);
             }
@@ -725,8 +725,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         this.paintOpGeneratedListener = paintOpGeneratedListener;
     }
     interface IOnPaintOpGeneratedListener{
-        void onAdjust(OpPaint opPaint);
-        void onConfirm(OpPaint opPaint);
+        void onPaintOpGenerated(OpPaint opPaint);
     }
 
 }
