@@ -370,7 +370,7 @@ public enum Msg {
     @Request(	name="DCSOperLineOperInfoCmd",
             methodOwner = DcsCtrl,
 				paras={TDCSOperReq.class, TDCSWbLineOperInfo.class})
-    DCDrawLine, // TODO 待调
+    DCDrawLine,
 
     /**画圆/椭圆*/
     @Request(	name="DCSOperCircleOperInfoCmd",
@@ -382,7 +382,7 @@ public enum Msg {
     @Request(	name="DCSOperRectangleOperInfoCmd",
             methodOwner = DcsCtrl,
             paras={TDCSOperReq.class, TDCSWbRectangleOperInfo.class})
-    DCDrawRect, // TODO 待调
+    DCDrawRect,
 
     /**画路径（铅笔操作）*/
     @Request(	name="DCSOperPencilOperInfoCmd",
@@ -489,17 +489,17 @@ public enum Msg {
     DCUploadNtf,
 
 
-    /**上传图片地址*/
+    /**获取图片上传地址*/
     @Request(name = "DCSUploadImageReq",
             methodOwner = DcsCtrl,
             paras=TDCSImageUrl.class,
             rspSeq = {"DcsUploadImage_Rsp"})
-    DCSUploadImageReq, // TODO 待调
+    DCQueryPicUploadUrl, // TODO 待调
 
-    /**上传图片地址响应*/
+    /**获取图片上传地址响应*/
     @Response(	clz = DcsUploadImageRsp.class,
 				name="DcsUploadImage_Rsp")
-    DcsUploadImage_Rsp, // TODO 待调
+    DCQueryPicUploadUrlRsp, // TODO 待调
 
 
 //    /**发布图片信息*/

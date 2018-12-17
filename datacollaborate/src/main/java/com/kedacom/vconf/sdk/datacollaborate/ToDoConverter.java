@@ -79,7 +79,8 @@ final class ToDoConverter {
      * 将坐标值由本设备实际使用的转为传输的
      * */
     private static float tt(float val){
-        return val/density;
+        float t = val/density;
+        return t>1 ? t : 1;
     }
 
     /**

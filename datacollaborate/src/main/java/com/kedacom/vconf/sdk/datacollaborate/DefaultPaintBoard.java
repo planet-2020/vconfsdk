@@ -503,6 +503,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void setPaintStrokeWidth(int width) {
+        KLog.sp("###setPaintStrokeWidth="+width);
         this.paintStrokeWidth = width;
     }
 

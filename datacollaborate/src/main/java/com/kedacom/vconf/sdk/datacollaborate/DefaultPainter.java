@@ -284,6 +284,9 @@ public class DefaultPainter implements IPainter {
             KLog.p(KLog.ERROR,"no board %s for op %s", boardId, op);
             return;
         }
+        if (op instanceof OpDraw) {
+            KLog.sp("####strokewidth="+((OpDraw)op).getStrokeWidth());
+        }
         KLog.p(KLog.WARN, "for board %s op %s", boardId, op);
 
         DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
