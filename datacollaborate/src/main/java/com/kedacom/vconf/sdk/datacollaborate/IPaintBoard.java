@@ -25,11 +25,35 @@ public interface IPaintBoard {
     int LAYER_PIC_AND_SHAPE =103;
     int LAYER_ALL =  109;
 
+    /**
+     * 获取画板ID。
+     * 画板信息中也包含该ID，此方法为便捷方法。
+     * */
     String getBoardId();
+
+    /**
+     * 获取画板信息
+     * */
     BoardInfo getBoardInfo();
+
+    /**
+     * 获取画板View。
+     * 用户需要将该view添加到自己的view树中后方可正常展示画板及在画板上绘制。
+     * 用户亦可通过为此view设置背景来给画板设置背景。
+     * @return 画板对应的View
+     * */
     View getBoardView();
 
+    /**
+     * 设置画板工具。
+     * 在进行相关绘制操作前需先设置好对应的工具。
+     * 如画任意曲线需设置TOOL_PENCIL, 画直线需设置TOOL_LINE。
+     * */
     void setTool(int style);
+
+    /**
+     * 获取当前画板工具
+     * */
     int getTool();
 
     /**
@@ -37,6 +61,10 @@ public interface IPaintBoard {
      * @param width 粗细。单位：pixel
      * */
     void setPaintStrokeWidth(int width);
+
+    /**
+     * 获取画笔粗细
+     * */
     int getPaintStrokeWidth();
 
     /**
@@ -44,6 +72,10 @@ public interface IPaintBoard {
      * @param color 颜色值。NOTE:必须为正整数，如果是字面值注意加后缀"L"，如0xFFFFFFFFL。
      * */
     void setPaintColor(long color);
+
+    /**
+     * 获取画笔颜色
+     * */
     long getPaintColor();
 
     /**
@@ -51,6 +83,10 @@ public interface IPaintBoard {
      * @param size 橡皮擦尺寸。单位：pixel
      * */
     void setEraserSize(int size);
+
+    /**
+     * 获取橡皮擦尺寸
+     * */
     int getEraserSize();
 
     /**
@@ -60,6 +96,9 @@ public interface IPaintBoard {
      * */
     void focusLayer(int layer);  // TODO 删除，改为每个接口添加layer参数
 
+    /**
+     * 插入图片
+     * */
     void insertPic(Bitmap pic);
 
     /**
@@ -72,12 +111,27 @@ public interface IPaintBoard {
      * 撤销。
      * */
     void undo();
+
     /**
      * 恢复被撤销的操作。
      * */
     void redo();
+
+    /**
+     * 清屏
+     * */
     void clearScreen();
+
+    /**
+     * 放缩
+     * @param percentage 百分数。如50代表50%。
+     * */
     void zoom(int percentage);
+
+    /**
+     * 获取放缩百分数
+     * @return 百分数。如50代表50%。
+     * */
     int getZoom();
 
     /**
@@ -93,9 +147,27 @@ public interface IPaintBoard {
      * 被撤销操作数量变化监听器。
      * */
     interface IOnRepealedOpsCountChangedListener{
-        void onRepealedOpsCountChanged(int count);
+        /**@param repealedOpsCount 被撤销操作数量
+         * @param remnantOpsCount 剩下的操作数量*/
+        void onRepealedOpsCountChanged(int repealedOpsCount, int remnantOpsCount);
     }
     IPaintBoard setOnRepealedOpsCountChangedListener(IOnRepealedOpsCountChangedListener onRepealedOpsCountChangedListener);
+
+    /**
+     * 获取被撤销操作数量
+     * */
+    int getRepealedOpsCount();
+
+    /**
+     * 获取图形操作数量
+     * */
+    int getShapeOpsCount();
+
+    /**
+     * 获取图片数量
+     * */
+    int getPicCount();
+
 
     /**
      * 图片数量变化监听器

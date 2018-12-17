@@ -665,6 +665,28 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     @Override
+    public int getRepealedOpsCount() {
+        return shapePaintView.getRepealedOps().size();
+    }
+
+    @Override
+    public int getShapeOpsCount() {
+        return shapePaintView.getRenderOps().size();
+    }
+
+    @Override
+    public int getPicCount() {
+        MyConcurrentLinkedDeque<OpPaint> ops = picPaintView.getRenderOps();
+        int count = 0;
+        for (OpPaint op : ops){
+            if (EOpType.INSERT_PICTURE == op.getType()){
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    @Override
     public IPaintBoard setOnPictureCountChangedListener(IOnPictureCountChanged onPictureCountChangedListener) {
         this.onPictureCountChangedListener = onPictureCountChangedListener;
         if (onPictureCountChangedListener instanceof LifecycleOwner){
@@ -697,21 +719,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     void repealedOpsCountChanged(){
         if (null != onRepealedOpsCountChangedListener){
-            KLog.p("RepealedOpsCount=%s", shapePaintView.getRepealedOps().size());
-            onRepealedOpsCountChangedListener.onRepealedOpsCountChanged(shapePaintView.getRepealedOps().size());
+            onRepealedOpsCountChangedListener.onRepealedOpsCountChanged(getRepealedOpsCount(), getShapeOpsCount());
         }
     }
 
     void picCountChanged(){
         if (null != onPictureCountChangedListener){
-            MyConcurrentLinkedDeque<OpPaint> ops = picPaintView.getRenderOps();
-            int count = 0;
-            for (OpPaint op : ops){
-                if (EOpType.INSERT_PICTURE == op.getType()){
-                    ++count;
-                }
-            }
-            onPictureCountChangedListener.onPictureCountChanged(count);
+            onPictureCountChangedListener.onPictureCountChanged(getPicCount());
         }
     }
 
