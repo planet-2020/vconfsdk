@@ -503,7 +503,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void setPaintStrokeWidth(int width) {
-        KLog.sp("###setPaintStrokeWidth="+width);
         this.paintStrokeWidth = width;
     }
 
@@ -582,48 +581,34 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     private void dealSimpleOp(OpPaint op){
-        assignBasicInfo(op);
-        paintOpGeneratedListener.onConfirm(op);
         if (null != publisher){
+            assignBasicInfo(op);
             publisher.publish(op);
         }
     }
 
     @Override
     public void undo() {
-        KLog.p("current RepealedOpsCount=%s", shapePaintView.getRepealedOps().size());
-        if (null != paintOpGeneratedListener){
-            dealSimpleOp(new OpUndo());
-        }
+        dealSimpleOp(new OpUndo());
     }
 
     @Override
     public void redo() {
-        KLog.p("current RepealedOpsCount=%s", shapePaintView.getRepealedOps().size());
-        if (null != paintOpGeneratedListener){
-            dealSimpleOp(new OpRedo());
-        }
+        dealSimpleOp(new OpRedo());
     }
 
     @Override
     public void clearScreen() {
-        if (null != paintOpGeneratedListener){
-            dealSimpleOp(new OpClearScreen());
-        }
+        dealSimpleOp(new OpClearScreen());
     }
 
     @Override
     public void zoom(int percentage) {
-        if (null == paintOpGeneratedListener){
-            return;
-        }
         int zoom = (MIN_ZOOM<=percentage && percentage<=MAX_ZOOM) ? percentage : (percentage<MIN_ZOOM ? MIN_ZOOM : MAX_ZOOM);
         KLog.p("zoom=%s, width=%s, height=%s", zoom, getWidth(), getHeight());
-        shapePaintView.getMatrixOp().getMatrix().setScale(zoom/100f, zoom/100f, getWidth()/2, getHeight()/2);
-        paintOpGeneratedListener.onAdjust(null);
-        if (null != publisher){
-            publisher.publish(shapePaintView.getMatrixOp());
-        }
+        OpMatrix opMatrix = new OpMatrix();
+        opMatrix.getMatrix().setScale(zoom/100f, zoom/100f, getWidth()/2, getHeight()/2);
+        dealSimpleOp(opMatrix);
     }
 
     @Override
