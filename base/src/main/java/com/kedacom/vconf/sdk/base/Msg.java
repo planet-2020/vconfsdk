@@ -376,7 +376,7 @@ public enum Msg {
     @Request(	name="DCSOperCircleOperInfoCmd",
             methodOwner = DcsCtrl,
             paras={TDCSOperReq.class, TDCSWbCircleOperInfo.class})
-    DCDrawOval, // TODO 待调
+    DCDrawOval,
 
     /**画矩形*/
     @Request(	name="DCSOperRectangleOperInfoCmd",
@@ -414,9 +414,9 @@ public enum Msg {
     DCDragPic, // TODO 待调
 
     /**黑板擦擦除*/ // TODO
-//    @Request(	name="DCSOperEraseOperInfoCmd",
-//            methodOwner = DcsCtrl,
-//            paras={TDCSOperReq.class, TDCSWbEraseOperInfo.class})
+    @Request(	name="DCSOperEraseOperInfoCmd",
+            methodOwner = DcsCtrl,
+            paras={TDCSOperReq.class, TDCSWbEraseOperInfo.class})
     DCErase,
 
     /**矩形擦除*/
@@ -429,7 +429,7 @@ public enum Msg {
     @Request(	name="DCSOperClearScreenCmd",
             methodOwner = DcsCtrl,
 				paras=TDCSOperReq.class)
-    DCClearScreen, // TODO 待调
+    DCClearScreen,
 
 
     // 数据协作矩阵操作
@@ -465,13 +465,13 @@ public enum Msg {
     @Request(	name="DCSOperUndoCmd",
             methodOwner = DcsCtrl,
             paras = {TDCSOperReq.class, TDCSWbTabPageIdInfo.class})
-    DCUndo, // TODO 待调
+    DCUndo,
 
     /**恢复（恢复被撤销的操作）*/
     @Request(	name="DCSOperRedoCmd",
             methodOwner = DcsCtrl,
             paras = {TDCSOperReq.class, TDCSWbTabPageIdInfo.class})
-    DCRedo, // TODO 待调
+    DCRedo,
 
 
     // 数据协作文件操作

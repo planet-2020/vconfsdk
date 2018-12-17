@@ -175,11 +175,22 @@ public class DataCollaborateManager extends RequestAgent {
 
         processorMap.put(Msg.DCDownload, this::onRsps);
         processorMap.put(Msg.DCQueryPicUrl, this::onRsps);
+        processorMap.put(Msg.DCUpload, this::onRsps);
+        processorMap.put(Msg.DCQueryPicUploadUrl, this::onRsps);
 
         processorMap.put(Msg.DCDrawLine, null);
         processorMap.put(Msg.DCDrawOval, null);
         processorMap.put(Msg.DCDrawRect, null);
         processorMap.put(Msg.DCDrawPath, null);
+        processorMap.put(Msg.DCUndo, null);
+        processorMap.put(Msg.DCRedo, null);
+        processorMap.put(Msg.DCClearScreen, null);
+        processorMap.put(Msg.DCErase, null);
+        processorMap.put(Msg.DCRectErase, null);
+        processorMap.put(Msg.DCZoom, null);
+        processorMap.put(Msg.DCRotateLeft, null);
+        processorMap.put(Msg.DCRotateRight, null);
+        processorMap.put(Msg.DCScrollScreen, null);
         processorMap.put(Msg.DCInsertPic, null);
         processorMap.put(Msg.DCDeletePic, null);
         processorMap.put(Msg.DCDragPic, null);

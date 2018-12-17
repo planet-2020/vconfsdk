@@ -199,10 +199,16 @@ final class ToDoConverter {
                 return Msg.DCDrawOval;
             case DRAW_PATH:
                 return Msg.DCDrawPath;
-//            case DRAW_LINE:
-//                return Msg.DCDrawLine;
-//            case DRAW_LINE:
-//                return Msg.DCDrawLine;
+            case UNDO:
+                return Msg.DCUndo;
+            case REDO:
+                return Msg.DCRedo;
+            case CLEAR_SCREEN:
+                return Msg.DCClearScreen;
+//            case ERASE:
+//                return Msg.DCEra;
+            case RECT_ERASE:
+                return Msg.DCRectErase;
 //            case DRAW_LINE:
 //                return Msg.DCDrawLine;
             default:
