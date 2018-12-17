@@ -630,6 +630,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return (int) (vals[Matrix.MSCALE_X]*100);
     }
 
+
     @Override
     public IPaintBoard setPublisher(IPublisher publisher) {
         this.publisher = publisher;
@@ -638,6 +639,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 @Override
                 public void onDestroy(@NonNull LifecycleOwner owner) {
                     DefaultPaintBoard.this.publisher = null;
+                    KLog.p("publisher destroyed");
                 }
             });
         }
@@ -647,18 +649,45 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     @Override
     public IPaintBoard setOnRepealedOpsCountChangedListener(IOnRepealedOpsCountChangedListener onRepealedOpsCountChangedListener) {
         this.onRepealedOpsCountChangedListener = onRepealedOpsCountChangedListener;
+        if (onRepealedOpsCountChangedListener instanceof LifecycleOwner){
+            ((LifecycleOwner)onRepealedOpsCountChangedListener).getLifecycle().addObserver(new DefaultLifecycleObserver(){
+                @Override
+                public void onDestroy(@NonNull LifecycleOwner owner) {
+                    DefaultPaintBoard.this.onRepealedOpsCountChangedListener = null;
+                    KLog.p("onRepealedOpsCountChangedListener destroyed");
+                }
+            });
+        }
         return this;
     }
 
     @Override
     public IPaintBoard setOnPictureCountChangedListener(IOnPictureCountChanged onPictureCountChangedListener) {
         this.onPictureCountChangedListener = onPictureCountChangedListener;
+        if (onPictureCountChangedListener instanceof LifecycleOwner){
+            ((LifecycleOwner)onPictureCountChangedListener).getLifecycle().addObserver(new DefaultLifecycleObserver(){
+                @Override
+                public void onDestroy(@NonNull LifecycleOwner owner) {
+                    DefaultPaintBoard.this.onPictureCountChangedListener = null;
+                    KLog.p("onPictureCountChangedListener destroyed");
+                }
+            });
+        }
         return this;
     }
 
     @Override
     public IPaintBoard setOnZoomRateChangedListener(IOnZoomRateChangedListener onZoomRateChangedListener) {
         this.onZoomRateChangedListener = onZoomRateChangedListener;
+        if (onZoomRateChangedListener instanceof LifecycleOwner){
+            ((LifecycleOwner)onZoomRateChangedListener).getLifecycle().addObserver(new DefaultLifecycleObserver(){
+                @Override
+                public void onDestroy(@NonNull LifecycleOwner owner) {
+                    DefaultPaintBoard.this.onZoomRateChangedListener = null;
+                    KLog.p("onZoomRateChangedListener destroyed");
+                }
+            });
+        }
         return this;
     }
 
