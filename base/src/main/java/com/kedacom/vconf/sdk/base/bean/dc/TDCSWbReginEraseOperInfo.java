@@ -11,4 +11,12 @@ public class TDCSWbReginEraseOperInfo {
     public int dwEraseHeight;
     public int dwPointCount;
     public TDCSWbPoint[] atPoint;   // 矩形中心点坐标集合
+    public TDCSWbReginEraseOperInfo(String boardId, int pageId, int width, int height, TDCSWbPoint[] points){
+        achTabId = boardId;
+        dwSubPageId = pageId;
+        dwEraseWidth = width;
+        dwEraseHeight = height;
+        dwPointCount = points.length;
+        atPoint = points;
+    }
 }

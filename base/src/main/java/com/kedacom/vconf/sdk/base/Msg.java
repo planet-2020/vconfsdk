@@ -51,6 +51,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbLineOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPencilOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPitchPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbRectangleOperInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbReginEraseOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbTabPageIdInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbZoomInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDcsCacheElementParseResult;
@@ -414,9 +415,9 @@ public enum Msg {
     DCDragPic, // TODO 待调
 
     /**黑板擦擦除*/ // TODO
-    @Request(	name="DCSOperEraseOperInfoCmd",
+    @Request(	name="DCSOperReginEraseCmd",
             methodOwner = DcsCtrl,
-            paras={TDCSOperReq.class, TDCSWbEraseOperInfo.class})
+            paras={TDCSOperReq.class, TDCSWbReginEraseOperInfo.class})
     DCErase,
 
     /**矩形擦除*/

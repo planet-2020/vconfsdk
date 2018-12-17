@@ -305,7 +305,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     opPaint = opDrawOval;
                     break;
                 case TOOL_ERASER:
-                    OpErase opErase = new OpErase(new ArrayList<>());
+                    OpErase opErase = new OpErase(eraserSize, eraserSize, new ArrayList<>());
                     opErase.getPoints().add(new PointF(startX, startY));
                     opErase.getPath().moveTo(startX, startY);
                     opPaint = opErase;
@@ -591,6 +591,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void undo() {
+        KLog.p("current RepealedOpsCount=%s", shapePaintView.getRepealedOps().size());
         if (null != paintOpGeneratedListener){
             dealSimpleOp(new OpUndo());
         }
@@ -598,6 +599,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void redo() {
+        KLog.p("current RepealedOpsCount=%s", shapePaintView.getRepealedOps().size());
         if (null != paintOpGeneratedListener){
             dealSimpleOp(new OpRedo());
         }
@@ -695,6 +697,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     void repealedOpsCountChanged(){
         if (null != onRepealedOpsCountChangedListener){
+            KLog.p("RepealedOpsCount=%s", shapePaintView.getRepealedOps().size());
             onRepealedOpsCountChangedListener.onRepealedOpsCountChanged(shapePaintView.getRepealedOps().size());
         }
     }

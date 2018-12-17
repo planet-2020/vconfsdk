@@ -9,13 +9,17 @@ import java.util.List;
 import androidx.annotation.NonNull;
 
 public class OpErase extends OpDraw {
+    private int width;
+    private int height;
     private List<PointF> points;
     private Path path;
 
-    public OpErase(List<PointF> points){
+    public OpErase(int width, int height, List<PointF> points){
+        this.width = width;
+        this.height = height;
         if (null != points) {
             path = new Path();
-            if (!points.isEmpty()) {
+            if (!points.isEmpty()) { // TODO smooth，参考path
                 Iterator it = points.iterator();
                 PointF pointF = (PointF) it.next();
                 path.moveTo(pointF.x, pointF.y);
@@ -33,6 +37,22 @@ public class OpErase extends OpDraw {
     @Override
     public String toString() {
         return "{"+"path="+path+super.toString()+"}";
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public void setWidth(int width) {
+        this.width = width;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
+    public void setHeight(int height) {
+        this.height = height;
     }
 
     public List<PointF> getPoints() {

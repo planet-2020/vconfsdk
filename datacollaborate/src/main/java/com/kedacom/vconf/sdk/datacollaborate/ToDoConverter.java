@@ -40,6 +40,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPitchPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPoint;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbRectangle;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbRectangleOperInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbReginEraseOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbTabPageIdInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
@@ -125,7 +126,11 @@ final class ToDoConverter {
             return fromTransferObj((DcsOperPitchPicDelNtf)transferObj);
         }else if (transferObj instanceof DcsOperFullScreenNtf){
             return fromTransferObj((DcsOperFullScreenNtf)transferObj);
-        }else if (transferObj instanceof DcsOperEraseOperInfoNtf){
+        }
+//        else if (transferObj instanceof TDCSWbReginEraseOperInfo){
+//            return fromTransferObj((TDCSWbReginEraseOperInfo)transferObj);
+//        }
+        else if (transferObj instanceof DcsOperEraseOperInfoNtf){
             return fromTransferObj((DcsOperEraseOperInfoNtf)transferObj);
         }else if (transferObj instanceof DcsOperUndoNtf){
             return fromTransferObj((DcsOperUndoNtf)transferObj);
@@ -167,8 +172,8 @@ final class ToDoConverter {
 //            case FULLSCREEN_MATRIX:
 //                return toTransferObj((OpMatrix) domainObj);
             // TODO 黑板擦擦除
-//            case ERASE:
-//                return toTransferObj((OpErase) domainObj);
+            case ERASE:
+                return toTransferObj((OpErase) domainObj);
             case RECT_ERASE:
                 return toTransferObj((OpRectErase) domainObj);
             case INSERT_PICTURE:
@@ -349,23 +354,26 @@ final class ToDoConverter {
 
     public static OpRectErase fromTransferObj(DcsOperEraseOperInfoNtf dcRectEraseOp) {
         TDCSWbEraseOperInfo eraseOperInfo = dcRectEraseOp.AssParam;
-        OpRectErase opRectErase = new OpRectErase(eraseOperInfo.tBeginPt.nPosx, eraseOperInfo.tBeginPt.nPosy, eraseOperInfo.tEndPt.nPosx, eraseOperInfo.tEndPt.nPosy);
+        OpRectErase opRectErase = new OpRectErase(ft(eraseOperInfo.tBeginPt.nPosx), ft(eraseOperInfo.tBeginPt.nPosy),
+                ft(eraseOperInfo.tEndPt.nPosx), ft(eraseOperInfo.tEndPt.nPosy));
         assignPaintDomainObj(dcRectEraseOp.MainParam, opRectErase);
         return opRectErase;
     }
 
     public static TDCSWbEraseOperInfo toTransferObj(OpRectErase domainObj) {
         return new TDCSWbEraseOperInfo(domainObj.getBoardId(),
-                new TDCSWbPoint((int)domainObj.getLeft(), (int)domainObj.getTop()),
-                new TDCSWbPoint((int)domainObj.getRight(), (int)domainObj.getBottom()));
+                new TDCSWbPoint((int)tt(domainObj.getLeft()), (int)tt(domainObj.getTop())),
+                new TDCSWbPoint((int)tt(domainObj.getRight()), (int)tt(domainObj.getBottom())));
     }
 
-    // TODO 黑板擦擦除
-//    public static TDCSWbEraseOperInfo toTransferObj(OpErase domainObj) {
-//        return new TDCSWbEraseOperInfo(domainObj.getBoardId(),
-//                new TDCSWbPoint((int)domainObj.getLeft(), (int)domainObj.getTop()),
-//                new TDCSWbPoint((int)domainObj.getRight(), (int)domainObj.getBottom()));
-//    }
+    public static OpErase fromTransferObj(TDCSWbReginEraseOperInfo dcErase) {
+        return new OpErase((int)ft(dcErase.dwEraseWidth), (int)ft(dcErase.dwEraseHeight), fromTransferObj(dcErase.atPoint));
+    }
+
+    public static TDCSWbReginEraseOperInfo toTransferObj(OpErase domainObj) {
+        return new TDCSWbReginEraseOperInfo(domainObj.getBoardId(), domainObj.getPageId(),
+                (int)tt(domainObj.getWidth()), (int)tt(domainObj.getHeight()), toTransferObj(domainObj.getPoints()));
+    }
 
 
     public static OpUndo fromTransferObj(DcsOperUndoNtf dcsOperUndoNtf) {
