@@ -278,9 +278,6 @@ public class DefaultPainter implements IPainter {
             KLog.p(KLog.ERROR,"no board %s for op %s", boardId, op);
             return;
         }
-        if (op instanceof OpDraw) {
-            KLog.sp("####strokewidth="+((OpDraw)op).getStrokeWidth());
-        }
         KLog.p(KLog.WARN, "for board %s op %s", boardId, op);
 
         DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
@@ -634,8 +631,7 @@ public class DefaultPainter implements IPainter {
 //                            int h = insertPicOp.pic.getHeight();
                             picMatrix.setValues(insertPicOp.getMatrixValue());
 //                                KLog.p("to render %s", op);
-//                            picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
-                            picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), 0, 0, cfgPaint(insertPicOp));
+                            picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
                         }
                         break;
                 }
