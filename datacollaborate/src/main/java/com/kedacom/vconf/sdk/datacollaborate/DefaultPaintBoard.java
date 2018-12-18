@@ -107,7 +107,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return false;
     }
 
-
     private class MyTouchListener implements OnTouchListener{
         private static final int STATE_IDLE = 0;
         private static final int STATE_SHAKING = 1;
@@ -165,12 +164,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
             @Override
             public void onScaleEnd(ScaleGestureDetector detector) {
-                KLog.p("state=%s, focusX = %s, focusY =%s, scale = %s", state, detector.getFocusX(), detector.getFocusY(), scaleFactor);
-                if (null != publisher){
-                    OpMatrix opMatrix = new OpMatrix(shapePaintView.getMyMatrix());
-                    assignBasicInfo(opMatrix);
-                    publisher.publish(opMatrix); // TODO 判断当前缩放图层
-                }
+                confirmMatrixOp();
                 state = STATE_IDLE;
             }
         });
@@ -212,6 +206,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 case MotionEvent.ACTION_POINTER_UP:
                     KLog.p("state=%s, ACTION_POINTER_UP{%s}", state, event);
                     if (2 == event.getPointerCount()){ // 二个手指其中一个抬起，只剩一个手指了
+                        if (STATE_DRAGING == state){
+                            if ((event.getX(1) + event.getX(0))/2 -startDragPoint.x > 10
+                                    || (event.getY(1) + event.getY(0))/2-startDragPoint.y > 10) {
+                                confirmMatrixOp();
+                            }
+                        }
                         state = STATE_SHAKING;
                         int indx = 1==event.getActionIndex() ? 0 : 1;
                         startPoint.set(event.getX(indx), event.getY(indx)); // 记录起始点
@@ -455,6 +455,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 publisher.publish(opPaint);
             }
             opPaint = null;
+        }
+
+        private void confirmMatrixOp(){
+            if (null != publisher){
+                OpMatrix opMatrix = new OpMatrix(shapePaintView.getMyMatrix());
+                assignBasicInfo(opMatrix);
+                publisher.publish(opMatrix); // TODO 判断当前缩放图层
+            }
         }
 
     }
