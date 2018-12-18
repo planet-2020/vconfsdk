@@ -82,12 +82,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         MyTouchListener myTouchListener = new MyTouchListener();
         picPaintView.setOnTouchListener(myTouchListener);  // XXX 默认情形下onClick事件将被屏蔽
         shapePaintView.setOnTouchListener(myTouchListener);
-        picPaintView.getMatrixOp().setConfE164(boardInfo.getConfE164());
-        picPaintView.getMatrixOp().setBoardId(boardInfo.getId());
-        picPaintView.getMatrixOp().setPageId(boardInfo.getPageId());
-        shapePaintView.getMatrixOp().setConfE164(boardInfo.getConfE164());
-        shapePaintView.getMatrixOp().setBoardId(boardInfo.getId());
-        shapePaintView.getMatrixOp().setPageId(boardInfo.getPageId());
+//        picPaintView.getMatrixOp().setConfE164(boardInfo.getConfE164());
+//        picPaintView.getMatrixOp().setBoardId(boardInfo.getId());
+//        picPaintView.getMatrixOp().setPageId(boardInfo.getPageId());
+//        shapePaintView.getMatrixOp().setConfE164(boardInfo.getConfE164());
+//        shapePaintView.getMatrixOp().setBoardId(boardInfo.getId());
+//        shapePaintView.getMatrixOp().setPageId(boardInfo.getPageId());
 
         setBackgroundColor(Color.DKGRAY);
     }
@@ -142,12 +142,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 lastScaleFactor = scaleFactor;
 
 //                KLog.p("zoomCenter={%s, %s} ",  zoomCenter.x, zoomCenter.y);
-                OpMatrix opMatrix = shapePaintView.getMatrixOp();
-                opMatrix.getMatrix().postScale(scaleFactor, scaleFactor, zoomCenter.x, zoomCenter.y);
-                opMatrix.getMatrix().postTranslate(detector.getFocusX()-startDragPoint.x, detector.getFocusY()-startDragPoint.y);
-                opMatrix = picPaintView.getMatrixOp();
-                opMatrix.getMatrix().postScale(scaleFactor, scaleFactor, zoomCenter.x, zoomCenter.y);
-                opMatrix.getMatrix().postTranslate(detector.getFocusX()-startDragPoint.x, detector.getFocusY()-startDragPoint.y);
+                Matrix myMatrix = shapePaintView.getMyMatrix();
+                myMatrix.postScale(scaleFactor, scaleFactor, zoomCenter.x, zoomCenter.y);
+                myMatrix.postTranslate(detector.getFocusX()-startDragPoint.x, detector.getFocusY()-startDragPoint.y);
+                myMatrix = picPaintView.getMyMatrix();
+                myMatrix.postScale(scaleFactor, scaleFactor, zoomCenter.x, zoomCenter.y);
+                myMatrix.postTranslate(detector.getFocusX()-startDragPoint.x, detector.getFocusY()-startDragPoint.y);
+
                 startDragPoint.set(detector.getFocusX(), detector.getFocusY());
 
                 refreshPaintOp();
@@ -171,7 +172,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             public void onScaleEnd(ScaleGestureDetector detector) {
                 KLog.p("state=%s, focusX = %s, focusY =%s, scale = %s", state, detector.getFocusX(), detector.getFocusY(), scaleFactor);
                 if (null != publisher){
-                    publisher.publish(shapePaintView.getMatrixOp()); // TODO 判断当前缩放图层
+                    publisher.publish(new OpMatrix(shapePaintView.getMyMatrix())); // TODO 判断当前缩放图层
                 }
                 state = STATE_IDLE;
             }
@@ -233,11 +234,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     }else if (STATE_DRAWING == state){
                         adjustPaintOp(event);
                     }else if (STATE_DRAGING == state){
-                        OpMatrix opMatrix = shapePaintView.getMatrixOp();
-                        opMatrix.getMatrix().postTranslate((event.getX(1) + event.getX(0))/2 -startDragPoint.x,
+                        Matrix myMatrix = shapePaintView.getMyMatrix();
+                        myMatrix.postTranslate((event.getX(1) + event.getX(0))/2 -startDragPoint.x,
                                 (event.getY(1) + event.getY(0))/2-startDragPoint.y);
-                        opMatrix = picPaintView.getMatrixOp();
-                        opMatrix.getMatrix().postTranslate((event.getX(1) + event.getX(0))/2 -startDragPoint.x,
+                        myMatrix = picPaintView.getMyMatrix();
+                        myMatrix.postTranslate((event.getX(1) + event.getX(0))/2 -startDragPoint.x,
                                 (event.getY(1) + event.getY(0))/2-startDragPoint.y);
                         startDragPoint.set((event.getX(1) + event.getX(0))/2,
                                 (event.getY(1) + event.getY(0))/2);
@@ -271,7 +272,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private Matrix shapeInvertMatrix = new Matrix();
         private float[] mapPoint= new float[2];
         private void createPaintOp(float startX, float startY){
-            boolean suc = shapePaintView.getMatrixOp().getMatrix().invert(shapeInvertMatrix);
+            boolean suc = shapePaintView.getMyMatrix().invert(shapeInvertMatrix);
             KLog.p("invert success?=%s, orgX=%s, orgY=%s", suc, startX, startY);
             mapPoint[0] = startX;
             mapPoint[1] = startY;
@@ -614,7 +615,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     @Override
     public int getZoom() {
         float[] vals = new float[9];
-        shapePaintView.getMatrixOp().getMatrix().getValues(vals); // TODO 考虑图片层缩放率不一致的情形？
+        shapePaintView.getMyMatrix().getValues(vals); // TODO 考虑图片层缩放率不一致的情形？
         return (int) (vals[Matrix.MSCALE_X]*100);
     }
 

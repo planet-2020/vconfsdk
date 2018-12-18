@@ -12,6 +12,11 @@ public class OpMatrix extends OpPaint {
         type = EOpType.FULLSCREEN_MATRIX;
     }
 
+    public OpMatrix(Matrix matrix){
+        this.matrix.set(matrix);
+        type = EOpType.FULLSCREEN_MATRIX;
+    }
+
     public OpMatrix(float[] matrixValue){
         matrix.setValues(matrixValue);
         type = EOpType.FULLSCREEN_MATRIX;

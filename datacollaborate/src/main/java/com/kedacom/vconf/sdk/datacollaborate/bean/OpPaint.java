@@ -1,10 +1,13 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import java.util.UUID;
+
 import androidx.annotation.NonNull;
 
 public abstract class OpPaint implements Comparable<OpPaint>{
 
+    protected String uuid = UUID.randomUUID().toString();
     protected EOpType type; // 类型：划线、画圈等。
 
     protected String   confE164;   // 所属会议e164号
@@ -28,6 +31,10 @@ public abstract class OpPaint implements Comparable<OpPaint>{
     @Override
     public String toString() {
         return String.format("\n type=%s, confE164=%s, boardId=%s, pageId=%s", type, confE164, boardId, pageId);
+    }
+
+    public String getUuid() {
+        return uuid;
     }
 
     public EOpType getType() {

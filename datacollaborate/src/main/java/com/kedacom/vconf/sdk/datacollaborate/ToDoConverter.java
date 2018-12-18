@@ -69,7 +69,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @SuppressWarnings("WeakerAccess")
 final class ToDoConverter {
@@ -246,7 +245,7 @@ final class ToDoConverter {
     }
 
     public static TDCSWbLineOperInfo toTransferObj(OpDrawLine domainObj) {
-        TDCSWbLine tdcsWbLine = new TDCSWbLine(new TDCSWbEntity(UUID.randomUUID().toString()),
+        TDCSWbLine tdcsWbLine = new TDCSWbLine(new TDCSWbEntity(domainObj.getUuid()),
                 new TDCSWbPoint((int)tt(domainObj.getStartX()), (int)tt(domainObj.getStartY())),
                 new TDCSWbPoint((int)tt(domainObj.getStopX()), (int)tt(domainObj.getStopY())),
                 (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
@@ -262,7 +261,7 @@ final class ToDoConverter {
     }
 
     public static TDCSWbRectangleOperInfo toTransferObj(OpDrawRect domainObj) {
-        TDCSWbRectangle tdcsWbRectangle = new TDCSWbRectangle(new TDCSWbEntity(UUID.randomUUID().toString()),
+        TDCSWbRectangle tdcsWbRectangle = new TDCSWbRectangle(new TDCSWbEntity(domainObj.getUuid()),
                 new TDCSWbPoint((int)tt(domainObj.getLeft()), (int)tt(domainObj.getTop())),
                 new TDCSWbPoint((int)tt(domainObj.getRight()), (int)tt(domainObj.getBottom())),
                 (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
@@ -278,7 +277,7 @@ final class ToDoConverter {
     }
 
     public static TDCSWbCircleOperInfo toTransferObj(OpDrawOval domainObj) {
-        TDCSWbCircle tdcsWbCircle = new TDCSWbCircle(new TDCSWbEntity(UUID.randomUUID().toString()),
+        TDCSWbCircle tdcsWbCircle = new TDCSWbCircle(new TDCSWbEntity(domainObj.getUuid()),
                 new TDCSWbPoint((int)tt(domainObj.getLeft()), (int)tt(domainObj.getTop())),
                 new TDCSWbPoint((int)tt(domainObj.getRight()), (int)tt(domainObj.getBottom())),
                 (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
@@ -293,7 +292,7 @@ final class ToDoConverter {
     }
 
     public static TDCSWbPencilOperInfo toTransferObj(OpDrawPath domainObj) {
-        TDCSWbPencil tdcsWbPencil = new TDCSWbPencil(new TDCSWbEntity(UUID.randomUUID().toString()),
+        TDCSWbPencil tdcsWbPencil = new TDCSWbPencil(new TDCSWbEntity(domainObj.getUuid()),
                 toTransferObj(domainObj.getPoints()),
                 (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
         return new TDCSWbPencilOperInfo(domainObj.getBoardId(), tdcsWbPencil);

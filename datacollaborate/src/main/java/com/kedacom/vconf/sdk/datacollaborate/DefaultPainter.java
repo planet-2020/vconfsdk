@@ -282,12 +282,12 @@ public class DefaultPainter implements IPainter {
 
         DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
         MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapePaintView.getRenderOps();
-        OpMatrix shapeMatrixOp = shapePaintView.getMatrixOp();
+        Matrix shapeMatrix = shapePaintView.getMyMatrix();
         Stack<OpPaint> shapeRepealedOps = shapePaintView.getRepealedOps();
 
         DefaultPaintView picPaintView = paintBoard.getPicPaintView();
         MyConcurrentLinkedDeque<OpPaint> picRenderOps = picPaintView.getRenderOps();
-        OpMatrix picMatrixOp = picPaintView.getMatrixOp();
+        Matrix picMatrix = picPaintView.getMyMatrix();
 //        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
 
         boolean bRefresh = boardId.equals(curBoardId); // 操作属于当前board则尝试立即刷新
@@ -350,8 +350,8 @@ public class DefaultPainter implements IPainter {
                 }
                 break;
             case FULLSCREEN_MATRIX: // 全局放缩，包括图片和图形
-                picMatrixOp.getMatrix().set(((OpMatrix)op).getMatrix());
-                shapeMatrixOp.getMatrix().set(((OpMatrix)op).getMatrix());
+                picMatrix.set(((OpMatrix)op).getMatrix());
+                shapeMatrix.set(((OpMatrix)op).getMatrix());
                 paintBoard.zoomRateChanged();
                 break;
 
@@ -498,7 +498,7 @@ public class DefaultPainter implements IPainter {
                 shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
                 // 设置图形层画布的缩放比例
-                shapePaintViewCanvas.setMatrix(shapePaintView.getMatrixOp().getMatrix());
+                shapePaintViewCanvas.setMatrix(shapePaintView.getMyMatrix());
 
                 /* 刷新渲染标志。
                 从被唤醒到运行至此可能有新的操作入队列（意味着needRender被重新置为true了），
@@ -525,7 +525,7 @@ public class DefaultPainter implements IPainter {
                 picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
                 // 设置画布的缩放比例
-                picPaintViewCanvas.setMatrix(picPaintView.getMatrixOp().getMatrix());
+                picPaintViewCanvas.setMatrix(picPaintView.getMyMatrix());
 
                 // 图片绘制
                 render(picPaintView.getRenderOps());
