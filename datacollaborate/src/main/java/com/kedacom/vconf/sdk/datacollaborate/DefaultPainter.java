@@ -55,15 +55,13 @@ public class DefaultPainter implements IPainter {
 
     private boolean bPaused = false;
 
-    private OpPaint tmpPaintOp;
-    private final Object tmpPaintOpLock = new Object();
-
-    private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener(){
-
+    private OpPaint adjustingOp;
+    private final Object adjustingOpLock = new Object();
+    private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener() {
         @Override
-        public void onPaintOpGenerated(OpPaint opPaint) {
-            synchronized (tmpPaintOpLock){
-                tmpPaintOp = opPaint;
+        public void onOp(OpPaint opPaint) {
+            synchronized (adjustingOpLock) {
+                adjustingOp = opPaint;
             }
             refresh();
         }
@@ -290,6 +288,24 @@ public class DefaultPainter implements IPainter {
         Matrix picMatrix = picPaintView.getMyMatrix();
 //        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
 
+        // 检查是否为主动绘制触发的响应
+        OpPaint shapeTmpOp = shapePaintView.getTmpOps().pollFirst();
+        if (null != shapeTmpOp && shapeTmpOp.getUuid().equals(op.getUuid())) {
+            KLog.p("tmp op %s confirmed", shapeTmpOp);
+            shapeRenderOps.offerLast(shapeTmpOp); // 临时工转正
+            return;
+        }
+        OpPaint picTmpOp = picPaintView.getTmpOps().pollFirst();
+        if (null != picTmpOp && picTmpOp.getUuid().equals(op.getUuid())) {
+            KLog.p("tmp op %s confirmed", picTmpOp);
+            picRenderOps.offerLast(picTmpOp);
+            return;
+        }
+
+        // 不是主动绘制的响应则清空临时绘制
+        shapePaintView.getTmpOps().clear();
+        picPaintView.getTmpOps().clear();
+
         boolean bRefresh = boardId.equals(curBoardId); // 操作属于当前board则尝试立即刷新
         OpPaint tmpOp;
 
@@ -510,7 +526,8 @@ public class DefaultPainter implements IPainter {
                 // 图形绘制
                 render(shapePaintView.getRenderOps());
 
-
+                // 临时图形绘制
+                render(shapePaintView.getTmpOps());
 
                 // 获取图片层画布
                 DefaultPaintView picPaintView = paintBoard.getPicPaintView();
@@ -530,12 +547,13 @@ public class DefaultPainter implements IPainter {
                 // 图片绘制
                 render(picPaintView.getRenderOps());
 
+                // 临时图片绘制
+                render(picPaintView.getTmpOps());
 
-                // 临时的绘制任务
-                synchronized (tmpPaintOpLock){
-                    if (null != tmpPaintOp){
-                        render(tmpPaintOp);
-                        tmpPaintOp = null;
+                // 绘制正在调整中的操作
+                synchronized (adjustingOpLock) {
+                    if (null != adjustingOp){
+                        render(adjustingOp);
                     }
                 }
 

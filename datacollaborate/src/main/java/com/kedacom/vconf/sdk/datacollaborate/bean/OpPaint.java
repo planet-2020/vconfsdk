@@ -37,6 +37,10 @@ public abstract class OpPaint implements Comparable<OpPaint>{
         return uuid;
     }
 
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
+
     public EOpType getType() {
         return type;
     }

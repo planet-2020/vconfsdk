@@ -82,12 +82,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         MyTouchListener myTouchListener = new MyTouchListener();
         picPaintView.setOnTouchListener(myTouchListener);  // XXX 默认情形下onClick事件将被屏蔽
         shapePaintView.setOnTouchListener(myTouchListener);
-//        picPaintView.getMatrixOp().setConfE164(boardInfo.getConfE164());
-//        picPaintView.getMatrixOp().setBoardId(boardInfo.getId());
-//        picPaintView.getMatrixOp().setPageId(boardInfo.getPageId());
-//        shapePaintView.getMatrixOp().setConfE164(boardInfo.getConfE164());
-//        shapePaintView.getMatrixOp().setBoardId(boardInfo.getId());
-//        shapePaintView.getMatrixOp().setPageId(boardInfo.getPageId());
 
         setBackgroundColor(Color.DKGRAY);
     }
@@ -172,7 +166,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             public void onScaleEnd(ScaleGestureDetector detector) {
                 KLog.p("state=%s, focusX = %s, focusY =%s, scale = %s", state, detector.getFocusX(), detector.getFocusY(), scaleFactor);
                 if (null != publisher){
-                    publisher.publish(new OpMatrix(shapePaintView.getMyMatrix())); // TODO 判断当前缩放图层
+                    OpMatrix opMatrix = new OpMatrix(shapePaintView.getMyMatrix());
+                    assignBasicInfo(opMatrix);
+                    publisher.publish(opMatrix); // TODO 判断当前缩放图层
                 }
                 state = STATE_IDLE;
             }
@@ -421,15 +417,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     return;
             }
 
-            paintOpGeneratedListener.onPaintOpGenerated(opPaint);
+            paintOpGeneratedListener.onOp(opPaint);
 
         }
 
         private void refreshPaintOp(){
-            if (null == paintOpGeneratedListener){
-                return;
+            if (null != paintOpGeneratedListener){
+                paintOpGeneratedListener.onOp(null);
             }
-            paintOpGeneratedListener.onPaintOpGenerated(null);
         }
 
         private void cancelPaintOp(){
@@ -452,7 +447,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 PointF lastPoint = points.get(points.size()-1);
                 opErase.getPath().lineTo(lastPoint.x, lastPoint.y);
             }
-            paintOpGeneratedListener.onPaintOpGenerated(opPaint);
+            KLog.p("new tmp op %s", opPaint);
+            shapePaintView.getTmpOps().offerLast(opPaint);
+            refreshPaintOp();
             if (null != publisher){
                 publisher.publish(opPaint);
             }
@@ -550,7 +547,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             new Matrix().getValues(values);
             op.setMatrixValue(values);
             assignBasicInfo(op); // TODO 更多赋值
-            paintOpGeneratedListener.onPaintOpGenerated(op);
+            KLog.p("new tmp op %s", op);
+            picPaintView.getTmpOps().offerLast(op);
+            paintOpGeneratedListener.onOp(null);
             if (null != publisher){
                 publisher.publish(op);
             }
@@ -721,12 +720,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     }
 
-
     void setOnPaintOpGeneratedListener(IOnPaintOpGeneratedListener paintOpGeneratedListener) {
         this.paintOpGeneratedListener = paintOpGeneratedListener;
     }
     interface IOnPaintOpGeneratedListener{
-        void onPaintOpGenerated(OpPaint opPaint);
+        void onOp(OpPaint opPaint);
     }
 
 }

@@ -64,6 +64,10 @@ public class MyConcurrentLinkedDeque<E> implements Iterable<E>{
         return deque.size();
     }
 
+    public void clear(){
+        deque.clear();
+    }
+
     @NonNull
     @Override
     public Iterator<E> iterator() {
