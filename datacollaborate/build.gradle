@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '0.5.31-SNAPSHOT'
+version = '0.5.35-SNAPSHOT'
 
 android {
     compileSdkVersion 28

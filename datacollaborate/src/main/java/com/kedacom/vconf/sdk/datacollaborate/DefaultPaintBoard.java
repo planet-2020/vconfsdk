@@ -207,10 +207,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     KLog.p("state=%s, ACTION_POINTER_UP{%s}", state, event);
                     if (2 == event.getPointerCount()){ // 二个手指其中一个抬起，只剩一个手指了
                         if (STATE_DRAGING == state){
-                            if ((event.getX(1) + event.getX(0))/2 -startDragPoint.x > 10
-                                    || (event.getY(1) + event.getY(0))/2-startDragPoint.y > 10) {
-                                confirmMatrixOp();
-                            }
+                            confirmMatrixOp();
                         }
                         state = STATE_SHAKING;
                         int indx = 1==event.getActionIndex() ? 0 : 1;

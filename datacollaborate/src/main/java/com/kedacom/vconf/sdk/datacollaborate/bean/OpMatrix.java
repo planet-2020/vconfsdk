@@ -25,15 +25,7 @@ public class OpMatrix extends OpPaint {
     @NonNull
     @Override
     public String toString() {
-        StringBuffer stringBuffer = new StringBuffer();
-        float[] matrixValue = new float[9];
-        matrix.getValues(matrixValue);
-        stringBuffer.append("[");
-        for (float val : matrixValue){
-            stringBuffer.append(val).append(",");
-        }
-        stringBuffer.append("]");
-        return "{"+String.format("matrix=%s", stringBuffer.toString())+super.toString()+"}";
+        return "{matrix="+matrix+super.toString()+"}";
     }
 
     public float[] getMatrixValue() {

@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
+import android.graphics.Matrix;
 import android.graphics.PointF;
 
 import com.kedacom.vconf.sdk.base.KLog;
@@ -82,7 +83,12 @@ final class ToDoConverter {
      * */
     private static float tt(float val){
         float t = val/density;
-        return t>1 ? t : 1;
+        if (-1<t && t<0){
+            return -1;
+        }else if (0<t && t<1){
+            return 1;
+        }
+        return t;
     }
 
     /**
@@ -96,7 +102,11 @@ final class ToDoConverter {
     private static float[] matrixValueStr2Float(String[] strMatrixValue){
         float[] matrixValue = new float[9];
         for (int i=0; i<9; ++i){
-            matrixValue[i] = Float.valueOf(strMatrixValue[i]);
+            if (Matrix.MTRANS_X == i || Matrix.MTRANS_Y == i) {
+                matrixValue[i] = ft(Float.valueOf(strMatrixValue[i]));
+            }else{
+                matrixValue[i] = Float.valueOf(strMatrixValue[i]);
+            }
         }
         return matrixValue;
     }
@@ -104,7 +114,11 @@ final class ToDoConverter {
     private static String[] matrixValueFloat2Str(float[] matrixValue){
         String[] strMatrixValue = new String[9];
         for (int i=0; i<9; ++i){
-            strMatrixValue[i] = ""+matrixValue[i];
+            if (Matrix.MTRANS_X == i || Matrix.MTRANS_Y == i) {
+                strMatrixValue[i] = Float.toString(tt(matrixValue[i]));
+            }else {
+                strMatrixValue[i] = Float.toString(matrixValue[i]);
+            }
         }
         return strMatrixValue;
     }
