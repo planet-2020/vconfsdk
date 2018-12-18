@@ -145,6 +145,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                 startDragPoint.set(detector.getFocusX(), detector.getFocusY());
 
+                // TODO 放到tempOps中，不必，简化处理，再缩放下对方能恢复。
                 refreshPaintOp();
 
                 zoomRateChanged();

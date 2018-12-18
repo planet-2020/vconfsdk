@@ -187,10 +187,11 @@ public class DataCollaborateManager extends RequestAgent {
         processorMap.put(Msg.DCClearScreen, null);
         processorMap.put(Msg.DCErase, null);
         processorMap.put(Msg.DCRectErase, null);
-        processorMap.put(Msg.DCZoom, null);
-        processorMap.put(Msg.DCRotateLeft, null);
-        processorMap.put(Msg.DCRotateRight, null);
-        processorMap.put(Msg.DCScrollScreen, null);
+//        processorMap.put(Msg.DCZoom, null);
+//        processorMap.put(Msg.DCRotateLeft, null);
+//        processorMap.put(Msg.DCRotateRight, null);
+//        processorMap.put(Msg.DCScrollScreen, null);
+        processorMap.put(Msg.DCMatrix, null);
         processorMap.put(Msg.DCInsertPic, null);
         processorMap.put(Msg.DCDeletePic, null);
         processorMap.put(Msg.DCDragPic, null);

@@ -40,11 +40,11 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperator;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSRegInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSScrollScreenInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbAddSubPageInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircleOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbDelPicOperInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbDisPlayInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbEraseOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbInsertPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbLineOperInfo;
@@ -53,7 +53,6 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPitchPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbRectangleOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbReginEraseOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbTabPageIdInfo;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbZoomInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDcsCacheElementParseResult;
 
 import static com.kedacom.vconf.sdk.base.NativeMethodOwners.DcsCtrl;
@@ -434,12 +433,17 @@ public enum Msg {
 
 
     // 数据协作矩阵操作
-
-    /**放缩*/
-    @Request(	name="DCSOperZoomInfoCmd",
+    /**矩阵变换（放缩、位移等）*/
+    @Request(	name="DCSOperFullScreenCmd",
             methodOwner = DcsCtrl,
-            paras={TDCSOperReq.class, TDCSWbZoomInfo.class})
-    DCZoom, // TODO 待调
+            paras={TDCSOperReq.class, TDCSWbDisPlayInfo.class})
+    DCMatrix, // TODO 待调
+
+//    /**放缩*/
+//    @Request(	name="DCSOperZoomInfoCmd",
+//            methodOwner = DcsCtrl,
+//            paras={TDCSOperReq.class, TDCSWbZoomInfo.class})
+//    DCZoom, // TODO 待调
 
     /**左旋转*/
     @Request(	name="DCSOperRotateLeftCmd",
@@ -453,11 +457,11 @@ public enum Msg {
 				paras=TDCSOperReq.class)
     DCRotateRight, // TODO 待调
 
-    /**滚屏*/
-    @Request(	name="DCSOperScrollScreenCmd",
-            methodOwner = DcsCtrl,
-				paras = {TDCSOperReq.class, TDCSScrollScreenInfo.class})
-    DCScrollScreen, // TODO 待调
+//    /**滚屏*/
+//    @Request(	name="DCSOperScrollScreenCmd",
+//            methodOwner = DcsCtrl,
+//				paras = {TDCSOperReq.class, TDCSScrollScreenInfo.class})
+//    DCScrollScreen, // TODO 待调
 
 
     // 数据协作图元控制操作

@@ -28,6 +28,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircle;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircleOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbDelPicOperInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbDisPlayInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbEntity;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbEraseOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbGraphsInfo;
@@ -169,8 +170,8 @@ final class ToDoConverter {
             case REDO:
                 return toTransferObj((OpRedo) domainObj);
             // TODO 缩放位移
-//            case FULLSCREEN_MATRIX:
-//                return toTransferObj((OpMatrix) domainObj);
+            case FULLSCREEN_MATRIX:
+                return toTransferObj((OpMatrix) domainObj);
             // TODO 黑板擦擦除
             case ERASE:
                 return toTransferObj((OpErase) domainObj);
@@ -214,8 +215,8 @@ final class ToDoConverter {
                 return Msg.DCErase;
             case RECT_ERASE:
                 return Msg.DCRectErase;
-//            case DRAW_LINE:
-//                return Msg.DCDrawLine;
+            case FULLSCREEN_MATRIX:
+                return Msg.DCMatrix;
             default:
                 return null;
         }
@@ -355,6 +356,11 @@ final class ToDoConverter {
         assignPaintDomainObj(dcFullScreenMatrixOp.MainParam, INVALID_UUID, opMatrix);
         return opMatrix;
     }
+
+    public static TDCSWbDisPlayInfo toTransferObj(OpMatrix domainObj) {
+        return new TDCSWbDisPlayInfo(domainObj.getBoardId(), domainObj.getPageId(), matrixValueFloat2Str(domainObj.getMatrixValue()));
+    }
+
 
     public static OpRectErase fromTransferObj(DcsOperEraseOperInfoNtf dcRectEraseOp) {
         TDCSWbEraseOperInfo eraseOperInfo = dcRectEraseOp.AssParam;
