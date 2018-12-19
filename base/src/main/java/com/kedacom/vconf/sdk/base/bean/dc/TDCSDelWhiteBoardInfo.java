@@ -9,7 +9,7 @@ package com.kedacom.vconf.sdk.base.bean.dc;
  */
 
 public class TDCSDelWhiteBoardInfo {
-    public String achConfE164;
-    public String achTabId;
-    public String achFromE164;
+    public String strConfE164;
+    public String strIndex; // 画板Id
+    public String strFromE164;
 }

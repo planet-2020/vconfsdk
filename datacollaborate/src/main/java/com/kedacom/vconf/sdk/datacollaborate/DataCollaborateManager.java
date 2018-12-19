@@ -467,7 +467,7 @@ public class DataCollaborateManager extends RequestAgent {
             }
         } else if (Msg.DCBoardDeletedNtf.equals(ntfId)) {
             for (Object listener : listeners) {
-                ((IOnBoardOpListener) listener).onBoardDeleted(((TDCSDelWhiteBoardInfo) ntfContent).achTabId);
+                ((IOnBoardOpListener) listener).onBoardDeleted(((TDCSDelWhiteBoardInfo) ntfContent).strIndex);
             }
         } else if (Msg.DCCurrentBoardNtf.equals(ntfId)) { //NOTE: 该通知仅在刚入会时会收到
             curBoardId = ((TDCSBoardInfo) ntfContent).achTabId;
