@@ -54,6 +54,11 @@ public class DataCollaborateManager extends RequestAgent {
     我们也需像同步图元一样先缓存起来而不是直接上报给用户。*/
     private boolean bPreparingSync = false;
 
+    // 错误码
+    public static final int ErrCode_Failed = -1;
+    public static final int ErrCode_BuildLink4LoginFailed = -2;
+    public static final int ErrCode_BuildLink4ConfFailed = -3;
+
     private String curDcConfE164;
     public String getCurDcConfE164(){
         return curDcConfE164;
@@ -86,74 +91,6 @@ public class DataCollaborateManager extends RequestAgent {
             Msg.DCElementEndNtf,
     };
 
-
-    // 错误码
-    public static final int ErrCode_Failed = -1;
-    public static final int ErrCode_BuildLink4LoginFailed = -2;
-    public static final int ErrCode_BuildLink4ConfFailed = -3;
-
-    private final int MsgID_SynchronizingTimeout = 10;
-    private Handler handler = new Handler(Looper.getMainLooper()){
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MsgID_SynchronizingTimeout:
-                    PriorityQueue<OpPaint> ops = cachedPaintOps.remove(msg.obj);
-                    if (null == ops){
-                        KLog.p(KLog.ERROR, "unexpected MsgID_SynchronizingTimeout, no such synchronizing board(%s) exists", msg.obj);
-                        return;
-                    }
-                    Set<Object> listeners = getNtfListeners(Msg.DCElementEndNtf);
-                    if (null == listeners || listeners.isEmpty()){// 判断监听者是否还在，因为监听者（如activity）可能已经销毁了
-                        KLog.p(KLog.ERROR, "listeners for DCElementEndNtf not exists");
-                        return;
-                    }
-                    // 上报用户目前为止已同步的图元操作
-                    while (!ops.isEmpty()) {
-                        OpPaint opPaint = ops.poll();
-                        for (Object listener : listeners) {
-                            ((IOnPaintOpListener) listener).onPaintOp(opPaint);
-                        }
-                    }
-                    break;
-            }
-        }
-    };
-
-    private static String PIC_SAVE_DIR;
-    private static Context context;
-
-    static Context getContext() {
-        return context;
-    }
-
-    private DataCollaborateManager(){}
-    public static DataCollaborateManager getInstance(Context ctx) {
-        if (null == context
-                && null != ctx){
-            context = ctx;
-            File dir = new File(ctx.getCacheDir(), ".dc_pic");
-            if (!dir.exists()){
-                dir.mkdir();
-            }
-            PIC_SAVE_DIR = dir.getAbsolutePath();
-
-            // 检查图片缓存文件夹是否已超出大小上限，若超出则清空
-            long size = 0;
-            for (File file : dir.listFiles()) {
-                size += file.length();
-            }
-            long LIMIT = 50*1024*1024;
-            KLog.p("pic cache dir=%s, size=%s, limit=%s", PIC_SAVE_DIR, size, LIMIT);
-            if (size > LIMIT){
-                KLog.p(KLog.WARN, "clean cached pics");
-                for (File file : dir.listFiles()) {
-                    file.delete();
-                }
-            }
-        }
-        return AgentManager.obtain(DataCollaborateManager.class);
-    }
 
 
     @Override
@@ -216,6 +153,43 @@ public class DataCollaborateManager extends RequestAgent {
         processorMap.put(paintOpNtfs, this::onPaintNtfs);
         return processorMap;
     }
+
+
+    private static String PIC_SAVE_DIR;
+    private static Context context;
+
+    static Context getContext() {
+        return context;
+    }
+
+    private DataCollaborateManager(){}
+    public static DataCollaborateManager getInstance(Context ctx) {
+        if (null == context
+                && null != ctx){
+            context = ctx;
+            File dir = new File(ctx.getCacheDir(), ".dc_pic");
+            if (!dir.exists()){
+                dir.mkdir();
+            }
+            PIC_SAVE_DIR = dir.getAbsolutePath();
+
+            // 检查图片缓存文件夹是否已超出大小上限，若超出则清空
+            long size = 0;
+            for (File file : dir.listFiles()) {
+                size += file.length();
+            }
+            long LIMIT = 50*1024*1024;
+            KLog.p("pic cache dir=%s, size=%s, limit=%s", PIC_SAVE_DIR, size, LIMIT);
+            if (size > LIMIT){
+                KLog.p(KLog.WARN, "clean cached pics");
+                for (File file : dir.listFiles()) {
+                    file.delete();
+                }
+            }
+        }
+        return AgentManager.obtain(DataCollaborateManager.class);
+    }
+
 
     /**发布绘制操作*/
     public void publishPaintOp(OpPaint op){
@@ -509,6 +483,37 @@ public class DataCollaborateManager extends RequestAgent {
     private String getPicSavePath(String picId){
         return PIC_SAVE_DIR +File.pathSeparator+ picId + ".jpg";
     }
+
+
+
+    private final int MsgID_SynchronizingTimeout = 10;
+    private Handler handler = new Handler(Looper.getMainLooper()){
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MsgID_SynchronizingTimeout:
+                    PriorityQueue<OpPaint> ops = cachedPaintOps.remove(msg.obj);
+                    if (null == ops){
+                        KLog.p(KLog.ERROR, "unexpected MsgID_SynchronizingTimeout, no such synchronizing board(%s) exists", msg.obj);
+                        return;
+                    }
+                    Set<Object> listeners = getNtfListeners(Msg.DCElementEndNtf);
+                    if (null == listeners || listeners.isEmpty()){// 判断监听者是否还在，因为监听者（如activity）可能已经销毁了
+                        KLog.p(KLog.ERROR, "listeners for DCElementEndNtf not exists");
+                        return;
+                    }
+                    // 上报用户目前为止已同步的图元操作
+                    while (!ops.isEmpty()) {
+                        OpPaint opPaint = ops.poll();
+                        for (Object listener : listeners) {
+                            ((IOnPaintOpListener) listener).onPaintOp(opPaint);
+                        }
+                    }
+                    break;
+            }
+        }
+    };
+
 
     /**
      * 绘制操作通知处理

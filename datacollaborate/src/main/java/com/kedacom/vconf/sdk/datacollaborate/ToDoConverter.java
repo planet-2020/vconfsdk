@@ -239,6 +239,12 @@ final class ToDoConverter {
                 return Msg.DCRectErase;
             case FULLSCREEN_MATRIX:
                 return Msg.DCMatrix;
+            case INSERT_PICTURE:
+                return Msg.DCInsertPic;
+            case DELETE_PICTURE:
+                return Msg.DCDeletePic;
+            case DRAG_PICTURE:
+                return Msg.DCDragPic;
             default:
                 return null;
         }

@@ -99,7 +99,7 @@ public interface IPaintBoard {
     /**
      * 插入图片
      * */
-    void insertPic(Bitmap pic);
+    void insertPic(Bitmap pic, String name);
 
     /**
      * 截屏。

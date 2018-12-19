@@ -30,8 +30,10 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -541,18 +543,21 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     @Override
-    public void insertPic(Bitmap pic) {
+    public void insertPic(Bitmap pic, String name) {
         if (null == pic){
             KLog.p(KLog.ERROR, "null pic");
             return;
         }
         if (null != paintOpGeneratedListener){
-            OpInsertPic op = new OpInsertPic();
+            int picW = pic.getWidth();
+            int picH = pic.getHeight();
+            float transX = (getWidth()-picW)/2f;
+            float transY = (getHeight()-picH)/2f;
+            Matrix matrix = new Matrix();
+            matrix.setTranslate(transX, transY);
+            OpInsertPic op = new OpInsertPic(UUID.randomUUID().toString(), name, picW, picH, matrix);
             op.setPic(pic);
-            float[] values = new float[9];
-            new Matrix().getValues(values);
-            op.setMatrixValue(values);
-            assignBasicInfo(op); // TODO 更多赋值
+            assignBasicInfo(op);
             KLog.p("new tmp op %s", op);
             picPaintView.getTmpOps().offerLast(op);
             paintOpGeneratedListener.onOp(null);
