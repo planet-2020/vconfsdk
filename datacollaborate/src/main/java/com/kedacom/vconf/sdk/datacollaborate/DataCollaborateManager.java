@@ -16,6 +16,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsDownloadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetAllWhiteBoardRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperInsertPicNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConf;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
@@ -280,10 +281,14 @@ public class DataCollaborateManager extends RequestAgent {
      * @param members 与会成员
      * @param resultListener 创会结果监听器*/
     public void createDcConf(String confE164, String confName, EDcMode dcMode, EConfType confType, String adminE164, List<DCMember> members, IResultListener resultListener){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        for (DCMember member : members){
+            tdcsConfUserInfos.add(ToDoConverter.toTransferObj(member));
+        }
         req(Msg.DCCreateConf, resultListener,
                 new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
                         confE164, confName, ToDoConverter.toTransferObj(dcMode),
-                        ToDoConverter.toTransferObj(members), adminE164, ToDoConverter.toTransferObj(terminalType)));
+                        tdcsConfUserInfos, adminE164, ToDoConverter.toTransferObj(terminalType)));
         cachedPaintOps.clear();
         curDcConfE164 = null;
     }
