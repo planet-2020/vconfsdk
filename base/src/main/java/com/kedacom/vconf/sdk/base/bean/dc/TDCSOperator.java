@@ -9,4 +9,11 @@ public class TDCSOperator{
     public String achConfE164;
     public int dwListNum;
     public List<TDCSConfUserInfo> atOperList;
+
+    public TDCSOperator(String achConfE164, List<TDCSConfUserInfo> atOperList) {
+        this.achConfE164 = achConfE164;
+        this.dwListNum = null==atOperList?0:atOperList.size();
+        this.atOperList = atOperList;
+    }
+
 }

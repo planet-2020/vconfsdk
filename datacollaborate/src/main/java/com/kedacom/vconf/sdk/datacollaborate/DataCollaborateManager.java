@@ -24,6 +24,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSDelWhiteBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSFileInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSFileLoadResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSImageUrl;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperator;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSRegInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDcsCacheElementParseResult;
@@ -308,15 +309,16 @@ public class DataCollaborateManager extends RequestAgent {
         cachedPaintOps.clear();
     }
 
+
     private void onConfOpRsps(Msg rspId, Object rspContent, IResultListener listener){
         switch (rspId){
-//            case DCBuildLink4ConfRsp:
-//                TDCSConnectResult result = (TDCSConnectResult) rspContent;
-//                if (!result.bSuccess && null != listener){
-//                    cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCCreateConfRsp上来，取消该请求以防等待超时。
-//                    listener.onFailed(ErrCode_BuildLink4ConfFailed);
-//                }
-//                break;
+            case DCBuildLink4ConfRsp:
+                TDCSConnectResult result = (TDCSConnectResult) rspContent;
+                if (!result.bSuccess && null != listener){
+                    cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
+                    listener.onFailed(ErrCode_BuildLink4ConfFailed);
+                }
+                break;
             case DCConfCreated:
                 TDCSCreateConfResult createConfResult = (TDCSCreateConfResult) rspContent;
                 if (createConfResult.bSuccess){
@@ -324,32 +326,32 @@ public class DataCollaborateManager extends RequestAgent {
                 }
                 if (null != listener){
                     if (createConfResult.bSuccess) {
-                        listener.onSuccess(ToDoConverter.fromPaintTransferObj(createConfResult));
+                        listener.onSuccess(ToDoConverter.fromTransferObj(createConfResult));
                     }else{
                         listener.onFailed(ErrCode_Failed);
                     }
                 }
                 break;
-//            case DCReleaseConfRsp:
-//                TDCSResult releaseRes = (TDCSResult) rspContent;
-//                if (null != listener){
-//                    if (releaseRes.bSucces){
-//                        listener.onSuccess(null);
-//                    }else{
-//                        listener.onFailed(ErrCode_Failed);
-//                    }
-//                }
-//                break;
-//            case DCQuitConfRsp:
-//                TDCSResult quitRes = (TDCSResult) rspContent;
-//                if (null != listener){
-//                    if (quitRes.bSucces){
-//                        listener.onSuccess(null);
-//                    }else{
-//                        listener.onFailed(ErrCode_Failed);
-//                    }
-//                }
-//                break;
+            case DCReleaseConfRsp:
+                TDCSResult releaseRes = (TDCSResult) rspContent;
+                if (null != listener){
+                    if (releaseRes.bSucces){
+                        listener.onSuccess(null);
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
+                }
+                break;
+            case DCQuitConfRsp:
+                TDCSResult quitRes = (TDCSResult) rspContent;
+                if (null != listener){
+                    if (quitRes.bSucces){
+                        listener.onSuccess(null);
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
+                }
+                break;
         }
 
     }
@@ -358,11 +360,11 @@ public class DataCollaborateManager extends RequestAgent {
 
     /**添加协作方*/
     public void addOperator(DCMember[] members, IResultListener resultListener){
-//        MsgBeans.TDCSConfUserInfo[] confUserInfos = new MsgBeans.TDCSConfUserInfo[members.length];
-//        for (int i=0; i<members.length; ++i){
-//            confUserInfos[i] = members[i].toTransferType();
-//        }
-//        req(Msg.DCAddOperator, new MsgBeans.TDCSOperator(curDcConfE164, confUserInfos), resultListener);
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        for (DCMember member : members){
+            tdcsConfUserInfos.add(ToDoConverter.toTransferObj(member));
+        }
+        req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
 
     /**删除协作方*/

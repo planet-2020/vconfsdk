@@ -173,7 +173,7 @@ public enum Msg {
 
     /**退出数据协作。
      * 注：仅自己退出，协作仍存在，不影响其他人继续*/
-    @Request( name = "DCSQuitConfReq",       //参数1：StringBuffer类型 e164,参数2：int类型 nForceFlag
+    @Request( name = "DCSQuitConfReq",       //TODO 什么参数。 //参数1：StringBuffer类型 e164,参数2：int类型 nForceFlag
             methodOwner = DcsCtrl,
               paras = {String.class, Integer.class},
               rspSeq = {"DcsQuitConf_Rsp"})
@@ -185,7 +185,7 @@ public enum Msg {
     DCQuitConfRsp,
 
     /**结束数据协作*/
-    @Request( name = "DCSReleaseConfReq",  //参数1：StringBuffer类型 e164,参数2：int类型 nForceFlag
+    @Request( name = "DCSReleaseConfReq",  //TODO 什么参数。参数1：StringBuffer类型 e164,参数2：int类型 nForceFlag
             methodOwner = DcsCtrl,
             paras = {String.class, Integer.class},
              rspSeq = {"DcsReleaseConf_Rsp"})
