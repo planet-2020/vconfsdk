@@ -13,19 +13,6 @@ public class OpDrawPath extends OpDraw {
     private Path path;
 
     public OpDrawPath(List<PointF> points){
-//        if (null != points) {
-//            path = new Path();
-//            if (!points.isEmpty()) {
-////                Iterator it = points.iterator();
-////                PointF pointF = (PointF) it.next();
-////                path.moveTo(pointF.x, pointF.y);
-////                while (it.hasNext()) {
-////                    pointF = (PointF) it.next();
-////                    path.lineTo(pointF.x, pointF.y);
-////                }
-//            }
-//        }
-
         if (null != points) {
             this.points = points;
             path = new Path();

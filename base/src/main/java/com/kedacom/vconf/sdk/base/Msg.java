@@ -23,6 +23,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsOperPitchPicDelNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperPitchPicDragNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRectangleOperInfoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRedoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperReginEraseNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperUndoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
@@ -437,13 +438,7 @@ public enum Msg {
     @Request(	name="DCSOperFullScreenCmd",
             methodOwner = DcsCtrl,
             paras={TDCSOperReq.class, TDCSWbDisPlayInfo.class})
-    DCMatrix, // TODO 待调
-
-//    /**放缩*/
-//    @Request(	name="DCSOperZoomInfoCmd",
-//            methodOwner = DcsCtrl,
-//            paras={TDCSOperReq.class, TDCSWbZoomInfo.class})
-//    DCZoom, // TODO 待调
+    DCMatrix,
 
     /**左旋转*/
     @Request(	name="DCSOperRotateLeftCmd",
@@ -456,12 +451,6 @@ public enum Msg {
             methodOwner = DcsCtrl,
 				paras=TDCSOperReq.class)
     DCRotateRight, // TODO 待调
-
-//    /**滚屏*/
-//    @Request(	name="DCSOperScrollScreenCmd",
-//            methodOwner = DcsCtrl,
-//				paras = {TDCSOperReq.class, TDCSScrollScreenInfo.class})
-//    DCScrollScreen, // TODO 待调
 
 
     // 数据协作图元控制操作
@@ -596,8 +585,9 @@ public enum Msg {
     DCPicDeletedNtf,
 
     /**黑板擦擦除通知*/
-//    @Notification(clz = ) // TODO
-    DcsOperReginErase_Ntf,
+    @Notification(clz =DcsOperReginEraseNtf.class,
+            name = "DcsOperReginErase_Ntf")
+    DCErasedNtf,
 
     /**矩形擦除通知*/
     @Notification(clz = DcsOperEraseOperInfoNtf.class,

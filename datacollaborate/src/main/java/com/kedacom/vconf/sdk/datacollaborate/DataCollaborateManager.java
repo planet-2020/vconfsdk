@@ -77,6 +77,7 @@ public class DataCollaborateManager extends RequestAgent {
             Msg.DCPicInsertedNtf,
             Msg.DCPicDraggedNtf,
             Msg.DCPicDeletedNtf,
+            Msg.DCErasedNtf,
             Msg.DCRectErasedNtf,
             Msg.DCFullScreenMatrixOpNtf,
             Msg.DCUndoneNtf,

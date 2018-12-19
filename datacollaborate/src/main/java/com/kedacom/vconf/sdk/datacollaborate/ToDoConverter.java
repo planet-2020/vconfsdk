@@ -16,6 +16,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsOperPitchPicDelNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperPitchPicDragNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRectangleOperInfoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRedoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsOperReginEraseNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperUndoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsConfMode;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsConfType;
@@ -125,7 +126,7 @@ final class ToDoConverter {
 
 
     public static OpPaint fromPaintTransferObj(Object transferObj) {
-        if (transferObj instanceof DcsOperLineOperInfoNtf){
+        if (transferObj instanceof DcsOperLineOperInfoNtf){ // TODO 用枚举做判断
             return fromTransferObj((DcsOperLineOperInfoNtf)transferObj);
         }else if (transferObj instanceof DcsOperRectangleOperInfoNtf){
             return fromTransferObj((DcsOperRectangleOperInfoNtf)transferObj);
@@ -141,11 +142,9 @@ final class ToDoConverter {
             return fromTransferObj((DcsOperPitchPicDelNtf)transferObj);
         }else if (transferObj instanceof DcsOperFullScreenNtf){
             return fromTransferObj((DcsOperFullScreenNtf)transferObj);
-        }
-//        else if (transferObj instanceof TDCSWbReginEraseOperInfo){
-//            return fromTransferObj((TDCSWbReginEraseOperInfo)transferObj);
-//        }
-        else if (transferObj instanceof DcsOperEraseOperInfoNtf){
+        }else if (transferObj instanceof DcsOperReginEraseNtf){
+            return fromTransferObj((DcsOperReginEraseNtf)transferObj);
+        }else if (transferObj instanceof DcsOperEraseOperInfoNtf){
             return fromTransferObj((DcsOperEraseOperInfoNtf)transferObj);
         }else if (transferObj instanceof DcsOperUndoNtf){
             return fromTransferObj((DcsOperUndoNtf)transferObj);
@@ -183,10 +182,8 @@ final class ToDoConverter {
                 return toTransferObj((OpUndo) domainObj);
             case REDO:
                 return toTransferObj((OpRedo) domainObj);
-            // TODO 缩放位移
             case FULLSCREEN_MATRIX:
                 return toTransferObj((OpMatrix) domainObj);
-            // TODO 黑板擦擦除
             case ERASE:
                 return toTransferObj((OpErase) domainObj);
             case RECT_ERASE:
@@ -390,8 +387,11 @@ final class ToDoConverter {
                 new TDCSWbPoint((int)tt(domainObj.getRight()), (int)tt(domainObj.getBottom())));
     }
 
-    public static OpErase fromTransferObj(TDCSWbReginEraseOperInfo dcErase) {
-        return new OpErase((int)ft(dcErase.dwEraseWidth), (int)ft(dcErase.dwEraseHeight), fromTransferObj(dcErase.atPoint));
+    public static OpErase fromTransferObj(DcsOperReginEraseNtf dcErase) {
+        TDCSWbReginEraseOperInfo opInfo = dcErase.AssParam;
+        OpErase opErase = new OpErase((int)ft(opInfo.dwEraseWidth), (int)ft(opInfo.dwEraseHeight), fromTransferObj(opInfo.atPoint));
+        assignPaintDomainObj(dcErase.MainParam, INVALID_UUID, opErase);
+        return opErase;
     }
 
     public static TDCSWbReginEraseOperInfo toTransferObj(OpErase domainObj) {

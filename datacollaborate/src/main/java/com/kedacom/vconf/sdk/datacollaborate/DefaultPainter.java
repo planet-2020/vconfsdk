@@ -445,6 +445,9 @@ public class DefaultPainter implements IPainter {
                     if (EOpType.DRAW_PATH == opPaint.getType()){
                         paint.setStrokeJoin(Paint.Join.ROUND);
                     } else if (EOpType.ERASE == opPaint.getType()){
+                        int w = ((OpErase)opDraw).getWidth();
+                        int h = ((OpErase)opDraw).getHeight();
+                        paint.setStrokeWidth(w>h?w:h);
                         paint.setStrokeJoin(Paint.Join.ROUND);
                         paint.setAlpha(0);
                         paint.setXfermode(DUFFMODE_SRCIN);
