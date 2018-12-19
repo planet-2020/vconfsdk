@@ -5,10 +5,10 @@ import androidx.annotation.NonNull;
 public class CreateConfResult {
     private String       confE164;
     private String       confName;
-    private EConfMode   confMode;
+    private EDcMode confMode;
     private EConfType   confType;
 
-    public CreateConfResult(String confE164, String confName, EConfMode confMode, EConfType confType) {
+    public CreateConfResult(String confE164, String confName, EDcMode confMode, EConfType confType) {
         this.confE164 = confE164;
         this.confName = confName;
         this.confMode = confMode;
@@ -37,11 +37,11 @@ public class CreateConfResult {
         this.confName = confName;
     }
 
-    public EConfMode getConfMode() {
+    public EDcMode getConfMode() {
         return confMode;
     }
 
-    public void setConfMode(EConfMode confMode) {
+    public void setConfMode(EDcMode confMode) {
         this.confMode = confMode;
     }
 

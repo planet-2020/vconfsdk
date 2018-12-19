@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
-import android.content.Context;
 import android.graphics.Matrix;
 import android.graphics.PointF;
 
@@ -24,6 +23,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.EmDcsOper;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperContent;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperReq;
@@ -47,8 +47,9 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbReginEraseOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbTabPageIdInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EBoardMode;
-import com.kedacom.vconf.sdk.datacollaborate.bean.EConfMode;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EDcMode;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EConfType;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
@@ -529,19 +530,42 @@ final class ToDoConverter {
         }
     }
 
-    public static EConfMode fromTransferObj(EmDcsConfMode dcsConfModed) {
-        switch (dcsConfModed){
-            case emConfModeAuto:
-                return EConfMode.Auto;
-            case emConfModeManage:
-                return EConfMode.Manage;
-            case emConfModeStop:
-                return EConfMode.Stop;
+    public static EmDcsConfType toTransferObj(EConfType type){
+        switch (type){
+            case P2P:
+                return EmDcsConfType.emConfTypeP2P;
+            case MCC:
+                return EmDcsConfType.emConfTypeMCC;
             default:
-                return EConfMode.Auto;
+                return EmDcsConfType.emConfTypeP2P;
         }
     }
 
+    public static EDcMode fromTransferObj(EmDcsConfMode dcsConfModed) {
+        switch (dcsConfModed){
+            case emConfModeAuto:
+                return EDcMode.Auto;
+            case emConfModeManage:
+                return EDcMode.Manage;
+            case emConfModeStop:
+                return EDcMode.Stop;
+            default:
+                return EDcMode.Auto;
+        }
+    }
+
+    public static EmDcsConfMode toTransferObj(EDcMode mode){
+        switch (mode){
+            case Stop:
+                return EmDcsConfMode.emConfModeStop;
+            case Manage:
+                return EmDcsConfMode.emConfModeManage;
+            case Auto:
+                return EmDcsConfMode.emConfModeAuto;
+            default:
+                return EmDcsConfMode.emConfModeAuto;
+        }
+    }
 
     public static EBoardMode fromTransferObj(EmDcsWbMode dcsWbMode) {
         switch (dcsWbMode){
@@ -561,6 +585,11 @@ final class ToDoConverter {
 
     public static CreateConfResult fromTransferObj(TDCSCreateConfResult to) {
         return new CreateConfResult(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType));
+    }
+
+    public static TDCSConfUserInfo toTransferObj(DCMember member){
+        return new TDCSConfUserInfo(member.getE164(), member.getName(), toTransferObj(member.getType()),
+                member.isbOnline(), member.isbOperator(), member.isbChairman());
     }
 
 }

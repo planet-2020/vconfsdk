@@ -7,7 +7,6 @@ import android.os.Message;
 
 import com.kedacom.vconf.sdk.base.AgentManager;
 import com.kedacom.vconf.sdk.base.ILifecycleOwner;
-import com.kedacom.vconf.sdk.base.INotificationListener;
 import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.RequestAgent;
@@ -18,6 +17,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsGetAllWhiteBoardRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperInsertPicNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConf;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSDelWhiteBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSFileInfo;
@@ -28,6 +28,8 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDcsCacheElementParseResult;
 import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EDcMode;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EConfType;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
@@ -63,6 +65,9 @@ public class DataCollaborateManager extends RequestAgent {
     public String getCurDcConfE164(){
         return curDcConfE164;
     }
+
+    // 终端类型
+    private ETerminalType terminalType;
 
     // 画板相关通知
     private static final Msg[] boardOpNtfs = new Msg[]{
@@ -211,6 +216,7 @@ public class DataCollaborateManager extends RequestAgent {
      * @param terminalType 己端终端类型
      * @param resultListener 登陆结果监听器*/
     public void login(String serverIp, int port, ETerminalType terminalType, IResultListener resultListener){
+        this.terminalType = terminalType;
         req(Msg.DCLogin, resultListener, new TDCSRegInfo(serverIp, port, ToDoConverter.toTransferObj(terminalType)));
     }
 
@@ -265,10 +271,19 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-
-    /**创建数据协作*/
-    public void createDcConf(IResultListener resultListener){
-//        req(Msg.DCCreateConf, new MsgBeans.DCCreateConfPara(), resultListener);
+    /**创建数据协作
+     * @param confE164 会议e164
+     * @param confName 会议名称
+     * @param dcMode 数据协作模式
+     * @param confType 会议类型
+     * @param adminE164 主席e164
+     * @param members 与会成员
+     * @param resultListener 创会结果监听器*/
+    public void createDcConf(String confE164, String confName, EDcMode dcMode, EConfType confType, String adminE164, List<DCMember> members, IResultListener resultListener){
+        req(Msg.DCCreateConf, resultListener,
+                new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
+                        confE164, confName, ToDoConverter.toTransferObj(dcMode),
+                        ToDoConverter.toTransferObj(members), adminE164, ToDoConverter.toTransferObj(terminalType)));
         cachedPaintOps.clear();
         curDcConfE164 = null;
     }

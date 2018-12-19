@@ -1,6 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-public enum EConfMode {
+public enum EDcMode {
     /** 关闭数据协作 */
     Stop, //???
     /** 主席控制 */

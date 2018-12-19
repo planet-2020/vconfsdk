@@ -12,4 +12,13 @@ public class TDCSConfUserInfo {
     public boolean bOnline;
     public boolean bIsOper;
     public boolean bIsConfAdmin;
+
+    public TDCSConfUserInfo(String achE164, String achName, EmDcsType emMttype, boolean bOnline, boolean bIsOper, boolean bIsConfAdmin) {
+        this.achE164 = achE164;
+        this.achName = achName;
+        this.emMttype = emMttype;
+        this.bOnline = bOnline;
+        this.bIsOper = bIsOper;
+        this.bIsConfAdmin = bIsConfAdmin;
+    }
 }
