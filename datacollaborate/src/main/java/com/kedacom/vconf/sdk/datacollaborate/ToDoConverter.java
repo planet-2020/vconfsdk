@@ -329,8 +329,8 @@ final class ToDoConverter {
     public static OpInsertPic fromTransferObj(DcsOperInsertPicNtf dcInertPicOp) {
         TDCSWbInsertPicOperInfo ip = dcInertPicOp.AssParam;
         float[] matrixVal = matrixValueStr2Float(ip.aachMatrixValue);
-        matrixVal[Matrix.MTRANS_X] += ip.tPoint.nPosx;
-        matrixVal[Matrix.MTRANS_Y] += ip.tPoint.nPosy;
+//        matrixVal[Matrix.MTRANS_X] += ip.tPoint.nPosx;  // TODO 让windows改
+//        matrixVal[Matrix.MTRANS_Y] += ip.tPoint.nPosy;
         picMatrixValueFt(matrixVal);
         Matrix matrix = new Matrix();
         matrix.setValues(matrixVal);
