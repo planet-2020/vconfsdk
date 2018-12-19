@@ -116,6 +116,25 @@ final class ToDoConverter {
         return strMatrixValue;
     }
 
+    private static void picMatrixValueFt(float[] matrixVal){
+        // 位移适配屏幕密度
+        matrixVal[Matrix.MTRANS_X] = ft(matrixVal[Matrix.MTRANS_X]);
+        matrixVal[Matrix.MTRANS_Y] = ft(matrixVal[Matrix.MTRANS_Y]);
+
+        // 图片根据屏幕密度放缩
+        matrixVal[Matrix.MSCALE_X] = ft(matrixVal[Matrix.MSCALE_X]);
+        matrixVal[Matrix.MSCALE_Y] = ft(matrixVal[Matrix.MSCALE_Y]);
+    }
+
+    private static void picMatrixValueTt(float[] matrixVal){
+        // 位移适配屏幕密度
+        matrixVal[Matrix.MTRANS_X] = tt(matrixVal[Matrix.MTRANS_X]);
+        matrixVal[Matrix.MTRANS_Y] = tt(matrixVal[Matrix.MTRANS_Y]);
+        // 图片根据屏幕密度放缩
+        matrixVal[Matrix.MSCALE_X] = tt(matrixVal[Matrix.MSCALE_X]);
+        matrixVal[Matrix.MSCALE_Y] = tt(matrixVal[Matrix.MSCALE_Y]);
+
+    }
 
     public static OpPaint fromPaintTransferObj(Object transferObj) {
         if (transferObj instanceof DcsOperLineOperInfoNtf){ // TODO 用枚举做判断
@@ -310,16 +329,9 @@ final class ToDoConverter {
     public static OpInsertPic fromTransferObj(DcsOperInsertPicNtf dcInertPicOp) {
         TDCSWbInsertPicOperInfo ip = dcInertPicOp.AssParam;
         float[] matrixVal = matrixValueStr2Float(ip.aachMatrixValue);
-        // 位移适配屏幕密度
         matrixVal[Matrix.MTRANS_X] += ip.tPoint.nPosx;
         matrixVal[Matrix.MTRANS_Y] += ip.tPoint.nPosy;
-        matrixVal[Matrix.MTRANS_X] = ft(matrixVal[Matrix.MTRANS_X]);
-        matrixVal[Matrix.MTRANS_Y] = ft(matrixVal[Matrix.MTRANS_Y]);
-
-        // 图片根据屏幕密度放缩
-        matrixVal[Matrix.MSCALE_X] = ft(matrixVal[Matrix.MSCALE_X]);
-        matrixVal[Matrix.MSCALE_Y] = ft(matrixVal[Matrix.MSCALE_Y]);
-
+        picMatrixValueFt(matrixVal);
         Matrix matrix = new Matrix();
         matrix.setValues(matrixVal);
         OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight, matrix);
@@ -329,13 +341,7 @@ final class ToDoConverter {
 
     public static TDCSWbInsertPicOperInfo toTransferObj(OpInsertPic domainObj) {
         float[] matrixVal = domainObj.getMatrixValue();
-        // 位移适配屏幕密度
-        matrixVal[Matrix.MTRANS_X] = tt(matrixVal[Matrix.MTRANS_X]);
-        matrixVal[Matrix.MTRANS_Y] = tt(matrixVal[Matrix.MTRANS_Y]);
-        // 图片根据屏幕密度放缩
-        matrixVal[Matrix.MSCALE_X] = tt(matrixVal[Matrix.MSCALE_X]);
-        matrixVal[Matrix.MSCALE_Y] = tt(matrixVal[Matrix.MSCALE_Y]);
-
+        picMatrixValueTt(matrixVal);
         return new TDCSWbInsertPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), domainObj.getPicId(),
                 domainObj.getPicWidth(), domainObj.getPicHeight(),
                 new TDCSWbPoint(0, 0),
@@ -355,7 +361,9 @@ final class ToDoConverter {
     public static OpDragPic fromTransferObj(DcsOperPitchPicDragNtf dcDragPicOp) {
         Map<String, float[]> picMatrices = new HashMap<>();
         for (TDCSWbGraphsInfo picMatrix : dcDragPicOp.AssParam.atGraphsInfo){
-            picMatrices.put(picMatrix.achGraphsId, matrixValueStr2Float(picMatrix.aachMatrixValue));
+            float[] matrixVal = matrixValueStr2Float(picMatrix.aachMatrixValue);
+            picMatrixValueFt(matrixVal);
+            picMatrices.put(picMatrix.achGraphsId, matrixVal);
         }
         OpDragPic opDragPic = new OpDragPic(picMatrices);
         assignPaintDomainObj(dcDragPicOp.MainParam, INVALID_UUID, opDragPic);
@@ -367,7 +375,9 @@ final class ToDoConverter {
         TDCSWbGraphsInfo[] tdcsWbGraphsInfos = new TDCSWbGraphsInfo[matrices.size()];
         int i=0;
         for (String picId : matrices.keySet()){
-            tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, matrixValueFloat2Str(matrices.get(picId)));
+            float[] matrixVal = matrices.get(picId);
+            picMatrixValueTt(matrixVal);
+            tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, matrixValueFloat2Str(matrixVal));
             ++i;
         }
         return new TDCSWbPitchPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), tdcsWbGraphsInfos);
