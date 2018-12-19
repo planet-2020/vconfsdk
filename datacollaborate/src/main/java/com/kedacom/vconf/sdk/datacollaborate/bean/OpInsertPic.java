@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
 
 import androidx.annotation.NonNull;
 
@@ -11,37 +12,26 @@ public class OpInsertPic extends OpPaint {
     private Bitmap pic;
     private int picWidth;
     private int picHeight;
-    private float insertPosX;
-    private float insertPosY;
-    private float[] matrixValue = new float[9];
+    private Matrix matrix;
 
     public OpInsertPic(){
         type = EOpType.INSERT_PICTURE;
     }
 
-    public OpInsertPic(String picId, String picName, int picWidth, int picHeight,
-                       float insertPosX, float insertPosY, float[] matrixValue){
+    public OpInsertPic(String picId, String picName, int picWidth, int picHeight, Matrix matrix){
         this.picId = picId;
         this.picName = picName;
         this.picWidth = picWidth;
         this.picHeight = picHeight;
-        this.insertPosX = insertPosX;
-        this.insertPosY = insertPosY;
-        this.matrixValue = matrixValue;
+        this.matrix = matrix;
         type = EOpType.INSERT_PICTURE;
     }
 
     @NonNull
     @Override
     public String toString() {
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append("[");
-        for (float val : matrixValue){
-            stringBuffer.append(val).append(",");
-        }
-        stringBuffer.append("]");
-        return "{"+String.format("picId=%s, picName=%s, picSavePath=%s, pic=%s, picWidth=%s, picHeight=%s, insertPosX=%s, insertPosY, matrix=%s",
-                picId, picName, picSavePath, pic, picWidth, picHeight, insertPosX, insertPosY, stringBuffer.toString())+super.toString()+"}";
+        return "{"+String.format("picId=%s, picName=%s, picSavePath=%s, pic=%s, picWidth=%s, picHeight=%s, matrix=%s",
+                picId, picName, picSavePath, pic, picWidth, picHeight, matrix)+super.toString()+"}";
     }
 
     public String getPicId() {
@@ -92,27 +82,22 @@ public class OpInsertPic extends OpPaint {
         this.picHeight = picHeight;
     }
 
-    public float getInsertPosX() {
-        return insertPosX;
-    }
-
-    public void setInsertPosX(float insertPosX) {
-        this.insertPosX = insertPosX;
-    }
-
-    public float getInsertPosY() {
-        return insertPosY;
-    }
-
-    public void setInsertPosY(float insertPosY) {
-        this.insertPosY = insertPosY;
-    }
 
     public float[] getMatrixValue() {
+        float[] matrixValue = new float[9];
+        matrix.getValues(matrixValue);
         return matrixValue;
     }
 
     public void setMatrixValue(float[] matrixValue) {
-        this.matrixValue = matrixValue;
+        matrix.setValues(matrixValue);
+    }
+
+    public Matrix getMatrix() {
+        return matrix;
+    }
+
+    public void setMatrix(Matrix matrix) {
+        this.matrix = matrix;
     }
 }

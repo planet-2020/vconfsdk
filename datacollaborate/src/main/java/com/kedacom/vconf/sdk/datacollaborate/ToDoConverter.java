@@ -103,11 +103,7 @@ final class ToDoConverter {
     private static float[] matrixValueStr2Float(String[] strMatrixValue){
         float[] matrixValue = new float[9];
         for (int i=0; i<9; ++i){
-            if (Matrix.MTRANS_X == i || Matrix.MTRANS_Y == i) {
-                matrixValue[i] = ft(Float.valueOf(strMatrixValue[i]));
-            }else{
-                matrixValue[i] = Float.valueOf(strMatrixValue[i]);
-            }
+            matrixValue[i] = Float.valueOf(strMatrixValue[i]);
         }
         return matrixValue;
     }
@@ -115,11 +111,7 @@ final class ToDoConverter {
     private static String[] matrixValueFloat2Str(float[] matrixValue){
         String[] strMatrixValue = new String[9];
         for (int i=0; i<9; ++i){
-            if (Matrix.MTRANS_X == i || Matrix.MTRANS_Y == i) {
-                strMatrixValue[i] = Float.toString(tt(matrixValue[i]));
-            }else {
-                strMatrixValue[i] = Float.toString(matrixValue[i]);
-            }
+            strMatrixValue[i] = Float.toString(matrixValue[i]);
         }
         return strMatrixValue;
     }
@@ -317,17 +309,37 @@ final class ToDoConverter {
 
     public static OpInsertPic fromTransferObj(DcsOperInsertPicNtf dcInertPicOp) {
         TDCSWbInsertPicOperInfo ip = dcInertPicOp.AssParam;
-        OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight,
-                ip.tPoint.nPosx, ip.tPoint.nPosy, matrixValueStr2Float(ip.aachMatrixValue));
+        float[] matrixVal = matrixValueStr2Float(ip.aachMatrixValue);
+        // 位移适配屏幕密度
+        matrixVal[Matrix.MTRANS_X] += ip.tPoint.nPosx;
+        matrixVal[Matrix.MTRANS_Y] += ip.tPoint.nPosy;
+        matrixVal[Matrix.MTRANS_X] = ft(matrixVal[Matrix.MTRANS_X]);
+        matrixVal[Matrix.MTRANS_Y] = ft(matrixVal[Matrix.MTRANS_Y]);
+
+        // 图片根据屏幕密度放缩
+        matrixVal[Matrix.MSCALE_X] = ft(matrixVal[Matrix.MSCALE_X]);
+        matrixVal[Matrix.MSCALE_Y] = ft(matrixVal[Matrix.MSCALE_Y]);
+
+        Matrix matrix = new Matrix();
+        matrix.setValues(matrixVal);
+        OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight, matrix);
         assignPaintDomainObj(dcInertPicOp.MainParam, INVALID_UUID, opInsertPic);
         return opInsertPic;
     }
 
     public static TDCSWbInsertPicOperInfo toTransferObj(OpInsertPic domainObj) {
+        float[] matrixVal = domainObj.getMatrixValue();
+        // 位移适配屏幕密度
+        matrixVal[Matrix.MTRANS_X] = tt(matrixVal[Matrix.MTRANS_X]);
+        matrixVal[Matrix.MTRANS_Y] = tt(matrixVal[Matrix.MTRANS_Y]);
+        // 图片根据屏幕密度放缩
+        matrixVal[Matrix.MSCALE_X] = tt(matrixVal[Matrix.MSCALE_X]);
+        matrixVal[Matrix.MSCALE_Y] = tt(matrixVal[Matrix.MSCALE_Y]);
+
         return new TDCSWbInsertPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), domainObj.getPicId(),
                 domainObj.getPicWidth(), domainObj.getPicHeight(),
-                new TDCSWbPoint((int)domainObj.getInsertPosX(), (int)domainObj.getInsertPosY()),
-                domainObj.getPicName(), matrixValueFloat2Str(domainObj.getMatrixValue()));
+                new TDCSWbPoint(0, 0),
+                domainObj.getPicName(), matrixValueFloat2Str(matrixVal));
     }
 
     public static OpDeletePic fromTransferObj(DcsOperPitchPicDelNtf dcDelPicOp) {
@@ -363,13 +375,22 @@ final class ToDoConverter {
 
 
     public static OpMatrix fromTransferObj(DcsOperFullScreenNtf dcFullScreenMatrixOp) {
-        OpMatrix opMatrix = new OpMatrix(matrixValueStr2Float(dcFullScreenMatrixOp.AssParam.aachMatrixValue));
+        float[] matrixVal = matrixValueStr2Float(dcFullScreenMatrixOp.AssParam.aachMatrixValue);
+        // 位移适配屏幕密度
+        matrixVal[Matrix.MTRANS_X] = ft(matrixVal[Matrix.MTRANS_X]);
+        matrixVal[Matrix.MTRANS_Y] = ft(matrixVal[Matrix.MTRANS_Y]);
+
+        OpMatrix opMatrix = new OpMatrix(matrixVal);
         assignPaintDomainObj(dcFullScreenMatrixOp.MainParam, INVALID_UUID, opMatrix);
         return opMatrix;
     }
 
     public static TDCSWbDisPlayInfo toTransferObj(OpMatrix domainObj) {
-        return new TDCSWbDisPlayInfo(domainObj.getBoardId(), domainObj.getPageId(), matrixValueFloat2Str(domainObj.getMatrixValue()));
+        float[] matrixVal = domainObj.getMatrixValue();
+        // 位移适配屏幕密度
+        matrixVal[Matrix.MTRANS_X] = tt(matrixVal[Matrix.MTRANS_X]);
+        matrixVal[Matrix.MTRANS_Y] = tt(matrixVal[Matrix.MTRANS_Y]);
+        return new TDCSWbDisPlayInfo(domainObj.getBoardId(), domainObj.getPageId(), matrixValueFloat2Str(matrixVal));
     }
 
 

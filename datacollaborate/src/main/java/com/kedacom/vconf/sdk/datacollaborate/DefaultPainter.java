@@ -603,10 +603,7 @@ public class DefaultPainter implements IPainter {
                 case INSERT_PICTURE:
                     OpInsertPic insertPicOp = (OpInsertPic) op;
                     if (null != insertPicOp.getPic()) {
-//                            int w = insertPicOp.pic.getWidth();
-//                            int h = insertPicOp.pic.getHeight();
                         picMatrix.setValues(insertPicOp.getMatrixValue());
-//                                KLog.p("to render %s", op);
                         picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
                     }
                     break;
@@ -630,7 +627,7 @@ public class DefaultPainter implements IPainter {
                         rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
                         shapePaintViewCanvas.drawOval(rect, cfgPaint(ovalOp));
                         break;
-                    case DRAW_PATH: //TODO 绘制曲线时起毛？
+                    case DRAW_PATH:
                         OpDrawPath pathOp = (OpDrawPath) op;
                         shapePaintViewCanvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
                         break;
@@ -648,10 +645,7 @@ public class DefaultPainter implements IPainter {
                     case INSERT_PICTURE:
                         OpInsertPic insertPicOp = (OpInsertPic) op;
                         if (null != insertPicOp.getPic()) {
-//                            int w = insertPicOp.pic.getWidth();
-//                            int h = insertPicOp.pic.getHeight();
                             picMatrix.setValues(insertPicOp.getMatrixValue());
-//                                KLog.p("to render %s", op);
                             picPaintViewCanvas.drawBitmap(insertPicOp.getPic(), picMatrix, cfgPaint(insertPicOp));
                         }
                         break;
