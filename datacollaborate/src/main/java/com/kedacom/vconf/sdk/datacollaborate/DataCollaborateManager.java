@@ -507,7 +507,7 @@ public class DataCollaborateManager extends RequestAgent {
      * @param listener 删除画板结果监听器
      * */
     public void delBoard(String boardId, IResultListener listener){
-        req(Msg.DCNewBoard, listener, curDcConfE164, boardId);
+        req(Msg.DCDelBoard, listener, curDcConfE164, boardId);
     }
 
     /**
@@ -516,7 +516,7 @@ public class DataCollaborateManager extends RequestAgent {
      * @param listener 切换画板结果监听器
      * */
     public void switchBoard(String boardId, IResultListener listener){
-        req(Msg.DCNewBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
+        req(Msg.DCSwitchBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
     }
 
 

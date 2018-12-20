@@ -546,16 +546,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     @Override
     public void insertPic(String path) {
         if (null != paintOpGeneratedListener){
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeFile(path, options);
-            int picW = options.outWidth;
-            int picH = options.outHeight;
+            Bitmap bt = BitmapFactory.decodeFile(path);
+            int picW = bt.getWidth();
+            int picH = bt.getHeight();
             float transX = (getWidth()-picW)/2f;
             float transY = (getHeight()-picH)/2f;
             Matrix matrix = new Matrix();
             matrix.setTranslate(transX, transY);
             OpInsertPic op = new OpInsertPic(path, matrix);
+            op.setPic(bt);
             assignBasicInfo(op);
             KLog.p("new tmp op %s", op);
             picPaintView.getTmpOps().offerLast(op);
