@@ -25,6 +25,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRectangleOperInfoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRedoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperReginEraseNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperUndoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsSwitchRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardResult;
@@ -41,6 +42,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperator;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSRegInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSSwitchReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbAddSubPageInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircleOperInfo;
@@ -173,9 +175,11 @@ public enum Msg {
 
     /**退出数据协作。
      * 注：仅自己退出，协作仍存在，不影响其他人继续*/
-    @Request( name = "DCSQuitConfReq",       //TODO 什么参数。 //参数1：StringBuffer类型 e164,参数2：int类型 nForceFlag
+    @Request( name = "DCSQuitConfReq",
             methodOwner = DcsCtrl,
-              paras = {String.class, Integer.class},
+              paras = {String.class, // 会议e164
+                      Integer.class // 是否同时退出会议。0表示退出协作的同时退出会议，1表示仅退出协作。
+              },
               rspSeq = {"DcsQuitConf_Rsp"})
     DCQuitConf, // TODO 待调
 
@@ -187,7 +191,7 @@ public enum Msg {
     /**结束数据协作*/
     @Request( name = "DCSReleaseConfReq",  //TODO 什么参数。参数1：StringBuffer类型 e164,参数2：int类型 nForceFlag
             methodOwner = DcsCtrl,
-            paras = {String.class, Integer.class},
+            paras = String.class, // 会议e164
              rspSeq = {"DcsReleaseConf_Rsp"})
     DCReleaseConf, // TODO 待调
 
@@ -299,9 +303,10 @@ public enum Msg {
     DCNewBoardRsp,
 
     /**删除画板*/
-    @Request(	name = "DCSDelWhiteBoardReq", //参数1：StringBuffer类型 e164	参数2 StringBuffer类型 白板索引
+    @Request(	name = "DCSDelWhiteBoardReq",
             methodOwner = DcsCtrl,
-            paras = {String.class, String.class},
+            paras = {String.class, // 当前会议e164
+                    String.class}, // 画板Id
             rspSeq = {"DcsDelWhiteBoard_Rsp"})
     DCDelBoard, // TODO 待调
 
@@ -310,10 +315,24 @@ public enum Msg {
 				name="DcsDelWhiteBoard_Rsp")
     DCDelBoardRsp,
 
-    /**查询画板*/
-    @Request(	name = "DCSGetWhiteBoardReq",//参数1：StringBuffer类型 e164	参数2 StringBuffer类型 白板索引
+    /**切换画板*/
+    @Request(	name = "DCSSwitchReq",
             methodOwner = DcsCtrl,
-            paras = {String.class, String.class},
+            paras = TDCSSwitchReq.class,
+            rspSeq = {"DCSwitchBoardRsp"})
+    DCSwitchBoard, // TODO 待调
+
+    /**切换画板响应*/
+    @Response(clz=DcsSwitchRsp.class,
+            name="DcsDelWhiteBoard_Rsp")
+    DCSwitchBoardRsp,
+
+
+    /**查询画板*/
+    @Request(	name = "DCSGetWhiteBoardReq",
+            methodOwner = DcsCtrl,
+            paras = {String.class, // 会议e164
+                    String.class}, // 画板id
             rspSeq = {"DcsGetWhiteBoard_Rsp"})
     DCQueryBoard, // TODO 待调
 
@@ -473,7 +492,8 @@ public enum Msg {
     /**上传文件*/
     @Request(name = "DCSUploadFileCmd",
             methodOwner = DcsCtrl,
-            paras = {BaseTypeString.class, TDCSFileInfo.class},
+            paras = {BaseTypeString.class, // 下载url。XXX 下层龟腚上层先将url包装到该类里面转成json然后传给它，它再将json解析出来进而萃取出url。
+                    TDCSFileInfo.class},
             rspSeq = {"DcsUploadFile_Ntf"})
     DCUpload, // TODO 待调
 

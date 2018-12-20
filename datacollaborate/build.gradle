@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '0.5.47-SNAPSHOT'
+version = '0.6.0-SNAPSHOT'
 
 android {
     compileSdkVersion 28
@@ -31,7 +31,7 @@ dependencies {
 //    implementation fileTree(dir: 'libs', include: ['*.jar'])
 //    implementation project(':base')
 //    implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"
-    implementation 'com.kedacom.vconf.sdk:base:0.5.44-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:base:0.6.0-SNAPSHOT'
 //    implementation ('com.kedacom.vconf.sdk:base:0.4.13-SNAPSHOT@aar'){
 //        transitive = true
 //    }

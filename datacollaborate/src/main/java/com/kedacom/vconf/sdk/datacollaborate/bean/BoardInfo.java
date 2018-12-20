@@ -4,10 +4,12 @@
 
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
+import java.util.UUID;
+
 import androidx.annotation.NonNull;
 
 public class BoardInfo {
-    private String id;           // 终端填写GUID（系统函数生成）
+    private String id = UUID.randomUUID().toString();
     private String name;
     private String confE164;
     private String creatorE164;

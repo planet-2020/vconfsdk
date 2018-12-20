@@ -572,16 +572,34 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         KLog.p("layer=%s", layer);
         Bitmap shot = null;
         if (LAYER_ALL == layer) {
-            shot = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
+            Bitmap picBt = picPaintView.getBitmap();
+            Bitmap shapeBt = shapePaintView.getBitmap();
+            int picW = picBt.getWidth();
+            int picH = picBt.getHeight();
+            int shapeW = shapeBt.getWidth();
+            int shapeH = shapeBt.getHeight();
+            int maxW = picW>shapeW?picW:shapeW;
+            int maxH = picH>shapeH?picH:shapeH;
+            KLog.p("picW=%s, picH=%s, shapeW=%s, shapeH=%s", picW, picH, shapeW, shapeH);
+            shot = Bitmap.createBitmap(maxW, maxH, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(shot);
             draw(canvas);
-            canvas.drawBitmap(picPaintView.getBitmap(), 0, 0, null);
-            canvas.drawBitmap(shapePaintView.getBitmap(), 0, 0, null);
+            canvas.drawBitmap(picBt, 0, 0, null);
+            canvas.drawBitmap(shapeBt, 0, 0, null);
         }else if (LAYER_PIC_AND_SHAPE == layer){
-            shot = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
+            Bitmap picBt = picPaintView.getBitmap();
+            Bitmap shapeBt = shapePaintView.getBitmap();
+            int picW = picBt.getWidth();
+            int picH = picBt.getHeight();
+            int shapeW = shapeBt.getWidth();
+            int shapeH = shapeBt.getHeight();
+            int maxW = picW>shapeW?picW:shapeW;
+            int maxH = picH>shapeH?picH:shapeH;
+            KLog.p("picW=%s, picH=%s, shapeW=%s, shapeH=%s", picW, picH, shapeW, shapeH);
+            shot = Bitmap.createBitmap(maxW, maxH, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(shot);
-            canvas.drawBitmap(picPaintView.getBitmap(), 0, 0, null);
-            canvas.drawBitmap(shapePaintView.getBitmap(), 0, 0, null);
+            canvas.drawBitmap(picBt, 0, 0, null);
+            canvas.drawBitmap(shapeBt, 0, 0, null);
         } else if (LAYER_SHAPE == layer){
             shot = shapePaintView.getBitmap();
         }else if (LAYER_PIC == layer){

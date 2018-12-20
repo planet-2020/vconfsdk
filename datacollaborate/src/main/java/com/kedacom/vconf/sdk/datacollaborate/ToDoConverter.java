@@ -494,6 +494,29 @@ final class ToDoConverter {
         domainObj.setColor(color);
     }
 
+    public static ETerminalType fromTransferObj(EmDcsType type){
+        switch (type){
+            case emTypeTrueLink:
+                return ETerminalType.TrueLinkWindows;
+            case emTypeTrueTouchPhoneIOS:
+                return ETerminalType.TrueLinkIosPhone;
+            case emTypeTrueTouchPadIOS:
+                return ETerminalType.TrueLinkIosPad;
+            case emTypeTrueTouchPhoneAndroid:
+                return ETerminalType.TrueLinkAndroidPhone;
+            case emTypeTrueTouchPadAndroid:
+                return ETerminalType.TrueLinkAndroidPad;
+            case emTypeTrueSens:
+                return ETerminalType.TrueSens;
+            case emTypeIMIX:
+                return ETerminalType.Imix;
+            case emTypeThirdPartyTer:
+                return ETerminalType.ThirdParty;
+            case emTypeUnknown:
+            default:
+                return ETerminalType.Unknown;
+        }
+    }
 
     public static EmDcsType toTransferObj(ETerminalType type){
         switch (type){
@@ -585,6 +608,10 @@ final class ToDoConverter {
 
     public static CreateConfResult fromTransferObj(TDCSCreateConfResult to) {
         return new CreateConfResult(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType));
+    }
+
+    public static DCMember fromTransferObj(TDCSConfUserInfo userInfo){
+        return new DCMember(userInfo.achE164, userInfo.achName, fromTransferObj(userInfo.emMttype), true, false, true);
     }
 
     public static TDCSConfUserInfo toTransferObj(DCMember member){

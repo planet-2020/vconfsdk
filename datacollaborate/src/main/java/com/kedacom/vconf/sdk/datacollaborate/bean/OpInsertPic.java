@@ -8,7 +8,7 @@ import androidx.annotation.NonNull;
 public class OpInsertPic extends OpPaint {
     private String picId;
     private String picName;
-    private String picSavePath;
+    private String picPath;
     private Bitmap pic;
     private int picWidth;
     private int picHeight;
@@ -30,8 +30,8 @@ public class OpInsertPic extends OpPaint {
     @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("picId=%s, picName=%s, picSavePath=%s, pic=%s, picWidth=%s, picHeight=%s, matrix=%s",
-                picId, picName, picSavePath, pic, picWidth, picHeight, matrix)+super.toString()+"}";
+        return "{"+String.format("picId=%s, picName=%s, picPath=%s, pic=%s, picWidth=%s, picHeight=%s, matrix=%s",
+                picId, picName, picPath, pic, picWidth, picHeight, matrix)+super.toString()+"}";
     }
 
     public String getPicId() {
@@ -50,12 +50,12 @@ public class OpInsertPic extends OpPaint {
         this.picName = picName;
     }
 
-    public String getPicSavePath() {
-        return picSavePath;
+    public String getPicPath() {
+        return picPath;
     }
 
-    public void setPicSavePath(String picSavePath) {
-        this.picSavePath = picSavePath;
+    public void setPicPath(String picPath) {
+        this.picPath = picPath;
     }
 
     public Bitmap getPic() {

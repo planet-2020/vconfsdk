@@ -19,9 +19,20 @@ public class TDCSBoardInfo {
     public String achDownloadUrl;   // 图片下载Url（限文档）
     public String achUploadUrl;     // 图片上传Url（限文档）
     public int dwWbAnonyId;         // 平台成功响应后，平台填写（限白板）
-    TDCSBoardInfo(){
-        achTabId = "boardId";
-        emWbMode = EmDcsWbMode.emWbModeWB;
+
+    public TDCSBoardInfo(String achTabId, String achWbCreatorE164) {
+        this.emWbMode = EmDcsWbMode.emWbModeWB;
+        this.dwWbPageNum = 1;
+        this.achTabId = achTabId;
+        this.achWbCreatorE164 = achWbCreatorE164;
     }
 
+    public TDCSBoardInfo(EmDcsWbMode emWbMode, String achWbName, int dwWbPageNum, String achTabId, int dwPageId, String achWbCreatorE164) {
+        this.achWbName = achWbName;
+        this.emWbMode = emWbMode;
+        this.dwWbPageNum = dwWbPageNum;
+        this.achTabId = achTabId;
+        this.dwPageId = dwPageId;
+        this.achWbCreatorE164 = achWbCreatorE164;
+    }
 }

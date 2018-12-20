@@ -14,8 +14,16 @@ import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.base.bean.dc.BaseTypeString;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsDownloadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetAllWhiteBoardRsp;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsGetUserListRsp;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsGetWhiteBoardRsp;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsNewWhiteBoardRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperInsertPicNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsSwitchRsp;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
+import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
+import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConf;
@@ -24,14 +32,18 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSDelWhiteBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSFileInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSFileLoadResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSImageUrl;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSNewWhiteBoard;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperator;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSRegInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSSwitchReq;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDcsCacheElementParseResult;
 import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EDcMode;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EConfType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
@@ -46,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.UUID;
 
 
 public class DataCollaborateManager extends RequestAgent {
@@ -69,7 +82,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     // 终端类型
-    private ETerminalType terminalType;
+    private EmDcsType terminalType;
 
     // 画板相关通知
     private static final Msg[] boardOpNtfs = new Msg[]{
@@ -110,13 +123,18 @@ public class DataCollaborateManager extends RequestAgent {
         processorMap.put(Msg.DCReleaseConf, this::onConfOpRsps);
         processorMap.put(Msg.DCQuitConf, this::onConfOpRsps);
 
-
+        processorMap.put(Msg.DCQueryBoard, this::onBoardOpRsps);
         processorMap.put(Msg.DCQueryAllBoards, this::onBoardOpRsps);
+        processorMap.put(Msg.DCNewBoard, this::onBoardOpRsps);
+        processorMap.put(Msg.DCDelBoard, this::onBoardOpRsps);
+        processorMap.put(Msg.DCSwitchBoard, this::onBoardOpRsps);
 
         processorMap.put(Msg.DCAddOperator, this::onChangeOperatorsRsps);
         processorMap.put(Msg.DCDelOperator, this::onChangeOperatorsRsps);
         processorMap.put(Msg.DCApplyOperator, this::onChangeOperatorsRsps);
         processorMap.put(Msg.DCCancelOperator, this::onChangeOperatorsRsps);
+
+        processorMap.put(Msg.DCQueryAllMembers, this::onRsps);
 
         processorMap.put(Msg.DCDownload, this::onRsps);
         processorMap.put(Msg.DCQueryPicUrl, this::onRsps);
@@ -147,7 +165,7 @@ public class DataCollaborateManager extends RequestAgent {
     @Override
     protected Map<Msg, NtfProcessor> ntfProcessors() {
         Map<Msg, NtfProcessor> processorMap = new HashMap<>();
-//        processorMap.put(Msg.DCApplyOperatorNtf, this::onOperatorsChangedNtfs);
+        processorMap.put(Msg.DCApplyOperatorNtf, this::onOperatorsChangedNtfs);
         processorMap.put(Msg.DCConfCreated, this::onNtfs);
         processorMap.put(Msg.DCPicDownloadableNtf, this::onNtfs);
         return processorMap;
@@ -202,13 +220,36 @@ public class DataCollaborateManager extends RequestAgent {
     public void publishPaintOp(OpPaint op){
         KLog.p("publish op=%s", op);
         Object to = ToDoConverter.toPaintTransferObj(op);
-        // TODO 对于插入图片还需调用插入图片然后查询图片地址然后上传图片。
         if (null != to) {
             req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
                     ToDoConverter.toCommonPaintTransferObj(op), ToDoConverter.toPaintTransferObj(op));
         }else{
             req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
                     ToDoConverter.toCommonPaintTransferObj(op));
+        }
+
+        // 对于图片插入操作还需上传图片。
+        if (EOpType.INSERT_PICTURE == op.getType()){
+            req(Msg.DCQueryPicUploadUrl, new IResultListener() {
+                @Override
+                public void onSuccess(Object result) {
+                    DcsUploadImageRsp picUploadUrl = (DcsUploadImageRsp) result;
+//                    req(Msg.DCUpload, ,
+//                            new BaseTypeString(picUploadUrl.AssParam.achPicUrl),
+//                            new TDCSFileInfo(op.get,
+//                                    picUploadUrl.AssParam.achWbPicentityId, picUploadUrl.AssParam.achTabId, false, ));
+                }
+
+                @Override
+                public void onFailed(int errorCode) {
+                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s failed!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                }
+
+                @Override
+                public void onTimeout() {
+                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                }
+            }, new TDCSImageUrl(op.getConfE164(), op.getBoardId(), op.getPageId(), ((OpInsertPic) op).getPicId()));
         }
     }
 
@@ -218,8 +259,8 @@ public class DataCollaborateManager extends RequestAgent {
      * @param terminalType 己端终端类型
      * @param resultListener 登陆结果监听器*/
     public void login(String serverIp, int port, ETerminalType terminalType, IResultListener resultListener){
-        this.terminalType = terminalType;
-        req(Msg.DCLogin, resultListener, new TDCSRegInfo(serverIp, port, ToDoConverter.toTransferObj(terminalType)));
+        this.terminalType = ToDoConverter.toTransferObj(terminalType);
+        req(Msg.DCLogin, resultListener, new TDCSRegInfo(serverIp, port, this.terminalType));
     }
 
     /**注销数据协作
@@ -281,7 +322,8 @@ public class DataCollaborateManager extends RequestAgent {
      * @param adminE164 主席e164
      * @param members 与会成员
      * @param resultListener 创会结果监听器*/
-    public void createDcConf(String confE164, String confName, EDcMode dcMode, EConfType confType, String adminE164, List<DCMember> members, IResultListener resultListener){
+    public void createDcConf(String confE164, String confName, EDcMode dcMode, EConfType confType,
+                             String adminE164, List<DCMember> members, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
         for (DCMember member : members){
             tdcsConfUserInfos.add(ToDoConverter.toTransferObj(member));
@@ -289,22 +331,23 @@ public class DataCollaborateManager extends RequestAgent {
         req(Msg.DCCreateConf, resultListener,
                 new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
                         confE164, confName, ToDoConverter.toTransferObj(dcMode),
-                        tdcsConfUserInfos, adminE164, ToDoConverter.toTransferObj(terminalType)));
+                        tdcsConfUserInfos, adminE164, terminalType));
         cachedPaintOps.clear();
         curDcConfE164 = null;
     }
 
     /**结束数据协作*/
     public void releaseDcConf(IResultListener resultListener){
-//        req(Msg.DCReleaseConf, new MsgBeans.DCConfId(curDcConfE164), resultListener);
+        req(Msg.DCReleaseConf, resultListener, curDcConfE164);
         curDcConfE164 = null;
         cachedPaintOps.clear();
     }
 
     /**退出数据协作。
-     * 注：仅自己退出，协作仍存在，不影响其他人继续*/
-    public void quitDcConf(IResultListener resultListener){
-//        req(Msg.DCQuitConf, new MsgBeans.DCSQuitConf(curDcConfE164), resultListener);
+     * 注：仅自己退出，协作仍存在，不影响其他人继续
+     * @param bQuitConf 是否同时退出会议*/
+    public void quitDcConf(boolean bQuitConf, IResultListener resultListener){
+        req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
         curDcConfE164 = null;
         cachedPaintOps.clear();
     }
@@ -357,23 +400,53 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-
-    /**添加协作方*/
-    public void addOperator(DCMember[] members, IResultListener resultListener){
+    /**添加协作方
+     * @param memberE164 待添加的成员e164
+     * */
+    public void addOperator(String memberE164, IResultListener resultListener){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
+        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, true, false));
+        req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+    }
+    /**批量添加协作方
+     * @param memberE164List 待添加的成员e164列表
+     * */
+    public void addOperator(List<String> memberE164List, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        for (DCMember member : members){
-            tdcsConfUserInfos.add(ToDoConverter.toTransferObj(member));
+        for (String e164 : memberE164List){
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", terminalType, true, true, false));
         }
         req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
 
-    /**删除协作方*/
-    public void delOperator(DCMember[] members, IResultListener resultListener){
-//        MsgBeans.TDCSConfUserInfo[] confUserInfos = new MsgBeans.TDCSConfUserInfo[members.length];
-//        for (int i=0; i<members.length; ++i){
-//            confUserInfos[i] = members[i].toTransferType();
-//        }
-//        req(Msg.DCDelOperator, new MsgBeans.TDCSOperator(curDcConfE164, confUserInfos), resultListener);
+    /**删除协作方
+     * @param memberE164 待删除成员e164*/
+    public void delOperator(String memberE164, IResultListener resultListener){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
+        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, true, false));
+        req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+    }
+
+    /**批量删除协作方
+     * @param memberE164List 待删除成员e164列表*/
+    public void delOperator(List<String> memberE164List, IResultListener resultListener){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        for (String e164 : memberE164List){
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", terminalType, true, true, false));
+        }
+        req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+    }
+
+    /**
+     * 拒绝协作权申请
+     * @param memberE164List 拒绝对象的e164列表
+     * */
+    public void rejectApplyOperator(List<String> memberE164List, IResultListener resultListener){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        for (String e164 : memberE164List){
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", terminalType, true, true, false));
+        }
+        req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
 
     /**申请协作方
@@ -392,6 +465,24 @@ public class DataCollaborateManager extends RequestAgent {
      * */
     private void onChangeOperatorsRsps(Msg rspId, Object rspContent, IResultListener listener){
         switch (rspId){
+            case DCAddOperatorRsp:
+                if (null != listener){
+                    if (((TDCSResult) rspContent).bSucces){
+                        listener.onSuccess(null);
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
+                }
+                break;
+            case DCDelOperatorRsp:
+                if (null != listener){
+                    if (((TDCSResult) rspContent).bSucces){
+                        listener.onSuccess(null);
+                    }else{
+                        listener.onFailed(ErrCode_Failed);
+                    }
+                }
+                break;
             case DCApplyOperatorRsp:
                 if (null != listener){
                     if (((TDCSResult) rspContent).bSucces){
@@ -414,13 +505,72 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     private void onOperatorsChangedNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
-
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
+        switch (ntfId){
+            case DCApplyOperatorNtf:
+                for (Object listener : listeners){
+                    ((IOnApplyOperatorListener)listener).onApplyOperator(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
+                }
+                break;
+        }
     }
 
 
+    /**
+     * 新建普通画板
+     * @param creatorE164 创建者E164
+     * @param listener 新建画板结果监听器
+     * */
+    public void newBoard(String creatorE164, IResultListener listener){
+        req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164, new TDCSBoardInfo(UUID.randomUUID().toString(), creatorE164)));
+    }
+
+    /**
+     * 新建文档模式画板
+     * @param boardName 画板名
+     * @param pageCount 文档总页数
+     * @param curPageIndex 当前文档页
+     * @param creatorE164 创建者E164
+     * @param listener 新建画板结果监听器
+     * */
+    public void newDocBoard(String boardName, int pageCount, int curPageIndex, String creatorE164, IResultListener listener){
+        req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164,
+                new TDCSBoardInfo(EmDcsWbMode.emWBModeDOC, boardName, pageCount, UUID.randomUUID().toString(), curPageIndex, creatorE164)));
+    }
+
+    /**
+     * 删除画板
+     * @param boardId 待删除画板Id
+     * @param listener 删除画板结果监听器
+     * */
+    public void delBoard(String boardId, IResultListener listener){
+        req(Msg.DCNewBoard, listener, curDcConfE164, boardId);
+    }
+
+    /**
+     * 切换画板
+     * @param boardId 目标画板Id
+     * @param listener 切换画板结果监听器
+     * */
+    public void switchBoard(String boardId, IResultListener listener){
+        req(Msg.DCNewBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
+    }
+
+
+    /**
+     * 画板操作（创建/删除/切换）响应处理
+     * */
     private void onBoardOpRsps(Msg rspId, Object rspContent, IResultListener listener){
         switch (rspId){
+            case DCQueryBoardRsp:
+                DcsGetWhiteBoardRsp queryBoardsResult = (DcsGetWhiteBoardRsp) rspContent;
+                if (queryBoardsResult.MainParam.bSucces){
+                    if (null != listener) listener.onSuccess(ToDoConverter.fromTransferObj(queryBoardsResult.AssParam));
+                }else{
+                    KLog.p(KLog.ERROR, "DCQueryBoard failed, errorCode=%s", queryBoardsResult.MainParam.dwErrorCode);
+                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                }
+                break;
             case DCQueryAllBoardsRsp:
                 DcsGetAllWhiteBoardRsp queryAllBoardsResult = (DcsGetAllWhiteBoardRsp) rspContent;
                 if (!queryAllBoardsResult.MainParam.bSucces){
@@ -441,6 +591,34 @@ public class DataCollaborateManager extends RequestAgent {
                     }
                 }
 
+                break;
+
+            case DCNewBoard:
+                DcsNewWhiteBoardRsp newWhiteBoardRsp = (DcsNewWhiteBoardRsp) rspContent;
+                if (newWhiteBoardRsp.MainParam.bSucces){
+                    if (null != listener) listener.onSuccess(ToDoConverter.fromTransferObj(newWhiteBoardRsp.AssParam));
+                }else {
+                    KLog.p(KLog.ERROR, "new board failed, errorCode=%s", newWhiteBoardRsp.MainParam.dwErrorCode);
+                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                }
+                break;
+            case DCDelBoard:
+                TDCSBoardResult boardResult = (TDCSBoardResult) rspContent;
+                if (boardResult.bSucces){
+                    if (null != listener) listener.onSuccess(null);
+                }else {
+                    KLog.p(KLog.ERROR, "del board failed, errorCode=%s", boardResult.dwErrorCode);
+                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                }
+                break;
+            case DCSwitchBoard:
+                DcsSwitchRsp switchRsp = (DcsSwitchRsp) rspContent;
+                if (switchRsp.MainParam.bSucces){
+                    if (null != listener) listener.onSuccess(null);
+                }else {
+                    KLog.p(KLog.ERROR, "switch board failed, errorCode=%s", switchRsp.MainParam.dwErrorCode);
+                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                }
                 break;
         }
     }
@@ -494,6 +672,19 @@ public class DataCollaborateManager extends RequestAgent {
                 DcsDownloadImageRsp queryPicUrlResult = (DcsDownloadImageRsp) rspContent;
                 if (queryPicUrlResult.MainParam.bSucces){
                     listener.onSuccess(queryPicUrlResult);
+                }else{
+                    listener.onFailed(ErrCode_Failed);
+                }
+                break;
+
+            case DCQueryAllMembersRsp:
+                DcsGetUserListRsp userListRsp = (DcsGetUserListRsp) rspContent;
+                if (userListRsp.MainParam.bSucces){
+                    List<DCMember> dcMembers = new ArrayList<>();
+                    for (TDCSConfUserInfo user : userListRsp.AssParam.atUserList){
+                        dcMembers.add(ToDoConverter.fromTransferObj(user));
+                    }
+                    listener.onSuccess(dcMembers);
                 }else{
                     listener.onFailed(ErrCode_Failed);
                 }
@@ -599,7 +790,7 @@ public class DataCollaborateManager extends RequestAgent {
                                     new IResultListener() {
                                         @Override
                                         public void onSuccess(Object result) {
-//                                            KLog.p("download pic %s for board %s success! save path=%s", picUrl.picId, picUrl.boardId, getPicSavePath(picUrl.picId));
+//                                            KLog.p("download pic %s for board %s success! save path=%s", picUrl.picId, picUrl.boardId, getPicPath(picUrl.picId));
                                             TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
                                             updateInsertPicOp(new OpUpdatePic(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName), listeners);
                                         }
@@ -616,7 +807,7 @@ public class DataCollaborateManager extends RequestAgent {
                                     },
 
                                     new BaseTypeString(picUrl.AssParam.achPicUrl),
-                                    new TDCSFileInfo(getPicSavePath(picUrl.AssParam.achWbPicentityId), picUrl.AssParam.achWbPicentityId, picUrl.AssParam.achTabId, false)
+                                    new TDCSFileInfo(getPicSavePath(picUrl.AssParam.achWbPicentityId), picUrl.AssParam.achWbPicentityId, picUrl.AssParam.achTabId, false, 0)
                                 );
                             }
 
@@ -673,7 +864,7 @@ public class DataCollaborateManager extends RequestAgent {
             boolean bUpdated = false;
             for (OpPaint op : cachedOps){
                 if (op instanceof OpInsertPic && ((OpInsertPic)op).getPicId().equals(opUpdatePic.getPicId())){
-                    ((OpInsertPic)op).setPicSavePath(opUpdatePic.getPicSavePath()); // 更新图片的所在路径
+                    ((OpInsertPic)op).setPicPath(opUpdatePic.getPicSavePath()); // 更新图片的所在路径
                     bUpdated = true;
                     break;
                 }
@@ -815,7 +1006,7 @@ public class DataCollaborateManager extends RequestAgent {
                             },
 
                             new BaseTypeString(board.achElementUrl),
-                            new TDCSFileInfo(null, null, board.achTabId, true)
+                            new TDCSFileInfo(null, null, board.achTabId, true, 0)
                             );
 
                         }
@@ -871,7 +1062,7 @@ public class DataCollaborateManager extends RequestAgent {
                             }
                         },
                         new BaseTypeString(dcPicUrl.achPicUrl),
-                        new TDCSFileInfo(getPicSavePath(dcPicUrl.achWbPicentityId), dcPicUrl.achWbPicentityId, dcPicUrl.achTabId, false)
+                        new TDCSFileInfo(getPicSavePath(dcPicUrl.achWbPicentityId), dcPicUrl.achWbPicentityId, dcPicUrl.achTabId, false, 0)
                     );
                 }else{
                     KLog.p("pic already exists: %s", getPicSavePath(dcPicUrl.achWbPicentityId));
@@ -894,29 +1085,43 @@ public class DataCollaborateManager extends RequestAgent {
         subscribe(paintOpNtfs, onPaintOpListener);
     }
 
+    public void addApplyOperatorListener(IOnApplyOperatorListener onApplyOperatorListener){
+        subscribe(paintOpNtfs, onApplyOperatorListener);
+    }
 
 
-
+    /**
+     * 绘制操作通知监听器
+     * */
     public interface IOnPaintOpListener extends ILifecycleOwner {
         void onPaintOp(OpPaint op);
     }
 
+    /**
+     * 画板操作通知监听器
+     * */
     public interface IOnBoardOpListener extends ILifecycleOwner{
         void onBoardCreated(BoardInfo boardInfo);
         void onBoardDeleted(String boardId);
         void onBoardSwitched(String boardId);
     }
 
+    /**
+     * 加入数据协作结果监听器
+     * */
     public interface IOnDcConfJoinResultListener extends ILifecycleOwner{
         void onSuccess(CreateConfResult result);
         void onFailed(int errCode);
     }
 
-    private class QueryAllBoardsInnerListener implements IResultListener{
+    /**
+     * 申请协作权通知监听器
+     * */
+    public interface IOnApplyOperatorListener extends ILifecycleOwner{
+        void onApplyOperator(DCMember member);
     }
 
-    public void ejectNtf(Msg msg){
-        eject(msg);
+    private class QueryAllBoardsInnerListener implements IResultListener{
     }
 
 }
