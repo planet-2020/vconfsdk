@@ -147,7 +147,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                 startDragPoint.set(detector.getFocusX(), detector.getFocusY());
 
-                // TODO 放到tempOps中，不必，简化处理，再缩放下对方能恢复。
+                // TODO 放到tempOps中？不必，简化处理，再缩放下对方能恢复。
                 refreshPaintOp();
 
                 zoomRateChanged();
@@ -174,7 +174,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public boolean onTouch(View v, MotionEvent event) {
-            if (null == paintOpGeneratedListener){
+            if (null == paintOpGeneratedListener||null==publisher){
                 return false;
             }
             scaleGestureDetector.onTouchEvent(event);
@@ -186,14 +186,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             switch (event.getActionMasked()) {
 
                 case MotionEvent.ACTION_DOWN:
-                    KLog.p("state=%s, ACTION_DOWN{%s}", state, event);
+//                    KLog.p("state=%s, ACTION_DOWN{%s}", state, event);
                     state = STATE_SHAKING;
                     startPoint.set(event.getX(), event.getY()); // 记录起始点
                     createPaintOp(event.getX(), event.getY());
                     break;
 
                 case MotionEvent.ACTION_POINTER_DOWN:
-                    KLog.p("state=%s, ACTION_POINTER_DOWN{%s}", state, event);
+//                    KLog.p("state=%s, ACTION_POINTER_DOWN{%s}", state, event);
                     if (2 == event.getPointerCount()) {
                         if (STATE_DRAWING == state) {
                             confirmPaintOp();
@@ -207,7 +207,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     break;
 
                 case MotionEvent.ACTION_POINTER_UP:
-                    KLog.p("state=%s, ACTION_POINTER_UP{%s}", state, event);
+//                    KLog.p("state=%s, ACTION_POINTER_UP{%s}", state, event);
                     if (2 == event.getPointerCount()){ // 二个手指其中一个抬起，只剩一个手指了
                         if (STATE_DRAGING == state){
                             confirmMatrixOp();
@@ -244,7 +244,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     break;
 
                 case MotionEvent.ACTION_UP:
-                    KLog.p("state=%s, ACTION_UP{%s}", state, event);
+//                    KLog.p("state=%s, ACTION_UP{%s}", state, event);
                     if (STATE_DRAWING == state) {
                         confirmPaintOp();
                     }else if (STATE_SHAKING == state){
@@ -270,7 +270,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private float[] mapPoint= new float[2];
         private void createPaintOp(float startX, float startY){
             boolean suc = shapePaintView.getMyMatrix().invert(shapeInvertMatrix);
-            KLog.p("invert success?=%s, orgX=%s, orgY=%s", suc, startX, startY);
+//            KLog.p("invert success?=%s, orgX=%s, orgY=%s", suc, startX, startY);
             mapPoint[0] = startX;
             mapPoint[1] = startY;
             shapeInvertMatrix.mapPoints(mapPoint);
@@ -423,9 +423,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         private void refreshPaintOp(){
-            if (null != paintOpGeneratedListener){
-                paintOpGeneratedListener.onOp(null);
-            }
+            paintOpGeneratedListener.onOp(null);
         }
 
         private void cancelPaintOp(){
@@ -451,18 +449,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             KLog.p("new tmp op %s", opPaint);
             shapePaintView.getTmpOps().offerLast(opPaint);
             refreshPaintOp();
-            if (null != publisher){
-                publisher.publish(opPaint);
-            }
+            publisher.publish(opPaint);
             opPaint = null;
         }
 
         private void confirmMatrixOp(){
-            if (null != publisher){
-                OpMatrix opMatrix = new OpMatrix(shapePaintView.getMyMatrix());
-                assignBasicInfo(opMatrix);
-                publisher.publish(opMatrix); // TODO 判断当前缩放图层
-            }
+            OpMatrix opMatrix = new OpMatrix(shapePaintView.getMyMatrix());
+            assignBasicInfo(opMatrix);
+            publisher.publish(opMatrix); // TODO 判断当前缩放图层
         }
 
     }
@@ -545,24 +539,26 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void insertPic(String path) {
-        if (null != paintOpGeneratedListener){
-            Bitmap bt = BitmapFactory.decodeFile(path);
-            int picW = bt.getWidth();
-            int picH = bt.getHeight();
-            float transX = (getWidth()-picW)/2f;
-            float transY = (getHeight()-picH)/2f;
-            Matrix matrix = new Matrix();
-            matrix.setTranslate(transX, transY);
-            OpInsertPic op = new OpInsertPic(path, matrix);
-            op.setPic(bt);
-            assignBasicInfo(op);
-            KLog.p("new tmp op %s", op);
-            picPaintView.getTmpOps().offerLast(op);
-            paintOpGeneratedListener.onOp(null);
-            if (null != publisher){
-                publisher.publish(op);
-            }
+        if (null == publisher){
+            KLog.p(KLog.ERROR,"publisher is null");
+            return;
         }
+        Bitmap bt = BitmapFactory.decodeFile(path);
+        int picW = bt.getWidth();
+        int picH = bt.getHeight();
+        float transX = (getWidth()-picW)/2f;
+        float transY = (getHeight()-picH)/2f;
+        Matrix matrix = new Matrix();
+        matrix.setTranslate(transX, transY);
+        OpInsertPic op = new OpInsertPic(path, matrix);
+        op.setPic(bt);
+        assignBasicInfo(op);
+        KLog.p("new tmp op %s", op);
+        picPaintView.getTmpOps().offerLast(op);
+        if (null != paintOpGeneratedListener) {
+            paintOpGeneratedListener.onOp(null);
+        }
+        publisher.publish(op);
     }
 
     @Override
@@ -608,10 +604,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     private void dealSimpleOp(OpPaint op){
-        if (null != publisher){
-            assignBasicInfo(op);
-            publisher.publish(op);
+        if (null == publisher){
+            KLog.p(KLog.ERROR,"publisher is null");
+            return;
         }
+        assignBasicInfo(op);
+        publisher.publish(op);
     }
 
     @Override
