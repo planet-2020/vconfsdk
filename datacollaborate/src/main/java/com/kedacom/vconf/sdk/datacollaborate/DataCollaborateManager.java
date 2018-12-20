@@ -216,58 +216,6 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    /**发布绘制操作*/
-    public void publishPaintOp(OpPaint op){
-        KLog.p("publish op=%s", op);
-        Object to = ToDoConverter.toPaintTransferObj(op);
-        if (null != to) {
-            req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
-                    ToDoConverter.toCommonPaintTransferObj(op), ToDoConverter.toPaintTransferObj(op));
-        }else{
-            req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
-                    ToDoConverter.toCommonPaintTransferObj(op));
-        }
-
-        // 对于图片插入操作还需上传图片。
-        if (EOpType.INSERT_PICTURE == op.getType()){
-            req(Msg.DCQueryPicUploadUrl, new IResultListener() {
-                @Override
-                public void onSuccess(Object result) {
-                    TDCSImageUrl picUploadUrl = (TDCSImageUrl) result;
-                    req(Msg.DCUpload, new IResultListener() {
-                                @Override
-                                public void onSuccess(Object result) {
-                                    KLog.p(KLog.ERROR, "upload pic %s for board %s success!", ((OpInsertPic) op).getPicId(), op.getBoardId());
-                                }
-
-                                @Override
-                                public void onFailed(int errorCode) {
-                                    KLog.p(KLog.ERROR, "upload pic %s for board %s failed!", ((OpInsertPic) op).getPicId(), op.getBoardId());
-                                }
-
-                                @Override
-                                public void onTimeout() {
-                                    KLog.p(KLog.ERROR, "upload pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
-                                }
-                            },
-                            new BaseTypeString(picUploadUrl.achPicUrl),
-                            new TDCSFileInfo(((OpInsertPic) op).getPicPath(), picUploadUrl.achWbPicentityId,
-                                    picUploadUrl.achTabId, false, (int) new File(((OpInsertPic) op).getPicPath()).length()));
-                }
-
-                @Override
-                public void onFailed(int errorCode) {
-                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s failed!", ((OpInsertPic) op).getPicId(), op.getBoardId());
-                }
-
-                @Override
-                public void onTimeout() {
-                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
-                }
-            }, new TDCSImageUrl(op.getConfE164(), op.getBoardId(), op.getPageId(), ((OpInsertPic) op).getPicId()));
-        }
-    }
-
     /**登录数据协作
      * @param serverIp 数据协作服务器Ip
      * @param port 数据协作服务器port
@@ -754,7 +702,7 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     /**
-     * 绘制操作通知处理
+     * 收到绘制操作通知处理
      * */
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
@@ -860,6 +808,59 @@ public class DataCollaborateManager extends RequestAgent {
                 break;
         }
 
+    }
+
+
+    /**发布绘制操作*/
+    public void publishPaintOp(OpPaint op){
+        KLog.p("publish op=%s", op);
+        Object to = ToDoConverter.toPaintTransferObj(op);
+        if (null != to) {
+            req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
+                    ToDoConverter.toCommonPaintTransferObj(op), ToDoConverter.toPaintTransferObj(op));
+        }else{
+            req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
+                    ToDoConverter.toCommonPaintTransferObj(op));
+        }
+
+        // 对于图片插入操作还需上传图片。
+        if (EOpType.INSERT_PICTURE == op.getType()){
+            req(Msg.DCQueryPicUploadUrl, new IResultListener() {
+                @Override
+                public void onSuccess(Object result) {
+                    TDCSImageUrl picUploadUrl = (TDCSImageUrl) result;
+                    req(Msg.DCUpload, new IResultListener() {
+                                @Override
+                                public void onSuccess(Object result) {
+                                    KLog.p(KLog.ERROR, "upload pic %s for board %s success!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                                }
+
+                                @Override
+                                public void onFailed(int errorCode) {
+                                    KLog.p(KLog.ERROR, "upload pic %s for board %s failed!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                                }
+
+                                @Override
+                                public void onTimeout() {
+                                    KLog.p(KLog.ERROR, "upload pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                                }
+                            },
+                            new BaseTypeString(picUploadUrl.achPicUrl),
+                            new TDCSFileInfo(((OpInsertPic) op).getPicPath(), picUploadUrl.achWbPicentityId,
+                                    picUploadUrl.achTabId, false, (int) new File(((OpInsertPic) op).getPicPath()).length()));
+                }
+
+                @Override
+                public void onFailed(int errorCode) {
+                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s failed!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                }
+
+                @Override
+                public void onTimeout() {
+                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                }
+            }, new TDCSImageUrl(op.getConfE164(), op.getBoardId(), op.getPageId(), ((OpInsertPic) op).getPicId()));
+        }
     }
 
 
