@@ -1,12 +1,16 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+
+import java.io.File;
+import java.util.UUID;
 
 import androidx.annotation.NonNull;
 
 public class OpInsertPic extends OpPaint {
-    private String picId;
+    private String picId = UUID.randomUUID().toString();
     private String picName;
     private String picPath;
     private Bitmap pic;
@@ -15,6 +19,19 @@ public class OpInsertPic extends OpPaint {
     private Matrix matrix;
 
     public OpInsertPic(){
+        type = EOpType.INSERT_PICTURE;
+    }
+
+    public OpInsertPic(String picPath, Matrix matrix){
+        File file = new File(picPath);
+        this.picPath = picPath;
+        this.picName = file.getName();
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(picPath, options);
+        this.picWidth = options.outWidth;
+        this.picHeight = options.outHeight;
+        this.matrix = matrix;
         type = EOpType.INSERT_PICTURE;
     }
 

@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -543,20 +544,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     @Override
-    public void insertPic(Bitmap pic, String name) {
-        if (null == pic){
-            KLog.p(KLog.ERROR, "null pic");
-            return;
-        }
+    public void insertPic(String path) {
         if (null != paintOpGeneratedListener){
-            int picW = pic.getWidth();
-            int picH = pic.getHeight();
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(path, options);
+            int picW = options.outWidth;
+            int picH = options.outHeight;
             float transX = (getWidth()-picW)/2f;
             float transY = (getHeight()-picH)/2f;
             Matrix matrix = new Matrix();
             matrix.setTranslate(transX, transY);
-            OpInsertPic op = new OpInsertPic(UUID.randomUUID().toString(), name, picW, picH, matrix);
-            op.setPic(pic);
+            OpInsertPic op = new OpInsertPic(path, matrix);
             assignBasicInfo(op);
             KLog.p("new tmp op %s", op);
             picPaintView.getTmpOps().offerLast(op);

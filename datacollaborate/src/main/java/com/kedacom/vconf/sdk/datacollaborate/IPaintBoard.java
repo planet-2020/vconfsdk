@@ -98,8 +98,9 @@ public interface IPaintBoard {
 
     /**
      * 插入图片
+     * @param picPath 图片绝对路径
      * */
-    void insertPic(Bitmap pic, String name);
+    void insertPic(String picPath);
 
     /**
      * 截屏。
