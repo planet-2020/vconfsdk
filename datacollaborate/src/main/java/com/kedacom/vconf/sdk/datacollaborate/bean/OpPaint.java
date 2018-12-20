@@ -30,7 +30,7 @@ public abstract class OpPaint implements Comparable<OpPaint>{
     @NonNull
     @Override
     public String toString() {
-        return String.format("\n uuid=%s, type=%s, confE164=%s, boardId=%s, pageId=%s", type, confE164, boardId, pageId);
+        return String.format("\n uuid=%s, type=%s, confE164=%s, boardId=%s, pageId=%s", uuid, type, confE164, boardId, pageId);
     }
 
     public String getUuid() {
