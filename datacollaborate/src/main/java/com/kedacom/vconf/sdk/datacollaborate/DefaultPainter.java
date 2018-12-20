@@ -151,6 +151,7 @@ public class DefaultPainter implements IPainter {
 
         @Override
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+            KLog.p("surface destroyed");
             return false;
         }
 

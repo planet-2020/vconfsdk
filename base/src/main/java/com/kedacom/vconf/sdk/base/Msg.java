@@ -308,7 +308,7 @@ public enum Msg {
             paras = {String.class, // 当前会议e164
                     String.class}, // 画板Id
             rspSeq = {"DcsDelWhiteBoard_Rsp"})
-    DCDelBoard, // TODO 待调
+    DCDelBoard,
 
     /**删除画板响应*/
     @Response(clz=TDCSBoardResult.class,
@@ -319,12 +319,12 @@ public enum Msg {
     @Request(	name = "DCSSwitchReq",
             methodOwner = DcsCtrl,
             paras = TDCSSwitchReq.class,
-            rspSeq = {"DCSwitchBoardRsp"})
-    DCSwitchBoard, // TODO 待调
+            rspSeq = {"DcsSwitch_Rsp"})
+    DCSwitchBoard,
 
     /**切换画板响应*/
     @Response(clz=DcsSwitchRsp.class,
-            name="DcsDelWhiteBoard_Rsp")
+            name="DcsSwitch_Rsp")
     DCSwitchBoardRsp,
 
 

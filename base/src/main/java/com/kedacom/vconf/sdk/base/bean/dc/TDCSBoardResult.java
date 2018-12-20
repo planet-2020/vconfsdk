@@ -9,7 +9,7 @@ package com.kedacom.vconf.sdk.base.bean.dc;
  */
 
 public class TDCSBoardResult {
-    public boolean bSucces;
+    public boolean bSuccess;
     public int dwErrorCode;
     public String achConfE164;
     public String achTabId;

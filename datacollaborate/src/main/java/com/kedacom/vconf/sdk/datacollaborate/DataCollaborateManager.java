@@ -527,7 +527,7 @@ public class DataCollaborateManager extends RequestAgent {
         switch (rspId){
             case DCQueryBoardRsp:
                 DcsGetWhiteBoardRsp queryBoardsResult = (DcsGetWhiteBoardRsp) rspContent;
-                if (queryBoardsResult.MainParam.bSucces){
+                if (queryBoardsResult.MainParam.bSuccess){
                     if (null != listener) listener.onSuccess(ToDoConverter.fromTransferObj(queryBoardsResult.AssParam));
                 }else{
                     KLog.p(KLog.ERROR, "DCQueryBoard failed, errorCode=%s", queryBoardsResult.MainParam.dwErrorCode);
@@ -558,7 +558,7 @@ public class DataCollaborateManager extends RequestAgent {
 
             case DCNewBoardRsp:
                 DcsNewWhiteBoardRsp newWhiteBoardRsp = (DcsNewWhiteBoardRsp) rspContent;
-                if (newWhiteBoardRsp.MainParam.bSucces){
+                if (newWhiteBoardRsp.MainParam.bSuccess){
                     if (null != listener) listener.onSuccess(ToDoConverter.fromTransferObj(newWhiteBoardRsp.AssParam));
                 }else {
                     KLog.p(KLog.ERROR, "new board failed, errorCode=%s", newWhiteBoardRsp.MainParam.dwErrorCode);
@@ -567,7 +567,7 @@ public class DataCollaborateManager extends RequestAgent {
                 break;
             case DCDelBoardRsp:
                 TDCSBoardResult boardResult = (TDCSBoardResult) rspContent;
-                if (boardResult.bSucces){
+                if (boardResult.bSuccess){
                     if (null != listener) listener.onSuccess(null);
                 }else {
                     KLog.p(KLog.ERROR, "del board failed, errorCode=%s", boardResult.dwErrorCode);
@@ -576,7 +576,7 @@ public class DataCollaborateManager extends RequestAgent {
                 break;
             case DCSwitchBoardRsp:
                 DcsSwitchRsp switchRsp = (DcsSwitchRsp) rspContent;
-                if (switchRsp.MainParam.bSucces){
+                if (switchRsp.MainParam.bSuccess){
                     if (null != listener) listener.onSuccess(null);
                 }else {
                     KLog.p(KLog.ERROR, "switch board failed, errorCode=%s", switchRsp.MainParam.dwErrorCode);
