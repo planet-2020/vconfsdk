@@ -494,7 +494,8 @@ public enum Msg {
             methodOwner = DcsCtrl,
             paras = {BaseTypeString.class, // 下载url。XXX 下层龟腚上层先将url包装到该类里面转成json然后传给它，它再将json解析出来进而萃取出url。
                     TDCSFileInfo.class},
-            rspSeq = {"DcsUploadFile_Ntf"})
+            rspSeq = {"DcsUploadFile_Ntf"},
+            timeout = 30)
     DCUpload, // TODO 待调
 
     /**上传文件响应*/
@@ -528,7 +529,8 @@ public enum Msg {
             methodOwner = DcsCtrl,
             paras = {BaseTypeString.class, // 下载url。XXX 下层龟腚上层先将url包装到该类里面转成json然后传给它，它再将json解析出来进而萃取出url。
                     TDCSFileInfo.class},
-            rspSeq = {"DcsDownloadFile_Rsp"})
+            rspSeq = {"DcsDownloadFile_Rsp"},
+            timeout = 30)
     DCDownload,
 
     /**下载响应*/

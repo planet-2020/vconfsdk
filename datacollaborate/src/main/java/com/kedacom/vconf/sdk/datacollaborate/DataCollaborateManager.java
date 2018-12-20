@@ -136,10 +136,10 @@ public class DataCollaborateManager extends RequestAgent {
 
         processorMap.put(Msg.DCQueryAllMembers, this::onRsps);
 
-        processorMap.put(Msg.DCDownload, this::onRsps);
         processorMap.put(Msg.DCQueryPicUrl, this::onRsps);
-        processorMap.put(Msg.DCUpload, this::onRsps);
+        processorMap.put(Msg.DCDownload, this::onRsps);
         processorMap.put(Msg.DCQueryPicUploadUrl, this::onRsps);
+        processorMap.put(Msg.DCUpload, this::onRsps);
 
         processorMap.put(Msg.DCDrawLine, null);
         processorMap.put(Msg.DCDrawOval, null);
@@ -233,11 +233,26 @@ public class DataCollaborateManager extends RequestAgent {
             req(Msg.DCQueryPicUploadUrl, new IResultListener() {
                 @Override
                 public void onSuccess(Object result) {
-                    DcsUploadImageRsp picUploadUrl = (DcsUploadImageRsp) result;
-//                    req(Msg.DCUpload, ,
-//                            new BaseTypeString(picUploadUrl.AssParam.achPicUrl),
-//                            new TDCSFileInfo(op.get,
-//                                    picUploadUrl.AssParam.achWbPicentityId, picUploadUrl.AssParam.achTabId, false, ));
+                    TDCSImageUrl picUploadUrl = (TDCSImageUrl) result;
+                    req(Msg.DCUpload, new IResultListener() {
+                                @Override
+                                public void onSuccess(Object result) {
+                                    KLog.p(KLog.ERROR, "upload pic %s for board %s success!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                                }
+
+                                @Override
+                                public void onFailed(int errorCode) {
+                                    KLog.p(KLog.ERROR, "upload pic %s for board %s failed!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                                }
+
+                                @Override
+                                public void onTimeout() {
+                                    KLog.p(KLog.ERROR, "upload pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                                }
+                            },
+                            new BaseTypeString(picUploadUrl.achPicUrl),
+                            new TDCSFileInfo(((OpInsertPic) op).getPicPath(), picUploadUrl.achWbPicentityId,
+                                    picUploadUrl.achTabId, false, (int) new File(((OpInsertPic) op).getPicPath()).length()));
                 }
 
                 @Override
@@ -659,6 +674,15 @@ public class DataCollaborateManager extends RequestAgent {
     private void onRsps(Msg rspId, Object rspContent, IResultListener listener){
         KLog.p("rspContent=%s", rspContent);
         switch (rspId){
+            case DCQueryPicUrlRsp:
+                DcsDownloadImageRsp queryPicUrlResult = (DcsDownloadImageRsp) rspContent;
+                if (queryPicUrlResult.MainParam.bSucces){
+                    listener.onSuccess(queryPicUrlResult.AssParam);
+                }else{
+                    listener.onFailed(ErrCode_Failed);
+                }
+                break;
+
             case DCDownloadRsp:
                 TDCSFileLoadResult result = (TDCSFileLoadResult) rspContent;
                 if (result.bSuccess){
@@ -668,15 +692,16 @@ public class DataCollaborateManager extends RequestAgent {
                 }
                 break;
 
-            case DCQueryPicUrlRsp:
-                DcsDownloadImageRsp queryPicUrlResult = (DcsDownloadImageRsp) rspContent;
-                if (queryPicUrlResult.MainParam.bSucces){
-                    listener.onSuccess(queryPicUrlResult);
+            case DCQueryPicUploadUrlRsp:
+                DcsUploadImageRsp queryPicUploadUrlResult = (DcsUploadImageRsp) rspContent;
+                if (queryPicUploadUrlResult.MainParam.bSucces){
+                    listener.onSuccess(queryPicUploadUrlResult.AssParam);
                 }else{
                     listener.onFailed(ErrCode_Failed);
                 }
                 break;
-
+//            case DCUploadRsp:
+//                break;
             case DCQueryAllMembersRsp:
                 DcsGetUserListRsp userListRsp = (DcsGetUserListRsp) rspContent;
                 if (userListRsp.MainParam.bSucces){
@@ -784,7 +809,7 @@ public class DataCollaborateManager extends RequestAgent {
                         new IResultListener() {
                             @Override
                             public void onSuccess(Object result) {
-                                DcsDownloadImageRsp picUrl = (DcsDownloadImageRsp) result;
+                                TDCSImageUrl picUrl = (TDCSImageUrl) result;
                                 // 下载图片
                                 req(Msg.DCDownload,
                                     new IResultListener() {
@@ -806,8 +831,8 @@ public class DataCollaborateManager extends RequestAgent {
                                         }
                                     },
 
-                                    new BaseTypeString(picUrl.AssParam.achPicUrl),
-                                    new TDCSFileInfo(getPicSavePath(picUrl.AssParam.achWbPicentityId), picUrl.AssParam.achWbPicentityId, picUrl.AssParam.achTabId, false, 0)
+                                    new BaseTypeString(picUrl.achPicUrl),
+                                    new TDCSFileInfo(getPicSavePath(picUrl.achWbPicentityId), picUrl.achWbPicentityId, picUrl.achTabId, false, 0)
                                 );
                             }
 
