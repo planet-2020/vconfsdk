@@ -295,7 +295,7 @@ public enum Msg {
             methodOwner = DcsCtrl,
 			paras= TDCSNewWhiteBoard.class,
             rspSeq = {"DcsNewWhiteBoard_Rsp"})
-    DCNewBoard, // TODO 待调
+    DCNewBoard,
 
     /**新建画板响应*/
     @Response(	clz = DcsNewWhiteBoardRsp.class,

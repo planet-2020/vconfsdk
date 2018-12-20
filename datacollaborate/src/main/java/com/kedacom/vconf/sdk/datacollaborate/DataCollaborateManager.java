@@ -556,7 +556,7 @@ public class DataCollaborateManager extends RequestAgent {
 
                 break;
 
-            case DCNewBoard:
+            case DCNewBoardRsp:
                 DcsNewWhiteBoardRsp newWhiteBoardRsp = (DcsNewWhiteBoardRsp) rspContent;
                 if (newWhiteBoardRsp.MainParam.bSucces){
                     if (null != listener) listener.onSuccess(ToDoConverter.fromTransferObj(newWhiteBoardRsp.AssParam));
@@ -565,7 +565,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
-            case DCDelBoard:
+            case DCDelBoardRsp:
                 TDCSBoardResult boardResult = (TDCSBoardResult) rspContent;
                 if (boardResult.bSucces){
                     if (null != listener) listener.onSuccess(null);
@@ -574,7 +574,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
-            case DCSwitchBoard:
+            case DCSwitchBoardRsp:
                 DcsSwitchRsp switchRsp = (DcsSwitchRsp) rspContent;
                 if (switchRsp.MainParam.bSucces){
                     if (null != listener) listener.onSuccess(null);
