@@ -294,7 +294,8 @@ public enum Msg {
     @Request( name = "DCSNewWhiteBoardReq",
             methodOwner = DcsCtrl,
 			paras= TDCSNewWhiteBoard.class,
-            rspSeq = {"DcsNewWhiteBoard_Rsp"})
+            rspSeq = {"DcsNewWhiteBoard_Rsp"},
+            timeout = 5)
     DCNewBoard,
 
     /**新建画板响应*/
@@ -307,7 +308,8 @@ public enum Msg {
             methodOwner = DcsCtrl,
             paras = {String.class, // 当前会议e164
                     String.class}, // 画板Id
-            rspSeq = {"DcsDelWhiteBoard_Rsp"})
+            rspSeq = {"DcsDelWhiteBoard_Rsp"},
+            timeout = 5)
     DCDelBoard,
 
     /**删除画板响应*/
@@ -319,7 +321,8 @@ public enum Msg {
     @Request(	name = "DCSSwitchReq",
             methodOwner = DcsCtrl,
             paras = TDCSSwitchReq.class,
-            rspSeq = {"DcsSwitch_Rsp"})
+            rspSeq = {"DcsSwitch_Rsp"},
+            timeout = 5)
     DCSwitchBoard,
 
     /**切换画板响应*/
