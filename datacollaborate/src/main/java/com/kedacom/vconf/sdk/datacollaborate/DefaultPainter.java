@@ -293,6 +293,10 @@ public class DefaultPainter implements IPainter {
         OpPaint shapeTmpOp = shapePaintView.getTmpOps().pollFirst();
         if (null != shapeTmpOp && shapeTmpOp.getUuid().equals(op.getUuid())) {
             KLog.p("tmp op %s confirmed", shapeTmpOp);
+            if (!shapeRepealedOps.isEmpty()) {
+                shapeRepealedOps.clear();
+                paintBoard.repealableStateChanged();
+            }
             boolean bEmpty = shapeRenderOps.isEmpty();
             shapeRenderOps.offerLast(shapeTmpOp); // 临时工转正
             if (bEmpty){
