@@ -485,6 +485,7 @@ public class DataCollaborateManager extends RequestAgent {
      * @param listener 新建画板结果监听器
      * */
     public void newBoard(String creatorE164, IResultListener listener){
+        KLog.p("creatorE164=%s, listener=%s", creatorE164, listener);
         req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164, new TDCSBoardInfo(UUID.randomUUID().toString(), creatorE164)));
     }
 
@@ -507,8 +508,10 @@ public class DataCollaborateManager extends RequestAgent {
      * @param listener 删除画板结果监听器
      * */
     public void delBoard(String boardId, IResultListener listener){
+        KLog.p("boardId=%s, listener=%s", boardId, listener);
         req(Msg.DCDelBoard, listener, curDcConfE164, boardId);
     }
+
 
     /**
      * 切换画板
@@ -516,6 +519,7 @@ public class DataCollaborateManager extends RequestAgent {
      * @param listener 切换画板结果监听器
      * */
     public void switchBoard(String boardId, IResultListener listener){
+        KLog.p("boardId=%s, listener=%s", boardId, listener);
         req(Msg.DCSwitchBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
     }
 
@@ -1112,7 +1116,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     public void addApplyOperatorListener(IOnApplyOperatorListener onApplyOperatorListener){
-        subscribe(paintOpNtfs, onApplyOperatorListener);
+        subscribe(Msg.DCApplyOperatorNtf, onApplyOperatorListener);
     }
 
 
