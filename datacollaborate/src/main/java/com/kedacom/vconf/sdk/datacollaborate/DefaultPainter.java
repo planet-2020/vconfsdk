@@ -380,7 +380,7 @@ public class DefaultPainter implements IPainter {
                         if (null != tmpOp){
                             KLog.p(KLog.WARN, "repeal %s",tmpOp);
                             shapeRepealedOps.push(tmpOp); // 缓存撤销的操作以供恢复
-                            paintBoard.repealedOpsCountChanged();
+                            paintBoard.repealableStateChanged();
                         }else{
                             bRefresh = false;
                         }
@@ -390,17 +390,20 @@ public class DefaultPainter implements IPainter {
                             tmpOp = shapeRepealedOps.pop();
                             KLog.p(KLog.WARN, "restore %s",tmpOp);
                             shapeRenderOps.offerLast(tmpOp); // 恢复最近操作
-                            paintBoard.repealedOpsCountChanged();
+                            paintBoard.repealableStateChanged();
                         }else {
                             bRefresh = false;
                         }
                         break;
                     default:
 
-//                        /* 只要不是redo或undo操作，被撤销操作缓存就得清空，因为此时redo操作已失效（
-//                        redo操作前面只能是redo操作或者undo操作），而撤销操作缓存仅供redo操作使用。*/
-////                        KLog.p(KLog.WARN, "clean repealed ops");
-//                        shapeRepealedOps.clear(); // NOTE: 这个留给用户决策。
+                        /* 只要不是redo或undo操作，被撤销操作缓存就得清空，因为此时redo操作已失效（
+                        redo操作前面只能是redo操作或者undo操作），而撤销操作缓存仅供redo操作使用。*/
+//                        KLog.p(KLog.WARN, "clean repealed ops");
+                        if (!shapeRepealedOps.isEmpty()) { // TODO OpPaint添加Repealable接口表明哪些接口可被撤销
+                            shapeRepealedOps.clear();
+                            paintBoard.repealableStateChanged();
+                        }
 
                         shapeRenderOps.offerLast(op);
 

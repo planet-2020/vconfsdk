@@ -31,10 +31,8 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -67,7 +65,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private BoardInfo boardInfo;
 
     private IOnPictureCountChanged onPictureCountChangedListener;
-    private IOnRepealedOpsCountChangedListener onRepealedOpsCountChangedListener;
+    private IOnRepealableStateChangedListener onRepealableStateChangedListener;
     private IOnZoomRateChangedListener onZoomRateChangedListener;
     private IOnPaintOpGeneratedListener paintOpGeneratedListener;
     private IPublisher publisher;
@@ -660,14 +658,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     @Override
-    public IPaintBoard setOnRepealedOpsCountChangedListener(IOnRepealedOpsCountChangedListener onRepealedOpsCountChangedListener) {
-        this.onRepealedOpsCountChangedListener = onRepealedOpsCountChangedListener;
+    public IPaintBoard setOnRepealableStateChangedListener(IOnRepealableStateChangedListener onRepealedOpsCountChangedListener) {
+        this.onRepealableStateChangedListener = onRepealedOpsCountChangedListener;
         if (onRepealedOpsCountChangedListener instanceof LifecycleOwner){
             ((LifecycleOwner)onRepealedOpsCountChangedListener).getLifecycle().addObserver(new DefaultLifecycleObserver(){
                 @Override
                 public void onDestroy(@NonNull LifecycleOwner owner) {
-                    DefaultPaintBoard.this.onRepealedOpsCountChangedListener = null;
-                    KLog.p("onRepealedOpsCountChangedListener destroyed");
+                    DefaultPaintBoard.this.onRepealableStateChangedListener = null;
+                    KLog.p("onRepealableStateChangedListener destroyed");
                 }
             });
         }
@@ -727,9 +725,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    void repealedOpsCountChanged(){
-        if (null != onRepealedOpsCountChangedListener){
-            onRepealedOpsCountChangedListener.onRepealedOpsCountChanged(getRepealedOpsCount(), getShapeOpsCount());
+    void repealableStateChanged(){
+        if (null != onRepealableStateChangedListener){
+            onRepealableStateChangedListener.onRepealableStateChanged(getRepealedOpsCount(), getShapeOpsCount());
         }
     }
 

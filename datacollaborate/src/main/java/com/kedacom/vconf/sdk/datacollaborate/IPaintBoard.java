@@ -145,14 +145,16 @@ public interface IPaintBoard {
     IPaintBoard setPublisher(IPublisher publisher);
 
     /**
-     * 被撤销操作数量变化监听器。
+     * 可撤销状态变化监听器。
      * */
-    interface IOnRepealedOpsCountChangedListener{
-        /**@param repealedOpsCount 被撤销操作数量
-         * @param remnantOpsCount 剩下的操作数量*/
-        void onRepealedOpsCountChanged(int repealedOpsCount, int remnantOpsCount);
+    interface IOnRepealableStateChangedListener {
+        /**@param repealedOpsCount 已被撤销操作数量
+         * @param remnantOpsCount 剩下的可撤销操作数量。如画了3条线撤销了1条则repealedOpsCount=1，remnantOpsCount=2。
+         *                        NOTE: 此处的可撤销数量是具体业务无关的，“可撤销”指示的是操作类型，如画线画圆等操作是可撤销的而插入图片放缩等是不可撤销的。
+         * */
+        void onRepealableStateChanged(int repealedOpsCount, int remnantOpsCount);
     }
-    IPaintBoard setOnRepealedOpsCountChangedListener(IOnRepealedOpsCountChangedListener onRepealedOpsCountChangedListener);
+    IPaintBoard setOnRepealableStateChangedListener(IOnRepealableStateChangedListener onRepealableStateChangedListener);
 
     /**
      * 获取被撤销操作数量
