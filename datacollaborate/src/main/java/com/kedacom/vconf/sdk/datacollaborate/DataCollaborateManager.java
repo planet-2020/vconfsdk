@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import android.app.Application;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -188,7 +189,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     private DataCollaborateManager(){}
-    public static DataCollaborateManager getInstance(Context ctx) {
+    public static DataCollaborateManager getInstance(Application ctx) {
         if (null == context
                 && null != ctx){
             context = ctx;
