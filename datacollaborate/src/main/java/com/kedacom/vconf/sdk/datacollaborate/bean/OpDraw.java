@@ -3,7 +3,7 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import androidx.annotation.NonNull;
 
-public abstract class OpDraw extends OpPaint {
+public abstract class OpDraw extends OpPaint implements IRepealable{
     private int strokeWidth;     // 线宽
     private long color;           // 颜色值
 

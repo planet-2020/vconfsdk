@@ -16,6 +16,7 @@ import android.view.TextureView;
 
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.IRepealable;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
@@ -289,17 +290,18 @@ public class DefaultPainter implements IPainter {
         Matrix picMatrix = picPaintView.getMyMatrix();
 //        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
 
-        // 检查是否为主动绘制触发的响应
+        // 检查是否为主动绘制触发的响应。若是则我们不再重复绘制，因为它已经展示在界面上。
         OpPaint shapeTmpOp = shapePaintView.getTmpOps().pollFirst();
         if (null != shapeTmpOp && shapeTmpOp.getUuid().equals(op.getUuid())) {
             KLog.p("tmp op %s confirmed", shapeTmpOp);
-            if (!shapeRepealedOps.isEmpty()) {
+            if (!shapeRepealedOps.isEmpty() && shapeTmpOp instanceof IRepealable) {
+                //撤销/恢复操作流被“可撤销”操作中断，则重置撤销/恢复相关状态
                 shapeRepealedOps.clear();
                 paintBoard.repealableStateChanged();
             }
             boolean bEmpty = shapeRenderOps.isEmpty();
             shapeRenderOps.offerLast(shapeTmpOp); // 临时工转正
-            if (bEmpty){
+            if (bEmpty && shapeTmpOp instanceof IRepealable){ // 可撤销操作从无到有
                 paintBoard.repealableStateChanged();
             }
             return;
@@ -405,16 +407,15 @@ public class DefaultPainter implements IPainter {
                         break;
                     default:
 
-                        /* 只要不是redo或undo操作，被撤销操作缓存就得清空，因为此时redo操作已失效（
-                        redo操作前面只能是redo操作或者undo操作），而撤销操作缓存仅供redo操作使用。*/
-//                        KLog.p(KLog.WARN, "clean repealed ops");
-                        if (!shapeRepealedOps.isEmpty()) { // TODO OpPaint添加Repealable接口表明哪些接口可被撤销
+                        if (!shapeRepealedOps.isEmpty() && op instanceof IRepealable) {
+//                            KLog.p(KLog.WARN, "clean repealed ops");
+                            //撤销/恢复操作流被“可撤销”操作中断，则重置撤销/恢复相关状态
                             shapeRepealedOps.clear();
                             paintBoard.repealableStateChanged();
                         }
-                        boolean bEmpty = shapeRenderOps.isEmpty();
+                        boolean bEmpty = shapeRenderOps.isEmpty(); // XXX 如果shapeOps中将来也有不可撤销操作呢？也就是说将来可能不能简单根据是否空来判断是否该改变可撤销状态
                         shapeRenderOps.offerLast(op);
-                        if (bEmpty){
+                        if (bEmpty && op instanceof IRepealable){ // 可撤销操作从无到有
                             paintBoard.repealableStateChanged();
                         }
         //                KLog.p(KLog.WARN, "need render op %s", op);
@@ -431,6 +432,14 @@ public class DefaultPainter implements IPainter {
         }
     }
 
+    private boolean hasRepealableOps(MyConcurrentLinkedDeque<OpPaint> ops){
+        for (OpPaint op : ops){
+            if (op instanceof IRepealable){
+                return true;
+            }
+        }
+        return false;
+    }
 
     private final PorterDuffXfermode DUFFMODE_SRCIN = new PorterDuffXfermode(PorterDuff.Mode.SRC_IN);
 //    private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);

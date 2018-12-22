@@ -3,7 +3,7 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import androidx.annotation.NonNull;
 
-public class OpRectErase extends OpPaint {
+public class OpRectErase extends OpPaint implements IRepealable{
     public float left;
     public float top;
     public float right;
