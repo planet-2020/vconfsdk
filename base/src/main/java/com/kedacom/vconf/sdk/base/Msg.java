@@ -143,7 +143,7 @@ public enum Msg {
 			 paras = TDCSCreateConf.class,
              rspSeq = {"DcsConfResult_Ntf",  // 创建数据协作时下层自动建链，然后就抛了这条消息上来。NOTE: 对于失败的情形只会收到DCBuildLink4ConfRsp而没有DCCreateConfRsp。
 						"DcsCreateConf_Rsp"})
-    DCCreateConf, // TODO 待调
+    DCCreateConf,
 
     /**己端创建数据协作时的响应；
      * 其他终端创建数据协作时的通知；
@@ -189,7 +189,7 @@ public enum Msg {
     DCQuitConfRsp,
 
     /**结束数据协作*/
-    @Request( name = "DCSReleaseConfReq",  //TODO 什么参数。参数1：StringBuffer类型 e164,参数2：int类型 nForceFlag
+    @Request( name = "DCSReleaseConfReq",
             methodOwner = DcsCtrl,
             paras = String.class, // 会议e164
              rspSeq = {"DcsReleaseConf_Rsp"})
@@ -241,9 +241,9 @@ public enum Msg {
     DCDelOperatorRsp,
 
     /**（自己）申请作为协作方*/
-    @Request( name = "DCSApplyOperReq",  //参数：StringBuffer类型 e164
+    @Request( name = "DCSApplyOperReq",
             methodOwner = DcsCtrl,
-            paras = String.class,
+            paras = String.class, // 申请者的e164
             rspSeq = {"DcsApplyOper_Rsp"})
     DCApplyOperator,
 
@@ -253,9 +253,9 @@ public enum Msg {
     DCApplyOperatorRsp,
 
     /**（自己）取消作为协作方*/
-    @Request( name = "DCSCancelOperReq", //参数：StringBuffer类型 e164
+    @Request( name = "DCSCancelOperReq",
             methodOwner = DcsCtrl,
-            paras = String.class,
+            paras = String.class, // 申请者的e164
             rspSeq = {"DcsCancelOper_Rsp"})
     DCCancelOperator, // TODO 待调
 
@@ -426,7 +426,7 @@ public enum Msg {
     @Request(name = "DCSOperInsertPicCmd",
             methodOwner = DcsCtrl,
             paras = {TDCSOperReq.class, TDCSWbInsertPicOperInfo.class})
-    DCInsertPic, // TODO 待调
+    DCInsertPic,
     @Request(name = "DCSOperPitchPicDelCmd",
             methodOwner = DcsCtrl,
             paras = {TDCSOperReq.class, TDCSWbDelPicOperInfo.class})
@@ -436,7 +436,7 @@ public enum Msg {
             paras = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class})
     DCDragPic, // TODO 待调
 
-    /**黑板擦擦除*/ // TODO
+    /**黑板擦擦除*/
     @Request(	name="DCSOperReginEraseCmd",
             methodOwner = DcsCtrl,
             paras={TDCSOperReq.class, TDCSWbReginEraseOperInfo.class})
@@ -499,7 +499,7 @@ public enum Msg {
                     TDCSFileInfo.class},
             rspSeq = {"DcsUploadFile_Ntf"},
             timeout = 30)
-    DCUpload, // TODO 待调
+    DCUpload,
 
     /**上传文件响应*/
     @Response(	clz= TDCSFileLoadResult.class,
@@ -512,12 +512,12 @@ public enum Msg {
             methodOwner = DcsCtrl,
             paras=TDCSImageUrl.class,
             rspSeq = {"DcsUploadImage_Rsp"})
-    DCQueryPicUploadUrl, // TODO 待调
+    DCQueryPicUploadUrl,
 
     /**获取图片上传地址响应*/
     @Response(	clz = DcsUploadImageRsp.class,
 				name="DcsUploadImage_Rsp")
-    DCQueryPicUploadUrlRsp, // TODO 待调
+    DCQueryPicUploadUrlRsp,
 
 
 //    /**发布图片信息*/
