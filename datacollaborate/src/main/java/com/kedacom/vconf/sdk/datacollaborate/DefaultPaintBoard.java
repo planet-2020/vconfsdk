@@ -48,7 +48,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private DefaultPaintView picPaintView;
 
     // 图层
-    private int focusedLayer = LAYER_SHAPE;
+    private int focusedLayer = LAYER_ALL;
 
     // 工具
     private int tool = TOOL_PENCIL;
@@ -99,7 +99,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             return shapePaintView.dispatchTouchEvent(ev);
         }else if (LAYER_PIC == focusedLayer){
             return picPaintView.dispatchTouchEvent(ev);
-        }else if (LAYER_ALL == focusedLayer){
+        }else if (LAYER_PIC_AND_SHAPE == focusedLayer || LAYER_ALL == focusedLayer){
             boolean ret1 = shapePaintView.dispatchTouchEvent(ev);
             boolean ret2 = picPaintView.dispatchTouchEvent(ev);
             return ret1||ret2;
@@ -113,20 +113,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onDragBegin(float x, float y) {
-            KLog.p("~~> x=%s, y=%s", x, y);
+//            KLog.p("~~> x=%s, y=%s", x, y);
             createShapeOp(x, y);
         }
 
         @Override
         public void onDrag(float x, float y) {
-            KLog.p("~~> x=%s, y=%s", x, y);
+//            KLog.p("~~> x=%s, y=%s", x, y);
             adjustShapeOp(x, y);
             paintOpGeneratedListener.onOp(opPaint);
         }
 
         @Override
         public void onDragEnd() {
-            KLog.p("~~>");
+//            KLog.p("~~>");
             confirmShapeOp();
             KLog.p("new tmp op %s", opPaint);
             shapePaintView.getTmpOps().offerLast(opPaint);
@@ -138,14 +138,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onMultiFingerDrag(float dx, float dy) {
-            KLog.p("~~> dx=%s, dy=%s", dx, dy);
+//            KLog.p("~~> dx=%s, dy=%s", dx, dy);
             shapePaintView.getMyMatrix().postTranslate(dx, dy);
             paintOpGeneratedListener.onOp(null);
         }
 
         @Override
         public void onMultiFingerDragEnd() {
-            KLog.p("~~>");
+//            KLog.p("~~>");
             OpMatrix opMatrix = new OpMatrix(shapePaintView.getMyMatrix());
             assignBasicInfo(opMatrix);
             publisher.publish(opMatrix); // TODO 图形和图片缩放会发布两次，只需一次
@@ -154,7 +154,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
-            KLog.p("~~> factor=%s", factor);
+//            KLog.p("~~> factor=%s", factor);
             shapePaintView.getMyMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
             paintOpGeneratedListener.onOp(null);
             zoomRateChanged(); // TODO 图形和图片缩放会发布两次，只需一次
@@ -162,7 +162,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onScaleEnd() {
-            KLog.p("~~>");
+//            KLog.p("~~>");
             OpMatrix opMatrix = new OpMatrix(shapePaintView.getMyMatrix());
             assignBasicInfo(opMatrix);
             publisher.publish(opMatrix); // TODO 图形和图片缩放会发布两次，只需一次
@@ -193,23 +193,34 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
         @Override
-        public void onMultiFingerDrag(float x, float y) {
-            KLog.p("~~> x=%s, y=%s", x, y);
+        public void onMultiFingerDrag(float dx, float dy) {
+            KLog.p("~~> dx=%s, dy=%s", dx, dy);
+            picPaintView.getMyMatrix().postTranslate(dx, dy);
+            paintOpGeneratedListener.onOp(null);
         }
 
         @Override
         public void onMultiFingerDragEnd() {
             KLog.p("~~>");
+            OpMatrix opMatrix = new OpMatrix(picPaintView.getMyMatrix());
+            assignBasicInfo(opMatrix);
+            publisher.publish(opMatrix); // TODO 图形和图片缩放会发布两次，只需一次
         }
 
         @Override
         public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
             KLog.p("~~> factor=%s", factor);
+            picPaintView.getMyMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
+            paintOpGeneratedListener.onOp(null);
+            zoomRateChanged(); // TODO 图形和图片缩放会发布两次，只需一次
         }
 
         @Override
         public void onScaleEnd() {
             KLog.p("~~>");
+            OpMatrix opMatrix = new OpMatrix(picPaintView.getMyMatrix());
+            assignBasicInfo(opMatrix);
+            publisher.publish(opMatrix); // TODO 图形和图片缩放会发布两次，只需一次
         }
 
         @Override
