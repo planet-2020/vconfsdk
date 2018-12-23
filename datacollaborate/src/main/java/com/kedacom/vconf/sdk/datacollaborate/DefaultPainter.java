@@ -132,7 +132,7 @@ public class DefaultPainter implements IPainter {
         synchronized (renderThread) {
             bNeedRender = true;
             if (Thread.State.WAITING == renderThread.getState()) {
-                KLog.p(KLog.WARN, "notify");
+//                KLog.p(KLog.WARN, "notify");
                 renderThread.notify();
             }
         }
@@ -496,7 +496,7 @@ public class DefaultPainter implements IPainter {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
 
             while (true){
-                KLog.p("start loop run");
+//                KLog.p("start loop run");
                 if (isInterrupted()){
                     KLog.p(KLog.WARN, "quit renderThread");
                     return;
@@ -506,13 +506,13 @@ public class DefaultPainter implements IPainter {
                 synchronized (this) {
                     try {
                         if (!bNeedRender) {
-                            KLog.p("waiting...");
+//                            KLog.p("waiting...");
                             wait();
-                            KLog.p("resume run");
+//                            KLog.p("resume run");
                         }
                         bNeedRender = false;
                         if (bPaused){
-                            KLog.p("paused");
+//                            KLog.p("paused");
                             continue;
                         }
                     } catch (InterruptedException e) {
@@ -584,7 +584,7 @@ public class DefaultPainter implements IPainter {
                 }
 
                 // 提交绘制任务，执行绘制
-                KLog.p("go render!");
+//                KLog.p("go render!");
                 shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
                 picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
 
@@ -635,7 +635,7 @@ public class DefaultPainter implements IPainter {
 
         private void render(MyConcurrentLinkedDeque<OpPaint> ops){
             for (OpPaint op : ops) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
-                KLog.p("to render %s", op);
+//                KLog.p("to render %s", op);
                 switch (op.getType()) {
                     case DRAW_LINE:
                         OpDrawLine lineOp = (OpDrawLine) op;
