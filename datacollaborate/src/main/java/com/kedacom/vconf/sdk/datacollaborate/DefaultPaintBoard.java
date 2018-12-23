@@ -100,8 +100,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }else if (LAYER_PIC == focusedLayer){
             return picPaintView.dispatchTouchEvent(ev);
         }else if (LAYER_PIC_AND_SHAPE == focusedLayer || LAYER_ALL == focusedLayer){
-            boolean ret1 = shapePaintView.dispatchTouchEvent(ev);
             boolean ret2 = picPaintView.dispatchTouchEvent(ev);
+            boolean ret1 = shapePaintView.dispatchTouchEvent(ev); // 事件先给pic层再给shape层，所以公共的publish操作在shape层事件处理完后做。
             return ret1||ret2;
         }
 
@@ -148,16 +148,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //            KLog.p("~~>");
             OpMatrix opMatrix = new OpMatrix(shapePaintView.getMyMatrix());
             assignBasicInfo(opMatrix);
-            publisher.publish(opMatrix); // TODO 图形和图片缩放会发布两次，只需一次
+            publisher.publish(opMatrix);
         }
-
 
         @Override
         public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
 //            KLog.p("~~> factor=%s", factor);
             shapePaintView.getMyMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
             paintOpGeneratedListener.onOp(null);
-            zoomRateChanged(); // TODO 图形和图片缩放会发布两次，只需一次
+            zoomRateChanged();
         }
 
         @Override
@@ -165,7 +164,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //            KLog.p("~~>");
             OpMatrix opMatrix = new OpMatrix(shapePaintView.getMyMatrix());
             assignBasicInfo(opMatrix);
-            publisher.publish(opMatrix); // TODO 图形和图片缩放会发布两次，只需一次
+            publisher.publish(opMatrix);
         }
 
         @Override
@@ -196,31 +195,31 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onMultiFingerDrag(float dx, float dy) {
             KLog.p("~~> dx=%s, dy=%s", dx, dy);
             picPaintView.getMyMatrix().postTranslate(dx, dy);
-            paintOpGeneratedListener.onOp(null);
+//            paintOpGeneratedListener.onOp(null); // XXX 当前图形和图片层放缩倍数同步一致，如果将来不一致，则需单独处理
         }
 
         @Override
         public void onMultiFingerDragEnd() {
             KLog.p("~~>");
-            OpMatrix opMatrix = new OpMatrix(picPaintView.getMyMatrix());
-            assignBasicInfo(opMatrix);
-            publisher.publish(opMatrix); // TODO 图形和图片缩放会发布两次，只需一次
+//            OpMatrix opMatrix = new OpMatrix(picPaintView.getMyMatrix());
+//            assignBasicInfo(opMatrix);
+//            publisher.publish(opMatrix); // XXX 当前图形和图片层放缩倍数同步一致，如果将来不一致，则需单独处理
         }
 
         @Override
         public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
-            KLog.p("~~> factor=%s", factor);
+//            KLog.p("~~> factor=%s", factor);
             picPaintView.getMyMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
-            paintOpGeneratedListener.onOp(null);
-            zoomRateChanged(); // TODO 图形和图片缩放会发布两次，只需一次
+//            paintOpGeneratedListener.onOp(null);
+//            zoomRateChanged(); // XXX 当前图形和图片层放缩倍数同步一致，如果将来不一致，则需单独处理
         }
 
         @Override
         public void onScaleEnd() {
             KLog.p("~~>");
-            OpMatrix opMatrix = new OpMatrix(picPaintView.getMyMatrix());
-            assignBasicInfo(opMatrix);
-            publisher.publish(opMatrix); // TODO 图形和图片缩放会发布两次，只需一次
+//            OpMatrix opMatrix = new OpMatrix(picPaintView.getMyMatrix());
+//            assignBasicInfo(opMatrix);
+//            publisher.publish(opMatrix); // XXX 当前图形和图片层放缩倍数同步一致，如果将来不一致，则需单独publish
         }
 
         @Override
