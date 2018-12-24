@@ -12,25 +12,25 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import java.util.Set;
 
 public interface IPainter {
-    /** 临摹者。
-     * 临摹者只能被动接收绘制操作并原样绘制到画板上，不能主动在画板上创作。*/
-    int ROLE_COPYER = 0;
-    /** 创作者。
-     * 创作者既能接收绘制操作并原样绘制到画板上，也能主动在画板上创作。*/
-    int ROLE_AUTHOR = 1;
+//    /** 临摹者。
+//     * 临摹者只能被动接收绘制操作并原样绘制到画板上，不能主动在画板上创作。*/
+//    int ROLE_COPYER = 0;
+//    /** 创作者。
+//     * 创作者既能接收绘制操作并原样绘制到画板上，也能主动在画板上创作。*/
+//    int ROLE_AUTHOR = 1;
+//
+//    int ROLE_UNKNOWN = 9;
 
-    int ROLE_UNKNOWN = 9;
-
-    /**为所有画板设置角色。
-     * setRole也调用的情况下，后调用的覆盖先调用的*/
-    void setRoleForAllBoards(int role);
-
-    /**为指定画板设置角色。
-     * setRoleForAllBoards也调用的情况下，后调用的覆盖先调用的*/
-    void setRole(String boardId, int role);
-
-    /**获取在指定画板的角色*/
-    int getRole(String boardId);
+//    /**为所有画板设置角色。
+//     * setRole也调用的情况下，后调用的覆盖先调用的*/
+//    void setRoleForAllBoards(int role);
+//
+//    /**为指定画板设置角色。
+//     * setRoleForAllBoards也调用的情况下，后调用的覆盖先调用的*/
+//    void setRole(String boardId, int role);
+//
+//    /**获取在指定画板的角色*/
+//    int getRole(String boardId);
 
     /**添加画板*/
     boolean addPaintBoard(IPaintBoard paintBoard);

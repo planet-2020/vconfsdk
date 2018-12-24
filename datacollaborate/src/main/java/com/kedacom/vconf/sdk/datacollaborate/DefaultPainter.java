@@ -44,7 +44,7 @@ import androidx.lifecycle.LifecycleOwner;
 
 public class DefaultPainter implements IPainter {
 
-    private Map<String, Integer> roles = new HashMap<>();
+//    private Map<String, Integer> roles = new HashMap<>();
 
     private Map<String, DefaultPaintBoard> paintBoards = new HashMap<>();
 
@@ -162,41 +162,41 @@ public class DefaultPainter implements IPainter {
     };
 
 
-    @Override
-    public void setRoleForAllBoards(int role) {
-        for (String boardId : roles.keySet()){
-            if (ROLE_AUTHOR == role) {
-                paintBoards.get(boardId).setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
-            }else{
-                paintBoards.get(boardId).setOnPaintOpGeneratedListener(null);
-            }
-            roles.put(boardId, role);
-        }
-    }
+//    @Override
+//    public void setRoleForAllBoards(int role) {
+//        for (String boardId : roles.keySet()){
+//            if (ROLE_AUTHOR == role) {
+//                paintBoards.get(boardId).setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
+//            }else{
+//                paintBoards.get(boardId).setOnPaintOpGeneratedListener(null);
+//            }
+//            roles.put(boardId, role);
+//        }
+//    }
 
-    @Override
-    public void setRole(String boardId, int role) {
-        DefaultPaintBoard board = paintBoards.get(boardId);
-        if (null == board){
-            KLog.p(KLog.ERROR, "no such board %s", boardId);
-            return;
-        }
-        if (ROLE_AUTHOR == role) {
-            board.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
-        }else{
-            board.setOnPaintOpGeneratedListener(null);
-        }
-        roles.put(boardId, role);
-    }
+//    @Override
+//    public void setRole(String boardId, int role) {
+//        DefaultPaintBoard board = paintBoards.get(boardId);
+//        if (null == board){
+//            KLog.p(KLog.ERROR, "no such board %s", boardId);
+//            return;
+//        }
+//        if (ROLE_AUTHOR == role) {
+//            board.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
+//        }else{
+//            board.setOnPaintOpGeneratedListener(null);
+//        }
+//        roles.put(boardId, role);
+//    }
 
-    @Override
-    public int getRole(String boardId) {
-        if (!paintBoards.keySet().contains(boardId)){
-            KLog.p(KLog.ERROR, "no such board %s", boardId);
-            return ROLE_UNKNOWN;
-        }
-        return roles.get(boardId);
-    }
+//    @Override
+//    public int getRole(String boardId) {
+//        if (!paintBoards.keySet().contains(boardId)){
+//            KLog.p(KLog.ERROR, "no such board %s", boardId);
+//            return ROLE_UNKNOWN;
+//        }
+//        return roles.get(boardId);
+//    }
 
     @Override
     public boolean addPaintBoard(IPaintBoard paintBoard) {
@@ -206,8 +206,9 @@ public class DefaultPainter implements IPainter {
             return false;
         }
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
+        defaultPaintBoard.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
         paintBoards.put(boardId, defaultPaintBoard);
-        roles.put(boardId, ROLE_COPYER);
+//        roles.put(boardId, ROLE_COPYER);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 
         defaultPaintBoard.getShapePaintView().setSurfaceTextureListener(surfaceTextureListener);
@@ -222,15 +223,22 @@ public class DefaultPainter implements IPainter {
         if (boardId.equals(curBoardId)){
             curBoardId = null;
         }
-        roles.remove(boardId);
-        return paintBoards.remove(boardId);
+//        roles.remove(boardId);
+        DefaultPaintBoard board =  paintBoards.remove(boardId);
+        if (null != board){
+            board.setOnPaintOpGeneratedListener(null);
+        }
+        return board;
     }
 
     @Override
     public void deleteAllPaintBoards() {
         KLog.p(KLog.WARN,"delete all boards");
+        for (String boardId : paintBoards.keySet()){
+            paintBoards.get(boardId).setOnPaintOpGeneratedListener(null);
+        }
         paintBoards.clear();
-        roles.clear();
+//        roles.clear();
         curBoardId = null;
     }
 
