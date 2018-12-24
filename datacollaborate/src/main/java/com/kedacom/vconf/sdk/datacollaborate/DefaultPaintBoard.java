@@ -79,9 +79,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         this.boardInfo = boardInfo;
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         View whiteBoard = layoutInflater.inflate(R.layout.default_whiteboard_layout, this);
-        picPaintView = whiteBoard.findViewById(R.id.wb_pic_paint_view);
+        picPaintView = whiteBoard.findViewById(R.id.pb_pic_paint_view);
         picPaintView.setOpaque(false);
-        shapePaintView = whiteBoard.findViewById(R.id.wb_shape_paint_view);
+        shapePaintView = whiteBoard.findViewById(R.id.pb_shape_paint_view);
         shapePaintView.setOpaque(false);
 
         setBackgroundColor(Color.DKGRAY);
