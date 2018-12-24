@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -32,6 +33,8 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,6 +54,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     // 临时画板。用于临时展示一些操作的中间效果，如插入图片、选中图片
     private DefaultPaintView tmpPaintView;
+    // 删除图片按钮
+    private Bitmap del_pic_icon;
+    private Bitmap del_pic_active_icon;
 
     // 图层
     private int focusedLayer = LAYER_PIC_AND_SHAPE;
@@ -90,6 +96,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         shapePaintView.setOpaque(false);
         tmpPaintView = whiteBoard.findViewById(R.id.pb_tmp_paint_view);
         tmpPaintView.setOpaque(false);
+
+        try {
+            AssetManager am = context.getAssets();
+            InputStream is = am.open("del_pic.png");
+            del_pic_icon = BitmapFactory.decodeStream(is);
+            is.close();
+            is = am.open("del_pic_active.png");
+            del_pic_active_icon = BitmapFactory.decodeStream(is);
+            is.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         setBackgroundColor(Color.DKGRAY);
     }
@@ -908,6 +926,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             picInsertBundleStuff = null;
         }
 
+        // 绘制图片
         Bitmap bt = BitmapFactory.decodeFile(path);
         int picW = bt.getWidth();
         int picH = bt.getHeight();
@@ -918,10 +937,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         OpInsertPic op = new OpInsertPic(path, matrix);
         op.setPic(bt);
         assignBasicInfo(op);
-
-        KLog.p("new tmp op %s", op);
-
-        // 先在临时画板画图片
         tmpPaintView.getTmpOps().offerLast(op);
 
         // 在图片外围绘制一个虚线矩形框
@@ -935,11 +950,22 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         opDrawRect.setColor(0xFF08b1f2L);
         tmpPaintView.getTmpOps().offerLast(opDrawRect);
 
+        // 在虚线矩形框正下方绘制删除图标
+        transX = (getWidth()-del_pic_icon.getWidth())/2f;
+        transY = opDrawRect.getBottom()+8;
+        Matrix matrix1 = new Matrix();
+        matrix1.setTranslate(transX, transY);
+        OpInsertPic insertDelPicIcon = new OpInsertPic();
+        insertDelPicIcon.setPic(del_pic_icon);
+        insertDelPicIcon.setMatrix(matrix1);
+        assignBasicInfo(insertDelPicIcon);
+        tmpPaintView.getTmpOps().offerLast(insertDelPicIcon);
+
         if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
 
         int savedLayer = focusedLayer;
         focusedLayer = LAYER_TMP;
-        picInsertBundleStuff = new PicInsertBundleStuff(op, opDrawRect, new OpInsertPic()/*TODO 删除按钮*/, savedLayer);
+        picInsertBundleStuff = new PicInsertBundleStuff(op, opDrawRect, insertDelPicIcon, savedLayer);
         // 3秒过后画到图片画板上并清除临时画板
         handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000); // TODO 如果3秒过程中用户按了返回键； TODO 用户有操作需更新时间戳
 
