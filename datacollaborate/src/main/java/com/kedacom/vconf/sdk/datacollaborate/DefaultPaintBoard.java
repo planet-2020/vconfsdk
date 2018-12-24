@@ -41,14 +41,17 @@ import androidx.lifecycle.LifecycleOwner;
 public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private Context context;
 
-    // 图形绘制view。用于图形绘制如画线、画圈、擦除等等
-    private DefaultPaintView shapePaintView;
-
-    // 图片绘制view
+    // 图片画板
     private DefaultPaintView picPaintView;
 
+    // 图形画板。用于图形绘制如画线、画圈、擦除等等
+    private DefaultPaintView shapePaintView;
+
+    // 临时画板。其上绘制的结果最终保存到其他画板
+    private DefaultPaintView tmpPaintView;
+
     // 图层
-    private int focusedLayer = LAYER_ALL;
+    private int focusedLayer = LAYER_PIC_AND_SHAPE;
 
     // 工具
     private int tool = TOOL_PENCIL;
@@ -83,6 +86,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         picPaintView.setOpaque(false);
         shapePaintView = whiteBoard.findViewById(R.id.pb_shape_paint_view);
         shapePaintView.setOpaque(false);
+        tmpPaintView = whiteBoard.findViewById(R.id.pb_tmp_paint_view);
+        tmpPaintView.setOpaque(false);
 
         setBackgroundColor(Color.DKGRAY);
     }
@@ -95,10 +100,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public boolean dispatchTouchEvent(MotionEvent ev) {
         if (LAYER_NONE == focusedLayer){
             return true;
-        }else if (LAYER_SHAPE == focusedLayer){
-            return shapePaintView.dispatchTouchEvent(ev);
         }else if (LAYER_PIC == focusedLayer){
             return picPaintView.dispatchTouchEvent(ev);
+        }else if (LAYER_SHAPE == focusedLayer){
+            return shapePaintView.dispatchTouchEvent(ev);
+        }else if (LAYER_TMP == focusedLayer){
+            return tmpPaintView.dispatchTouchEvent(ev);
         }else if (LAYER_PIC_AND_SHAPE == focusedLayer || LAYER_ALL == focusedLayer){
             boolean ret2 = picPaintView.dispatchTouchEvent(ev);
             boolean ret1 = shapePaintView.dispatchTouchEvent(ev); // 事件先给pic层再给shape层，所以公共的publish操作在shape层事件处理完后做。
@@ -228,6 +235,23 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     };
 
+
+    DefaultPaintView.IOnEventListener tmpViewEventListener = new DefaultPaintView.IOnEventListener(){
+        @Override
+        public void onMultiFingerDrag(float dx, float dy) {
+
+        }
+
+        @Override
+        public void onMultiFingerDragEnd() {
+
+        }
+
+        @Override
+        public void onLongTouch() {
+
+        }
+    };
 
 
     private OpPaint opPaint;
@@ -927,8 +951,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             });
         }
 
-        shapePaintView.setOnEventListener(null!=publisher ? shapeViewEventListener : null);
         picPaintView.setOnEventListener(null!=publisher ? picViewEventListener : null);
+        shapePaintView.setOnEventListener(null!=publisher ? shapeViewEventListener : null);
+        tmpPaintView.setOnEventListener(null!=publisher ? tmpViewEventListener : null);
 
         return this;
     }
