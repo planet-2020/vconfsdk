@@ -7,6 +7,8 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.PointF;
+import android.os.Handler;
+import android.os.Message;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -41,13 +43,13 @@ import androidx.lifecycle.LifecycleOwner;
 public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private Context context;
 
-    // 图片画板
-    private DefaultPaintView picPaintView;
-
     // 图形画板。用于图形绘制如画线、画圈、擦除等等
     private DefaultPaintView shapePaintView;
 
-    // 临时画板。其上绘制的结果最终保存到其他画板
+    // 图片画板
+    private DefaultPaintView picPaintView;
+
+    // 临时画板。用于临时展示一些操作的中间效果，如插入图片、选中图片
     private DefaultPaintView tmpPaintView;
 
     // 图层
@@ -128,7 +130,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onDrag(float x, float y) {
 //            KLog.p("~~> x=%s, y=%s", x, y);
             adjustShapeOp(x, y);
-            paintOpGeneratedListener.onOp(opPaint);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(opPaint);
         }
 
         @Override
@@ -137,7 +139,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             confirmShapeOp();
             KLog.p("new tmp op %s", opPaint);
             shapePaintView.getTmpOps().offerLast(opPaint);
-            paintOpGeneratedListener.onOp(null);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
             publisher.publish(opPaint);
             opPaint = null;
         }
@@ -147,7 +149,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onMultiFingerDrag(float dx, float dy) {
 //            KLog.p("~~> dx=%s, dy=%s", dx, dy);
             shapePaintView.getMyMatrix().postTranslate(dx, dy);
-            paintOpGeneratedListener.onOp(null);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
         @Override
@@ -162,7 +164,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
 //            KLog.p("~~> factor=%s", factor);
             shapePaintView.getMyMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
-            paintOpGeneratedListener.onOp(null);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
             zoomRateChanged();
         }
 
@@ -237,14 +239,39 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     DefaultPaintView.IOnEventListener tmpViewEventListener = new DefaultPaintView.IOnEventListener(){
+        private boolean hasInsertPicMsg;
+        @Override
+        public void onDown(float x, float y) {
+            // TODO 如果落在删除图标中则删除并置hasInsertPicMsg为false
+            hasInsertPicMsg = handler.hasMessages(MSGID_INSERT_PIC);
+            if (hasInsertPicMsg) {
+                handler.removeMessages(MSGID_INSERT_PIC);
+            }
+        }
+
+        @Override
+        public void onUp(float x, float y) {
+            if (hasInsertPicMsg) {
+                handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000);
+            }
+        }
+
         @Override
         public void onMultiFingerDrag(float dx, float dy) {
-
+            KLog.p("~~> dx=%s, dy=%s", dx, dy);
+            tmpPaintView.getMyMatrix().postTranslate(dx, dy);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
         @Override
         public void onMultiFingerDragEnd() {
+        }
 
+        @Override
+        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
+            KLog.p("~~> factor=%s", factor);
+            tmpPaintView.getMyMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
         @Override
@@ -761,14 +788,26 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         op.setPageId(boardInfo.getPageId());
     }
 
-    public DefaultPaintView getPicPaintView(){
+    DefaultPaintView getPicPaintView(){ // TODO 封住，外部不需感知 paintview中操作挪到board内？？
         return picPaintView;
     }
 
-    public DefaultPaintView getShapePaintView(){
+    DefaultPaintView getShapePaintView(){
         return shapePaintView;
     }
 
+    DefaultPaintView getTmpPaintView(){
+        return tmpPaintView;
+    }
+
+    void clean(){
+        publisher = null;
+        paintOpGeneratedListener = null;
+        onZoomRateChangedListener = null;
+        onRepealableStateChangedListener = null;
+        onPictureCountChangedListener = null;
+        handler.removeMessages(MSGID_INSERT_PIC); // XXX 没有removeAll的接口？
+    }
 
     @Override
     public String getBoardId() {
@@ -831,12 +870,44 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         focusedLayer = layer;
     }
 
+//    @Override
+//    public void insertPic(String path) {
+//        if (null == publisher){
+//            KLog.p(KLog.ERROR,"publisher is null");
+//            return;
+//        }
+//        Bitmap bt = BitmapFactory.decodeFile(path);
+//        int picW = bt.getWidth();
+//        int picH = bt.getHeight();
+//        float transX = (getWidth()-picW)/2f;
+//        float transY = (getHeight()-picH)/2f;
+//        Matrix matrix = new Matrix();
+//        matrix.setTranslate(transX, transY);
+//        OpInsertPic op = new OpInsertPic(path, matrix);
+//        op.setPic(bt);
+//        assignBasicInfo(op);
+//        KLog.p("new tmp op %s", op);
+//        picPaintView.getTmpOps().offerLast(op);
+//        if (null != paintOpGeneratedListener) {
+//            paintOpGeneratedListener.onOp(null);
+//        }
+//        publisher.publish(op);
+//    }
+
+
     @Override
     public void insertPic(String path) {
         if (null == publisher){
             KLog.p(KLog.ERROR,"publisher is null");
             return;
         }
+
+        handler.removeMessages(MSGID_INSERT_PIC);
+        if (null != picInsertBundleStuff){
+            doInsertPic();
+            picInsertBundleStuff = null;
+        }
+
         Bitmap bt = BitmapFactory.decodeFile(path);
         int picW = bt.getWidth();
         int picH = bt.getHeight();
@@ -847,12 +918,80 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         OpInsertPic op = new OpInsertPic(path, matrix);
         op.setPic(bt);
         assignBasicInfo(op);
+
         KLog.p("new tmp op %s", op);
-        picPaintView.getTmpOps().offerLast(op);
+
+        // 先在临时画板画图片
+        tmpPaintView.getTmpOps().offerLast(op);
+
+        // 在图片外围绘制一个虚线矩形框
+        OpDrawRect opDrawRect = new OpDrawRect();
+        opDrawRect.setLeft(transX - 5);
+        opDrawRect.setTop(transY - 5);
+        opDrawRect.setRight(transX + picW + 5);
+        opDrawRect.setBottom(transY + picH + 5);
+        opDrawRect.setLineStyle(OpDraw.DASH);
+        opDrawRect.setStrokeWidth(2);
+        opDrawRect.setColor(0xFF08b1f2L);
+        tmpPaintView.getTmpOps().offerLast(opDrawRect);
+
+        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+
+        int savedLayer = focusedLayer;
+        focusedLayer = LAYER_TMP;
+        picInsertBundleStuff = new PicInsertBundleStuff(op, opDrawRect, new OpInsertPic()/*TODO 删除按钮*/, savedLayer);
+        // 3秒过后画到图片画板上并清除临时画板
+        handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000); // TODO 如果3秒过程中用户按了返回键； TODO 用户有操作需更新时间戳
+
+    }
+
+    private class PicInsertBundleStuff{
+        OpInsertPic opInsertPic;
+        OpDrawRect opDrawRect;
+        OpInsertPic opInsertDelIcon;
+        int savedLayer;
+
+        PicInsertBundleStuff(OpInsertPic opInsertPic, OpDrawRect opDrawRect, OpInsertPic opInsertDelIcon, int savedLayer) {
+            this.opInsertPic = opInsertPic;
+            this.opDrawRect = opDrawRect;
+            this.opInsertDelIcon = opInsertDelIcon;
+            this.savedLayer = savedLayer;
+        }
+    }
+
+    private static int MSGID_INSERT_PIC = 666;
+    private Handler handler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            if (MSGID_INSERT_PIC == msg.what){
+                if (null != picInsertBundleStuff){
+                    doInsertPic();
+                    picInsertBundleStuff = null;
+                }
+            }
+        }
+    };
+
+
+    private PicInsertBundleStuff picInsertBundleStuff;
+    private void doInsertPic(){
+        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opInsertPic);
+        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opDrawRect);
+        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opInsertDelIcon);
+        picInsertBundleStuff.opInsertPic.getMatrix().postConcat(tmpPaintView.getMyMatrix());
+        KLog.p("new tmp op %s", picInsertBundleStuff.opInsertPic);
+        picPaintView.getTmpOps().offerLast(picInsertBundleStuff.opInsertPic);
         if (null != paintOpGeneratedListener) {
             paintOpGeneratedListener.onOp(null);
         }
-        publisher.publish(op);
+        focusedLayer = picInsertBundleStuff.savedLayer;
+        publisher.publish(picInsertBundleStuff.opInsertPic);
+    }
+
+
+    private void delPic(String picId){
+        // TODO 清掉tmpView.tempOps
+        handler.removeMessages(MSGID_INSERT_PIC);
     }
 
     @Override

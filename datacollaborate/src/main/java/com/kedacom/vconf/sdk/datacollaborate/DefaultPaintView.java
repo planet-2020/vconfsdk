@@ -71,8 +71,8 @@ public class DefaultPaintView extends TextureView{
 
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
-//                KLog.p("focusX=%s, focusY=%s, isInProgress=%s, currentSpan=%s", detector.getFocusX(), detector.getFocusY(), detector.isInProgress(), detector.getCurrentSpan());
-//                KLog.p("scale=%s, lastScale=%s, |scale-lastScale|=%s", detector.getScaleFactor(), lastScaleFactor, Math.abs(detector.getScaleFactor()-lastScaleFactor));
+                KLog.p("focusX=%s, focusY=%s, isInProgress=%s, currentSpan=%s", detector.getFocusX(), detector.getFocusY(), detector.isInProgress(), detector.getCurrentSpan());
+                KLog.p("scale=%s, lastScale=%s, |scale-lastScale|=%s", detector.getScaleFactor(), lastScaleFactor, Math.abs(detector.getScaleFactor()-lastScaleFactor));
                 if (!detector.isInProgress()){
                     return false;
                 }
@@ -139,6 +139,7 @@ public class DefaultPaintView extends TextureView{
                     KLog.p("state=%s, ACTION_DOWN{%s}", state, event);
                     state = STATE_SHAKING;
                     lastPoint.set(event.getX(), event.getY()); // 记录起始点
+                    onEventListener.onDown(event.getX(), event.getY());
                     break;
 
                 case MotionEvent.ACTION_POINTER_DOWN:
@@ -167,7 +168,7 @@ public class DefaultPaintView extends TextureView{
                     break;
 
                 case MotionEvent.ACTION_MOVE:
-//                    KLog.p("state=%s, ACTION_MOVE{%s}", state, event);
+                    KLog.p("state=%s, ACTION_MOVE{%s}", state, event);
                     if (STATE_SHAKING == state) {
                         if (!isShakingTolerable(lastPoint.x, lastPoint.y, event.getX(), event.getY())){
                             onEventListener.onDragBegin(lastPoint.x, lastPoint.y);
@@ -202,6 +203,7 @@ public class DefaultPaintView extends TextureView{
                     if (STATE_DRAGGING == state) {
                         onEventListener.onDragEnd();
                     }
+                    onEventListener.onUp(event.getX(), event.getY());
                     state = STATE_IDLE;
                     break;
 
@@ -234,6 +236,10 @@ public class DefaultPaintView extends TextureView{
 
 
     interface IOnEventListener {
+        /**第一个手指落下*/
+        default void onDown(float x, float y){}
+        /**最后一个手指拿起*/
+        default void onUp(float x, float y){}
         /**单指拖动开始*/
         default void onDragBegin(float x, float y){}
         /**单指拖动*/
@@ -257,6 +263,7 @@ public class DefaultPaintView extends TextureView{
         default void onScale(float factor, float scaleCenterX, float scaleCenterY){}
         /**缩放结束*/
         default void onScaleEnd(){}
+        /**长按*/
         default void onLongTouch(){}
     }
 
