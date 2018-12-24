@@ -194,10 +194,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             publisher.publish(opMatrix);
         }
 
-        @Override
-        public void onLongTouch() {
-            KLog.p("~~>");
-        }
     };
 
 
@@ -250,9 +246,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         @Override
-        public void onLongTouch() {
-            KLog.p("~~>");
+        public void onLongPress(float x, float y) {
+            KLog.p("~~> x=%s, y=%s", x, y);
+            // TODO 获取点中的图片；从图片层删除；添加到tmp层
         }
+
     };
 
 
@@ -292,10 +290,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
-        @Override
-        public void onLongTouch() {
-
-        }
     };
 
 

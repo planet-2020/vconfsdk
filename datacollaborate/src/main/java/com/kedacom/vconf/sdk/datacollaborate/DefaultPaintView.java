@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Matrix;
 import android.graphics.PointF;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.TextureView;
@@ -62,6 +63,7 @@ public class DefaultPaintView extends TextureView{
 
         private PointF lastPoint = new PointF();	    // 上一个单指点
         private PointF lastMultiFingersFocusPoint = new PointF();   // 上一个双指聚焦点
+        private GestureDetector gestureDetector = new GestureDetector(context, new MyOnGestureListener());
 
         private ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(context, new ScaleGestureDetector.SimpleOnScaleGestureListener(){
             private float scaleFactor = 1.0f;
@@ -71,8 +73,8 @@ public class DefaultPaintView extends TextureView{
 
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
-                KLog.p("focusX=%s, focusY=%s, isInProgress=%s, currentSpan=%s", detector.getFocusX(), detector.getFocusY(), detector.isInProgress(), detector.getCurrentSpan());
-                KLog.p("scale=%s, lastScale=%s, |scale-lastScale|=%s", detector.getScaleFactor(), lastScaleFactor, Math.abs(detector.getScaleFactor()-lastScaleFactor));
+//                KLog.p("focusX=%s, focusY=%s, isInProgress=%s, currentSpan=%s", detector.getFocusX(), detector.getFocusY(), detector.isInProgress(), detector.getCurrentSpan());
+//                KLog.p("scale=%s, lastScale=%s, |scale-lastScale|=%s", detector.getScaleFactor(), lastScaleFactor, Math.abs(detector.getScaleFactor()-lastScaleFactor));
                 if (!detector.isInProgress()){
                     return false;
                 }
@@ -122,6 +124,23 @@ public class DefaultPaintView extends TextureView{
             }
         });
 
+
+        private class MyOnGestureListener extends GestureDetector.SimpleOnGestureListener{
+            @Override
+            public boolean onDown(MotionEvent e) {
+                KLog.p("e=%s", e);
+                return true; // 返回true表示想要处理后续手势
+            }
+
+            @Override
+            public void onLongPress(MotionEvent e) {
+                KLog.p("e=%s", e);
+                onEventListener.onLongPress(e.getX(), e.getY());
+            }
+        }
+
+
+
         @Override
         public boolean onTouch(View v, MotionEvent event) {
             if (null == onEventListener){
@@ -132,6 +151,8 @@ public class DefaultPaintView extends TextureView{
                     || STATE_SCALING_AND_MULTIFINGERS_DRAGGING == state){
                 return true;
             }
+
+            gestureDetector.onTouchEvent(event);
 
             switch (event.getActionMasked()) {
 
@@ -168,7 +189,7 @@ public class DefaultPaintView extends TextureView{
                     break;
 
                 case MotionEvent.ACTION_MOVE:
-                    KLog.p("state=%s, ACTION_MOVE{%s}", state, event);
+//                    KLog.p("state=%s, ACTION_MOVE{%s}", state, event);
                     if (STATE_SHAKING == state) {
                         if (!isShakingTolerable(lastPoint.x, lastPoint.y, event.getX(), event.getY())){
                             onEventListener.onDragBegin(lastPoint.x, lastPoint.y);
@@ -264,7 +285,7 @@ public class DefaultPaintView extends TextureView{
         /**缩放结束*/
         default void onScaleEnd(){}
         /**长按*/
-        default void onLongTouch(){}
+        default void onLongPress(float x, float y){}
     }
 
     private IOnEventListener onEventListener;
