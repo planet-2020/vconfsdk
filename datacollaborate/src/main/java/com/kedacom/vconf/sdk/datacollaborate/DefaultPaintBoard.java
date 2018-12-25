@@ -456,6 +456,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return null;
     }
 
+    private int savedLayerBeforeEditPic;
     private void editPic(OpInsertPic opInsertPic){
         // 绘制图片
         tmpPicOps.offerLast(opInsertPic);
@@ -486,11 +487,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         paintOpGeneratedListener.onRefresh();
 
-        int savedLayer = focusedLayer;
+        savedLayerBeforeEditPic = focusedLayer;
         focusedLayer = LAYER_PIC_TMP;
-        picInsertBundleStuff = new PicInsertBundleStuff(opInsertPic, opDrawRect, insertDelPicIcon, savedLayer); // TODO 没必要，直接从tmpOps中取就好。
         // 3秒过后画到图片画板上并清除临时画板
-        handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000); // TODO 如果3秒过程中用户按了返回键； TODO 用户有操作需更新时间戳
+        handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000); // TODO 如果3秒过程中用户按了返回键；
     }
 
 
@@ -728,9 +728,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         handler.removeMessages(MSGID_INSERT_PIC);
-        if (null != picInsertBundleStuff){
+        if (!tmpPicOps.isEmpty()){
             doInsertPic();
-            picInsertBundleStuff = null;
         }
 
         Bitmap bt = BitmapFactory.decodeFile(path);
@@ -749,46 +748,43 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     }
 
-    private class PicInsertBundleStuff{
-        OpInsertPic opInsertPic;
-        OpDrawRect opDrawRect;
-        OpInsertPic opInsertDelIcon;
-        int savedLayer;
-
-        PicInsertBundleStuff(OpInsertPic opInsertPic, OpDrawRect opDrawRect, OpInsertPic opInsertDelIcon, int savedLayer) {
-            this.opInsertPic = opInsertPic;
-            this.opDrawRect = opDrawRect;
-            this.opInsertDelIcon = opInsertDelIcon;
-            this.savedLayer = savedLayer;
-        }
-    }
 
     private static int MSGID_INSERT_PIC = 666;
     private Handler handler = new Handler(){
         @Override
         public void handleMessage(Message msg) {
             if (MSGID_INSERT_PIC == msg.what){
-                if (null != picInsertBundleStuff){
-                    doInsertPic();
-                    picInsertBundleStuff = null;
-                }
+                doInsertPic();
             }
         }
     };
 
 
-    private PicInsertBundleStuff picInsertBundleStuff; //TODO 不需要，直接从tmpPicPaintViewOps中取。
     private void doInsertPic(){
-        picInsertBundleStuff.opInsertPic.getMatrix().postConcat(tmpPicViewMatrix);
+        OpInsertPic opInsertPic = null;
+        for (OpPaint op : tmpPicOps){
+            if (op instanceof OpInsertPic){
+                opInsertPic = (OpInsertPic) op;
+                break;
+            }
+        }
+        if (null == opInsertPic){
+            KLog.p(KLog.ERROR, "no opInsertPic in tmpPicOps");
+            return;
+        }
+        opInsertPic.getMatrix().postConcat(tmpPicViewMatrix);
+
+        picOps.offerLast(opInsertPic);
+
+        focusedLayer = savedLayerBeforeEditPic;
+
         // 清空tmpPaintView设置。
         tmpPicOps.clear();
         tmpPicViewMatrix.reset();
 
-        KLog.p("new tmp op %s", picInsertBundleStuff.opInsertPic);
-        picOps.offerLast(picInsertBundleStuff.opInsertPic);
         if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
-        focusedLayer = picInsertBundleStuff.savedLayer;
-        publisher.publish(picInsertBundleStuff.opInsertPic);
+
+        publisher.publish(opInsertPic);
     }
 
 
