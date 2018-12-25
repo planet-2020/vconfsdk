@@ -350,14 +350,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 return;
             }
             picOps.remove(opInsertPic);
-            drawForSelectingPic(opInsertPic);
+            editPic(opInsertPic);
         }
     };
 
 
     DefaultPaintView.IOnEventListener tmpPicViewEventListener = new DefaultPaintView.IOnEventListener(){
         private float preDragX, preDragY;
-        private boolean hasInsertPicMsg; // TODO 标志位太多，删除。已经有bEditingPic
         @Override
         public boolean onDown(float x, float y) {
             // TODO 如果落在删除图标中则删除并置hasInsertPicMsg为false
@@ -365,8 +364,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (tmpPicOps.isEmpty() && picOps.isEmpty()){
                 return false; // 放弃处理后续事件
             }
-            hasInsertPicMsg = handler.hasMessages(MSGID_INSERT_PIC);
-            if (hasInsertPicMsg) {
+            if (!tmpPicOps.isEmpty()){
                 handler.removeMessages(MSGID_INSERT_PIC);
             }
             return true;
@@ -374,7 +372,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onUp(float x, float y) {
-            if (hasInsertPicMsg) {
+            if (!tmpPicOps.isEmpty()) {
                 handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000);
             }
         }
@@ -385,6 +383,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (tmpPicOps.isEmpty()){
                 return;
             }
+            handler.removeMessages(MSGID_INSERT_PIC);
             preDragX = x; preDragY = y;
         }
 
@@ -397,6 +396,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             tmpPicViewMatrix.postTranslate(x-preDragX, y-preDragY);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
             preDragX = x; preDragY = y;
+        }
+
+        @Override
+        public void onScaleBegin() {
+            if (tmpPicOps.isEmpty()){
+                return;
+            }
+            handler.removeMessages(MSGID_INSERT_PIC);
         }
 
         @Override
@@ -449,8 +456,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return null;
     }
 
-    private void drawForSelectingPic(OpInsertPic opInsertPic){
-        // 临时图片画布绘制图片
+    private void editPic(OpInsertPic opInsertPic){
+        // 绘制图片
         tmpPicOps.offerLast(opInsertPic);
 
         // 在图片外围绘制一个虚线矩形框
@@ -726,7 +733,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             picInsertBundleStuff = null;
         }
 
-        // 绘制图片
         Bitmap bt = BitmapFactory.decodeFile(path);
         int picW = bt.getWidth();
         int picH = bt.getHeight();
@@ -739,7 +745,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         assignBasicInfo(op);
 
         if (null != paintOpGeneratedListener) {
-            drawForSelectingPic(op);
+            editPic(op);
         }
     }
 
