@@ -505,6 +505,8 @@ public class DefaultPainter implements IPainter {
                 if (null != tmpPaintViewCanvas) {
                     // 清空画布
                     tmpPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+                    // 设置图形层画布的缩放比例
+                    tmpPaintViewCanvas.setMatrix(paintBoard.getTmpPicViewMatrix());
                     // 绘制
                     render(paintBoard.getTmpPicPaintViewOps(), tmpPaintViewCanvas);
                 }
