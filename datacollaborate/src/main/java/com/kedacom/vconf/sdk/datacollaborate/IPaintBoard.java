@@ -22,7 +22,7 @@ public interface IPaintBoard {
     int LAYER_NONE = 100;
     int LAYER_PIC =  101;
     int LAYER_SHAPE =102;
-    int LAYER_TMP =103;
+    int LAYER_PIC_TMP =103;
     int LAYER_PIC_AND_SHAPE =104;
     int LAYER_ALL =  109;
 

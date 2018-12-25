@@ -8,11 +8,13 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.PointF;
+import android.graphics.SurfaceTexture;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
+import android.view.TextureView;
 import android.view.View;
 import android.widget.FrameLayout;
 
@@ -37,6 +39,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -46,17 +49,34 @@ import androidx.lifecycle.LifecycleOwner;
 public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private Context context;
 
-    // 图形画板。用于图形绘制如画线、画圈、擦除等等
+    // 图形画布。用于图形绘制如画线、画圈、擦除等等
     private DefaultPaintView shapePaintView;
+    // 图形画布缩放及位移
+    private Matrix shapeViewMatrix = new Matrix();
+    // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
+    private OpPaint adjustingShapeOp;
+    // 临时图形操作。手指拿起绘制完成，但并不表示此绘制已生效，需等到平台广播NTF后方能确认为生效的操作，在此之前的操作都作为临时操作保存在这里。
+    private MyConcurrentLinkedDeque<OpPaint> tmpShapeOps = new MyConcurrentLinkedDeque<>();
+    // 图形操作。已经平台NTF确认过的操作。
+    private MyConcurrentLinkedDeque<OpPaint> shapeOps = new MyConcurrentLinkedDeque<>();
+    // 被撤销的图形操作。撤销只针对已经平台NTF确认过的操作。
+    private Stack<OpPaint> repealedShapeOps = new Stack<>();
 
-    // 图片画板
+    // 图片画布。用于绘制图片。
     private DefaultPaintView picPaintView;
+    // 临时图片操作。
+    private MyConcurrentLinkedDeque<OpPaint> tmpPicOps = new MyConcurrentLinkedDeque<>();
+    // 图片操作。
+    private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();
 
-    // 临时画板。用于临时展示一些操作的中间效果，如插入图片、选中图片
-    private DefaultPaintView tmpPaintView;
+    // 临时图片画布。用于展示图片操作的一些中间效果，如插入图片、选中图片时先展示带外围虚框和底部删除按钮的图片，操作结束时清除虚框和删除按钮。
+    private DefaultPaintView tmpPicPaintView;
+    // 临时图片画布中的操作。
+    private MyConcurrentLinkedDeque<OpPaint> tmpPicPaintViewOps = new MyConcurrentLinkedDeque<>();
     // 删除图片按钮
     private Bitmap del_pic_icon;
     private Bitmap del_pic_active_icon;
+
 
     // 图层
     private int focusedLayer = LAYER_PIC_AND_SHAPE;
@@ -76,13 +96,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private static final int MIN_ZOOM = 25;
     private static final int MAX_ZOOM = 400;
 
-    private BoardInfo boardInfo;
-
     private IOnPictureCountChanged onPictureCountChangedListener;
     private IOnRepealableStateChangedListener onRepealableStateChangedListener;
     private IOnZoomRateChangedListener onZoomRateChangedListener;
     private IOnPaintOpGeneratedListener paintOpGeneratedListener;
     private IPublisher publisher;
+
+    // 画板信息
+    private BoardInfo boardInfo;
 
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
         super(context);
@@ -94,8 +115,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         picPaintView.setOpaque(false);
         shapePaintView = whiteBoard.findViewById(R.id.pb_shape_paint_view);
         shapePaintView.setOpaque(false);
-        tmpPaintView = whiteBoard.findViewById(R.id.pb_tmp_paint_view);
-        tmpPaintView.setOpaque(false);
+        tmpPicPaintView = whiteBoard.findViewById(R.id.pb_tmp_paint_view);
+        tmpPicPaintView.setOpaque(false);
+
+        shapePaintView.setSurfaceTextureListener(surfaceTextureListener);
+        picPaintView.setSurfaceTextureListener(surfaceTextureListener);
+        tmpPicPaintView.setSurfaceTextureListener(surfaceTextureListener);
 
         try {
             AssetManager am = context.getAssets();
@@ -116,6 +141,97 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         super(context, attrs);
     }
 
+
+    private TextureView.SurfaceTextureListener surfaceTextureListener = new TextureView.SurfaceTextureListener() {
+        @Override
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            KLog.p("surface available");
+            // 刷新
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+        }
+
+        @Override
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+            KLog.p("surface size changed");
+        }
+
+        @Override
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+            KLog.p("surface destroyed");
+            return false;
+        }
+
+        @Override
+        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+        }
+    };
+
+
+    Matrix getShapeViewMatrix() {
+        return shapeViewMatrix;
+    }
+
+    void setShapeViewMatrix(Matrix shapeViewMatrix) {
+        this.shapeViewMatrix = shapeViewMatrix;
+    }
+
+    MyConcurrentLinkedDeque<OpPaint> getTmpShapeOps() {
+        return tmpShapeOps;
+    }
+
+    MyConcurrentLinkedDeque<OpPaint> getShapeOps() {
+        return shapeOps;
+    }
+
+    Stack<OpPaint> getRepealedShapeOps() {
+        return repealedShapeOps;
+    }
+
+    MyConcurrentLinkedDeque<OpPaint> getTmpPicOps() {
+        return tmpPicOps;
+    }
+
+    MyConcurrentLinkedDeque<OpPaint> getPicOps() {
+        return picOps;
+    }
+
+    void setPicsMatrix(Matrix matrix) {
+        // TODO 遍历图片设置
+    }
+
+    // TODO 全局放缩时用这个接口
+    void concatPicsMatrix(Matrix matrix) {
+        // TODO 遍历图片设置
+    }
+
+    MyConcurrentLinkedDeque<OpPaint> getTmpPicPaintViewOps() {
+        return tmpPicPaintViewOps;
+    }
+
+
+    Canvas lockCanvas(int layer){
+        // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
+        if (LAYER_SHAPE == layer){
+            return shapePaintView.lockCanvas();
+        }else if (LAYER_PIC == layer){
+            return picPaintView.lockCanvas();
+        }else if (LAYER_PIC_TMP == layer){
+            return tmpPicPaintView.lockCanvas();
+        }
+        return null;
+    }
+
+    void unlockCanvasAndPost(int layer, Canvas canvas){
+        if (LAYER_SHAPE == layer){
+            shapePaintView.unlockCanvasAndPost(canvas);
+        }else if (LAYER_PIC == layer){
+            picPaintView.unlockCanvasAndPost(canvas);
+        }else if (LAYER_PIC_TMP == layer){
+            tmpPicPaintView.unlockCanvasAndPost(canvas);
+        }
+    }
+
+
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         if (LAYER_NONE == focusedLayer){
@@ -124,8 +240,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             return picPaintView.dispatchTouchEvent(ev);
         }else if (LAYER_SHAPE == focusedLayer){
             return shapePaintView.dispatchTouchEvent(ev);
-        }else if (LAYER_TMP == focusedLayer){
-            return tmpPaintView.dispatchTouchEvent(ev);
+        }else if (LAYER_PIC_TMP == focusedLayer){
+            return tmpPicPaintView.dispatchTouchEvent(ev);
         }else if (LAYER_PIC_AND_SHAPE == focusedLayer || LAYER_ALL == focusedLayer){
             boolean ret2 = picPaintView.dispatchTouchEvent(ev);
             boolean ret1 = shapePaintView.dispatchTouchEvent(ev); // 事件先给pic层再给shape层，所以公共的publish操作在shape层事件处理完后做。
@@ -148,32 +264,32 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onDrag(float x, float y) {
 //            KLog.p("~~> x=%s, y=%s", x, y);
             adjustShapeOp(x, y);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(opPaint);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(adjustingShapeOp);
         }
 
         @Override
         public void onDragEnd() {
 //            KLog.p("~~>");
             confirmShapeOp();
-            KLog.p("new tmp op %s", opPaint);
-            shapePaintView.getTmpOps().offerLast(opPaint);
+            KLog.p("new tmp op %s", adjustingShapeOp);
+            tmpShapeOps.offerLast(adjustingShapeOp);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-            publisher.publish(opPaint);
-            opPaint = null;
+            publisher.publish(adjustingShapeOp);
+            adjustingShapeOp = null;
         }
 
 
         @Override
         public void onMultiFingerDrag(float dx, float dy) {
 //            KLog.p("~~> dx=%s, dy=%s", dx, dy);
-            shapePaintView.getMyMatrix().postTranslate(dx, dy);
+            shapeViewMatrix.postTranslate(dx, dy);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
         @Override
         public void onMultiFingerDragEnd() {
 //            KLog.p("~~>");
-            OpMatrix opMatrix = new OpMatrix(shapePaintView.getMyMatrix());
+            OpMatrix opMatrix = new OpMatrix(shapeViewMatrix);
             assignBasicInfo(opMatrix);
             publisher.publish(opMatrix);
         }
@@ -181,7 +297,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
 //            KLog.p("~~> factor=%s", factor);
-            shapePaintView.getMyMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
+            shapeViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
             zoomRateChanged();
         }
@@ -189,13 +305,23 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onScaleEnd() {
 //            KLog.p("~~>");
-            OpMatrix opMatrix = new OpMatrix(shapePaintView.getMyMatrix());
+            OpMatrix opMatrix = new OpMatrix(shapeViewMatrix);
             assignBasicInfo(opMatrix);
             publisher.publish(opMatrix);
         }
 
     };
 
+
+    // TODO 遍历图片列表，修改图片matrix
+    private void translatePics(float dx, float dy){
+
+    }
+
+    // TODO 遍历图片列表，修改图片matrix
+    private void scalePics(float factor, float scaleCenterX, float scaleCenterY){
+
+    }
 
     DefaultPaintView.IOnEventListener picViewEventListener = new DefaultPaintView.IOnEventListener(){
         @Override
@@ -217,7 +343,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onMultiFingerDrag(float dx, float dy) {
             KLog.p("~~> dx=%s, dy=%s", dx, dy);
-            picPaintView.getMyMatrix().postTranslate(dx, dy);
+            translatePics(dx, dy);
+//            picPaintView.getMyMatrix().postTranslate(dx, dy);
 //            paintOpGeneratedListener.onOp(null); // XXX 当前图形和图片层放缩倍数同步一致，如果将来不一致，则需单独处理
         }
 
@@ -232,7 +359,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
 //            KLog.p("~~> factor=%s", factor);
-            picPaintView.getMyMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
+            scalePics(factor, scaleCenterX, scaleCenterY);
+//            picPaintView.getMyMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
 //            paintOpGeneratedListener.onOp(null);
 //            zoomRateChanged(); // XXX 当前图形和图片层放缩倍数同步一致，如果将来不一致，则需单独处理
         }
@@ -276,7 +404,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onMultiFingerDrag(float dx, float dy) {
             KLog.p("~~> dx=%s, dy=%s", dx, dy);
-            tmpPaintView.getMyMatrix().postTranslate(dx, dy);
+//            tmpViewMatrix.postTranslate(dx, dy);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
@@ -287,18 +415,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
             KLog.p("~~> factor=%s", factor);
-            tmpPaintView.getMyMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
+//            tmpViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
     };
 
 
-    private OpPaint opPaint;
     private Matrix shapeInvertMatrix = new Matrix();
     private float[] mapPoint= new float[2];
     private void createShapeOp(float startX, float startY){
-        boolean suc = shapePaintView.getMyMatrix().invert(shapeInvertMatrix);
+        boolean suc = shapeViewMatrix.invert(shapeInvertMatrix);
 //        KLog.p("invert success?=%s, orgX=%s, orgY=%s", suc, x, y);
         mapPoint[0] = startX;
         mapPoint[1] = startY;
@@ -311,45 +438,45 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 OpDrawPath opDrawPath = new OpDrawPath(new ArrayList<>());
                 opDrawPath.getPoints().add(new PointF(x, y));
                 opDrawPath.getPath().moveTo(x, y);
-                opPaint = opDrawPath;
+                adjustingShapeOp = opDrawPath;
                 break;
             case TOOL_LINE:
                 OpDrawLine opDrawLine = new OpDrawLine();
                 opDrawLine.setStartX(x);
                 opDrawLine.setStartY(y);
-                opPaint = opDrawLine;
+                adjustingShapeOp = opDrawLine;
                 break;
             case TOOL_RECT:
                 OpDrawRect opDrawRect = new OpDrawRect();
                 opDrawRect.setLeft(x);
                 opDrawRect.setTop(y);
-                opPaint = opDrawRect;
+                adjustingShapeOp = opDrawRect;
                 break;
             case TOOL_OVAL:
                 OpDrawOval opDrawOval = new OpDrawOval();
                 opDrawOval.setLeft(x);
                 opDrawOval.setTop(y);
-                opPaint = opDrawOval;
+                adjustingShapeOp = opDrawOval;
                 break;
             case TOOL_ERASER:
                 OpErase opErase = new OpErase(eraserSize, eraserSize, new ArrayList<>());
                 opErase.getPoints().add(new PointF(x, y));
                 opErase.getPath().moveTo(x, y);
-                opPaint = opErase;
+                adjustingShapeOp = opErase;
                 break;
             case TOOL_RECT_ERASER:
                 // 矩形擦除先绘制一个虚线矩形框选择擦除区域
                 OpDrawRect opDrawRect1 = new OpDrawRect();
                 opDrawRect1.setLeft(x);
                 opDrawRect1.setTop(y);
-                opPaint = opDrawRect1;
+                adjustingShapeOp = opDrawRect1;
                 break;
             default:
                 KLog.p(KLog.ERROR, "unknown TOOL %s", tool);
                 return;
         }
-        if (opPaint instanceof OpDraw){
-            OpDraw opDraw = (OpDraw) opPaint;
+        if (adjustingShapeOp instanceof OpDraw){
+            OpDraw opDraw = (OpDraw) adjustingShapeOp;
             if (TOOL_ERASER == tool){
                 opDraw.setStrokeWidth(eraserSize);
             }else if(TOOL_RECT_ERASER == tool){
@@ -361,7 +488,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 opDraw.setColor(paintColor);
             }
         }
-        assignBasicInfo(opPaint);
+        assignBasicInfo(adjustingShapeOp);
     }
 
     private void adjustShapeOp(float adjustX, float adjustY){
@@ -372,7 +499,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         float y = mapPoint[1];
         switch (tool){
             case TOOL_PENCIL:
-                OpDrawPath opDrawPath = (OpDrawPath) opPaint;
+                OpDrawPath opDrawPath = (OpDrawPath) adjustingShapeOp;
                 List<PointF> pointFS = opDrawPath.getPoints();
                 float preX, preY, midX, midY;
                 preX = pointFS.get(pointFS.size()-1).x;
@@ -385,22 +512,22 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                 break;
             case TOOL_LINE:
-                OpDrawLine opDrawLine = (OpDrawLine) opPaint;
+                OpDrawLine opDrawLine = (OpDrawLine) adjustingShapeOp;
                 opDrawLine.setStopX(x);
                 opDrawLine.setStopY(y);
                 break;
             case TOOL_RECT:
-                OpDrawRect opDrawRect = (OpDrawRect) opPaint;
+                OpDrawRect opDrawRect = (OpDrawRect) adjustingShapeOp;
                 opDrawRect.setRight(x);
                 opDrawRect.setBottom(y);
                 break;
             case TOOL_OVAL:
-                OpDrawOval opDrawOval = (OpDrawOval) opPaint;
+                OpDrawOval opDrawOval = (OpDrawOval) adjustingShapeOp;
                 opDrawOval.setRight(x);
                 opDrawOval.setBottom(y);
                 break;
             case TOOL_ERASER:
-                OpErase opErase = (OpErase) opPaint;
+                OpErase opErase = (OpErase) adjustingShapeOp;
                 pointFS = opErase.getPoints();
                 preX = pointFS.get(pointFS.size()-1).x;
                 preY = pointFS.get(pointFS.size()-1).y;
@@ -412,7 +539,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                 break;
             case TOOL_RECT_ERASER:
-                OpDrawRect opDrawRect1 = (OpDrawRect) opPaint;
+                OpDrawRect opDrawRect1 = (OpDrawRect) adjustingShapeOp;
                 opDrawRect1.setRight(x);
                 opDrawRect1.setBottom(y);
                 break;
@@ -426,16 +553,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private void confirmShapeOp(){
         if (TOOL_RECT_ERASER == tool){
-            OpDrawRect opDrawRect = (OpDrawRect) opPaint;
-            opPaint = new OpRectErase(opDrawRect.getLeft(), opDrawRect.getTop(), opDrawRect.getRight(), opDrawRect.getBottom());
-            assignBasicInfo(opPaint);
+            OpDrawRect opDrawRect = (OpDrawRect) adjustingShapeOp;
+            adjustingShapeOp = new OpRectErase(opDrawRect.getLeft(), opDrawRect.getTop(), opDrawRect.getRight(), opDrawRect.getBottom());
+            assignBasicInfo(adjustingShapeOp);
         }else if (TOOL_PENCIL == tool){
-            OpDrawPath opDrawPath = (OpDrawPath) opPaint;
+            OpDrawPath opDrawPath = (OpDrawPath) adjustingShapeOp;
             List<PointF> points = opDrawPath.getPoints();
             PointF lastPoint = points.get(points.size()-1);
             opDrawPath.getPath().lineTo(lastPoint.x, lastPoint.y);
         }else if (TOOL_ERASER == tool){
-            OpErase opErase = (OpErase) opPaint;
+            OpErase opErase = (OpErase) adjustingShapeOp;
             List<PointF> points = opErase.getPoints();
             PointF lastPoint = points.get(points.size()-1);
             opErase.getPath().lineTo(lastPoint.x, lastPoint.y);
@@ -449,17 +576,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         op.setPageId(boardInfo.getPageId());
     }
 
-    DefaultPaintView getPicPaintView(){ // TODO 封住，外部不需感知 paintview中操作挪到board内？？
-        return picPaintView;
-    }
-
-    DefaultPaintView getShapePaintView(){
-        return shapePaintView;
-    }
-
-    DefaultPaintView getTmpPaintView(){
-        return tmpPaintView;
-    }
 
     void clean(){
         publisher = null;
@@ -556,7 +672,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         OpInsertPic op = new OpInsertPic(path, matrix);
         op.setPic(bt);
         assignBasicInfo(op);
-        tmpPaintView.getTmpOps().offerLast(op);
+        tmpPicPaintViewOps.offerLast(op);
 
         // 在图片外围绘制一个虚线矩形框
         OpDrawRect opDrawRect = new OpDrawRect();
@@ -567,7 +683,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         opDrawRect.setLineStyle(OpDraw.DASH);
         opDrawRect.setStrokeWidth(2);
         opDrawRect.setColor(0xFF08b1f2L);
-        tmpPaintView.getTmpOps().offerLast(opDrawRect);
+        tmpPicPaintViewOps.offerLast(opDrawRect);
 
         // 在虚线矩形框正下方绘制删除图标
         transX = (getWidth()-del_pic_icon.getWidth())/2f;
@@ -578,13 +694,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         insertDelPicIcon.setPic(del_pic_icon);
         insertDelPicIcon.setMatrix(matrix1);
         assignBasicInfo(insertDelPicIcon);
-        tmpPaintView.getTmpOps().offerLast(insertDelPicIcon);
+        tmpPicPaintViewOps.offerLast(insertDelPicIcon);
 
         if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
 
         int savedLayer = focusedLayer;
-        focusedLayer = LAYER_TMP;
-        picInsertBundleStuff = new PicInsertBundleStuff(op, opDrawRect, insertDelPicIcon, savedLayer);
+        focusedLayer = LAYER_PIC_TMP;
+        picInsertBundleStuff = new PicInsertBundleStuff(op, opDrawRect, insertDelPicIcon, savedLayer); // TODO 没必要，直接从tmpOps中取就好。
         // 3秒过后画到图片画板上并清除临时画板
         handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000); // TODO 如果3秒过程中用户按了返回键； TODO 用户有操作需更新时间戳
 
@@ -618,23 +734,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     };
 
 
-    private PicInsertBundleStuff picInsertBundleStuff;
+    private PicInsertBundleStuff picInsertBundleStuff; // 不需要，直接从tmpPicPaintViewOps中取。
     private void doInsertPic(){
-//        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opInsertPic);
-//        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opDrawRect);
-//        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opInsertDelIcon);
-        picInsertBundleStuff.opInsertPic.getMatrix().postConcat(tmpPaintView.getMyMatrix());
-        // 清空tmpPaintView设置。XXX 目前只用于插入图片可以这样做，如果日后扩展为多用途则不可简单清空。
-        tmpPaintView.getTmpOps().clear();
-        tmpPaintView.getMyMatrix().reset();
-                
-        KLog.p("new tmp op %s", picInsertBundleStuff.opInsertPic);
-        picPaintView.getTmpOps().offerLast(picInsertBundleStuff.opInsertPic);
-        if (null != paintOpGeneratedListener) {
-            paintOpGeneratedListener.onOp(null);
-        }
-        focusedLayer = picInsertBundleStuff.savedLayer;
-        publisher.publish(picInsertBundleStuff.opInsertPic);
+//        picInsertBundleStuff.opInsertPic.getMatrix().postConcat(tmpPicPaintView.getMyMatrix());
+//        // 清空tmpPaintView设置。XXX 目前只用于插入图片可以这样做，如果日后扩展为多用途则不可简单清空。
+//        tmpPicPaintView.getTmpOps().clear();
+//        tmpPicPaintView.getMyMatrix().reset();
+//
+//        KLog.p("new tmp op %s", picInsertBundleStuff.opInsertPic);
+//        picPaintView.getTmpOps().offerLast(picInsertBundleStuff.opInsertPic);
+//        if (null != paintOpGeneratedListener) {
+//            paintOpGeneratedListener.onOp(null);
+//        }
+//        focusedLayer = picInsertBundleStuff.savedLayer;
+//        publisher.publish(picInsertBundleStuff.opInsertPic);
     }
 
 
@@ -718,11 +831,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         dealSimpleOp(opMatrix);
     }
 
+    float[] zoomVals = new float[9];
     @Override
     public int getZoom() {
-        float[] vals = new float[9];
-        shapePaintView.getMyMatrix().getValues(vals); // TODO 考虑图片层缩放率不一致的情形？
-        return (int) (vals[Matrix.MSCALE_X]*100);
+        shapeViewMatrix.getValues(zoomVals);
+        return (int) (zoomVals[Matrix.MSCALE_X]*100);
     }
 
 
@@ -741,7 +854,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         picPaintView.setOnEventListener(null!=publisher ? picViewEventListener : null);
         shapePaintView.setOnEventListener(null!=publisher ? shapeViewEventListener : null);
-        tmpPaintView.setOnEventListener(null!=publisher ? tmpViewEventListener : null);
+        tmpPicPaintView.setOnEventListener(null!=publisher ? tmpViewEventListener : null);
 
         return this;
     }
@@ -763,19 +876,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public int getRepealedOpsCount() {
-        return shapePaintView.getRepealedOps().size();
+        return repealedShapeOps.size();
     }
 
     @Override
     public int getShapeOpsCount() {
-        return shapePaintView.getRenderOps().size();
+        return shapeOps.size();
     }
 
     @Override
     public int getPicCount() {
-        MyConcurrentLinkedDeque<OpPaint> ops = picPaintView.getRenderOps();
         int count = 0;
-        for (OpPaint op : ops){
+        for (OpPaint op : picOps){
             if (EOpType.INSERT_PICTURE == op.getType()){
                 ++count;
             }

@@ -5,14 +5,11 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.DashPathEffect;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
-import android.graphics.SurfaceTexture;
 import android.os.Process;
-import android.view.TextureView;
 
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
@@ -54,6 +51,7 @@ public class DefaultPainter implements IPainter {
 
     private boolean bPaused = false;
 
+    // 调整中的操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private OpPaint adjustingOp;
     private final Object adjustingOpLock = new Object();
     private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener() {
@@ -140,29 +138,6 @@ public class DefaultPainter implements IPainter {
         }
     }
 
-    private TextureView.SurfaceTextureListener surfaceTextureListener = new TextureView.SurfaceTextureListener() {
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            KLog.p("surface available");
-            refresh();
-        }
-
-        @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            KLog.p("surface size changed");
-        }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            KLog.p("surface destroyed");
-            return false;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-        }
-    };
-
 
     @Override
     public boolean addPaintBoard(IPaintBoard paintBoard) {
@@ -175,9 +150,6 @@ public class DefaultPainter implements IPainter {
         defaultPaintBoard.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
         paintBoards.put(boardId, defaultPaintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
-
-        defaultPaintBoard.getShapePaintView().setSurfaceTextureListener(surfaceTextureListener);
-        defaultPaintBoard.getPicPaintView().setSurfaceTextureListener(surfaceTextureListener);
 
         return true;
     }
@@ -251,18 +223,13 @@ public class DefaultPainter implements IPainter {
         }
         KLog.p(KLog.WARN, "for board %s op %s", boardId, op);
 
-        DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
-        MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapePaintView.getRenderOps();
-        Matrix shapeMatrix = shapePaintView.getMyMatrix();
-        Stack<OpPaint> shapeRepealedOps = shapePaintView.getRepealedOps();
+        MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = paintBoard.getShapeOps();
+        Stack<OpPaint> shapeRepealedOps = paintBoard.getRepealedShapeOps();
 
-        DefaultPaintView picPaintView = paintBoard.getPicPaintView();
-        MyConcurrentLinkedDeque<OpPaint> picRenderOps = picPaintView.getRenderOps();
-        Matrix picMatrix = picPaintView.getMyMatrix();
-//        Stack<OpPaint> picRepealedOps = picPaintView.getRepealedOps(); // 当前仅支持图形操作的撤销，不支持图片操作撤销。
+        MyConcurrentLinkedDeque<OpPaint> picRenderOps = paintBoard.getPicOps();
 
         // 检查是否为主动绘制触发的响应。若是则我们不再重复绘制，因为它已经展示在界面上。
-        OpPaint shapeTmpOp = shapePaintView.getTmpOps().pollFirst();
+        OpPaint shapeTmpOp = paintBoard.getTmpShapeOps().pollFirst();
         if (null != shapeTmpOp && shapeTmpOp.getUuid().equals(op.getUuid())) {
             KLog.p("tmp op %s confirmed", shapeTmpOp);
             if (!shapeRepealedOps.isEmpty() && shapeTmpOp instanceof IRepealable) {
@@ -277,7 +244,7 @@ public class DefaultPainter implements IPainter {
             }
             return;
         }
-        OpPaint picTmpOp = picPaintView.getTmpOps().pollFirst();
+        OpPaint picTmpOp = paintBoard.getTmpPicOps().pollFirst();
         if (null != picTmpOp && picTmpOp.getUuid().equals(op.getUuid())) {
             KLog.p("tmp op %s confirmed", picTmpOp);
             picRenderOps.offerLast(picTmpOp);
@@ -285,8 +252,8 @@ public class DefaultPainter implements IPainter {
         }
 
         // 不是主动绘制的响应则清空临时绘制
-        shapePaintView.getTmpOps().clear();
-        picPaintView.getTmpOps().clear();
+        paintBoard.getTmpShapeOps().clear();
+        paintBoard.getTmpPicOps().clear();
 
         boolean bRefresh = boardId.equals(curBoardId); // 操作属于当前board则尝试立即刷新
         OpPaint tmpOp;
@@ -348,8 +315,8 @@ public class DefaultPainter implements IPainter {
                 }
                 break;
             case FULLSCREEN_MATRIX: // 全局放缩，包括图片和图形
-                picMatrix.set(((OpMatrix)op).getMatrix());
-                shapeMatrix.set(((OpMatrix)op).getMatrix());
+                paintBoard.concatPicsMatrix(((OpMatrix)op).getMatrix());
+                paintBoard.setShapeViewMatrix(((OpMatrix)op).getMatrix());
                 paintBoard.zoomRateChanged();
                 break;
 
@@ -498,20 +465,19 @@ public class DefaultPainter implements IPainter {
                 }
 
                 // 图形层绘制
-                DefaultPaintView shapePaintView = paintBoard.getShapePaintView();
-                Canvas shapePaintViewCanvas = shapePaintView.lockCanvas();  // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
+                Canvas shapePaintViewCanvas = paintBoard.lockCanvas(IPaintBoard.LAYER_SHAPE);
                 if (null != shapePaintViewCanvas) {
                     // 每次绘制前先清空画布以避免残留
                     shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
                     // 设置图形层画布的缩放比例
-                    shapePaintViewCanvas.setMatrix(shapePaintView.getMyMatrix());
+                    shapePaintViewCanvas.setMatrix(paintBoard.getShapeViewMatrix());
 
                     // 图形绘制
-                    render(shapePaintView.getRenderOps(), shapePaintViewCanvas);
+                    render(paintBoard.getShapeOps(), shapePaintViewCanvas);
 
                     // 临时图形绘制
-                    render(shapePaintView.getTmpOps(), shapePaintViewCanvas);
+                    render(paintBoard.getTmpShapeOps(), shapePaintViewCanvas);
 
                     // 绘制正在调整中的操作
                     synchronized (adjustingOpLock) {
@@ -522,39 +488,32 @@ public class DefaultPainter implements IPainter {
                 }
 
                 // 图片层绘制
-                DefaultPaintView picPaintView = paintBoard.getPicPaintView();
-                Canvas picPaintViewCanvas = picPaintView.lockCanvas();
+                Canvas picPaintViewCanvas = paintBoard.lockCanvas(IPaintBoard.LAYER_PIC);
                 if (null != picPaintViewCanvas) {
                     // 清空画布
                     picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
-                    // 设置画布的缩放比例
-                    picPaintViewCanvas.setMatrix(picPaintView.getMyMatrix());
-
                     // 图片绘制
-                    render(picPaintView.getRenderOps(), picPaintViewCanvas);
+                    render(paintBoard.getPicOps(), picPaintViewCanvas);
 
                     // 临时图片绘制
-                    render(picPaintView.getTmpOps(), picPaintViewCanvas);
+                    render(paintBoard.getTmpPicOps(), picPaintViewCanvas);
                 }
 
                 // 临时层绘制
-                DefaultPaintView tmpPaintView = paintBoard.getTmpPaintView();
-                Canvas tmpPaintViewCanvas = tmpPaintView.lockCanvas();
+                Canvas tmpPaintViewCanvas = paintBoard.lockCanvas(IPaintBoard.LAYER_PIC_TMP);
                 if (null != tmpPaintViewCanvas) {
                     // 清空画布
                     tmpPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-                    // 设置画布的缩放比例
-                    tmpPaintViewCanvas.setMatrix(tmpPaintView.getMyMatrix());
-                    // 临时绘制
-                    render(tmpPaintView.getTmpOps(), tmpPaintViewCanvas);
+                    // 绘制
+                    render(paintBoard.getTmpPicPaintViewOps(), tmpPaintViewCanvas);
                 }
 
                 // 提交绘制任务，执行绘制
 //                KLog.p("go render!");
-                if (null != shapePaintViewCanvas) shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
-                if (null != picPaintViewCanvas) picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
-                if (null != tmpPaintViewCanvas) tmpPaintView.unlockCanvasAndPost(tmpPaintViewCanvas);
+                paintBoard.unlockCanvasAndPost(IPaintBoard.LAYER_SHAPE, shapePaintViewCanvas);
+                paintBoard.unlockCanvasAndPost(IPaintBoard.LAYER_PIC, picPaintViewCanvas);
+                paintBoard.unlockCanvasAndPost(IPaintBoard.LAYER_PIC_TMP, tmpPaintViewCanvas);
 
             }
         }
