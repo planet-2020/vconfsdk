@@ -60,5 +60,10 @@ public class OpDrawRect extends OpDraw {
         this.bottom = bottom;
     }
 
-
+    public void setValues(float[] vals){
+        left = vals[0];
+        top = vals[1];
+        right = vals[2];
+        bottom = vals[3];
+    }
 }

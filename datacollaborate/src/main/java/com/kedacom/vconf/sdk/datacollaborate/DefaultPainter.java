@@ -62,6 +62,11 @@ public class DefaultPainter implements IPainter {
             }
             refresh();
         }
+
+        @Override
+        public void onRefresh() {
+            refresh();
+        }
     };
 
 
@@ -244,16 +249,16 @@ public class DefaultPainter implements IPainter {
             }
             return;
         }
-        OpPaint picTmpOp = paintBoard.getTmpPicOps().pollFirst();
-        if (null != picTmpOp && picTmpOp.getUuid().equals(op.getUuid())) {
-            KLog.p("tmp op %s confirmed", picTmpOp);
-            picRenderOps.offerLast(picTmpOp);
-            return;
+
+        for (OpPaint opPaint : paintBoard.getPicOps()){
+            if (opPaint.getUuid().equals(op.getUuid())){
+                KLog.p("pic op %s already exist!", opPaint);
+                return;
+            }
         }
 
         // 不是主动绘制的响应则清空临时绘制
         paintBoard.getTmpShapeOps().clear();
-        paintBoard.getTmpPicOps().clear();
 
         boolean bRefresh = boardId.equals(curBoardId); // 操作属于当前board则尝试立即刷新
         OpPaint tmpOp;
@@ -495,20 +500,17 @@ public class DefaultPainter implements IPainter {
 
                     // 图片绘制
                     render(paintBoard.getPicOps(), picPaintViewCanvas);
-
-                    // 临时图片绘制
-                    render(paintBoard.getTmpPicOps(), picPaintViewCanvas);
                 }
 
-                // 临时层绘制
+                // 临时图片层绘制
                 Canvas tmpPaintViewCanvas = paintBoard.lockCanvas(IPaintBoard.LAYER_PIC_TMP);
                 if (null != tmpPaintViewCanvas) {
                     // 清空画布
                     tmpPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-                    // 设置图形层画布的缩放比例
+                    // 设置缩放比例
                     tmpPaintViewCanvas.setMatrix(paintBoard.getTmpPicViewMatrix());
                     // 绘制
-                    render(paintBoard.getTmpPicPaintViewOps(), tmpPaintViewCanvas);
+                    render(paintBoard.getTmpPicOps(), tmpPaintViewCanvas);
                 }
 
                 // 提交绘制任务，执行绘制

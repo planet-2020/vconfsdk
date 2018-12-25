@@ -74,4 +74,8 @@ public class MyConcurrentLinkedDeque<E> implements Iterable<E>{
         return deque.iterator();
     }
 
+    public Iterator<E> descendingIterator(){
+        return deque.descendingIterator();
+    }
+
 }

@@ -38,6 +38,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Stack;
 
@@ -64,8 +65,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     // 图片画布。用于绘制图片。
     private DefaultPaintView picPaintView;
-    // 临时图片操作。
-    private MyConcurrentLinkedDeque<OpPaint> tmpPicOps = new MyConcurrentLinkedDeque<>();
     // 图片操作。
     private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();
 
@@ -74,14 +73,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     // 临时图片画布缩放及位移
     private Matrix tmpPicViewMatrix = new Matrix();
     // 临时图片画布中的操作。
-    private MyConcurrentLinkedDeque<OpPaint> tmpPicPaintViewOps = new MyConcurrentLinkedDeque<>();
+    private MyConcurrentLinkedDeque<OpPaint> tmpPicOps = new MyConcurrentLinkedDeque<>();
     // 删除图片按钮
     private Bitmap del_pic_icon;
     private Bitmap del_pic_active_icon;
 
 
     // 图层
-    private int focusedLayer = LAYER_PIC_AND_SHAPE;
+    private int focusedLayer = LAYER_ALL;
 
     // 工具
     private int tool = TOOL_PENCIL;
@@ -149,7 +148,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             KLog.p("surface available");
             // 刷新
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
         }
 
         @Override
@@ -189,10 +188,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return repealedShapeOps;
     }
 
-    MyConcurrentLinkedDeque<OpPaint> getTmpPicOps() {
-        return tmpPicOps;
-    }
-
     MyConcurrentLinkedDeque<OpPaint> getPicOps() {
         return picOps;
     }
@@ -210,8 +205,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return tmpPicViewMatrix;
     }
 
-    MyConcurrentLinkedDeque<OpPaint> getTmpPicPaintViewOps() {
-        return tmpPicPaintViewOps;
+    MyConcurrentLinkedDeque<OpPaint> getTmpPicOps() {
+        return tmpPicOps;
     }
 
 
@@ -248,10 +243,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             return shapePaintView.dispatchTouchEvent(ev);
         }else if (LAYER_PIC_TMP == focusedLayer){
             return tmpPicPaintView.dispatchTouchEvent(ev);
-        }else if (LAYER_PIC_AND_SHAPE == focusedLayer || LAYER_ALL == focusedLayer){
+        }else if (LAYER_PIC_AND_SHAPE == focusedLayer){
             boolean ret2 = picPaintView.dispatchTouchEvent(ev);
             boolean ret1 = shapePaintView.dispatchTouchEvent(ev); // 事件先给pic层再给shape层，所以公共的publish操作在shape层事件处理完后做。
             return ret1||ret2;
+        }else if (LAYER_ALL == focusedLayer){
+            boolean ret2 = picPaintView.dispatchTouchEvent(ev);
+            boolean ret1 = shapePaintView.dispatchTouchEvent(ev); // 事件先给pic层再给shape层，所以公共的publish操作在shape层事件处理完后做。
+            boolean ret3 = tmpPicPaintView.dispatchTouchEvent(ev);
+            return ret1||ret2||ret3;
         }
 
         return false;
@@ -279,7 +279,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             confirmShapeOp();
             KLog.p("new tmp op %s", adjustingShapeOp);
             tmpShapeOps.offerLast(adjustingShapeOp);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
             publisher.publish(adjustingShapeOp);
             adjustingShapeOp = null;
         }
@@ -289,7 +289,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onMultiFingerDrag(float dx, float dy) {
 //            KLog.p("~~> dx=%s, dy=%s", dx, dy);
             shapeViewMatrix.postTranslate(dx, dy);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
         }
 
         @Override
@@ -304,7 +304,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
 //            KLog.p("~~> factor=%s", factor);
             shapeViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
             zoomRateChanged();
         }
 
@@ -319,13 +319,101 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     };
 
 
-    private void translatePics(float dx, float dy){
-        for (OpPaint op : picOps){
-            if (op instanceof OpInsertPic){
-                ((OpInsertPic)op).getMatrix().postTranslate(dx, dy);
+    DefaultPaintView.IOnEventListener picViewEventListener = new DefaultPaintView.IOnEventListener(){
+        @Override
+        public boolean onDown(float x, float y) {
+            if (picOps.isEmpty()){
+                KLog.p("pic layer is empty");
+                return false; // 当前没有图片不用处理后续事件
+            }
+            return true;
+        }
+
+        @Override
+        public void onMultiFingerDrag(float dx, float dy) {
+            KLog.p("onMultiFingerDrag pic layer, dx=%s, dy=%s", dx, dy);
+            translatePics(dx, dy);
+        }
+
+        @Override
+        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
+//            KLog.p("~~> factor=%s", factor);
+            scalePics(factor, scaleCenterX, scaleCenterY);
+        }
+
+        @Override
+        public void onLongPress(float x, float y) {
+            KLog.p("onLongPress pic layer,  x=%s, y=%s", x, y);
+            OpInsertPic opInsertPic = selectPic(x, y);
+            if (null == opInsertPic){
+                KLog.p("no pic selected(x=%s, y=%s)", x, y);
+                return;
+            }
+            picOps.remove(opInsertPic);
+            drawForSelectingPic(opInsertPic);
+        }
+    };
+
+
+    DefaultPaintView.IOnEventListener tmpPicViewEventListener = new DefaultPaintView.IOnEventListener(){
+        private float preDragX, preDragY;
+        private boolean hasInsertPicMsg; // TODO 标志位太多，删除。已经有bEditingPic
+        @Override
+        public boolean onDown(float x, float y) {
+            // TODO 如果落在删除图标中则删除并置hasInsertPicMsg为false
+            KLog.p("onDown tmp pic layer, x=%s. y=%s", x, y);
+            if (tmpPicOps.isEmpty() && picOps.isEmpty()){
+                return false; // 放弃处理后续事件
+            }
+            hasInsertPicMsg = handler.hasMessages(MSGID_INSERT_PIC);
+            if (hasInsertPicMsg) {
+                handler.removeMessages(MSGID_INSERT_PIC);
+            }
+            return true;
+        }
+
+        @Override
+        public void onUp(float x, float y) {
+            if (hasInsertPicMsg) {
+                handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000);
             }
         }
-        for (OpPaint op : tmpPicOps){
+
+        @Override
+        public void onDragBegin(float x, float y) {
+            KLog.p("onDragBegin tmp pic layer, x=%s. y=%s", x, y);
+            if (tmpPicOps.isEmpty()){
+                return;
+            }
+            preDragX = x; preDragY = y;
+        }
+
+        @Override
+        public void onDrag(float x, float y) {
+            KLog.p("onDrag tmp pic layer, x=%s. y=%s", x, y);
+            if (tmpPicOps.isEmpty()){
+                return;
+            }
+            tmpPicViewMatrix.postTranslate(x-preDragX, y-preDragY);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+            preDragX = x; preDragY = y;
+        }
+
+        @Override
+        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
+            KLog.p("onScale tmp pic layer, factor=%s", factor);
+            if (tmpPicOps.isEmpty()){
+                return;
+            }
+            tmpPicViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+        }
+
+    };
+
+
+    private void translatePics(float dx, float dy){
+        for (OpPaint op : picOps){
             if (op instanceof OpInsertPic){
                 ((OpInsertPic)op).getMatrix().postTranslate(dx, dy);
             }
@@ -338,77 +426,65 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 ((OpInsertPic)op).getMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
             }
         }
-        for (OpPaint op : tmpPicOps){
-            if (op instanceof OpInsertPic){
-                ((OpInsertPic)op).getMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
-            }
-        }
     }
 
-    DefaultPaintView.IOnEventListener picViewEventListener = new DefaultPaintView.IOnEventListener(){
-
-        @Override
-        public void onMultiFingerDrag(float dx, float dy) {
-            KLog.p("~~> dx=%s, dy=%s", dx, dy);
-            translatePics(dx, dy);
-        }
-
-        @Override
-        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
-//            KLog.p("~~> factor=%s", factor);
-            scalePics(factor, scaleCenterX, scaleCenterY);
-        }
-
-        @Override
-        public void onLongPress(float x, float y) {
-            KLog.p("~~> x=%s, y=%s", x, y);
-            // TODO 获取点中的图片；从图片层删除；添加到tmp层
-            // picPaintView.getRenderOps();
-        }
-
-    };
-
-
-    DefaultPaintView.IOnEventListener tmpPicViewEventListener = new DefaultPaintView.IOnEventListener(){
-        private float preDragX, preDragY;
-        private boolean hasInsertPicMsg;
-        @Override
-        public void onDown(float x, float y) {
-            // TODO 如果落在删除图标中则删除并置hasInsertPicMsg为false
-            hasInsertPicMsg = handler.hasMessages(MSGID_INSERT_PIC);
-            if (hasInsertPicMsg) {
-                handler.removeMessages(MSGID_INSERT_PIC);
+    private OpInsertPic selectPic(float x, float y){
+        float[] leftTop = new float[2];
+        Iterator<OpPaint> it = picOps.descendingIterator();
+        while (it.hasNext()){
+            OpPaint op = it.next();
+            if (op instanceof OpInsertPic){
+                OpInsertPic opInsertPic = (OpInsertPic) op;
+                leftTop[0] = 0; leftTop[1] = 0;
+                opInsertPic.getMatrix().mapPoints(leftTop);
+                KLog.p("x=%s, y=%s, leftTop[0]=%s, leftTop[1]=%s, picW=%s, picH=%s, matrix=%s", x, y,
+                        leftTop[0], leftTop[1], opInsertPic.getPicWidth(), opInsertPic.getPicHeight(), opInsertPic.getMatrix());
+                if (leftTop[0]<x && x<leftTop[0]+opInsertPic.getPicWidth()
+                        && leftTop[1]<y && y<leftTop[1]+opInsertPic.getPicHeight()
+                        && null != opInsertPic.getPic()){ // 判断点是否落在图片中
+                    return opInsertPic;
+                }
             }
         }
+        return null;
+    }
 
-        @Override
-        public void onUp(float x, float y) {
-            if (hasInsertPicMsg) {
-                handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000);
-            }
-        }
+    private void drawForSelectingPic(OpInsertPic opInsertPic){
+        // 临时图片画布绘制图片
+        tmpPicOps.offerLast(opInsertPic);
 
-        @Override
-        public void onDragBegin(float x, float y) {
-            KLog.p("x=%s. y=%s", x, y);
-            preDragX = x; preDragY = y;
-        }
+        // 在图片外围绘制一个虚线矩形框
+        OpDrawRect opDrawRect = new OpDrawRect();
+        float[] rectVal = new float[4];
+        rectVal[0] = -5;
+        rectVal[1] = -5;
+        rectVal[2] = opInsertPic.getPicWidth()+5;
+        rectVal[3] = opInsertPic.getPicHeight()+5;
+        opInsertPic.getMatrix().mapPoints(rectVal);
+        opDrawRect.setValues(rectVal);
+        opDrawRect.setLineStyle(OpDraw.DASH);
+        opDrawRect.setStrokeWidth(2);
+        opDrawRect.setColor(0xFF08b1f2L);
+        tmpPicOps.offerLast(opDrawRect);
 
-        @Override
-        public void onDrag(float x, float y) {
-            tmpPicViewMatrix.postTranslate(x-preDragX, y-preDragY);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-            preDragX = x; preDragY = y;
-        }
+        // 在虚线矩形框正下方绘制删除图标
+        float transX = rectVal[0]+(rectVal[2]-rectVal[0]-del_pic_icon.getWidth())/2f;
+        float transY = opDrawRect.getBottom()+8;
+        Matrix matrix1 = new Matrix();
+        matrix1.setTranslate(transX, transY);
+        OpInsertPic insertDelPicIcon = new OpInsertPic();
+        insertDelPicIcon.setPic(del_pic_icon);
+        insertDelPicIcon.setMatrix(matrix1);
+        tmpPicOps.offerLast(insertDelPicIcon);
 
-        @Override
-        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
-            KLog.p("~~> factor=%s", factor);
-            tmpPicViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-        }
+        paintOpGeneratedListener.onRefresh();
 
-    };
+        int savedLayer = focusedLayer;
+        focusedLayer = LAYER_PIC_TMP;
+        picInsertBundleStuff = new PicInsertBundleStuff(opInsertPic, opDrawRect, insertDelPicIcon, savedLayer); // TODO 没必要，直接从tmpOps中取就好。
+        // 3秒过后画到图片画板上并清除临时画板
+        handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000); // TODO 如果3秒过程中用户按了返回键； TODO 用户有操作需更新时间戳
+    }
 
 
     private Matrix shapeInvertMatrix = new Matrix();
@@ -661,38 +737,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         OpInsertPic op = new OpInsertPic(path, matrix);
         op.setPic(bt);
         assignBasicInfo(op);
-        tmpPicPaintViewOps.offerLast(op);
 
-        // 在图片外围绘制一个虚线矩形框
-        OpDrawRect opDrawRect = new OpDrawRect();
-        opDrawRect.setLeft(transX - 5);
-        opDrawRect.setTop(transY - 5);
-        opDrawRect.setRight(transX + picW + 5);
-        opDrawRect.setBottom(transY + picH + 5);
-        opDrawRect.setLineStyle(OpDraw.DASH);
-        opDrawRect.setStrokeWidth(2);
-        opDrawRect.setColor(0xFF08b1f2L);
-        tmpPicPaintViewOps.offerLast(opDrawRect);
-
-        // 在虚线矩形框正下方绘制删除图标
-        transX = (getWidth()-del_pic_icon.getWidth())/2f;
-        transY = opDrawRect.getBottom()+8;
-        Matrix matrix1 = new Matrix();
-        matrix1.setTranslate(transX, transY);
-        OpInsertPic insertDelPicIcon = new OpInsertPic();
-        insertDelPicIcon.setPic(del_pic_icon);
-        insertDelPicIcon.setMatrix(matrix1);
-        assignBasicInfo(insertDelPicIcon);
-        tmpPicPaintViewOps.offerLast(insertDelPicIcon);
-
-        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-
-        int savedLayer = focusedLayer;
-        focusedLayer = LAYER_PIC_TMP;
-        picInsertBundleStuff = new PicInsertBundleStuff(op, opDrawRect, insertDelPicIcon, savedLayer); // TODO 没必要，直接从tmpOps中取就好。
-        // 3秒过后画到图片画板上并清除临时画板
-        handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000); // TODO 如果3秒过程中用户按了返回键； TODO 用户有操作需更新时间戳
-
+        if (null != paintOpGeneratedListener) {
+            drawForSelectingPic(op);
+        }
     }
 
     private class PicInsertBundleStuff{
@@ -723,16 +771,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     };
 
 
-    private PicInsertBundleStuff picInsertBundleStuff; // 不需要，直接从tmpPicPaintViewOps中取。
+    private PicInsertBundleStuff picInsertBundleStuff; //TODO 不需要，直接从tmpPicPaintViewOps中取。
     private void doInsertPic(){
         picInsertBundleStuff.opInsertPic.getMatrix().postConcat(tmpPicViewMatrix);
         // 清空tmpPaintView设置。
-        tmpPicPaintViewOps.clear();
+        tmpPicOps.clear();
         tmpPicViewMatrix.reset();
 
         KLog.p("new tmp op %s", picInsertBundleStuff.opInsertPic);
-        tmpPicOps.offerLast(picInsertBundleStuff.opInsertPic);
-        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+        picOps.offerLast(picInsertBundleStuff.opInsertPic);
+        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
         focusedLayer = picInsertBundleStuff.savedLayer;
         publisher.publish(picInsertBundleStuff.opInsertPic);
     }
@@ -741,6 +789,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private void delPic(String picId){
         // TODO 清掉tmpView.tempOps
         handler.removeMessages(MSGID_INSERT_PIC);
+        tmpPicViewMatrix.reset();
     }
 
     @Override
@@ -936,6 +985,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
     interface IOnPaintOpGeneratedListener{
         void onOp(OpPaint opPaint);
+        void onRefresh();
     }
 
 }

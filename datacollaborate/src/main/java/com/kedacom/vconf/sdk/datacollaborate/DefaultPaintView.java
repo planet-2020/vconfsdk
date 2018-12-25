@@ -133,9 +133,11 @@ public class DefaultPaintView extends TextureView{
 
                 case MotionEvent.ACTION_DOWN:
                     KLog.p("state=%s, ACTION_DOWN{%s}", state, event);
+                    if (!onEventListener.onDown(event.getX(), event.getY())){
+                        return false; // 放弃处理后续事件
+                    }
                     state = STATE_SHAKING;
                     lastPoint.set(event.getX(), event.getY()); // 记录起始点
-                    onEventListener.onDown(event.getX(), event.getY());
                     break;
 
                 case MotionEvent.ACTION_POINTER_DOWN:
@@ -232,8 +234,10 @@ public class DefaultPaintView extends TextureView{
 
 
     interface IOnEventListener {
-        /**第一个手指落下*/
-        default void onDown(float x, float y){}
+        /**第一个手指落下
+         * @return true——想要继续处理后续事件；false——放弃处理后续事件
+         * */
+        default boolean onDown(float x, float y){return true;}
         /**最后一个手指拿起*/
         default void onUp(float x, float y){}
         /**单指拖动开始*/
