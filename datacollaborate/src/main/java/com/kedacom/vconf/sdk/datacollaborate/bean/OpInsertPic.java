@@ -81,6 +81,8 @@ public class OpInsertPic extends OpPaint {
 
     public void setPic(Bitmap pic) {
         this.pic = pic;
+        picWidth = pic.getWidth();
+        picHeight = pic.getHeight();
     }
 
     public int getPicWidth() {

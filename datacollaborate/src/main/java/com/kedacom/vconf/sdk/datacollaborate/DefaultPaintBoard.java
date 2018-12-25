@@ -373,7 +373,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onUp(float x, float y) {
             if (!tmpPicOps.isEmpty()) {
-                handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000);
+                if (isInDelPicIcon(x, y)){
+                    delPic();
+                }else {
+                    handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000);
+                }
             }
         }
 
@@ -435,6 +439,39 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     }
 
+
+    private boolean isInDelPicIcon(float x, float y){
+        OpInsertPic opInsertPic = getDelPicIcon(DEL_PIC_ICON);
+        if (null == opInsertPic){
+            opInsertPic = getDelPicIcon(DEL_PIC_ICON_ACTIVE);
+            if (null == opInsertPic) {
+                return false;
+            }
+        }
+        float[] leftTop = new float[2];
+        leftTop[0] = 0; leftTop[1] = 0;
+        opInsertPic.getMatrix().mapPoints(leftTop);
+        KLog.p("x=%s, y=%s, leftTop[0]=%s, leftTop[1]=%s, picW=%s, picH=%s, matrix=%s", x, y,
+                leftTop[0], leftTop[1], opInsertPic.getPicWidth(), opInsertPic.getPicHeight(), opInsertPic.getMatrix());
+        if (leftTop[0]<x && x<leftTop[0]+opInsertPic.getPicWidth()
+                && leftTop[1]<y && y<leftTop[1]+opInsertPic.getPicHeight()){ // 判断点是否落在图片中
+            KLog.p("isInDelPicIcon = true");
+            return true;
+        }
+        return false;
+    }
+    private OpInsertPic getDelPicIcon(String picId){
+        for (OpPaint op : tmpPicOps){
+            if (op instanceof OpInsertPic){
+                OpInsertPic opInsertPic = ((OpInsertPic)op);
+                if (opInsertPic.getPicId().equals(picId)) {
+                    return opInsertPic;
+                }
+            }
+        }
+        return null;
+    }
+
     private OpInsertPic selectPic(float x, float y){
         float[] leftTop = new float[2];
         Iterator<OpPaint> it = picOps.descendingIterator();
@@ -457,6 +494,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     private int savedLayerBeforeEditPic;
+    private final String DEL_PIC_ICON = "del_pic_icon";
+    private final String DEL_PIC_ICON_ACTIVE = "del_pic_icon_active";
     private void editPic(OpInsertPic opInsertPic){
         // 绘制图片
         tmpPicOps.offerLast(opInsertPic);
@@ -482,6 +521,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         matrix1.setTranslate(transX, transY);
         OpInsertPic insertDelPicIcon = new OpInsertPic();
         insertDelPicIcon.setPic(del_pic_icon);
+        insertDelPicIcon.setPicId(DEL_PIC_ICON);
         insertDelPicIcon.setMatrix(matrix1);
         tmpPicOps.offerLast(insertDelPicIcon);
 
@@ -784,14 +824,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
 
-        publisher.publish(opInsertPic);
+        publisher.publish(opInsertPic); // TODO 拖动图片不是插入图片，代码中拖拽仍然是走的插入图片的逻辑
     }
 
 
-    private void delPic(String picId){
-        // TODO 清掉tmpView.tempOps
+    private void delPic(){
         handler.removeMessages(MSGID_INSERT_PIC);
+        focusedLayer = savedLayerBeforeEditPic;
+        tmpPicOps.clear();
         tmpPicViewMatrix.reset();
+        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+        // TODO publisher.publish(opDelPic); TODO 如果是刚插入就删除就不用走发布
     }
 
     @Override
