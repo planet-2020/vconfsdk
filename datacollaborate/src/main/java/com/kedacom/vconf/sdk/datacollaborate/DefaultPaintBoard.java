@@ -249,6 +249,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onLongPress(float x, float y) {
             KLog.p("~~> x=%s, y=%s", x, y);
             // TODO 获取点中的图片；从图片层删除；添加到tmp层
+            // picPaintView.getRenderOps();
         }
 
     };
@@ -619,10 +620,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private PicInsertBundleStuff picInsertBundleStuff;
     private void doInsertPic(){
-        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opInsertPic);
-        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opDrawRect);
-        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opInsertDelIcon);
+//        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opInsertPic);
+//        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opDrawRect);
+//        tmpPaintView.getTmpOps().remove(picInsertBundleStuff.opInsertDelIcon);
         picInsertBundleStuff.opInsertPic.getMatrix().postConcat(tmpPaintView.getMyMatrix());
+        // 清空tmpPaintView设置。XXX 目前只用于插入图片可以这样做，如果日后扩展为多用途则不可简单清空。
+        tmpPaintView.getTmpOps().clear();
+        tmpPaintView.getMyMatrix().reset();
+                
         KLog.p("new tmp op %s", picInsertBundleStuff.opInsertPic);
         picPaintView.getTmpOps().offerLast(picInsertBundleStuff.opInsertPic);
         if (null != paintOpGeneratedListener) {
