@@ -108,6 +108,13 @@ public class DefaultPaintView extends TextureView{
             }
 
             @Override
+            public boolean onSingleTapConfirmed(MotionEvent e) {
+                KLog.p("e=%s", e);
+                onEventListener.onSingleTap(e.getX(), e.getY());
+                return true;
+            }
+
+            @Override
             public void onLongPress(MotionEvent e) {
                 KLog.p("e=%s", e);
                 onEventListener.onLongPress(e.getX(), e.getY());
@@ -150,13 +157,12 @@ public class DefaultPaintView extends TextureView{
                         float focusY = (event.getY(1) + event.getY(0))/2;
                         lastMultiFingersFocusPoint.set(focusX, focusY);
                         state = STATE_MULTIFINGERS_SHAKING;
+                        onEventListener.onSecondPointerDown(event.getX(), event.getY());
                     }
-                    onEventListener.onPointerDown(event.getX(), event.getY());
                     break;
 
                 case MotionEvent.ACTION_POINTER_UP:
                     KLog.p("state=%s, ACTION_POINTER_UP{%s}", state, event);
-                    onEventListener.onPointerUp(event.getX(), event.getY());
                     if (2 == event.getPointerCount()){ // 二个手指其中一个抬起，只剩一个手指了
                         if (STATE_MULTIFINGERS_DRAGGING == state){
                             onEventListener.onMultiFingerDragEnd();
@@ -241,16 +247,16 @@ public class DefaultPaintView extends TextureView{
          * @return true——想要继续处理后续事件；false——放弃处理后续事件
          * */
         default boolean onDown(float x, float y){return true;}
-        /** 第二个、第三个……、第N个手指落下*/
-        default void onPointerDown(float x, float y){}
-        /**第N个、第N-1个……、第二个手指拿起*/
-        default void onPointerUp(float x, float y){}
+        /** 第二个手指落下*/
+        default void onSecondPointerDown(float x, float y){}
         /**第二个手指拿起，仅剩最后一个手指
          * @param x 最后一个手指的x坐标
          * @param y 最后一个手指的y坐标*/
         default void onLastPointerLeft(float x, float y){}
         /**最后一个手指拿起*/
         default void onUp(float x, float y){}
+        /**单击*/
+        default void onSingleTap(float x, float y){}
         /**单指拖动开始*/
         default void onDragBegin(float x, float y){}
         /**单指拖动*/

@@ -77,7 +77,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     // 删除图片按钮
     private Bitmap del_pic_icon;
     private Bitmap del_pic_active_icon;
-
+    private float density = 1;
 
     // 图层
     private int focusedLayer = LAYER_ALL;
@@ -109,6 +109,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
         super(context);
         this.context = context;
+        density = context.getResources().getDisplayMetrics().density;
         this.boardInfo = boardInfo;
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         View whiteBoard = layoutInflater.inflate(R.layout.default_whiteboard_layout, this);
@@ -131,6 +132,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             is = am.open("del_pic_active.png");
             del_pic_active_icon = BitmapFactory.decodeStream(is);
             is.close();
+            Matrix matrix = new Matrix();
+            matrix.postScale(density/2, density/2); // 切图是按hdpi给的故除2
+            del_pic_icon = Bitmap.createBitmap(del_pic_icon, 0, 0,
+                    del_pic_icon.getWidth(), del_pic_icon.getHeight(), matrix, true);
+            del_pic_active_icon = Bitmap.createBitmap(del_pic_active_icon, 0, 0,
+                    del_pic_active_icon.getWidth(), del_pic_active_icon.getHeight(), matrix, true);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -359,16 +366,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private float preDragX, preDragY;
         @Override
         public boolean onDown(float x, float y) {
-            // TODO 如果落在删除图标中则删除并置hasInsertPicMsg为false
             KLog.p("onDown tmp pic layer, x=%s. y=%s", x, y);
             if (tmpPicOps.isEmpty() && picOps.isEmpty()){
                 return false; // 放弃处理后续事件
             }
             if (!tmpPicOps.isEmpty()){
                 handler.removeMessages(MSGID_INSERT_PIC);
+                if (isInDelPicIcon(x, y)){
+                    setDelPicIcon(DEL_PIC_ICON_ACTIVE);
+                    if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+                }
             }
             return true;
         }
+
 
         @Override
         public void onUp(float x, float y) {
@@ -377,6 +388,34 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     delPic();
                 }else {
                     handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000);
+                }
+            }
+        }
+
+        @Override
+        public void onSecondPointerDown(float x, float y) {
+            if (!tmpPicOps.isEmpty()) {
+                setDelPicIcon(DEL_PIC_ICON);
+                if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+            }
+        }
+
+        @Override
+        public void onLastPointerLeft(float x, float y) {
+            if (!tmpPicOps.isEmpty()) {
+                if (isInDelPicIcon(x, y)){
+                    setDelPicIcon(DEL_PIC_ICON_ACTIVE);
+                    if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+                }
+            }
+        }
+
+        @Override
+        public void onSingleTap(float x, float y) {
+            if (!tmpPicOps.isEmpty()) {
+                if (!isInDashedRect(x, y)&&!isInDelPicIcon(x,y)){
+                    handler.removeMessages(MSGID_INSERT_PIC);
+                    doInsertPic();
                 }
             }
         }
@@ -439,37 +478,79 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     }
 
-
-    private boolean isInDelPicIcon(float x, float y){
-        OpInsertPic opInsertPic = getDelPicIcon(DEL_PIC_ICON);
-        if (null == opInsertPic){
-            opInsertPic = getDelPicIcon(DEL_PIC_ICON_ACTIVE);
-            if (null == opInsertPic) {
-                return false;
-            }
+    private boolean isInDashedRect(float x, float y){
+        OpDrawRect dashedRect = getDashedRect();
+        if (null == dashedRect) {
+            return false;
         }
-        float[] leftTop = new float[2];
-        leftTop[0] = 0; leftTop[1] = 0;
-        opInsertPic.getMatrix().mapPoints(leftTop);
-        KLog.p("x=%s, y=%s, leftTop[0]=%s, leftTop[1]=%s, picW=%s, picH=%s, matrix=%s", x, y,
-                leftTop[0], leftTop[1], opInsertPic.getPicWidth(), opInsertPic.getPicHeight(), opInsertPic.getMatrix());
-        if (leftTop[0]<x && x<leftTop[0]+opInsertPic.getPicWidth()
-                && leftTop[1]<y && y<leftTop[1]+opInsertPic.getPicHeight()){ // 判断点是否落在图片中
+        float[] rect = new float[4];
+        rect[0] = dashedRect.getLeft();
+        rect[1] = dashedRect.getTop();
+        rect[2] = dashedRect.getRight();
+        rect[3] = dashedRect.getBottom();
+        tmpPicViewMatrix.mapPoints(rect);
+        KLog.p("x=%s, y=%s, left=%s, top=%s, right=%s, bottom=%s, tmpPicViewMatrix=%s", x, y,
+                rect[0], rect[1], rect[2], rect[3], tmpPicViewMatrix);
+        if (rect[0]<x && x<rect[2]
+                && rect[1]<y && y<rect[3]){
             KLog.p("isInDelPicIcon = true");
             return true;
         }
         return false;
     }
-    private OpInsertPic getDelPicIcon(String picId){
+    private OpDrawRect getDashedRect(){
+        for (OpPaint op : tmpPicOps){
+            if (op instanceof OpDrawRect){
+                return (OpDrawRect) op;
+            }
+        }
+        return null;
+    }
+    private boolean isInDelPicIcon(float x, float y){
+        OpInsertPic opInsertPic = getDelPicIcon();
+        if (null == opInsertPic) {
+            return false;
+        }
+
+        float[] picRect = new float[4];
+        picRect[0] = 0;
+        picRect[1] = 0;
+        picRect[2] = opInsertPic.getPicWidth();
+        picRect[3] = opInsertPic.getPicHeight();
+        opInsertPic.getMatrix().mapPoints(picRect);
+        tmpPicViewMatrix.mapPoints(picRect);
+        KLog.p("x=%s, y=%s, left=%s, top=%s, right=%s, bottom=%s, picMatrix=%s, tmpPicViewMatrix=%s", x, y,
+                picRect[0], picRect[1], picRect[2], picRect[3], opInsertPic.getMatrix(), tmpPicViewMatrix);
+        if (picRect[0]<x && x<picRect[2]
+                && picRect[1]<y && y<picRect[3]){ // 判断点是否落在图片中
+            KLog.p("isInDelPicIcon = true");
+            return true;
+        }
+        return false;
+    }
+    private OpInsertPic getDelPicIcon(){
         for (OpPaint op : tmpPicOps){
             if (op instanceof OpInsertPic){
                 OpInsertPic opInsertPic = ((OpInsertPic)op);
-                if (opInsertPic.getPicId().equals(picId)) {
+                if (opInsertPic.getPicId().equals(DEL_PIC_ICON)
+                        ||opInsertPic.getPicId().equals(DEL_PIC_ICON_ACTIVE)) {
                     return opInsertPic;
                 }
             }
         }
         return null;
+    }
+    private void setDelPicIcon(String delPicIcon){
+        OpInsertPic opInsertPic = getDelPicIcon();
+        if (null != opInsertPic){
+            KLog.p("set %s", delPicIcon);
+            if (delPicIcon.equals(DEL_PIC_ICON)) {
+                opInsertPic.setPic(del_pic_icon);
+            }else{
+                opInsertPic.setPic(del_pic_active_icon);
+            }
+            opInsertPic.setPicName(delPicIcon);
+        }
     }
 
     private OpInsertPic selectPic(float x, float y){
@@ -517,12 +598,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         // 在虚线矩形框正下方绘制删除图标
         float transX = rectVal[0]+(rectVal[2]-rectVal[0]-del_pic_icon.getWidth())/2f;
         float transY = opDrawRect.getBottom()+8;
-        Matrix matrix1 = new Matrix();
-        matrix1.setTranslate(transX, transY);
+        Matrix matrix = new Matrix();
+        matrix.postTranslate(transX, transY);
         OpInsertPic insertDelPicIcon = new OpInsertPic();
         insertDelPicIcon.setPic(del_pic_icon);
         insertDelPicIcon.setPicId(DEL_PIC_ICON);
-        insertDelPicIcon.setMatrix(matrix1);
+        insertDelPicIcon.setMatrix(matrix);
         tmpPicOps.offerLast(insertDelPicIcon);
 
         paintOpGeneratedListener.onRefresh();
@@ -530,7 +611,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         savedLayerBeforeEditPic = focusedLayer;
         focusedLayer = LAYER_PIC_TMP;
         // 3秒过后画到图片画板上并清除临时画板
-        handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000); // TODO 如果3秒过程中用户按了返回键；
+        handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000);
     }
 
 

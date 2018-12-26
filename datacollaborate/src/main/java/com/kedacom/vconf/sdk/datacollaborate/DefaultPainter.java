@@ -598,7 +598,7 @@ public class DefaultPainter implements IPainter {
                     case INSERT_PICTURE:
                         OpInsertPic insertPicOp = (OpInsertPic) op;
                         if (null != insertPicOp.getPic()) {
-                            KLog.p("insertPicOp=%s", insertPicOp.getMatrix());
+                            KLog.p("insertPicOp=%s", insertPicOp);
                             canvas.drawBitmap(insertPicOp.getPic(), insertPicOp.getMatrix(), cfgPaint(insertPicOp));
                         }
                         break;
