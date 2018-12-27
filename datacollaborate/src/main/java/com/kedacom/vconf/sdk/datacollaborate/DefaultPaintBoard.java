@@ -155,7 +155,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             KLog.p("surface available");
             // 刷新
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
         @Override
@@ -182,7 +182,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     void setShapeViewMatrix(Matrix shapeViewMatrix) {
         this.shapeViewMatrix = shapeViewMatrix;
     }
-
+    
     MyConcurrentLinkedDeque<OpPaint> getTmpShapeOps() {
         return tmpShapeOps;
     }
@@ -286,7 +286,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             confirmShapeOp();
             KLog.p("new tmp op %s", adjustingShapeOp);
             tmpShapeOps.offerLast(adjustingShapeOp);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
             publisher.publish(adjustingShapeOp);
             adjustingShapeOp = null;
         }
@@ -296,7 +296,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onMultiFingerDrag(float dx, float dy) {
             KLog.p("~~> dx=%s, dy=%s", dx, dy);
             shapeViewMatrix.postTranslate(dx, dy);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
         @Override
@@ -311,7 +311,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
             KLog.p("~~> factor=%s", factor);
             shapeViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
             zoomRateChanged();
         }
 
@@ -374,7 +374,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 handler.removeMessages(MSGID_INSERT_PIC);
                 if (isInDelPicIcon(x, y)){
                     setDelPicIcon(DEL_PIC_ICON_ACTIVE);
-                    if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+                    if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
                 }
             }
             return true;
@@ -396,7 +396,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onSecondPointerDown(float x, float y) {
             if (!tmpPicOps.isEmpty()) {
                 setDelPicIcon(DEL_PIC_ICON);
-                if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+                if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
             }
         }
 
@@ -405,7 +405,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (!tmpPicOps.isEmpty()) {
                 if (isInDelPicIcon(x, y)){
                     setDelPicIcon(DEL_PIC_ICON_ACTIVE);
-                    if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+                    if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
                 }
             }
         }
@@ -437,7 +437,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 return;
             }
             tmpPicViewMatrix.postTranslate(x-preDragX, y-preDragY);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
             preDragX = x; preDragY = y;
         }
 
@@ -456,7 +456,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 return;
             }
             tmpPicViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
     };
@@ -606,7 +606,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         insertDelPicIcon.setMatrix(matrix);
         tmpPicOps.offerLast(insertDelPicIcon);
 
-        paintOpGeneratedListener.onRefresh();
+        paintOpGeneratedListener.onOp(null);
 
         savedLayerBeforeEditPic = focusedLayer;
         focusedLayer = LAYER_PIC_TMP;
@@ -903,7 +903,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         tmpPicOps.clear();
         tmpPicViewMatrix.reset();
 
-        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
 
         publisher.publish(opInsertPic); // TODO 拖动图片不是插入图片，代码中拖拽仍然是走的插入图片的逻辑
     }
@@ -914,7 +914,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         focusedLayer = savedLayerBeforeEditPic;
         tmpPicOps.clear();
         tmpPicViewMatrix.reset();
-        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
+        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         // TODO publisher.publish(opDelPic); TODO 如果是刚插入就删除就不用走发布
     }
 
@@ -925,6 +925,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         if (LAYER_ALL == layer) {
             Bitmap picBt = picPaintView.getBitmap();
             Bitmap shapeBt = shapePaintView.getBitmap();
+
+            if (picBt==null || shapeBt==null){ // TODO 暂时规避，排查原因
+                return null;
+            }
+
             int picW = picBt.getWidth();
             int picH = picBt.getHeight();
             int shapeW = shapeBt.getWidth();
@@ -1111,7 +1116,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
     interface IOnPaintOpGeneratedListener{
         void onOp(OpPaint opPaint);
-        void onRefresh();
     }
 
 }

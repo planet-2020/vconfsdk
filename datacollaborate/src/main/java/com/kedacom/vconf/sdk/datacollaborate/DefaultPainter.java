@@ -62,11 +62,6 @@ public class DefaultPainter implements IPainter {
             }
             refresh();
         }
-
-        @Override
-        public void onRefresh() {
-            refresh();
-        }
     };
 
 
