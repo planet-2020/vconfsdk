@@ -61,6 +61,8 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.UUID;
 
+import androidx.annotation.Nullable;
+
 
 public class DataCollaborateManager extends RequestAgent {
 
@@ -73,8 +75,11 @@ public class DataCollaborateManager extends RequestAgent {
     private boolean bPreparingSync = false;
 
     // 错误码
+    // 失败
     public static final int ErrCode_Failed = -1;
+    // 登录数据协作建链失败
     public static final int ErrCode_BuildLink4LoginFailed = -2;
+    // 加入数据协作建链失败
     public static final int ErrCode_BuildLink4ConfFailed = -3;
 
     private String curDcConfE164;
@@ -132,6 +137,7 @@ public class DataCollaborateManager extends RequestAgent {
 
         processorMap.put(Msg.DCAddOperator, this::onChangeOperatorsRsps);
         processorMap.put(Msg.DCDelOperator, this::onChangeOperatorsRsps);
+        processorMap.put(Msg.DCRejectApplyOperator, null);
         processorMap.put(Msg.DCApplyOperator, this::onChangeOperatorsRsps);
         processorMap.put(Msg.DCCancelOperator, this::onChangeOperatorsRsps);
 
@@ -221,15 +227,30 @@ public class DataCollaborateManager extends RequestAgent {
      * @param serverIp 数据协作服务器Ip
      * @param port 数据协作服务器port
      * @param terminalType 己端终端类型
-     * @param resultListener 登陆结果监听器*/
+     * @param resultListener 登陆结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_BuildLink4LoginFailed }
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);
+     **/
     public void login(String serverIp, int port, ETerminalType terminalType, IResultListener resultListener){
         this.terminalType = ToDoConverter.toTransferObj(terminalType);
         req(Msg.DCLogin, resultListener, new TDCSRegInfo(serverIp, port, this.terminalType));
     }
 
     /**注销数据协作
-     * @param resultListener 注销结果监听器*/
-    public void logout(IResultListener resultListener){
+     * @param resultListener 注销结果监听器。可以为null，若为null表示不关注注销结果。
+     *                        成功返回结果null：
+     *                        resultListener.onSuccess(null);
+     *
+     *                        失败返回错误码：
+     *                        {@link #ErrCode_Failed}
+     *                        resultListener.onFailed(errorCode);
+     * */
+    public void logout(@Nullable IResultListener resultListener){
         req(Msg.DCLogout, resultListener);
         cachedPaintOps.clear();
         curDcConfE164 = null;
@@ -364,17 +385,27 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    /**添加协作方
+    /**（管理方）添加协作方
      * @param memberE164 待添加的成员e164
-     * */
+     * @param resultListener 结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
     public void addOperator(String memberE164, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
         tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, true, false));
         req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
-    /**批量添加协作方
+    /**（管理方）批量添加协作方
      * @param memberE164List 待添加的成员e164列表
-     * */
+     * @param resultListener 结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
     public void addOperator(List<String> memberE164List, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
         for (String e164 : memberE164List){
@@ -383,16 +414,28 @@ public class DataCollaborateManager extends RequestAgent {
         req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
 
-    /**删除协作方
-     * @param memberE164 待删除成员e164*/
+    /**（管理方）删除协作方
+     * @param memberE164 待删除成员e164
+     * @param resultListener 结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
     public void delOperator(String memberE164, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
         tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, true, false));
         req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
 
-    /**批量删除协作方
-     * @param memberE164List 待删除成员e164列表*/
+    /**（管理方）批量删除协作方
+     * @param memberE164List 待删除成员e164列表
+     * @param resultListener 结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
     public void delOperator(List<String> memberE164List, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
         for (String e164 : memberE164List){
@@ -400,26 +443,38 @@ public class DataCollaborateManager extends RequestAgent {
         }
         req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
-
     /**
-     * 拒绝协作权申请
-     * @param memberE164List 拒绝对象的e164列表
+     * （管理方）拒绝协作权申请
+     * @param memberE164 被拒绝对象的e164
      * */
-    public void rejectApplyOperator(List<String> memberE164List, IResultListener resultListener){
+    public void rejectApplyOperator(String memberE164){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        for (String e164 : memberE164List){
-            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", terminalType, true, true, false));
-        }
-        req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, false, false));
+        req(Msg.DCRejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
 
-    /**申请协作方
-     * @param e164 申请者e164*/
+
+    /**（普通方）申请协作权
+     * @param e164 申请者e164
+     * @param resultListener 申请协作方结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
     public void applyForOperator(String e164, IResultListener resultListener){
         req(Msg.DCApplyOperator, resultListener, e164);
     }
-    /**取消协作方
-     * @param e164 申请者e164*/
+    /**（协作方）释放协作权
+     * @param e164 申请者e164
+     * @param resultListener 取消协作方结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
     public void cancelOperator(String e164, IResultListener resultListener){
         req(Msg.DCCancelOperator, resultListener, e164);
     }
@@ -816,7 +871,8 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    /**发布绘制操作*/
+    /**发布绘制操作
+     * @param op 绘制操作*/
     public void publishPaintOp(OpPaint op){
         KLog.p("publish op=%s", op);
         Object to = ToDoConverter.toPaintTransferObj(op);
@@ -1104,14 +1160,27 @@ public class DataCollaborateManager extends RequestAgent {
 
 
 
+    /**
+     * 注册加入数据协作结果监听器。
+     * NOTE：建议在入会成功后调用。
+     * @param onDcConfJoinResultListener 加入数据协作结果监听器。{@link IOnDcConfJoinResultListener}
+     * */
     public void addOnDcConfJoinResultListener(IOnDcConfJoinResultListener onDcConfJoinResultListener){
         subscribe(Msg.DCConfCreated, onDcConfJoinResultListener);
     }
 
+    /**
+     * 注册画板操作监听器
+     * @param onBoardOpListener 画板操作通知监听器。{@link IOnBoardOpListener}
+     * */
     public void addBoardOpListener(IOnBoardOpListener onBoardOpListener){
         subscribe(boardOpNtfs, onBoardOpListener);
     }
 
+    /**
+     * 注册绘制操作监听器
+     * @param onPaintOpListener 绘制操作通知监听器
+     * */
     public void addPaintOpListener(IOnPaintOpListener onPaintOpListener){
         subscribe(paintOpNtfs, onPaintOpListener);
     }
@@ -1125,6 +1194,8 @@ public class DataCollaborateManager extends RequestAgent {
      * 绘制操作通知监听器
      * */
     public interface IOnPaintOpListener extends ILifecycleOwner {
+        /**
+         * @param op 绘制操作*/
         void onPaintOp(OpPaint op);
     }
 
@@ -1132,8 +1203,16 @@ public class DataCollaborateManager extends RequestAgent {
      * 画板操作通知监听器
      * */
     public interface IOnBoardOpListener extends ILifecycleOwner{
+        /**画板创建通知
+         * @param boardInfo 画板信息 {@link BoardInfo}*/
         void onBoardCreated(BoardInfo boardInfo);
+        /**
+         * 画板删除通知
+         * @param boardId 画板Id {@link BoardInfo#id}*/
         void onBoardDeleted(String boardId);
+        /**
+         * 画板切换通知
+         * @param boardId 画板Id {@link BoardInfo#id}*/
         void onBoardSwitched(String boardId);
     }
 
@@ -1141,7 +1220,13 @@ public class DataCollaborateManager extends RequestAgent {
      * 加入数据协作结果监听器
      * */
     public interface IOnDcConfJoinResultListener extends ILifecycleOwner{
+        /**
+         * @param result 入会成功结果。{@link CreateConfResult}
+         * */
         void onSuccess(CreateConfResult result);
+        /**
+         * @param errCode 失败原因 {@link #ErrCode_Failed}
+         * */
         void onFailed(int errCode);
     }
 
