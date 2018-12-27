@@ -306,7 +306,13 @@ public class DataCollaborateManager extends RequestAgent {
      * @param confType 会议类型
      * @param adminE164 主席e164
      * @param members 与会成员
-     * @param resultListener 创会结果监听器*/
+     * @param resultListener 结果监听器。
+     *                       成功返回创会信息{@link CreateConfResult}
+     *                       resultListener.onSuccess(CreateConfResult);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       {@link #ErrCode_BuildLink4ConfFailed}
+     *                       resultListener.onFailed(errorCode);*/
     public void createDcConf(String confE164, String confName, EDcMode dcMode, EConfType confType,
                              String adminE164, List<DCMember> members, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
@@ -386,7 +392,7 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     /**（管理方）添加协作方
-     * @param memberE164 待添加的成员e164
+     * @param memberE164 待添加对象e164
      * @param resultListener 结果监听器。
      *                       成功返回结果null：
      *                       resultListener.onSuccess(null);
@@ -399,7 +405,7 @@ public class DataCollaborateManager extends RequestAgent {
         req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
     /**（管理方）批量添加协作方
-     * @param memberE164List 待添加的成员e164列表
+     * @param memberE164List 待添加对象e164列表
      * @param resultListener 结果监听器。
      *                       成功返回结果null：
      *                       resultListener.onSuccess(null);
@@ -415,7 +421,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     /**（管理方）删除协作方
-     * @param memberE164 待删除成员e164
+     * @param memberE164 待删除对象e164
      * @param resultListener 结果监听器。
      *                       成功返回结果null：
      *                       resultListener.onSuccess(null);
@@ -429,7 +435,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     /**（管理方）批量删除协作方
-     * @param memberE164List 待删除成员e164列表
+     * @param memberE164List 待删除对象e164列表
      * @param resultListener 结果监听器。
      *                       成功返回结果null：
      *                       resultListener.onSuccess(null);
@@ -456,10 +462,9 @@ public class DataCollaborateManager extends RequestAgent {
 
     /**（普通方）申请协作权
      * @param e164 申请者e164
-     * @param resultListener 申请协作方结果监听器。
+     * @param resultListener 结果监听器。
      *                       成功返回结果null：
      *                       resultListener.onSuccess(null);
-     *
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
      *                       resultListener.onFailed(errorCode);*/
@@ -468,10 +473,9 @@ public class DataCollaborateManager extends RequestAgent {
     }
     /**（协作方）释放协作权
      * @param e164 申请者e164
-     * @param resultListener 取消协作方结果监听器。
+     * @param resultListener 结果监听器。
      *                       成功返回结果null：
      *                       resultListener.onSuccess(null);
-     *
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
      *                       resultListener.onFailed(errorCode);*/
