@@ -269,13 +269,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onDragBegin(float x, float y) {
-//            KLog.p("~~> x=%s, y=%s", x, y);
+            KLog.p("~~> x=%s, y=%s", x, y);
             createShapeOp(x, y);
         }
 
         @Override
         public void onDrag(float x, float y) {
-//            KLog.p("~~> x=%s, y=%s", x, y);
+            KLog.p("~~> x=%s, y=%s", x, y);
             adjustShapeOp(x, y);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(adjustingShapeOp);
         }
@@ -294,7 +294,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onMultiFingerDrag(float dx, float dy) {
-//            KLog.p("~~> dx=%s, dy=%s", dx, dy);
+            KLog.p("~~> dx=%s, dy=%s", dx, dy);
             shapeViewMatrix.postTranslate(dx, dy);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
         }
@@ -309,7 +309,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
-//            KLog.p("~~> factor=%s", factor);
+            KLog.p("~~> factor=%s", factor);
             shapeViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onRefresh();
             zoomRateChanged();

@@ -458,6 +458,17 @@ public class DataCollaborateManager extends RequestAgent {
         tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, false, false));
         req(Msg.DCRejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
+    /**
+     * （管理方）批量拒绝协作权申请
+     * @param memberE164List 被拒绝对象的e164列表
+     * */
+    public void rejectApplyOperator(List<String> memberE164List){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        for (String memberE164 : memberE164List) {
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, false, false));
+        }
+        req(Msg.DCRejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+    }
 
 
     /**（普通方）申请协作权
