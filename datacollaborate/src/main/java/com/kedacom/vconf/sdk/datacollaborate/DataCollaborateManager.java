@@ -97,8 +97,12 @@ public class DataCollaborateManager extends RequestAgent {
     };
 
     // 协作权相关通知
-    private static final Msg[] operatePermissionNtfs = new Msg[]{
+    private static final Msg[] operatorNtfs = new Msg[]{
+            Msg.DCUserJoinedNtf,
+            Msg.DCOperatorAddedNtf,
+            Msg.DCOperatorDeletedNtf,
             Msg.DCApplyOperatorNtf,
+            Msg.DCApplyOperatorRejectedNtf,
     };
 
     // 画板相关通知
@@ -191,6 +195,7 @@ public class DataCollaborateManager extends RequestAgent {
     protected Map<Msg[], NtfProcessor> ntfsProcessors() {
         Map<Msg[], NtfProcessor> processorMap = new HashMap<>();
         processorMap.put(sessionNtfs, this::onSessionNtfs);
+        processorMap.put(operatorNtfs, this::onOperatorNtfs);
         processorMap.put(boardOpNtfs, this::onBoardNtfs);
         processorMap.put(paintOpNtfs, this::onPaintNtfs);
         return processorMap;
@@ -696,12 +701,32 @@ public class DataCollaborateManager extends RequestAgent {
         }
     }
 
-    private void onOperatorsChangedNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
+    private void onOperatorNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         switch (ntfId){
+            case DCUserJoinedNtf:
+                for (Object listener : listeners){
+                    ((IOnOperatorEventListener)listener).onUserJoinedNtf(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
+                }
+                break;
+            case DCOperatorAddedNtf:
+                for (Object listener : listeners){
+                    ((IOnOperatorEventListener)listener).onOperatorAdded(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
+                }
+                break;
+            case DCOperatorDeletedNtf:
+                for (Object listener : listeners){
+                    ((IOnOperatorEventListener)listener).onOperatorDeleted(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
+                }
+                break;
             case DCApplyOperatorNtf:
                 for (Object listener : listeners){
-                    ((IOnApplyOperatorListener)listener).onApplyOperator(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
+                    ((IOnOperatorEventListener)listener).onApplyOperator(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
+                }
+                break;
+            case DCApplyOperatorRejectedNtf:
+                for (Object listener : listeners){
+                    ((IOnOperatorEventListener)listener).onApplyOperatorRejected();
                 }
                 break;
         }
@@ -1206,6 +1231,13 @@ public class DataCollaborateManager extends RequestAgent {
     public void addSessionEventListener(IOnSessionEventListener onSessionEventListener){
         subscribe(sessionNtfs, onSessionEventListener);
     }
+    /**
+     * 注册协作权相关通知监听器
+     * @param onOperatorEventListener 协作权相关通知监听器
+     * */
+    public void addOperatorEventListener(IOnOperatorEventListener onOperatorEventListener){
+        subscribe(Msg.DCApplyOperatorNtf, onOperatorEventListener);
+    }
 
     /**
      * 注册画板操作监听器
@@ -1221,10 +1253,6 @@ public class DataCollaborateManager extends RequestAgent {
      * */
     public void addPaintOpListener(IOnPaintOpListener onPaintOpListener){
         subscribe(paintOpNtfs, onPaintOpListener);
-    }
-
-    public void addApplyOperatorListener(IOnApplyOperatorListener onApplyOperatorListener){
-        subscribe(Msg.DCApplyOperatorNtf, onApplyOperatorListener);
     }
 
 
@@ -1276,10 +1304,33 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     /**
-     * 申请协作权通知监听器
+     * 协作权相关通知监听器
      * */
-    public interface IOnApplyOperatorListener extends ILifecycleOwner{
+    public interface IOnOperatorEventListener extends ILifecycleOwner{
+        /**
+         * （所有与会方收到）成员加入数据协作会议通知
+         * @param member 成员信息
+         * */
+        void onUserJoinedNtf(DCMember member);
+        /**
+         * （管理方收到）成员申请协作权通知
+         * @param member 申请者信息
+         * */
         void onApplyOperator(DCMember member);
+        /**
+         *  （申请方收到）申请协作权被拒通知
+         * */
+        void onApplyOperatorRejected();
+        /**
+         * （所有与会方收到）协作方被添加通知
+         * @param member 被添加的协作方信息
+         * */
+        void onOperatorAdded(DCMember member);
+        /**
+         * （所有与会方收到）协作方被删除通知
+         * @param member 被删除的协作方信息
+         * */
+        void onOperatorDeleted(DCMember member);
     }
 
     private class QueryAllBoardsInnerListener implements IResultListener{

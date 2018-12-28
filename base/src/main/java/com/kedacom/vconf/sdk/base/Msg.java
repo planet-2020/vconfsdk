@@ -264,16 +264,35 @@ public enum Msg {
 				name = "DcsCancelOper_Rsp")
     DCCancelOperatorRsp,
 
-    /**成员（向主席）申请协作权通知*/
-    @Notification(clz = TDCSUserInfo.class,
-					name = "DcsUserApplyOper_Ntf")
-    DCApplyOperatorNtf, // TODO 待调
-
     /**（主席）拒绝成员申请作为协作方的请求*/
     @Request(name = "DCSRejectOperatorCmd",
             methodOwner = DcsCtrl,
 				paras=TDCSOperator.class)
     DCRejectApplyOperator, // TODO 待调
+
+    /**用户加入数据协作通知*/
+    @Notification(clz = TDCSUserInfo.class,
+            name = "DcsUserJoinConf_Ntf")
+    DCUserJoinedNtf, // TODO 待调
+
+    /**成员（向主席）申请协作权通知*/
+    @Notification(clz = TDCSUserInfo.class,
+            name = "DcsUserApplyOper_Ntf")
+    DCApplyOperatorNtf, // TODO 待调
+
+    /**（主席）添加协作方通知*/
+    @Notification(clz = TDCSUserInfo.class,
+            name = "DcsAddOperator_Ntf")
+    DCOperatorAddedNtf, // TODO 待调
+    /**（主席）删除协作方通知*/
+    @Notification(clz = TDCSUserInfo.class,
+            name = "DcsDelOperator_Ntf")
+    DCOperatorDeletedNtf, // TODO 待调
+    /**申请协作权被拒绝通知*/
+    @Notification(clz = TDCSUserInfo.class,
+            name = "DcsRejectOper_Ntf")
+    DCApplyOperatorRejectedNtf, // TODO 待调
+
 
     /**获取数据协作会议中的所有成员（包括协作方普通方）*/
     @Request( name = "DCSGetUserListReq",   //参数：StringBuffer类型 e164
