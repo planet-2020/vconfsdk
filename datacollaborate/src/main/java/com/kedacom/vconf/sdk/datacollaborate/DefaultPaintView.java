@@ -32,8 +32,8 @@ public class DefaultPaintView extends TextureView{
         private static final int STATE_DRAGGING = 2;
         private static final int STATE_MULTIFINGERS_SHAKING = 3;
         private static final int STATE_MULTIFINGERS_DRAGGING = 4;
-        private static final int STATE_SCALING = 5;
-        private static final int STATE_SCALING_AND_MULTIFINGERS_DRAGGING = 6;
+        private static final int STATE_SCALING = 6;
+        private static final int STATE_SCALING_AND_MULTIFINGERS_DRAGGING = 7;
         private int state = STATE_IDLE;
 
         private PointF lastPoint = new PointF();	    // 上一个单指点
@@ -48,44 +48,42 @@ public class DefaultPaintView extends TextureView{
 
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
-//                KLog.p("focusX=%s, focusY=%s, isInProgress=%s, currentSpan=%s", detector.getFocusX(), detector.getFocusY(), detector.isInProgress(), detector.getCurrentSpan());
+//                KLog.p("focusX=%s, focusY=%s, lastMultiFingersFocusPoint.x=%s, lastMultiFingersFocusPoint.y=%s", detector.getFocusX(), detector.getFocusY(), lastMultiFingersFocusPoint.x, lastMultiFingersFocusPoint.y);
 //                KLog.p("scale=%s, lastScale=%s, |scale-lastScale|=%s", detector.getScaleFactor(), lastScaleFactor, Math.abs(detector.getScaleFactor()-lastScaleFactor));
                 if (!detector.isInProgress()){
+                    KLog.p(KLog.WARN, "!detector.isInProgress()");
                     return false;
                 }
 
                 scaleFactor = detector.getScaleFactor();
-                if (Math.abs(scaleFactor-lastScaleFactor) < 0.001){
-                    return false;
+                if (Math.abs(scaleFactor-lastScaleFactor) > 0.001){
+                    onEventListener.onScale(scaleFactor, scaleCenterX, scaleCenterY);
+                    lastScaleFactor = scaleFactor;
                 }
-                lastScaleFactor = scaleFactor;
 
                 float focusX = detector.getFocusX();
                 float focusY = detector.getFocusY();
-                if (Math.abs(focusX-lastMultiFingersFocusPoint.x)>10
-                        || Math.abs(focusY-lastMultiFingersFocusPoint.y)>10) {
-                    // 两次拖拽之间距离不可能过大，过大是手指数量有变化，这种情况需过滤掉。
-                    lastMultiFingersFocusPoint.x = focusX; lastMultiFingersFocusPoint.y = focusY;
-                    return false;
-                }
                 if (!isTolerable(lastMultiFingersFocusPoint.x, lastMultiFingersFocusPoint.y, focusX, focusY)) {
-                    onEventListener.onMultiFingerDrag(focusX-lastMultiFingersFocusPoint.x, focusY-lastMultiFingersFocusPoint.y);
+                    onEventListener.onMultiFingerDrag(focusX - lastMultiFingersFocusPoint.x, focusY - lastMultiFingersFocusPoint.y);
                     lastMultiFingersFocusPoint.x = focusX; lastMultiFingersFocusPoint.y = focusY;
                 }
 
-                onEventListener.onScale(scaleFactor, scaleCenterX, scaleCenterY);
                 return true;
             }
 
             @Override
             public boolean onScaleBegin(ScaleGestureDetector detector) {
-                KLog.p("state=%s, focusX = %s, focusY =%s", state, detector.getFocusX(), detector.getFocusY());
+                float focusX = detector.getFocusX();
+                float focusY = detector.getFocusY();
+                float scale = detector.getScaleFactor();
+//                KLog.p("state=%s, focusX = %s, focusY =%s, scale=%s", state, focusX, focusY, scale);
                 if (STATE_MULTIFINGERS_SHAKING == state){
                     onEventListener.onMultiFingerDragBegin();
                 }
                 state = STATE_SCALING_AND_MULTIFINGERS_DRAGGING;
-                scaleCenterX = getWidth()/2;
-                scaleCenterY = getHeight()/2;
+                scaleCenterX = getWidth()/2; scaleCenterY = getHeight()/2;
+                lastMultiFingersFocusPoint.x = focusX; lastMultiFingersFocusPoint.y = focusY;
+                lastScaleFactor = scaleFactor = scale;
                 onEventListener.onScaleBegin();
                 return true;
             }
@@ -103,20 +101,17 @@ public class DefaultPaintView extends TextureView{
         private class MyOnGestureListener extends GestureDetector.SimpleOnGestureListener{
             @Override
             public boolean onDown(MotionEvent e) {
-                KLog.p("e=%s", e);
                 return true; // 返回true表示想要处理后续手势
             }
 
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
-                KLog.p("e=%s", e);
                 onEventListener.onSingleTap(e.getX(), e.getY());
                 return true;
             }
 
             @Override
             public void onLongPress(MotionEvent e) {
-                KLog.p("e=%s", e);
                 onEventListener.onLongPress(e.getX(), e.getY());
             }
         }
@@ -128,13 +123,6 @@ public class DefaultPaintView extends TextureView{
             if (null == onEventListener){
                 return false;
             }
-            scaleGestureDetector.onTouchEvent(event);
-            if (STATE_SCALING == state
-                    || STATE_SCALING_AND_MULTIFINGERS_DRAGGING == state){
-                return true;
-            }
-
-            gestureDetector.onTouchEvent(event);
 
             switch (event.getActionMasked()) {
 
@@ -221,6 +209,10 @@ public class DefaultPaintView extends TextureView{
                     KLog.p("Discarded ACTION{%s}", event.getActionMasked());
                     break;
             }
+
+            scaleGestureDetector.onTouchEvent(event);
+
+            gestureDetector.onTouchEvent(event);
 
             return true;
         }
