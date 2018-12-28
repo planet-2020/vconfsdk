@@ -96,6 +96,11 @@ public class DataCollaborateManager extends RequestAgent {
             Msg.DCReleaseConfNtf,
     };
 
+    // 协作权相关通知
+    private static final Msg[] operatePermissionNtfs = new Msg[]{
+            Msg.DCApplyOperatorNtf,
+    };
+
     // 画板相关通知
     private static final Msg[] boardOpNtfs = new Msg[]{
             Msg.DCCurrentBoardNtf,
@@ -178,8 +183,6 @@ public class DataCollaborateManager extends RequestAgent {
     @Override
     protected Map<Msg, NtfProcessor> ntfProcessors() {
         Map<Msg, NtfProcessor> processorMap = new HashMap<>();
-        processorMap.put(Msg.DCApplyOperatorNtf, this::onOperatorsChangedNtfs);
-        processorMap.put(Msg.DCConfCreated, this::onNtfs);
         processorMap.put(Msg.DCPicDownloadableNtf, this::onNtfs);
         return processorMap;
     }
@@ -187,6 +190,7 @@ public class DataCollaborateManager extends RequestAgent {
     @Override
     protected Map<Msg[], NtfProcessor> ntfsProcessors() {
         Map<Msg[], NtfProcessor> processorMap = new HashMap<>();
+        processorMap.put(sessionNtfs, this::onSessionNtfs);
         processorMap.put(boardOpNtfs, this::onBoardNtfs);
         processorMap.put(paintOpNtfs, this::onPaintNtfs);
         return processorMap;
@@ -304,6 +308,154 @@ public class DataCollaborateManager extends RequestAgent {
 
     }
 
+    private void onSessionNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
+        switch (ntfId){
+            // 入会结果通知
+            case DCConfCreated:
+                TDCSCreateConfResult dcConfinfo = (TDCSCreateConfResult) ntfContent;
+                if (!dcConfinfo.bSuccess){
+                    // 入会失败
+                    curDcConfE164 = null;
+                    KLog.p(KLog.ERROR,"join data collaborate conf{%s, %s} failed", dcConfinfo.achConfName, dcConfinfo.achConfE164);
+                    for (Object listener : listeners){
+                        ((IOnSessionEventListener)listener).onJoinDcFailed(ErrCode_Failed);
+                    }
+                    return;
+                }
+
+                curDcConfE164 = dcConfinfo.achConfE164;
+                DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj(dcConfinfo);
+                KLog.p("dcConfInfo: %s", dcConfInfo);
+                for (Object listener : listeners){
+                    ((IOnSessionEventListener)listener).onJoinDcSuccess(dcConfInfo);
+                }
+
+                // 入会成功后准备同步会议中已有的图元。（入会成功后实时的图元操作可能在任意时间点到达）
+                bPreparingSync = true;
+                cachedPaintOps.clear();
+
+                // 获取所有画板
+                req(Msg.DCQueryAllBoards, new QueryAllBoardsInnerListener() {
+                            @Override
+                            public void onArrive() {
+                                /* 获取所有画板结束，准备阶段结束*/
+                                bPreparingSync = false;
+                            }
+
+                            @Override
+                            public void onSuccess(Object result) {
+                                bGotAllBoard = true;
+                                List<TDCSBoardInfo> dcBoards = (List<TDCSBoardInfo>) result;
+                                // 检查准备阶段缓存的图元所在画板是否仍存在，若不存在则删除之。
+                                Iterator it = cachedPaintOps.keySet().iterator();
+                                while (it.hasNext()){
+                                    boolean bMatched = false;
+                                    String tmpId = (String) it.next();
+                                    for (TDCSBoardInfo board : dcBoards){
+                                        if (tmpId.equals(board.achTabId)){
+                                            bMatched = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!bMatched){
+                                        it.remove();
+                                    }
+                                }
+
+                                // 上报用户所有已创建的画板
+                                Set<Object> boardCreatedListeners = getNtfListeners(Msg.DCBoardCreatedNtf);
+                                if (null != boardCreatedListeners && !boardCreatedListeners.isEmpty()){
+                                    for (TDCSBoardInfo board : dcBoards) {
+                                        BoardInfo boardInfo = ToDoConverter.fromTransferObj(board);
+                                        for (Object listener : boardCreatedListeners) {
+                                            ((IOnBoardOpListener) listener).onBoardCreated(boardInfo);
+                                        }
+                                    }
+                                }
+
+                                // 上报用户切换画板
+                                if (null != curBoardId){ // “当前画板”通知已早于此到达，彼时还无法通知用户“切换画板”，因为彼时尚未上报用户画板已创建，所以此时我们补上通知“切换画板”。
+                                    Set<Object> boardSwitchedListeners = getNtfListeners(Msg.DCBoardSwitchedNtf);
+                                    if (null != boardSwitchedListeners && !boardSwitchedListeners.isEmpty()) {
+                                        for (Object listener : boardSwitchedListeners) {
+                                            ((IOnBoardOpListener) listener).onBoardSwitched(curBoardId);
+                                        }
+                                    }
+                                    curBoardId = null;
+                                }
+
+                                // 为各画板创建图元缓存队列（刚入会需同步会议中已有图元）
+                                for (TDCSBoardInfo board : dcBoards){
+                                    PriorityQueue<OpPaint> ops = cachedPaintOps.get(board.achTabId);
+                                    if (null == ops){ // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
+                                        ops = new PriorityQueue<>();
+                                        cachedPaintOps.put(board.achTabId, ops);
+                                    }
+                                }
+
+                                // 开始同步所有画板的已有图元
+                                for (TDCSBoardInfo board : dcBoards){
+
+                                    // 下载每个画板的已有图元
+                                    req(Msg.DCDownload, new IResultListener() {
+                                                @Override
+                                                public void onSuccess(Object result) {
+                                                    // 后续会批量上报当前画板已有图元，直到收到End消息为止。此处我们开启超时机制防止收不到End消息
+                                                    Message msg = Message.obtain();
+                                                    msg.what = MsgID_SynchronizingTimeout;
+                                                    msg.obj = board.achTabId;
+                                                    handler.sendMessageDelayed(msg, 10*1000);
+                                                }
+
+                                                @Override
+                                                public void onFailed(int errorCode) {
+//                                    KLog.p(KLog.ERROR, "download paint element for board %s failed!", board.id);
+//                                    cachedPaintOps.remove(board.id);
+                                                }
+
+                                                @Override
+                                                public void onTimeout() {
+//                                    KLog.p(KLog.ERROR, "download paint element for board %s timeout!", board.id);
+//                                    cachedPaintOps.remove(board.id);
+                                                }
+                                            },
+
+                                            new BaseTypeString(board.achElementUrl),
+                                            new TDCSFileInfo(null, null, board.achTabId, true, 0)
+                                    );
+
+                                }
+
+                            }
+
+                            @Override
+                            public void onFailed(int errorCode) {
+//                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s failed!", dcConfinfo.confE164);
+                            }
+
+                            @Override
+                            public void onTimeout() {
+//                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s timeout!", dcConfinfo.confE164);
+                            }
+                        },
+
+                        dcConfInfo.getConfE164()
+                );
+
+                break;
+
+            // 数据协作结束通知
+            case DCReleaseConfNtf:
+                BaseTypeString result = (BaseTypeString) ntfContent;
+                if (result.basetype.equals(curDcConfE164)){
+                    for (Object listener : listeners){
+                        ((IOnSessionEventListener)listener).onDcReleased();
+                    }
+                    curDcConfE164 = null;
+                }
+                break;
+        }
+    }
 
     /**创建数据协作
      * @param confE164 会议e164
@@ -1002,140 +1154,6 @@ public class DataCollaborateManager extends RequestAgent {
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
         KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         switch (ntfId){
-            // 入会结果通知
-            case DCConfCreated:
-                TDCSCreateConfResult dcConfinfo = (TDCSCreateConfResult) ntfContent;
-
-                if (!dcConfinfo.bSuccess){
-                    // 入会失败
-                    curDcConfE164 = null;
-                    KLog.p(KLog.ERROR,"join data collaborate conf{%s, %s} failed", dcConfinfo.achConfName, dcConfinfo.achConfE164);
-                    for (Object listener : listeners){
-                        ((IOnSessionEventListener)listener).onJoinDcFailed(ErrCode_Failed);
-                    }
-                    return;
-                }
-
-                curDcConfE164 = dcConfinfo.achConfE164;
-                DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj(dcConfinfo);
-                KLog.p("dcConfInfo: %s", dcConfInfo);
-                for (Object listener : listeners){
-                    ((IOnSessionEventListener)listener).onJoinDcSuccess(dcConfInfo);
-                }
-
-                // 入会成功后准备同步会议中已有的图元。（入会成功后实时的图元操作可能在任意时间点到达）
-                bPreparingSync = true;
-                cachedPaintOps.clear();
-
-                // 获取所有画板
-                req(Msg.DCQueryAllBoards, new QueryAllBoardsInnerListener() {
-                    @Override
-                    public void onArrive() {
-                        /* 获取所有画板结束，准备阶段结束*/
-                        bPreparingSync = false;
-                    }
-
-                    @Override
-                    public void onSuccess(Object result) {
-                        bGotAllBoard = true;
-                        List<TDCSBoardInfo> dcBoards = (List<TDCSBoardInfo>) result;
-                        // 检查准备阶段缓存的图元所在画板是否仍存在，若不存在则删除之。
-                        Iterator it = cachedPaintOps.keySet().iterator();
-                        while (it.hasNext()){
-                            boolean bMatched = false;
-                            String tmpId = (String) it.next();
-                            for (TDCSBoardInfo board : dcBoards){
-                                if (tmpId.equals(board.achTabId)){
-                                    bMatched = true;
-                                    break;
-                                }
-                            }
-                            if (!bMatched){
-                                it.remove();
-                            }
-                        }
-
-                        // 上报用户所有已创建的画板
-                        Set<Object> boardCreatedListeners = getNtfListeners(Msg.DCBoardCreatedNtf);
-                        if (null != boardCreatedListeners && !boardCreatedListeners.isEmpty()){
-                            for (TDCSBoardInfo board : dcBoards) {
-                                BoardInfo boardInfo = ToDoConverter.fromTransferObj(board);
-                                for (Object listener : boardCreatedListeners) {
-                                    ((IOnBoardOpListener) listener).onBoardCreated(boardInfo);
-                                }
-                            }
-                        }
-
-                        // 上报用户切换画板
-                        if (null != curBoardId){ // “当前画板”通知已早于此到达，彼时还无法通知用户“切换画板”，因为彼时尚未上报用户画板已创建，所以此时我们补上通知“切换画板”。
-                            Set<Object> boardSwitchedListeners = getNtfListeners(Msg.DCBoardSwitchedNtf);
-                            if (null != boardSwitchedListeners && !boardSwitchedListeners.isEmpty()) {
-                                for (Object listener : boardSwitchedListeners) {
-                                    ((IOnBoardOpListener) listener).onBoardSwitched(curBoardId);
-                                }
-                            }
-                            curBoardId = null;
-                        }
-
-                        // 为各画板创建图元缓存队列（刚入会需同步会议中已有图元）
-                        for (TDCSBoardInfo board : dcBoards){
-                            PriorityQueue<OpPaint> ops = cachedPaintOps.get(board.achTabId);
-                            if (null == ops){ // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
-                                ops = new PriorityQueue<>();
-                                cachedPaintOps.put(board.achTabId, ops);
-                            }
-                        }
-
-                        // 开始同步所有画板的已有图元
-                        for (TDCSBoardInfo board : dcBoards){
-
-                            // 下载每个画板的已有图元
-                            req(Msg.DCDownload, new IResultListener() {
-                                @Override
-                                public void onSuccess(Object result) {
-                                    // 后续会批量上报当前画板已有图元，直到收到End消息为止。此处我们开启超时机制防止收不到End消息
-                                    Message msg = Message.obtain();
-                                    msg.what = MsgID_SynchronizingTimeout;
-                                    msg.obj = board.achTabId;
-                                    handler.sendMessageDelayed(msg, 10*1000);
-                                }
-
-                                @Override
-                                public void onFailed(int errorCode) {
-//                                    KLog.p(KLog.ERROR, "download paint element for board %s failed!", board.id);
-//                                    cachedPaintOps.remove(board.id);
-                                }
-
-                                @Override
-                                public void onTimeout() {
-//                                    KLog.p(KLog.ERROR, "download paint element for board %s timeout!", board.id);
-//                                    cachedPaintOps.remove(board.id);
-                                }
-                            },
-
-                            new BaseTypeString(board.achElementUrl),
-                            new TDCSFileInfo(null, null, board.achTabId, true, 0)
-                            );
-
-                        }
-
-                    }
-
-                    @Override
-                    public void onFailed(int errorCode) {
-//                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s failed!", dcConfinfo.confE164);
-                    }
-
-                    @Override
-                    public void onTimeout() {
-//                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s timeout!", dcConfinfo.confE164);
-                    }
-                },
-
-                dcConfInfo.getConfE164()
-                );
-
-                break;
 
             // 图片可下载通知。
             /*己端展示图片的过程：
@@ -1182,12 +1200,11 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     /**
-     * 注册加入数据协作结果监听器。
-     * NOTE：建议在入会成功后调用。
-     * @param onDcConfJoinResultListener 加入数据协作结果监听器。{@link IOnSessionEventListener}
+     * 注册数据协作会话监听器
+     * @param onSessionEventListener 数据协作会话监听器。{@link IOnSessionEventListener}
      * */
-    public void addOnDcConfJoinResultListener(IOnSessionEventListener onDcConfJoinResultListener){
-        subscribe(Msg.DCConfCreated, onDcConfJoinResultListener);
+    public void addSessionEventListener(IOnSessionEventListener onSessionEventListener){
+        subscribe(sessionNtfs, onSessionEventListener);
     }
 
     /**
@@ -1242,13 +1259,20 @@ public class DataCollaborateManager extends RequestAgent {
      * */
     public interface IOnSessionEventListener extends ILifecycleOwner{
         /**
+         * 加入数据协作成功
          * @param dcConfInfo 数据协作会议信息。{@link DcConfInfo}
          * */
         void onJoinDcSuccess(DcConfInfo dcConfInfo);
         /**
+         * 加入数据协作失败
          * @param errCode 失败原因 {@link #ErrCode_Failed}
          * */
         void onJoinDcFailed(int errCode);
+        /**
+         * 数据协作结束
+         * */
+        void onDcReleased();
+
     }
 
     /**
