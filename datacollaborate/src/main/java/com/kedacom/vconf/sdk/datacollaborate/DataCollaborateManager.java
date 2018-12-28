@@ -40,7 +40,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSSwitchReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDcsCacheElementParseResult;
-import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DcConfInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EDcMode;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EConfType;
@@ -89,6 +89,12 @@ public class DataCollaborateManager extends RequestAgent {
 
     // 终端类型
     private EmDcsType terminalType;
+
+    // 会话相关通知
+    private static final Msg[] sessionNtfs = new Msg[]{
+            Msg.DCConfCreated,
+            Msg.DCReleaseConfNtf,
+    };
 
     // 画板相关通知
     private static final Msg[] boardOpNtfs = new Msg[]{
@@ -307,8 +313,8 @@ public class DataCollaborateManager extends RequestAgent {
      * @param adminE164 主席e164
      * @param members 与会成员
      * @param resultListener 结果监听器。
-     *                       成功返回创会信息{@link CreateConfResult}
-     *                       resultListener.onSuccess(CreateConfResult);
+     *                       成功返回创会信息{@link DcConfInfo}
+     *                       resultListener.onSuccess(DcConfInfo);
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
      *                       {@link #ErrCode_BuildLink4ConfFailed}
@@ -1005,16 +1011,16 @@ public class DataCollaborateManager extends RequestAgent {
                     curDcConfE164 = null;
                     KLog.p(KLog.ERROR,"join data collaborate conf{%s, %s} failed", dcConfinfo.achConfName, dcConfinfo.achConfE164);
                     for (Object listener : listeners){
-                        ((IOnDcConfJoinResultListener)listener).onFailed(ErrCode_Failed);
+                        ((IOnSessionEventListener)listener).onJoinDcFailed(ErrCode_Failed);
                     }
                     return;
                 }
 
                 curDcConfE164 = dcConfinfo.achConfE164;
-                CreateConfResult createConfResult = ToDoConverter.fromTransferObj(dcConfinfo);
-                KLog.p("createConfResult: %s", createConfResult);
+                DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj(dcConfinfo);
+                KLog.p("dcConfInfo: %s", dcConfInfo);
                 for (Object listener : listeners){
-                    ((IOnDcConfJoinResultListener)listener).onSuccess(createConfResult);
+                    ((IOnSessionEventListener)listener).onJoinDcSuccess(dcConfInfo);
                 }
 
                 // 入会成功后准备同步会议中已有的图元。（入会成功后实时的图元操作可能在任意时间点到达）
@@ -1126,7 +1132,7 @@ public class DataCollaborateManager extends RequestAgent {
                     }
                 },
 
-                createConfResult.getConfE164()
+                dcConfInfo.getConfE164()
                 );
 
                 break;
@@ -1178,9 +1184,9 @@ public class DataCollaborateManager extends RequestAgent {
     /**
      * 注册加入数据协作结果监听器。
      * NOTE：建议在入会成功后调用。
-     * @param onDcConfJoinResultListener 加入数据协作结果监听器。{@link IOnDcConfJoinResultListener}
+     * @param onDcConfJoinResultListener 加入数据协作结果监听器。{@link IOnSessionEventListener}
      * */
-    public void addOnDcConfJoinResultListener(IOnDcConfJoinResultListener onDcConfJoinResultListener){
+    public void addOnDcConfJoinResultListener(IOnSessionEventListener onDcConfJoinResultListener){
         subscribe(Msg.DCConfCreated, onDcConfJoinResultListener);
     }
 
@@ -1232,17 +1238,17 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     /**
-     * 加入数据协作结果监听器
+     * 数据协作会话监听器
      * */
-    public interface IOnDcConfJoinResultListener extends ILifecycleOwner{
+    public interface IOnSessionEventListener extends ILifecycleOwner{
         /**
-         * @param result 入会成功结果。{@link CreateConfResult}
+         * @param dcConfInfo 数据协作会议信息。{@link DcConfInfo}
          * */
-        void onSuccess(CreateConfResult result);
+        void onJoinDcSuccess(DcConfInfo dcConfInfo);
         /**
          * @param errCode 失败原因 {@link #ErrCode_Failed}
          * */
-        void onFailed(int errCode);
+        void onJoinDcFailed(int errCode);
     }
 
     /**

@@ -46,7 +46,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbRectangleOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbReginEraseOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbTabPageIdInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
-import com.kedacom.vconf.sdk.datacollaborate.bean.CreateConfResult;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DcConfInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EBoardMode;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EDcMode;
@@ -606,8 +606,8 @@ final class ToDoConverter {
                 fromTransferObj(dcBoard.emWbMode), dcBoard.dwWbPageNum, dcBoard.dwPageId, dcBoard.dwWbAnonyId);
     }
 
-    public static CreateConfResult fromTransferObj(TDCSCreateConfResult to) {
-        return new CreateConfResult(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType));
+    public static DcConfInfo fromTransferObj(TDCSCreateConfResult to) {
+        return new DcConfInfo(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType));
     }
 
     public static DCMember fromTransferObj(TDCSConfUserInfo userInfo){

@@ -2,13 +2,13 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import androidx.annotation.NonNull;
 
-public class CreateConfResult {
+public class DcConfInfo {
     private String  confE164; // 会议e164
     private String  confName; // 会议名称
     private EDcMode confMode; // 数据协作模式
     private EConfType   confType; // 会议类型
 
-    public CreateConfResult(String confE164, String confName, EDcMode confMode, EConfType confType) {
+    public DcConfInfo(String confE164, String confName, EDcMode confMode, EConfType confType) {
         this.confE164 = confE164;
         this.confName = confName;
         this.confMode = confMode;
