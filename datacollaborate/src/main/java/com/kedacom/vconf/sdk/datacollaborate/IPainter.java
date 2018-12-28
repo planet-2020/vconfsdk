@@ -11,40 +11,28 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
 import java.util.Set;
 
+/**
+ * 画师。
+ * 负责管理画板以及在画板上绘制。
+ * */
 public interface IPainter {
-//    /** 临摹者。
-//     * 临摹者只能被动接收绘制操作并原样绘制到画板上，不能主动在画板上创作。*/
-//    int ROLE_COPYER = 0;
-//    /** 创作者。
-//     * 创作者既能接收绘制操作并原样绘制到画板上，也能主动在画板上创作。*/
-//    int ROLE_AUTHOR = 1;
-//
-//    int ROLE_UNKNOWN = 9;
-
-//    /**为所有画板设置角色。
-//     * setRole也调用的情况下，后调用的覆盖先调用的*/
-//    void setRoleForAllBoards(int role);
-//
-//    /**为指定画板设置角色。
-//     * setRoleForAllBoards也调用的情况下，后调用的覆盖先调用的*/
-//    void setRole(String boardId, int role);
-//
-//    /**获取在指定画板的角色*/
-//    int getRole(String boardId);
 
     /**添加画板*/
     boolean addPaintBoard(IPaintBoard paintBoard);
 
-    /**删除画板*/
+    /**删除画板
+     * @param boardId 画板Id*/
     IPaintBoard deletePaintBoard(String boardId);
 
     /**删除所有画板*/
     void deleteAllPaintBoards();
 
-    /**切换画板*/
+    /**切换画板
+     * @param boardId 画板Id*/
     IPaintBoard switchPaintBoard(String boardId);
 
-    /**获取画板*/
+    /**获取画板
+     * @param boardId 画板Id*/
     IPaintBoard getPaintBoard(String boardId);
 
     /**获取所有画板*/
@@ -65,7 +53,8 @@ public interface IPainter {
     /**停止绘制*/
     default void stop(){}
 
-    /**绘制*/
+    /**绘制
+     * @param op 绘制操作信息*/
     void paint(OpPaint op);
 
 }

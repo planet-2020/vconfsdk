@@ -6,25 +6,14 @@ import android.view.View;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
+/**
+ * 画板。
+ * 负责：
+ * 提供画板界面；
+ * 提供工具栏相关接口如设置画直线画圆，设置颜色画笔粗细，插入图片等；
+ * 处理用户触屏事件结合工具栏设置生成相应绘制操作并上报给用户；
+ * */
 public interface IPaintBoard {
-    // 工具
-    int TOOL_NONE = 0;
-    int TOOL_HAND = 7;
-    int TOOL_PENCIL = 1;
-    int TOOL_LINE = 2;
-    int TOOL_RECT = 3;
-    int TOOL_OVAL = 4;
-    int TOOL_ERASER = 8;
-    int TOOL_RECT_ERASER = 5;
-    int TOOL_PIC_SELECTOR = 6;
-
-    // 图层
-    int LAYER_NONE = 100;
-    int LAYER_PIC =  101;
-    int LAYER_SHAPE =102;
-    int LAYER_PIC_TMP =103;
-    int LAYER_PIC_AND_SHAPE =104;
-    int LAYER_ALL =  109;
 
     /**
      * 获取画板ID。
@@ -45,6 +34,16 @@ public interface IPaintBoard {
      * */
     View getBoardView();
 
+    // 工具
+    int TOOL_NONE = 0;
+    int TOOL_HAND = 7;
+    int TOOL_PENCIL = 1;
+    int TOOL_LINE = 2;
+    int TOOL_RECT = 3;
+    int TOOL_OVAL = 4;
+    int TOOL_ERASER = 8;
+    int TOOL_RECT_ERASER = 5;
+    int TOOL_PIC_SELECTOR = 6;
     /**
      * 设置画板工具。
      * 在进行相关绘制操作前需先设置好对应的工具。
@@ -103,6 +102,13 @@ public interface IPaintBoard {
      * */
     void insertPic(String picPath);
 
+    // 图层
+    int LAYER_NONE = 100;
+    int LAYER_PIC =  101;
+    int LAYER_SHAPE =102;
+    int LAYER_PIC_TMP =103;
+    int LAYER_PIC_AND_SHAPE =104;
+    int LAYER_ALL =  109;
     /**
      * 截屏。
      * @param layer 图层。
@@ -141,6 +147,9 @@ public interface IPaintBoard {
      * 己端作为“创作者”角色完成创作后通过发布者将内容（绘制操作）发布出去。
      * */
     interface IPublisher{
+        /**
+         * 产生了绘制操作可供发布
+         * @param Op 绘制操作*/
         void publish(OpPaint Op);
     }
     IPaintBoard setPublisher(IPublisher publisher);
@@ -177,6 +186,8 @@ public interface IPaintBoard {
      * 图片数量变化监听器
      * */
     interface IOnPictureCountChanged{
+        /**图片数量变化
+         * @param count  当前图片数量*/
         void onPictureCountChanged(int count);
     }
     IPaintBoard setOnPictureCountChangedListener(IOnPictureCountChanged onPictureCountChangedListener);
@@ -185,6 +196,8 @@ public interface IPaintBoard {
      * 缩放比例变化监听器
      * */
     interface IOnZoomRateChangedListener{
+        /**缩放比例变化
+         * @param percentage  当前屏幕缩放比率百分数。如50代表50%。*/
         void onZoomRateChanged(int percentage);
     }
     IPaintBoard setOnZoomRateChangedListener(IOnZoomRateChangedListener onZoomRateChangedListener);
