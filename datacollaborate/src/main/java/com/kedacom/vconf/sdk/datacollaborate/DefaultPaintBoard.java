@@ -47,7 +47,7 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 
-public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
+public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Comparable<DefaultPaintBoard>{
     private Context context;
 
     // 图形画布。用于图形绘制如画线、画圈、擦除等等
@@ -105,6 +105,21 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     // 画板信息
     private BoardInfo boardInfo;
+
+    @Override
+    public int compareTo(DefaultPaintBoard o) {
+        if (null == o){
+            return 1;
+        }
+        if (getBoardInfo().getAnonyId()<o.getBoardInfo().getAnonyId()){
+            return -1;
+        }else if (getBoardInfo().getAnonyId() == o.getBoardInfo().getAnonyId()){
+            return 0;
+        }else{
+            return 1;
+        }
+    }
+
 
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
         super(context);

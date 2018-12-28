@@ -9,7 +9,7 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
-import java.util.Set;
+import java.util.List;
 
 /**
  * 画师。
@@ -36,7 +36,7 @@ public interface IPainter {
     IPaintBoard getPaintBoard(String boardId);
 
     /**获取所有画板*/
-    Set<IPaintBoard> getAllPaintBoards();
+    List<IPaintBoard> getAllPaintBoards();
 
     /**获取当前画板*/
     IPaintBoard getCurrentPaintBoard();

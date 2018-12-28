@@ -28,11 +28,12 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.PriorityQueue;
 import java.util.Stack;
 
 import androidx.annotation.NonNull;
@@ -196,10 +197,18 @@ public class DefaultPainter implements IPainter {
         return paintBoards.get(boardId);
     }
 
+    /**
+     * 获取所有画板
+     * @return 所有画板列表。已按画板创建顺序排好序，列表前面的先创建。
+     * */
     @Override
-    public Set<IPaintBoard> getAllPaintBoards() {
-        Set<IPaintBoard> boards = new HashSet<>();
-        boards.addAll(paintBoards.values());
+    public List<IPaintBoard> getAllPaintBoards() {
+        PriorityQueue<IPaintBoard> priorityQueue = new PriorityQueue<>();
+        priorityQueue.addAll(paintBoards.values());
+        List<IPaintBoard> boards = new ArrayList<>();
+        while (!priorityQueue.isEmpty()){
+            boards.add(priorityQueue.poll());
+        }
         return  boards;
     }
 
