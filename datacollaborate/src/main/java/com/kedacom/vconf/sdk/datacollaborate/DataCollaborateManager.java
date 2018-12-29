@@ -83,7 +83,7 @@ public class DataCollaborateManager extends RequestAgent {
     public static final int ErrCode_BuildLink4ConfFailed = -3;
 
     private String curDcConfE164;
-    public String getCurDcConfE164(){
+    String getCurDcConfE164(){
         return curDcConfE164;
     }
 
