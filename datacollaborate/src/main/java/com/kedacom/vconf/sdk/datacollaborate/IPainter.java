@@ -41,6 +41,9 @@ public interface IPainter {
     /**获取当前画板*/
     IPaintBoard getCurrentPaintBoard();
 
+    /**获取画板数量*/
+    int getPaintBoardCount();
+
     /**开始绘制*/
     default void start(){}
 

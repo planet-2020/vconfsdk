@@ -221,6 +221,11 @@ public class DefaultPainter implements IPainter {
         return paintBoards.get(curBoardId);
     }
 
+    @Override
+    public int getPaintBoardCount() {
+        return paintBoards.size();
+    }
+
 
     @Override
     public void paint(OpPaint op){
