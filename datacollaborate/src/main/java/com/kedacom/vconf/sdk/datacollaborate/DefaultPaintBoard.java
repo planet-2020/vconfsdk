@@ -66,7 +66,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     // 图片画布。用于绘制图片。
     private DefaultPaintView picPaintView;
     // 图片操作。
-    private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();
+    private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();  // TODO 改为MyConcurrentLinkedDeque<OpInsertPic>
 
     // 临时图片画布。用于展示图片操作的一些中间效果，如插入图片、选中图片时先展示带外围虚框和底部删除按钮的图片，操作结束时清除虚框和删除按钮。
     private DefaultPaintView tmpPicPaintView;
@@ -97,10 +97,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     private static final int MIN_ZOOM = 25;
     private static final int MAX_ZOOM = 400;
 
-    private IOnPictureCountChanged onPictureCountChangedListener;
-    private IOnRepealableStateChangedListener onRepealableStateChangedListener;
-    private IOnZoomRateChangedListener onZoomRateChangedListener;
     private IOnPaintOpGeneratedListener paintOpGeneratedListener;
+    private IOnBoardStateChangedListener onBoardStateChangedListener;
     private IPublisher publisher;
 
     // 画板信息
@@ -788,9 +786,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     void clean(){
         publisher = null;
         paintOpGeneratedListener = null;
-        onZoomRateChangedListener = null;
-        onRepealableStateChangedListener = null;
-        onPictureCountChangedListener = null;
+        onBoardStateChangedListener = null;
         handler.removeMessages(MSGID_INSERT_PIC); // XXX 没有removeAll的接口？
     }
 
@@ -1020,6 +1016,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         return (int) (zoomVals[Matrix.MSCALE_X]*100);
     }
 
+    private boolean bLastStateIsEmpty =true;
+    @Override
+    public boolean isEmpty() {
+        // XXX 如果对端直接擦除、清屏一个空白画板会导致此接口返回false。TODO 在painter中过滤掉此种情形的擦除、清屏消息。
+        // XXX 另外，使用“擦除”的方式清掉画板的内容并不会导致此接口返回true。
+        return  (picOps.isEmpty() && (shapeOps.isEmpty() || shapeOps.peekLast() instanceof OpClearScreen));
+    }
+
 
     @Override
     public IPaintBoard setPublisher(IPublisher publisher) {
@@ -1041,20 +1045,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         return this;
     }
 
-    @Override
-    public IPaintBoard setOnRepealableStateChangedListener(IOnRepealableStateChangedListener onRepealedOpsCountChangedListener) {
-        this.onRepealableStateChangedListener = onRepealedOpsCountChangedListener;
-        if (onRepealedOpsCountChangedListener instanceof LifecycleOwner){
-            ((LifecycleOwner)onRepealedOpsCountChangedListener).getLifecycle().addObserver(new DefaultLifecycleObserver(){
-                @Override
-                public void onDestroy(@NonNull LifecycleOwner owner) {
-                    DefaultPaintBoard.this.onRepealableStateChangedListener = null;
-                    KLog.p("onRepealableStateChangedListener destroyed");
-                }
-            });
-        }
-        return this;
-    }
 
     @Override
     public int getRepealedOpsCount() {
@@ -1077,54 +1067,58 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         return count;
     }
 
-    @Override
-    public IPaintBoard setOnPictureCountChangedListener(IOnPictureCountChanged onPictureCountChangedListener) {
-        this.onPictureCountChangedListener = onPictureCountChangedListener;
-        if (onPictureCountChangedListener instanceof LifecycleOwner){
-            ((LifecycleOwner)onPictureCountChangedListener).getLifecycle().addObserver(new DefaultLifecycleObserver(){
-                @Override
-                public void onDestroy(@NonNull LifecycleOwner owner) {
-                    DefaultPaintBoard.this.onPictureCountChangedListener = null;
-                    KLog.p("onPictureCountChangedListener destroyed");
-                }
-            });
-        }
-        return this;
-    }
 
-    @Override
-    public IPaintBoard setOnZoomRateChangedListener(IOnZoomRateChangedListener onZoomRateChangedListener) {
-        this.onZoomRateChangedListener = onZoomRateChangedListener;
-        if (onZoomRateChangedListener instanceof LifecycleOwner){
-            ((LifecycleOwner)onZoomRateChangedListener).getLifecycle().addObserver(new DefaultLifecycleObserver(){
-                @Override
-                public void onDestroy(@NonNull LifecycleOwner owner) {
-                    DefaultPaintBoard.this.onZoomRateChangedListener = null;
-                    KLog.p("onZoomRateChangedListener destroyed");
-                }
-            });
+    private void refreshEmptyState(){
+        if (!bLastStateIsEmpty && isEmpty()){   // 之前是不为空的状态现在为空了
+            onBoardStateChangedListener.onEmptyStateChanged(bLastStateIsEmpty=true);
+        }else if (bLastStateIsEmpty && !isEmpty()){ // 之前是为空的状态现在不为空了
+            onBoardStateChangedListener.onEmptyStateChanged(bLastStateIsEmpty=false);
         }
-        return this;
     }
-
 
     void repealableStateChanged(){
-        if (null != onRepealableStateChangedListener){
-            onRepealableStateChangedListener.onRepealableStateChanged(getRepealedOpsCount(), getShapeOpsCount());
+        if (null != onBoardStateChangedListener){
+            onBoardStateChangedListener.onRepealableStateChanged(getRepealedOpsCount(), getShapeOpsCount());
+            refreshEmptyState();
+        }
+    }
+
+    void screenCleared(){
+        if (null != onBoardStateChangedListener){
+            refreshEmptyState();
         }
     }
 
     void picCountChanged(){
-        if (null != onPictureCountChangedListener){
-            onPictureCountChangedListener.onPictureCountChanged(getPicCount());
+        if (null != onBoardStateChangedListener){
+            onBoardStateChangedListener.onPictureCountChanged(getPicCount());
+            refreshEmptyState();
         }
     }
 
     void zoomRateChanged(){
-        if (null != onZoomRateChangedListener){
-            onZoomRateChangedListener.onZoomRateChanged(getZoom());
+        if (null != onBoardStateChangedListener){
+            onBoardStateChangedListener.onZoomRateChanged(getZoom());
         }
     }
+
+
+
+    @Override
+    public IPaintBoard setOnBoardStateChangedListener(IOnBoardStateChangedListener onBoardStateChangedListener) {
+        this.onBoardStateChangedListener = onBoardStateChangedListener;
+        if (onBoardStateChangedListener instanceof LifecycleOwner){
+            ((LifecycleOwner)onBoardStateChangedListener).getLifecycle().addObserver(new DefaultLifecycleObserver(){
+                @Override
+                public void onDestroy(@NonNull LifecycleOwner owner) {
+                    DefaultPaintBoard.this.onBoardStateChangedListener = null;
+                    KLog.p("onBoardStateChangedListener destroyed");
+                }
+            });
+        }
+        return this;
+    }
+
 
     void setOnPaintOpGeneratedListener(IOnPaintOpGeneratedListener paintOpGeneratedListener) {
         this.paintOpGeneratedListener = paintOpGeneratedListener;

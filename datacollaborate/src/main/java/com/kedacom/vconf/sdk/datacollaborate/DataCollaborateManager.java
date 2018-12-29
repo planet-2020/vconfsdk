@@ -737,6 +737,11 @@ public class DataCollaborateManager extends RequestAgent {
      * 新建普通画板
      * @param creatorE164 创建者E164
      * @param listener 新建画板结果监听器
+     *                  成功返回{@link BoardInfo}：
+     *                  resultListener.onSuccess(boardInfo);
+     *                  失败返回错误码：
+     *                  {@link #ErrCode_Failed}
+     *                  resultListener.onFailed(errorCode);
      * */
     public void newBoard(String creatorE164, IResultListener listener){
         KLog.p("creatorE164=%s, listener=%s", creatorE164, listener);
@@ -750,6 +755,11 @@ public class DataCollaborateManager extends RequestAgent {
      * @param curPageIndex 当前文档页
      * @param creatorE164 创建者E164
      * @param listener 新建画板结果监听器
+     *                  成功返回{@link BoardInfo}：
+     *                  resultListener.onSuccess(boardInfo);
+     *                  失败返回错误码：
+     *                  {@link #ErrCode_Failed}
+     *                  resultListener.onFailed(errorCode);
      * */
     public void newDocBoard(String boardName, int pageCount, int curPageIndex, String creatorE164, IResultListener listener){
         req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164,
@@ -760,6 +770,11 @@ public class DataCollaborateManager extends RequestAgent {
      * 删除画板
      * @param boardId 待删除画板Id
      * @param listener 删除画板结果监听器
+     *                  成功返回boardId：
+     *                  resultListener.onSuccess(boardId);
+     *                  失败返回错误码：
+     *                  {@link #ErrCode_Failed}
+     *                  resultListener.onFailed(errorCode);
      * */
     public void delBoard(String boardId, IResultListener listener){
         KLog.p("boardId=%s, listener=%s", boardId, listener);
@@ -771,6 +786,11 @@ public class DataCollaborateManager extends RequestAgent {
      * 切换画板
      * @param boardId 目标画板Id
      * @param listener 切换画板结果监听器
+     *                  成功返回boardId：
+     *                  resultListener.onSuccess(boardId);
+     *                  失败返回错误码：
+     *                  {@link #ErrCode_Failed}
+     *                  resultListener.onFailed(errorCode);
      * */
     public void switchBoard(String boardId, IResultListener listener){
         KLog.p("boardId=%s, listener=%s", boardId, listener);
@@ -779,7 +799,7 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     /**
-     * 画板操作（创建/删除/切换）响应处理
+     * 画板操作（创建/删除/切换/查询）响应处理
      * */
     private void onBoardOpRsps(Msg rspId, Object rspContent, IResultListener listener){
         switch (rspId){
@@ -826,7 +846,7 @@ public class DataCollaborateManager extends RequestAgent {
             case DCDelBoardRsp:
                 TDCSBoardResult boardResult = (TDCSBoardResult) rspContent;
                 if (boardResult.bSuccess){
-                    if (null != listener) listener.onSuccess(null);
+                    if (null != listener) listener.onSuccess(boardResult.achTabId);
                 }else {
                     KLog.p(KLog.ERROR, "del board failed, errorCode=%s", boardResult.dwErrorCode);
                     if (null != listener) listener.onFailed(ErrCode_Failed);
@@ -835,7 +855,7 @@ public class DataCollaborateManager extends RequestAgent {
             case DCSwitchBoardRsp:
                 DcsSwitchRsp switchRsp = (DcsSwitchRsp) rspContent;
                 if (switchRsp.MainParam.bSuccess){
-                    if (null != listener) listener.onSuccess(null);
+                    if (null != listener) listener.onSuccess(switchRsp.AssParam.achTabId);
                 }else {
                     KLog.p(KLog.ERROR, "switch board failed, errorCode=%s", switchRsp.MainParam.dwErrorCode);
                     if (null != listener) listener.onFailed(ErrCode_Failed);

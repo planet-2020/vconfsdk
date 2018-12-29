@@ -370,6 +370,10 @@ public class DefaultPainter implements IPainter {
                         if (bEmpty && op instanceof IRepealable){ // 可撤销操作从无到有
                             paintBoard.repealableStateChanged();
                         }
+
+                        if (EOpType.CLEAR_SCREEN == op.getType()){
+                            paintBoard.screenCleared();
+                        }
         //                KLog.p(KLog.WARN, "need render op %s", op);
                         break;
 

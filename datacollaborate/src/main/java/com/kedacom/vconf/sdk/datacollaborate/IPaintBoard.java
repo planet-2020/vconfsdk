@@ -143,30 +143,6 @@ public interface IPaintBoard {
     int getZoom();
 
     /**
-     * 发布者。
-     * 己端作为“创作者”角色完成创作后通过发布者将内容（绘制操作）发布出去。
-     * */
-    interface IPublisher{
-        /**
-         * 产生了绘制操作可供发布
-         * @param Op 绘制操作*/
-        void publish(OpPaint Op);
-    }
-    IPaintBoard setPublisher(IPublisher publisher);
-
-    /**
-     * 可撤销状态变化监听器。
-     * */
-    interface IOnRepealableStateChangedListener {
-        /**@param repealedOpsCount 已被撤销操作数量
-         * @param remnantOpsCount 剩下的可撤销操作数量。如画了3条线撤销了1条则repealedOpsCount=1，remnantOpsCount=2。
-         *                        NOTE: 此处的可撤销数量是具体业务无关的，“可撤销”指示的是操作类型，如画线画圆等操作是可撤销的而插入图片放缩等是不可撤销的。
-         * */
-        void onRepealableStateChanged(int repealedOpsCount, int remnantOpsCount);
-    }
-    IPaintBoard setOnRepealableStateChangedListener(IOnRepealableStateChangedListener onRepealableStateChangedListener);
-
-    /**
      * 获取被撤销操作数量
      * */
     int getRepealedOpsCount();
@@ -181,25 +157,63 @@ public interface IPaintBoard {
      * */
     int getPicCount();
 
+    /**
+     * 画板内容是否为空。
+     * 判断标准跟{@link IOnBoardStateChangedListener#onEmptyStateChanged(boolean)}一致。
+     * */
+    boolean isEmpty();
 
     /**
-     * 图片数量变化监听器
+     * 画板状态变化监听器
      * */
-    interface IOnPictureCountChanged{
+    interface IOnBoardStateChangedListener{
         /**图片数量变化
          * @param count  当前图片数量*/
-        void onPictureCountChanged(int count);
-    }
-    IPaintBoard setOnPictureCountChangedListener(IOnPictureCountChanged onPictureCountChangedListener);
-
-    /**
-     * 缩放比例变化监听器
-     * */
-    interface IOnZoomRateChangedListener{
+        default void onPictureCountChanged(int count){}
         /**缩放比例变化
          * @param percentage  当前屏幕缩放比率百分数。如50代表50%。*/
-        void onZoomRateChanged(int percentage);
+        default void onZoomRateChanged(int percentage){}
+        /**
+         * 可撤销状态变化。
+         * 触发该方法的场景：
+         * 1、新画板画了第一笔；
+         * 2、执行了撤销操作；
+         * 3、执行了恢复操作；
+         * @param repealedOpsCount 已被撤销操作数量
+         * @param remnantOpsCount 剩下的可撤销操作数量。如画了3条线撤销了1条则repealedOpsCount=1，remnantOpsCount=2。
+         *                        NOTE: 此处的可撤销数量是具体业务无关的，“可撤销”指示的是操作类型，如画线画圆等操作是可撤销的而插入图片放缩等是不可撤销的。
+         * */
+        default void onRepealableStateChanged(int repealedOpsCount, int remnantOpsCount){}
+        /**
+         * 画板内容为空状态变化（即画板内容从有到无或从无到有）。
+         * 画板内容包括图形和图片。
+         * 该方法触发的场景包括：
+         * 1、最后一笔图形被撤销且没有图片，bEmptied=true；
+         * 2、最后一张图片被删除且没有图形，bEmptied=true；
+         * 3、清屏且没有图片，bEmptied=true；
+         * 4、上述123或画板刚创建情形下，第一笔图形绘制或第一张图片插入，bEmptied=false；
+         * NOTE:
+         * 1、新建的画板为空（{@link IPaintBoard#isEmpty()}返回true），但不会触发该方法；
+         * 2、使用“擦除”功能，包括黑板擦擦除矩形擦除，将画板内容清掉的情形不会触发此方法，且{@link IPaintBoard#isEmpty()}返回false；
+         *
+         * @param bEmptied 内容是否空了，true表示画板内容从有到无，false表示画板内容从无到有。
+         * */
+        default void onEmptyStateChanged(boolean bEmptied){}
+
     }
-    IPaintBoard setOnZoomRateChangedListener(IOnZoomRateChangedListener onZoomRateChangedListener);
+    IPaintBoard setOnBoardStateChangedListener(IOnBoardStateChangedListener onBoardStateChangedListener);
+
+
+    /**
+     * 发布者。
+     * 己端作为“创作者”角色完成创作后通过发布者将内容（绘制操作）发布出去。
+     * */
+    interface IPublisher{
+        /**
+         * 产生了绘制操作可供发布
+         * @param Op 绘制操作*/
+        void publish(OpPaint Op);
+    }
+    IPaintBoard setPublisher(IPublisher publisher);
 
 }
