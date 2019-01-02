@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.DashPathEffect;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
@@ -259,14 +260,7 @@ public class DefaultPainter implements IPainter {
             return;
         }
 
-        for (OpPaint opPaint : paintBoard.getPicOps()){
-            if (opPaint.getUuid().equals(op.getUuid())){
-                KLog.p("pic op %s already exist!", opPaint);
-                return;
-            }
-        }
-
-        // 不是主动绘制的响应则清空临时绘制
+        // 不是主动绘制的响应则清空临时绘制 // TODO 本端还是加时间戳吧3S超时可清空，清空在绘制线程中重绘时去做，不在这里做
         paintBoard.getTmpShapeOps().clear();
 
         boolean bRefresh = boardId.equals(curBoardId); // 操作属于当前board则尝试立即刷新
@@ -274,6 +268,14 @@ public class DefaultPainter implements IPainter {
 
         switch (op.getType()){
             case INSERT_PICTURE:
+                for (OpPaint opPaint : paintBoard.getPicOps()){
+                    if (opPaint instanceof OpInsertPic
+                            && ((OpInsertPic)opPaint).getPicId().equals(((OpInsertPic)op).getPicId())
+                            ){
+                        KLog.p("pic op %s already exist!", opPaint);
+                        return;
+                    }
+                }
                 picRenderOps.offerLast(op);
                 OpInsertPic opInsertPic = (OpInsertPic) op;
                 if (null == opInsertPic.getPic()) {
@@ -307,11 +309,14 @@ public class DefaultPainter implements IPainter {
                 break;
 
             case DRAG_PICTURE:
-                for (Map.Entry<String, float[]> dragOp : ((OpDragPic)op).getPicMatrices().entrySet()) {
+                for (Map.Entry<String, Matrix> dragOp : ((OpDragPic)op).getPicMatrices().entrySet()) {
                     for (OpPaint opPaint : picRenderOps) {
                         if (EOpType.INSERT_PICTURE == opPaint.getType()
                                 && ((OpInsertPic) opPaint).getPicId().equals(dragOp.getKey())) {
-                            ((OpInsertPic) opPaint).setMatrixValue(dragOp.getValue());
+                            OpInsertPic insertPic = (OpInsertPic) opPaint;
+                            Matrix matrix = dragOp.getValue();
+                            matrix.postTranslate(insertPic.getInsertPos().x, insertPic.getInsertPos().y);
+                            insertPic.setMatrix(matrix);
                             break;
                         }
                     }

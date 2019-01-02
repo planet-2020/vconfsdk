@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.graphics.PointF;
 
 import java.io.File;
 import java.util.UUID;
@@ -16,6 +17,7 @@ public class OpInsertPic extends OpPaint {
     private Bitmap pic;
     private int picWidth;
     private int picHeight;
+    private PointF insertPos; // 插入位置（图片左上角所在位置的点）
     private Matrix matrix;
 
     public OpInsertPic(){
@@ -35,11 +37,12 @@ public class OpInsertPic extends OpPaint {
         type = EOpType.INSERT_PICTURE;
     }
 
-    public OpInsertPic(String picId, String picName, int picWidth, int picHeight, Matrix matrix){
+    public OpInsertPic(String picId, String picName, int picWidth, int picHeight, PointF insertPos, Matrix matrix){
         this.picId = picId;
         this.picName = picName;
         this.picWidth = picWidth;
         this.picHeight = picHeight;
+        this.insertPos = insertPos;
         this.matrix = matrix;
         type = EOpType.INSERT_PICTURE;
     }
@@ -110,6 +113,14 @@ public class OpInsertPic extends OpPaint {
 
     public void setMatrixValue(float[] matrixValue) {
         matrix.setValues(matrixValue);
+    }
+
+    public PointF getInsertPos() {
+        return insertPos;
+    }
+
+    public void setInsertPos(PointF insertPos) {
+        this.insertPos = insertPos;
     }
 
     public Matrix getMatrix() {

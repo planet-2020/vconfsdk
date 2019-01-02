@@ -836,10 +836,15 @@ public class DataCollaborateManager extends RequestAgent {
 
             case DCNewBoardRsp:
                 DcsNewWhiteBoardRsp newWhiteBoardRsp = (DcsNewWhiteBoardRsp) rspContent;
-                if (newWhiteBoardRsp.MainParam.bSuccess){
-                    if (null != listener) listener.onSuccess(ToDoConverter.fromTransferObj(newWhiteBoardRsp.AssParam));
-                }else {
-                    KLog.p(KLog.ERROR, "new board failed, errorCode=%s", newWhiteBoardRsp.MainParam.dwErrorCode);
+                if (null != newWhiteBoardRsp.MainParam) { // 该条消息可能有两种不同的消息结构体，一种有MainParam一种没有。
+                    if (newWhiteBoardRsp.MainParam.bSuccess) {
+                        if (null != listener) listener.onSuccess(ToDoConverter.fromTransferObj(newWhiteBoardRsp.AssParam));
+                    } else {
+                        KLog.p(KLog.ERROR, "new board failed, errorCode=%s", newWhiteBoardRsp.MainParam.dwErrorCode);
+                        if (null != listener) listener.onFailed(ErrCode_Failed);
+                    }
+                }else{
+                    KLog.p(KLog.ERROR, "new board failed");
                     if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
