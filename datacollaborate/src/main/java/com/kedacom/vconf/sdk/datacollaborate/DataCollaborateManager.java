@@ -210,6 +210,10 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
     private DataCollaborateManager(){}
+    /**
+     * 获取数据协作管理类实例
+     * @param ctx 应用上下文
+     * */
     public static DataCollaborateManager getInstance(Application ctx) {
         if (null == context
                 && null != ctx){
@@ -490,7 +494,13 @@ public class DataCollaborateManager extends RequestAgent {
         curDcConfE164 = null;
     }
 
-    /**结束数据协作*/
+    /**结束数据协作
+     * @param resultListener 结果监听器。
+     *                       成功返回null
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
     public void releaseDcConf(IResultListener resultListener){
         req(Msg.DCReleaseConf, resultListener, curDcConfE164);
         curDcConfE164 = null;
@@ -499,7 +509,13 @@ public class DataCollaborateManager extends RequestAgent {
 
     /**退出数据协作。
      * 注：仅自己退出，协作仍存在，不影响其他人继续
-     * @param bQuitConf 是否同时退出会议*/
+     * @param bQuitConf 是否同时退出会议
+     * @param resultListener 结果监听器。
+     *                       成功返回null
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
     public void quitDcConf(boolean bQuitConf, IResultListener resultListener){
         req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
         curDcConfE164 = null;
@@ -641,7 +657,14 @@ public class DataCollaborateManager extends RequestAgent {
      *                       resultListener.onSuccess(null);
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
+     *                       resultListener.onFailed(errorCode);
+     *
+     *                       注意：该监听器返回成功与否仅表示该请求是否已成功被平台受理，
+     *                       平台成功受理后会将该请求转给管理方，管理方同意后，才真正表明申请成功。
+     *                       管理方同意或拒绝后平台会转发相应通知给申请者，
+     *                       申请者需要监听{@link IOnOperatorEventListener#onOperatorAdded(DCMember)}
+     *                       和{@link IOnOperatorEventListener#onApplyOperatorRejected()}来判断申请是成功了还是被拒绝了。
+     *                       */
     public void applyForOperator(String e164, IResultListener resultListener){
         req(Msg.DCApplyOperator, resultListener, e164);
     }
@@ -742,6 +765,9 @@ public class DataCollaborateManager extends RequestAgent {
      *                  失败返回错误码：
      *                  {@link #ErrCode_Failed}
      *                  resultListener.onFailed(errorCode);
+     *
+     *                  注意：该请求会触发通知{@link IOnBoardOpListener#onBoardCreated(BoardInfo)}，
+     *                  请求者自身也会收到该通知，避免在该通知监听器中和结果监听器中做重复的处理逻辑。
      * */
     public void newBoard(String creatorE164, IResultListener listener){
         KLog.p("creatorE164=%s, listener=%s", creatorE164, listener);
@@ -760,6 +786,9 @@ public class DataCollaborateManager extends RequestAgent {
      *                  失败返回错误码：
      *                  {@link #ErrCode_Failed}
      *                  resultListener.onFailed(errorCode);
+     *
+     *                  注意：该请求会触发通知{@link IOnBoardOpListener#onBoardCreated(BoardInfo)}，
+     *                  请求者自身也会收到该通知，避免在该通知监听器中和结果监听器中做重复的处理逻辑。
      * */
     public void newDocBoard(String boardName, int pageCount, int curPageIndex, String creatorE164, IResultListener listener){
         req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164,
@@ -775,6 +804,9 @@ public class DataCollaborateManager extends RequestAgent {
      *                  失败返回错误码：
      *                  {@link #ErrCode_Failed}
      *                  resultListener.onFailed(errorCode);
+     *
+     *                  注意：该请求会触发通知{@link IOnBoardOpListener#onBoardDeleted(String)}，
+     *                  请求者自身也会收到该通知，避免在该通知监听器中和结果监听器中做重复的处理逻辑。
      * */
     public void delBoard(String boardId, IResultListener listener){
         KLog.p("boardId=%s, listener=%s", boardId, listener);
@@ -791,6 +823,9 @@ public class DataCollaborateManager extends RequestAgent {
      *                  失败返回错误码：
      *                  {@link #ErrCode_Failed}
      *                  resultListener.onFailed(errorCode);
+     *
+     *                  注意：该请求会触发通知{@link IOnBoardOpListener#onBoardSwitched(String)}，
+     *                  请求者自身也会收到该通知，避免在该通知监听器中和结果监听器中做重复的处理逻辑。
      * */
     public void switchBoard(String boardId, IResultListener listener){
         KLog.p("boardId=%s, listener=%s", boardId, listener);
@@ -1282,7 +1317,8 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     /**
-     * 绘制操作通知监听器
+     * 绘制操作通知监听器。
+     * 绘制操作包括所有影响画板内容展示的操作，如画线画圆、插图片、擦除、撤销等等。
      * */
     public interface IOnPaintOpListener extends ILifecycleOwner {
         /**
@@ -1336,26 +1372,27 @@ public class DataCollaborateManager extends RequestAgent {
          * （所有与会方收到）成员加入数据协作会议通知
          * @param member 成员信息
          * */
-        void onUserJoinedNtf(DCMember member);
+        default void onUserJoinedNtf(DCMember member){}
         /**
          * （管理方收到）成员申请协作权通知
          * @param member 申请者信息
          * */
-        void onApplyOperator(DCMember member);
+        default void onApplyOperator(DCMember member){}
         /**
-         *  （申请方收到）申请协作权被拒通知
+         *  （申请方收到）申请协作权被拒通知。{@link #applyForOperator(String, IResultListener)}
          * */
-        void onApplyOperatorRejected();
+        default void onApplyOperatorRejected(){}
         /**
-         * （所有与会方收到）协作方被添加通知
+         * （所有与会方收到）协作方被添加通知。
+         * 特别地，申请方申请协作权通过后也会导致自己收到该通知。{@link #applyForOperator(String, IResultListener)}
          * @param member 被添加的协作方信息
          * */
-        void onOperatorAdded(DCMember member);
+        default void onOperatorAdded(DCMember member){}
         /**
          * （所有与会方收到）协作方被删除通知
          * @param member 被删除的协作方信息
          * */
-        void onOperatorDeleted(DCMember member);
+        default void onOperatorDeleted(DCMember member){}
     }
 
     private class QueryAllBoardsInnerListener implements IResultListener{
