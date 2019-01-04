@@ -837,6 +837,7 @@ public class DataCollaborateManager extends RequestAgent {
      * 画板操作（创建/删除/切换/查询）响应处理
      * */
     private void onBoardOpRsps(Msg rspId, Object rspContent, IResultListener listener){
+        KLog.p("listener==%s, rspId=%s, rspContent=%s", listener, rspId, rspContent);
         switch (rspId){
             case DCQueryBoardRsp:
                 DcsGetWhiteBoardRsp queryBoardsResult = (DcsGetWhiteBoardRsp) rspContent;

@@ -14,4 +14,15 @@ public class TDCSBoardResult {
     public String achConfE164;
     public String achTabId;
     public int dwPageId;
+
+    @Override
+    public String toString() {
+        return "TDCSBoardResult{" +
+                "bSuccess=" + bSuccess +
+                ", dwErrorCode=" + dwErrorCode +
+                ", achConfE164='" + achConfE164 + '\'' +
+                ", achTabId='" + achTabId + '\'' +
+                ", dwPageId=" + dwPageId +
+                '}';
+    }
 }

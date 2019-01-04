@@ -9,4 +9,12 @@ import java.util.List;
 public class TDCSGetUserList{
     public int dwListNum;
     public List<TDCSConfUserInfo> atUserList;
+
+    @Override
+    public String toString() {
+        return "TDCSGetUserList{" +
+                "dwListNum=" + dwListNum +
+                ", atUserList=" + atUserList +
+                '}';
+    }
 }

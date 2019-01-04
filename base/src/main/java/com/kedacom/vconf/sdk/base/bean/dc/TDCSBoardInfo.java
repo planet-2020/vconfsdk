@@ -35,4 +35,24 @@ public class TDCSBoardInfo {
         this.dwPageId = dwPageId;
         this.achWbCreatorE164 = achWbCreatorE164;
     }
+
+    @Override
+    public String toString() {
+        return "TDCSBoardInfo{" +
+                "achWbName='" + achWbName + '\'' +
+                ", emWbMode=" + emWbMode +
+                ", dwWbPageNum=" + dwWbPageNum +
+                ", dwWbCreateTime=" + dwWbCreateTime +
+                ", achTabId='" + achTabId + '\'' +
+                ", dwPageId=" + dwPageId +
+                ", dwWbSerialNumber=" + dwWbSerialNumber +
+                ", achWbCreatorE164='" + achWbCreatorE164 + '\'' +
+                ", dwWbWidth=" + dwWbWidth +
+                ", dwWbHeight=" + dwWbHeight +
+                ", achElementUrl='" + achElementUrl + '\'' +
+                ", achDownloadUrl='" + achDownloadUrl + '\'' +
+                ", achUploadUrl='" + achUploadUrl + '\'' +
+                ", dwWbAnonyId=" + dwWbAnonyId +
+                '}';
+    }
 }

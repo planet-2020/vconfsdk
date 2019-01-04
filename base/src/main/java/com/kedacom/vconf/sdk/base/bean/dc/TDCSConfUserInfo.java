@@ -21,4 +21,16 @@ public class TDCSConfUserInfo {
         this.bIsOper = bIsOper;
         this.bIsConfAdmin = bIsConfAdmin;
     }
+
+    @Override
+    public String toString() {
+        return "TDCSConfUserInfo{" +
+                "achE164='" + achE164 + '\'' +
+                ", achName='" + achName + '\'' +
+                ", emMttype=" + emMttype +
+                ", bOnline=" + bOnline +
+                ", bIsOper=" + bIsOper +
+                ", bIsConfAdmin=" + bIsConfAdmin +
+                '}';
+    }
 }
