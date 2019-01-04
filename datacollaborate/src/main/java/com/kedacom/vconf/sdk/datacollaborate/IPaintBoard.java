@@ -214,6 +214,10 @@ public interface IPaintBoard {
          * @param Op 绘制操作*/
         void publish(OpPaint Op);
     }
+    /**
+     * 设置发布者。
+     * NOTE: 只有设置了发布者才可以在画板上主动绘制
+     * */
     IPaintBoard setPublisher(IPublisher publisher);
 
 }
