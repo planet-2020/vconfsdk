@@ -66,7 +66,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     // 图片画布。用于绘制图片。
     private DefaultPaintView picPaintView;
     // 图片操作。
-    private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();  // TODO 改为MyConcurrentLinkedDeque<OpInsertPic>
+    private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();
 
     // 临时图片画布。用于展示图片操作的一些中间效果，如插入图片、选中图片时先展示带外围虚框和底部删除按钮的图片，操作结束时清除虚框和删除按钮。
     private DefaultPaintView tmpPicPaintView;
@@ -212,13 +212,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         return picOps;
     }
 
-    void setPicsMatrix(Matrix matrix) {
-        // TODO 遍历图片设置
-    }
 
-    // TODO 全局放缩时用这个接口
-    void concatPicsMatrix(Matrix matrix) {
-        // TODO 遍历图片设置
+    void fullMatrixPics(Matrix matrix) {
+        for (OpPaint op : picOps){
+            if (op instanceof OpInsertPic){
+                OpInsertPic opInsertPic = (OpInsertPic) op;
+                Matrix initMatrix = new Matrix(opInsertPic.getInitMatrix());
+                initMatrix.postConcat(matrix);
+                opInsertPic.setMatrix(initMatrix);
+            }
+        }
     }
 
     public Matrix getTmpPicViewMatrix() {

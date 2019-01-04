@@ -18,7 +18,8 @@ public class OpInsertPic extends OpPaint {
     private int picWidth;
     private int picHeight;
     private PointF insertPos; // 插入位置（图片左上角所在位置的点）
-    private Matrix matrix;
+    private Matrix initMatrix; // 初始位置的matrix
+    private Matrix matrix; // 实际位置的matrix
 
     public OpInsertPic(){
         type = EOpType.INSERT_PICTURE;
@@ -33,7 +34,7 @@ public class OpInsertPic extends OpPaint {
         BitmapFactory.decodeFile(picPath, options);
         this.picWidth = options.outWidth;
         this.picHeight = options.outHeight;
-        this.matrix = matrix;
+        initMatrix = this.matrix = matrix;
         type = EOpType.INSERT_PICTURE;
     }
 
@@ -43,7 +44,7 @@ public class OpInsertPic extends OpPaint {
         this.picWidth = picWidth;
         this.picHeight = picHeight;
         this.insertPos = insertPos;
-        this.matrix = matrix;
+        initMatrix = this.matrix = matrix;
         type = EOpType.INSERT_PICTURE;
     }
 
@@ -121,6 +122,10 @@ public class OpInsertPic extends OpPaint {
 
     public void setInsertPos(PointF insertPos) {
         this.insertPos = insertPos;
+    }
+
+    public Matrix getInitMatrix() {
+        return initMatrix;
     }
 
     public Matrix getMatrix() {

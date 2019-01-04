@@ -333,8 +333,8 @@ public class DefaultPainter implements IPainter {
                     }
                 }
                 break;
-            case FULLSCREEN_MATRIX: // 全局放缩，包括图片和图形
-                paintBoard.concatPicsMatrix(((OpMatrix)op).getMatrix());
+            case FULLSCREEN_MATRIX: // 全局放缩、位移，包括图片和图形
+                paintBoard.fullMatrixPics(((OpMatrix)op).getMatrix());
                 paintBoard.setShapeViewMatrix(((OpMatrix)op).getMatrix());
                 paintBoard.zoomRateChanged();
                 break;
@@ -583,7 +583,7 @@ public class DefaultPainter implements IPainter {
 
         private void render(MyConcurrentLinkedDeque<OpPaint> ops, Canvas canvas){
             for (OpPaint op : ops) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
-//                KLog.p("to render %s", op);
+                KLog.p("to render %s", op);
                 switch (op.getType()) {
                     case DRAW_LINE:
                         OpDrawLine lineOp = (OpDrawLine) op;
@@ -616,7 +616,6 @@ public class DefaultPainter implements IPainter {
                     case INSERT_PICTURE:
                         OpInsertPic insertPicOp = (OpInsertPic) op;
                         if (null != insertPicOp.getPic()) {
-                            KLog.p("insertPicOp=%s", insertPicOp);
                             canvas.drawBitmap(insertPicOp.getPic(), insertPicOp.getMatrix(), cfgPaint(insertPicOp));
                         }
                         break;
