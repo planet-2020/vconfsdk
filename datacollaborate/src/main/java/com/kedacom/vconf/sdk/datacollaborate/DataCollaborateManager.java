@@ -486,14 +486,10 @@ public class DataCollaborateManager extends RequestAgent {
      *                       resultListener.onFailed(errorCode);*/
     public void createDcConf(String confE164, String confName, EDcMode dcMode, EConfType confType,
                              String adminE164, List<DCMember> members, IResultListener resultListener){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        for (DCMember member : members){
-            tdcsConfUserInfos.add(ToDoConverter.toTransferObj(member));
-        }
         req(Msg.DCCreateConf, resultListener,
                 new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
                         confE164, confName, ToDoConverter.toTransferObj(dcMode),
-                        tdcsConfUserInfos, adminE164, terminalType));
+                        ToDoConverter.toDcUserList(members), adminE164, terminalType));
         cachedPaintOps.clear();
         curDcConfE164 = null;
     }
