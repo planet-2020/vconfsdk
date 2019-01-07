@@ -193,7 +193,7 @@ public enum Msg {
             methodOwner = DcsCtrl,
             paras = String.class, // 会议e164
              rspSeq = {"DcsReleaseConf_Rsp"})
-    DCReleaseConf, // TODO 待调
+    DCReleaseConf,
 
     /**结束数据协作响应*/
     @Response(clz = TDCSResult.class,
@@ -206,7 +206,7 @@ public enum Msg {
 					name = "DcsReleaseConf_Ntf")
     @Response(clz = BaseTypeString.class,
 				name = "DcsReleaseConf_Ntf")
-    DCReleaseConfNtf, // TODO 待调
+    DCReleaseConfNtf,
 
 //    /**当前终端拒绝入会*/
 //    @Deprecated // 下层已经做掉了（目前是始终同意入数据协作）。入会后若当前会议存在数据协作，平台会通知各终端入数据协作，各终端可选择加入或拒绝。

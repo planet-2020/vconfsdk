@@ -81,6 +81,8 @@ public class DataCollaborateManager extends RequestAgent {
     public static final int ErrCode_BuildLink4LoginFailed = -2;
     // 加入数据协作建链失败
     public static final int ErrCode_BuildLink4ConfFailed = -3;
+    // 尚未加入数据协作
+    public static final int ErrCode_NoDcConf = -4;
 
     private String curDcConfE164;
     String getCurDcConfE164(){
@@ -501,8 +503,13 @@ public class DataCollaborateManager extends RequestAgent {
      *                       resultListener.onSuccess(null);
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
+     *                       {@link #ErrCode_NoDcConf}
      *                       resultListener.onFailed(errorCode);*/
     public void releaseDcConf(IResultListener resultListener){
+        if (null == curDcConfE164){
+            if (null != resultListener) resultListener.onFailed(ErrCode_NoDcConf);
+            return;
+        }
         req(Msg.DCReleaseConf, resultListener, curDcConfE164);
         curDcConfE164 = null;
         cachedPaintOps.clear();
@@ -516,8 +523,13 @@ public class DataCollaborateManager extends RequestAgent {
      *                       resultListener.onSuccess(null);
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
+     *                       {@link #ErrCode_NoDcConf}
      *                       resultListener.onFailed(errorCode);*/
     public void quitDcConf(boolean bQuitConf, IResultListener resultListener){
+        if (null == curDcConfE164){
+            if (null != resultListener) resultListener.onFailed(ErrCode_NoDcConf);
+            return;
+        }
         req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
         curDcConfE164 = null;
         cachedPaintOps.clear();
@@ -811,6 +823,10 @@ public class DataCollaborateManager extends RequestAgent {
      * */
     public void delBoard(String boardId, IResultListener listener){
         KLog.p("boardId=%s, listener=%s", boardId, listener);
+        if (null == curDcConfE164){
+            if (null != listener) listener.onFailed(ErrCode_NoDcConf);
+            return;
+        }
         req(Msg.DCDelBoard, listener, curDcConfE164, boardId);
     }
 
@@ -825,6 +841,10 @@ public class DataCollaborateManager extends RequestAgent {
      *                  resultListener.onFailed(errorCode);
      * */
     public void delAllBoard(IResultListener listener){
+        if (null == curDcConfE164){
+            if (null != listener) listener.onFailed(ErrCode_NoDcConf);
+            return;
+        }
         req(Msg.DCDelAllBoard, listener, curDcConfE164);
     }
 
@@ -843,6 +863,10 @@ public class DataCollaborateManager extends RequestAgent {
      * */
     public void switchBoard(String boardId, IResultListener listener){
         KLog.p("boardId=%s, listener=%s", boardId, listener);
+        if (null == curDcConfE164){
+            if (null != listener) listener.onFailed(ErrCode_NoDcConf);
+            return;
+        }
         req(Msg.DCSwitchBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
     }
 
@@ -1315,7 +1339,7 @@ public class DataCollaborateManager extends RequestAgent {
      * @param onOperatorEventListener 协作权相关通知监听器
      * */
     public void addOperatorEventListener(IOnOperatorEventListener onOperatorEventListener){
-        subscribe(Msg.DCApplyOperatorNtf, onOperatorEventListener);
+        subscribe(operatorNtfs, onOperatorEventListener);
     }
 
     /**
