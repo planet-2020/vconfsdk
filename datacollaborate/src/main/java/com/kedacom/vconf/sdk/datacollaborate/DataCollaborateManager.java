@@ -148,6 +148,7 @@ public class DataCollaborateManager extends RequestAgent {
         processorMap.put(Msg.DCQueryAllBoards, this::onBoardOpRsps);
         processorMap.put(Msg.DCNewBoard, this::onBoardOpRsps);
         processorMap.put(Msg.DCDelBoard, this::onBoardOpRsps);
+        processorMap.put(Msg.DCDelAllBoard, this::onBoardOpRsps);
         processorMap.put(Msg.DCSwitchBoard, this::onBoardOpRsps);
 
         processorMap.put(Msg.DCAddOperator, this::onChangeOperatorsRsps);
@@ -815,6 +816,19 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     /**
+     * 删除所有画板
+     * @param listener 结果监听器
+     *                  成功返回会议e164：
+     *                  resultListener.onSuccess(confE164);
+     *                  失败返回错误码：
+     *                  {@link #ErrCode_Failed}
+     *                  resultListener.onFailed(errorCode);
+     * */
+    public void delAllBoard(IResultListener listener){
+        req(Msg.DCDelAllBoard, listener, curDcConfE164);
+    }
+
+    /**
      * 切换画板
      * @param boardId 目标画板Id
      * @param listener 切换画板结果监听器
@@ -885,6 +899,15 @@ public class DataCollaborateManager extends RequestAgent {
                     if (null != listener) listener.onSuccess(boardResult.achTabId);
                 }else {
                     KLog.p(KLog.ERROR, "del board failed, errorCode=%s", boardResult.dwErrorCode);
+                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                }
+                break;
+            case DCDelAllBoardRsp:
+                TDCSBoardResult allBoardRes = (TDCSBoardResult) rspContent;
+                if (allBoardRes.bSuccess){
+                    if (null != listener) listener.onSuccess(allBoardRes.achConfE164);
+                }else {
+                    KLog.p(KLog.ERROR, "del all board failed, errorCode=%s", allBoardRes.dwErrorCode);
                     if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;

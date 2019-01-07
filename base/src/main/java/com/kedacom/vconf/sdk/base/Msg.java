@@ -336,6 +336,18 @@ public enum Msg {
 				name="DcsDelWhiteBoard_Rsp")
     DCDelBoardRsp,
 
+    /**删除所有画板*/
+    @Request(	name = "DCSDelAllWhiteBoardReq",
+            methodOwner = DcsCtrl,
+            paras = String.class, // 当前会议e164
+            rspSeq = {"DcsDelAllWhiteBoard_Rsp"})
+    DCDelAllBoard,
+
+    /**删除所有画板响应*/
+    @Response(clz=TDCSBoardResult.class,
+            name="DcsDelAllWhiteBoard_Rsp")
+    DCDelAllBoardRsp,
+
     /**切换画板*/
     @Request(	name = "DCSSwitchReq",
             methodOwner = DcsCtrl,
