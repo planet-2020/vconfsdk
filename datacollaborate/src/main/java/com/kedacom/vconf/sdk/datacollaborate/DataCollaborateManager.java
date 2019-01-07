@@ -114,6 +114,7 @@ public class DataCollaborateManager extends RequestAgent {
             Msg.DCBoardCreatedNtf,
             Msg.DCBoardSwitchedNtf,
             Msg.DCBoardDeletedNtf,
+            Msg.DCAllBoardDeletedNtf,
     };
 
     // 绘制相关通知
@@ -972,6 +973,10 @@ public class DataCollaborateManager extends RequestAgent {
                 }
                 bGotAllBoard = false;
             }
+        } else if (Msg.DCAllBoardDeletedNtf.equals(ntfId)) {
+            for (Object listener : listeners) {
+                ((IOnBoardOpListener) listener).onAllBoardDeleted();
+            }
         }
 
     }
@@ -1381,6 +1386,9 @@ public class DataCollaborateManager extends RequestAgent {
          * 画板切换通知
          * @param boardId 画板Id {@link BoardInfo#id}*/
         void onBoardSwitched(String boardId);
+        /**
+         * 所有画板删除通知*/
+        void onAllBoardDeleted();
     }
 
     /**

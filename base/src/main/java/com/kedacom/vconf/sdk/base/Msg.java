@@ -418,6 +418,11 @@ public enum Msg {
 					name="DcsDelWhiteBoard_Ntf")
     DCBoardDeletedNtf,
 
+    /**删除所有画板通知*/
+    @Notification(clz = TDCSDelWhiteBoardInfo.class,
+            name="DcsDelAllWhiteBoard_Ntf")
+    DCAllBoardDeletedNtf,
+
 
     // 数据协作图元操作
 
