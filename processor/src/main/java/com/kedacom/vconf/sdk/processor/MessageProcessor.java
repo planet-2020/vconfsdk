@@ -37,6 +37,7 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.MirroredTypesException;
+import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
@@ -320,14 +321,18 @@ public class MessageProcessor extends AbstractProcessor {
 
     private String parseClassNameFromMirroredTypeException(MirroredTypeException mte){
         String className;
-
-        try { // 为普通类类型
-            DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
-            TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
-            className = classTypeElement.getQualifiedName().toString();
-        }catch (ClassCastException e){ // 为数组类型
-            ArrayType classTypeMirror = (ArrayType) mte.getTypeMirror();
-            className = classTypeMirror.getComponentType().toString()+"[]";
+        TypeMirror typeMirror = mte.getTypeMirror();
+        if (typeMirror instanceof PrimitiveType){
+            className = typeMirror.toString();
+        }else {
+            try { // 为普通类类型
+                DeclaredType classTypeMirror = (DeclaredType) mte.getTypeMirror();
+                TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
+                className = classTypeElement.getQualifiedName().toString();
+            } catch (ClassCastException e) { // 为数组类型
+                ArrayType classTypeMirror = (ArrayType) mte.getTypeMirror();
+                className = classTypeMirror.getComponentType().toString() + "[]";
+            }
         }
 
         return className;
@@ -338,16 +343,20 @@ public class MessageProcessor extends AbstractProcessor {
         String className;
         List<? extends TypeMirror> typeMirrors = mte.getTypeMirrors();
         for (TypeMirror mirror : typeMirrors){
-            try { // 为普通类类型
-                DeclaredType classTypeMirror = (DeclaredType)mirror;
-                TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
-                className = classTypeElement.getQualifiedName().toString();
-            }catch (ClassCastException e){ // 为数组类型
-                ArrayType classTypeMirror = (ArrayType) mirror;
-                className = classTypeMirror.getComponentType().toString()+"[]";
+            if (mirror instanceof PrimitiveType){
+                className = mirror.toString();
+            }else {
+                try { // 为普通类类型
+                    DeclaredType classTypeMirror = (DeclaredType) mirror;
+                    TypeElement classTypeElement = (TypeElement) classTypeMirror.asElement();
+                    className = classTypeElement.getQualifiedName().toString();
+                } catch (ClassCastException e) { // 为数组类型
+                    ArrayType classTypeMirror = (ArrayType) mirror;
+                    className = classTypeMirror.getComponentType().toString() + "[]";
+                }
             }
-
             paraClzNames.add(className);
+
         }
         return paraClzNames.toArray(new String[]{});
     }

@@ -179,7 +179,7 @@ public enum Msg {
     @Request( name = "DCSQuitConfReq",
             methodOwner = DcsCtrl,
               paras = {String.class, // 会议e164
-                      Integer.class // 是否同时退出会议。0表示退出协作的同时退出会议，1表示仅退出协作。
+                      int.class // 是否同时退出会议。0表示退出协作的同时退出会议，1表示仅退出协作。
               },
               rspSeq = {"DcsQuitConf_Rsp"})
     DCQuitConf, // TODO 待调
