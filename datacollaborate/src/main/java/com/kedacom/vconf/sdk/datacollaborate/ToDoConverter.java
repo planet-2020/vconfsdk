@@ -602,4 +602,20 @@ final class ToDoConverter {
                 member.isbOnline(), member.isbOperator(), member.isbChairman());
     }
 
+    public static List<DCMember> fromDcUserList(List<TDCSConfUserInfo> userInfos){
+        List<DCMember> members = new ArrayList<>();
+        for(TDCSConfUserInfo userInfo : userInfos){
+            members.add(fromTransferObj(userInfo));
+        }
+        return members;
+    }
+
+    public static List<TDCSConfUserInfo> toDcUserList(List<DCMember> members){
+        List<TDCSConfUserInfo> userInfos = new ArrayList<>();
+        for(DCMember member : members){
+            userInfos.add(toTransferObj(member));
+        }
+        return userInfos;
+    }
+
 }

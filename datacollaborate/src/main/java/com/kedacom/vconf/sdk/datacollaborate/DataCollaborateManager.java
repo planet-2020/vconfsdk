@@ -39,6 +39,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSRegInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSSwitchReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfos;
 import com.kedacom.vconf.sdk.base.bean.dc.TDcsCacheElementParseResult;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DcConfInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
@@ -675,7 +676,7 @@ public class DataCollaborateManager extends RequestAgent {
      *                       注意：该监听器返回成功与否仅表示该请求是否已成功被平台受理，
      *                       平台成功受理后会将该请求转给管理方，管理方同意后，才真正表明申请成功。
      *                       管理方同意或拒绝后平台会转发相应通知给申请者，
-     *                       申请者需要监听{@link IOnOperatorEventListener#onOperatorAdded(DCMember)}
+     *                       申请者需要监听{@link IOnOperatorEventListener#onOperatorAdded(List)}
      *                       和{@link IOnOperatorEventListener#onApplyOperatorRejected()}来判断申请是成功了还是被拒绝了。
      *                       */
     public void applyForOperator(String e164, IResultListener resultListener){
@@ -747,12 +748,12 @@ public class DataCollaborateManager extends RequestAgent {
                 break;
             case DCOperatorAddedNtf:
                 for (Object listener : listeners){
-                    ((IOnOperatorEventListener)listener).onOperatorAdded(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
+                    ((IOnOperatorEventListener)listener).onOperatorAdded(ToDoConverter.fromDcUserList(((TDCSUserInfos)ntfContent).atUserInfoList));
                 }
                 break;
             case DCOperatorDeletedNtf:
                 for (Object listener : listeners){
-                    ((IOnOperatorEventListener)listener).onOperatorDeleted(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
+                    ((IOnOperatorEventListener)listener).onOperatorDeleted(ToDoConverter.fromDcUserList(((TDCSUserInfos)ntfContent).atUserInfoList));
                 }
                 break;
             case DCApplyOperatorNtf:
@@ -1428,14 +1429,14 @@ public class DataCollaborateManager extends RequestAgent {
         /**
          * （所有与会方收到）协作方被添加通知。
          * 特别地，申请方申请协作权通过后也会导致自己收到该通知。{@link #applyForOperator(String, IResultListener)}
-         * @param member 被添加的协作方信息
+         * @param members 被添加的协作方信息
          * */
-        default void onOperatorAdded(DCMember member){}
+        default void onOperatorAdded(List<DCMember> members){}
         /**
          * （所有与会方收到）协作方被删除通知
-         * @param member 被删除的协作方信息
+         * @param members 被删除的协作方信息
          * */
-        default void onOperatorDeleted(DCMember member){}
+        default void onOperatorDeleted(List<DCMember> members){}
     }
 
     private class QueryAllBoardsInnerListener implements IResultListener{

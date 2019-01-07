@@ -44,6 +44,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSRegInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSSwitchReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfos;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbAddSubPageInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbCircleOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbDelPicOperInfo;
@@ -281,11 +282,11 @@ public enum Msg {
     DCApplyOperatorNtf, // TODO 待调
 
     /**（主席）添加协作方通知*/
-    @Notification(clz = TDCSUserInfo.class,
+    @Notification(clz = TDCSUserInfos.class,
             name = "DcsAddOperator_Ntf")
     DCOperatorAddedNtf, // TODO 待调
     /**（主席）删除协作方通知*/
-    @Notification(clz = TDCSUserInfo.class,
+    @Notification(clz = TDCSUserInfos.class,
             name = "DcsDelOperator_Ntf")
     DCOperatorDeletedNtf, // TODO 待调
     /**申请协作权被拒绝通知*/
