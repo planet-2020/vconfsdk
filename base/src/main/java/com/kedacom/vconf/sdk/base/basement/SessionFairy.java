@@ -87,8 +87,13 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
         for(int i=0; i<classes.length; ++i){
             if (null != reqPara[i]
                     && classes[i] != reqPara[i].getClass()){
-                Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", reqId, classes[i], reqPara[i].getClass()));
-                return false;
+                if (Utils.isPrimitiveType(classes[i])
+                        && Utils.getPrimitiveWrapperType(classes[i]) == reqPara[i].getClass()) {
+                    continue;
+                }else{
+                    Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", reqId, classes[i], reqPara[i].getClass()));
+                    return false;
+                }
             }
         }
 

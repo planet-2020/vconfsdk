@@ -512,7 +512,7 @@ public class DefaultPainter implements IPainter {
 
                 // 图片层绘制
                 Canvas picPaintViewCanvas = paintBoard.lockCanvas(IPaintBoard.LAYER_PIC);
-                if (null != picPaintViewCanvas) {
+                if (null != picPaintViewCanvas) {  // TODO 优化，尝试如果没有影响图片层的操作，如插入/删除/拖动/放缩图片，就不刷新图片层。
                     // 清空画布
                     picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
