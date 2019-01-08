@@ -496,6 +496,11 @@ public enum Msg {
             methodParas = {StringBuffer.class, StringBuffer.class},
             paras = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class})
     DCDragPic, // TODO 待调
+    @Request(name = "DCSOperPitchPicZoomCmd",
+            methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
+            paras = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class})
+    DCZoomPic, // TODO 待调
 
     /**黑板擦擦除*/
     @Request(	name="DCSOperReginEraseCmd",

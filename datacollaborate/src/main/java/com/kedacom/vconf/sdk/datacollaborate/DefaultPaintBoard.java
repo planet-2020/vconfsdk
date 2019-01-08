@@ -22,6 +22,8 @@ import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
@@ -38,8 +40,10 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 
 import androidx.annotation.NonNull;
@@ -387,7 +391,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
                 return false; // 放弃处理后续事件
             }
             if (!tmpPicOps.isEmpty()){
-                handler.removeMessages(MSGID_INSERT_PIC);
+                handler.removeMessages(MSGID_FINISH_EDIT_PIC);
                 if (isInDelPicIcon(x, y)){
                     setDelPicIcon(DEL_PIC_ICON_ACTIVE);
                     if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
@@ -403,7 +407,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
                 if (isInDelPicIcon(x, y)){
                     delPic();
                 }else {
-                    handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000);
+                    handler.sendEmptyMessageDelayed(MSGID_FINISH_EDIT_PIC, 3000);
                 }
             }
         }
@@ -430,8 +434,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         public void onSingleTap(float x, float y) {
             if (!tmpPicOps.isEmpty()) {
                 if (!isInDashedRect(x, y)&&!isInDelPicIcon(x,y)){
-                    handler.removeMessages(MSGID_INSERT_PIC);
-                    doInsertPic();
+                    handler.removeMessages(MSGID_FINISH_EDIT_PIC);
+                    finishEditPic();
                 }
             }
         }
@@ -442,7 +446,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             if (tmpPicOps.isEmpty()){
                 return;
             }
-            handler.removeMessages(MSGID_INSERT_PIC);
+            handler.removeMessages(MSGID_FINISH_EDIT_PIC);
             preDragX = x; preDragY = y;
         }
 
@@ -462,7 +466,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             if (tmpPicOps.isEmpty()){
                 return;
             }
-            handler.removeMessages(MSGID_INSERT_PIC);
+            handler.removeMessages(MSGID_FINISH_EDIT_PIC);
         }
 
         @Override
@@ -627,7 +631,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         savedLayerBeforeEditPic = focusedLayer;
         focusedLayer = LAYER_PIC_TMP;
         // 3秒过后画到图片画板上并清除临时画板
-        handler.sendEmptyMessageDelayed(MSGID_INSERT_PIC, 3000);
+        handler.sendEmptyMessageDelayed(MSGID_FINISH_EDIT_PIC, 3000);
     }
 
 
@@ -790,7 +794,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         publisher = null;
         paintOpGeneratedListener = null;
         onBoardStateChangedListener = null;
-        handler.removeMessages(MSGID_INSERT_PIC); // XXX 没有removeAll的接口？
+        handler.removeMessages(MSGID_FINISH_EDIT_PIC);
     }
 
     @Override
@@ -855,6 +859,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     }
 
 
+    private boolean bInsertingPic = false;
     @Override
     public void insertPic(String path) {
         if (null == publisher){
@@ -862,10 +867,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             return;
         }
 
-        handler.removeMessages(MSGID_INSERT_PIC);
+        handler.removeMessages(MSGID_FINISH_EDIT_PIC);
         if (!tmpPicOps.isEmpty()){
-            doInsertPic();
+            finishEditPic();
         }
+
+        bInsertingPic = true;
 
         Bitmap bt = BitmapFactory.decodeFile(path);
         int picW = bt.getWidth();
@@ -884,25 +891,27 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     }
 
 
-    private static int MSGID_INSERT_PIC = 666;
+    private static int MSGID_FINISH_EDIT_PIC = 666;
     private Handler handler = new Handler(){
         @Override
         public void handleMessage(Message msg) {
-            if (MSGID_INSERT_PIC == msg.what){
-                doInsertPic();
+            if (MSGID_FINISH_EDIT_PIC == msg.what){
+                finishEditPic();
             }
         }
     };
 
-
-    private void doInsertPic(){
-        OpInsertPic opInsertPic = null;
+    private OpInsertPic getEditingPic(){
         for (OpPaint op : tmpPicOps){
             if (op instanceof OpInsertPic){
-                opInsertPic = (OpInsertPic) op;
-                break;
+                return (OpInsertPic) op;
             }
         }
+        return null;
+    }
+
+    private void finishEditPic(){
+        OpInsertPic opInsertPic = getEditingPic();
         if (null == opInsertPic){
             KLog.p(KLog.ERROR, "no opInsertPic in tmpPicOps");
             return;
@@ -919,17 +928,51 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
         if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
 
-        publisher.publish(opInsertPic); // TODO 拖动图片不是插入图片，代码中拖拽仍然是走的插入图片的逻辑
+        // 发布
+        if (bInsertingPic) {
+            // 正在插入图片
+            publisher.publish(opInsertPic);
+            bInsertingPic = false;
+        }else{
+            // 正在拖动放缩图片
+            float[] initMatrixVal = new float[9];
+            float[] matrixVal = new float[9];
+            opInsertPic.getInitMatrix().getValues(initMatrixVal);
+            opInsertPic.getMatrix().getValues(matrixVal);
+            matrixVal[Matrix.MTRANS_X] -= initMatrixVal[Matrix.MTRANS_X];
+            matrixVal[Matrix.MTRANS_Y] -= initMatrixVal[Matrix.MTRANS_Y];
+            Matrix matrix = new Matrix();
+            matrix.setValues(matrixVal);
+            Map<String, Matrix> picMatrices = new HashMap<>();
+            picMatrices.put(opInsertPic.getPicId(), matrix);
+            OpDragPic opDragPic = new OpDragPic(picMatrices);
+            assignBasicInfo(opDragPic);
+            publisher.publish(opDragPic);
+        }
+
     }
 
 
     private void delPic(){
-        handler.removeMessages(MSGID_INSERT_PIC);
+        handler.removeMessages(MSGID_FINISH_EDIT_PIC);
+        OpInsertPic opInsertPic = getEditingPic();
+
         focusedLayer = savedLayerBeforeEditPic;
         tmpPicOps.clear();
         tmpPicViewMatrix.reset();
         if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-        // TODO publisher.publish(opDelPic); TODO 如果是刚插入就删除就不用走发布
+        if (bInsertingPic) {
+            // publisher.publish(opDelPic); 如果是正在插入中就删除就不用走发布
+            bInsertingPic = false;
+        }else{
+            if (null == opInsertPic){
+                KLog.p(KLog.ERROR,"null == opInsertPic");
+                return;
+            }
+            OpDeletePic opDeletePic = new OpDeletePic(new String[]{opInsertPic.getPicId()});
+            assignBasicInfo(opDeletePic);
+            publisher.publish(opDeletePic);
+        }
     }
 
     @Override

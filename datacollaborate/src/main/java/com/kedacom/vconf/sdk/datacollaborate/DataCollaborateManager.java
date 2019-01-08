@@ -1159,7 +1159,7 @@ public class DataCollaborateManager extends RequestAgent {
         Object to = ToDoConverter.toPaintTransferObj(op);
         if (null != to) {
             req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
-                    ToDoConverter.toCommonPaintTransferObj(op), ToDoConverter.toPaintTransferObj(op));
+                    ToDoConverter.toCommonPaintTransferObj(op), to);
         }else{
             req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
                     ToDoConverter.toCommonPaintTransferObj(op));

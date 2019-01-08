@@ -14,5 +14,6 @@ public enum EOpType {
     INSERT_PICTURE,
     DELETE_PICTURE,
     DRAG_PICTURE,
+    ZOOM_PICTURE,
     UPDATE_PICTURE,
 }

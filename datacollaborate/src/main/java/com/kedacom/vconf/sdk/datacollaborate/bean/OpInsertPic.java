@@ -35,6 +35,7 @@ public class OpInsertPic extends OpPaint {
         this.picWidth = options.outWidth;
         this.picHeight = options.outHeight;
         initMatrix = this.matrix = matrix;
+        insertPos = new PointF();
         type = EOpType.INSERT_PICTURE;
     }
 

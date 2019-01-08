@@ -68,6 +68,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.ETerminalType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpZoomPic;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -206,6 +207,8 @@ final class ToDoConverter {
                 return toTransferObj((OpDeletePic) domainObj);
             case DRAG_PICTURE:
                 return toTransferObj((OpDragPic) domainObj);
+            case ZOOM_PICTURE:
+                return toZoomPicTransferObj((OpZoomPic) domainObj);
             case CLEAR_SCREEN:
             default:
                 return null;
@@ -381,6 +384,34 @@ final class ToDoConverter {
     }
 
     public static TDCSWbPitchPicOperInfo toTransferObj(OpDragPic domainObj) {
+        Map<String, Matrix> matrices = domainObj.getPicMatrices();
+        TDCSWbGraphsInfo[] tdcsWbGraphsInfos = new TDCSWbGraphsInfo[matrices.size()];
+        int i=0;
+        for (String picId : matrices.keySet()){
+            float[] matrixVal = new float[9];
+            matrices.get(picId).getValues(matrixVal);
+            picMatrixValueTt(matrixVal);
+            tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, matrixValueFloat2Str(matrixVal));
+            ++i;
+        }
+        return new TDCSWbPitchPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), tdcsWbGraphsInfos);
+    }
+
+    public static OpZoomPic fromZoomPicTransferObj(DcsOperPitchPicDragNtf dcDragPicOp) {
+        Map<String, Matrix> picMatrices = new HashMap<>();
+        for (TDCSWbGraphsInfo picMatrix : dcDragPicOp.AssParam.atGraphsInfo){
+            float[] matrixVal = matrixValueStr2Float(picMatrix.aachMatrixValue);
+            picMatrixValueFt(matrixVal);
+            Matrix matrix = new Matrix();
+            matrix.setValues(matrixVal);
+            picMatrices.put(picMatrix.achGraphsId, matrix);
+        }
+        OpZoomPic opZoomPic = new OpZoomPic(picMatrices);
+        assignPaintDomainObj(dcDragPicOp.MainParam, INVALID_UUID, opZoomPic);
+        return opZoomPic;
+    }
+
+    public static TDCSWbPitchPicOperInfo toZoomPicTransferObj(OpZoomPic domainObj) {
         Map<String, Matrix> matrices = domainObj.getPicMatrices();
         TDCSWbGraphsInfo[] tdcsWbGraphsInfos = new TDCSWbGraphsInfo[matrices.size()];
         int i=0;
