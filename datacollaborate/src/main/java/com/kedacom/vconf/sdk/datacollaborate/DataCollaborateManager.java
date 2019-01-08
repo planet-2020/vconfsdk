@@ -504,10 +504,6 @@ public class DataCollaborateManager extends RequestAgent {
      *                       {@link #ErrCode_NoDcConf}
      *                       resultListener.onFailed(errorCode);*/
     public void releaseDcConf(IResultListener resultListener){
-        if (null == curDcConfE164){
-            if (null != resultListener) resultListener.onFailed(ErrCode_NoDcConf);
-            return;
-        }
         req(Msg.DCReleaseConf, resultListener, curDcConfE164);
         curDcConfE164 = null;
         cachedPaintOps.clear();
@@ -524,11 +520,6 @@ public class DataCollaborateManager extends RequestAgent {
      *                       {@link #ErrCode_NoDcConf}
      *                       resultListener.onFailed(errorCode);*/
     public void quitDcConf(boolean bQuitConf, IResultListener resultListener){
-//        if (null == curDcConfE164){
-//            if (null != resultListener) resultListener.onFailed(ErrCode_NoDcConf);
-//            return;
-//        }
-        KLog.p("curDcConfE164=%s", curDcConfE164);
         req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
         curDcConfE164 = null;
         cachedPaintOps.clear();
@@ -821,11 +812,6 @@ public class DataCollaborateManager extends RequestAgent {
      *                  请求者自身也会收到该通知，避免在该通知监听器中和结果监听器中做重复的处理逻辑。
      * */
     public void delBoard(String boardId, IResultListener listener){
-        KLog.p("boardId=%s, listener=%s", boardId, listener);
-        if (null == curDcConfE164){
-            if (null != listener) listener.onFailed(ErrCode_NoDcConf);
-            return;
-        }
         req(Msg.DCDelBoard, listener, curDcConfE164, boardId);
     }
 
@@ -840,10 +826,6 @@ public class DataCollaborateManager extends RequestAgent {
      *                  resultListener.onFailed(errorCode);
      * */
     public void delAllBoard(IResultListener listener){
-        if (null == curDcConfE164){
-            if (null != listener) listener.onFailed(ErrCode_NoDcConf);
-            return;
-        }
         req(Msg.DCDelAllBoard, listener, curDcConfE164);
     }
 
@@ -861,11 +843,6 @@ public class DataCollaborateManager extends RequestAgent {
      *                  请求者自身也会收到该通知，避免在该通知监听器中和结果监听器中做重复的处理逻辑。
      * */
     public void switchBoard(String boardId, IResultListener listener){
-        KLog.p("boardId=%s, listener=%s", boardId, listener);
-        if (null == curDcConfE164){
-            if (null != listener) listener.onFailed(ErrCode_NoDcConf);
-            return;
-        }
         req(Msg.DCSwitchBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
     }
 
