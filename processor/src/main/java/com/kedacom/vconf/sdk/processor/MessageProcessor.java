@@ -59,9 +59,10 @@ import javax.tools.Diagnostic;
 public class MessageProcessor extends AbstractProcessor {
     private boolean bDone = false;
 
-    private Map<String, String> reqMethodOwner = new HashMap<>();
     private Map<String, String> idNameMap = new HashMap<>();
     private Map<String, String> nameIdMap = new HashMap<>();
+    private Map<String, String> reqMethodOwner = new HashMap<>();
+    private Map<String, String[]> reqJniMethodParasMap = new HashMap<>();
     private Map<String, String[]> reqParasMap = new HashMap<>();
     private Map<String, String[][]> reqRspsMap = new HashMap<>();
     private Map<String, Integer> reqTimeoutMap = new HashMap<>();
@@ -166,25 +167,24 @@ public class MessageProcessor extends AbstractProcessor {
                 reqName = !reqName.isEmpty() ? reqName : element.getSimpleName().toString();
 
                 String mo = request.methodOwner();
-//                try {
-//                    clz = request.methodOwner();
-//                    mo = clz.getCanonicalName();
-//                }catch (MirroredTypeException mte) {
-//                    mo = parseClassNameFromMirroredTypeException(mte);
-//                }
                 reqMethodOwner.put(reqName, mo);
 
                 // 获取请求参数列表
                 String[] paraClzNames = null;
                 try {
                     Class[] paraClasses = request.paras();
-//                    for (Class cls : paraClasses){
-//    //                    String paraFullName = cls.getCanonicalName();
-//                    }
                 }catch (MirroredTypesException mte) {
                     paraClzNames = parseClassNameFromMirroredTypesException(mte);
                 }
                 reqParasMap.put(reqName, paraClzNames);
+
+                // 获取jni方法参数列表
+                try {
+                    Class[] paraClasses = request.methodParas();
+                }catch (MirroredTypesException mte) {
+                    paraClzNames = parseClassNameFromMirroredTypesException(mte);
+                }
+                reqJniMethodParasMap.put(reqName, paraClzNames);
 
                 // 获取响应序列
                 if (0 == request.rspSeq().length){
@@ -419,6 +419,7 @@ public class MessageProcessor extends AbstractProcessor {
         String fieldNameNameIdMap = "nameIdMap";
         String fieldNameReqMethodOwnerMap = "reqMethodOwner";
         String fieldNameReqParasMap = "reqParasMap";
+        String fieldNameReqJniMethodParasMap = "reqJniMethodParasMap";
         String fieldNameReqRspsMap = "reqRspsMap";
         String fieldNameReqTimeoutMap = "reqTimeoutMap";
         String fieldNameReqExclusiveMap = "reqExclusiveMap";
@@ -439,6 +440,7 @@ public class MessageProcessor extends AbstractProcessor {
                 .addStatement("$L = new $T<>()", fieldNameNameIdMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqMethodOwnerMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqParasMap, HashMap.class)
+                .addStatement("$L = new $T<>()", fieldNameReqJniMethodParasMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqRspsMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqTimeoutMap, HashMap.class)
                 .addStatement("$L = new $T<>()", fieldNameReqExclusiveMap, HashMap.class)
@@ -470,6 +472,15 @@ public class MessageProcessor extends AbstractProcessor {
                 value.append(para).append(".class, ");
             }
             codeBlockBuilder.addStatement("$L.put($S, new Class[]{$L})", fieldNameReqParasMap, req, value);
+        }
+
+        for(String req : reqJniMethodParasMap.keySet()){
+            StringBuffer value = new StringBuffer();
+            String[] paras = reqJniMethodParasMap.get(req);
+            for (String para : paras){
+                value.append(para).append(".class, ");
+            }
+            codeBlockBuilder.addStatement("$L.put($S, new Class[]{$L})", fieldNameReqJniMethodParasMap, req, value);
         }
 
         for(String req : reqRspsMap.keySet()){
@@ -535,6 +546,9 @@ public class MessageProcessor extends AbstractProcessor {
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class[].class),
                         fieldNameReqParasMap, Modifier.STATIC)
+                        .build())
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class[].class),
+                        fieldNameReqJniMethodParasMap, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, String[][].class),
                         fieldNameReqRspsMap, Modifier.STATIC)

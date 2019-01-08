@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.base.basement;
 
 import com.kedacom.vconf.sdk.annotation.Consumer;
 import com.kedacom.vconf.sdk.annotation.Message;
+import com.kedacom.vconf.sdk.base.KLog;
 
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +28,8 @@ final class MagicBook {
     private Map<String, String> nameIdMap; // 消息名称——消息ID
 
     private Map<String, String> reqMethodOwner; // 请求——请求对应的方法所在类
+
+    private Map<String, Class[]> reqMethodParasMap; // 请求——请求方法参数对应的类
 
     private Map<String, Class[]> reqParasMap; // 请求——请求参数对应的类
 
@@ -54,11 +57,14 @@ final class MagicBook {
 //    private final EnumSet<EmRsp> whiteList; // 白名单
 //    private final EnumSet<EmRsp> blackList; // 黑名单
 
+    private JsonProcessor jsonProcessor = JsonProcessor.instance();
+
     private MagicBook(){
         idNameMap = Message$$Generated.idNameMap;
         nameIdMap = Message$$Generated.nameIdMap;
         reqMethodOwner = Message$$Generated.reqMethodOwner;
         reqParasMap = Message$$Generated.reqParasMap;
+        reqMethodParasMap = Message$$Generated.reqJniMethodParasMap;
         reqRspSeqsMap = Message$$Generated.reqRspsMap;
         reqTimeoutMap = Message$$Generated.reqTimeoutMap;
         reqExclusiveMap = Message$$Generated.reqExclusiveMap;
@@ -117,6 +123,9 @@ final class MagicBook {
         return reqMethodOwner.get(req);
     }
 
+    Class[] getReqMethodParaClasses(String req) {
+        return reqMethodParasMap.get(req);
+    }
     Class[] getReqParaClasses(String req){
         return reqParasMap.get(req);
     }
@@ -164,6 +173,58 @@ final class MagicBook {
 
     Class<?> getSetParaClazz(String set){
         return setParaClazzMap.get(set);
+    }
+
+
+    Object[] userPara2MethodPara(Object[] userParas, Class[] methodParaTypes){
+        if (null == methodParaTypes || userParas.length != methodParaTypes.length){
+            KLog.p(KLog.ERROR, "null == methodParaTypes || userParas.length != methodParaTypes.length");
+            return userParas;
+        }
+        Object[] methodParas = new Object[userParas.length];
+        Object userPara;
+        Class methodParaType;
+        for (int i=0; i<userParas.length; ++i){
+            userPara = userParas[i];
+            methodParaType = methodParaTypes[i];
+            if (null != userPara) {
+                KLog.p("userPara[%s].class=%s", i, userPara.getClass());
+            }
+            KLog.p("methodPara[%s].class=%s", i, methodParaType);
+            if (null == userPara){
+                methodParas[i] = null;
+            } else if (userPara.getClass() == methodParaType){
+                methodParas[i] = userPara;
+            } else if (methodParaType.isPrimitive()) {
+                if ((userPara instanceof Byte && Byte.TYPE == methodParaType)
+                        || (userPara instanceof Character && Character.TYPE == methodParaType)
+                        || (userPara instanceof Short && Short.TYPE == methodParaType)
+                        || (userPara instanceof Integer && Integer.TYPE == methodParaType)
+                        || (userPara instanceof Long && Long.TYPE == methodParaType)
+                        || (userPara instanceof Float && Float.TYPE == methodParaType)
+                        || (userPara instanceof Double && Double.TYPE == methodParaType)
+                        || (userPara instanceof Boolean && Boolean.TYPE == methodParaType)) {
+                    methodParas[i] = userPara;
+                } else {
+                    KLog.p(KLog.ERROR, "try convert userPara %s to methodPara %s failed", userPara.getClass(), methodParaTypes[i]);
+                    methodParas[i] = userPara;
+                }
+            }else if (userPara instanceof String && StringBuffer.class == methodParaType){
+                methodParas[i] = new StringBuffer((String) userPara);
+            } else{
+                if (String.class == methodParaTypes[i]){
+                    methodParas[i] = jsonProcessor.toJson(userPara);
+                }else if (StringBuffer.class == methodParaTypes[i]){
+                    String jsonPara = jsonProcessor.toJson(userPara);
+                    methodParas[i] = null == jsonPara ? null : new StringBuffer(jsonPara);
+                }else {
+                    KLog.p("directly assign userPara %s to methodPara %s", userPara.getClass(), methodParaTypes[i]);
+                    methodParas[i] = userPara;
+                }
+            }
+        }
+
+        return methodParas;
     }
 
 }

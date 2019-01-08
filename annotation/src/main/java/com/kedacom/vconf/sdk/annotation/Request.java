@@ -18,11 +18,23 @@ import java.lang.annotation.Target;
 public @interface Request {
     String name();      // 请求对应的方法名
     String methodOwner(); // 请求对应的方法的所属类
-    Class[] paras() default {}; // 请求者需传入的参数列表。NOTE：为了易用性，此参数列表不一定跟下层方法实际需要的参数列表类型一致。不一致的情形有映射规则如下：
-                                        // 1、列表参数为自定义类型则传给下层接口前将被转为StringBuffer类型json字符串；
-                                        // 2、列表参数为String则传给下层接口前将被转为StringBuffer类型；
-                                        // 3、其余类型不做转换；
-                                        // 4、之所以是StringBuffer而非String并非有什么特别的理由，就是下层的龟腚；
+    Class[] methodParas() default {}; // 请求对应的方法所需参数。
+
+    /* 请求者传入的参数列表。
+        NOTE：paras不同于methodParas，methodParas为jni方法的形参列表，目前大部分情形下是StringBuffer类型的json字符串，
+        而paras是面向用户的参数列表，最终传给jni方法时会做类型转换以匹配methodParas。
+        例如jni方法login(StringBuffer loginPara)，methodParas=StringBuffer.class，但是为了方便用户登录时实际传入的是LoginPara对象，
+        框架自动将LoginPara对象转为StringBuffer类型json字符串再传给login方法。
+
+        para到methodPara转换规则如下：
+        1、如果para为null或者para和methodPara类型相同则不做转换；
+        2、如果para为String，MethodPara为StringBuffer则将String转为StringBuffer；
+        3、如果para为基本类型包装类型，MethodPara为对应的基本类型则将包装类型解包；
+        4、如果methodPara为String或StringBuffer，则将para转为String或StringBuffer类型的json字符串；
+        5、其余情形不做转换直接将para赋给methodPara；
+    */
+    Class[] paras() default {};
+
     String[] rspSeq() default {}; // 请求对应的响应序列。注：请求也可能没有响应，此时不用填写让它默认为空就好。
     String[] rspSeq2() default {}; // 请求对应的另一个可能的响应序列
     String[] rspSeq3() default {}; // 请求对应的另一个可能的响应序列

@@ -96,6 +96,7 @@ public enum Msg {
      * 注：登录前需先建链。*/
     @Request(name = "LoginSrvReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
             paras = TDCSRegInfo.class,
             rspSeq = {"DcsLoginResult_Ntf",  // 登录时下层自动建链，然后就抛了这条消息上来。NOTE: 对于失败的情形只会收到DCBuildLink4LoginRsp而没有DCLoginRsp。
 					  "DcsLoginSrv_Rsp"})
@@ -141,6 +142,7 @@ public enum Msg {
      * 注：创建数据协作前需先建链。*/
     @Request(name = "DCSCreateConfReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
 			 paras = TDCSCreateConf.class,
              rspSeq = {"DcsConfResult_Ntf",  // 创建数据协作时下层自动建链，然后就抛了这条消息上来。NOTE: 对于失败的情形只会收到DCBuildLink4ConfRsp而没有DCCreateConfRsp。
 						"DcsCreateConf_Rsp"})
@@ -178,8 +180,9 @@ public enum Msg {
      * 注：仅自己退出，协作仍存在，不影响其他人继续*/
     @Request( name = "DCSQuitConfReq",
             methodOwner = DcsCtrl,
+              methodParas = {StringBuffer.class, int.class},
               paras = {String.class, // 会议e164
-                      int.class // 是否同时退出会议。0表示退出协作的同时退出会议，1表示仅退出协作。
+                      Integer.class // 是否同时退出会议。0表示退出协作的同时退出会议，1表示仅退出协作。
               },
               rspSeq = {"DcsQuitConf_Rsp"})
     DCQuitConf, // TODO 待调
@@ -192,6 +195,7 @@ public enum Msg {
     /**结束数据协作*/
     @Request( name = "DCSReleaseConfReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
             paras = String.class, // 会议e164
              rspSeq = {"DcsReleaseConf_Rsp"})
     DCReleaseConf,
@@ -220,6 +224,7 @@ public enum Msg {
     /**（主席）添加协作方*/
     @Request( name ="DCSAddOperatorReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
 			paras = TDCSOperator.class,
             rspSeq = {"DcsAddOperator_Rsp"})
     DCAddOperator, // TODO 待调
@@ -232,6 +237,7 @@ public enum Msg {
     /**（主席）删除协作方*/
     @Request( name = "DCSDelOperatorReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
 			paras = TDCSOperator.class,
             rspSeq = {"DcsDelOperator_Rsp"})
     DCDelOperator, // TODO 待调
@@ -244,6 +250,7 @@ public enum Msg {
     /**（自己）申请作为协作方*/
     @Request( name = "DCSApplyOperReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
             paras = String.class, // 申请者的e164
             rspSeq = {"DcsApplyOper_Rsp"})
     DCApplyOperator,
@@ -256,6 +263,7 @@ public enum Msg {
     /**（自己）取消作为协作方*/
     @Request( name = "DCSCancelOperReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
             paras = String.class, // 申请者的e164
             rspSeq = {"DcsCancelOper_Rsp"})
     DCCancelOperator, // TODO 待调
@@ -268,6 +276,7 @@ public enum Msg {
     /**（主席）拒绝成员申请作为协作方的请求*/
     @Request(name = "DCSRejectOperatorCmd",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
 				paras=TDCSOperator.class)
     DCRejectApplyOperator, // TODO 待调
 
@@ -296,9 +305,10 @@ public enum Msg {
 
 
     /**获取数据协作会议中的所有成员（包括协作方普通方）*/
-    @Request( name = "DCSGetUserListReq",   //参数：StringBuffer类型 e164
+    @Request( name = "DCSGetUserListReq",
             methodOwner = DcsCtrl,
-            paras = String.class,
+            methodParas = StringBuffer.class,
+            paras = String.class, // 会议e164
             rspSeq = {"DcsGetUserList_Rsp"})
     DCQueryAllMembers, // TODO 待调
 
@@ -313,6 +323,7 @@ public enum Msg {
     /**新建画板*/
     @Request( name = "DCSNewWhiteBoardReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
 			paras= TDCSNewWhiteBoard.class,
             rspSeq = {"DcsNewWhiteBoard_Rsp"},
             timeout = 5)
@@ -326,6 +337,7 @@ public enum Msg {
     /**删除画板*/
     @Request(	name = "DCSDelWhiteBoardReq",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras = {String.class, // 当前会议e164
                     String.class}, // 画板Id
             rspSeq = {"DcsDelWhiteBoard_Rsp"},
@@ -340,6 +352,7 @@ public enum Msg {
     /**删除所有画板*/
     @Request(	name = "DCSDelAllWhiteBoardReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
             paras = String.class, // 当前会议e164
             rspSeq = {"DcsDelAllWhiteBoard_Rsp"})
     DCDelAllBoard,
@@ -352,6 +365,7 @@ public enum Msg {
     /**切换画板*/
     @Request(	name = "DCSSwitchReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
             paras = TDCSSwitchReq.class,
             rspSeq = {"DcsSwitch_Rsp"},
             timeout = 5)
@@ -366,6 +380,7 @@ public enum Msg {
     /**查询画板*/
     @Request(	name = "DCSGetWhiteBoardReq",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras = {String.class, // 会议e164
                     String.class}, // 画板id
             rspSeq = {"DcsGetWhiteBoard_Rsp"})
@@ -379,6 +394,7 @@ public enum Msg {
     /**查询所有画板*/
     @Request(	name = "DCSGetAllWhiteBoardReq", //参数：StringBuffer类型 e164
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
             paras = String.class,
             rspSeq = {"DcsGetAllWhiteBoard_Rsp"})
     DCQueryAllBoards,
@@ -391,6 +407,7 @@ public enum Msg {
     /**添加子页*/
     @Request(	name = "DCSOperAddSubPageInfoCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
 				paras = {TDCSOperReq.class, TDCSWbAddSubPageInfo.class})
     DCAddSubPage, // TODO 待调
 
@@ -429,24 +446,28 @@ public enum Msg {
     /**画线*/
     @Request(	name="DCSOperLineOperInfoCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
 				paras={TDCSOperReq.class, TDCSWbLineOperInfo.class})
     DCDrawLine,
 
     /**画圆/椭圆*/
     @Request(	name="DCSOperCircleOperInfoCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras={TDCSOperReq.class, TDCSWbCircleOperInfo.class})
     DCDrawOval,
 
     /**画矩形*/
     @Request(	name="DCSOperRectangleOperInfoCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras={TDCSOperReq.class, TDCSWbRectangleOperInfo.class})
     DCDrawRect,
 
     /**画路径（铅笔操作）*/
     @Request(	name="DCSOperPencilOperInfoCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras={TDCSOperReq.class, TDCSWbPencilOperInfo.class})
     DCDrawPath,
 
@@ -462,32 +483,38 @@ public enum Msg {
 
     @Request(name = "DCSOperInsertPicCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras = {TDCSOperReq.class, TDCSWbInsertPicOperInfo.class})
     DCInsertPic,
     @Request(name = "DCSOperPitchPicDelCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras = {TDCSOperReq.class, TDCSWbDelPicOperInfo.class})
     DCDeletePic, // TODO 待调
     @Request(name = "DCSOperPitchPicDragCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class})
     DCDragPic, // TODO 待调
 
     /**黑板擦擦除*/
     @Request(	name="DCSOperReginEraseCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras={TDCSOperReq.class, TDCSWbReginEraseOperInfo.class})
     DCErase,
 
     /**矩形擦除*/
     @Request(	name="DCSOperEraseOperInfoCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras={TDCSOperReq.class, TDCSWbEraseOperInfo.class})
     DCRectErase,
 
     /**清屏*/
     @Request(	name="DCSOperClearScreenCmd",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
 				paras=TDCSOperReq.class)
     DCClearScreen,
 
@@ -496,18 +523,21 @@ public enum Msg {
     /**矩阵变换（放缩、位移等）*/
     @Request(	name="DCSOperFullScreenCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras={TDCSOperReq.class, TDCSWbDisPlayInfo.class})
     DCMatrix,
 
     /**左旋转*/
     @Request(	name="DCSOperRotateLeftCmd",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
 				paras=TDCSOperReq.class)
     DCRotateLeft, // TODO 待调
 
     /**右旋转*/
     @Request(	name="DCSOperRotateRightCmd",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
 				paras=TDCSOperReq.class)
     DCRotateRight, // TODO 待调
 
@@ -517,12 +547,14 @@ public enum Msg {
     /**撤销*/
     @Request(	name="DCSOperUndoCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras = {TDCSOperReq.class, TDCSWbTabPageIdInfo.class})
     DCUndo,
 
     /**恢复（恢复被撤销的操作）*/
     @Request(	name="DCSOperRedoCmd",
             methodOwner = DcsCtrl,
+            methodParas = {StringBuffer.class, StringBuffer.class},
             paras = {TDCSOperReq.class, TDCSWbTabPageIdInfo.class})
     DCRedo,
 
@@ -532,7 +564,8 @@ public enum Msg {
     /**上传文件*/
     @Request(name = "DCSUploadFileCmd",
             methodOwner = DcsCtrl,
-            paras = {BaseTypeString.class, // 下载url。XXX 下层龟腚上层先将url包装到该类里面转成json然后传给它，它再将json解析出来进而萃取出url。
+            methodParas = {StringBuffer.class, StringBuffer.class},
+            paras = {BaseTypeString.class, // 下载url。XXX 下层规定先将url包装到该类里面转成json然后传下，下层将json解析出来进而萃取出url。
                     TDCSFileInfo.class},
             rspSeq = {"DcsUploadFile_Ntf"},
             timeout = 30)
@@ -547,6 +580,7 @@ public enum Msg {
     /**获取图片上传地址*/
     @Request(name = "DCSUploadImageReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
             paras=TDCSImageUrl.class,
             rspSeq = {"DcsUploadImage_Rsp"})
     DCQueryPicUploadUrl,
@@ -567,7 +601,8 @@ public enum Msg {
     /**下载（图元、图片等）*/
     @Request(	name ="DCSDownloadFileReq",
             methodOwner = DcsCtrl,
-            paras = {BaseTypeString.class, // 下载url。XXX 下层龟腚上层先将url包装到该类里面转成json然后传给它，它再将json解析出来进而萃取出url。
+            methodParas = {StringBuffer.class, StringBuffer.class},
+            paras = {BaseTypeString.class,
                     TDCSFileInfo.class},
             rspSeq = {"DcsDownloadFile_Rsp"},
             timeout = 30)
@@ -581,6 +616,7 @@ public enum Msg {
     /**获取图片下载地址*/
     @Request(	name="DCSDownloadImageReq",
             methodOwner = DcsCtrl,
+            methodParas = StringBuffer.class,
 				paras=TDCSImageUrl.class,
             rspSeq = {"DcsDownloadImage_Rsp"})
     DCQueryPicUrl,

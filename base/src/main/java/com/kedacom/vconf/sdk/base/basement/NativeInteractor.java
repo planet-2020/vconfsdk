@@ -37,7 +37,7 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
     }
 
     @Override
-    public int yell(String methodOwner, String methodName, Object... para) {
+    public int yell(String methodOwner, String methodName, Object[] para, Class[] paraType) {
         Log.d(TAG, "####=yell methodOwner="+methodOwner+" methodName="+methodName+" paras="+para);
         Method method = cachedMethods.get(methodName);
         if (null != method){
@@ -54,11 +54,7 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
 
         try {
             Class clz = Class.forName(methodOwner);
-            Class[] classes = new Class[para.length];
-            for(int i=0; i<classes.length; ++i){
-                classes[i] = para[i].getClass();  // TODO 如果上层传null参数此处会崩溃，有需要null的场景吗？如果后续有则此方法加个参数——“参数的类型”
-            }
-            method = clz.getDeclaredMethod(methodName, classes);
+            method = clz.getDeclaredMethod(methodName, paraType);
             method.invoke(null, para);
             cachedMethods.put(methodName, method);
         } catch (NoSuchMethodException e) {

@@ -51,7 +51,7 @@ final class MagicStick implements IStick,
             return -1;
         }
 
-        return crystalBall.yell(magicBook.getReqMethodOwner(reqName), reqName, reqPara);
+        return crystalBall.yell(magicBook.getReqMethodOwner(reqName), reqName, reqPara, magicBook.getReqMethodParaClasses(reqName));
     }
 
     @Override

@@ -53,7 +53,7 @@ class FakeCrystalBall implements ICrystalBall {
     }
 
     @Override
-    public int yell(String methodOwner, String msgName, Object... para) {
+    public int yell(String methodOwner, String msgName, Object[] para, Class[] paraType) {
         if (null == yb){
             return -1;
         }

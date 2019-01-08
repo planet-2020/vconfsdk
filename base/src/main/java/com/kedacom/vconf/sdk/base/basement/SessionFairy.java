@@ -87,13 +87,8 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
         for(int i=0; i<classes.length; ++i){
             if (null != reqPara[i]
                     && classes[i] != reqPara[i].getClass()){
-                if (Utils.isPrimitiveType(classes[i])
-                        && Utils.getPrimitiveWrapperType(classes[i]) == reqPara[i].getClass()) {
-                    continue;
-                }else{
-                    Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", reqId, classes[i], reqPara[i].getClass()));
-                    return false;
-                }
+                Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", reqId, classes[i], reqPara[i].getClass()));
+                return false;
             }
         }
 
@@ -311,19 +306,9 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
             return -1;
         }
 
-        Object[] paras;
-        paras = new Object[s.reqPara.length];
+        Object[] paras = magicBook.userPara2MethodPara(s.reqPara, magicBook.getReqMethodParaClasses(s.reqName));
         StringBuffer sb = new StringBuffer();
         for (int i=0; i<paras.length; ++i){
-            if (jsonProcessor.isNeedToJson(s.reqPara[i])){
-                paras[i] = new StringBuffer(jsonProcessor.toJson(s.reqPara[i])); // XXX UGLY, HELPLESS, BUT 原本只需String的下层接口傲娇的需要StringBuffer类型!!! 如果他们将来信手又插入了几个需要String类型的!!??...
-            }else{
-                if (s.reqPara[i] instanceof String) {
-                    paras[i] = new StringBuffer((String) s.reqPara[i]); // XXX 到目前为止下层接口对于字符串都只接纳StringBuffer类型！
-                }else{
-                    paras[i] = s.reqPara[i];
-                }
-            }
             sb.append(paras[i]).append(", ");
         }
         Log.d(TAG, String.format("-=-> %s (session %d START) \nparas={%s}", s.reqName, s.id, sb));
