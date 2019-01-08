@@ -187,15 +187,8 @@ final class MagicBook {
         for (int i=0; i<userParas.length; ++i){
             userPara = userParas[i];
             methodParaType = methodParaTypes[i];
-            if (null != userPara) {
-                KLog.p("userPara[%s].class=%s", i, userPara.getClass());
-            }
-            KLog.p("methodPara[%s].class=%s", i, methodParaType);
-            if (null == userPara){
-                methodParas[i] = null;
-            } else if (userPara.getClass() == methodParaType){
-                methodParas[i] = userPara;
-            } else if (methodParaType.isPrimitive()) {
+            KLog.p("userPara[%s].class=%s, methodPara[%s].class=%s", i, null==userPara? null : userPara.getClass(), i, methodParaType);
+            if (methodParaType.isPrimitive()) {
                 if ((userPara instanceof Byte && Byte.TYPE == methodParaType)
                         || (userPara instanceof Character && Character.TYPE == methodParaType)
                         || (userPara instanceof Short && Short.TYPE == methodParaType)
@@ -206,17 +199,18 @@ final class MagicBook {
                         || (userPara instanceof Boolean && Boolean.TYPE == methodParaType)) {
                     methodParas[i] = userPara;
                 } else {
-                    KLog.p(KLog.ERROR, "try convert userPara %s to methodPara %s failed", userPara.getClass(), methodParaTypes[i]);
+                    KLog.p(KLog.ERROR, "try convert userPara %s to methodPara %s failed", null==userPara? null : userPara.getClass(), methodParaTypes[i]);
                     methodParas[i] = userPara;
                 }
             }else if (userPara instanceof String && StringBuffer.class == methodParaType){
                 methodParas[i] = new StringBuffer((String) userPara);
             } else{
-                if (String.class == methodParaTypes[i]){
-                    methodParas[i] = jsonProcessor.toJson(userPara);
-                }else if (StringBuffer.class == methodParaTypes[i]){
+                if (String.class == methodParaType){
                     String jsonPara = jsonProcessor.toJson(userPara);
-                    methodParas[i] = null == jsonPara ? null : new StringBuffer(jsonPara);
+                    methodParas[i] = null==jsonPara ? "" : jsonProcessor.toJson(userPara);
+                }else if (StringBuffer.class == methodParaType){
+                    String jsonPara = jsonProcessor.toJson(userPara);
+                    methodParas[i] = null == jsonPara ? new StringBuffer() : new StringBuffer(jsonPara);
                 }else {
                     KLog.p("directly assign userPara %s to methodPara %s", userPara.getClass(), methodParaTypes[i]);
                     methodParas[i] = userPara;

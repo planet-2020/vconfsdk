@@ -26,12 +26,11 @@ public @interface Request {
         例如jni方法login(StringBuffer loginPara)，methodParas=StringBuffer.class，但是为了方便用户登录时实际传入的是LoginPara对象，
         框架自动将LoginPara对象转为StringBuffer类型json字符串再传给login方法。
 
-        para到methodPara转换规则如下：
-        1、如果para为null或者para和methodPara类型相同则不做转换；
+        para到methodPara转换规则按优先级从高到低如下：
+        1、如果para为基本类型包装类型，MethodPara为对应的基本类型则将包装类型解包；
         2、如果para为String，MethodPara为StringBuffer则将String转为StringBuffer；
-        3、如果para为基本类型包装类型，MethodPara为对应的基本类型则将包装类型解包；
-        4、如果methodPara为String或StringBuffer，则将para转为String或StringBuffer类型的json字符串；
-        5、其余情形不做转换直接将para赋给methodPara；
+        3、如果methodPara为String或StringBuffer，则将para转为String或StringBuffer类型的json字符串；
+        4、其余情形不做转换直接将para赋给methodPara；
     */
     Class[] paras() default {};
 

@@ -524,10 +524,11 @@ public class DataCollaborateManager extends RequestAgent {
      *                       {@link #ErrCode_NoDcConf}
      *                       resultListener.onFailed(errorCode);*/
     public void quitDcConf(boolean bQuitConf, IResultListener resultListener){
-        if (null == curDcConfE164){
-            if (null != resultListener) resultListener.onFailed(ErrCode_NoDcConf);
-            return;
-        }
+//        if (null == curDcConfE164){
+//            if (null != resultListener) resultListener.onFailed(ErrCode_NoDcConf);
+//            return;
+//        }
+        KLog.p("curDcConfE164=%s", curDcConfE164);
         req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
         curDcConfE164 = null;
         cachedPaintOps.clear();
