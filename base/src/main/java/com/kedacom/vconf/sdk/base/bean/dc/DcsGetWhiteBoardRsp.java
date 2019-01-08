@@ -12,6 +12,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.annotations.JsonAdapter;
 import com.kedacom.vconf.sdk.base.KLog;
+import com.kedacom.vconf.sdk.base.basement.JsonProcessor;
 
 import java.lang.reflect.Type;
 
@@ -20,11 +21,11 @@ public class DcsGetWhiteBoardRsp implements JsonDeserializer<DcsGetWhiteBoardRsp
     public TDCSBoardResult MainParam;
     public TDCSBoardInfo AssParam;
 
-    static Gson gson = new Gson();
     @Override
     public DcsGetWhiteBoardRsp deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         DcsGetWhiteBoardRsp boardRsp = new DcsGetWhiteBoardRsp();
         JsonObject jsonObject = json.getAsJsonObject();
+        Gson gson = JsonProcessor.instance().obtainGson();
         if (jsonObject.has("MainParam")){
             boardRsp.MainParam =  gson.fromJson(jsonObject.getAsJsonObject("MainParam"), TDCSBoardResult.class);
             boardRsp.AssParam = gson.fromJson(jsonObject.getAsJsonObject("AssParam"), TDCSBoardInfo.class);

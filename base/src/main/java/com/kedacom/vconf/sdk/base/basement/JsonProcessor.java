@@ -12,7 +12,7 @@ import com.kedacom.vconf.sdk.annotation.SerializeEnumAsInt;
 
 
 @Consumer(SerializeEnumAsInt.class)
-final class JsonProcessor {
+public final class JsonProcessor {
 
     private static JsonProcessor instance;
 
@@ -31,7 +31,7 @@ final class JsonProcessor {
         gson = gsonBuilder.create();
     }
 
-    synchronized static JsonProcessor instance() {
+    public synchronized static JsonProcessor instance() {
         if (null == instance) {
             instance = new JsonProcessor();
         }
@@ -63,20 +63,7 @@ final class JsonProcessor {
         return gson.fromJson(json, classOfT);
     }
 
-    boolean isNeedToJson(Object obj){
-        if (null == obj
-                || obj instanceof String
-                || obj instanceof StringBuffer
-                || obj instanceof Integer
-                || obj instanceof Double
-                || obj instanceof Float
-                || obj instanceof String[]
-                || obj instanceof StringBuffer[]
-                || obj instanceof Integer[]
-                || obj instanceof Double[]
-                || obj instanceof Float[]){
-            return false;
-        }
-        return true;
+    public Gson obtainGson(){
+        return gson;
     }
 }
