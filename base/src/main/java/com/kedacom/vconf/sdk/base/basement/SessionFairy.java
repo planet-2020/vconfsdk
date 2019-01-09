@@ -135,7 +135,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
             s.state = Session.BLOCKING;
             blockedSessions.add(s);
 
-            Log.w(TAG, String.format("-=->| %s (session %d BLOCKED)", s.reqName, s.id)); // XXX 启动超时？阻塞时间算在超时内？
+            Log.w(TAG, String.format("-=->| %s BLOCKED (session %d BLOCKED)", s.reqName, s.id)); // XXX 启动超时？阻塞时间算在超时内？
 
             return true;
         }
@@ -155,7 +155,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
                 s.state = Session.END;
                 timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
                 sessions.remove(s);
-                Log.d(TAG, String.format("<-=- (session %d CANCELED)", s.id));
+                Log.d(TAG, String.format("<-=- %s CANCELED (session %d CANCELED)", s.reqName, s.id));
                 driveBlockedSession(s.reqName);// 驱动被当前会话阻塞的会话
                 return true;
             }
@@ -316,7 +316,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
 
         if (null==s.rspSeqs || 0==s.rspSeqs.length){
             s.state = Session.END; // 请求没有响应，会话结束
-            Log.d(TAG, String.format("<-=- (session %d FINISHED. NO RESPONSE)", s.id));
+            Log.d(TAG, String.format("<-=- NO RESPONSE for %s (session %d FINISHED. NO RESPONSE)", s.reqName, s.id));
             sessions.remove(s);
             driveBlockedSession(s.reqName);
             return 0;
@@ -370,7 +370,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
             return;
         }
 
-        Log.d(TAG, String.format("<-=- (session %d TIMEOUT)", s.id));
+        Log.d(TAG, String.format("<-=- %s TIMEOUT (session %d TIMEOUT)", s.reqName, s.id));
         s.state = Session.END; // 会话结束
 
         // 通知用户请求超时
