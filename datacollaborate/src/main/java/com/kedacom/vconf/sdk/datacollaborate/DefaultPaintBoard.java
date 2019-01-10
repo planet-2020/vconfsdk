@@ -245,19 +245,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         return repealedShapeOps;
     }
 
-//    Matrix getPicViewMatrix() {
-//        return picViewMatrix;
-//    }
-//
-//    void setPicViewMatrix(Matrix picViewMatrix) {
-//        this.picViewMatrix.set(picViewMatrix);
-//    }
-//
-//    public Matrix getPicViewMatrixByDensity() {
-//        picViewMatrixByDensity.set(picViewMatrix);
-//        picViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
-//        return picViewMatrixByDensity;
-//    }
 
     MyConcurrentLinkedDeque<OpPaint> getPicOps() {
         return picOps;
@@ -404,38 +391,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             adjustingShapeOp = null;
         }
 
-//
-//        @Override
-//        public void onMultiFingerDrag(float dx, float dy) {
-//            KLog.p("~~> dx=%s, dy=%s", dx, dy);
-//            boardMatrix.postTranslate(dx, dy); // XXX 在board的onTouchEvent中做
-//            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-//        }
-//
-//        @Override
-//        public void onMultiFingerDragEnd() {
-////            KLog.p("~~>");
-//            OpMatrix opMatrix = new OpMatrix(boardMatrix);
-//            assignBasicInfo(opMatrix);
-//            publisher.publish(opMatrix);
-//        }
-
-//        @Override
-//        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
-//            KLog.p("~~> factor=%s", factor);
-//            boardMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
-//            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-//            zoomRateChanged();
-//        }
-
-//        @Override
-//        public void onScaleEnd() {
-////            KLog.p("~~>");
-//            OpMatrix opMatrix = new OpMatrix(boardMatrix);
-//            assignBasicInfo(opMatrix);
-//            publisher.publish(opMatrix);
-//        }
-
     };
 
 
@@ -449,17 +404,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             return true;
         }
 
-//        @Override
-//        public void onMultiFingerDrag(float dx, float dy) {
-//            KLog.p("onMultiFingerDrag pic layer, dx=%s, dy=%s", dx, dy);
-//            translatePics(dx, dy); // TODO nothingTodo
-//        }
-
-//        @Override
-//        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
-////            KLog.p("~~> factor=%s", factor);
-//            scalePics(factor, scaleCenterX, scaleCenterY);
-//        }
 
         @Override
         public void onLongPress(float x, float y) {
