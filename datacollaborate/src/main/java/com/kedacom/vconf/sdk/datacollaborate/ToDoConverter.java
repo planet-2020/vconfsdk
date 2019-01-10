@@ -78,40 +78,8 @@ import java.util.Map;
 @SuppressWarnings("WeakerAccess")
 final class ToDoConverter {
     private static DataCollaborateManager dcMan = DataCollaborateManager.getInstance(null);
-    private static float density = DataCollaborateManager.getContext().getResources().getDisplayMetrics().density;
     private static final String INVALID_UUID = "";
 
-//    // 将坐标值由传输过来的转为在本设备上实际使用的
-//    private static final Matrix ftm = new Matrix();
-//    // 将坐标值由本设备实际使用的转为传输的
-//    private static final Matrix ttm = new Matrix();
-//
-//    static {
-//        ftm.postScale(density, density);
-//        ftm.invert(ttm);
-//    }
-
-    /**
-     * 将坐标值由本设备实际使用的转为传输的
-     * */
-    private static float tt(float val){
-//        float t = val/density;
-//        if (-1<t && t<0){
-//            return -1;
-//        }else if (0<t && t<1){
-//            return 1;
-//        }
-//        return t;
-        return val;
-    }
-
-    /**
-     * 将坐标值由传输过来的转为在本设备上实际使用的
-     * */
-    private static float ft(float val){
-//        return val*density;
-        return val;
-    }
 
 
     private static float[] matrixValueStr2Float(String[] strMatrixValue){
@@ -130,26 +98,9 @@ final class ToDoConverter {
         return strMatrixValue;
     }
 
-    private static void matrixTransValueFt(float[] matrixVal){
-        matrixVal[Matrix.MTRANS_X] = ft(matrixVal[Matrix.MTRANS_X]);
-        matrixVal[Matrix.MTRANS_Y] = ft(matrixVal[Matrix.MTRANS_Y]);
-    }
-    private static void matrixTransValueTt(float[] matrixVal){
-        matrixVal[Matrix.MTRANS_X] = tt(matrixVal[Matrix.MTRANS_X]);
-        matrixVal[Matrix.MTRANS_Y] = tt(matrixVal[Matrix.MTRANS_Y]);
-    }
-    private static void matrixScaleValueFt(float[] matrixVal){
-        matrixVal[Matrix.MSCALE_X] = ft(matrixVal[Matrix.MSCALE_X]);
-        matrixVal[Matrix.MSCALE_Y] = ft(matrixVal[Matrix.MSCALE_Y]);
-    }
-    private static void matrixScaleValueTt(float[] matrixVal){
-        matrixVal[Matrix.MSCALE_X] = tt(matrixVal[Matrix.MSCALE_X]);
-        matrixVal[Matrix.MSCALE_Y] = tt(matrixVal[Matrix.MSCALE_Y]);
-    }
-
 
     public static OpPaint fromPaintTransferObj(Object transferObj) {
-        if (transferObj instanceof DcsOperLineOperInfoNtf){ // TODO 用枚举做判断
+        if (transferObj instanceof DcsOperLineOperInfoNtf){ // TODO 用枚举做判断，因为一个结构体可能被多种操作使用
             return fromTransferObj((DcsOperLineOperInfoNtf)transferObj);
         }else if (transferObj instanceof DcsOperRectangleOperInfoNtf){
             return fromTransferObj((DcsOperRectangleOperInfoNtf)transferObj);
@@ -267,7 +218,7 @@ final class ToDoConverter {
     public static List<PointF> fromTransferObj(TDCSWbPoint[] tdcsWbPoints) {
         List<PointF> pointFS = new ArrayList<>();
         for (int i=0; i<tdcsWbPoints.length; ++i){
-            pointFS.add( new PointF(ft(tdcsWbPoints[i].nPosx), ft(tdcsWbPoints[i].nPosy)));
+            pointFS.add( new PointF(tdcsWbPoints[i].nPosx, tdcsWbPoints[i].nPosy));
         }
         return pointFS;
     }
@@ -275,15 +226,15 @@ final class ToDoConverter {
         TDCSWbPoint[] tdcsWbPoints = new TDCSWbPoint[pointFS.size()];
         int i=0;
         for (PointF pointF : pointFS){
-            tdcsWbPoints[i++] = new TDCSWbPoint((int)tt(pointF.x), (int)tt(pointF.y));
+            tdcsWbPoints[i++] = new TDCSWbPoint((int)pointF.x, (int)pointF.y);
         }
         return tdcsWbPoints;
     }
 
     public static OpDrawLine fromTransferObj(DcsOperLineOperInfoNtf dcLineOp) {
         TDCSWbLine tdcsWbLine = dcLineOp.AssParam.tLine;
-        OpDrawLine opDrawLine = new OpDrawLine(ft(tdcsWbLine.tBeginPt.nPosx), ft(tdcsWbLine.tBeginPt.nPosy),
-                ft(tdcsWbLine.tEndPt.nPosx), ft(tdcsWbLine.tEndPt.nPosy));
+        OpDrawLine opDrawLine = new OpDrawLine(tdcsWbLine.tBeginPt.nPosx, tdcsWbLine.tBeginPt.nPosy,
+                tdcsWbLine.tEndPt.nPosx, tdcsWbLine.tEndPt.nPosy);
         assignDrawDomainObj(dcLineOp.MainParam, dcLineOp.AssParam.tLine.tEntity.achEntityId,
                 tdcsWbLine.dwLineWidth, tdcsWbLine.dwRgb, opDrawLine);
         return opDrawLine;
@@ -291,16 +242,16 @@ final class ToDoConverter {
 
     public static TDCSWbLineOperInfo toTransferObj(OpDrawLine domainObj) {
         TDCSWbLine tdcsWbLine = new TDCSWbLine(new TDCSWbEntity(domainObj.getUuid()),
-                new TDCSWbPoint((int)tt(domainObj.getStartX()), (int)tt(domainObj.getStartY())),
-                new TDCSWbPoint((int)tt(domainObj.getStopX()), (int)tt(domainObj.getStopY())),
-                (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
+                new TDCSWbPoint((int)domainObj.getStartX(), (int)domainObj.getStartY()),
+                new TDCSWbPoint((int)domainObj.getStopX(), (int)domainObj.getStopY()),
+                domainObj.getStrokeWidth(), domainObj.getColor());
         return new TDCSWbLineOperInfo(domainObj.getBoardId(), tdcsWbLine);
     }
 
     public static OpDrawRect fromTransferObj(DcsOperRectangleOperInfoNtf dcRectOp) {
         TDCSWbRectangle rectangle = dcRectOp.AssParam.tRectangle;
-        OpDrawRect opDrawRect = new OpDrawRect(ft(rectangle.tBeginPt.nPosx), ft(rectangle.tBeginPt.nPosy),
-                ft(rectangle.tEndPt.nPosx), ft(rectangle.tEndPt.nPosy));
+        OpDrawRect opDrawRect = new OpDrawRect(rectangle.tBeginPt.nPosx, rectangle.tBeginPt.nPosy,
+                rectangle.tEndPt.nPosx, rectangle.tEndPt.nPosy);
         assignDrawDomainObj(dcRectOp.MainParam, dcRectOp.AssParam.tRectangle.tEntity.achEntityId,
                 rectangle.dwLineWidth, rectangle.dwRgb, opDrawRect);
         return opDrawRect;
@@ -308,16 +259,16 @@ final class ToDoConverter {
 
     public static TDCSWbRectangleOperInfo toTransferObj(OpDrawRect domainObj) {
         TDCSWbRectangle tdcsWbRectangle = new TDCSWbRectangle(new TDCSWbEntity(domainObj.getUuid()),
-                new TDCSWbPoint((int)tt(domainObj.getLeft()), (int)tt(domainObj.getTop())),
-                new TDCSWbPoint((int)tt(domainObj.getRight()), (int)tt(domainObj.getBottom())),
-                (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
+                new TDCSWbPoint((int)domainObj.getLeft(), (int)domainObj.getTop()),
+                new TDCSWbPoint((int)domainObj.getRight(), (int)domainObj.getBottom()),
+                domainObj.getStrokeWidth(), domainObj.getColor());
         return new TDCSWbRectangleOperInfo(domainObj.getBoardId(), tdcsWbRectangle);
     }
 
     public static OpDrawOval fromTransferObj(DcsOperCircleOperInfoNtf dcOvalOp) {
         TDCSWbCircle circle = dcOvalOp.AssParam.tCircle;
-        OpDrawOval opDrawOval = new OpDrawOval(ft(circle.tBeginPt.nPosx), ft(circle.tBeginPt.nPosy),
-                ft(circle.tEndPt.nPosx), ft(circle.tEndPt.nPosy));
+        OpDrawOval opDrawOval = new OpDrawOval(circle.tBeginPt.nPosx, circle.tBeginPt.nPosy,
+                circle.tEndPt.nPosx, circle.tEndPt.nPosy);
         assignDrawDomainObj(dcOvalOp.MainParam, dcOvalOp.AssParam.tCircle.tEntity.achEntityId,
                 circle.dwLineWidth, circle.dwRgb, opDrawOval);
         return opDrawOval;
@@ -325,9 +276,9 @@ final class ToDoConverter {
 
     public static TDCSWbCircleOperInfo toTransferObj(OpDrawOval domainObj) {
         TDCSWbCircle tdcsWbCircle = new TDCSWbCircle(new TDCSWbEntity(domainObj.getUuid()),
-                new TDCSWbPoint((int)tt(domainObj.getLeft()), (int)tt(domainObj.getTop())),
-                new TDCSWbPoint((int)tt(domainObj.getRight()), (int)tt(domainObj.getBottom())),
-                (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
+                new TDCSWbPoint((int)domainObj.getLeft(), (int)domainObj.getTop()),
+                new TDCSWbPoint((int)domainObj.getRight(), (int)domainObj.getBottom()),
+                domainObj.getStrokeWidth(), domainObj.getColor());
         return new TDCSWbCircleOperInfo(domainObj.getBoardId(), tdcsWbCircle);
     }
 
@@ -342,7 +293,7 @@ final class ToDoConverter {
     public static TDCSWbPencilOperInfo toTransferObj(OpDrawPath domainObj) {
         TDCSWbPencil tdcsWbPencil = new TDCSWbPencil(new TDCSWbEntity(domainObj.getUuid()),
                 toTransferObj(domainObj.getPoints()),
-                (int) tt(domainObj.getStrokeWidth()), domainObj.getColor());
+                domainObj.getStrokeWidth(), domainObj.getColor());
         return new TDCSWbPencilOperInfo(domainObj.getBoardId(), tdcsWbPencil);
     }
 
@@ -351,23 +302,19 @@ final class ToDoConverter {
         float[] matrixVal = matrixValueStr2Float(ip.aachMatrixValue);
         matrixVal[Matrix.MTRANS_X] += ip.tPoint.nPosx;
         matrixVal[Matrix.MTRANS_Y] += ip.tPoint.nPosy;
-        matrixTransValueFt(matrixVal);
-        matrixScaleValueFt(matrixVal);
         Matrix matrix = new Matrix();
         matrix.setValues(matrixVal);
         OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight,
-                new PointF(ft(ip.tPoint.nPosx), ft(ip.tPoint.nPosy)), matrix);
+                new PointF(ip.tPoint.nPosx, ip.tPoint.nPosy), matrix);
         assignPaintDomainObj(dcInertPicOp.MainParam, INVALID_UUID, opInsertPic);
         return opInsertPic;
     }
 
     public static TDCSWbInsertPicOperInfo toTransferObj(OpInsertPic domainObj) {
         float[] matrixVal = domainObj.getMatrixValue();
-        matrixTransValueTt(matrixVal);
-        matrixScaleValueTt(matrixVal);
         return new TDCSWbInsertPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), domainObj.getPicId(),
                 domainObj.getPicWidth(), domainObj.getPicHeight(),
-                new TDCSWbPoint((int)tt(domainObj.getInsertPos().x), (int)tt(domainObj.getInsertPos().y)),
+                new TDCSWbPoint((int)domainObj.getInsertPos().x, (int)domainObj.getInsertPos().y),
                 domainObj.getPicName(), matrixValueFloat2Str(matrixVal));
     }
 
@@ -385,8 +332,6 @@ final class ToDoConverter {
         Map<String, Matrix> picMatrices = new HashMap<>();
         for (TDCSWbGraphsInfo picMatrix : dcDragPicOp.AssParam.atGraphsInfo){
             float[] matrixVal = matrixValueStr2Float(picMatrix.aachMatrixValue);
-            matrixTransValueFt(matrixVal);
-            matrixScaleValueFt(matrixVal);
             Matrix matrix = new Matrix();
             matrix.setValues(matrixVal);
             picMatrices.put(picMatrix.achGraphsId, matrix);
@@ -403,8 +348,6 @@ final class ToDoConverter {
         for (String picId : matrices.keySet()){
             float[] matrixVal = new float[9];
             matrices.get(picId).getValues(matrixVal);
-            matrixTransValueTt(matrixVal);
-            matrixScaleValueTt(matrixVal);
             tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, matrixValueFloat2Str(matrixVal));
             ++i;
         }
@@ -415,7 +358,6 @@ final class ToDoConverter {
         Map<String, Matrix> picMatrices = new HashMap<>();
         for (TDCSWbGraphsInfo picMatrix : dcDragPicOp.AssParam.atGraphsInfo){
             float[] matrixVal = matrixValueStr2Float(picMatrix.aachMatrixValue);
-//            picMatrixValueFt(matrixVal);
             Matrix matrix = new Matrix();
             matrix.setValues(matrixVal);
             picMatrices.put(picMatrix.achGraphsId, matrix);
@@ -432,7 +374,6 @@ final class ToDoConverter {
         for (String picId : matrices.keySet()){
             float[] matrixVal = new float[9];
             matrices.get(picId).getValues(matrixVal);
-//            picMatrixValueTt(matrixVal);
             tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, matrixValueFloat2Str(matrixVal));
             ++i;
         }
@@ -442,9 +383,6 @@ final class ToDoConverter {
 
     public static OpMatrix fromTransferObj(DcsOperFullScreenNtf dcFullScreenMatrixOp) {
         float[] matrixVal = matrixValueStr2Float(dcFullScreenMatrixOp.AssParam.aachMatrixValue);
-        // 位移适配屏幕密度
-        matrixTransValueFt(matrixVal);
-
         OpMatrix opMatrix = new OpMatrix(matrixVal);
         assignPaintDomainObj(dcFullScreenMatrixOp.MainParam, INVALID_UUID, opMatrix);
         return opMatrix;
@@ -452,36 +390,34 @@ final class ToDoConverter {
 
     public static TDCSWbDisPlayInfo toTransferObj(OpMatrix domainObj) {
         float[] matrixVal = domainObj.getMatrixValue();
-        // 位移适配屏幕密度
-        matrixTransValueTt(matrixVal);
         return new TDCSWbDisPlayInfo(domainObj.getBoardId(), domainObj.getPageId(), matrixValueFloat2Str(matrixVal));
     }
 
 
     public static OpRectErase fromTransferObj(DcsOperEraseOperInfoNtf dcRectEraseOp) {
         TDCSWbEraseOperInfo eraseOperInfo = dcRectEraseOp.AssParam;
-        OpRectErase opRectErase = new OpRectErase(ft(eraseOperInfo.tBeginPt.nPosx), ft(eraseOperInfo.tBeginPt.nPosy),
-                ft(eraseOperInfo.tEndPt.nPosx), ft(eraseOperInfo.tEndPt.nPosy));
+        OpRectErase opRectErase = new OpRectErase(eraseOperInfo.tBeginPt.nPosx, eraseOperInfo.tBeginPt.nPosy,
+                eraseOperInfo.tEndPt.nPosx, eraseOperInfo.tEndPt.nPosy);
         assignPaintDomainObj(dcRectEraseOp.MainParam, INVALID_UUID, opRectErase);
         return opRectErase;
     }
 
     public static TDCSWbEraseOperInfo toTransferObj(OpRectErase domainObj) {
         return new TDCSWbEraseOperInfo(domainObj.getBoardId(),
-                new TDCSWbPoint((int)tt(domainObj.getLeft()), (int)tt(domainObj.getTop())),
-                new TDCSWbPoint((int)tt(domainObj.getRight()), (int)tt(domainObj.getBottom())));
+                new TDCSWbPoint((int)domainObj.getLeft(), (int)domainObj.getTop()),
+                new TDCSWbPoint((int)domainObj.getRight(), (int)domainObj.getBottom()));
     }
 
     public static OpErase fromTransferObj(DcsOperReginEraseNtf dcErase) {
         TDCSWbReginEraseOperInfo opInfo = dcErase.AssParam;
-        OpErase opErase = new OpErase((int)ft(opInfo.dwEraseWidth), (int)ft(opInfo.dwEraseHeight), fromTransferObj(opInfo.atPoint));
+        OpErase opErase = new OpErase(opInfo.dwEraseWidth, opInfo.dwEraseHeight, fromTransferObj(opInfo.atPoint));
         assignPaintDomainObj(dcErase.MainParam, INVALID_UUID, opErase);
         return opErase;
     }
 
     public static TDCSWbReginEraseOperInfo toTransferObj(OpErase domainObj) {
         return new TDCSWbReginEraseOperInfo(domainObj.getBoardId(), domainObj.getPageId(),
-                (int)tt(domainObj.getWidth()), (int)tt(domainObj.getHeight()), toTransferObj(domainObj.getPoints()));
+                domainObj.getWidth(), domainObj.getHeight(), toTransferObj(domainObj.getPoints()));
     }
 
 
@@ -516,7 +452,7 @@ final class ToDoConverter {
 
     public static void assignDrawDomainObj(TDCSOperContent transferObj, String uuid, int strokeWidth, long color, OpDraw domainObj){
         assignPaintDomainObj(transferObj, uuid, domainObj);
-        domainObj.setStrokeWidth((int) ft(strokeWidth));
+        domainObj.setStrokeWidth(strokeWidth);
         domainObj.setColor(color);
     }
 
