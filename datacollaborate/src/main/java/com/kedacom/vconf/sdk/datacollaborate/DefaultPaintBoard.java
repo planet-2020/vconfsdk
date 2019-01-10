@@ -970,6 +970,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         Matrix increasedMatrix = new Matrix(tmpPicViewMatrix);
         increasedMatrix.postConcat(getInvertedBoardMatrix());
         opInsertPic.getMatrix().postConcat(increasedMatrix);
+        opInsertPic.setBoardMatrix(boardMatrix);
 
         picOps.offerLast(opInsertPic);
 

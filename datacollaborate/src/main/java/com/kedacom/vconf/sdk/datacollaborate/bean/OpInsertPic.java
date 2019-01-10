@@ -3,7 +3,6 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
-import android.graphics.PointF;
 
 import java.io.File;
 import java.util.UUID;
@@ -17,9 +16,10 @@ public class OpInsertPic extends OpPaint {
     private Bitmap pic;
     private int picWidth;
     private int picHeight;
-    private PointF insertPos; // 插入位置（图片左上角所在位置的点）
     private Matrix initMatrix; // 初始位置的matrix
-    private Matrix matrix; // 图片操作的matrix（不包含fullScreenMatrix中的matrix）
+    private Matrix matrix; // 图片操作的matrix（包含了initMatrix，不包含画板的matrix）
+    // 画板matrix。NOTE：仅用于发布时计算图片的最终matrix。
+    private Matrix boardMatrix = new Matrix();
 
     public OpInsertPic(){
         type = EOpType.INSERT_PICTURE;
@@ -35,16 +35,14 @@ public class OpInsertPic extends OpPaint {
         this.picWidth = options.outWidth;
         this.picHeight = options.outHeight;
         initMatrix = this.matrix = matrix;
-        insertPos = new PointF();
         type = EOpType.INSERT_PICTURE;
     }
 
-    public OpInsertPic(String picId, String picName, int picWidth, int picHeight, PointF insertPos, Matrix matrix){
+    public OpInsertPic(String picId, String picName, int picWidth, int picHeight, Matrix matrix){
         this.picId = picId;
         this.picName = picName;
         this.picWidth = picWidth;
         this.picHeight = picHeight;
-        this.insertPos = insertPos;
         initMatrix = this.matrix = matrix;
         type = EOpType.INSERT_PICTURE;
     }
@@ -52,8 +50,8 @@ public class OpInsertPic extends OpPaint {
     @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("picId=%s, picName=%s, picPath=%s, pic=%s, picWidth=%s, picHeight=%s, insertPos=%s, matrix=%s",
-                picId, picName, picPath, pic, picWidth, picHeight, insertPos, matrix)+super.toString()+"}";
+        return "{"+String.format("picId=%s, picName=%s, picPath=%s, pic=%s, picWidth=%s, picHeight=%s, matrix=%s",
+                picId, picName, picPath, pic, picWidth, picHeight, matrix)+super.toString()+"}";
     }
 
     public String getPicId() {
@@ -117,14 +115,6 @@ public class OpInsertPic extends OpPaint {
         matrix.setValues(matrixValue);
     }
 
-    public PointF getInsertPos() {
-        return insertPos;
-    }
-
-    public void setInsertPos(PointF insertPos) {
-        this.insertPos = insertPos;
-    }
-
     public Matrix getInitMatrix() {
         return initMatrix;
     }
@@ -135,5 +125,21 @@ public class OpInsertPic extends OpPaint {
 
     public void setMatrix(Matrix matrix) {
         this.matrix = matrix;
+    }
+
+    public Matrix getInitRelativeMatrix(){
+        Matrix matrix = new Matrix(this.matrix);
+        Matrix invertedInitMatrix = new Matrix();
+        initMatrix.invert(invertedInitMatrix);
+        matrix.postConcat(invertedInitMatrix);
+        return matrix;
+    }
+
+    public Matrix getBoardMatrix() {
+        return boardMatrix;
+    }
+
+    public void setBoardMatrix(Matrix boardMatrix) {
+        this.boardMatrix.set(boardMatrix);
     }
 }
