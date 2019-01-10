@@ -54,12 +54,15 @@ import androidx.lifecycle.LifecycleOwner;
 public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Comparable<DefaultPaintBoard>{
     private Context context;
 
+    // 画板matrix
+    private Matrix boardMatrix = new Matrix();
+    // 画板逆matrix
+    private Matrix invertedBoardMatrix = new Matrix();
+
     // 图形画布。用于图形绘制如画线、画圈、擦除等等
-    private DefaultPaintView shapePaintView;
-    // 图形画布缩放及位移
-    private Matrix shapeViewMatrix = new Matrix();
-    // 适配屏幕密度后的图形画布缩放及位移
-    private Matrix shapeViewMatrixByDensity = new Matrix();
+    private TextureView shapePaintView;
+//    // 适配屏幕密度后的图形画布缩放及位移
+//    private Matrix shapeViewMatrixByDensity = new Matrix();
     // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private OpPaint adjustingShapeOp;
     // 临时图形操作。手指拿起绘制完成，但并不表示此绘制已生效，需等到平台广播NTF后方能确认为生效的操作，在此之前的操作都作为临时操作保存在这里。
@@ -70,16 +73,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     private Stack<OpPaint> repealedShapeOps = new Stack<>();
 
     // 图片画布。用于绘制图片。
-    private DefaultPaintView picPaintView;
-    // 图片画布缩放及位移
-    private Matrix picViewMatrix = new Matrix();
-    // 适配屏幕密度后的图形画布缩放及位移
-    private Matrix picViewMatrixByDensity = new Matrix();
+    private TextureView picPaintView;
+//    // 图片画布缩放及位移
+//    private Matrix picViewMatrix = new Matrix();
+//    // 适配屏幕密度后的图形画布缩放及位移
+//    private Matrix picViewMatrixByDensity = new Matrix();
     // 图片操作。
     private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();
 
     // 临时图片画布。用于展示图片操作的一些中间效果，如插入图片、选中图片时先展示带外围虚框和底部删除按钮的图片，操作结束时清除虚框和删除按钮。
-    private DefaultPaintView tmpPicPaintView;
+    private TextureView tmpPicPaintView;
     // 临时图片画布缩放及位移
     private Matrix tmpPicViewMatrix = new Matrix();
     // 临时图片画布中的操作。
@@ -117,6 +120,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     // 画板信息
     private BoardInfo boardInfo;
 
+    private DefaultTouchListener boardViewTouchListener;
+    private DefaultTouchListener shapeViewTouchListener;
+    private DefaultTouchListener picViewTouchListener;
+
     @Override
     public int compareTo(DefaultPaintBoard o) {
         if (null == o){
@@ -137,8 +144,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         this.context = context;
         density = context.getResources().getDisplayMetrics().density;
         relativeDensity = density/2;
-        shapeViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
-        picViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
+//        shapeViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
+//        picViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
         this.boardInfo = boardInfo;
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         View whiteBoard = layoutInflater.inflate(R.layout.default_whiteboard_layout, this);
@@ -153,6 +160,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         picPaintView.setSurfaceTextureListener(surfaceTextureListener);
         tmpPicPaintView.setSurfaceTextureListener(surfaceTextureListener);
 
+        shapeViewTouchListener = new DefaultTouchListener(context);
+        shapeViewTouchListener.setOnEventListener(shapeViewEventListener);
+        picViewTouchListener = new DefaultTouchListener(context);
+        picViewTouchListener.setOnEventListener(picViewEventListener);
+        boardViewTouchListener = new DefaultTouchListener(context);
+        boardViewTouchListener.setOnEventListener(boardViewEventListener);
+        picPaintView.setOnTouchListener( picViewTouchListener);
+        shapePaintView.setOnTouchListener(shapeViewTouchListener);
         try {
             AssetManager am = context.getAssets();
             InputStream is = am.open("del_pic.png");
@@ -204,19 +219,19 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     };
 
 
-    Matrix getShapeViewMatrix() {
-        return shapeViewMatrix;
+    Matrix getBoardMatrix() {
+        return boardMatrix;
     }
 
-    void setShapeViewMatrix(Matrix shapeViewMatrix) {
-        this.shapeViewMatrix.set(shapeViewMatrix);
+    void setBoardMatrix(Matrix boardMatrix) {
+        this.boardMatrix.set(boardMatrix);
     }
 
-    public Matrix getShapeViewMatrixByDensity() {
-        shapeViewMatrixByDensity.set(shapeViewMatrix);
-        shapeViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
-        return shapeViewMatrixByDensity;
-    }
+//    public Matrix getShapeViewMatrixByDensity() {
+//        shapeViewMatrixByDensity.set(boardMatrix);
+//        shapeViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
+//        return shapeViewMatrixByDensity;
+//    }
 
     MyConcurrentLinkedDeque<OpPaint> getTmpShapeOps() {
         return tmpShapeOps;
@@ -230,37 +245,25 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         return repealedShapeOps;
     }
 
-    Matrix getPicViewMatrix() {
-        return picViewMatrix;
-    }
-
-    void setPicViewMatrix(Matrix picViewMatrix) {
-        this.picViewMatrix.set(picViewMatrix);
-    }
-
-    public Matrix getPicViewMatrixByDensity() {
-        picViewMatrixByDensity.set(picViewMatrix);
-        picViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
-        return picViewMatrixByDensity;
-    }
+//    Matrix getPicViewMatrix() {
+//        return picViewMatrix;
+//    }
+//
+//    void setPicViewMatrix(Matrix picViewMatrix) {
+//        this.picViewMatrix.set(picViewMatrix);
+//    }
+//
+//    public Matrix getPicViewMatrixByDensity() {
+//        picViewMatrixByDensity.set(picViewMatrix);
+//        picViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
+//        return picViewMatrixByDensity;
+//    }
 
     MyConcurrentLinkedDeque<OpPaint> getPicOps() {
         return picOps;
     }
 
 
-//    void fullMatrixPics(Matrix matrix) {
-//        for (OpPaint op : picOps){
-//            if (op instanceof OpInsertPic){
-//                OpInsertPic opInsertPic = (OpInsertPic) op;
-//                Matrix matrixAfterLastPicOp = new Matrix(opInsertPic.getMatrixAfterLastPicOp());
-//                KLog.p(KLog.ERROR,"matrixAfterLastPicOp=%s, fullMatrix=%s", matrixAfterLastPicOp, matrix);
-//                matrixAfterLastPicOp.postConcat(matrix);
-//                KLog.p(KLog.ERROR,"after concat, curMatrix=%s", matrixAfterLastPicOp);
-//                opInsertPic.setMatrix(matrixAfterLastPicOp);
-//            }
-//        }
-//    }
 
     public Matrix getTmpPicViewMatrix() {
         return tmpPicViewMatrix;
@@ -296,6 +299,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (null == publisher){
+            // 没有发布者不处理触屏事件。
+            return true;
+        }
+
+        boardViewTouchListener.onTouch(this, ev);
+
         if (LAYER_NONE == focusedLayer){
             return true;
         }else if (LAYER_PIC == focusedLayer){
@@ -306,11 +316,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             return tmpPicPaintView.dispatchTouchEvent(ev);
         }else if (LAYER_PIC_AND_SHAPE == focusedLayer){
             boolean ret2 = picPaintView.dispatchTouchEvent(ev);
-            boolean ret1 = shapePaintView.dispatchTouchEvent(ev); // 事件先给pic层再给shape层，所以公共的publish操作在shape层事件处理完后做。
+            boolean ret1 = shapePaintView.dispatchTouchEvent(ev);
             return ret1||ret2;
         }else if (LAYER_ALL == focusedLayer){
             boolean ret2 = picPaintView.dispatchTouchEvent(ev);
-            boolean ret1 = shapePaintView.dispatchTouchEvent(ev); // 事件先给pic层再给shape层，所以公共的publish操作在shape层事件处理完后做。
+            boolean ret1 = shapePaintView.dispatchTouchEvent(ev);
             boolean ret3 = tmpPicPaintView.dispatchTouchEvent(ev);
             return ret1||ret2||ret3;
         }
@@ -318,8 +328,57 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         return false;
     }
 
+    DefaultTouchListener.IOnEventListener boardViewEventListener = new DefaultTouchListener.IOnEventListener(){
+        private float scaleCenterX, scaleCenterY;
+        private final float scaleRateTopLimit = 3f;
+        private final float scaleRateBottomLimit = 0.5f;
 
-    DefaultPaintView.IOnEventListener shapeViewEventListener = new DefaultPaintView.IOnEventListener(){
+        @Override
+        public void onMultiFingerDragBegin() {
+            KLog.p("#######onMultiFingerDragBegin");
+        }
+
+        @Override
+        public void onMultiFingerDrag(float dx, float dy) {
+            KLog.p("~~> dx=%s, dy=%s", dx, dy);
+            boardMatrix.postTranslate(dx, dy);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+        }
+
+        @Override
+        public void onMultiFingerDragEnd() {
+//            KLog.p("~~>");
+            OpMatrix opMatrix = new OpMatrix(boardMatrix);
+            assignBasicInfo(opMatrix);
+            publisher.publish(opMatrix);
+        }
+
+        @Override
+        public void onScaleBegin() {
+            KLog.p("#######onScaleBegin");
+            scaleCenterX = getWidth()/2;
+            scaleCenterY = getHeight()/2;
+        }
+
+        @Override
+        public void onScale(float factor) {
+            KLog.p("~~> factor=%s", factor);
+            boardMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+            zoomRateChanged();
+        }
+
+        @Override
+        public void onScaleEnd() {
+            KLog.p("#######onScaleEnd");
+            OpMatrix opMatrix = new OpMatrix(boardMatrix);
+            assignBasicInfo(opMatrix);
+            publisher.publish(opMatrix);
+        }
+    };
+
+
+    DefaultTouchListener.IOnEventListener shapeViewEventListener = new DefaultTouchListener.IOnEventListener(){
 
         @Override
         public void onDragBegin(float x, float y) {
@@ -345,42 +404,42 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             adjustingShapeOp = null;
         }
 
+//
+//        @Override
+//        public void onMultiFingerDrag(float dx, float dy) {
+//            KLog.p("~~> dx=%s, dy=%s", dx, dy);
+//            boardMatrix.postTranslate(dx, dy); // XXX 在board的onTouchEvent中做
+//            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+//        }
+//
+//        @Override
+//        public void onMultiFingerDragEnd() {
+////            KLog.p("~~>");
+//            OpMatrix opMatrix = new OpMatrix(boardMatrix);
+//            assignBasicInfo(opMatrix);
+//            publisher.publish(opMatrix);
+//        }
 
-        @Override
-        public void onMultiFingerDrag(float dx, float dy) {
-            KLog.p("~~> dx=%s, dy=%s", dx, dy);
-            shapeViewMatrix.postTranslate(dx, dy);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-        }
+//        @Override
+//        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
+//            KLog.p("~~> factor=%s", factor);
+//            boardMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+//            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+//            zoomRateChanged();
+//        }
 
-        @Override
-        public void onMultiFingerDragEnd() {
-//            KLog.p("~~>");
-            OpMatrix opMatrix = new OpMatrix(shapeViewMatrix);
-            assignBasicInfo(opMatrix);
-            publisher.publish(opMatrix);
-        }
-
-        @Override
-        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
-            KLog.p("~~> factor=%s", factor);
-            shapeViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-            zoomRateChanged();
-        }
-
-        @Override
-        public void onScaleEnd() {
-//            KLog.p("~~>");
-            OpMatrix opMatrix = new OpMatrix(shapeViewMatrix);
-            assignBasicInfo(opMatrix);
-            publisher.publish(opMatrix);
-        }
+//        @Override
+//        public void onScaleEnd() {
+////            KLog.p("~~>");
+//            OpMatrix opMatrix = new OpMatrix(boardMatrix);
+//            assignBasicInfo(opMatrix);
+//            publisher.publish(opMatrix);
+//        }
 
     };
 
 
-    DefaultPaintView.IOnEventListener picViewEventListener = new DefaultPaintView.IOnEventListener(){
+    DefaultTouchListener.IOnEventListener picViewEventListener = new DefaultTouchListener.IOnEventListener(){
         @Override
         public boolean onDown(float x, float y) {
             if (picOps.isEmpty()){
@@ -390,17 +449,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             return true;
         }
 
-        @Override
-        public void onMultiFingerDrag(float dx, float dy) {
-            KLog.p("onMultiFingerDrag pic layer, dx=%s, dy=%s", dx, dy);
-            translatePics(dx, dy);
-        }
+//        @Override
+//        public void onMultiFingerDrag(float dx, float dy) {
+//            KLog.p("onMultiFingerDrag pic layer, dx=%s, dy=%s", dx, dy);
+//            translatePics(dx, dy); // TODO nothingTodo
+//        }
 
-        @Override
-        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
-//            KLog.p("~~> factor=%s", factor);
-            scalePics(factor, scaleCenterX, scaleCenterY);
-        }
+//        @Override
+//        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
+////            KLog.p("~~> factor=%s", factor);
+//            scalePics(factor, scaleCenterX, scaleCenterY);
+//        }
 
         @Override
         public void onLongPress(float x, float y) {
@@ -416,7 +475,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     };
 
 
-    DefaultPaintView.IOnEventListener tmpPicViewEventListener = new DefaultPaintView.IOnEventListener(){
+    DefaultTouchListener.IOnEventListener tmpPicViewEventListener = new DefaultTouchListener.IOnEventListener(){
         private float preDragX, preDragY;
         @Override
         public boolean onDown(float x, float y) {
@@ -503,15 +562,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             handler.removeMessages(MSGID_FINISH_EDIT_PIC);
         }
 
-        @Override
-        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
-            KLog.p("onScale tmp pic layer, factor=%s", factor);
-            if (tmpPicOps.isEmpty()){
-                return;
-            }
-            tmpPicViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-        }
+//        @Override
+//        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
+//            KLog.p("onScale tmp pic layer, factor=%s", factor);
+//            if (tmpPicOps.isEmpty()){
+//                return;
+//            }
+//            tmpPicViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+//            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+//        }
 
     };
 
@@ -669,14 +728,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     }
 
 
-    private Matrix shapeInvertMatrix = new Matrix();
+
     private float[] mapPoint= new float[2];
     private void createShapeOp(float startX, float startY){
-        boolean suc = shapeViewMatrix.invert(shapeInvertMatrix);
+        boolean suc = boardMatrix.invert(invertedBoardMatrix);
 //        KLog.p("invert success?=%s, orgX=%s, orgY=%s", suc, x, y);
         mapPoint[0] = startX;
         mapPoint[1] = startY;
-        shapeInvertMatrix.mapPoints(mapPoint);
+        invertedBoardMatrix.mapPoints(mapPoint);
         float x = mapPoint[0];
         float y = mapPoint[1];
 //            KLog.p("startX=%s, startY=%s, shapeScaleX=%s, shapeScaleY=%s", startX, startY, shapeScaleX, shapeScaleY);
@@ -741,7 +800,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     private void adjustShapeOp(float adjustX, float adjustY){
         mapPoint[0] = adjustX;
         mapPoint[1] = adjustY;
-        shapeInvertMatrix.mapPoints(mapPoint);
+        invertedBoardMatrix.mapPoints(mapPoint);
         float x = mapPoint[0];
         float y = mapPoint[1];
         switch (tool){
@@ -1092,7 +1151,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     float[] zoomVals = new float[9];
     @Override
     public int getZoom() {
-        shapeViewMatrix.getValues(zoomVals);
+        boardMatrix.getValues(zoomVals);
         return (int) (zoomVals[Matrix.MSCALE_X]*100);
     }
 
@@ -1118,9 +1177,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             });
         }
 
-        picPaintView.setOnEventListener(null!=publisher ? picViewEventListener : null);
-        shapePaintView.setOnEventListener(null!=publisher ? shapeViewEventListener : null);
-        tmpPicPaintView.setOnEventListener(null!=publisher ? tmpPicViewEventListener : null);
+//        picPaintView.setOnTouchListener(null!=publisher ? picViewTouchListener : null);
+//        shapePaintView.setOnTouchListener(null!=publisher ? shapeViewTouchListener : null);
+//        tmpPicPaintView.setOnEventListener(null!=publisher ? tmpPicViewEventListener : null);
 
         return this;
     }

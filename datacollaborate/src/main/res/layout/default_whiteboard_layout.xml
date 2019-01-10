@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"> <!--使用merge标签避免冗余节点-->
+    android:layout_height="match_parent">
 
-    <com.kedacom.vconf.sdk.datacollaborate.DefaultPaintView
+    <TextureView
         android:id="@+id/pb_pic_paint_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent" /> <!--用来画图片的画板-->
 
-    <com.kedacom.vconf.sdk.datacollaborate.DefaultPaintView
+    <TextureView
         android:id="@+id/pb_shape_paint_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent" /> <!--用来画图形的（如线、圆、路径）画板-->
 
-    <com.kedacom.vconf.sdk.datacollaborate.DefaultPaintView
+    <TextureView
         android:id="@+id/pb_tmp_paint_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent" /> <!--临时画板。其上的绘制最终将保存到其他画板-->

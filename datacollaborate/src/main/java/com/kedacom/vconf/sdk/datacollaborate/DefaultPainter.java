@@ -7,7 +7,6 @@ import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
@@ -318,41 +317,23 @@ public class DefaultPainter implements IPainter {
                             Matrix matrix = new Matrix(dragOp.getValue());
 
                             /*得到图片操作相对于插入时状态的matrix
-                            * = dragOp.matrix / fullScreenMatrix
-                            * = dragOp.matrix * fullScreenMatrix.invert
+                            * = dragOp.matrix / boardMatrix
+                            * = dragOp.matrix * boardMatrix.invert
                             * */
-//                            float[] insertPos = new float[]{insertPic.getInsertPos().x, insertPic.getInsertPos().y};
-
-//                            matrix.mapPoints(insertPos);
-                            Matrix picViewInvertMatrix = new Matrix();
-                            paintBoard.getPicViewMatrix().invert(picViewInvertMatrix);
-                            matrix.postConcat(picViewInvertMatrix);
-//                            matrix.postTranslate(insertPos[0], insertPos[1]);
+                            Matrix invertedBoardMatrix = new Matrix();
+                            paintBoard.getBoardMatrix().invert(invertedBoardMatrix);
+                            matrix.postConcat(invertedBoardMatrix);
 
                             /*
                             * 得到最终用于绘制图片的matrix
                             * */
                             Matrix picMatrix = new Matrix(insertPic.getInitMatrix());
+                            /*先执行initMatrix，再执行相对initMatrix的偏移matrix，得到图片操作的matrix。
+                            * */
                             picMatrix.postConcat(matrix);
                             insertPic.setMatrix(picMatrix);
-                            KLog.p(KLog.ERROR, "picViewMatrix=%s, picViewInvertMatrix=%s, dragMatrix=%s, insertPos=%s, matrix=%s",
-                                    paintBoard.getPicViewMatrix(), picViewInvertMatrix, dragOp.getValue(), insertPic.getInsertPos(), picMatrix);
-
-
-//                            KLog.p(KLog.ERROR, "before translate: dragMatrix==%s, insertPos=%s", matrix, insertPic.getInsertPos());
-//                            matrix.preTranslate(insertPic.getInsertPos().x, insertPic.getInsertPos().y);
-//                            KLog.p(KLog.ERROR, "after pretranslate: dragMatrix==%s, insertPos=%s", matrix, insertPic.getInsertPos());
-//                            Matrix picViewInvertMatrix = new Matrix();
-//                            paintBoard.getPicViewMatrix().invert(picViewInvertMatrix);
-//                            matrix.postConcat(picViewInvertMatrix);
-//                            Matrix matrix = new Matrix(insertPic.getInitMatrix());
-//                            float[] vals = new float[9];
-//                            dragOp.getValue().getValues(vals);
-//                            matrix.postTranslate(vals[Matrix.MTRANS_X], vals[Matrix.MTRANS_Y]);
-//                            KLog.p(KLog.ERROR, "initMatrix=%s, dragMatrix=%s, matrix=%s", insertPic.getInitMatrix(), dragOp.getValue(), matrix);
-//                            insertPic.setMatrixAfterLastPicOp(matrix);
-//                            insertPic.setMatrix(matrix);
-//                            KLog.p(KLog.ERROR, "picViewMatrix==%s, picViewInvertMatrix=%s, dragMatrix=%s, picMatrix=%s", paintBoard.getPicViewMatrix(), picViewInvertMatrix, dragOp.getValue(), matrix);
+                            KLog.p(KLog.ERROR, "boardMatrix=%s, invertedBoardMatrix=%s, \ndragMatrix=%s, initMatrix=%s, picMatrix=%s",
+                                    paintBoard.getBoardMatrix(), invertedBoardMatrix, dragOp.getValue(), insertPic.getInitMatrix(), picMatrix);
                             break;
                         }
                     }
@@ -370,8 +351,7 @@ public class DefaultPainter implements IPainter {
                 }
                 break;
             case FULLSCREEN_MATRIX: // 全局放缩、位移，包括图片和图形
-                paintBoard.setPicViewMatrix(((OpMatrix)op).getMatrix());
-                paintBoard.setShapeViewMatrix(((OpMatrix)op).getMatrix());
+                paintBoard.setBoardMatrix(((OpMatrix)op).getMatrix());
                 paintBoard.zoomRateChanged();
                 break;
 
@@ -482,6 +462,7 @@ public class DefaultPainter implements IPainter {
 
     private final Thread renderThread = new Thread("DCRenderThr"){
         private RectF rect = new RectF();
+        private Matrix matrix = new Matrix();
 
         @Override
         public void run() {
@@ -523,15 +504,16 @@ public class DefaultPainter implements IPainter {
                     bNeedRender = false;
                 }
 
+                matrix.set(paintBoard.getBoardMatrix());
+
                 // 图形层绘制
                 Canvas shapePaintViewCanvas = paintBoard.lockCanvas(IPaintBoard.LAYER_SHAPE);
                 if (null != shapePaintViewCanvas) {
                     // 每次绘制前先清空画布以避免残留
                     shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
-                    // 设置图形层画布的缩放比例
-//                    shapePaintViewCanvas.setMatrix(paintBoard.getShapeViewMatrixByDensity());
-                    shapePaintViewCanvas.setMatrix(paintBoard.getShapeViewMatrix());
+                    // 设置画布matrix
+                    shapePaintViewCanvas.setMatrix(matrix);
 
                     // 图形绘制
                     render(paintBoard.getShapeOps(), shapePaintViewCanvas);
@@ -553,9 +535,8 @@ public class DefaultPainter implements IPainter {
                     // 清空画布
                     picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
-                    // 设置画布缩放比例
-//                    picPaintViewCanvas.setMatrix(paintBoard.getPicViewMatrixByDensity());
-                    picPaintViewCanvas.setMatrix(paintBoard.getPicViewMatrix());
+                    // 设置画布matrix
+                    picPaintViewCanvas.setMatrix(matrix);
 
                     // 图片绘制
                     render(paintBoard.getPicOps(), picPaintViewCanvas);
