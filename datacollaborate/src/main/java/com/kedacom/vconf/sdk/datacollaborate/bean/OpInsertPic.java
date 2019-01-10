@@ -19,7 +19,7 @@ public class OpInsertPic extends OpPaint {
     private int picHeight;
     private PointF insertPos; // 插入位置（图片左上角所在位置的点）
     private Matrix initMatrix; // 初始位置的matrix
-    private Matrix matrix; // 实际位置的matrix
+    private Matrix matrix; // 图片操作的matrix（不包含fullScreenMatrix中的matrix）
 
     public OpInsertPic(){
         type = EOpType.INSERT_PICTURE;
@@ -52,8 +52,8 @@ public class OpInsertPic extends OpPaint {
     @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("picId=%s, picName=%s, picPath=%s, pic=%s, picWidth=%s, picHeight=%s, matrix=%s",
-                picId, picName, picPath, pic, picWidth, picHeight, matrix)+super.toString()+"}";
+        return "{"+String.format("picId=%s, picName=%s, picPath=%s, pic=%s, picWidth=%s, picHeight=%s, insertPos=%s, matrix=%s",
+                picId, picName, picPath, pic, picWidth, picHeight, insertPos, matrix)+super.toString()+"}";
     }
 
     public String getPicId() {

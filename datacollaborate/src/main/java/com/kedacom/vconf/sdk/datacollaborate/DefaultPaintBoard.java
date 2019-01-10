@@ -58,6 +58,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     private DefaultPaintView shapePaintView;
     // 图形画布缩放及位移
     private Matrix shapeViewMatrix = new Matrix();
+    // 适配屏幕密度后的图形画布缩放及位移
+    private Matrix shapeViewMatrixByDensity = new Matrix();
     // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private OpPaint adjustingShapeOp;
     // 临时图形操作。手指拿起绘制完成，但并不表示此绘制已生效，需等到平台广播NTF后方能确认为生效的操作，在此之前的操作都作为临时操作保存在这里。
@@ -69,6 +71,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     // 图片画布。用于绘制图片。
     private DefaultPaintView picPaintView;
+    // 图片画布缩放及位移
+    private Matrix picViewMatrix = new Matrix();
+    // 适配屏幕密度后的图形画布缩放及位移
+    private Matrix picViewMatrixByDensity = new Matrix();
     // 图片操作。
     private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();
 
@@ -82,6 +88,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     private Bitmap del_pic_icon;
     private Bitmap del_pic_active_icon;
     private float density = 1;
+
+    // 相对于XHDPI的屏幕密度。
+    private float relativeDensity;
 
     // 图层
     private int focusedLayer = LAYER_ALL;
@@ -127,6 +136,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         super(context);
         this.context = context;
         density = context.getResources().getDisplayMetrics().density;
+        relativeDensity = density/2;
+        shapeViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
+        picViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
         this.boardInfo = boardInfo;
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         View whiteBoard = layoutInflater.inflate(R.layout.default_whiteboard_layout, this);
@@ -197,9 +209,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     }
 
     void setShapeViewMatrix(Matrix shapeViewMatrix) {
-        this.shapeViewMatrix = shapeViewMatrix;
+        this.shapeViewMatrix.set(shapeViewMatrix);
+        shapeViewMatrixByDensity.set(shapeViewMatrix);
+        shapeViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
     }
-    
+
+    public Matrix getShapeViewMatrixByDensity() {
+        return shapeViewMatrixByDensity;
+    }
+
     MyConcurrentLinkedDeque<OpPaint> getTmpShapeOps() {
         return tmpShapeOps;
     }
@@ -212,21 +230,37 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         return repealedShapeOps;
     }
 
+    Matrix getPicViewMatrix() {
+        return picViewMatrix;
+    }
+
+    void setPicViewMatrix(Matrix picViewMatrix) {
+        this.picViewMatrix.set(picViewMatrix);
+        picViewMatrixByDensity.set(picViewMatrix);
+        picViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
+    }
+
+    public Matrix getPicViewMatrixByDensity() {
+        return picViewMatrixByDensity;
+    }
+
     MyConcurrentLinkedDeque<OpPaint> getPicOps() {
         return picOps;
     }
 
 
-    void fullMatrixPics(Matrix matrix) {
-        for (OpPaint op : picOps){
-            if (op instanceof OpInsertPic){
-                OpInsertPic opInsertPic = (OpInsertPic) op;
-                Matrix initMatrix = new Matrix(opInsertPic.getInitMatrix());
-                initMatrix.postConcat(matrix);
-                opInsertPic.setMatrix(initMatrix);
-            }
-        }
-    }
+//    void fullMatrixPics(Matrix matrix) {
+//        for (OpPaint op : picOps){
+//            if (op instanceof OpInsertPic){
+//                OpInsertPic opInsertPic = (OpInsertPic) op;
+//                Matrix matrixAfterLastPicOp = new Matrix(opInsertPic.getMatrixAfterLastPicOp());
+//                KLog.p(KLog.ERROR,"matrixAfterLastPicOp=%s, fullMatrix=%s", matrixAfterLastPicOp, matrix);
+//                matrixAfterLastPicOp.postConcat(matrix);
+//                KLog.p(KLog.ERROR,"after concat, curMatrix=%s", matrixAfterLastPicOp);
+//                opInsertPic.setMatrix(matrixAfterLastPicOp);
+//            }
+//        }
+//    }
 
     public Matrix getTmpPicViewMatrix() {
         return tmpPicViewMatrix;
@@ -937,7 +971,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             // 正在拖动放缩图片
             float[] initMatrixVal = new float[9];
             float[] matrixVal = new float[9];
-            opInsertPic.getInitMatrix().getValues(initMatrixVal);
+//            opInsertPic.getInitMatrix().getValues(initMatrixVal);
             opInsertPic.getMatrix().getValues(matrixVal);
             matrixVal[Matrix.MTRANS_X] -= initMatrixVal[Matrix.MTRANS_X];
             matrixVal[Matrix.MTRANS_Y] -= initMatrixVal[Matrix.MTRANS_Y];

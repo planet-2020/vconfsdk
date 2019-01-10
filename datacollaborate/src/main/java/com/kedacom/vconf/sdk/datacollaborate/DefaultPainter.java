@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
@@ -314,9 +315,44 @@ public class DefaultPainter implements IPainter {
                         if (EOpType.INSERT_PICTURE == opPaint.getType()
                                 && ((OpInsertPic) opPaint).getPicId().equals(dragOp.getKey())) {
                             OpInsertPic insertPic = (OpInsertPic) opPaint;
-                            Matrix matrix = dragOp.getValue();
-                            matrix.postTranslate(insertPic.getInsertPos().x, insertPic.getInsertPos().y);
-                            insertPic.setMatrix(matrix);
+                            Matrix matrix = new Matrix(dragOp.getValue());
+
+                            /*得到图片操作相对于插入时状态的matrix
+                            * = dragOp.matrix / fullScreenMatrix
+                            * = dragOp.matrix * fullScreenMatrix.invert
+                            * */
+//                            float[] insertPos = new float[]{insertPic.getInsertPos().x, insertPic.getInsertPos().y};
+
+//                            matrix.mapPoints(insertPos);
+                            Matrix picViewInvertMatrix = new Matrix();
+                            paintBoard.getPicViewMatrix().invert(picViewInvertMatrix);
+                            matrix.postConcat(picViewInvertMatrix);
+//                            matrix.postTranslate(insertPos[0], insertPos[1]);
+
+                            /*
+                            * 得到最终用于绘制图片的matrix
+                            * */
+                            Matrix picMatrix = new Matrix(insertPic.getInitMatrix());
+                            picMatrix.postConcat(matrix);
+                            insertPic.setMatrix(picMatrix);
+                            KLog.p(KLog.ERROR, "picViewMatrix=%s, picViewInvertMatrix=%s, dragMatrix=%s, insertPos=%s, matrix=%s",
+                                    paintBoard.getPicViewMatrix(), picViewInvertMatrix, dragOp.getValue(), insertPic.getInsertPos(), picMatrix);
+
+
+//                            KLog.p(KLog.ERROR, "before translate: dragMatrix==%s, insertPos=%s", matrix, insertPic.getInsertPos());
+//                            matrix.preTranslate(insertPic.getInsertPos().x, insertPic.getInsertPos().y);
+//                            KLog.p(KLog.ERROR, "after pretranslate: dragMatrix==%s, insertPos=%s", matrix, insertPic.getInsertPos());
+//                            Matrix picViewInvertMatrix = new Matrix();
+//                            paintBoard.getPicViewMatrix().invert(picViewInvertMatrix);
+//                            matrix.postConcat(picViewInvertMatrix);
+//                            Matrix matrix = new Matrix(insertPic.getInitMatrix());
+//                            float[] vals = new float[9];
+//                            dragOp.getValue().getValues(vals);
+//                            matrix.postTranslate(vals[Matrix.MTRANS_X], vals[Matrix.MTRANS_Y]);
+//                            KLog.p(KLog.ERROR, "initMatrix=%s, dragMatrix=%s, matrix=%s", insertPic.getInitMatrix(), dragOp.getValue(), matrix);
+//                            insertPic.setMatrixAfterLastPicOp(matrix);
+//                            insertPic.setMatrix(matrix);
+//                            KLog.p(KLog.ERROR, "picViewMatrix==%s, picViewInvertMatrix=%s, dragMatrix=%s, picMatrix=%s", paintBoard.getPicViewMatrix(), picViewInvertMatrix, dragOp.getValue(), matrix);
                             break;
                         }
                     }
@@ -334,7 +370,8 @@ public class DefaultPainter implements IPainter {
                 }
                 break;
             case FULLSCREEN_MATRIX: // 全局放缩、位移，包括图片和图形
-                paintBoard.fullMatrixPics(((OpMatrix)op).getMatrix());
+//                paintBoard.fullMatrixPics(((OpMatrix)op).getMatrix());
+                paintBoard.setPicViewMatrix(((OpMatrix)op).getMatrix());
                 paintBoard.setShapeViewMatrix(((OpMatrix)op).getMatrix());
                 paintBoard.zoomRateChanged();
                 break;
@@ -494,7 +531,7 @@ public class DefaultPainter implements IPainter {
                     shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
                     // 设置图形层画布的缩放比例
-                    shapePaintViewCanvas.setMatrix(paintBoard.getShapeViewMatrix());
+                    shapePaintViewCanvas.setMatrix(paintBoard.getShapeViewMatrixByDensity());
 
                     // 图形绘制
                     render(paintBoard.getShapeOps(), shapePaintViewCanvas);
@@ -515,6 +552,9 @@ public class DefaultPainter implements IPainter {
                 if (null != picPaintViewCanvas) {  // TODO 优化，尝试如果没有影响图片层的操作，如插入/删除/拖动/放缩图片，就不刷新图片层。
                     // 清空画布
                     picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+
+                    // 设置画布缩放比例
+                    picPaintViewCanvas.setMatrix(paintBoard.getPicViewMatrixByDensity());
 
                     // 图片绘制
                     render(paintBoard.getPicOps(), picPaintViewCanvas);

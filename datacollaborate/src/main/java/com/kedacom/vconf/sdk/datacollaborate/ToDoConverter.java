@@ -81,24 +81,36 @@ final class ToDoConverter {
     private static float density = DataCollaborateManager.getContext().getResources().getDisplayMetrics().density;
     private static final String INVALID_UUID = "";
 
+//    // 将坐标值由传输过来的转为在本设备上实际使用的
+//    private static final Matrix ftm = new Matrix();
+//    // 将坐标值由本设备实际使用的转为传输的
+//    private static final Matrix ttm = new Matrix();
+//
+//    static {
+//        ftm.postScale(density, density);
+//        ftm.invert(ttm);
+//    }
+
     /**
      * 将坐标值由本设备实际使用的转为传输的
      * */
     private static float tt(float val){
-        float t = val/density;
-        if (-1<t && t<0){
-            return -1;
-        }else if (0<t && t<1){
-            return 1;
-        }
-        return t;
+//        float t = val/density;
+//        if (-1<t && t<0){
+//            return -1;
+//        }else if (0<t && t<1){
+//            return 1;
+//        }
+//        return t;
+        return val;
     }
 
     /**
      * 将坐标值由传输过来的转为在本设备上实际使用的
      * */
     private static float ft(float val){
-        return val*density;
+//        return val*density;
+        return val;
     }
 
 
@@ -118,25 +130,23 @@ final class ToDoConverter {
         return strMatrixValue;
     }
 
-    private static void picMatrixValueFt(float[] matrixVal){
-        // 位移适配屏幕密度
+    private static void matrixTransValueFt(float[] matrixVal){
         matrixVal[Matrix.MTRANS_X] = ft(matrixVal[Matrix.MTRANS_X]);
         matrixVal[Matrix.MTRANS_Y] = ft(matrixVal[Matrix.MTRANS_Y]);
-
-        // 图片根据屏幕密度放缩
+    }
+    private static void matrixTransValueTt(float[] matrixVal){
+        matrixVal[Matrix.MTRANS_X] = tt(matrixVal[Matrix.MTRANS_X]);
+        matrixVal[Matrix.MTRANS_Y] = tt(matrixVal[Matrix.MTRANS_Y]);
+    }
+    private static void matrixScaleValueFt(float[] matrixVal){
         matrixVal[Matrix.MSCALE_X] = ft(matrixVal[Matrix.MSCALE_X]);
         matrixVal[Matrix.MSCALE_Y] = ft(matrixVal[Matrix.MSCALE_Y]);
     }
-
-    private static void picMatrixValueTt(float[] matrixVal){
-        // 位移适配屏幕密度
-        matrixVal[Matrix.MTRANS_X] = tt(matrixVal[Matrix.MTRANS_X]);
-        matrixVal[Matrix.MTRANS_Y] = tt(matrixVal[Matrix.MTRANS_Y]);
-        // 图片根据屏幕密度放缩
+    private static void matrixScaleValueTt(float[] matrixVal){
         matrixVal[Matrix.MSCALE_X] = tt(matrixVal[Matrix.MSCALE_X]);
         matrixVal[Matrix.MSCALE_Y] = tt(matrixVal[Matrix.MSCALE_Y]);
-
     }
+
 
     public static OpPaint fromPaintTransferObj(Object transferObj) {
         if (transferObj instanceof DcsOperLineOperInfoNtf){ // TODO 用枚举做判断
@@ -341,7 +351,8 @@ final class ToDoConverter {
         float[] matrixVal = matrixValueStr2Float(ip.aachMatrixValue);
         matrixVal[Matrix.MTRANS_X] += ip.tPoint.nPosx;
         matrixVal[Matrix.MTRANS_Y] += ip.tPoint.nPosy;
-        picMatrixValueFt(matrixVal);
+        matrixTransValueFt(matrixVal);
+        matrixScaleValueFt(matrixVal);
         Matrix matrix = new Matrix();
         matrix.setValues(matrixVal);
         OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight,
@@ -352,10 +363,11 @@ final class ToDoConverter {
 
     public static TDCSWbInsertPicOperInfo toTransferObj(OpInsertPic domainObj) {
         float[] matrixVal = domainObj.getMatrixValue();
-        picMatrixValueTt(matrixVal);
+        matrixTransValueTt(matrixVal);
+        matrixScaleValueTt(matrixVal);
         return new TDCSWbInsertPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), domainObj.getPicId(),
                 domainObj.getPicWidth(), domainObj.getPicHeight(),
-                new TDCSWbPoint(0, 0),
+                new TDCSWbPoint((int)tt(domainObj.getInsertPos().x), (int)tt(domainObj.getInsertPos().y)),
                 domainObj.getPicName(), matrixValueFloat2Str(matrixVal));
     }
 
@@ -373,7 +385,8 @@ final class ToDoConverter {
         Map<String, Matrix> picMatrices = new HashMap<>();
         for (TDCSWbGraphsInfo picMatrix : dcDragPicOp.AssParam.atGraphsInfo){
             float[] matrixVal = matrixValueStr2Float(picMatrix.aachMatrixValue);
-            picMatrixValueFt(matrixVal);
+            matrixTransValueFt(matrixVal);
+            matrixScaleValueFt(matrixVal);
             Matrix matrix = new Matrix();
             matrix.setValues(matrixVal);
             picMatrices.put(picMatrix.achGraphsId, matrix);
@@ -390,7 +403,8 @@ final class ToDoConverter {
         for (String picId : matrices.keySet()){
             float[] matrixVal = new float[9];
             matrices.get(picId).getValues(matrixVal);
-            picMatrixValueTt(matrixVal);
+            matrixTransValueTt(matrixVal);
+            matrixScaleValueTt(matrixVal);
             tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, matrixValueFloat2Str(matrixVal));
             ++i;
         }
@@ -401,7 +415,7 @@ final class ToDoConverter {
         Map<String, Matrix> picMatrices = new HashMap<>();
         for (TDCSWbGraphsInfo picMatrix : dcDragPicOp.AssParam.atGraphsInfo){
             float[] matrixVal = matrixValueStr2Float(picMatrix.aachMatrixValue);
-            picMatrixValueFt(matrixVal);
+//            picMatrixValueFt(matrixVal);
             Matrix matrix = new Matrix();
             matrix.setValues(matrixVal);
             picMatrices.put(picMatrix.achGraphsId, matrix);
@@ -418,7 +432,7 @@ final class ToDoConverter {
         for (String picId : matrices.keySet()){
             float[] matrixVal = new float[9];
             matrices.get(picId).getValues(matrixVal);
-            picMatrixValueTt(matrixVal);
+//            picMatrixValueTt(matrixVal);
             tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, matrixValueFloat2Str(matrixVal));
             ++i;
         }
@@ -429,8 +443,7 @@ final class ToDoConverter {
     public static OpMatrix fromTransferObj(DcsOperFullScreenNtf dcFullScreenMatrixOp) {
         float[] matrixVal = matrixValueStr2Float(dcFullScreenMatrixOp.AssParam.aachMatrixValue);
         // 位移适配屏幕密度
-        matrixVal[Matrix.MTRANS_X] = ft(matrixVal[Matrix.MTRANS_X]);
-        matrixVal[Matrix.MTRANS_Y] = ft(matrixVal[Matrix.MTRANS_Y]);
+        matrixTransValueFt(matrixVal);
 
         OpMatrix opMatrix = new OpMatrix(matrixVal);
         assignPaintDomainObj(dcFullScreenMatrixOp.MainParam, INVALID_UUID, opMatrix);
@@ -440,8 +453,7 @@ final class ToDoConverter {
     public static TDCSWbDisPlayInfo toTransferObj(OpMatrix domainObj) {
         float[] matrixVal = domainObj.getMatrixValue();
         // 位移适配屏幕密度
-        matrixVal[Matrix.MTRANS_X] = tt(matrixVal[Matrix.MTRANS_X]);
-        matrixVal[Matrix.MTRANS_Y] = tt(matrixVal[Matrix.MTRANS_Y]);
+        matrixTransValueTt(matrixVal);
         return new TDCSWbDisPlayInfo(domainObj.getBoardId(), domainObj.getPageId(), matrixValueFloat2Str(matrixVal));
     }
 
