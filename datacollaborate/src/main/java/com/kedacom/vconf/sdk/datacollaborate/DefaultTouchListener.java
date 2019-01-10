@@ -25,10 +25,12 @@ class DefaultTouchListener implements View.OnTouchListener {
 
     private GestureDetector gestureDetector;
     private ScaleGestureDetector scaleGestureDetector;
+    private IOnEventListener onEventListener;
 
-    public DefaultTouchListener(Context context) {
+    public DefaultTouchListener(Context context, IOnEventListener onEventListener) {
         gestureDetector = new GestureDetector(context, new MyOnGestureListener());
         scaleGestureDetector = new ScaleGestureDetector(context, new MyScaleGestureListener());
+        this.onEventListener = onEventListener;
     }
 
 
@@ -263,7 +265,6 @@ class DefaultTouchListener implements View.OnTouchListener {
         default void onLongPress(float x, float y){}
     }
 
-    private IOnEventListener onEventListener;
     void setOnEventListener(IOnEventListener onEventListener){
         this.onEventListener = onEventListener;
     }

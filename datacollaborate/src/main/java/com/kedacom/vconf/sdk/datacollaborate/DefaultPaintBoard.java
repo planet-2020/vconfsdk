@@ -123,6 +123,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     private DefaultTouchListener boardViewTouchListener;
     private DefaultTouchListener shapeViewTouchListener;
     private DefaultTouchListener picViewTouchListener;
+    private DefaultTouchListener tmpPicViewTouchListener;
 
     @Override
     public int compareTo(DefaultPaintBoard o) {
@@ -160,14 +161,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         picPaintView.setSurfaceTextureListener(surfaceTextureListener);
         tmpPicPaintView.setSurfaceTextureListener(surfaceTextureListener);
 
-        shapeViewTouchListener = new DefaultTouchListener(context);
-        shapeViewTouchListener.setOnEventListener(shapeViewEventListener);
-        picViewTouchListener = new DefaultTouchListener(context);
-        picViewTouchListener.setOnEventListener(picViewEventListener);
-        boardViewTouchListener = new DefaultTouchListener(context);
-        boardViewTouchListener.setOnEventListener(boardViewEventListener);
+        shapeViewTouchListener = new DefaultTouchListener(context, shapeViewEventListener);
+        picViewTouchListener = new DefaultTouchListener(context, picViewEventListener);
+        tmpPicViewTouchListener = new DefaultTouchListener(context, tmpPicViewEventListener);
+        boardViewTouchListener = new DefaultTouchListener(context, boardViewEventListener);
         picPaintView.setOnTouchListener( picViewTouchListener);
         shapePaintView.setOnTouchListener(shapeViewTouchListener);
+        tmpPicPaintView.setOnTouchListener(tmpPicViewTouchListener);
+
         try {
             AssetManager am = context.getAssets();
             InputStream is = am.open("del_pic.png");
@@ -227,6 +228,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         this.boardMatrix.set(boardMatrix);
     }
 
+    Matrix getInvertedBoardMatrix(){
+        boardMatrix.invert(invertedBoardMatrix);
+        return invertedBoardMatrix;
+    }
 //    public Matrix getShapeViewMatrixByDensity() {
 //        shapeViewMatrixByDensity.set(boardMatrix);
 //        shapeViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
@@ -291,25 +296,27 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             return true;
         }
 
-        boardViewTouchListener.onTouch(this, ev);
-
-        if (LAYER_NONE == focusedLayer){
-            return true;
-        }else if (LAYER_PIC == focusedLayer){
-            return picPaintView.dispatchTouchEvent(ev);
-        }else if (LAYER_SHAPE == focusedLayer){
-            return shapePaintView.dispatchTouchEvent(ev);
-        }else if (LAYER_PIC_TMP == focusedLayer){
-            return tmpPicPaintView.dispatchTouchEvent(ev);
-        }else if (LAYER_PIC_AND_SHAPE == focusedLayer){
-            boolean ret2 = picPaintView.dispatchTouchEvent(ev);
-            boolean ret1 = shapePaintView.dispatchTouchEvent(ev);
-            return ret1||ret2;
-        }else if (LAYER_ALL == focusedLayer){
+        if (LAYER_ALL == focusedLayer){
+            boardViewTouchListener.onTouch(this, ev);
             boolean ret2 = picPaintView.dispatchTouchEvent(ev);
             boolean ret1 = shapePaintView.dispatchTouchEvent(ev);
             boolean ret3 = tmpPicPaintView.dispatchTouchEvent(ev);
             return ret1||ret2||ret3;
+        } else if (LAYER_PIC_TMP == focusedLayer){
+            return tmpPicPaintView.dispatchTouchEvent(ev);
+        } else if (LAYER_NONE == focusedLayer){
+            return true;
+        }else if (LAYER_PIC == focusedLayer){
+            boardViewTouchListener.onTouch(this, ev);
+            return picPaintView.dispatchTouchEvent(ev);
+        }else if (LAYER_SHAPE == focusedLayer){
+            boardViewTouchListener.onTouch(this, ev);
+            return shapePaintView.dispatchTouchEvent(ev);
+        }else if (LAYER_PIC_AND_SHAPE == focusedLayer){
+            boardViewTouchListener.onTouch(this, ev);
+            boolean ret2 = picPaintView.dispatchTouchEvent(ev);
+            boolean ret1 = shapePaintView.dispatchTouchEvent(ev);
+            return ret1||ret2;
         }
 
         return false;
@@ -414,6 +421,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
                 return;
             }
             picOps.remove(opInsertPic);
+            tmpPicViewMatrix.set(boardMatrix);
             editPic(opInsertPic);
         }
     };
@@ -421,6 +429,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     DefaultTouchListener.IOnEventListener tmpPicViewEventListener = new DefaultTouchListener.IOnEventListener(){
         private float preDragX, preDragY;
+        private float scaleCenterX, scaleCenterY;
+        private final float scaleRateTopLimit = 3f;
+        private final float scaleRateBottomLimit = 0.5f;
+
         @Override
         public boolean onDown(float x, float y) {
             KLog.p("onDown tmp pic layer, x=%s. y=%s", x, y);
@@ -504,17 +516,19 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
                 return;
             }
             handler.removeMessages(MSGID_FINISH_EDIT_PIC);
+            scaleCenterX = getWidth()/2;
+            scaleCenterY = getHeight()/2;
         }
 
-//        @Override
-//        public void onScale(float factor, float scaleCenterX, float scaleCenterY) {
-//            KLog.p("onScale tmp pic layer, factor=%s", factor);
-//            if (tmpPicOps.isEmpty()){
-//                return;
-//            }
-//            tmpPicViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
-//            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-//        }
+        @Override
+        public void onScale(float factor) {
+            KLog.p("onScale tmp pic layer, factor=%s", factor);
+            if (tmpPicOps.isEmpty()){
+                return;
+            }
+            tmpPicViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+        }
 
     };
 
@@ -953,7 +967,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             KLog.p(KLog.ERROR, "no opInsertPic in tmpPicOps");
             return;
         }
-        opInsertPic.getMatrix().postConcat(tmpPicViewMatrix);
+        Matrix increasedMatrix = new Matrix(tmpPicViewMatrix);
+        increasedMatrix.postConcat(getInvertedBoardMatrix());
+        opInsertPic.getMatrix().postConcat(increasedMatrix);
 
         picOps.offerLast(opInsertPic);
 
