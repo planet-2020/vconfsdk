@@ -135,7 +135,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
             s.state = Session.BLOCKING;
             blockedSessions.add(s);
 
-            Log.w(TAG, String.format("-=->| %s BLOCKED (session %d BLOCKED)", s.reqName, s.id)); // XXX 启动超时？阻塞时间算在超时内？
+            Log.w(TAG, String.format("-=->| %s (session %d BLOCKED)", s.reqName, s.id)); // XXX 启动超时？阻塞时间算在超时内？
 
             return true;
         }
@@ -155,7 +155,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
                 s.state = Session.END;
                 timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
                 sessions.remove(s);
-                Log.d(TAG, String.format("<-=- %s CANCELED (session %d CANCELED)", s.reqName, s.id));
+                Log.d(TAG, String.format("<-=- (session %d FINISHED. %s CANCELED by user)", s.id, s.reqName));
                 driveBlockedSession(s.reqName);// 驱动被当前会话阻塞的会话
                 return true;
             }
@@ -218,7 +218,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
             Message rsp = Message.obtain();
 
             if (gotLast){// 该会话已获取到最后一条期待的响应
-                Log.d(TAG, String.format("<-=- %s (session %d FINISH) \n%s", rspName, s.id, rspBody));
+                Log.d(TAG, String.format("<-=- %s (session %d FINISHED. %s) \n%s", rspName, s.id, s.reqName, rspBody));
                 timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
                 s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                 sessions.remove(s);
@@ -232,7 +232,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
                 driveBlockedSession(s.reqName); // 驱动被当前会话阻塞的会话
 
             } else {
-                Log.d(TAG, String.format("<-=- %s (session %d) \n%s", rspName, s.id, rspBody));
+                Log.d(TAG, String.format("<-=- %s (session %d. %s) \n%s", rspName, s.id, s.reqName, rspBody));
                 s.state = Session.RECVING; // 已收到响应，继续接收后续响应
                 rsp.obj = new FeedbackBundle(magicBook.getMsgId(rspName),
                         jsonProcessor.fromJson(rspBody, magicBook.getRspClazz(rspName)),
@@ -316,7 +316,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
 
         if (null==s.rspSeqs || 0==s.rspSeqs.length){
             s.state = Session.END; // 请求没有响应，会话结束
-            Log.d(TAG, String.format("<-=- NO RESPONSE for %s (session %d FINISHED. NO RESPONSE)", s.reqName, s.id));
+            Log.d(TAG, String.format("<-=- (session %d FINISHED. NO RESPONSE for %s)", s.id, s.reqName));
             sessions.remove(s);
             driveBlockedSession(s.reqName);
             return 0;
@@ -370,7 +370,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
             return;
         }
 
-        Log.d(TAG, String.format("<-=- %s TIMEOUT (session %d TIMEOUT)", s.reqName, s.id));
+        Log.d(TAG, String.format("<-=- (session %d FINISHED. %s TIMEOUT)", s.id, s.reqName));
         s.state = Session.END; // 会话结束
 
         // 通知用户请求超时
