@@ -935,7 +935,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         float transY = (getHeight()-picH)/2f;
         Matrix matrix = new Matrix();
         matrix.setTranslate(transX, transY);
-        OpInsertPic op = new OpInsertPic(path, matrix);
+        OpInsertPic op = new OpInsertPic(path, new Matrix(), matrix);
         op.setPic(bt);
         assignBasicInfo(op);
 

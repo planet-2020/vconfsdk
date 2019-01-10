@@ -309,6 +309,9 @@ public class DefaultPainter implements IPainter {
                 break;
 
             case DRAG_PICTURE:
+                /*
+                * 拖动图片时对端传过来的matrix是图片最终的matrix相对于图片初始matrix的相对matrix，包含了全屏缩放位移。
+                * */
                 for (Map.Entry<String, Matrix> dragOp : ((OpDragPic)op).getPicMatrices().entrySet()) {
                     for (OpPaint opPaint : picRenderOps) {
                         if (EOpType.INSERT_PICTURE == opPaint.getType()
@@ -316,7 +319,7 @@ public class DefaultPainter implements IPainter {
                             OpInsertPic insertPic = (OpInsertPic) opPaint;
                             Matrix matrix = new Matrix(dragOp.getValue());
 
-                            /*得到图片操作相对于插入时状态的matrix
+                            /*得到图片操作相对于插入时状态的matrix（不包含全屏缩放位移）
                             * = dragOp.matrix / boardMatrix
                             * = dragOp.matrix * boardMatrix.invert
                             * */

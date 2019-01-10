@@ -304,7 +304,7 @@ final class ToDoConverter {
         matrixVal[Matrix.MTRANS_Y] += ip.tPoint.nPosy;
         Matrix matrix = new Matrix();
         matrix.setValues(matrixVal);
-        OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight,matrix);
+        OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight,matrix, matrix);
         assignPaintDomainObj(dcInertPicOp.MainParam, INVALID_UUID, opInsertPic);
         return opInsertPic;
     }
@@ -312,6 +312,8 @@ final class ToDoConverter {
     public static TDCSWbInsertPicOperInfo toTransferObj(OpInsertPic domainObj) {
         Matrix matrix = new Matrix(domainObj.getInitRelativeMatrix());
         matrix.postConcat(domainObj.getBoardMatrix());
+        KLog.p("initMatrix=%s, matrix=%s, \nboardMatrix=%s, finMatrix=%s",
+                domainObj.getInitMatrix(), domainObj.getMatrix(), domainObj.getBoardMatrix(), matrix);
         float[] matrixVal = new float[9];
         matrix.getValues(matrixVal);
         return new TDCSWbInsertPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), domainObj.getPicId(),

@@ -25,7 +25,7 @@ public class OpInsertPic extends OpPaint {
         type = EOpType.INSERT_PICTURE;
     }
 
-    public OpInsertPic(String picPath, Matrix matrix){
+    public OpInsertPic(String picPath, Matrix initMatrix, Matrix matrix){
         File file = new File(picPath);
         this.picPath = picPath;
         this.picName = file.getName();
@@ -34,24 +34,26 @@ public class OpInsertPic extends OpPaint {
         BitmapFactory.decodeFile(picPath, options);
         this.picWidth = options.outWidth;
         this.picHeight = options.outHeight;
-        initMatrix = this.matrix = matrix;
+        this.initMatrix = initMatrix;
+        this.matrix = matrix;
         type = EOpType.INSERT_PICTURE;
     }
 
-    public OpInsertPic(String picId, String picName, int picWidth, int picHeight, Matrix matrix){
+    public OpInsertPic(String picId, String picName, int picWidth, int picHeight, Matrix initMatrix, Matrix matrix){
         this.picId = picId;
         this.picName = picName;
         this.picWidth = picWidth;
         this.picHeight = picHeight;
-        initMatrix = this.matrix = matrix;
+        this.initMatrix = initMatrix;
+        this.matrix = matrix;
         type = EOpType.INSERT_PICTURE;
     }
 
     @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("picId=%s, picName=%s, picPath=%s, pic=%s, picWidth=%s, picHeight=%s, matrix=%s",
-                picId, picName, picPath, pic, picWidth, picHeight, matrix)+super.toString()+"}";
+        return "{"+String.format("picId=%s, picName=%s, picPath=%s, pic=%s, picWidth=%s, picHeight=%s, initMatrix=%s, matrix=%s",
+                picId, picName, picPath, pic, picWidth, picHeight, initMatrix, matrix)+super.toString()+"}";
     }
 
     public String getPicId() {
