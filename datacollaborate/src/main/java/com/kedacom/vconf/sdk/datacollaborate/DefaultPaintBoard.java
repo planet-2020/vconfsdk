@@ -8,6 +8,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.PointF;
+import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.os.Handler;
 import android.os.Message;
@@ -625,18 +626,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     }
 
     private OpInsertPic selectPic(float x, float y){
-        float[] leftTop = new float[2];
+        RectF picBoundary = new RectF();
+        Matrix matrix = new Matrix();
         Iterator<OpPaint> it = picOps.descendingIterator();
         while (it.hasNext()){
             OpPaint op = it.next();
             if (op instanceof OpInsertPic){
                 OpInsertPic opInsertPic = (OpInsertPic) op;
-                leftTop[0] = 0; leftTop[1] = 0;
-                opInsertPic.getMatrix().mapPoints(leftTop);
-                KLog.p("x=%s, y=%s, leftTop[0]=%s, leftTop[1]=%s, picW=%s, picH=%s, matrix=%s", x, y,
-                        leftTop[0], leftTop[1], opInsertPic.getPicWidth(), opInsertPic.getPicHeight(), opInsertPic.getMatrix());
-                if (leftTop[0]<x && x<leftTop[0]+opInsertPic.getPicWidth()
-                        && leftTop[1]<y && y<leftTop[1]+opInsertPic.getPicHeight()
+                picBoundary.set(0, 0, opInsertPic.getPicWidth(), opInsertPic.getPicHeight());
+                matrix.set(opInsertPic.getMatrix());
+                matrix.postConcat(boardMatrix);
+                matrix.mapRect(picBoundary);
+                KLog.p("x=%s, y=%s, mappedPicBoundary=%s, matrix=%s", x, y, picBoundary, opInsertPic.getPicWidth(), opInsertPic.getPicHeight(), matrix);
+                if (picBoundary.left<x && x<picBoundary.right
+                        && picBoundary.top<y && y<picBoundary.bottom
                         && null != opInsertPic.getPic()){ // 判断点是否落在图片中
                     return opInsertPic;
                 }
