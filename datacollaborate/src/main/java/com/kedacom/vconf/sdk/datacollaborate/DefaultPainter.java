@@ -370,7 +370,6 @@ public class DefaultPainter implements IPainter {
                 }
                 break;
             case FULLSCREEN_MATRIX: // 全局放缩、位移，包括图片和图形
-//                paintBoard.fullMatrixPics(((OpMatrix)op).getMatrix());
                 paintBoard.setPicViewMatrix(((OpMatrix)op).getMatrix());
                 paintBoard.setShapeViewMatrix(((OpMatrix)op).getMatrix());
                 paintBoard.zoomRateChanged();
@@ -531,7 +530,8 @@ public class DefaultPainter implements IPainter {
                     shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
                     // 设置图形层画布的缩放比例
-                    shapePaintViewCanvas.setMatrix(paintBoard.getShapeViewMatrixByDensity());
+//                    shapePaintViewCanvas.setMatrix(paintBoard.getShapeViewMatrixByDensity());
+                    shapePaintViewCanvas.setMatrix(paintBoard.getShapeViewMatrix());
 
                     // 图形绘制
                     render(paintBoard.getShapeOps(), shapePaintViewCanvas);
@@ -554,7 +554,8 @@ public class DefaultPainter implements IPainter {
                     picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
                     // 设置画布缩放比例
-                    picPaintViewCanvas.setMatrix(paintBoard.getPicViewMatrixByDensity());
+//                    picPaintViewCanvas.setMatrix(paintBoard.getPicViewMatrixByDensity());
+                    picPaintViewCanvas.setMatrix(paintBoard.getPicViewMatrix());
 
                     // 图片绘制
                     render(paintBoard.getPicOps(), picPaintViewCanvas);

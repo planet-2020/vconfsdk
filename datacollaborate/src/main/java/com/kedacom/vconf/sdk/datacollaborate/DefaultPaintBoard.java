@@ -210,11 +210,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     void setShapeViewMatrix(Matrix shapeViewMatrix) {
         this.shapeViewMatrix.set(shapeViewMatrix);
-        shapeViewMatrixByDensity.set(shapeViewMatrix);
-        shapeViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
     }
 
     public Matrix getShapeViewMatrixByDensity() {
+        shapeViewMatrixByDensity.set(shapeViewMatrix);
+        shapeViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
         return shapeViewMatrixByDensity;
     }
 
@@ -236,11 +236,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     void setPicViewMatrix(Matrix picViewMatrix) {
         this.picViewMatrix.set(picViewMatrix);
-        picViewMatrixByDensity.set(picViewMatrix);
-        picViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
     }
 
     public Matrix getPicViewMatrixByDensity() {
+        picViewMatrixByDensity.set(picViewMatrix);
+        picViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
         return picViewMatrixByDensity;
     }
 
