@@ -81,24 +81,6 @@ final class ToDoConverter {
     private static final String INVALID_UUID = "";
 
 
-
-    private static float[] matrixValueStr2Float(String[] strMatrixValue){
-        float[] matrixValue = new float[9];
-        for (int i=0; i<9; ++i){
-            matrixValue[i] = Float.valueOf(strMatrixValue[i]);
-        }
-        return matrixValue;
-    }
-
-    private static String[] matrixValueFloat2Str(float[] matrixValue){
-        String[] strMatrixValue = new String[9];
-        for (int i=0; i<9; ++i){
-            strMatrixValue[i] = Float.toString(matrixValue[i]);
-        }
-        return strMatrixValue;
-    }
-
-
     public static OpPaint fromPaintTransferObj(Object transferObj) {
         if (transferObj instanceof DcsOperLineOperInfoNtf){ // TODO 用枚举做判断，因为一个结构体可能被多种操作使用
             return fromTransferObj((DcsOperLineOperInfoNtf)transferObj);
@@ -299,7 +281,7 @@ final class ToDoConverter {
 
     public static OpInsertPic fromTransferObj(DcsOperInsertPicNtf dcInertPicOp) {
         TDCSWbInsertPicOperInfo ip = dcInertPicOp.AssParam;
-        float[] matrixVal = matrixValueStr2Float(ip.aachMatrixValue);
+        float[] matrixVal = MatrixHelper.valStr2Float(ip.aachMatrixValue);
         matrixVal[Matrix.MTRANS_X] += ip.tPoint.nPosx;
         matrixVal[Matrix.MTRANS_Y] += ip.tPoint.nPosy;
         Matrix matrix = new Matrix();
@@ -319,7 +301,7 @@ final class ToDoConverter {
         return new TDCSWbInsertPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), domainObj.getPicId(),
                 domainObj.getPicWidth(), domainObj.getPicHeight(),
                 new TDCSWbPoint(0, 0),
-                domainObj.getPicName(), matrixValueFloat2Str(matrixVal));
+                domainObj.getPicName(), MatrixHelper.valFloat2Str(matrixVal));
     }
 
     public static OpDeletePic fromTransferObj(DcsOperPitchPicDelNtf dcDelPicOp) {
@@ -335,7 +317,7 @@ final class ToDoConverter {
     public static OpDragPic fromTransferObj(DcsOperPitchPicDragNtf dcDragPicOp) {
         Map<String, Matrix> picMatrices = new HashMap<>();
         for (TDCSWbGraphsInfo picMatrix : dcDragPicOp.AssParam.atGraphsInfo){
-            float[] matrixVal = matrixValueStr2Float(picMatrix.aachMatrixValue);
+            float[] matrixVal = MatrixHelper.valStr2Float(picMatrix.aachMatrixValue);
             Matrix matrix = new Matrix();
             matrix.setValues(matrixVal);
             picMatrices.put(picMatrix.achGraphsId, matrix);
@@ -352,7 +334,7 @@ final class ToDoConverter {
         for (String picId : matrices.keySet()){
             float[] matrixVal = new float[9];
             matrices.get(picId).getValues(matrixVal);
-            tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, matrixValueFloat2Str(matrixVal));
+            tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, MatrixHelper.valFloat2Str(matrixVal));
             ++i;
         }
         return new TDCSWbPitchPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), tdcsWbGraphsInfos);
@@ -361,7 +343,7 @@ final class ToDoConverter {
     public static OpZoomPic fromZoomPicTransferObj(DcsOperPitchPicDragNtf dcDragPicOp) {
         Map<String, Matrix> picMatrices = new HashMap<>();
         for (TDCSWbGraphsInfo picMatrix : dcDragPicOp.AssParam.atGraphsInfo){
-            float[] matrixVal = matrixValueStr2Float(picMatrix.aachMatrixValue);
+            float[] matrixVal = MatrixHelper.valStr2Float(picMatrix.aachMatrixValue);
             Matrix matrix = new Matrix();
             matrix.setValues(matrixVal);
             picMatrices.put(picMatrix.achGraphsId, matrix);
@@ -378,7 +360,7 @@ final class ToDoConverter {
         for (String picId : matrices.keySet()){
             float[] matrixVal = new float[9];
             matrices.get(picId).getValues(matrixVal);
-            tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, matrixValueFloat2Str(matrixVal));
+            tdcsWbGraphsInfos[i] = new TDCSWbGraphsInfo(picId, MatrixHelper.valFloat2Str(matrixVal));
             ++i;
         }
         return new TDCSWbPitchPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), tdcsWbGraphsInfos);
@@ -386,7 +368,7 @@ final class ToDoConverter {
 
 
     public static OpMatrix fromTransferObj(DcsOperFullScreenNtf dcFullScreenMatrixOp) {
-        float[] matrixVal = matrixValueStr2Float(dcFullScreenMatrixOp.AssParam.aachMatrixValue);
+        float[] matrixVal = MatrixHelper.valStr2Float(dcFullScreenMatrixOp.AssParam.aachMatrixValue);
         OpMatrix opMatrix = new OpMatrix(matrixVal);
         assignPaintDomainObj(dcFullScreenMatrixOp.MainParam, INVALID_UUID, opMatrix);
         return opMatrix;
@@ -394,7 +376,7 @@ final class ToDoConverter {
 
     public static TDCSWbDisPlayInfo toTransferObj(OpMatrix domainObj) {
         float[] matrixVal = domainObj.getMatrixValue();
-        return new TDCSWbDisPlayInfo(domainObj.getBoardId(), domainObj.getPageId(), matrixValueFloat2Str(matrixVal));
+        return new TDCSWbDisPlayInfo(domainObj.getBoardId(), domainObj.getPageId(), MatrixHelper.valFloat2Str(matrixVal));
     }
 
 
