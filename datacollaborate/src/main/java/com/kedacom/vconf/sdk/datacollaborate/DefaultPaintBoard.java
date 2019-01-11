@@ -75,19 +75,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     // 图片画布。用于绘制图片。
     private TextureView picPaintView;
-//    // 图片画布缩放及位移
-//    private Matrix picViewMatrix = new Matrix();
-//    // 适配屏幕密度后的图形画布缩放及位移
-//    private Matrix picViewMatrixByDensity = new Matrix();
     // 图片操作。
     private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();
 
-    // 临时图片画布。用于展示图片操作的一些中间效果，如插入图片、选中图片时先展示带外围虚框和底部删除按钮的图片，操作结束时清除虚框和删除按钮。
+    // 图片编辑画布。
     private TextureView tmpPicPaintView;
-    // 临时图片画布缩放及位移
+    // 图片编辑画布缩放及位移
     private Matrix tmpPicViewMatrix = new Matrix();
-    // 临时图片画布中的操作。
-    private MyConcurrentLinkedDeque<OpPaint> tmpPicOps = new MyConcurrentLinkedDeque<>();
+    // 图片编辑操作
+    private MyConcurrentLinkedDeque<PicEditStuff> picEditStuffs = new MyConcurrentLinkedDeque<>();
+//    private MyConcurrentLinkedDeque<OpPaint> tmpPicOps = new MyConcurrentLinkedDeque<>();
     // 删除图片按钮
     private Bitmap del_pic_icon;
     private Bitmap del_pic_active_icon;
@@ -262,8 +259,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         return tmpPicViewMatrix;
     }
 
-    MyConcurrentLinkedDeque<OpPaint> getTmpPicOps() {
-        return tmpPicOps;
+//    MyConcurrentLinkedDeque<OpPaint> getTmpPicOps() {
+//        return tmpPicOps;
+//    }
+    MyConcurrentLinkedDeque<PicEditStuff> getPicEditStuffs(){
+        return picEditStuffs;
     }
 
 
@@ -426,268 +426,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             editPic(opInsertPic);
         }
     };
-
-
-    DefaultTouchListener.IOnEventListener tmpPicViewEventListener = new DefaultTouchListener.IOnEventListener(){
-        private float preDragX, preDragY;
-        private float scaleCenterX, scaleCenterY;
-        private final float scaleRateTopLimit = 3f;
-        private final float scaleRateBottomLimit = 0.5f;
-
-        @Override
-        public boolean onDown(float x, float y) {
-            KLog.p("onDown tmp pic layer, x=%s. y=%s", x, y);
-            if (tmpPicOps.isEmpty() && picOps.isEmpty()){
-                return false; // 放弃处理后续事件
-            }
-            if (!tmpPicOps.isEmpty()){
-                handler.removeMessages(MSGID_FINISH_EDIT_PIC);
-                if (isInDelPicIcon(x, y)){
-                    setDelPicIcon(DEL_PIC_ICON_ACTIVE);
-                    if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-                }
-            }
-            return true;
-        }
-
-
-        @Override
-        public void onUp(float x, float y) {
-            if (!tmpPicOps.isEmpty()) {
-                if (isInDelPicIcon(x, y)){
-                    delPic();
-                }else {
-                    handler.sendEmptyMessageDelayed(MSGID_FINISH_EDIT_PIC, 3000);
-                }
-            }
-        }
-
-        @Override
-        public void onSecondPointerDown(float x, float y) {
-            if (!tmpPicOps.isEmpty()) {
-                setDelPicIcon(DEL_PIC_ICON);
-                if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-            }
-        }
-
-        @Override
-        public void onLastPointerLeft(float x, float y) {
-            if (!tmpPicOps.isEmpty()) {
-                if (isInDelPicIcon(x, y)){
-                    setDelPicIcon(DEL_PIC_ICON_ACTIVE);
-                    if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-                }
-            }
-        }
-
-        @Override
-        public void onSingleTap(float x, float y) {
-            if (!tmpPicOps.isEmpty()) {
-                if (!isInDashedRect(x, y)&&!isInDelPicIcon(x,y)){
-                    handler.removeMessages(MSGID_FINISH_EDIT_PIC);
-                    finishEditPic();
-                }
-            }
-        }
-
-        @Override
-        public void onDragBegin(float x, float y) {
-            KLog.p("onDragBegin tmp pic layer, x=%s. y=%s", x, y);
-            if (tmpPicOps.isEmpty()){
-                return;
-            }
-            handler.removeMessages(MSGID_FINISH_EDIT_PIC);
-            preDragX = x; preDragY = y;
-        }
-
-        @Override
-        public void onDrag(float x, float y) {
-            KLog.p("onDrag tmp pic layer, x=%s. y=%s", x, y);
-            if (tmpPicOps.isEmpty()){
-                return;
-            }
-            tmpPicViewMatrix.postTranslate(x-preDragX, y-preDragY);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-            preDragX = x; preDragY = y;
-        }
-
-        @Override
-        public void onScaleBegin() {
-            if (tmpPicOps.isEmpty()){
-                return;
-            }
-            handler.removeMessages(MSGID_FINISH_EDIT_PIC);
-            scaleCenterX = getWidth()/2;
-            scaleCenterY = getHeight()/2;
-        }
-
-        @Override
-        public void onScale(float factor) {
-            KLog.p("onScale tmp pic layer, factor=%s", factor);
-            if (tmpPicOps.isEmpty()){
-                return;
-            }
-            tmpPicViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-        }
-
-    };
-
-
-    private void translatePics(float dx, float dy){
-        for (OpPaint op : picOps){
-            if (op instanceof OpInsertPic){
-                ((OpInsertPic)op).getMatrix().postTranslate(dx, dy);
-            }
-        }
-    }
-
-    private void scalePics(float factor, float scaleCenterX, float scaleCenterY){
-        for (OpPaint op : picOps){
-            if (op instanceof OpInsertPic){
-                ((OpInsertPic)op).getMatrix().postScale(factor, factor, scaleCenterX, scaleCenterY);
-            }
-        }
-    }
-
-    private boolean isInDashedRect(float x, float y){
-        OpDrawRect dashedRect = getDashedRect();
-        if (null == dashedRect) {
-            return false;
-        }
-        float[] rect = new float[4];
-        rect[0] = dashedRect.getLeft();
-        rect[1] = dashedRect.getTop();
-        rect[2] = dashedRect.getRight();
-        rect[3] = dashedRect.getBottom();
-        tmpPicViewMatrix.mapPoints(rect);
-        KLog.p("x=%s, y=%s, left=%s, top=%s, right=%s, bottom=%s, tmpPicViewMatrix=%s", x, y,
-                rect[0], rect[1], rect[2], rect[3], tmpPicViewMatrix);
-        if (rect[0]<x && x<rect[2]
-                && rect[1]<y && y<rect[3]){
-            KLog.p("isInDelPicIcon = true");
-            return true;
-        }
-        return false;
-    }
-    private OpDrawRect getDashedRect(){
-        for (OpPaint op : tmpPicOps){
-            if (op instanceof OpDrawRect){
-                return (OpDrawRect) op;
-            }
-        }
-        return null;
-    }
-    private boolean isInDelPicIcon(float x, float y){
-        OpInsertPic opInsertPic = getDelPicIcon();
-        if (null == opInsertPic) {
-            return false;
-        }
-
-        float[] picRect = new float[4];
-        picRect[0] = 0;
-        picRect[1] = 0;
-        picRect[2] = opInsertPic.getPicWidth();
-        picRect[3] = opInsertPic.getPicHeight();
-        opInsertPic.getMatrix().mapPoints(picRect);
-        tmpPicViewMatrix.mapPoints(picRect);
-        KLog.p("x=%s, y=%s, left=%s, top=%s, right=%s, bottom=%s, picMatrix=%s, tmpPicViewMatrix=%s", x, y,
-                picRect[0], picRect[1], picRect[2], picRect[3], opInsertPic.getMatrix(), tmpPicViewMatrix);
-        if (picRect[0]<x && x<picRect[2]
-                && picRect[1]<y && y<picRect[3]){ // 判断点是否落在图片中
-            KLog.p("isInDelPicIcon = true");
-            return true;
-        }
-        return false;
-    }
-    private OpInsertPic getDelPicIcon(){
-        for (OpPaint op : tmpPicOps){
-            if (op instanceof OpInsertPic){
-                OpInsertPic opInsertPic = ((OpInsertPic)op);
-                if (opInsertPic.getPicId().equals(DEL_PIC_ICON)
-                        ||opInsertPic.getPicId().equals(DEL_PIC_ICON_ACTIVE)) {
-                    return opInsertPic;
-                }
-            }
-        }
-        return null;
-    }
-    private void setDelPicIcon(String delPicIcon){
-        OpInsertPic opInsertPic = getDelPicIcon();
-        if (null != opInsertPic){
-            KLog.p("set %s", delPicIcon);
-            if (delPicIcon.equals(DEL_PIC_ICON)) {
-                opInsertPic.setPic(del_pic_icon);
-            }else{
-                opInsertPic.setPic(del_pic_active_icon);
-            }
-            opInsertPic.setPicName(delPicIcon);
-        }
-    }
-
-    private OpInsertPic selectPic(float x, float y){
-        RectF picBoundary = new RectF();
-        Matrix matrix = new Matrix();
-        Iterator<OpPaint> it = picOps.descendingIterator();
-        while (it.hasNext()){
-            OpPaint op = it.next();
-            if (op instanceof OpInsertPic){
-                OpInsertPic opInsertPic = (OpInsertPic) op;
-                picBoundary.set(0, 0, opInsertPic.getPicWidth(), opInsertPic.getPicHeight());
-                matrix.set(opInsertPic.getMatrix());
-                matrix.postConcat(boardMatrix);
-                matrix.mapRect(picBoundary);
-                KLog.p("x=%s, y=%s, mappedPicBoundary=%s, matrix=%s", x, y, picBoundary, opInsertPic.getPicWidth(), opInsertPic.getPicHeight(), matrix);
-                if (picBoundary.left<x && x<picBoundary.right
-                        && picBoundary.top<y && y<picBoundary.bottom
-                        && null != opInsertPic.getPic()){ // 判断点是否落在图片中
-                    return opInsertPic;
-                }
-            }
-        }
-        return null;
-    }
-
-    private int savedLayerBeforeEditPic;
-    private final String DEL_PIC_ICON = "del_pic_icon";
-    private final String DEL_PIC_ICON_ACTIVE = "del_pic_icon_active";
-    private void editPic(OpInsertPic opInsertPic){
-        // 绘制图片
-        tmpPicOps.offerLast(opInsertPic);
-
-        // 在图片外围绘制一个虚线矩形框
-        OpDrawRect opDrawRect = new OpDrawRect();
-        float[] rectVal = new float[4];
-        rectVal[0] = -5;
-        rectVal[1] = -5;
-        rectVal[2] = opInsertPic.getPicWidth()+5;
-        rectVal[3] = opInsertPic.getPicHeight()+5;
-        opInsertPic.getMatrix().mapPoints(rectVal);
-        opDrawRect.setValues(rectVal);
-        opDrawRect.setLineStyle(OpDraw.DASH);
-        opDrawRect.setStrokeWidth(2);
-        opDrawRect.setColor(0xFF08b1f2L);
-        tmpPicOps.offerLast(opDrawRect);
-
-        // 在虚线矩形框正下方绘制删除图标
-        float transX = rectVal[0]+(rectVal[2]-rectVal[0]-del_pic_icon.getWidth())/2f;
-        float transY = opDrawRect.getBottom()+8;
-        Matrix matrix = new Matrix();
-        matrix.postTranslate(transX, transY);
-        OpInsertPic insertDelPicIcon = new OpInsertPic();
-        insertDelPicIcon.setPic(del_pic_icon);
-        insertDelPicIcon.setPicId(DEL_PIC_ICON);
-        insertDelPicIcon.setMatrix(matrix);
-        tmpPicOps.offerLast(insertDelPicIcon);
-
-        paintOpGeneratedListener.onOp(null);
-
-        savedLayerBeforeEditPic = focusedLayer;
-        focusedLayer = LAYER_PIC_TMP;
-        // 3秒过后画到图片画板上并清除临时画板
-        handler.sendEmptyMessageDelayed(MSGID_FINISH_EDIT_PIC, 3000);
-    }
-
 
 
     private float[] mapPoint= new float[2];
@@ -913,119 +651,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     }
 
 
-    private boolean bInsertingPic = false;
-    @Override
-    public void insertPic(String path) {
-        if (null == publisher){
-            KLog.p(KLog.ERROR,"publisher is null");
-            return;
-        }
-
-        handler.removeMessages(MSGID_FINISH_EDIT_PIC);
-        if (!tmpPicOps.isEmpty()){
-            finishEditPic();
-        }
-
-        bInsertingPic = true;
-
-        Bitmap bt = BitmapFactory.decodeFile(path);
-        int picW = bt.getWidth();
-        int picH = bt.getHeight();
-        float transX = (getWidth()-picW)/2f;
-        float transY = (getHeight()-picH)/2f;
-        Matrix matrix = new Matrix();
-        matrix.setTranslate(transX, transY);
-        OpInsertPic op = new OpInsertPic(path, new Matrix(), matrix);
-        op.setPic(bt);
-        assignBasicInfo(op);
-
-        if (null != paintOpGeneratedListener) {
-            editPic(op);
-        }
-    }
-
-
-    private static int MSGID_FINISH_EDIT_PIC = 666;
-    private Handler handler = new Handler(){
-        @Override
-        public void handleMessage(Message msg) {
-            if (MSGID_FINISH_EDIT_PIC == msg.what){
-                finishEditPic();
-            }
-        }
-    };
-
-    private OpInsertPic getEditingPic(){
-        for (OpPaint op : tmpPicOps){
-            if (op instanceof OpInsertPic){
-                return (OpInsertPic) op;
-            }
-        }
-        return null;
-    }
-
-    private void finishEditPic(){
-        OpInsertPic opInsertPic = getEditingPic();
-        if (null == opInsertPic){
-            KLog.p(KLog.ERROR, "no opInsertPic in tmpPicOps");
-            return;
-        }
-        Matrix increasedMatrix = new Matrix(tmpPicViewMatrix);
-        increasedMatrix.postConcat(getInvertedBoardMatrix());
-        opInsertPic.getMatrix().postConcat(increasedMatrix);
-        opInsertPic.setBoardMatrix(boardMatrix);
-
-        picOps.offerLast(opInsertPic);
-
-        focusedLayer = savedLayerBeforeEditPic;
-
-        // 清空tmpPaintView设置。
-        tmpPicOps.clear();
-        tmpPicViewMatrix.reset();
-
-        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-
-        // 发布
-        if (bInsertingPic) {
-            // 正在插入图片
-            publisher.publish(opInsertPic);
-            bInsertingPic = false;
-        }else{
-            // 正在拖动放缩图片
-            Matrix matrix = new Matrix(opInsertPic.getInitRelativeMatrix());
-            matrix.postConcat(opInsertPic.getBoardMatrix());
-            Map<String, Matrix> picMatrices = new HashMap<>();
-            picMatrices.put(opInsertPic.getPicId(), matrix);
-            OpDragPic opDragPic = new OpDragPic(picMatrices);
-            assignBasicInfo(opDragPic);
-            publisher.publish(opDragPic);
-        }
-
-    }
-
-
-    private void delPic(){
-        handler.removeMessages(MSGID_FINISH_EDIT_PIC);
-        OpInsertPic opInsertPic = getEditingPic();
-
-        focusedLayer = savedLayerBeforeEditPic;
-        tmpPicOps.clear();
-        tmpPicViewMatrix.reset();
-        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-        if (bInsertingPic) {
-            // publisher.publish(opDelPic); 如果是正在插入中就删除就不用走发布
-            bInsertingPic = false;
-        }else{
-            if (null == opInsertPic){
-                KLog.p(KLog.ERROR,"null == opInsertPic");
-                return;
-            }
-            OpDeletePic opDeletePic = new OpDeletePic(new String[]{opInsertPic.getPicId()});
-            assignBasicInfo(opDeletePic);
-            publisher.publish(opDeletePic);
-        }
-    }
-
     @Override
     public Bitmap snapshot(int layer) {
         KLog.p("layer=%s", layer);
@@ -1223,5 +848,335 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     interface IOnPaintOpGeneratedListener{
         void onOp(OpPaint opPaint);
     }
+
+
+
+    DefaultTouchListener.IOnEventListener tmpPicViewEventListener = new DefaultTouchListener.IOnEventListener(){
+        private float preDragX, preDragY;
+        private float scaleCenterX, scaleCenterY;
+        private final float scaleRateTopLimit = 3f;
+        private final float scaleRateBottomLimit = 0.5f;
+
+        @Override
+        public boolean onDown(float x, float y) {
+            KLog.p("onDown tmp pic layer, x=%s. y=%s", x, y);
+            if (picEditStuffs.isEmpty() && picOps.isEmpty()){
+                return false; // 放弃处理后续事件
+            }
+            if (!picEditStuffs.isEmpty()){
+                handler.removeMessages(MSGID_FINISH_EDIT_PIC);
+                PicEditStuff picEditStuff = picEditStuffs.peekFirst(); // NOTE: 目前仅同时编辑一张图片
+                if (picEditStuff.isInDelPicIcon(x, y)){
+                    picEditStuff.delIcon.setPic(del_pic_active_icon);
+                    if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+                }
+            }
+            return true;
+        }
+
+
+        @Override
+        public void onUp(float x, float y) {
+            if (!picEditStuffs.isEmpty()) {
+                PicEditStuff picEditStuff = picEditStuffs.peekFirst();
+                if (picEditStuff.isInDelPicIcon(x, y)){
+                    delPic(picEditStuffs.pollFirst());
+                }else {
+                    handler.sendEmptyMessageDelayed(MSGID_FINISH_EDIT_PIC, 3000);
+                }
+            }
+        }
+
+        @Override
+        public void onSecondPointerDown(float x, float y) {
+            if (!picEditStuffs.isEmpty()) {
+                PicEditStuff picEditStuff = picEditStuffs.peekFirst();
+                picEditStuff.delIcon.setPic(del_pic_icon);
+                if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+            }
+        }
+
+        @Override
+        public void onLastPointerLeft(float x, float y) {
+            if (!picEditStuffs.isEmpty()) {
+                PicEditStuff picEditStuff = picEditStuffs.peekFirst();
+                if (picEditStuff.isInDelPicIcon(x, y)){
+                    picEditStuff.delIcon.setPic(del_pic_active_icon);
+                    if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+                }
+            }
+        }
+
+        @Override
+        public void onSingleTap(float x, float y) {
+            if (!picEditStuffs.isEmpty()) {
+                PicEditStuff picEditStuff = picEditStuffs.peekFirst();
+                if (!picEditStuff.isInDashedRect(x, y)&&!picEditStuff.isInDelPicIcon(x,y)){
+                    handler.removeMessages(MSGID_FINISH_EDIT_PIC);
+                    finishEditPic(picEditStuffs.pollFirst());
+                }
+            }
+        }
+
+        @Override
+        public void onDragBegin(float x, float y) {
+            KLog.p("onDragBegin tmp pic layer, x=%s. y=%s", x, y);
+            if (picEditStuffs.isEmpty()){
+                return;
+            }
+            handler.removeMessages(MSGID_FINISH_EDIT_PIC);
+            preDragX = x; preDragY = y;
+        }
+
+        @Override
+        public void onDrag(float x, float y) {
+            KLog.p("onDrag tmp pic layer, x=%s. y=%s", x, y);
+            if (picEditStuffs.isEmpty()){
+                return;
+            }
+            tmpPicViewMatrix.postTranslate(x-preDragX, y-preDragY);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+            preDragX = x; preDragY = y;
+        }
+
+        @Override
+        public void onScaleBegin() {
+            if (picEditStuffs.isEmpty()){
+                return;
+            }
+            handler.removeMessages(MSGID_FINISH_EDIT_PIC);
+            scaleCenterX = getWidth()/2;
+            scaleCenterY = getHeight()/2;
+        }
+
+        @Override
+        public void onScale(float factor) {
+            KLog.p("onScale tmp pic layer, factor=%s", factor);
+            if (picEditStuffs.isEmpty()){
+                return;
+            }
+            tmpPicViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+        }
+
+    };
+
+
+    private boolean bInsertingPic = false;
+    @Override
+    public void insertPic(String path) {
+        if (null == publisher){
+            KLog.p(KLog.ERROR,"publisher is null");
+            return;
+        }
+
+        handler.removeMessages(MSGID_FINISH_EDIT_PIC);
+        if (!picEditStuffs.isEmpty()){
+            finishEditPic(picEditStuffs.pollFirst());
+        }
+
+        bInsertingPic = true;
+
+        Bitmap bt = BitmapFactory.decodeFile(path);
+        int picW = bt.getWidth();
+        int picH = bt.getHeight();
+        float transX = (getWidth()-picW)/2f;
+        float transY = (getHeight()-picH)/2f;
+        Matrix matrix = new Matrix();
+        matrix.setTranslate(transX, transY);
+        OpInsertPic op = new OpInsertPic(path, new Matrix(), matrix);
+        op.setPic(bt);
+        assignBasicInfo(op);
+
+        if (null != paintOpGeneratedListener) {
+            editPic(op);
+        }
+    }
+
+
+    private static int MSGID_FINISH_EDIT_PIC = 666;
+    private Handler handler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            if (MSGID_FINISH_EDIT_PIC == msg.what){
+                finishEditPic(picEditStuffs.pollFirst());
+            }
+        }
+    };
+
+//    private OpInsertPic getEditingPic(){
+////        for (OpPaint op : tmpPicOps){
+////            if (op instanceof OpInsertPic){
+////                return (OpInsertPic) op;
+////            }
+////        }
+//        return null;
+//    }
+
+    private void finishEditPic(PicEditStuff picEditStuff){
+        KLog.sp("picEditStuffs.size="+ picEditStuffs.size());
+
+        OpInsertPic opInsertPic = picEditStuff.pic;
+        Matrix increasedMatrix = new Matrix(tmpPicViewMatrix);
+        increasedMatrix.postConcat(getInvertedBoardMatrix());
+        opInsertPic.getMatrix().postConcat(increasedMatrix);
+        opInsertPic.setBoardMatrix(boardMatrix);
+
+        picOps.offerLast(opInsertPic);
+
+        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+
+        // 发布
+        if (bInsertingPic) {
+            // 正在插入图片
+            publisher.publish(opInsertPic);
+            bInsertingPic = false;
+        } else {
+            // 正在拖动放缩图片
+            Matrix matrix = new Matrix(opInsertPic.getInitRelativeMatrix());
+            matrix.postConcat(opInsertPic.getBoardMatrix());
+            Map<String, Matrix> picMatrices = new HashMap<>();
+            picMatrices.put(opInsertPic.getPicId(), matrix);
+            OpDragPic opDragPic = new OpDragPic(picMatrices);
+            assignBasicInfo(opDragPic);
+            publisher.publish(opDragPic);
+        }
+
+        focusedLayer = savedLayerBeforeEditPic;
+
+        // 清空tmpPaintView设置。
+        tmpPicViewMatrix.reset();
+
+        KLog.p("picEditStuffs.size=%s", picEditStuffs.size());
+    }
+
+
+    private void delPic(PicEditStuff picEditStuff){
+        handler.removeMessages(MSGID_FINISH_EDIT_PIC);
+        OpInsertPic opInsertPic = picEditStuff.pic;
+
+        focusedLayer = savedLayerBeforeEditPic;
+        tmpPicViewMatrix.reset();
+        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+        if (bInsertingPic) {
+            // publisher.publish(opDelPic); 如果是正在插入中就删除就不用走发布
+            bInsertingPic = false;
+        }else{
+            if (null == opInsertPic){
+                KLog.p(KLog.ERROR,"null == opInsertPic");
+                return;
+            }
+            OpDeletePic opDeletePic = new OpDeletePic(new String[]{opInsertPic.getPicId()});
+            assignBasicInfo(opDeletePic);
+            publisher.publish(opDeletePic);
+        }
+    }
+
+
+    private OpInsertPic selectPic(float x, float y){
+        RectF picBoundary = new RectF();
+        Matrix matrix = new Matrix();
+        Iterator<OpPaint> it = picOps.descendingIterator();
+        while (it.hasNext()){
+            OpPaint op = it.next();
+            if (op instanceof OpInsertPic){
+                OpInsertPic opInsertPic = (OpInsertPic) op;
+                if (null == opInsertPic.getPic()){
+                    // 图片操作有但图片可能还未获取到（如，协作方上传图片尚未完成）
+                    continue;
+                }
+                picBoundary.set(0, 0, opInsertPic.getPicWidth(), opInsertPic.getPicHeight());
+                matrix.set(opInsertPic.getMatrix());
+                matrix.postConcat(boardMatrix);
+                matrix.mapRect(picBoundary);
+                KLog.p("x=%s, y=%s, mappedPicBoundary=%s, matrix=%s", x, y, picBoundary, opInsertPic.getPicWidth(), opInsertPic.getPicHeight(), matrix);
+                if (picBoundary.contains(x, y)){
+                    return opInsertPic;
+                }
+            }
+        }
+        return null;
+    }
+
+    private int savedLayerBeforeEditPic;
+    private static final int DASH_RECT_PADDING = 5; // 图片编辑时的虚线矩形框和图片之间的间隙。单位：pixel
+    private static final int DEL_ICON_TOP_PADDING = 8; // 图片编辑时的虚线矩形框和删除图标之间的间隙。单位：pixel
+    private static final int DASH_RECT_STROKE_WIDTH = 2; // 图片编辑时的虚线矩形框粗细。单位：pixel
+    private static final long DASH_RECT_COLOR = 0xFF08b1f2L; // 图片编辑时的虚线矩形框颜色。
+    private final String DEL_PIC_ICON = "del_pic_icon";
+    private final String DEL_PIC_ICON_ACTIVE = "del_pic_icon_active";
+    private void editPic(OpInsertPic opInsertPic){
+
+        // 在图片外围绘制一个虚线矩形框
+        OpDrawRect opDrawRect = new OpDrawRect();
+        float[] rectVal = new float[4];
+        rectVal[0] = -DASH_RECT_PADDING;
+        rectVal[1] = -DASH_RECT_PADDING;
+        rectVal[2] = opInsertPic.getPicWidth()+DASH_RECT_PADDING;
+        rectVal[3] = opInsertPic.getPicHeight()+DASH_RECT_PADDING;
+        opInsertPic.getMatrix().mapPoints(rectVal);
+        opDrawRect.setValues(rectVal);
+        opDrawRect.setLineStyle(OpDraw.DASH);
+        opDrawRect.setStrokeWidth(DASH_RECT_STROKE_WIDTH);
+        opDrawRect.setColor(DASH_RECT_COLOR);
+
+        // 在虚线矩形框正下方绘制删除图标
+        float transX = rectVal[0]+(rectVal[2]-rectVal[0]-del_pic_icon.getWidth())/2f;
+        float transY = opDrawRect.getBottom()+DEL_ICON_TOP_PADDING;
+        Matrix matrix = new Matrix();
+        matrix.postTranslate(transX, transY);
+        float scale = MatrixHelper.getScale(tmpPicViewMatrix);
+        matrix.postScale(1/scale, 1/scale, (rectVal[0]+rectVal[2])/2, rectVal[3]);
+        OpInsertPic delPicIcon = new OpInsertPic();
+        delPicIcon.setPic(del_pic_icon);
+        delPicIcon.setPicId(DEL_PIC_ICON);
+        delPicIcon.setMatrix(matrix);
+
+        PicEditStuff picEditStuff = new PicEditStuff(opInsertPic, delPicIcon, opDrawRect);
+
+        picEditStuffs.offerLast(picEditStuff);
+
+        paintOpGeneratedListener.onOp(null);
+
+        savedLayerBeforeEditPic = focusedLayer;
+        focusedLayer = LAYER_PIC_TMP;
+        // 3秒过后画到图片画板上并清除临时画板
+        handler.sendEmptyMessageDelayed(MSGID_FINISH_EDIT_PIC, 3000);
+    }
+
+
+
+    static int editedPicCount=0;
+    class PicEditStuff{
+        int id;
+        OpInsertPic pic;
+        OpInsertPic delIcon;
+        OpDrawRect dashedRect;
+
+        PicEditStuff(OpInsertPic pic, OpInsertPic delIcon, OpDrawRect dashedRect) {
+            id = editedPicCount++;
+            this.pic = pic;
+            this.delIcon = delIcon;
+            this.dashedRect = dashedRect;
+        }
+
+        boolean isInDashedRect(float x, float y){
+            RectF rectF = new RectF(dashedRect.getLeft(), dashedRect.getTop(), dashedRect.getRight(), dashedRect.getBottom());
+            tmpPicViewMatrix.mapRect(rectF);
+            KLog.p("x=%s, y=%s, rect=%s, tmpPicViewMatrix=%s", x, y, rectF, tmpPicViewMatrix);
+            return rectF.contains(x, y);
+        }
+
+        boolean isInDelPicIcon(float x, float y){
+            RectF rectF = new RectF(0, 0, delIcon.getPicWidth(), delIcon.getPicHeight());
+            delIcon.getMatrix().mapRect(rectF);
+            tmpPicViewMatrix.mapRect(rectF);
+            KLog.p("x=%s, y=%s, rect=%s, tmpPicViewMatrix=%s", x, y, rectF, tmpPicViewMatrix);
+            return rectF.contains(x, y);
+        }
+
+    }
+
+
 
 }

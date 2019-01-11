@@ -550,10 +550,17 @@ public class DefaultPainter implements IPainter {
                 if (null != tmpPaintViewCanvas) {
                     // 清空画布
                     tmpPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+
                     // 设置缩放比例
                     tmpPaintViewCanvas.setMatrix(paintBoard.getTmpPicViewMatrix());
+
                     // 绘制
-                    render(paintBoard.getTmpPicOps(), tmpPaintViewCanvas);
+                    MyConcurrentLinkedDeque<DefaultPaintBoard.PicEditStuff> picEditStuffs = paintBoard.getPicEditStuffs();
+                    for (DefaultPaintBoard.PicEditStuff picEditStuff : picEditStuffs) {
+                        render(picEditStuff.pic, tmpPaintViewCanvas);
+                        render(picEditStuff.dashedRect, tmpPaintViewCanvas);
+                        render(picEditStuff.delIcon, tmpPaintViewCanvas);
+                    }
                 }
 
                 // 提交绘制任务，执行绘制
