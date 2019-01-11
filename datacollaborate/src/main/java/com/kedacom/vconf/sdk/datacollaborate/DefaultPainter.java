@@ -43,11 +43,15 @@ import androidx.lifecycle.LifecycleOwner;
 
 public class DefaultPainter implements IPainter {
 
+    private Context context;
+
     private Map<String, DefaultPaintBoard> paintBoards = new HashMap<>();
 
     private String curBoardId;
 
     private Paint paint = new Paint();
+    // 相对于XHDPI的屏幕密度
+//        private float relativeDensity = context.getResources().getDisplayMetrics().density/2;
 
     private boolean bNeedRender = false;
 
@@ -68,6 +72,9 @@ public class DefaultPainter implements IPainter {
 
 
     public DefaultPainter(Context context) {
+
+        this.context = context;
+
         if (context instanceof LifecycleOwner){
             ((LifecycleOwner)context).getLifecycle().addObserver(new DefaultLifecycleObserver(){
                 @Override
@@ -508,6 +515,7 @@ public class DefaultPainter implements IPainter {
                 }
 
                 matrix.set(paintBoard.getBoardMatrix());
+//                matrix.postScale(relativeDensity, relativeDensity);
 
                 // 图形层绘制
                 Canvas shapePaintViewCanvas = paintBoard.lockCanvas(IPaintBoard.LAYER_SHAPE);

@@ -143,6 +143,30 @@ public interface IPaintBoard {
     int getZoom();
 
     /**
+     * 设置最小缩放率
+     * @param rate 缩放率。如50代表50%。
+     * */
+    void setMinZoomRate(int rate);
+
+    /**
+     * 获取最小缩放率
+     * @return  缩放率。如50代表50%。
+     * */
+    int getMinZoomRate();
+
+    /**
+     * 设置最大缩放率
+     * @param rate 缩放率。如300代表300%。
+     * */
+    void setMaxZoomRate(int rate);
+
+    /**
+     * 获取最大缩放率
+     * @@return  缩放率。如300代表300%。
+     * */
+    int getMaxZoomRate();
+
+    /**
      * 获取被撤销操作数量
      * */
     int getRepealedOpsCount();

@@ -99,8 +99,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     // 橡皮擦尺寸。单位：pixel
     private int eraserSize = 25;
 
-    private static final int MIN_ZOOM = 25;
-    private static final int MAX_ZOOM = 400;
+    private float minZoomRate = 0.1f;
+    private float maxZoomRate = 10f;
 
     private IOnPaintOpGeneratedListener paintOpGeneratedListener;
     private IOnBoardStateChangedListener onBoardStateChangedListener;
@@ -300,8 +300,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     DefaultTouchListener.IOnEventListener boardViewEventListener = new DefaultTouchListener.IOnEventListener(){
         private float scaleCenterX, scaleCenterY;
-        private final float scaleRateTopLimit = 3f;
-        private final float scaleRateBottomLimit = 0.5f;
 
         @Override
         public void onMultiFingerDragBegin() {
@@ -332,7 +330,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
         @Override
         public void onScale(float factor) {
-            KLog.p("~~> factor=%s", factor);
             boardMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
             zoomRateChanged();
@@ -341,6 +338,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         @Override
         public void onScaleEnd() {
             KLog.p("#######onScaleEnd");
+            float zoomRate = MatrixHelper.getScale(boardMatrix);
+            if (zoomRate < minZoomRate) {
+                boardMatrix.postScale(minZoomRate/zoomRate, minZoomRate/zoomRate, scaleCenterX, scaleCenterY);
+            }else if (zoomRate > maxZoomRate){
+                boardMatrix.postScale(maxZoomRate/zoomRate, maxZoomRate/zoomRate, scaleCenterX, scaleCenterY);
+            }
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+            zoomRateChanged();
+
             OpMatrix opMatrix = new OpMatrix(boardMatrix);
             assignBasicInfo(opMatrix);
             publisher.publish(opMatrix);
@@ -700,10 +706,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     @Override
     public void zoom(int percentage) {
-        int zoom = (MIN_ZOOM<=percentage && percentage<=MAX_ZOOM) ? percentage : (percentage<MIN_ZOOM ? MIN_ZOOM : MAX_ZOOM);
-        KLog.p("zoom=%s, width=%s, height=%s", zoom, getWidth(), getHeight());
+        float zoomRate = percentage/100f;
+        zoomRate = (minZoomRate <=zoomRate && zoomRate<= maxZoomRate) ? zoomRate : (zoomRate< minZoomRate ? minZoomRate : maxZoomRate);
+        KLog.p("zoomRate=%s, width=%s, height=%s", zoomRate, getWidth(), getHeight());
         OpMatrix opMatrix = new OpMatrix();
-        opMatrix.getMatrix().setScale(zoom/100f, zoom/100f, getWidth()/2, getHeight()/2);
+        opMatrix.getMatrix().setScale(zoomRate, zoomRate, getWidth()/2, getHeight()/2);
         dealSimpleOp(opMatrix);
     }
 
@@ -712,6 +719,26 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     public int getZoom() {
         boardMatrix.getValues(zoomVals);
         return (int) (zoomVals[Matrix.MSCALE_X]*100);
+    }
+
+    @Override
+    public void setMinZoomRate(int rate) {
+        minZoomRate = rate/100f;
+    }
+
+    @Override
+    public int getMinZoomRate() {
+        return (int) (minZoomRate*100);
+    }
+
+    @Override
+    public void setMaxZoomRate(int rate) {
+        maxZoomRate = rate/100f;
+    }
+
+    @Override
+    public int getMaxZoomRate() {
+        return (int) (maxZoomRate * 100);
     }
 
     private boolean bLastStateIsEmpty =true;
