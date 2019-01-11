@@ -1029,6 +1029,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             // 正在插入图片
             publisher.publish(opInsertPic);
             bInsertingPic = false;
+            picCountChanged();
         } else {
             // 正在拖动放缩图片
             Matrix matrix = new Matrix(opInsertPic.getInitRelativeMatrix());
@@ -1066,6 +1067,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             OpDeletePic opDeletePic = new OpDeletePic(new String[]{opInsertPic.getPicId()});
             assignBasicInfo(opDeletePic);
             publisher.publish(opDeletePic);
+
+            picCountChanged();
         }
     }
 
