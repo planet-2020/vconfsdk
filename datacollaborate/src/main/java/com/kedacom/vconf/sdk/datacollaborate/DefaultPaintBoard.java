@@ -57,13 +57,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     // 画板matrix
     private Matrix boardMatrix = new Matrix();
-    // 画板逆matrix
-    private Matrix invertedBoardMatrix = new Matrix();
 
     // 图形画布。用于图形绘制如画线、画圈、擦除等等
     private TextureView shapePaintView;
-//    // 适配屏幕密度后的图形画布缩放及位移
-//    private Matrix shapeViewMatrixByDensity = new Matrix();
     // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private OpPaint adjustingShapeOp;
     // 临时图形操作。手指拿起绘制完成，但并不表示此绘制已生效，需等到平台广播NTF后方能确认为生效的操作，在此之前的操作都作为临时操作保存在这里。
@@ -84,7 +80,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     private Matrix tmpPicViewMatrix = new Matrix();
     // 图片编辑操作
     private MyConcurrentLinkedDeque<PicEditStuff> picEditStuffs = new MyConcurrentLinkedDeque<>();
-//    private MyConcurrentLinkedDeque<OpPaint> tmpPicOps = new MyConcurrentLinkedDeque<>();
     // 删除图片按钮
     private Bitmap del_pic_icon;
     private Bitmap del_pic_active_icon;
@@ -226,16 +221,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         this.boardMatrix.set(boardMatrix);
     }
 
-    Matrix getInvertedBoardMatrix(){
-        boardMatrix.invert(invertedBoardMatrix);
-        return invertedBoardMatrix;
-    }
-//    public Matrix getShapeViewMatrixByDensity() {
-//        shapeViewMatrixByDensity.set(boardMatrix);
-//        shapeViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
-//        return shapeViewMatrixByDensity;
-//    }
-
     MyConcurrentLinkedDeque<OpPaint> getTmpShapeOps() {
         return tmpShapeOps;
     }
@@ -253,15 +238,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         return picOps;
     }
 
-
-
     public Matrix getTmpPicViewMatrix() {
         return tmpPicViewMatrix;
     }
 
-//    MyConcurrentLinkedDeque<OpPaint> getTmpPicOps() {
-//        return tmpPicOps;
-//    }
     MyConcurrentLinkedDeque<PicEditStuff> getPicEditStuffs(){
         return picEditStuffs;
     }
@@ -429,8 +409,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
 
     private float[] mapPoint= new float[2];
+    private Matrix invertedBoardMatrix;
     private void createShapeOp(float startX, float startY){
-        boolean suc = boardMatrix.invert(invertedBoardMatrix);
+        invertedBoardMatrix = MatrixHelper.invert(boardMatrix);
 //        KLog.p("invert success?=%s, orgX=%s, orgY=%s", suc, x, y);
         mapPoint[0] = startX;
         mapPoint[1] = startY;
@@ -880,6 +861,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             if (!picEditStuffs.isEmpty()) {
                 PicEditStuff picEditStuff = picEditStuffs.peekFirst();
                 if (picEditStuff.isInDelPicIcon(x, y)){
+                    handler.removeMessages(MSGID_FINISH_EDIT_PIC);
                     delPic(picEditStuffs.pollFirst());
                 }else {
                     handler.sendEmptyMessageDelayed(MSGID_FINISH_EDIT_PIC, 3000);
@@ -999,26 +981,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         @Override
         public void handleMessage(Message msg) {
             if (MSGID_FINISH_EDIT_PIC == msg.what){
-                finishEditPic(picEditStuffs.pollFirst());
+                if (!picEditStuffs.isEmpty()) {
+                    finishEditPic(picEditStuffs.pollFirst());
+                }
             }
         }
     };
 
-//    private OpInsertPic getEditingPic(){
-////        for (OpPaint op : tmpPicOps){
-////            if (op instanceof OpInsertPic){
-////                return (OpInsertPic) op;
-////            }
-////        }
-//        return null;
-//    }
 
     private void finishEditPic(PicEditStuff picEditStuff){
         KLog.sp("picEditStuffs.size="+ picEditStuffs.size());
 
         OpInsertPic opInsertPic = picEditStuff.pic;
         Matrix increasedMatrix = new Matrix(tmpPicViewMatrix);
-        increasedMatrix.postConcat(getInvertedBoardMatrix());
+        increasedMatrix.postConcat(MatrixHelper.invert(boardMatrix));
         opInsertPic.getMatrix().postConcat(increasedMatrix);
         opInsertPic.setBoardMatrix(boardMatrix);
 
@@ -1052,7 +1028,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
 
     private void delPic(PicEditStuff picEditStuff){
-        handler.removeMessages(MSGID_FINISH_EDIT_PIC);
         OpInsertPic opInsertPic = picEditStuff.pic;
 
         focusedLayer = savedLayerBeforeEditPic;
@@ -1103,8 +1078,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     private static final int DEL_ICON_TOP_PADDING = 8; // 图片编辑时的虚线矩形框和删除图标之间的间隙。单位：pixel
     private static final int DASH_RECT_STROKE_WIDTH = 2; // 图片编辑时的虚线矩形框粗细。单位：pixel
     private static final long DASH_RECT_COLOR = 0xFF08b1f2L; // 图片编辑时的虚线矩形框颜色。
-    private final String DEL_PIC_ICON = "del_pic_icon";
-    private final String DEL_PIC_ICON_ACTIVE = "del_pic_icon_active";
     private void editPic(OpInsertPic opInsertPic){
 
         // 在图片外围绘制一个虚线矩形框
@@ -1126,10 +1099,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         Matrix matrix = new Matrix();
         matrix.postTranslate(transX, transY);
         float scale = MatrixHelper.getScale(tmpPicViewMatrix);
-        matrix.postScale(1/scale, 1/scale, (rectVal[0]+rectVal[2])/2, rectVal[3]);
+        matrix.postScale(1/scale, 1/scale, (rectVal[0]+rectVal[2])/2, rectVal[3]); // 使图标以正常尺寸展示，不至于因画板缩小/放大而过小/过大
         OpInsertPic delPicIcon = new OpInsertPic();
         delPicIcon.setPic(del_pic_icon);
-        delPicIcon.setPicId(DEL_PIC_ICON);
         delPicIcon.setMatrix(matrix);
 
         PicEditStuff picEditStuff = new PicEditStuff(opInsertPic, delPicIcon, opDrawRect);
