@@ -83,10 +83,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     // 删除图片按钮
     private Bitmap del_pic_icon;
     private Bitmap del_pic_active_icon;
-    private float density = 1;
-
-    // 相对于XHDPI的屏幕密度。
-    private float relativeDensity;
 
     // 图层
     private int focusedLayer = LAYER_ALL;
@@ -136,11 +132,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
         super(context);
         this.context = context;
-        density = context.getResources().getDisplayMetrics().density;
-        relativeDensity = density/2;
-//        shapeViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
-//        picViewMatrixByDensity.postScale(relativeDensity, relativeDensity);
+
         this.boardInfo = boardInfo;
+
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         View whiteBoard = layoutInflater.inflate(R.layout.default_whiteboard_layout, this);
         picPaintView = whiteBoard.findViewById(R.id.pb_pic_paint_view);
@@ -171,7 +165,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             del_pic_active_icon = BitmapFactory.decodeStream(is);
             is.close();
             Matrix matrix = new Matrix();
-            matrix.postScale(density/2, density/2); // 切图是按hdpi给的故除2
+            float density = context.getResources().getDisplayMetrics().density;
+            matrix.postScale(density/2, density/2);
             del_pic_icon = Bitmap.createBitmap(del_pic_icon, 0, 0,
                     del_pic_icon.getWidth(), del_pic_icon.getHeight(), matrix, true);
             del_pic_active_icon = Bitmap.createBitmap(del_pic_active_icon, 0, 0,
