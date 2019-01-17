@@ -282,11 +282,15 @@ final class ToDoConverter {
     public static OpInsertPic fromTransferObj(DcsOperInsertPicNtf dcInertPicOp) {
         TDCSWbInsertPicOperInfo ip = dcInertPicOp.AssParam;
         float[] matrixVal = MatrixHelper.valStr2Float(ip.aachMatrixValue);
-        matrixVal[Matrix.MTRANS_X] += ip.tPoint.nPosx;
-        matrixVal[Matrix.MTRANS_Y] += ip.tPoint.nPosy;
-        Matrix matrix = new Matrix();
-        matrix.setValues(matrixVal);
-        OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight,matrix, matrix);
+        Matrix boardMatrix = new Matrix();
+        boardMatrix.setValues(matrixVal); // 传过来的matrix实际是当前board的matrix
+        float[] insertPos = new float[]{ip.tPoint.nPosx, ip.tPoint.nPosy};
+        boardMatrix.mapPoints(insertPos); // 传过来的插入点实际是根据当前boardMatrix的逆做变换后的坐标，所以此处我们再做相反的变换拿到原始插入点坐标
+
+        Matrix matrix = new Matrix(); // 插入时是所见即所得的效果（预览时多大尺寸插入后就是多大尺寸），所以最终的变换是没有变换也就是单位矩阵（包含boardmatrix在内）
+        matrix.postTranslate(insertPos[0], insertPos[1]);
+        matrix.postConcat(MatrixHelper.invert(boardMatrix));  // 剔除boardmatrix
+        OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight, matrix, matrix);
         assignPaintDomainObj(dcInertPicOp.MainParam, INVALID_UUID, opInsertPic);
         return opInsertPic;
     }

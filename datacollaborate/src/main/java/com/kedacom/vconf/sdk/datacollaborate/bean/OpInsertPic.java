@@ -14,11 +14,11 @@ public class OpInsertPic extends OpPaint {
     private String picName;
     private String picPath;
     private Bitmap pic;
-    private int picWidth;
+    private int picWidth; // NOTE: 并非图片的原始宽高。对端会进行一些倍数缩放后传过来
     private int picHeight;
     private Matrix initMatrix; // 初始位置的matrix
-    private Matrix matrix; // 图片操作的matrix（包含了initMatrix，不包含画板的matrix）
-    // 画板matrix。NOTE：仅用于发布时计算图片的最终matrix。
+    private Matrix matrix; // 图片操作的matrix（包含了initMatrix，不包含画板的matrix，图片最终的展示位移=该matrix*当前画板matrix）
+    // 发布时的画板matrix。NOTE：仅用于发布时计算图片的最终matrix。
     private Matrix boardMatrix = new Matrix();
 
     public OpInsertPic(){

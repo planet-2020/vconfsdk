@@ -1033,7 +1033,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         } else {
             // 正在拖动放缩图片
             Matrix matrix = new Matrix(opInsertPic.getInitRelativeMatrix());
-            matrix.postConcat(opInsertPic.getBoardMatrix());
+            matrix.postConcat(boardMatrix);
             Map<String, Matrix> picMatrices = new HashMap<>();
             picMatrices.put(opInsertPic.getPicId(), matrix);
             OpDragPic opDragPic = new OpDragPic(picMatrices);
