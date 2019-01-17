@@ -743,7 +743,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     @Override
     public int getZoom() {
         boardMatrix.getValues(zoomVals);
-        return (int) (zoomVals[Matrix.MSCALE_X]*100);
+        return (int) Math.ceil(zoomVals[Matrix.MSCALE_X]*100);
     }
 
     @Override
