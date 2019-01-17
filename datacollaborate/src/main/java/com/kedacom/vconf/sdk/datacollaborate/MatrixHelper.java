@@ -2,6 +2,8 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.graphics.Matrix;
 
+import com.kedacom.vconf.sdk.base.KLog;
+
 class MatrixHelper {
 
     private static float[] matrixVals = new float[9];
@@ -43,6 +45,7 @@ class MatrixHelper {
     static float[] valStr2Float(String[] strMatrixValue){
         float[] matrixValue = new float[9];
         for (int i=0; i<9; ++i){
+            KLog.p("strMatrixValue[%s]=%s", i, strMatrixValue[i]);
             matrixValue[i] = Float.valueOf(strMatrixValue[i]);
         }
         return matrixValue;

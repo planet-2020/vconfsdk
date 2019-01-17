@@ -288,10 +288,11 @@ final class ToDoConverter {
         boardMatrix.mapPoints(insertPos); // 传过来的插入点实际是根据当前boardMatrix的逆做变换后的坐标，所以此处我们再做相反的变换拿到原始插入点坐标
 
         Matrix matrix = new Matrix(); // 插入时是所见即所得的效果（预览时多大尺寸插入后就是多大尺寸），所以最终的变换是没有变换也就是单位矩阵（包含boardmatrix在内）
-        matrix.postTranslate(insertPos[0], insertPos[1]);
-        matrix.postConcat(MatrixHelper.invert(boardMatrix));  // 剔除boardmatrix
+        matrix.postTranslate(insertPos[0], insertPos[1]); // =图片的matrix*画板的matrix（比如画板的matrix缩放是0.5，因为最终展示的效果是无缩放的，所以图片的matrix缩放是2.0）
+        matrix.postConcat(MatrixHelper.invert(boardMatrix));  // 剔除boardmatrix得到图片的matrix，比如画板缩放是0.5则此处得到的图片的缩放为2
         OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight, matrix, matrix);
         assignPaintDomainObj(dcInertPicOp.MainParam, INVALID_UUID, opInsertPic);
+        opInsertPic.setRawInitMatrix(boardMatrix);
         return opInsertPic;
     }
 
@@ -372,6 +373,9 @@ final class ToDoConverter {
 
 
     public static OpMatrix fromTransferObj(DcsOperFullScreenNtf dcFullScreenMatrixOp) {
+        for (int i=0; i<dcFullScreenMatrixOp.AssParam.aachMatrixValue.length; ++i){
+            KLog.p("matrixVal[%s]=%s", i, dcFullScreenMatrixOp.AssParam.aachMatrixValue[i]);
+        }
         float[] matrixVal = MatrixHelper.valStr2Float(dcFullScreenMatrixOp.AssParam.aachMatrixValue);
         OpMatrix opMatrix = new OpMatrix(matrixVal);
         assignPaintDomainObj(dcFullScreenMatrixOp.MainParam, INVALID_UUID, opMatrix);

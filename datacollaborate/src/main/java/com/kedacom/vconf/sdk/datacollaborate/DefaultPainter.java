@@ -324,26 +324,14 @@ public class DefaultPainter implements IPainter {
                         if (EOpType.INSERT_PICTURE == opPaint.getType()
                                 && ((OpInsertPic) opPaint).getPicId().equals(dragOp.getKey())) {
                             OpInsertPic insertPic = (OpInsertPic) opPaint;
-                            Matrix matrix = new Matrix(dragOp.getValue());
 
-                            /*得到图片操作相对于插入时状态的matrix（不包含全屏缩放位移）
-                            * = dragOp.matrix / boardMatrix
-                            * = dragOp.matrix * boardMatrix.invert
+                            /*求取picmatrix
+                            * = init * drag / board
                             * */
-                            Matrix invertedBoardMatrix = new Matrix();
-                            paintBoard.getBoardMatrix().invert(invertedBoardMatrix);
-                            matrix.postConcat(invertedBoardMatrix);
-
-                            /*
-                            * 得到最终用于绘制图片的matrix
-                            * */
-                            Matrix picMatrix = new Matrix(insertPic.getInitMatrix());
-                            /*先执行initMatrix，再执行相对initMatrix的偏移matrix，得到图片操作的matrix。
-                            * */
-                            picMatrix.postConcat(matrix);
-                            insertPic.setMatrix(picMatrix);
-                            KLog.p(KLog.ERROR, "boardMatrix=%s, invertedBoardMatrix=%s, \ndragMatrix=%s, initMatrix=%s, picMatrix=%s",
-                                    paintBoard.getBoardMatrix(), invertedBoardMatrix, dragOp.getValue(), insertPic.getInitMatrix(), picMatrix);
+                            Matrix matrix = new Matrix(insertPic.getInitMatrix()); // initMatrix里面包含了插入点信息（RawInitMatrix里面没包含）
+                            matrix.postConcat(dragOp.getValue());
+                            matrix.postConcat(MatrixHelper.invert(paintBoard.getBoardMatrix()));
+                            insertPic.setMatrix(matrix);
                             break;
                         }
                     }
