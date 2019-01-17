@@ -330,7 +330,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
         @Override
         public void onScale(float factor) {
-            boardMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+            float curZoomRate = MatrixHelper.getScale(boardMatrix);
+            float zoomRate = curZoomRate * factor;
+            if (zoomRate < minZoomRate) {
+                boardMatrix.postScale(minZoomRate/curZoomRate, minZoomRate/curZoomRate, scaleCenterX, scaleCenterY);
+            }else if (zoomRate > maxZoomRate){
+                boardMatrix.postScale(maxZoomRate/curZoomRate, maxZoomRate/curZoomRate, scaleCenterX, scaleCenterY);
+            }else {
+                boardMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+            }
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
             zoomRateChanged();
         }
@@ -338,15 +346,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         @Override
         public void onScaleEnd() {
             KLog.p("#######onScaleEnd");
-            float zoomRate = MatrixHelper.getScale(boardMatrix);
-            if (zoomRate < minZoomRate) {
-                boardMatrix.postScale(minZoomRate/zoomRate, minZoomRate/zoomRate, scaleCenterX, scaleCenterY);
-            }else if (zoomRate > maxZoomRate){
-                boardMatrix.postScale(maxZoomRate/zoomRate, maxZoomRate/zoomRate, scaleCenterX, scaleCenterY);
-            }
-            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
-            zoomRateChanged();
-
             OpMatrix opMatrix = new OpMatrix(boardMatrix);
             assignBasicInfo(opMatrix);
             publisher.publish(opMatrix);
