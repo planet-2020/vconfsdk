@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
 import android.graphics.PointF;
+import android.os.Build;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -30,6 +31,11 @@ class DefaultTouchListener implements View.OnTouchListener {
     public DefaultTouchListener(Context context, IOnEventListener onEventListener) {
         gestureDetector = new GestureDetector(context, new MyOnGestureListener());
         scaleGestureDetector = new ScaleGestureDetector(context, new MyScaleGestureListener());
+        // 禁用双击拖动后缩放
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            scaleGestureDetector.setQuickScaleEnabled(false);
+        }
+
         this.onEventListener = onEventListener;
     }
 
@@ -55,7 +61,6 @@ class DefaultTouchListener implements View.OnTouchListener {
     private class MyScaleGestureListener extends ScaleGestureDetector.SimpleOnScaleGestureListener{
         private float scaleFactor = 1.0f;
         private float lastScaleFactor = scaleFactor;
-
 
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
@@ -87,7 +92,7 @@ class DefaultTouchListener implements View.OnTouchListener {
             float focusX = detector.getFocusX();
             float focusY = detector.getFocusY();
             float scale = detector.getScaleFactor();
-//                KLog.p("state=%s, focusX = %s, focusY =%s, scale=%s", state, focusX, focusY, scale);
+//            KLog.p("state=%s, focusX = %s, focusY =%s, scale=%s", state, focusX, focusY, scale);
             if (STATE_MULTIFINGERS_SHAKING == state){
                 onEventListener.onMultiFingerDragBegin();
             }
