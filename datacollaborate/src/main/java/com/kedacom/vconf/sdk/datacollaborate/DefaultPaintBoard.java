@@ -241,6 +241,32 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         return picEditStuffs;
     }
 
+    boolean isExistEditingPic(String picId){
+        for (PicEditStuff picEditStuff : picEditStuffs){
+            OpInsertPic op = picEditStuff.pic;
+            if (picId.equals(op.getPicId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void delEditingPic(String picId){
+        Iterator<PicEditStuff> it = picEditStuffs.iterator();
+        while (it.hasNext()) {
+            PicEditStuff picEditStuff = it.next();
+            OpInsertPic op = picEditStuff.pic;
+            if (picId.equals(op.getPicId())) {
+                it.remove();
+                if (picEditStuffs.isEmpty()) {
+                    // 如果最后一张正在编辑的图片被删除则重置画板到编辑前的状态
+                    focusedLayer = savedLayerBeforeEditPic;
+                    tmpPicViewMatrix.reset();
+                }
+                return;
+            }
+        }
+    }
 
     Canvas lockCanvas(int layer){
         // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。

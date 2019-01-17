@@ -298,15 +298,26 @@ public class DefaultPainter implements IPainter {
             case DELETE_PICTURE:
                 bRefresh = false;
                 OpPaint picRenderOp;
+                boolean got =false;
                 for (String picId : ((OpDeletePic)op).getPicIds()) {
+                    got = false;
                     Iterator it = picRenderOps.iterator();
                     while (it.hasNext()) {
                         picRenderOp = (OpPaint) it.next();
                         if (EOpType.INSERT_PICTURE == picRenderOp.getType()
                                 && ((OpInsertPic) picRenderOp).getPicId().equals(picId)) {
                             it.remove();
+                            got = true;
                             bRefresh = true;
                             break;
+                        }
+                    }
+                    if (!got) {
+                        // 可能图片正在被编辑
+                        if (paintBoard.isExistEditingPic(picId)){
+                            got = true;
+                            bRefresh = true;
+                            paintBoard.delEditingPic(picId);
                         }
                     }
                 }
