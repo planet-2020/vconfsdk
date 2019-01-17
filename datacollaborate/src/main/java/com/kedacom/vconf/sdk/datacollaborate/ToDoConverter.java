@@ -280,6 +280,13 @@ final class ToDoConverter {
     }
 
     public static OpInsertPic fromTransferObj(DcsOperInsertPicNtf dcInertPicOp) {
+        /*插入图片时对端发送过来的insertPicMatrix
+         * = pic/init * board
+         * 包含了board但剔除了init
+         * 所以pic = insertPic/board * init
+         * 此处有点复杂，对端传过来的矩阵不包含完整的放缩位移信息，放缩位移信息分成了两部分一部分在矩阵中、一部分在插入点中。其中矩阵即为当前画板的矩阵，
+         * 插入点为画板的逆矩阵作用于无缩放情况下的点后生成的点。
+         * */
         TDCSWbInsertPicOperInfo ip = dcInertPicOp.AssParam;
         float[] matrixVal = MatrixHelper.valStr2Float(ip.aachMatrixValue);
         Matrix boardMatrix = new Matrix();
@@ -292,12 +299,17 @@ final class ToDoConverter {
         matrix.postConcat(MatrixHelper.invert(boardMatrix));  // 剔除boardmatrix得到图片的matrix，比如画板缩放是0.5则此处得到的图片的缩放为2
         OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight, matrix, matrix);
         assignPaintDomainObj(dcInertPicOp.MainParam, INVALID_UUID, opInsertPic);
-        opInsertPic.setRawInitMatrix(boardMatrix);
+        opInsertPic.setBoardMatrix(boardMatrix);
         return opInsertPic;
     }
 
     public static TDCSWbInsertPicOperInfo toTransferObj(OpInsertPic domainObj) {
-        Matrix matrix = new Matrix(domainObj.getInitRelativeMatrix());
+        /*求取插入图片时发送给对端的matrix
+         * = pic/init * board
+         * 包含了board但剔除了init
+         * */
+        Matrix matrix = new Matrix(domainObj.getMatrix());
+        matrix.postConcat(MatrixHelper.invert(domainObj.getInitMatrix()));
         matrix.postConcat(domainObj.getBoardMatrix());
         KLog.p("initMatrix=%s, matrix=%s, \nboardMatrix=%s, finMatrix=%s",
                 domainObj.getInitMatrix(), domainObj.getMatrix(), domainObj.getBoardMatrix(), matrix);
@@ -305,7 +317,7 @@ final class ToDoConverter {
         matrix.getValues(matrixVal);
         return new TDCSWbInsertPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), domainObj.getPicId(),
                 domainObj.getPicWidth(), domainObj.getPicHeight(),
-                new TDCSWbPoint(0, 0),
+                new TDCSWbPoint(0, 0), // 我们始终以0,0为插入点
                 domainObj.getPicName(), MatrixHelper.valFloat2Str(matrixVal));
     }
 

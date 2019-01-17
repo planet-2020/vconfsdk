@@ -16,7 +16,6 @@ public class OpInsertPic extends OpPaint {
     private Bitmap pic;
     private int picWidth; // NOTE: 并非图片的原始宽高。对端会进行一些倍数缩放后传过来
     private int picHeight;
-    private Matrix rawInitMatrix; // 插入图片时对端传过来的matrix
     private Matrix initMatrix; // 根据插入图片时对端传过来的matrix结合变换后的插入点计算得出的初始位置的matrix
     private Matrix matrix; // 图片操作的matrix（包含了initMatrix，不包含画板的matrix，图片最终的展示位移=该matrix*当前画板matrix）
     private Matrix boardMatrix = new Matrix(); // 发布时的画板matrix。
@@ -129,13 +128,6 @@ public class OpInsertPic extends OpPaint {
         this.matrix = matrix;
     }
 
-    public Matrix getInitRelativeMatrix(){
-        Matrix matrix = new Matrix(this.matrix);
-        Matrix invertedInitMatrix = new Matrix();
-        initMatrix.invert(invertedInitMatrix);
-        matrix.postConcat(invertedInitMatrix);
-        return matrix;
-    }
 
     public Matrix getBoardMatrix() {
         return boardMatrix;
@@ -145,11 +137,4 @@ public class OpInsertPic extends OpPaint {
         this.boardMatrix.set(boardMatrix);
     }
 
-    public Matrix getRawInitMatrix() {
-        return rawInitMatrix;
-    }
-
-    public void setRawInitMatrix(Matrix rawInitMatrix) {
-        this.rawInitMatrix = rawInitMatrix;
-    }
 }
