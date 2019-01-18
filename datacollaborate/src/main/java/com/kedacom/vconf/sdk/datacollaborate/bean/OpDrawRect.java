@@ -66,4 +66,24 @@ public class OpDrawRect extends OpDraw {
         right = vals[2];
         bottom = vals[3];
     }
+
+    @Override
+    public float left() {
+        return left;
+    }
+
+    @Override
+    public float top() {
+        return top;
+    }
+
+    @Override
+    public float right() {
+        return right;
+    }
+
+    @Override
+    public float bottom() {
+        return bottom;
+    }
 }

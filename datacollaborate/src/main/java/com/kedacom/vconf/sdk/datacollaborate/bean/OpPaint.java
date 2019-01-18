@@ -15,7 +15,6 @@ public abstract class OpPaint implements Comparable<OpPaint>{
     protected int      pageId;     // 文档页ID（仅文档模式下有效）
     protected int      sn;         // 操作序号，用来表示操作的先后顺序，越小越靠前。由平台填写。
 
-
     @Override
     public int compareTo(OpPaint o) {
         if (sn<o.sn){
@@ -80,4 +79,5 @@ public abstract class OpPaint implements Comparable<OpPaint>{
     public void setSn(int sn) {
         this.sn = sn;
     }
+
 }

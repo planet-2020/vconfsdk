@@ -60,4 +60,23 @@ public class OpDrawLine extends OpDraw {
     }
 
 
+    @Override
+    public float left() {
+        return startX<stopX ? startX : stopX;
+    }
+
+    @Override
+    public float top() {
+        return startY<stopY ? startY : stopY;
+    }
+
+    @Override
+    public float right() {
+        return startX>stopX ? startX : stopX;
+    }
+
+    @Override
+    public float bottom() {
+        return startY>stopY ? startY : stopY;
+    }
 }

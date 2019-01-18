@@ -3,15 +3,11 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import androidx.annotation.NonNull;
 
-public class OpRectErase extends OpPaint implements IRepealable{
+public class OpRectErase extends OpPaint implements IRepealable, IBoundary{
     public float left;
     public float top;
     public float right;
     public float bottom;
-
-    public OpRectErase(){
-        type = EOpType.RECT_ERASE;
-    }
 
     public OpRectErase(float left, float top, float right, float bottom){
         this.left = left;
@@ -57,5 +53,25 @@ public class OpRectErase extends OpPaint implements IRepealable{
 
     public void setBottom(float bottom) {
         this.bottom = bottom;
+    }
+
+    @Override
+    public float left() {
+        return left;
+    }
+
+    @Override
+    public float top() {
+        return top;
+    }
+
+    @Override
+    public float right() {
+        return right;
+    }
+
+    @Override
+    public float bottom() {
+        return bottom;
     }
 }
