@@ -513,8 +513,7 @@ public class DefaultPainter implements IPainter {
                     bNeedRender = false;
                 }
 
-                matrix.set(paintBoard.getBoardMatrix());
-//                matrix.postScale(relativeDensity, relativeDensity);
+                matrix.set(paintBoard.getDensityRelativeBoardMatrix());
 
                 // 图形层绘制
                 Canvas shapePaintViewCanvas = paintBoard.lockCanvas(IPaintBoard.LAYER_SHAPE);

@@ -58,6 +58,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     // 画板matrix
     private Matrix boardMatrix = new Matrix();
 
+    /* 相对于xhdpi的屏幕密度。
+    因为此前TL已经实现了，他们传过来的是原始的像素值，
+    为了使得展示效果尽量在各设备上保持一致，我们以TL的屏幕密度为基准算出一个相对密度，
+    以该相对密度作为缩放因子进行展示。TL的屏幕密度接近xhdpi，故以xhdpi作为基准*/
+    private float relativeDensity=1;
+
     // 图形画布。用于图形绘制如画线、画圈、擦除等等
     private TextureView shapePaintView;
     // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
@@ -132,6 +138,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
         super(context);
         this.context = context;
+
+        relativeDensity = context.getResources().getDisplayMetrics().density/2;
 
         this.boardInfo = boardInfo;
 
@@ -214,6 +222,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     void setBoardMatrix(Matrix boardMatrix) {
         this.boardMatrix.set(boardMatrix);
+    }
+
+    private Matrix densityRelativeBoardMatrix = new Matrix();
+    Matrix getDensityRelativeBoardMatrix(){
+        densityRelativeBoardMatrix.reset();
+        densityRelativeBoardMatrix.postScale(relativeDensity, relativeDensity);
+        densityRelativeBoardMatrix.postConcat(boardMatrix);
+        return  densityRelativeBoardMatrix;
     }
 
     MyConcurrentLinkedDeque<OpPaint> getTmpShapeOps() {
@@ -428,20 +444,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
                 return;
             }
             picOps.remove(opInsertPic);
-            tmpPicViewMatrix.set(boardMatrix);
+            tmpPicViewMatrix.set(getDensityRelativeBoardMatrix());
             editPic(opInsertPic);
         }
     };
 
 
     private float[] mapPoint= new float[2];
-    private Matrix invertedBoardMatrix;
+    private Matrix invertedDensityRelativeBoardMatrix;
     private void createShapeOp(float startX, float startY){
-        invertedBoardMatrix = MatrixHelper.invert(boardMatrix);
+        invertedDensityRelativeBoardMatrix = MatrixHelper.invert(getDensityRelativeBoardMatrix());
 //        KLog.p("invert success?=%s, orgX=%s, orgY=%s", suc, x, y);
         mapPoint[0] = startX;
         mapPoint[1] = startY;
-        invertedBoardMatrix.mapPoints(mapPoint);
+        invertedDensityRelativeBoardMatrix.mapPoints(mapPoint);
         float x = mapPoint[0];
         float y = mapPoint[1];
 //            KLog.p("startX=%s, startY=%s, shapeScaleX=%s, shapeScaleY=%s", startX, startY, shapeScaleX, shapeScaleY);
@@ -506,7 +522,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     private void adjustShapeOp(float adjustX, float adjustY){
         mapPoint[0] = adjustX;
         mapPoint[1] = adjustY;
-        invertedBoardMatrix.mapPoints(mapPoint);
+        invertedDensityRelativeBoardMatrix.mapPoints(mapPoint);
         float x = mapPoint[0];
         float y = mapPoint[1];
         switch (tool){
@@ -1041,7 +1057,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
         OpInsertPic opInsertPic = picEditStuff.pic;
         Matrix increasedMatrix = new Matrix(tmpPicViewMatrix);
-        increasedMatrix.postConcat(MatrixHelper.invert(boardMatrix));
+        increasedMatrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix()));
         opInsertPic.getMatrix().postConcat(increasedMatrix);
         opInsertPic.setBoardMatrix(boardMatrix);
 
@@ -1118,7 +1134,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
                 }
                 picBoundary.set(0, 0, opInsertPic.getPicWidth(), opInsertPic.getPicHeight());
                 matrix.set(opInsertPic.getMatrix());
-                matrix.postConcat(boardMatrix);
+                matrix.postConcat(getDensityRelativeBoardMatrix());
                 matrix.mapRect(picBoundary);
                 KLog.p("x=%s, y=%s, mappedPicBoundary=%s, matrix=%s", x, y, picBoundary, opInsertPic.getPicWidth(), opInsertPic.getPicHeight(), matrix);
                 if (picBoundary.contains(x, y)){
