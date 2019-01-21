@@ -3,13 +3,16 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.graphics.RectF;
+
+import com.kedacom.vconf.sdk.base.KLog;
 
 import java.io.File;
 import java.util.UUID;
 
 import androidx.annotation.NonNull;
 
-public class OpInsertPic extends OpPaint {
+public class OpInsertPic extends OpPaint implements IBoundary{
     private String picId = UUID.randomUUID().toString();
     private String picName;
     private String picPath;
@@ -19,6 +22,8 @@ public class OpInsertPic extends OpPaint {
     private Matrix initMatrix; // 根据插入图片时对端传过来的matrix结合变换后的插入点计算得出的初始位置的matrix
     private Matrix matrix; // 图片操作的matrix（包含了initMatrix，不包含画板的matrix，图片最终的展示位移=该matrix*当前画板matrix）
     private Matrix boardMatrix = new Matrix(); // 发布时的画板matrix。
+
+    private RectF bound = new RectF();
 
     public OpInsertPic(){
         type = EOpType.INSERT_PICTURE;
@@ -51,8 +56,8 @@ public class OpInsertPic extends OpPaint {
     @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("picId=%s, picName=%s, picPath=%s, pic=%s, picWidth=%s, picHeight=%s, initMatrix=%s, matrix=%s",
-                picId, picName, picPath, pic, picWidth, picHeight, initMatrix, matrix)+super.toString()+"}";
+        return "{"+String.format("picId=%s, picName=%s, picPath=%s, pic=%s, picWidth=%s, picHeight=%s, \ninitMatrix=%s, matrix=%s, bound=%s",
+                picId, picName, picPath, pic, picWidth, picHeight, initMatrix, matrix, bound)+super.toString()+"}";
     }
 
     public String getPicId() {
@@ -137,4 +142,14 @@ public class OpInsertPic extends OpPaint {
         this.boardMatrix.set(boardMatrix);
     }
 
+
+    @Override
+    public RectF boundary() {
+        if (null == pic){
+            return bound;
+        }
+        bound.set(0, 0, pic.getWidth(), pic.getHeight());
+        matrix.mapRect(bound);
+        return bound;
+    }
 }

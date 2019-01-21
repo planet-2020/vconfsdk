@@ -418,14 +418,6 @@ public class DefaultPainter implements IPainter {
         }
     }
 
-    private boolean hasRepealableOps(MyConcurrentLinkedDeque<OpPaint> ops){
-        for (OpPaint op : ops){
-            if (op instanceof IRepealable){
-                return true;
-            }
-        }
-        return false;
-    }
 
     private final PorterDuffXfermode DUFFMODE_SRCIN = new PorterDuffXfermode(PorterDuff.Mode.SRC_IN);
 //    private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
@@ -581,6 +573,7 @@ public class DefaultPainter implements IPainter {
 
 
         private void render(OpPaint op, Canvas canvas){
+            KLog.p("to render %s", op);
             switch (op.getType()) {
                 case DRAW_LINE:
                     OpDrawLine lineOp = (OpDrawLine) op;
@@ -605,7 +598,7 @@ public class DefaultPainter implements IPainter {
                     break;
                 case RECT_ERASE:
                     OpRectErase eraseOp = (OpRectErase) op;
-                    canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
+                    canvas.drawRect(eraseOp.getLeft(), eraseOp.getTop(), eraseOp.getRight(), eraseOp.getBottom(), cfgPaint(eraseOp));
                     break;
                 case CLEAR_SCREEN:
                     canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
@@ -621,43 +614,7 @@ public class DefaultPainter implements IPainter {
 
         private void render(MyConcurrentLinkedDeque<OpPaint> ops, Canvas canvas){
             for (OpPaint op : ops) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
-                KLog.p("to render %s", op);
-                switch (op.getType()) {
-                    case DRAW_LINE:
-                        OpDrawLine lineOp = (OpDrawLine) op;
-                        canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
-                        break;
-                    case DRAW_RECT:
-                        OpDrawRect rectOp = (OpDrawRect) op;
-                        canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
-                        break;
-                    case DRAW_OVAL:
-                        OpDrawOval ovalOp = (OpDrawOval) op;
-                        rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
-                        canvas.drawOval(rect, cfgPaint(ovalOp));
-                        break;
-                    case DRAW_PATH:
-                        OpDrawPath pathOp = (OpDrawPath) op;
-                        canvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
-                        break;
-                    case ERASE:
-                        OpErase opErase = (OpErase) op;
-                        canvas.drawPath(opErase.getPath(), cfgPaint(opErase));
-                        break;
-                    case RECT_ERASE:
-                        OpRectErase eraseOp = (OpRectErase) op;
-                        canvas.drawRect(eraseOp.left, eraseOp.top, eraseOp.right, eraseOp.bottom, cfgPaint(eraseOp));
-                        break;
-                    case CLEAR_SCREEN:
-                        canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-                        break;
-                    case INSERT_PICTURE:
-                        OpInsertPic insertPicOp = (OpInsertPic) op;
-                        if (null != insertPicOp.getPic()) {
-                            canvas.drawBitmap(insertPicOp.getPic(), insertPicOp.getMatrix(), cfgPaint(insertPicOp));
-                        }
-                        break;
-                }
+                render(op, canvas);
             }
         }
 

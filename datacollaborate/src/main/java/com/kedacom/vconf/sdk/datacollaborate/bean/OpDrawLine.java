@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import android.graphics.RectF;
+
 import androidx.annotation.NonNull;
 
 public class OpDrawLine extends OpDraw {
@@ -8,6 +10,8 @@ public class OpDrawLine extends OpDraw {
     private float startY;
     private float stopX;
     private float stopY;
+
+    private RectF bound = new RectF();
 
     public OpDrawLine(){
         type = EOpType.DRAW_LINE;
@@ -18,6 +22,8 @@ public class OpDrawLine extends OpDraw {
         this.startY =startY;
         this.stopX = stopX;
         this.stopY = stopY;
+        bound.set(startX<stopX ? startX : stopX, startY<stopY ? startY : stopY,
+                startX>stopX ? startX : stopX, startY>stopY ? startY : stopY);
         type = EOpType.DRAW_LINE;
     }
 
@@ -59,24 +65,10 @@ public class OpDrawLine extends OpDraw {
         this.stopY = stopY;
     }
 
-
     @Override
-    public float left() {
-        return startX<stopX ? startX : stopX;
-    }
-
-    @Override
-    public float top() {
-        return startY<stopY ? startY : stopY;
-    }
-
-    @Override
-    public float right() {
-        return startX>stopX ? startX : stopX;
-    }
-
-    @Override
-    public float bottom() {
-        return startY>stopY ? startY : stopY;
+    public RectF boundary() {
+        bound.set(startX<stopX ? startX : stopX, startY<stopY ? startY : stopY,
+                startX>stopX ? startX : stopX, startY>stopY ? startY : stopY);
+        return bound;
     }
 }

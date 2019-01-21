@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import android.graphics.RectF;
+
 import androidx.annotation.NonNull;
 
 public class OpDrawRect extends OpDraw {
@@ -9,6 +11,7 @@ public class OpDrawRect extends OpDraw {
     private float right;
     private float bottom;
 
+    private RectF bound = new RectF();
 
     public OpDrawRect(){
         type = EOpType.DRAW_RECT;
@@ -19,6 +22,7 @@ public class OpDrawRect extends OpDraw {
         this.top = top;
         this.right = right;
         this.bottom = bottom;
+        bound.set(left, top, right, bottom);
         type = EOpType.DRAW_RECT;
     }
 
@@ -67,23 +71,10 @@ public class OpDrawRect extends OpDraw {
         bottom = vals[3];
     }
 
-    @Override
-    public float left() {
-        return left;
-    }
 
     @Override
-    public float top() {
-        return top;
-    }
-
-    @Override
-    public float right() {
-        return right;
-    }
-
-    @Override
-    public float bottom() {
-        return bottom;
+    public RectF boundary() {
+        bound.set(left, top, right, bottom);
+        return bound;
     }
 }

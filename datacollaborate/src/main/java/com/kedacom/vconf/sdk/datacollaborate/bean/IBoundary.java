@@ -1,8 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
+import android.graphics.RectF;
+
 public interface IBoundary {
-    float left();
-    float top();
-    float right();
-    float bottom();
+    RectF boundary();
 }

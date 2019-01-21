@@ -6,8 +6,12 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.PointF;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.os.Handler;
@@ -22,6 +26,7 @@ import android.widget.FrameLayout;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.IBoundary;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
@@ -405,7 +410,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
         @Override
         public void onDrag(float x, float y) {
-            KLog.p("~~> x=%s, y=%s", x, y);
+//            KLog.p("~~> x=%s, y=%s", x, y);
             adjustShapeOp(x, y);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(adjustingShapeOp);
         }
@@ -673,6 +678,196 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         focusedLayer = layer;
     }
 
+    /**
+     * 获取需要纳入快照的操作集
+     * */
+    private MyConcurrentLinkedDeque<OpPaint> getOpsBySnapshot(){
+        KLog.p("=#=>");
+        MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
+        MyConcurrentLinkedDeque<OpPaint> refinedOps = new MyConcurrentLinkedDeque<>();
+
+        // 筛选需要纳入快照的图形操作
+        ops.addAll(shapeOps);
+        ops.addAll(tmpShapeOps);
+        while (!ops.isEmpty()){
+            OpPaint op = ops.pollFirst();
+            if (EOpType.CLEAR_SCREEN == op.getType()){
+                refinedOps.clear(); // 剔除清屏及其之前的操作（清屏不影响图片，所以筛选图片不在此处做）
+                continue;
+            }
+            if (op instanceof IBoundary) {
+                refinedOps.offerLast(op);
+            }
+        }
+
+        // 筛选需要纳入快照的图片操作
+        ops.addAll(picOps);
+        while (!ops.isEmpty()){
+            OpPaint op = ops.pollFirst();
+            if (op instanceof IBoundary){
+                refinedOps.offerLast(op);
+            }
+        }
+        // 正在编辑的图片也纳入快照
+        for(PicEditStuff picEditStuff : picEditStuffs){
+            refinedOps.offerLast(picEditStuff.pic);
+            refinedOps.offerLast(picEditStuff.dashedRect);
+            refinedOps.offerLast(picEditStuff.delIcon);
+        }
+
+        KLog.p("<=#=");
+
+        return refinedOps;
+
+    }
+
+    private RectF calcBoundary(MyConcurrentLinkedDeque<OpPaint> bounds){
+        MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
+        ops.addAll(bounds);
+        IBoundary bound = (IBoundary) ops.peekFirst();
+        RectF bd = bound.boundary();
+        float left = bd.left;
+        float top = bd.top;
+        float right = bd.right;
+        float bottom = bd.bottom;
+        OpPaint op;
+        KLog.p("init bound=[%s, %s, %s, %s]", left, top, right, bottom);
+        while (!ops.isEmpty()){
+            op = ops.pollFirst();
+            KLog.p("op =%s", op);
+            bd = ((IBoundary) op).boundary();
+            left = bd.left < left ? bd.left : left;
+            top = bd.top < top ? bd.top : top;
+            right = bd.right > right ? bd.right: right;
+            bottom = bd.bottom > bottom ? bd.bottom : bottom;
+        }
+
+        return new RectF(left, top, right, bottom);
+    }
+
+
+    private static final int SAVE_PADDING = 10; // 保存画板时插入的边距，单位： pixel
+    private Bitmap doSave(){
+        MyConcurrentLinkedDeque<OpPaint> ops = getOpsBySnapshot();
+        if (ops.isEmpty()){
+            KLog.p(KLog.WARN, "try snapshot but no content!");
+            return Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
+        }
+
+        RectF bound = calcBoundary(ops);
+        KLog.p("calcBoundary=%s", bound);
+
+        float boundW = bound.width();
+        float boundH = bound.height();
+        float windowW = getWidth();
+        float windowH = getHeight();
+        float scale = 1;
+        if (boundW/boundH > windowW/windowH){
+            scale = windowW/boundW;
+        }else {
+            scale = windowH/boundH;
+        }
+        scale = scale > 1 ? 1 : scale;
+
+        Matrix matrix = new Matrix();
+        matrix.postTranslate(0-bound.left, 0-bound.top);
+        matrix.postScale(scale, scale);
+        KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, windowW, windowH, scale, matrix);
+        Bitmap shot = Bitmap.createBitmap((int)(boundW*scale)+SAVE_PADDING*2, (int)(boundH*scale)+SAVE_PADDING*2, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(shot);
+        matrix.postTranslate(SAVE_PADDING, SAVE_PADDING);
+        canvas.setMatrix(matrix);
+
+        render(ops, canvas);
+
+        return shot;
+    }
+
+    private Paint paint = new Paint();
+    private final PorterDuffXfermode DUFFMODE_SRCIN = new PorterDuffXfermode(PorterDuff.Mode.SRC_IN);
+    //    private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
+    private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
+    private Paint cfgPaint(OpPaint opPaint){
+        paint.reset();
+        switch (opPaint.getType()){
+            case INSERT_PICTURE:
+                paint.setStyle(Paint.Style.STROKE);
+                break;
+            case RECT_ERASE:
+            case CLEAR_SCREEN:
+                paint.setStyle(Paint.Style.FILL);
+                paint.setXfermode(DUFFMODE_CLEAR);
+                break;
+            default:
+                if (opPaint instanceof OpDraw) {
+                    OpDraw opDraw = (OpDraw) opPaint;
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setAntiAlias(true);
+                    paint.setStrokeWidth(opDraw.getStrokeWidth());
+                    paint.setColor((int) opDraw.getColor());
+                    if (OpDraw.DASH == opDraw.getLineStyle()){
+                        paint.setPathEffect(new DashPathEffect( new float[]{10, 4},0));
+                    }
+                    if (EOpType.DRAW_PATH == opPaint.getType()){
+                        paint.setStrokeJoin(Paint.Join.ROUND);
+                    } else if (EOpType.ERASE == opPaint.getType()){
+                        int w = ((OpErase)opDraw).getWidth();
+                        int h = ((OpErase)opDraw).getHeight();
+                        paint.setStrokeWidth(w>h?w:h);
+                        paint.setStrokeJoin(Paint.Join.ROUND);
+                        paint.setAlpha(0);
+                        paint.setXfermode(DUFFMODE_SRCIN);
+                    }
+                }
+                break;
+        }
+
+        return paint;
+    }
+
+    private RectF rect = new RectF();
+    private void render(MyConcurrentLinkedDeque<OpPaint> ops, Canvas canvas){
+        for (OpPaint op : ops) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
+            KLog.p("to render %s", op);
+            switch (op.getType()) {
+                case DRAW_LINE:
+                    OpDrawLine lineOp = (OpDrawLine) op;
+                    canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
+                    break;
+                case DRAW_RECT:
+                    OpDrawRect rectOp = (OpDrawRect) op;
+                    canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
+                    break;
+                case DRAW_OVAL:
+                    OpDrawOval ovalOp = (OpDrawOval) op;
+                    rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
+                    canvas.drawOval(rect, cfgPaint(ovalOp));
+                    break;
+                case DRAW_PATH:
+                    OpDrawPath pathOp = (OpDrawPath) op;
+                    canvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
+                    break;
+                case ERASE:
+                    OpErase opErase = (OpErase) op;
+                    canvas.drawPath(opErase.getPath(), cfgPaint(opErase));
+                    break;
+                case RECT_ERASE:
+                    OpRectErase eraseOp = (OpRectErase) op;
+                    canvas.drawRect(eraseOp.getLeft(), eraseOp.getTop(), eraseOp.getRight(), eraseOp.getBottom(), cfgPaint(eraseOp));
+                    break;
+                case CLEAR_SCREEN:
+                    canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+                    break;
+                case INSERT_PICTURE:
+                    OpInsertPic insertPicOp = (OpInsertPic) op;
+                    if (null != insertPicOp.getPic()) {
+                        canvas.drawBitmap(insertPicOp.getPic(), insertPicOp.getMatrix(), cfgPaint(insertPicOp));
+                    }
+                    break;
+            }
+        }
+    }
+
 
     @Override
     public Bitmap snapshot(int layer) {
@@ -719,6 +914,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         }
 
         return shot;
+    }
+
+    private static int MSGID_SAVE = 777;
+    @Override
+    public void save(ISaveListener saveListener) {
+        Message msg = Message.obtain();
+        msg.what = MSGID_SAVE;
+        msg.obj = saveListener;
+        handler.sendMessage(msg);
     }
 
     private void dealSimpleOp(OpPaint op){
@@ -975,7 +1179,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
         @Override
         public void onDrag(float x, float y) {
-            KLog.p("onDrag tmp pic layer, x=%s. y=%s", x, y);
+//            KLog.p("onDrag tmp pic layer, x=%s. y=%s", x, y);
             if (picEditStuffs.isEmpty()){
                 return;
             }
@@ -1047,18 +1251,22 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
                 if (!picEditStuffs.isEmpty()) {
                     finishEditPic(picEditStuffs.pollFirst());
                 }
+            }else if (MSGID_SAVE == msg.what){
+                ISaveListener saveListener = (ISaveListener) msg.obj;
+                Bitmap bt = doSave();   // TODO 在子线程做。
+                saveListener.onFinish(bt);
             }
         }
     };
 
 
     private void finishEditPic(PicEditStuff picEditStuff){
-        KLog.sp("picEditStuffs.size="+ picEditStuffs.size());
 
         OpInsertPic opInsertPic = picEditStuff.pic;
         Matrix increasedMatrix = new Matrix(tmpPicViewMatrix);
         increasedMatrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix()));
         opInsertPic.getMatrix().postConcat(increasedMatrix);
+        KLog.p("insertPicMatrix=%s, increasedMatrix=%s", opInsertPic.getMatrix(), increasedMatrix);
         opInsertPic.setBoardMatrix(boardMatrix);
 
         picOps.offerLast(opInsertPic);
@@ -1184,8 +1392,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
         savedLayerBeforeEditPic = focusedLayer;
         focusedLayer = LAYER_PIC_TMP;
-        // 3秒过后画到图片画板上并清除临时画板
-        handler.sendEmptyMessageDelayed(MSGID_FINISH_EDIT_PIC, 3000);
+        // 一段时间无操作则编辑结束，插入图片
+        handler.sendEmptyMessageDelayed(MSGID_FINISH_EDIT_PIC, 5000);
     }
 
 

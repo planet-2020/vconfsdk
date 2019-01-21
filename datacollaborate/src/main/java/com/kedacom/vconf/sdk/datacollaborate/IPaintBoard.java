@@ -115,6 +115,12 @@ public interface IPaintBoard {
      * */
     Bitmap snapshot(int layer);
 
+    /**保存*/
+    void save(ISaveListener saveListener);
+    interface ISaveListener{
+        void onFinish(Bitmap bt);
+    }
+
     /**
      * 撤销。
      * */

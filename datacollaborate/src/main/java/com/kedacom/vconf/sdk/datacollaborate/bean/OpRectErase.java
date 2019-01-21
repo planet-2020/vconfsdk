@@ -1,19 +1,24 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import android.graphics.RectF;
+
 import androidx.annotation.NonNull;
 
 public class OpRectErase extends OpPaint implements IRepealable, IBoundary{
-    public float left;
-    public float top;
-    public float right;
-    public float bottom;
+    private float left;
+    private float top;
+    private float right;
+    private float bottom;
+
+    private RectF bound = new RectF();
 
     public OpRectErase(float left, float top, float right, float bottom){
         this.left = left;
         this.top = top;
         this.right = right;
         this.bottom = bottom;
+        bound.set(left, top, right, bottom);
         type = EOpType.RECT_ERASE;
     }
 
@@ -56,22 +61,8 @@ public class OpRectErase extends OpPaint implements IRepealable, IBoundary{
     }
 
     @Override
-    public float left() {
-        return left;
-    }
-
-    @Override
-    public float top() {
-        return top;
-    }
-
-    @Override
-    public float right() {
-        return right;
-    }
-
-    @Override
-    public float bottom() {
-        return bottom;
+    public RectF boundary() {
+        bound.set(left, top, right, bottom);
+        return bound;
     }
 }
