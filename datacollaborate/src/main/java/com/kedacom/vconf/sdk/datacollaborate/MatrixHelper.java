@@ -45,8 +45,15 @@ class MatrixHelper {
     static float[] valStr2Float(String[] strMatrixValue){
         float[] matrixValue = new float[9];
         for (int i=0; i<9; ++i){
-            KLog.p("strMatrixValue[%s]=%s", i, strMatrixValue[i]);
-            matrixValue[i] = Float.valueOf(strMatrixValue[i]);
+            if (null == strMatrixValue[i] || strMatrixValue[i].isEmpty()) {
+                if (0==i||4==i||8==i){
+                    matrixValue[i] = 1;
+                }else{
+                    matrixValue[i] = 0;
+                }
+            }else{
+                matrixValue[i] = Float.valueOf(strMatrixValue[i]);
+            }
         }
         return matrixValue;
     }
