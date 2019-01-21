@@ -68,6 +68,10 @@ public class MyConcurrentLinkedDeque<E> implements Iterable<E>{
         deque.clear();
     }
 
+    public void addAll(MyConcurrentLinkedDeque<E> myConcurrentLinkedDeque){
+        deque.addAll(myConcurrentLinkedDeque.deque);
+    }
+
     @NonNull
     @Override
     public Iterator<E> iterator() {
