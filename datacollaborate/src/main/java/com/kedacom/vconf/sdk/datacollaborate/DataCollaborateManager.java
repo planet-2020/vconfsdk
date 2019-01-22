@@ -415,11 +415,8 @@ public class DataCollaborateManager extends RequestAgent {
                         // 上报用户所有已创建的画板
                         Set<Object> boardCreatedListeners = getNtfListeners(Msg.DCBoardCreatedNtf);
                         if (null != boardCreatedListeners && !boardCreatedListeners.isEmpty()){
-                            PriorityQueue<TDCSBoardInfo> priorityQueue = new PriorityQueue<>();
-                            priorityQueue.addAll(dcBoards); // 将board按annoyId升序排序
-                            while (!priorityQueue.isEmpty()){
-                                TDCSBoardInfo tdcsBoardInfo = priorityQueue.poll();
-                                BoardInfo boardInfo = ToDoConverter.fromTransferObj(tdcsBoardInfo);
+                            for (TDCSBoardInfo board : dcBoards) {
+                                BoardInfo boardInfo = ToDoConverter.fromTransferObj(board);
                                 for (Object listener : boardCreatedListeners) {
                                     ((IOnBoardOpListener) listener).onBoardCreated(boardInfo);
                                 }
@@ -897,11 +894,18 @@ public class DataCollaborateManager extends RequestAgent {
                 }
 
                 if (null != listener) {
+                    PriorityQueue<TDCSBoardInfo> priorityQueue = new PriorityQueue<>();
+                    priorityQueue.addAll(queryAllBoardsResult.AssParam.atBoardInfo); // 将board按annoyId升序排序
+                    List<TDCSBoardInfo> tdcsBoardInfos = new ArrayList<>();
+                    while (!priorityQueue.isEmpty()){
+                        tdcsBoardInfos.add(priorityQueue.poll());
+                    }
+
                     if (listener instanceof QueryAllBoardsInnerListener) {
-                        listener.onSuccess(queryAllBoardsResult.AssParam.atBoardInfo);
+                        listener.onSuccess(tdcsBoardInfos);
                     } else {
                         List<BoardInfo> boardInfos = new ArrayList<>();
-                        for (TDCSBoardInfo tdcsBoardInfo : queryAllBoardsResult.AssParam.atBoardInfo) {
+                        for (TDCSBoardInfo tdcsBoardInfo : tdcsBoardInfos) {
                             boardInfos.add(ToDoConverter.fromTransferObj(tdcsBoardInfo));
                         }
                         listener.onSuccess(boardInfos);

@@ -57,7 +57,7 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 
-public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Comparable<DefaultPaintBoard>{
+public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private Context context;
 
     // 画板matrix
@@ -124,20 +124,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     private DefaultTouchListener shapeViewTouchListener;
     private DefaultTouchListener picViewTouchListener;
     private DefaultTouchListener tmpPicViewTouchListener;
-
-    @Override
-    public int compareTo(DefaultPaintBoard o) {
-        if (null == o){
-            return 1;
-        }
-        if (getBoardInfo().getAnonyId()<o.getBoardInfo().getAnonyId()){
-            return -1;
-        }else if (getBoardInfo().getAnonyId() == o.getBoardInfo().getAnonyId()){
-            return 0;
-        }else{
-            return 1;
-        }
-    }
 
 
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {

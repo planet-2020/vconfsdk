@@ -30,11 +30,10 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.Stack;
 
 import androidx.annotation.NonNull;
@@ -45,7 +44,7 @@ public class DefaultPainter implements IPainter {
 
     private Context context;
 
-    private Map<String, DefaultPaintBoard> paintBoards = new HashMap<>();
+    private Map<String, DefaultPaintBoard> paintBoards = new LinkedHashMap<>();
 
     private String curBoardId;
 
@@ -211,12 +210,8 @@ public class DefaultPainter implements IPainter {
      * */
     @Override
     public List<IPaintBoard> getAllPaintBoards() {
-        PriorityQueue<IPaintBoard> priorityQueue = new PriorityQueue<>();
-        priorityQueue.addAll(paintBoards.values());
         List<IPaintBoard> boards = new ArrayList<>();
-        while (!priorityQueue.isEmpty()){
-            boards.add(priorityQueue.poll());
-        }
+        boards.addAll(paintBoards.values());
         return  boards;
     }
 
