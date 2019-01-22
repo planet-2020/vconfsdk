@@ -751,12 +751,27 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     }
 
 
+    /*用来记录最后一次保存时各操作的状态，
+    用来判断操作是否有变化，是否需要重新保存*/
+    private OpPaint lastShapeOpSinceSave;
+    private OpPaint lastTmpShapeOpSinceSave;
+    private OpPaint lastPicOpSinceSave;
+    private OpPaint lastEditingPicOpSinceSave;
+
     private static final int SAVE_PADDING = 10; // 保存画板时插入的边距，单位： pixel
     private Bitmap doSave(){
         MyConcurrentLinkedDeque<OpPaint> ops = getOpsBySnapshot();
         if (ops.isEmpty()){
             KLog.p(KLog.WARN, "try snapshot but no content!");
             return Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
+        }
+
+        // 记录保存时各操作的状态
+        lastShapeOpSinceSave = shapeOps.peekLast();
+        lastTmpShapeOpSinceSave = tmpShapeOps.peekLast();
+        lastPicOpSinceSave = picOps.peekLast();
+        if (null != picEditStuffs.peekLast()) {
+            lastEditingPicOpSinceSave = picEditStuffs.peekLast().pic;
         }
 
         RectF bound = calcBoundary(ops);
@@ -932,7 +947,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     @Override
     public boolean changedSinceLastSave() {
-        return true;
+        return (lastShapeOpSinceSave != shapeOps.peekLast()
+                || lastTmpShapeOpSinceSave != tmpShapeOps.peekLast()
+                || lastPicOpSinceSave != picOps.peekLast()
+                || (null != picEditStuffs.peekLast() && lastEditingPicOpSinceSave != picEditStuffs.peekLast().pic)
+                || (null == picEditStuffs.peekLast() && lastEditingPicOpSinceSave != null));
     }
 
     private void dealSimpleOp(OpPaint op){

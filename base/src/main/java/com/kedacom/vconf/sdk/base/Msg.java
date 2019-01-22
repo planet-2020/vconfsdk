@@ -376,6 +376,19 @@ public enum Msg {
             name="DcsSwitch_Rsp")
     DCSwitchBoardRsp,
 
+//    /**查询当前画板*/
+//    @Request(	name = "DCSGetCurWhiteBoardReq",
+//            methodOwner = DcsCtrl,
+//            methodParas = {StringBuffer.class},
+//            paras = String.class, // 会议e164
+//            rspSeq = {"DcsGetWhiteBoard_Rsp"})
+//    DCQueryCurBoard, // TODO 待调
+//
+//    /**查询当前画板响应*/
+//    @Response(	clz = DcsGetWhiteBoardRsp.class,
+//            name="DcsGetWhiteBoard_Rsp")
+//    DCQueryCurBoardRsp,
+
 
     /**查询画板*/
     @Request(	name = "DCSGetWhiteBoardReq",
