@@ -684,6 +684,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
     private MyConcurrentLinkedDeque<OpPaint> getOpsBySnapshot(){
         KLog.p("=#=>");
         MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
+        MyConcurrentLinkedDeque<OpPaint> refinedShapeOps = new MyConcurrentLinkedDeque<>();
+        MyConcurrentLinkedDeque<OpPaint> refinedPicOps = new MyConcurrentLinkedDeque<>();
         MyConcurrentLinkedDeque<OpPaint> refinedOps = new MyConcurrentLinkedDeque<>();
 
         // 筛选需要纳入快照的图形操作
@@ -692,11 +694,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         while (!ops.isEmpty()){
             OpPaint op = ops.pollFirst();
             if (EOpType.CLEAR_SCREEN == op.getType()){
-                refinedOps.clear(); // 剔除清屏及其之前的操作（清屏不影响图片，所以筛选图片不在此处做）
+                refinedShapeOps.clear(); // 剔除清屏及其之前的操作（清屏不影响图片，所以筛选图片不在此处做）
                 continue;
             }
             if (op instanceof IBoundary) {
-                refinedOps.offerLast(op);
+                refinedShapeOps.offerLast(op);
             }
         }
 
@@ -705,15 +707,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         while (!ops.isEmpty()){
             OpPaint op = ops.pollFirst();
             if (op instanceof IBoundary){
-                refinedOps.offerLast(op);
+                refinedPicOps.offerLast(op);
             }
         }
         // 正在编辑的图片也纳入快照
         for(PicEditStuff picEditStuff : picEditStuffs){
-            refinedOps.offerLast(picEditStuff.pic);
-            refinedOps.offerLast(picEditStuff.dashedRect);
-            refinedOps.offerLast(picEditStuff.delIcon);
+            refinedPicOps.offerLast(picEditStuff.pic);
+            refinedPicOps.offerLast(picEditStuff.dashedRect);
+            refinedPicOps.offerLast(picEditStuff.delIcon);
         }
+
+        refinedOps.addAll(refinedPicOps);
+        refinedOps.addAll(refinedShapeOps);
 
         KLog.p("<=#=");
 
@@ -923,6 +928,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         msg.what = MSGID_SAVE;
         msg.obj = saveListener;
         handler.sendMessage(msg);
+    }
+
+    @Override
+    public boolean changedSinceLastSave() {
+        return true;
     }
 
     private void dealSimpleOp(OpPaint op){

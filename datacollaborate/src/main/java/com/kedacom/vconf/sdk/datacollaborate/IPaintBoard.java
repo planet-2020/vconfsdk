@@ -120,6 +120,12 @@ public interface IPaintBoard {
     interface ISaveListener{
         void onFinish(Bitmap bt);
     }
+    /**
+     * 从上次保存{@link #save(ISaveListener)}以来内容是否有变更。
+     * 可用来决定是否需要再次保存。
+     * @return 返回true如果从上次保存以来内容有变更，否则返回false。
+     * */
+    boolean changedSinceLastSave();
 
     /**
      * 撤销。
