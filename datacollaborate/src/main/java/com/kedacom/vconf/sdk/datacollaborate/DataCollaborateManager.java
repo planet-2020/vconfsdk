@@ -21,6 +21,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsNewWhiteBoardRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperInsertPicNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsSwitchRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
+import com.kedacom.vconf.sdk.base.bean.dc.EmDcsConnectErrCode;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
@@ -82,8 +83,8 @@ public class DataCollaborateManager extends RequestAgent {
     public static final int ErrCode_BuildLink4LoginFailed = -2;
     // 加入数据协作建链失败
     public static final int ErrCode_BuildLink4ConfFailed = -3;
-    // 尚未加入数据协作
-    public static final int ErrCode_NoDcConf = -4;
+    // 会议服务器中途断链
+    public static final int ErrCode_Disconnect = -4;
 
     private String curDcConfE164;
     String getCurDcConfE164(){
@@ -95,6 +96,7 @@ public class DataCollaborateManager extends RequestAgent {
 
     // 会话相关通知
     private static final Msg[] sessionNtfs = new Msg[]{
+            Msg.DCBuildLink4ConfRsp,
             Msg.DCConfCreated,
             Msg.DCReleaseConfNtf,
     };
@@ -325,6 +327,18 @@ public class DataCollaborateManager extends RequestAgent {
 
     private void onSessionNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         switch (ntfId){
+            case DCBuildLink4ConfRsp: // 己端为协作方，会管上面删除己端己端只收到该通知错误码为3
+                TDCSConnectResult tdcsConnectResult = (TDCSConnectResult) ntfContent;
+                if (!tdcsConnectResult.bSuccess){
+                    if (EmDcsConnectErrCode.emConfDisconnect == tdcsConnectResult.emErrorCode) {
+                        // 通知用户数据协作断链
+                        for (Object listener : listeners) {
+                            ((IOnSessionEventListener) listener).onDcException(ErrCode_Disconnect);
+                        }
+                    }
+                }
+                break;
+
             // 入会结果通知
             case DCConfCreated:
                 TDCSCreateConfResult dcConfinfo = (TDCSCreateConfResult) ntfContent;
@@ -509,7 +523,6 @@ public class DataCollaborateManager extends RequestAgent {
      *                       resultListener.onSuccess(null);
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
-     *                       {@link #ErrCode_NoDcConf}
      *                       resultListener.onFailed(errorCode);*/
     public void releaseDcConf(IResultListener resultListener){
         req(Msg.DCReleaseConf, resultListener, curDcConfE164);
@@ -525,7 +538,6 @@ public class DataCollaborateManager extends RequestAgent {
      *                       resultListener.onSuccess(null);
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
-     *                       {@link #ErrCode_NoDcConf}
      *                       resultListener.onFailed(errorCode);*/
     public void quitDcConf(boolean bQuitConf, IResultListener resultListener){
         req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
@@ -1427,6 +1439,12 @@ public class DataCollaborateManager extends RequestAgent {
          * 数据协作结束
          * */
         void onDcReleased();
+
+        /**
+         * 数据协作异常，如中途断链等。
+         * @param errCode 异常错误码
+         * */
+        void onDcException(int errCode);
 
     }
 

@@ -575,7 +575,7 @@ final class ToDoConverter {
     }
 
     public static DcConfInfo fromTransferObj(TDCSCreateConfResult to) {
-        return new DcConfInfo(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType));
+        return new DcConfInfo(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType), to.bCreator);
     }
 
     public static DCMember fromTransferObj(TDCSConfUserInfo userInfo){

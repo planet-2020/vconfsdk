@@ -133,9 +133,11 @@ public enum Msg {
 //    @Request(rspSeq = {"DCBuildLink4ConfRsp"})
 //    DCBuildLink4Conf,
 
-    /**创建数据协作建链响应*/
+    /**创建数据协作建链响应/通知*/
     @Response(clz = TDCSConnectResult.class,
 			  name = "DcsConfResult_Ntf")
+    @Notification(clz = TDCSConnectResult.class,
+            name = "DcsConfResult_Ntf")
     DCBuildLink4ConfRsp,
 
     /**创建数据协作。
