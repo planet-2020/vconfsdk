@@ -797,6 +797,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, windowW, windowH, scale, matrix);
         Bitmap shot = Bitmap.createBitmap((int)(boundW*scale)+SAVE_PADDING*2, (int)(boundH*scale)+SAVE_PADDING*2, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(shot);
+
+        // 绘制背景
+        draw(canvas);
+
         matrix.postTranslate(SAVE_PADDING, SAVE_PADDING);
         canvas.setMatrix(matrix);
 
