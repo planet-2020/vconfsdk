@@ -4,7 +4,7 @@
 
 package com.kedacom.vconf.sdk.base.bean.dc;
 
-public class TDCSBoardInfo {
+public class TDCSBoardInfo implements Comparable<TDCSBoardInfo>{
     public String achWbName;
     public EmDcsWbMode emWbMode;    // 模式（白板、文档）
     public int dwWbPageNum;         // 总页数（限文档）——以TDCSWbAddSubPageInfo中的dwSubPageCount为准。
@@ -55,4 +55,20 @@ public class TDCSBoardInfo {
                 ", dwWbAnonyId=" + dwWbAnonyId +
                 '}';
     }
+
+    @Override
+    public int compareTo(TDCSBoardInfo o) {
+        if (null == o){
+            return 1;
+        }
+
+        if (dwWbAnonyId<o.dwWbAnonyId){
+            return -1;
+        }else if (dwWbAnonyId == o.dwWbAnonyId){
+            return 0;
+        }else{
+            return 1;
+        }
+    }
+
 }

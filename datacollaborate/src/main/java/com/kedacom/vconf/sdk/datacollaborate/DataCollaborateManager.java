@@ -415,8 +415,11 @@ public class DataCollaborateManager extends RequestAgent {
                         // 上报用户所有已创建的画板
                         Set<Object> boardCreatedListeners = getNtfListeners(Msg.DCBoardCreatedNtf);
                         if (null != boardCreatedListeners && !boardCreatedListeners.isEmpty()){
-                            for (TDCSBoardInfo board : dcBoards) {
-                                BoardInfo boardInfo = ToDoConverter.fromTransferObj(board);
+                            PriorityQueue<TDCSBoardInfo> priorityQueue = new PriorityQueue<>();
+                            priorityQueue.addAll(dcBoards); // 将board按annoyId升序排序
+                            while (!priorityQueue.isEmpty()){
+                                TDCSBoardInfo tdcsBoardInfo = priorityQueue.poll();
+                                BoardInfo boardInfo = ToDoConverter.fromTransferObj(tdcsBoardInfo);
                                 for (Object listener : boardCreatedListeners) {
                                     ((IOnBoardOpListener) listener).onBoardCreated(boardInfo);
                                 }
