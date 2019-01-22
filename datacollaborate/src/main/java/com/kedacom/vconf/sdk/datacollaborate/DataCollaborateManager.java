@@ -330,7 +330,7 @@ public class DataCollaborateManager extends RequestAgent {
             case DCBuildLink4ConfRsp: // 己端为协作方，会管上面删除己端己端只收到该通知错误码为3
                 TDCSConnectResult tdcsConnectResult = (TDCSConnectResult) ntfContent;
                 if (!tdcsConnectResult.bSuccess){
-                    if (EmDcsConnectErrCode.emConfDisconnect == tdcsConnectResult.emErrorCode) {
+                    if (EmDcsConnectErrCode.emConfDisconnect == tdcsConnectResult.dwErrorCode) {
                         // 通知用户数据协作断链
                         for (Object listener : listeners) {
                             ((IOnSessionEventListener) listener).onDcException(ErrCode_Disconnect);

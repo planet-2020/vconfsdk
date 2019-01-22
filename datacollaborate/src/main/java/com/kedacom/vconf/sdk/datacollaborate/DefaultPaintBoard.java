@@ -726,6 +726,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     }
 
+    /**计算操作集合的边界*/
     private RectF calcBoundary(MyConcurrentLinkedDeque<OpPaint> bounds){
         MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
         ops.addAll(bounds);
@@ -736,7 +737,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         float right = bd.right;
         float bottom = bd.bottom;
         OpPaint op;
-        KLog.p("init bound=[%s, %s, %s, %s]", left, top, right, bottom);
         while (!ops.isEmpty()){
             op = ops.pollFirst();
             KLog.p("op =%s", op);
@@ -760,13 +760,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
 
     private static final int SAVE_PADDING = 10; // 保存画板时插入的边距，单位： pixel
     private Bitmap doSave(){
+        KLog.p("=#=>");
         MyConcurrentLinkedDeque<OpPaint> ops = getOpsBySnapshot();
         if (ops.isEmpty()){
             KLog.p(KLog.WARN, "try snapshot but no content!");
             return Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
         }
 
-        // 记录保存时各操作的状态
+        // 记录保存时各操作的状态，可用来判断内容是否有变，进而决定是否需要再次保存
         lastShapeOpSinceSave = shapeOps.peekLast();
         lastTmpShapeOpSinceSave = tmpShapeOps.peekLast();
         lastPicOpSinceSave = picOps.peekLast();
@@ -776,9 +777,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
             lastEditingPicOpSinceSave = null;
         }
 
+        // 计算边界
         RectF bound = calcBoundary(ops);
         KLog.p("calcBoundary=%s", bound);
 
+        // 计算画布缩放及位移
         float boundW = bound.width();
         float boundH = bound.height();
         float windowW = getWidth();
@@ -804,7 +807,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         matrix.postTranslate(SAVE_PADDING, SAVE_PADDING);
         canvas.setMatrix(matrix);
 
+        // 绘制
         render(ops, canvas);
+
+        KLog.p("<=#=");
 
         return shot;
     }
