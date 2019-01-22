@@ -7,6 +7,7 @@ public class DcConfInfo {
     private String  confName; // 会议名称
     private EDcMode confMode; // 数据协作模式
     private EConfType   confType; // 会议类型
+    private boolean hasBoard; // 会议中是否存在画板
 
     public DcConfInfo(String confE164, String confName, EDcMode confMode, EConfType confType) {
         this.confE164 = confE164;
@@ -51,5 +52,13 @@ public class DcConfInfo {
 
     public void setConfType(EConfType confType) {
         this.confType = confType;
+    }
+
+    public boolean hasBoard() {
+        return hasBoard;
+    }
+
+    public void setHasBoard(boolean hasBoard) {
+        this.hasBoard = hasBoard;
     }
 }

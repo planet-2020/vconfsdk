@@ -148,6 +148,7 @@ public class DataCollaborateManager extends RequestAgent {
         processorMap.put(Msg.DCReleaseConf, this::onConfOpRsps);
         processorMap.put(Msg.DCQuitConf, this::onConfOpRsps);
 
+        processorMap.put(Msg.DCQueryCurBoard, this::onBoardOpRsps);
         processorMap.put(Msg.DCQueryBoard, this::onBoardOpRsps);
         processorMap.put(Msg.DCQueryAllBoards, this::onBoardOpRsps);
         processorMap.put(Msg.DCNewBoard, this::onBoardOpRsps);
@@ -549,15 +550,43 @@ public class DataCollaborateManager extends RequestAgent {
                 }
                 if (null != listener){
                     if (createConfResult.bSuccess) {
-                        listener.onSuccess(ToDoConverter.fromTransferObj(createConfResult));
+                        // 查询当前画板以判断当前数据协作中是否有画板，进而决定是否需要同步，用户也可据此决定是否新建默认画板。
+                        req(Msg.DCQueryCurBoard, new IResultListener() {
+                            @Override
+                            public void onSuccess(Object result) {
+                                KLog.p("DCQueryCurBoard onSuccess");
+                                // 当前会议中有画板则同步
+                                // （FIXME 有可能在查询当前画板的过程中监听器被销毁了）
+                                DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj(createConfResult);
+                                dcConfInfo.setHasBoard(true);
+                                listener.onSuccess(dcConfInfo);
+                                synchronizeCachedStuff(createConfResult);
+                            }
+
+                            @Override
+                            public void onFailed(int errorCode) {
+                                KLog.p("DCQueryCurBoard onFailed");
+                                DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj(createConfResult);
+                                dcConfInfo.setHasBoard(false);
+                                listener.onSuccess(dcConfInfo);
+                            }
+
+                            @Override
+                            public void onTimeout() {
+                                KLog.p("DCQueryCurBoard onTimeout");
+                                DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj(createConfResult);
+                                dcConfInfo.setHasBoard(false);
+                                listener.onSuccess(dcConfInfo);
+                                synchronizeCachedStuff(createConfResult);
+                            }
+                        }, createConfResult.achConfE164);
+
                     }else{
                         listener.onFailed(ErrCode_Failed);
                     }
                 }
-
-                synchronizeCachedStuff(createConfResult);
-
                 break;
+
             case DCReleaseConfRsp:
                 TDCSResult releaseRes = (TDCSResult) rspContent;
                 if (null != listener){
@@ -863,6 +892,7 @@ public class DataCollaborateManager extends RequestAgent {
     private void onBoardOpRsps(Msg rspId, Object rspContent, IResultListener listener){
         KLog.p("listener==%s, rspId=%s, rspContent=%s", listener, rspId, rspContent);
         switch (rspId){
+            case DCQueryCurBoardRsp:
             case DCQueryBoardRsp:
                 DcsGetWhiteBoardRsp queryBoardsResult = (DcsGetWhiteBoardRsp) rspContent;
                 if (queryBoardsResult.MainParam.bSuccess){
