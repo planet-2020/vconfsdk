@@ -562,37 +562,8 @@ public class DataCollaborateManager extends RequestAgent {
                 }
                 if (null != listener){
                     if (createConfResult.bSuccess) {
-                        // 查询当前画板以判断当前数据协作中是否有画板，进而决定是否需要同步，用户也可据此决定是否新建默认画板。
-                        req(Msg.DCQueryCurBoard, new IResultListener() {
-                            @Override
-                            public void onSuccess(Object result) {
-                                KLog.p("DCQueryCurBoard onSuccess");
-                                // 当前会议中有画板则同步
-                                // （FIXME 有可能在查询当前画板的过程中监听器被销毁了）
-                                DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj(createConfResult);
-                                dcConfInfo.setHasBoard(true);
-                                listener.onSuccess(dcConfInfo);
-                                synchronizeCachedStuff(createConfResult);
-                            }
-
-                            @Override
-                            public void onFailed(int errorCode) {
-                                KLog.p("DCQueryCurBoard onFailed");
-                                DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj(createConfResult);
-                                dcConfInfo.setHasBoard(false);
-                                listener.onSuccess(dcConfInfo);
-                            }
-
-                            @Override
-                            public void onTimeout() {
-                                KLog.p("DCQueryCurBoard onTimeout");
-                                DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj(createConfResult);
-                                dcConfInfo.setHasBoard(false);
-                                listener.onSuccess(dcConfInfo);
-                                synchronizeCachedStuff(createConfResult);
-                            }
-                        }, createConfResult.achConfE164);
-
+                        listener.onSuccess(ToDoConverter.fromTransferObj(createConfResult));
+                        synchronizeCachedStuff(createConfResult);
                     }else{
                         listener.onFailed(ErrCode_Failed);
                     }

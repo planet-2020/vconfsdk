@@ -9,6 +9,7 @@ import com.kedacom.vconf.sdk.annotation.SerializeEnumAsInt;
 @SerializeEnumAsInt
 public enum EmDcsConnectErrCode {
     // @formatter:off
+    emUnknown(0),
     /** 会议服务器建链成功 */
     emConfSuccess(1),
     /** 会议服务器建链失败 */
