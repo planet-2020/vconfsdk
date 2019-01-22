@@ -772,6 +772,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard, Compa
         lastPicOpSinceSave = picOps.peekLast();
         if (null != picEditStuffs.peekLast()) {
             lastEditingPicOpSinceSave = picEditStuffs.peekLast().pic;
+        }else {
+            lastEditingPicOpSinceSave = null;
         }
 
         RectF bound = calcBoundary(ops);
