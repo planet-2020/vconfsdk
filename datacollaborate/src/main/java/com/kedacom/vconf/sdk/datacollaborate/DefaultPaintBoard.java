@@ -748,6 +748,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private static final int SAVE_PADDING = 20; // 保存画板时插入的边距，单位： pixel
     private Bitmap doSave(){
         KLog.p("=#=>>");
+        // 筛选需要保存的操作
         MyConcurrentLinkedDeque<OpPaint> ops = getOpsBySnapshot();
         if (ops.isEmpty()){
             KLog.p(KLog.WARN, "try snapshot but no content!");
@@ -764,13 +765,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             lastEditingPicOpSinceSave = null;
         }
 
-        // 计算边界
+        // 计算操作的边界
         RectF bound = calcBoundary(ops);
         KLog.p("calcBoundary=%s", bound);
 
-        // 计算画布缩放及位移
-        float boundW = bound.width()+SAVE_PADDING*2;
-        float boundH = bound.height()+SAVE_PADDING*2;
+        // 根据操作边界结合当前画板缩放计算绘制操作需要的缩放及位移
+        Matrix curRelativeBoardMatrix = getDensityRelativeBoardMatrix();
+        curRelativeBoardMatrix.mapRect(bound);
+        float boundW = bound.width();
+        float boundH = bound.height();
         float windowW = getWidth();
         float windowH = getHeight();
         float scale = 1;
@@ -779,10 +782,36 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }else {
             scale = windowH/boundH;
         }
-        scale = scale > 1 ? 1 : scale;
-        Matrix matrix = new Matrix();
-        matrix.postTranslate(0-bound.left+SAVE_PADDING, 0-bound.top+SAVE_PADDING);
-        matrix.postScale(scale, scale);
+
+        KLog.p("bound=%s, curRelativeBoardMatrix=%s", bound, curRelativeBoardMatrix);
+
+        Matrix matrix = new Matrix(curRelativeBoardMatrix);
+        if (scale > 1){ // 画板尺寸大于操作边界尺寸
+            if (0<bound.left&&boundW<windowW
+                    && 0<bound.right&&boundH<windowH){
+                // 操作已在画板中全景展示则无需做任何放缩或位移，直接原样展示
+                // DO NOTHING
+            }else { // 尽管操作边界尺寸较画板小，但操作目前展示在画板外，则移动操作以保证全景展示。
+                // 操作居中展示
+                matrix.postTranslate(-bound.left + (windowW - boundW) / 2, -bound.top + (windowH - boundH) / 2);
+            }
+        }else{
+            // 画板尺寸小于操作边界尺寸则需将操作缩放以适应画板尺寸
+            // 操作边界外围加塞padding使展示效果更友好
+            float refinedBoundW = boundW + 2*SAVE_PADDING;
+            float refinedBoundH = boundH + 2*SAVE_PADDING;
+            float refinedScale;
+            if (refinedBoundW/refinedBoundH > windowW/windowH){
+                refinedScale = windowW/refinedBoundW;
+            }else {
+                refinedScale = windowH/refinedBoundH;
+            }
+            // 先让操作边界居中
+            matrix.postTranslate(-bound.left+(windowW-boundW)/2, -bound.top+(windowH-boundH)/2);
+            // 再以屏幕中心为缩放中心缩小操作边界
+            matrix.postScale(refinedScale, refinedScale, windowW/2, windowH/2);
+        }
+
         KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, windowW, windowH, scale, matrix);
 
         Bitmap shot = Bitmap.createBitmap((int)windowW, (int)windowH, Bitmap.Config.ARGB_8888);
