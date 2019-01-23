@@ -204,7 +204,7 @@ public class DefaultPainter implements IPainter {
 
     /**
      * 获取所有画板
-     * @return 所有画板列表。已按画板创建顺序排好序，列表前面的先创建。
+     * @return 所有画板列表，顺序同添加时的顺序。
      * */
     @Override
     public List<IPaintBoard> getAllPaintBoards() {
