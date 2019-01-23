@@ -85,6 +85,8 @@ public class DataCollaborateManager extends RequestAgent {
     public static final int ErrCode_BuildLink4ConfFailed = -3;
     // 会议服务器中途断链
     public static final int ErrCode_Disconnect = -4;
+    // 协作方数量已达上限
+    public static final int ErrCode_Operator_Amount_Reach_Limit = -5;
 
     private String curDcConfE164;
     String getCurDcConfE164(){
@@ -715,7 +717,12 @@ public class DataCollaborateManager extends RequestAgent {
                     if (((TDCSResult) rspContent).bSucces){
                         listener.onSuccess(null);
                     }else{
-                        listener.onFailed(ErrCode_Failed);
+                        if (25607 == ((TDCSResult) rspContent).dwErrorCode) {
+                            // 协作方数量已达上限
+                            listener.onFailed(ErrCode_Operator_Amount_Reach_Limit);
+                        }else{
+                            listener.onFailed(ErrCode_Failed);
+                        }
                     }
                 }
                 break;

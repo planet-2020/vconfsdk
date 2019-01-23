@@ -731,6 +731,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             top = bd.top < top ? bd.top : top;
             right = bd.right > right ? bd.right: right;
             bottom = bd.bottom > bottom ? bd.bottom : bottom;
+            KLog.p("bound[%s, %s, %s, %s]", left, top, right, bottom);
         }
 
         return new RectF(left, top, right, bottom);
@@ -744,9 +745,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private OpPaint lastPicOpSinceSave;
     private OpPaint lastEditingPicOpSinceSave;
 
-    private static final int SAVE_PADDING = 10; // 保存画板时插入的边距，单位： pixel
+    private static final int SAVE_PADDING = 20; // 保存画板时插入的边距，单位： pixel
     private Bitmap doSave(){
-        KLog.p("=#=>");
+        KLog.p("=#=>>");
         MyConcurrentLinkedDeque<OpPaint> ops = getOpsBySnapshot();
         if (ops.isEmpty()){
             KLog.p(KLog.WARN, "try snapshot but no content!");
@@ -768,8 +769,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         KLog.p("calcBoundary=%s", bound);
 
         // 计算画布缩放及位移
-        float boundW = bound.width();
-        float boundH = bound.height();
+        float boundW = bound.width()+SAVE_PADDING*2;
+        float boundH = bound.height()+SAVE_PADDING*2;
         float windowW = getWidth();
         float windowH = getHeight();
         float scale = 1;
@@ -779,21 +780,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             scale = windowH/boundH;
         }
         scale = scale > 1 ? 1 : scale;
-
         Matrix matrix = new Matrix();
-        matrix.postTranslate(0-bound.left, 0-bound.top);
+        matrix.postTranslate(0-bound.left+SAVE_PADDING, 0-bound.top+SAVE_PADDING);
         matrix.postScale(scale, scale);
         KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, windowW, windowH, scale, matrix);
-        Bitmap shot = Bitmap.createBitmap((int)(boundW*scale)+SAVE_PADDING*2, (int)(boundH*scale)+SAVE_PADDING*2, Bitmap.Config.ARGB_8888);
+
+        Bitmap shot = Bitmap.createBitmap((int)windowW, (int)windowH, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(shot);
 
         // 绘制背景
         draw(canvas);
 
-        matrix.postTranslate(SAVE_PADDING, SAVE_PADDING);
         canvas.setMatrix(matrix);
 
-        // 绘制
+        // 绘制操作
         render(ops, canvas);
 
         KLog.p("<=#=");

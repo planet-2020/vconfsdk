@@ -49,8 +49,6 @@ public class DefaultPainter implements IPainter {
     private String curBoardId;
 
     private Paint paint = new Paint();
-    // 相对于XHDPI的屏幕密度
-//        private float relativeDensity = context.getResources().getDisplayMetrics().density/2;
 
     private boolean bNeedRender = false;
 

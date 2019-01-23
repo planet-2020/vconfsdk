@@ -57,7 +57,7 @@ public class OpInsertPic extends OpPaint implements IBoundary{
     @Override
     public String toString() {
         return "{"+String.format("picId=%s, picName=%s, picPath=%s, pic=%s, picWidth=%s, picHeight=%s, \ninitMatrix=%s, matrix=%s, bound=%s",
-                picId, picName, picPath, pic, picWidth, picHeight, initMatrix, matrix, bound)+super.toString()+"}";
+                picId, picName, picPath, pic, picWidth, picHeight, initMatrix, matrix, boundary())+super.toString()+"}";
     }
 
     public String getPicId() {
