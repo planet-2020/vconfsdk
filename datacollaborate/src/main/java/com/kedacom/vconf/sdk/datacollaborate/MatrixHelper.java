@@ -1,8 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.graphics.Matrix;
-
-import com.kedacom.vconf.sdk.base.KLog;
+import android.graphics.RectF;
 
 class MatrixHelper {
 
@@ -66,5 +65,27 @@ class MatrixHelper {
         return strMatrixValue;
     }
 
+    /**
+     * 求取从源矩形变换到目标矩形所需要的矩阵。
+     * @param srcRect 源矩形
+     * @param dstRect 目标矩形
+     * @return 从源矩形变换到目标矩形所需要的矩阵。
+     * */
+    static Matrix calcTransMatrix(RectF srcRect, RectF dstRect){
+        RectF tmpRect = new RectF();
+        Matrix matrix = new Matrix();
+        // 求取源矩形变换到目标矩形所需的缩放因子
+        float scaleX = dstRect.width()/srcRect.width();
+        float scaleY = dstRect.height()/srcRect.height();
+
+        // 缩放源矩形使得尺寸跟目标矩形一致
+        matrix.postScale(scaleX, scaleY);
+        matrix.mapRect(tmpRect, srcRect);
+
+        // 移动缩放后的源矩形使得位置跟目标矩形重合
+        matrix.postTranslate(dstRect.left-tmpRect.left, dstRect.top-tmpRect.top);
+
+        return matrix;
+    }
 
 }
