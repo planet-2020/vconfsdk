@@ -279,45 +279,24 @@ final class ToDoConverter {
         return new TDCSWbPencilOperInfo(domainObj.getBoardId(), tdcsWbPencil);
     }
 
+
     public static OpInsertPic fromTransferObj(DcsOperInsertPicNtf dcInertPicOp) {
-        /*插入图片时对端发送过来的insertPicMatrix
-         * = pic/init * board
-         * 包含了board但剔除了init
-         * 所以pic = insertPic/board * init
-         * 此处有点复杂，对端传过来的矩阵不包含完整的放缩位移信息，放缩位移信息分成了两部分一部分在矩阵中、一部分在插入点中。其中矩阵即为当前画板的矩阵，
-         * 插入点为画板的逆矩阵作用于无缩放情况下的点后生成的点。
-         * */
         TDCSWbInsertPicOperInfo ip = dcInertPicOp.AssParam;
         float[] matrixVal = MatrixHelper.valStr2Float(ip.aachMatrixValue);
-        Matrix boardMatrix = new Matrix();
-        boardMatrix.setValues(matrixVal); // 传过来的matrix实际是当前board的matrix
-        float[] insertPos = new float[]{ip.tPoint.nPosx, ip.tPoint.nPosy};
-        boardMatrix.mapPoints(insertPos); // 传过来的插入点实际是根据当前boardMatrix的逆做变换后的坐标，所以此处我们再做相反的变换拿到原始插入点坐标
-
-        Matrix matrix = new Matrix(); // 插入时是所见即所得的效果（预览时多大尺寸插入后就是多大尺寸），所以最终的变换是没有变换也就是单位矩阵（包含boardmatrix在内）
-        matrix.postTranslate(insertPos[0], insertPos[1]); // =图片的matrix*画板的matrix（比如画板的matrix缩放是0.5，因为最终展示的效果是无缩放的，所以图片的matrix缩放是2.0）
-        matrix.postConcat(MatrixHelper.invert(boardMatrix));  // 剔除boardmatrix得到图片的matrix，比如画板缩放是0.5则此处得到的图片的缩放为2
-        OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName, ip.dwImgWidth, ip.dwImgHeight, matrix, matrix);
+        Matrix matrix = new Matrix();
+        matrix.setValues(matrixVal);
+        OpInsertPic opInsertPic = new OpInsertPic(ip.achImgId, ip.achPicName,
+                new PointF(ip.tPoint.nPosx, ip.tPoint.nPosy), ip.dwImgWidth, ip.dwImgHeight, matrix);
         assignPaintDomainObj(dcInertPicOp.MainParam, INVALID_UUID, opInsertPic);
-        opInsertPic.setBoardMatrix(boardMatrix);
         return opInsertPic;
     }
 
     public static TDCSWbInsertPicOperInfo toTransferObj(OpInsertPic domainObj) {
-        /*求取插入图片时发送给对端的matrix
-         * = pic/init * board
-         * 包含了board但剔除了init
-         * */
-        Matrix matrix = new Matrix(domainObj.getMatrix());
-        matrix.postConcat(MatrixHelper.invert(domainObj.getInitMatrix()));
-        matrix.postConcat(domainObj.getBoardMatrix());
-        KLog.p("initMatrix=%s, matrix=%s, \nboardMatrix=%s, finMatrix=%s",
-                domainObj.getInitMatrix(), domainObj.getMatrix(), domainObj.getBoardMatrix(), matrix);
         float[] matrixVal = new float[9];
-        matrix.getValues(matrixVal);
+        domainObj.getTransMatrix().getValues(matrixVal);
         return new TDCSWbInsertPicOperInfo(domainObj.getBoardId(), domainObj.getPageId(), domainObj.getPicId(),
                 domainObj.getPicWidth(), domainObj.getPicHeight(),
-                new TDCSWbPoint(0, 0), // 我们始终以0,0为插入点
+                new TDCSWbPoint((int)domainObj.getInsertPos().x, (int)domainObj.getInsertPos().y),
                 domainObj.getPicName(), MatrixHelper.valFloat2Str(matrixVal));
     }
 
@@ -385,9 +364,6 @@ final class ToDoConverter {
 
 
     public static OpMatrix fromTransferObj(DcsOperFullScreenNtf dcFullScreenMatrixOp) {
-        for (int i=0; i<dcFullScreenMatrixOp.AssParam.aachMatrixValue.length; ++i){
-            KLog.p("matrixVal[%s]=%s", i, dcFullScreenMatrixOp.AssParam.aachMatrixValue[i]);
-        }
         float[] matrixVal = MatrixHelper.valStr2Float(dcFullScreenMatrixOp.AssParam.aachMatrixValue);
         OpMatrix opMatrix = new OpMatrix(matrixVal);
         assignPaintDomainObj(dcFullScreenMatrixOp.MainParam, INVALID_UUID, opMatrix);

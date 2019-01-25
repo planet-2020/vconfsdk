@@ -8,6 +8,11 @@ import androidx.annotation.NonNull;
 
 public class OpDragPic extends OpPaint {
 
+    /**
+     * 拖动图片传过来的matrix，记为dragMatrix，
+     * 图片最终位置=mixMatrix*dragMatrix
+     * mixMatrix在插入图片时计算得到，参见{@link OpInsertPic#mixMatrix}
+     * */
     private Map<String, Matrix> picMatrices;
 
     public OpDragPic(){

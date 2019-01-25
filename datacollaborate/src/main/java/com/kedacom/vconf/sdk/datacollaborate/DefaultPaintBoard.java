@@ -235,7 +235,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return repealedShapeOps;
     }
 
-
     MyConcurrentLinkedDeque<OpPaint> getPicOps() {
         return picOps;
     }
@@ -435,7 +434,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 return;
             }
             picOps.remove(opInsertPic);
+            // 选中图片是所见即所得的效果，所以需要把图片层的matrix拷贝到图片编辑层
             tmpPicViewMatrix.set(getDensityRelativeBoardMatrix());
+            savedMatrixBeforeEditPic.set(tmpPicViewMatrix);
             editPic(opInsertPic);
         }
     };
@@ -601,6 +602,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         paintOpGeneratedListener = null;
         onBoardStateChangedListener = null;
         handler.removeMessages(MSGID_FINISH_EDIT_PIC);
+        handler.removeMessages(MSGID_SAVE);
     }
 
     @Override
@@ -1267,6 +1269,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     };
 
 
+    private Matrix savedMatrixBeforeEditPic = new Matrix();
     private boolean bInsertingPic = false;
     @Override
     public void insertPic(String path) {
@@ -1282,6 +1285,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         bInsertingPic = true;
 
+        // 插入图片是所见即所得的效果
+        tmpPicViewMatrix.reset();
+        savedMatrixBeforeEditPic.set(tmpPicViewMatrix);
+
         Bitmap bt = BitmapFactory.decodeFile(path);
         int picW = bt.getWidth();
         int picH = bt.getHeight();
@@ -1289,7 +1296,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         float transY = (getHeight()-picH)/2f;
         Matrix matrix = new Matrix();
         matrix.setTranslate(transX, transY);
-        OpInsertPic op = new OpInsertPic(path, new Matrix(), matrix);
+        OpInsertPic op = new OpInsertPic(path, matrix);
         op.setPic(bt);
         assignBasicInfo(op);
 
@@ -1319,36 +1326,60 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private void finishEditPic(PicEditStuff picEditStuff){
 
         OpInsertPic opInsertPic = picEditStuff.pic;
+
+        // 图片在编辑过程中生成的matrix计入图片“自身”的matrix
         Matrix increasedMatrix = new Matrix(tmpPicViewMatrix);
-        increasedMatrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix()));
+        increasedMatrix.postConcat(MatrixHelper.invert(savedMatrixBeforeEditPic));
         opInsertPic.getMatrix().postConcat(increasedMatrix);
-        KLog.p("insertPicMatrix=%s, increasedMatrix=%s", opInsertPic.getMatrix(), increasedMatrix);
-        opInsertPic.setBoardMatrix(boardMatrix);
 
         picOps.offerLast(opInsertPic);
-
-        if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
 
         // 发布
         if (bInsertingPic) {
             // 正在插入图片
+
+            //插入时是所见即所得的效果，所以需要抵消掉画板的matrix
+            opInsertPic.getMatrix().postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix()));
+
+            // 重绘
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+
+            /*求取transMatrix
+             * transMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
+             * NOTE: 己端的策略插入图片时是把图片的缩放位移信息全部放入transMatrix中，插入点恒为(0,0)，宽高恒为原始宽高。
+             * 所以mixMatrix为单位矩阵，所以 transMatrix = picMatrix * boardMatrix
+             * */
+            Matrix transMatrix = new Matrix(opInsertPic.getMatrix());
+            transMatrix.postConcat(boardMatrix);
+            opInsertPic.setTransMatrix(transMatrix);
+
+            // 发布插入图片操作
             publisher.publish(opInsertPic);
+
             bInsertingPic = false;
+
+            // 通知用户图片数量变化
             picCountChanged();
+
         } else {
             // 正在拖动放缩图片
-            /*求取dragMatrix，因为
-            picmatrix  = init * drag / board
-            所以drag = 1/init * pic * board
-            （矩阵的乘法不满足交换律所以需注意前后顺序）
+
+            if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
+
+            /* 求取dragMatrix。
+             mixMatrix*dragMatrix = picMatrix * boardMatrix
+             * => dragMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
              * */
-            Matrix matrix = new Matrix(opInsertPic.getMatrix());
-            matrix.postConcat(boardMatrix);
-            matrix.preConcat(MatrixHelper.invert(opInsertPic.getInitMatrix()));
+            Matrix dragMatrix = new Matrix(opInsertPic.getMatrix());
+            dragMatrix.postConcat(boardMatrix);
+            dragMatrix.preConcat(MatrixHelper.invert(opInsertPic.getMixMatrix()));
+
             Map<String, Matrix> picMatrices = new HashMap<>();
-            picMatrices.put(opInsertPic.getPicId(), matrix);
+            picMatrices.put(opInsertPic.getPicId(), dragMatrix);
             OpDragPic opDragPic = new OpDragPic(picMatrices);
             assignBasicInfo(opDragPic);
+
+            // 发布图片拖动操作
             publisher.publish(opDragPic);
         }
 
@@ -1356,8 +1387,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         // 清空tmpPaintView设置。
         tmpPicViewMatrix.reset();
-
-        KLog.p("picEditStuffs.size=%s", picEditStuffs.size());
     }
 
 
@@ -1386,21 +1415,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private OpInsertPic selectPic(float x, float y){
         RectF picBoundary = new RectF();
-        Matrix matrix = new Matrix();
         Iterator<OpPaint> it = picOps.descendingIterator();
         while (it.hasNext()){
             OpPaint op = it.next();
             if (op instanceof OpInsertPic){
                 OpInsertPic opInsertPic = (OpInsertPic) op;
                 if (null == opInsertPic.getPic()){
-                    // 图片操作有但图片可能还未获取到（如，协作方上传图片尚未完成）
-                    continue;
+                    continue; // 图片操作有但图片可能还未获取到（如，协作方上传图片尚未完成）
                 }
-                picBoundary.set(0, 0, opInsertPic.getPicWidth(), opInsertPic.getPicHeight());
-                matrix.set(opInsertPic.getMatrix());
-                matrix.postConcat(getDensityRelativeBoardMatrix());
-                matrix.mapRect(picBoundary);
-                KLog.p("x=%s, y=%s, mappedPicBoundary=%s, matrix=%s", x, y, picBoundary, opInsertPic.getPicWidth(), opInsertPic.getPicHeight(), matrix);
+                picBoundary.set(opInsertPic.boundary()); // 图片边界仅包含了图片自身的matrix未包含boardMatrix
+                getDensityRelativeBoardMatrix().mapRect(picBoundary);
                 if (picBoundary.contains(x, y)){
                     return opInsertPic;
                 }
@@ -1421,8 +1445,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         float[] rectVal = new float[4];
         rectVal[0] = -DASH_RECT_PADDING;
         rectVal[1] = -DASH_RECT_PADDING;
-        rectVal[2] = opInsertPic.getPicWidth()+DASH_RECT_PADDING;
-        rectVal[3] = opInsertPic.getPicHeight()+DASH_RECT_PADDING;
+        rectVal[2] = opInsertPic.getPic().getWidth()+DASH_RECT_PADDING;
+        rectVal[3] = opInsertPic.getPic().getHeight()+DASH_RECT_PADDING;
         opInsertPic.getMatrix().mapPoints(rectVal);
         opDrawRect.setValues(rectVal);
         opDrawRect.setLineStyle(OpDraw.DASH);
@@ -1469,17 +1493,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         boolean isInDashedRect(float x, float y){
-            RectF rectF = new RectF(dashedRect.getLeft(), dashedRect.getTop(), dashedRect.getRight(), dashedRect.getBottom());
+            RectF rectF = new RectF(dashedRect.boundary());
             tmpPicViewMatrix.mapRect(rectF);
-            KLog.p("x=%s, y=%s, rect=%s, tmpPicViewMatrix=%s", x, y, rectF, tmpPicViewMatrix);
             return rectF.contains(x, y);
         }
 
         boolean isInDelPicIcon(float x, float y){
-            RectF rectF = new RectF(0, 0, delIcon.getPicWidth(), delIcon.getPicHeight());
-            delIcon.getMatrix().mapRect(rectF);
+            RectF rectF = new RectF(delIcon.boundary());
             tmpPicViewMatrix.mapRect(rectF);
-            KLog.p("x=%s, y=%s, rect=%s, tmpPicViewMatrix=%s", x, y, rectF, tmpPicViewMatrix);
             return rectF.contains(x, y);
         }
 
