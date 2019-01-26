@@ -64,11 +64,11 @@ public class OpDrawRect extends OpDraw {
         this.bottom = bottom;
     }
 
-    public void setValues(float[] vals){
-        left = vals[0];
-        top = vals[1];
-        right = vals[2];
-        bottom = vals[3];
+    public void setValues(RectF rectF){
+        left = rectF.left;
+        top = rectF.top;
+        right = rectF.right;
+        bottom = rectF.bottom;
     }
 
 

@@ -1289,15 +1289,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         tmpPicViewMatrix.reset();
         savedMatrixBeforeEditPic.set(tmpPicViewMatrix);
 
-        Bitmap bt = BitmapFactory.decodeFile(path);
-        int picW = bt.getWidth();
-        int picH = bt.getHeight();
-        float transX = (getWidth()-picW)/2f;
-        float transY = (getHeight()-picH)/2f;
         Matrix matrix = new Matrix();
-        matrix.setTranslate(transX, transY);
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(path, options);
+        matrix.setTranslate((getWidth()-options.outWidth)/2f, (getHeight()-options.outHeight)/2f);
         OpInsertPic op = new OpInsertPic(path, matrix);
-        op.setPic(bt);
         assignBasicInfo(op);
 
         if (null != paintOpGeneratedListener) {
@@ -1442,26 +1439,21 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         // 在图片外围绘制一个虚线矩形框
         OpDrawRect opDrawRect = new OpDrawRect();
-        float[] rectVal = new float[4];
-        rectVal[0] = -DASH_RECT_PADDING;
-        rectVal[1] = -DASH_RECT_PADDING;
-        rectVal[2] = opInsertPic.getPic().getWidth()+DASH_RECT_PADDING;
-        rectVal[3] = opInsertPic.getPic().getHeight()+DASH_RECT_PADDING;
-        opInsertPic.getMatrix().mapPoints(rectVal);
-        opDrawRect.setValues(rectVal);
+        RectF dashRect = new RectF(opInsertPic.boundary());
+        dashRect.inset(-DASH_RECT_PADDING, -DASH_RECT_PADDING);
+        opDrawRect.setValues(dashRect);
         opDrawRect.setLineStyle(OpDraw.DASH);
         opDrawRect.setStrokeWidth(DASH_RECT_STROKE_WIDTH);
         opDrawRect.setColor(DASH_RECT_COLOR);
 
         // 在虚线矩形框正下方绘制删除图标
-        float transX = rectVal[0]+(rectVal[2]-rectVal[0]-del_pic_icon.getWidth())/2f;
-        float transY = opDrawRect.getBottom()+DEL_ICON_TOP_PADDING;
-        Matrix matrix = new Matrix();
-        matrix.postTranslate(transX, transY);
-        float scale = MatrixHelper.getScale(tmpPicViewMatrix);
-        matrix.postScale(1/scale, 1/scale, (rectVal[0]+rectVal[2])/2, rectVal[3]); // 使图标以正常尺寸展示，不至于因画板缩小/放大而过小/过大
         OpInsertPic delPicIcon = new OpInsertPic();
         delPicIcon.setPic(del_pic_icon);
+        Matrix matrix = new Matrix();
+        matrix.postTranslate(dashRect.left+(dashRect.width()-del_pic_icon.getWidth())/2f,
+                dashRect.bottom+DEL_ICON_TOP_PADDING);
+        matrix.postScale(1/MatrixHelper.getScaleX(tmpPicViewMatrix), 1/MatrixHelper.getScaleY(tmpPicViewMatrix),
+                dashRect.centerX(), dashRect.bottom); // 使图标以正常尺寸展示，不至于因画板缩小/放大而过小/过大
         delPicIcon.setMatrix(matrix);
 
         PicEditStuff picEditStuff = new PicEditStuff(opInsertPic, delPicIcon, opDrawRect);

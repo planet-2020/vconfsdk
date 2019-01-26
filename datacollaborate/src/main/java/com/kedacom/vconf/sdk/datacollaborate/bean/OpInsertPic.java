@@ -97,14 +97,13 @@ public class OpInsertPic extends OpPaint implements IBoundary{
     }
 
     public OpInsertPic(String picPath, Matrix matrix){
+
         File file = new File(picPath);
         this.picPath = picPath;
         this.picName = file.getName();
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(picPath, options);
-        this.picWidth = options.outWidth;
-        this.picHeight = options.outHeight;
+        this.pic = BitmapFactory.decodeFile(picPath);
+        this.picWidth = pic.getWidth();
+        this.picHeight = pic.getHeight();
         this.matrix.set(matrix);
         type = EOpType.INSERT_PICTURE;
     }
