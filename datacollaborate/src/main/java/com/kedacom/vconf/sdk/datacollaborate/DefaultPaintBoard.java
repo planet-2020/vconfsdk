@@ -1338,6 +1338,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             //插入时是所见即所得的效果，所以需要抵消掉画板的matrix
             opInsertPic.getMatrix().postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix()));
 
+            opInsertPic.setBoardMatrix(boardMatrix);
+
             // 重绘
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
 
@@ -1347,7 +1349,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
              * 所以mixMatrix为单位矩阵，所以 transMatrix = picMatrix * boardMatrix
              * */
             Matrix transMatrix = new Matrix(opInsertPic.getMatrix());
-            transMatrix.postConcat(boardMatrix);
+            transMatrix.postConcat(opInsertPic.getBoardMatrix());
             opInsertPic.setTransMatrix(transMatrix);
 
             // 发布插入图片操作

@@ -74,6 +74,9 @@ public enum Msg {
     @Response(clz = Void.class)
     Timeout,
 
+    @Response(clz = Void.class)
+    Canceled,
+
     //>>>>>>>>>>>>>>>>>>> 数据协作
 
     // 数据协作基础

@@ -1,5 +1,7 @@
 package com.kedacom.vconf.sdk.base;
 
+import com.kedacom.vconf.sdk.annotation.Notification;
+import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.basement.Witch;
 
 import java.util.HashMap;
@@ -107,18 +109,36 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
     /**响应处理器*/
     protected interface RspProcessor{
-        void process(Msg rspId, Object rspContent, IResultListener listener);
+        /**
+         * @param rspId 响应ID
+         * @param rspContent 响应内容，具体类型由响应ID决定，参考{@link Response#clz()}。
+         * @param listener 响应监听器，由{@link #req(Msg, IResultListener, Object...)}传入。
+         *                 NOTE：可能在会话过程中监听器被销毁，如调用了{@link #delListener(Object)}或者监听器绑定的生命周期对象已销毁，
+         *                 则此参数为null，（当然也可能调用{@link #req(Msg, IResultListener, Object...)}时传入的就是null）
+         *                 所以使用者需对该参数做非null判断。
+         * @param reqId 请求ID，由{@link #req(Msg, IResultListener, Object...)}传入。
+         * @param reqParas 请求参数列表，由{@link #req(Msg, IResultListener, Object...)}传入，顺序同传入时的
+         * @return true，若该响应已被处理；否则false。
+         * */
+        boolean process(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas);
     }
 
     /**通知处理器*/
     protected interface NtfProcessor{
+        /**
+         * @param ntfId 通知ID
+         * @param ntfContent 通知内容，具体类型由通知ID决定，参考{@link Notification#clz()}。
+         * @param listeners 通知监听器，由{@link #subscribe(Msg, Object)}和{@link #subscribe(Msg[], Object)}传入。
+         * */
         void process(Msg ntfId, Object ntfContent, Set<Object> listeners);
     }
 
 
     /**
      * 发送请求。
-     * @param rspListener 响应监听者。
+     * @param reqId 请求ID 参考{@link Msg} and {@link com.kedacom.vconf.sdk.annotation.Request}
+     * @param rspListener 响应监听者。可以为null表示请求者不关注请求结果
+     * @param reqPara 请求参数列表，可以没有。
      * */
     protected synchronized void req(Msg reqId, IResultListener rspListener, Object... reqPara){
 //        Log.i(TAG, String.format("rspListener=%s, reqId=%s, para=%s", rspListener, reqId, para));
@@ -134,16 +154,15 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
             return;
         }
 
-        if (null != rspListener) {
-            rspListeners.put(reqSn, new RequestBundle(reqId, rspListener));
-        }
+        rspListeners.put(reqSn, new RequestBundle(reqId, rspListener));
+
     }
 
     /**
      * 取消请求。
      * 若同样的请求id同样的响应监听者请求了多次，则取消的是最早的请求。*/
     protected synchronized void cancelReq(Msg reqId, IResultListener rspListener){
-        if (null == reqId || null == rspListener){
+        if (null == reqId || null == rspListener){ // TODO 支持rspListener==null
             return;
         }
         if (!rspProcessorMap.keySet().contains(reqId)){
@@ -167,7 +186,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         }
 
         if (BIG_REQSN != earliestReq){
-            witch.cancelReq(earliestReq);
+            witch.cancelReq(reqId.name(), earliestReq);
         }
 
     }
@@ -229,11 +248,12 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     }
 
     protected boolean containsNtfListener(Object ntfListener){
+        if (null == ntfListener){
+            return false;
+        }
         for (Set<Object> listeners : ntfListeners.values()){
-            for (Object listener : listeners){
-                if (listener.equals(ntfListener)){
-                    return true;
-                }
+            if (listeners.contains(ntfListener)){
+                return true;
             }
         }
 
@@ -241,8 +261,11 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     }
 
     protected boolean containsRspListener(Object rspListener){
+        if (null == rspListener){
+            return false;
+        }
         for (RequestBundle bundle: rspListeners.values()){
-            if (bundle.resultListener.equals(rspListener)){
+            if (rspListener.equals(bundle.resultListener)){
                 return true;
             }
         }
@@ -312,12 +335,10 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         if (null == rspListener){
             return;
         }
-        Iterator<Map.Entry<Integer,RequestBundle>> iter = rspListeners.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<Integer,RequestBundle> entry = iter.next();
-            IResultListener resultListener = entry.getValue().resultListener;
-            if(rspListener.equals(resultListener)){
-                iter.remove();
+
+        for (RequestBundle bundle : rspListeners.values()){
+            if (rspListener.equals(bundle.resultListener)){
+                bundle.resultListener = null;
             }
         }
     }
@@ -334,52 +355,98 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         }
     }
 
-
-    @Override
-    public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn) {
-        RequestBundle requestBundle = rspListeners.get(reqSn);
-        if (null != requestBundle && !requestBundle.bResultArrived){
-            requestBundle.bResultArrived = true;
-            if(null != requestBundle.resultListener) requestBundle.resultListener.onArrive();
-        }
-        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
-        rspProcessorMap.get(Msg.valueOf(reqId))
-                .process(Msg.valueOf(rspId), rspContent, resultListener);
-    }
-
-    @Override
-    public void onFeedbackRspFin(String rspId, Object rspContent, String reqId, int reqSn) {
-        RequestBundle requestBundle = rspListeners.remove(reqSn);
-        if (null != requestBundle && !requestBundle.bResultArrived){
-            requestBundle.bResultArrived = true;
-            if(null != requestBundle.resultListener) requestBundle.resultListener.onArrive();
-        }
-        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
-        rspProcessorMap.get(Msg.valueOf(reqId))
-                .process(Msg.valueOf(rspId), rspContent, resultListener);
-    }
-
-    @Override
-    public void onFeedbackTimeout(String reqId, int reqSn) {
-        RequestBundle requestBundle = rspListeners.remove(reqSn);
-        if (null != requestBundle && !requestBundle.bResultArrived){
-            requestBundle.bResultArrived = true;
-            if(null != requestBundle.resultListener) requestBundle.resultListener.onArrive();
-        }
-        IResultListener resultListener = null == requestBundle ? null : requestBundle.resultListener;
-        rspProcessorMap.get(Msg.valueOf(reqId))
-                .process(Msg.Timeout, Msg.valueOf(reqId), resultListener);
-        if (null != resultListener){
-            resultListener.onTimeout(); // TODO 如需子类控制该上报行为则可让process返回boolean表示是否处理完，没处理完则此处继续处理
-        }
-    }
-
     @Override
     public void onFeedbackNtf(String ntfId, Object ntfContent) {
-        ntfProcessorMap.get(Msg.valueOf(ntfId))
-                .process(Msg.valueOf(ntfId), ntfContent, ntfListeners.get(ntfId));
+
+        Set<Object> listeners = ntfListeners.get(ntfId);
+        if (null == listeners){
+            return;
+        }
+        StringBuffer sb = new StringBuffer();
+        for (Object listener : listeners){
+            sb.append(listener).append(" ;");
+        }
+
+        Msg ntf = Msg.valueOf(ntfId);
+        KLog.p("ntfId=%s, ntfContent=%s, listeners=%s", ntf, ntfContent, sb);
+        ntfProcessorMap.get(ntf).process(ntf, ntfContent, listeners);
     }
 
+    @Override
+    public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn, Object[] reqParas) {
+        RequestBundle requestBundle = rspListeners.get(reqSn);
+        IResultListener resultListener = requestBundle.resultListener;
+        if (!requestBundle.bResultArrived){
+            requestBundle.bResultArrived = true;
+            if(null != resultListener) resultListener.onArrive();
+        }
+        Msg req = Msg.valueOf(reqId);
+        Msg rsp = Msg.valueOf(rspId);
+        StringBuffer sb = new StringBuffer();
+        for (Object para : reqParas){
+            sb.append(para).append(" ;");
+        }
+        KLog.p("rspId=%s, rspContent=%s, resultListener=%s, reqId=%s, reqSn=%s, reqParas=%S", rsp, rspContent, resultListener, reqId, reqSn, sb);
+        boolean bConsumed = rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
+
+        if (!bConsumed){
+            // 如果响应处理器未消费该条消息，则尝试抛给通知处理器处理（有些消息既可为响应也可为通知）
+            onFeedbackNtf(rspId, rspContent);
+        }
+    }
+
+    @Override
+    public void onFeedbackRspFin(String rspId, Object rspContent, String reqId, int reqSn, Object[] reqParas) {
+        RequestBundle requestBundle = rspListeners.remove(reqSn);
+        IResultListener resultListener = requestBundle.resultListener;
+        if (!requestBundle.bResultArrived){
+            requestBundle.bResultArrived = true;
+            if(null != resultListener) resultListener.onArrive();
+        }
+        Msg req = Msg.valueOf(reqId);
+        Msg rsp = Msg.valueOf(rspId);
+        StringBuffer sb = new StringBuffer();
+        for (Object para : reqParas){
+            sb.append(para).append(" ;");
+        }
+        KLog.p("rspId=%s, rspContent=%s, resultListener=%s, reqId=%s, reqSn=%s, reqParas=%S", rsp, rspContent, resultListener, reqId, reqSn, sb);
+        boolean bConsumed = rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
+        if (!bConsumed){
+            // 如果响应处理器未消费该条消息，则尝试抛给通知处理器处理（有些消息既可为响应也可为通知）
+            onFeedbackNtf(rspId, rspContent);
+        }
+    }
+
+    @Override
+    public void onFeedbackTimeout(String reqId, int reqSn, Object[] reqParas) {
+        RequestBundle requestBundle = rspListeners.remove(reqSn);
+        IResultListener resultListener = requestBundle.resultListener;
+        if (!requestBundle.bResultArrived){
+            requestBundle.bResultArrived = true;
+            if(null != resultListener) resultListener.onArrive();
+        }
+        Msg req = Msg.valueOf(reqId);
+        StringBuffer sb = new StringBuffer();
+        for (Object para : reqParas){
+            sb.append(para).append(" ;");
+        }
+        KLog.p("rspId=%s, resultListener=%s, reqId=%s, reqSn=%s, reqParas=%S", Msg.Timeout, resultListener, reqId, reqSn, sb);
+        boolean bConsumed = rspProcessorMap.get(req).process(Msg.Timeout, "", resultListener, req, reqParas);
+        if (!bConsumed && null != resultListener){
+            // 超时未被消费则此处通知用户超时
+            resultListener.onTimeout();
+        }
+    }
+
+    @Override
+    public void onFeedbackUserCanceled(String reqId, int reqSn, Object[] reqParas) {
+
+    }
+
+    @Override
+    public void onFeedbackUserCancelFailed(String reqId, int reqSn) {
+
+    }
 
     private static class RequestBundle{
         private Msg reqId;

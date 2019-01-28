@@ -291,8 +291,7 @@ public class DataCollaborateManager extends RequestAgent {
      * @param rspContent 响应内容
      * @param listener 结果监听器（为请求时传下的）
      * */
-    private void onSessionRsps(Msg rspId, Object rspContent, IResultListener listener){
-        KLog.p("rspId=%s, rspContent=%s, listener=%s",rspId, rspContent, listener);
+    private boolean onSessionRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
             case DCBuildLink4LoginRsp:
                 TDCSConnectResult result = (TDCSConnectResult) rspContent;
@@ -323,7 +322,12 @@ public class DataCollaborateManager extends RequestAgent {
                     }
                 }
                 break;
+
+            default:
+                return false;
         }
+
+        return true;
 
     }
 
@@ -548,7 +552,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    private void onConfOpRsps(Msg rspId, Object rspContent, IResultListener listener){
+    private boolean onConfOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
             case DCBuildLink4ConfRsp:
                 TDCSConnectResult result = (TDCSConnectResult) rspContent;
@@ -592,8 +596,11 @@ public class DataCollaborateManager extends RequestAgent {
                     }
                 }
                 break;
+            default:
+                return false;
         }
 
+        return true;
     }
 
 
@@ -710,7 +717,7 @@ public class DataCollaborateManager extends RequestAgent {
     /**
      * 协作方变更（添加/删除/申请/取消）响应处理
      * */
-    private void onChangeOperatorsRsps(Msg rspId, Object rspContent, IResultListener listener){
+    private boolean onChangeOperatorsRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
             case DCAddOperatorRsp:
                 if (null != listener){
@@ -753,7 +760,13 @@ public class DataCollaborateManager extends RequestAgent {
                     }
                 }
                 break;
+
+            default:
+                return false;
         }
+
+        return true;
+
     }
 
     private void onOperatorNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
@@ -879,8 +892,7 @@ public class DataCollaborateManager extends RequestAgent {
     /**
      * 画板操作（创建/删除/切换/查询）响应处理
      * */
-    private void onBoardOpRsps(Msg rspId, Object rspContent, IResultListener listener){
-        KLog.p("listener==%s, rspId=%s, rspContent=%s", listener, rspId, rspContent);
+    private boolean onBoardOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
             case DCQueryCurBoardRsp:
             case DCQueryBoardRsp:
@@ -897,7 +909,7 @@ public class DataCollaborateManager extends RequestAgent {
                 if (!queryAllBoardsResult.MainParam.bSucces){
                     KLog.p(KLog.ERROR, "DCQueryAllBoards failed, errorCode=%s", queryAllBoardsResult.MainParam.dwErrorCode);
                     if (null != listener) listener.onFailed(ErrCode_Failed);
-                    return;
+                    return true;
                 }
 
                 if (null != listener) {
@@ -957,7 +969,12 @@ public class DataCollaborateManager extends RequestAgent {
                     if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
+
+            default:
+                return false;
         }
+
+        return true;
     }
 
 
@@ -997,8 +1014,7 @@ public class DataCollaborateManager extends RequestAgent {
     }
 
 
-    private void onRsps(Msg rspId, Object rspContent, IResultListener listener){
-        KLog.p("rspContent=%s", rspContent);
+    private boolean onRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
             case DCQueryPicUrlRsp:
                 DcsDownloadImageRsp queryPicUrlResult = (DcsDownloadImageRsp) rspContent;
@@ -1040,7 +1056,12 @@ public class DataCollaborateManager extends RequestAgent {
                     listener.onFailed(ErrCode_Failed);
                 }
                 break;
+
+            default:
+                return false;
         }
+
+        return true;
     }
 
 

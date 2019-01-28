@@ -143,12 +143,13 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
     }
 
     @Override
-    public synchronized boolean processCancelRequest(Handler requester, int reqSn) {
+    public synchronized void processCancelRequest(Handler requester, String reqId, int reqSn) {
         if (null == requester){
             Log.e(TAG, "requester is null");
-            return false;
+            return;
         }
 
+        Message rsp = Message.obtain();
         for (Session s : sessions){
             if (reqSn == s.reqSn
                     && requester.equals(s.requester)) {
@@ -156,20 +157,27 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
                 timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
                 sessions.remove(s);
                 Log.d(TAG, String.format("<-=- (session %d FINISHED. %s CANCELED by user)", s.id, s.reqName));
+                rsp.obj = new FeedbackBundle("Canceled", null, FeedbackBundle.RSP_USER_CANCELED, reqId, reqSn, s.reqPara);
+                requester.sendMessage(rsp);
                 driveBlockedSession(s.reqName);// 驱动被当前会话阻塞的会话
-                return true;
+                return;
             }
         }
 
-        for (Session s : blockedSessions){
+        for (Session s : blockedSessions) {
             if (reqSn == s.reqSn
                     && requester.equals(s.requester)) {
                 blockedSessions.remove(s);
-                return true;
+                Log.d(TAG, String.format("<-=- (session %d FINISHED. %s CANCELED by user)", s.id, s.reqName));
+                rsp.obj = new FeedbackBundle("Canceled", null, FeedbackBundle.RSP_USER_CANCELED, reqId, reqSn, s.reqPara);
+                requester.sendMessage(rsp);
+                return;
             }
         }
 
-        return false;
+        rsp.obj = new FeedbackBundle("Canceled", null, FeedbackBundle.RSP_USER_CANCEL_FAILED, reqId, reqSn, null);
+        requester.sendMessage(rsp);
+
     }
 
 
@@ -226,7 +234,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
                         jsonProcessor.fromJson(rspBody, magicBook.getRspClazz(rspName)),
                         FeedbackBundle.RSP_FIN,
                         magicBook.getMsgId(s.reqName),
-                        s.reqSn);
+                        s.reqSn, s.reqPara);
                 s.requester.sendMessage(rsp); // 上报该响应
 
                 driveBlockedSession(s.reqName); // 驱动被当前会话阻塞的会话
@@ -238,7 +246,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
                         jsonProcessor.fromJson(rspBody, magicBook.getRspClazz(rspName)),
                         FeedbackBundle.RSP,
                         magicBook.getMsgId(s.reqName),
-                        s.reqSn);
+                        s.reqSn, s.reqPara);
                 s.requester.sendMessage(rsp); // 上报该响应
             }
 
@@ -379,7 +387,7 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
                 null,
                 FeedbackBundle.RSP_TIMEOUT,
                 magicBook.getMsgId(s.reqName),
-                s.reqSn);
+                s.reqSn, s.reqPara);
         s.requester.sendMessage(rsp);
 
         sessions.remove(s);

@@ -68,8 +68,8 @@ public final class Witch {
         return requestFairy.processRequest(feedbackHandler, reqId, reqSn, reqPara);
     }
 
-    public boolean cancelReq(int reqSn){
-        return requestFairy.processCancelRequest(feedbackHandler, reqSn);
+    public void cancelReq(String reqId, int reqSn){
+        requestFairy.processCancelRequest(feedbackHandler, reqId, reqSn);
     }
 
 
@@ -127,24 +127,32 @@ public final class Witch {
             return;
         }
 
-        FeedbackBundle feedbackBundle = (FeedbackBundle) msg.obj;
-        int type = feedbackBundle.type;
+        FeedbackBundle bundle = (FeedbackBundle) msg.obj;
+        int type = bundle.type;
 
-        if (FeedbackBundle.RSP == type){
+        if (FeedbackBundle.NTF == type){
 
-            onFeedbackListener.onFeedbackRsp(feedbackBundle.msgId, feedbackBundle.body, feedbackBundle.reqId, feedbackBundle.reqSn);
+            onFeedbackListener.onFeedbackNtf(bundle.msgId, bundle.body);
+
+        }else if (FeedbackBundle.RSP == type){
+
+            onFeedbackListener.onFeedbackRsp(bundle.msgId, bundle.body, bundle.reqId, bundle.reqSn, bundle.reqParas);
 
         }else if (FeedbackBundle.RSP_FIN == type){
 
-            onFeedbackListener.onFeedbackRspFin(feedbackBundle.msgId, feedbackBundle.body, feedbackBundle.reqId, feedbackBundle.reqSn);
+            onFeedbackListener.onFeedbackRspFin(bundle.msgId, bundle.body, bundle.reqId, bundle.reqSn, bundle.reqParas);
 
         }else if (FeedbackBundle.RSP_TIMEOUT == type){
 
-            onFeedbackListener.onFeedbackTimeout(feedbackBundle.reqId, feedbackBundle.reqSn);
+            onFeedbackListener.onFeedbackTimeout(bundle.reqId, bundle.reqSn, bundle.reqParas);
 
-        }else if (FeedbackBundle.NTF == type){
+        }else if (FeedbackBundle.RSP_USER_CANCELED == type){
 
-            onFeedbackListener.onFeedbackNtf(feedbackBundle.msgId, feedbackBundle.body);
+            onFeedbackListener.onFeedbackUserCanceled(bundle.reqId, bundle.reqSn, bundle.reqParas);
+
+        }else if (FeedbackBundle.RSP_USER_CANCEL_FAILED == type){
+
+            onFeedbackListener.onFeedbackUserCancelFailed(bundle.reqId, bundle.reqSn);
 
         }
 
@@ -156,9 +164,11 @@ public final class Witch {
     }
 
     public interface IOnFeedbackListener{
-        void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn);
-        void onFeedbackRspFin(String rspId, Object rspContent, String reqId, int reqSn);
-        void onFeedbackTimeout(String reqId, int reqSn);
         void onFeedbackNtf(String ntfId, Object ntfContent);
+        void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn, Object[] reqParas);
+        void onFeedbackRspFin(String rspId, Object rspContent, String reqId, int reqSn, Object[] reqParas);
+        void onFeedbackTimeout(String reqId, int reqSn, Object[] reqParas);
+        void onFeedbackUserCanceled(String reqId, int reqSn, Object[] reqParas);
+        void onFeedbackUserCancelFailed(String reqId, int reqSn);
     }
 }

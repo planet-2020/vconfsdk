@@ -13,7 +13,7 @@ interface IFairy {
 
     interface IRequestFairy{
         boolean processRequest(Handler requester, String reqId, int reqSn, Object... reqPara);
-        boolean processCancelRequest(Handler requester, int reqSn);
+        void processCancelRequest(Handler requester, String reqId, int reqSn);
         void setRequestStick(IStick.IRequestStick requestStick);
     }
 

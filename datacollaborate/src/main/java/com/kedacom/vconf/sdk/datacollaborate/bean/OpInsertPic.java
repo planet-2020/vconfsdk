@@ -77,6 +77,12 @@ public class OpInsertPic extends OpPaint implements IBoundary{
     （图片最终位置=picMatrix * boardMatrix）*/
     private Matrix matrix = new Matrix();
 
+    /*
+    * 插入图片时的画板matrix。
+    * 之所以需要保存插入图片时的boardMatrix是因为计算picMatrix需要用到，而计算picMatrix有可能是延后的。
+    * */
+    private Matrix boardMatrix = new Matrix();
+
     /* 最后一次图片拖动传过来的matrix。
      * 主要用来应付如下场景：
      * 图片拖动通知过来了，但是图片还没下载好，pic为null，无法求取mixMatrix，因为mixMatrix的求取需要等到图片准备好（由于插图片时传过来的结构体中信息不完备，
@@ -218,6 +224,13 @@ public class OpInsertPic extends OpPaint implements IBoundary{
         this.matrix.set(matrix);
     }
 
+    public Matrix getBoardMatrix() {
+        return boardMatrix;
+    }
+
+    public void setBoardMatrix(Matrix boardMatrix) {
+        this.boardMatrix.set(boardMatrix);
+    }
 
     public Matrix getDragMatrix() {
         return dragMatrix;

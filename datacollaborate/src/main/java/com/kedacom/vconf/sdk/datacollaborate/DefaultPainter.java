@@ -238,7 +238,7 @@ public class DefaultPainter implements IPainter {
             KLog.p(KLog.ERROR,"no board %s for op %s", boardId, op);
             return;
         }
-        KLog.p(KLog.WARN, "for board %s op %s", boardId, op);
+        KLog.p(KLog.WARN, "#for board %s op %s", boardId, op);
 
         MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = paintBoard.getShapeOps();
         Stack<OpPaint> shapeRepealedOps = paintBoard.getRepealedShapeOps();
@@ -280,6 +280,7 @@ public class DefaultPainter implements IPainter {
                 }
                 picRenderOps.offerLast(op);
                 OpInsertPic opInsertPic = (OpInsertPic) op;
+                opInsertPic.setBoardMatrix(paintBoard.getBoardMatrix());
                 if (null == opInsertPic.getPic()) {
                     if (null != opInsertPic.getPicPath()) {
                         opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicPath())); // TODO 优化。比如大分辨率图片裁剪
@@ -301,7 +302,7 @@ public class DefaultPainter implements IPainter {
                     // 计算picMatrix= mixMatrix * transMatrix / boardMatrix
                     Matrix picMatrix = new Matrix(mixMatrix);
                     picMatrix.postConcat(opInsertPic.getTransMatrix());
-                    picMatrix.postConcat(MatrixHelper.invert(paintBoard.getBoardMatrix()));
+                    picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
                     opInsertPic.setMatrix(picMatrix);
                 }
 
@@ -370,7 +371,7 @@ public class DefaultPainter implements IPainter {
                     }
                 }
                 break;
-            case UPDATE_PICTURE:
+            case UPDATE_PICTURE: // XXX 己端插入图片也会收到该通知，需过滤
                 OpUpdatePic updatePic = (OpUpdatePic) op;
                 for (OpPaint opPaint : picRenderOps) {
                     if (EOpType.INSERT_PICTURE == opPaint.getType()
@@ -397,7 +398,7 @@ public class DefaultPainter implements IPainter {
                                 picMatrix.postConcat(opInsertPic.getTransMatrix());
                             }
 
-                            picMatrix.postConcat(MatrixHelper.invert(paintBoard.getBoardMatrix()));
+                            picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
 
                             opInsertPic.setMatrix(picMatrix);
                         }
