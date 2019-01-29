@@ -364,7 +364,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         }
         StringBuffer sb = new StringBuffer();
         for (Object listener : listeners){
-            sb.append(listener).append(" ;");
+            sb.append(listener).append("; ");
         }
 
         Msg ntf = Msg.valueOf(ntfId);
@@ -384,9 +384,9 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         Msg rsp = Msg.valueOf(rspId);
         StringBuffer sb = new StringBuffer();
         for (Object para : reqParas){
-            sb.append(para).append(" ;");
+            sb.append(para).append("; ");
         }
-        KLog.p("rspId=%s, rspContent=%s, resultListener=%s, reqId=%s, reqSn=%s, reqParas=%S", rsp, rspContent, resultListener, reqId, reqSn, sb);
+        KLog.p("rspId=%s, rspContent=%s, resultListener=%s, \nreqId=%s, reqSn=%s, reqParas=%s", rsp, rspContent, resultListener, reqId, reqSn, sb);
         boolean bConsumed = rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
 
         if (!bConsumed){
@@ -407,9 +407,9 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         Msg rsp = Msg.valueOf(rspId);
         StringBuffer sb = new StringBuffer();
         for (Object para : reqParas){
-            sb.append(para).append(" ;");
+            sb.append(para).append("; ");
         }
-        KLog.p("rspId=%s, rspContent=%s, resultListener=%s, reqId=%s, reqSn=%s, reqParas=%S", rsp, rspContent, resultListener, reqId, reqSn, sb);
+        KLog.p("rspId=%s, rspContent=%s, resultListener=%s, \nreqId=%s, reqSn=%s, reqParas=%s", rsp, rspContent, resultListener, reqId, reqSn, sb);
         boolean bConsumed = rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
         if (!bConsumed){
             // 如果响应处理器未消费该条消息，则尝试抛给通知处理器处理（有些消息既可为响应也可为通知）
@@ -428,9 +428,9 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         Msg req = Msg.valueOf(reqId);
         StringBuffer sb = new StringBuffer();
         for (Object para : reqParas){
-            sb.append(para).append(" ;");
+            sb.append(para).append("; ");
         }
-        KLog.p("rspId=%s, resultListener=%s, reqId=%s, reqSn=%s, reqParas=%S", Msg.Timeout, resultListener, reqId, reqSn, sb);
+        KLog.p("rspId=%s, resultListener=%s, \nreqId=%s, reqSn=%s, reqParas=%s", Msg.Timeout, resultListener, reqId, reqSn, sb);
         boolean bConsumed = rspProcessorMap.get(req).process(Msg.Timeout, "", resultListener, req, reqParas);
         if (!bConsumed && null != resultListener){
             // 超时未被消费则此处通知用户超时
@@ -440,12 +440,18 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
     @Override
     public void onFeedbackUserCanceled(String reqId, int reqSn, Object[] reqParas) {
-
+        RequestBundle requestBundle = rspListeners.remove(reqSn);
+        StringBuffer sb = new StringBuffer();
+        for (Object para : reqParas){
+            sb.append(para).append("; ");
+        }
+        KLog.p("reqId=%s, reqSn=%s", reqId, reqSn, sb);
     }
 
     @Override
     public void onFeedbackUserCancelFailed(String reqId, int reqSn) {
-
+        RequestBundle requestBundle = rspListeners.remove(reqSn);
+        KLog.p("reqId=%s, reqSn=%s", reqId, reqSn);
     }
 
     private static class RequestBundle{

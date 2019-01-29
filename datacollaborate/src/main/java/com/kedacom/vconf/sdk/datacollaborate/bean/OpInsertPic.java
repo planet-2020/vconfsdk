@@ -78,8 +78,8 @@ public class OpInsertPic extends OpPaint implements IBoundary{
     private Matrix matrix = new Matrix();
 
     /*
-    * 插入图片时的画板matrix。
-    * 之所以需要保存插入图片时的boardMatrix是因为计算picMatrix需要用到，而计算picMatrix有可能是延后的。
+    * 计算picMatrix时需要的boardMatrix。
+    * 之所以需要保存该boardMatrix是因为计算picMatrix有可能是延后的。
     * */
     private Matrix boardMatrix = new Matrix();
 

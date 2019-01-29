@@ -1088,11 +1088,13 @@ public class DataCollaborateManager extends RequestAgent {
                         return;
                     }
                     // 上报用户目前为止已同步的图元操作
+
+                    List<OpPaint> toReportOps = new ArrayList<>();
                     while (!ops.isEmpty()) {
-                        OpPaint opPaint = ops.poll();
-                        for (Object listener : listeners) {
-                            ((IOnPaintOpListener) listener).onPaintOp(opPaint);
-                        }
+                        toReportOps.add(ops.poll());
+                    }
+                    for (Object listener : listeners) {
+                        ((IOnPaintOpListener) listener).onPaintOp(toReportOps);
                     }
                     break;
             }
@@ -1124,13 +1126,13 @@ public class DataCollaborateManager extends RequestAgent {
                     return;
                 }
                 // 上报用户图元绘制操作
+                List<OpPaint> toReportOps = new ArrayList<>();
                 while (!ops.isEmpty()) {
-                    OpPaint opPaint = ops.poll();
-                    for (Object listener : listeners) {
-                        ((IOnPaintOpListener) listener).onPaintOp(opPaint);
-                    }
+                    toReportOps.add(ops.poll());
                 }
-
+                for (Object listener : listeners) {
+                    ((IOnPaintOpListener) listener).onPaintOp(toReportOps);
+                }
                 break;
 
             // 插入图片通知。 NOTE:插入图片比较特殊，通知中只有插入图片操作的基本信息，图片本身还需进一步下载
@@ -1277,8 +1279,10 @@ public class DataCollaborateManager extends RequestAgent {
                 cachedPaintOps.put(op.getBoardId(), ops1);
             }else {
                 // 过了同步阶段，直接上报用户图元操作
+                List<OpPaint> toReportOps = new ArrayList<>();
+                toReportOps.add(op);
                 for (Object listener : listeners) {
-                    ((IOnPaintOpListener) listener).onPaintOp(op);
+                    ((IOnPaintOpListener) listener).onPaintOp(toReportOps);
                 }
             }
         }
@@ -1305,12 +1309,14 @@ public class DataCollaborateManager extends RequestAgent {
                 KLog.p(KLog.ERROR,"no listener for DCPicInsertedNtf");
                 return;
             }
+            List<OpPaint> toReportOps = new ArrayList<>();
+            toReportOps.add(opUpdatePic);
             for (Object onPaintOpListener : listeners) {
                 if (!containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener被销毁了删除了
                     KLog.p(KLog.ERROR,"listener %s for DCPicInsertedNtf has been destroyed", onPaintOpListener);
                     continue;
                 }
-                ((IOnPaintOpListener) onPaintOpListener).onPaintOp(opUpdatePic);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+                ((IOnPaintOpListener) onPaintOpListener).onPaintOp(toReportOps);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
             }
         }
     }
@@ -1403,8 +1409,8 @@ public class DataCollaborateManager extends RequestAgent {
      * */
     public interface IOnPaintOpListener extends ILifecycleOwner {
         /**
-         * @param op 绘制操作*/
-        void onPaintOp(OpPaint op);
+         * @param ops 绘制操作*/
+        void onPaintOp(List<OpPaint> ops);
     }
 
     /**

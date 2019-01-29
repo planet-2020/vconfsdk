@@ -57,7 +57,7 @@ public interface IPainter {
     default void stop(){}
 
     /**绘制
-     * @param op 绘制操作信息*/
-    void paint(OpPaint op);
+     * @param ops 绘制操作列表*/
+    void paint(List<OpPaint> ops);
 
 }

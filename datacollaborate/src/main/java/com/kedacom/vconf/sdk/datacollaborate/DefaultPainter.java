@@ -231,14 +231,27 @@ public class DefaultPainter implements IPainter {
 
 
     @Override
-    public void paint(OpPaint op){
+    public void paint(List<OpPaint> ops){
+        boolean bRefresh = false;
+        for (OpPaint op : ops){
+            if (doPaint(op)){
+                bRefresh = true;
+            }
+        }
+        if (bRefresh) {
+            refresh();
+        }
+    }
+
+
+    private boolean doPaint(OpPaint op){
         String boardId = op.getBoardId();
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
         if(null == paintBoard){
             KLog.p(KLog.ERROR,"no board %s for op %s", boardId, op);
-            return;
+            return false;
         }
-        KLog.p(KLog.WARN, "#for board %s op %s", boardId, op);
+        KLog.p(KLog.WARN, "for board %s op %s", boardId, op);
 
         MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = paintBoard.getShapeOps();
         Stack<OpPaint> shapeRepealedOps = paintBoard.getRepealedShapeOps();
@@ -259,7 +272,7 @@ public class DefaultPainter implements IPainter {
             if (bEmpty && shapeTmpOp instanceof IRepealable){ // 可撤销操作从无到有
                 paintBoard.repealableStateChanged();
             }
-            return;
+            return false;
         }
 
         // 不是主动绘制的响应则清空临时绘制 // TODO 本端还是加时间戳吧3S超时可清空，清空在绘制线程中重绘时去做，不在这里做
@@ -272,10 +285,10 @@ public class DefaultPainter implements IPainter {
             case INSERT_PICTURE:
                 for (OpPaint opPaint : paintBoard.getPicOps()){
                     if (opPaint instanceof OpInsertPic
-                            && ((OpInsertPic)opPaint).getPicId().equals(((OpInsertPic)op).getPicId())
+                            && ((OpInsertPic)opPaint).getPicId().equals(((OpInsertPic) op).getPicId())
                             ){
                         KLog.p("pic op %s already exist!", opPaint);
-                        return;
+                        return false;
                     }
                 }
                 picRenderOps.offerLast(op);
@@ -314,7 +327,7 @@ public class DefaultPainter implements IPainter {
                 bRefresh = false;
                 OpPaint picRenderOp;
                 boolean got =false;
-                for (String picId : ((OpDeletePic)op).getPicIds()) {
+                for (String picId : ((OpDeletePic) op).getPicIds()) {
                     got = false;
                     Iterator it = picRenderOps.iterator();
                     while (it.hasNext()) {
@@ -342,7 +355,7 @@ public class DefaultPainter implements IPainter {
                 break;
 
             case DRAG_PICTURE: // TODO NOTE 己端拖动图片也会触发此通知，尚未过滤，需过滤。
-                for (Map.Entry<String, Matrix> dragOp : ((OpDragPic)op).getPicMatrices().entrySet()) {
+                for (Map.Entry<String, Matrix> dragOp : ((OpDragPic) op).getPicMatrices().entrySet()) {
                     for (OpPaint opPaint : picRenderOps) {
                         if (EOpType.INSERT_PICTURE == opPaint.getType()
                                 && ((OpInsertPic) opPaint).getPicId().equals(dragOp.getKey())) {
@@ -364,6 +377,7 @@ public class DefaultPainter implements IPainter {
                             }else{
                                 // 图片尚未准备好，我们先保存matrix，等图片准备好了再计算
                                 opInsertPic.setDragMatrix(dragOp.getValue());
+                                opInsertPic.setBoardMatrix(paintBoard.getBoardMatrix());
                                 bRefresh = false; // 图片尚未准备好不需刷新
                             }
                             break;
@@ -407,7 +421,7 @@ public class DefaultPainter implements IPainter {
                 }
                 break;
             case FULLSCREEN_MATRIX: // 全局放缩、位移，包括图片和图形
-                paintBoard.setBoardMatrix(((OpMatrix)op).getMatrix());
+                paintBoard.setBoardMatrix(((OpMatrix) op).getMatrix());
                 paintBoard.zoomRateChanged();
                 break;
 
@@ -451,20 +465,17 @@ public class DefaultPainter implements IPainter {
                         if (EOpType.CLEAR_SCREEN == op.getType()){
                             paintBoard.screenCleared();
                         }
-        //                KLog.p(KLog.WARN, "need render op %s", op);
+                        //                KLog.p(KLog.WARN, "need render op %s", op);
                         break;
 
                 }
 
-            break;
+                break;
 
         }
 
-        if (bRefresh) {
-            refresh();
-        }
+        return bRefresh;
     }
-
 
     private final PorterDuffXfermode DUFFMODE_SRCIN = new PorterDuffXfermode(PorterDuff.Mode.SRC_IN);
 //    private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
