@@ -12,14 +12,14 @@ import java.util.Set;
 
 public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
-    private int reqSn; // 请求序列号，唯一标识一次请求。
-    private final Map<Integer, RequestBundle> rspListeners;
-    private final Map<String, Set<Object>> ntfListeners;
+    private int reqSn = 0; // 请求序列号，唯一标识一次请求。
+    private final Map<Integer, RequestBundle> rspListeners = new HashMap<>();
+    private final Map<String, Set<Object>> ntfListeners = new HashMap<>();
 
-    private Map<Msg, RspProcessor> rspProcessorMap;
-    private Map<Msg, NtfProcessor> ntfProcessorMap;
+    private Map<Msg, RspProcessor> rspProcessorMap = new HashMap<>();
+    private Map<Msg, NtfProcessor> ntfProcessorMap = new HashMap<>();
 
-    private Witch witch;
+    private Witch witch = new Witch();
 
     private ListenerLifecycleObserver listenerLifecycleObserver;
     private ListenerLifecycleObserver.Callback listenerLifecycleCallback = new ListenerLifecycleObserver.Callback(){
@@ -47,51 +47,38 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     };
 
     protected RequestAgent(){
-        witch = new Witch();
+
         witch.setOnFeedbackListener(this);
 
         listenerLifecycleObserver = new ListenerLifecycleObserver(listenerLifecycleCallback);
 
-        reqSn = 0;
-        rspListeners = new HashMap<>();
-        ntfListeners = new HashMap<>();
-
-        rspProcessorMap = rspProcessors();
-        if (null == rspProcessorMap){
-            rspProcessorMap = new HashMap<>();
-        }
+        rspProcessorMap.putAll(rspProcessors());
 
         Map<Msg, NtfProcessor> ntfProcessorMap = ntfProcessors();
-        String ntfName;
         if (null != ntfProcessorMap){
             for (Msg ntf : ntfProcessorMap.keySet()){
-                ntfName = ntf.name();
-                witch.subscribe(ntfName);
-                ntfListeners.put(ntfName, new HashSet<>());
-            }
-            this.ntfProcessorMap = ntfProcessorMap;
-        }
-
-        Map<Msg[], NtfProcessor> ntfsProcessorMap = ntfsProcessors();
-        if (null != ntfsProcessorMap){
-            if (null == this.ntfProcessorMap){
-                this.ntfProcessorMap = new HashMap<>();
-            }
-            NtfProcessor ntfProcessor;
-            for (Msg[] ntfs : ntfsProcessorMap.keySet()){
-                ntfProcessor = ntfsProcessorMap.get(ntfs);
-                for (Msg ntf : ntfs){
-                    this.ntfProcessorMap.put(ntf, ntfProcessor);
-                    ntfName = ntf.name();
-                    witch.subscribe(ntfName);
+                String ntfName = ntf.name();
+                if(witch.subscribe(ntfName)){
                     ntfListeners.put(ntfName, new HashSet<>());
+                    this.ntfProcessorMap.put(ntf, ntfProcessorMap.get(ntf));
                 }
             }
         }
 
-        if (null == this.ntfProcessorMap){
-            this.ntfProcessorMap = new HashMap<>();
+        Map<Msg[], NtfProcessor> ntfsProcessorMap = ntfsProcessors();
+        if (null != ntfsProcessorMap){
+            for (Msg[] ntfs : ntfsProcessorMap.keySet()){
+                NtfProcessor ntfProcessor = ntfsProcessorMap.get(ntfs);
+                for (Msg ntf : ntfs){
+                    String ntfName = ntf.name();
+                    if (witch.subscribe(ntfName)) {
+                        ntfListeners.put(ntfName, new HashSet<>());
+                        this.ntfProcessorMap.put(ntf, ntfProcessor);
+                    }
+                }
+            }
         }
+
     }
 
 
@@ -207,13 +194,7 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
         listenerLifecycleObserver.tryObserve(ntfListener);
 
-        String ntfName = ntfId.name();
-        Set<Object> listeners = ntfListeners.get(ntfName);
-        if (null == listeners) {
-            listeners = new HashSet<>();
-            ntfListeners.put(ntfName, listeners);
-        }
-        listeners.add(ntfListener);
+        ntfListeners.get(ntfId.name()).add(ntfListener);
     }
 
     /**

@@ -87,6 +87,8 @@ public class DataCollaborateManager extends RequestAgent {
     public static final int ErrCode_Disconnect = -4;
     // 协作方数量已达上限
     public static final int ErrCode_Operator_Amount_Reach_Limit = -5;
+    // 申请协作权被拒
+    public static final int ErrCode_Apply_Operator_Rejected = -6;
 
     private String curDcConfE164;
     String getCurDcConfE164(){
@@ -720,37 +722,75 @@ public class DataCollaborateManager extends RequestAgent {
     private boolean onChangeOperatorsRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
             case DCAddOperatorRsp:
-                if (null != listener){
-                    if (((TDCSResult) rspContent).bSucces){
-                        listener.onSuccess(null);
+                TDCSResult result = (TDCSResult) rspContent;
+                if (!result.bSucces){
+                    KLog.p(KLog.ERROR, "add operator failed, errorCode=%s", result.dwErrorCode);
+                    cancelReq(reqId, listener);
+                    if (25607 == result.dwErrorCode) {
+                        // 协作方数量已达上限
+                        if (null != listener) listener.onFailed(ErrCode_Operator_Amount_Reach_Limit);
                     }else{
-                        if (25607 == ((TDCSResult) rspContent).dwErrorCode) {
-                            // 协作方数量已达上限
-                            listener.onFailed(ErrCode_Operator_Amount_Reach_Limit);
-                        }else{
-                            listener.onFailed(ErrCode_Failed);
-                        }
+                        if (null != listener) listener.onFailed(ErrCode_Failed);
                     }
                 }
                 break;
+            case DCOperatorAddedNtf:
+                List<TDCSConfUserInfo> userInfos = ((TDCSUserInfos) rspContent).atUserInfoList;
+                if (Msg.DCAddOperator == reqId) {
+                    TDCSOperator para = (TDCSOperator) reqParas[0];
+                    if (para.atOperList.equals(userInfos)) {
+                        if (null != listener) listener.onSuccess(null);
+                    } else {
+                        return false;
+                    }
+                }else if (Msg.DCApplyOperator == reqId){
+                    String e164 = (String) reqParas[0];
+                    if (e164.equals(userInfos.get(0).achE164)){
+                        if (null != listener) listener.onSuccess(null);
+                    }else {
+                        return false;
+                    }
+                }else {
+                    return false;
+                }
+                break;
+
             case DCDelOperatorRsp:
-                if (null != listener){
-                    if (((TDCSResult) rspContent).bSucces){
-                        listener.onSuccess(null);
-                    }else{
-                        listener.onFailed(ErrCode_Failed);
-                    }
+                result = (TDCSResult) rspContent;
+                if (!result.bSucces){
+                    KLog.p(KLog.ERROR, "del operator failed, errorCode=%s", result.dwErrorCode);
+                    cancelReq(reqId, listener);
+                    if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
+            case DCOperatorDeletedNtf:
+                userInfos = ((TDCSUserInfos)rspContent).atUserInfoList;
+                TDCSOperator para = (TDCSOperator) reqParas[0];
+                if (para.atOperList.equals(userInfos)){
+                    if (null != listener) listener.onSuccess(null);
+                }else {
+                    return false;
+                }
+                break;
+
             case DCApplyOperatorRsp:
-                if (null != listener){
-                    if (((TDCSResult) rspContent).bSucces){
-                        listener.onSuccess(null);
-                    }else{
-                        listener.onFailed(ErrCode_Failed);
-                    }
+                result = (TDCSResult) rspContent;
+                if (!result.bSucces){
+                    KLog.p(KLog.ERROR, "applying operator failed, errorCode=%s", result.dwErrorCode);
+                    cancelReq(reqId, listener);
+                    if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
+            case DCApplyOperatorRejectedNtf:
+                TDCSUserInfo userInfo = (TDCSUserInfo)rspContent;
+                String e164 = (String) reqParas[0];
+                if (e164.equals(userInfo.tUserInfo.achE164)){
+                    if (null != listener) listener.onFailed(ErrCode_Apply_Operator_Rejected);
+                }else {
+                    return false;
+                }
+                break;
+
             case DCCancelOperatorRsp:
                 if (null != listener){
                     if (((TDCSResult) rspContent).bSucces){
@@ -890,7 +930,7 @@ public class DataCollaborateManager extends RequestAgent {
 
 
     /**
-     * 画板操作（创建/删除/切换/查询）响应处理
+     * （己端）画板操作响应处理
      * */
     private boolean onBoardOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
@@ -904,6 +944,7 @@ public class DataCollaborateManager extends RequestAgent {
                     if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
+
             case DCQueryAllBoardsRsp:
                 DcsGetAllWhiteBoardRsp queryAllBoardsResult = (DcsGetAllWhiteBoardRsp) rspContent;
                 if (!queryAllBoardsResult.MainParam.bSucces){
@@ -1011,7 +1052,7 @@ public class DataCollaborateManager extends RequestAgent {
     private String curBoardId;
     private boolean bGotAllBoard;
     /**
-     * 画板操作（创建/删除/切换）通知处理
+     * （其他与会者）画板操作通知处理。
      * */
     private void onBoardNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         KLog.p("listener==%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);

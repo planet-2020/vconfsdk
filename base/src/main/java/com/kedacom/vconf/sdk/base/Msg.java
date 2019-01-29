@@ -113,7 +113,7 @@ public enum Msg {
     /**注销数据协作服务器*/
     @Request(name = "DCSLogoutReq",
             methodOwner = DcsCtrl,
-			rspSeq = {"DcsLogout_Rsp"}, timeout = 5)
+			rspSeq = {"DcsLogout_Rsp"})
     DCLogout, // TODO 收不到响应，跟下层确认
 
     /**注销数据协作服务器响应*/
@@ -231,8 +231,9 @@ public enum Msg {
             methodOwner = DcsCtrl,
             methodParas = StringBuffer.class,
 			paras = TDCSOperator.class,
-            rspSeq = {"DcsAddOperator_Rsp"})
-    DCAddOperator, // TODO 待调
+            rspSeq = {"DcsAddOperator_Rsp",
+                    "DcsAddOperator_Ntf"})
+    DCAddOperator,
 
     /**添加协作方响应*/
     @Response(clz = TDCSResult.class,
@@ -244,7 +245,8 @@ public enum Msg {
             methodOwner = DcsCtrl,
             methodParas = StringBuffer.class,
 			paras = TDCSOperator.class,
-            rspSeq = {"DcsDelOperator_Rsp"})
+            rspSeq = {"DcsDelOperator_Rsp",
+                    "DcsDelOperator_Ntf"})
     DCDelOperator, // TODO 待调
 
     /**删除协作方响应*/
@@ -257,7 +259,9 @@ public enum Msg {
             methodOwner = DcsCtrl,
             methodParas = StringBuffer.class,
             paras = String.class, // 申请者的e164
-            rspSeq = {"DcsApplyOper_Rsp"})
+            rspSeq = {"DcsApplyOper_Rsp", "DcsRejectOper_Ntf"},
+            rspSeq2 = {"DcsApplyOper_Rsp", "DcsAddOperator_Ntf"},
+            timeout = 30)
     DCApplyOperator,
 
     /**申请作为协作方响应*/
@@ -283,7 +287,7 @@ public enum Msg {
             methodOwner = DcsCtrl,
             methodParas = StringBuffer.class,
 				paras=TDCSOperator.class)
-    DCRejectApplyOperator, // TODO 待调
+    DCRejectApplyOperator,
 
     /**用户加入数据协作通知*/
     @Notification(clz = TDCSUserInfo.class,
@@ -293,20 +297,26 @@ public enum Msg {
     /**成员（向主席）申请协作权通知*/
     @Notification(clz = TDCSUserInfo.class,
             name = "DcsUserApplyOper_Ntf")
-    DCApplyOperatorNtf, // TODO 待调
+    DCApplyOperatorNtf,
 
     /**（主席）添加协作方通知*/
     @Notification(clz = TDCSUserInfos.class,
             name = "DcsAddOperator_Ntf")
-    DCOperatorAddedNtf, // TODO 待调
+    @Response(clz = TDCSUserInfos.class,
+            name = "DcsAddOperator_Ntf")
+    DCOperatorAddedNtf,
     /**（主席）删除协作方通知*/
     @Notification(clz = TDCSUserInfos.class,
             name = "DcsDelOperator_Ntf")
-    DCOperatorDeletedNtf, // TODO 待调
+    @Response(clz = TDCSUserInfos.class,
+            name = "DcsDelOperator_Ntf")
+    DCOperatorDeletedNtf,
     /**申请协作权被拒绝通知*/
     @Notification(clz = TDCSUserInfo.class,
             name = "DcsRejectOper_Ntf")
-    DCApplyOperatorRejectedNtf, // TODO 待调
+    @Response(clz = TDCSUserInfo.class,
+            name = "DcsRejectOper_Ntf")
+    DCApplyOperatorRejectedNtf,
 
 
     /**获取数据协作会议中的所有成员（包括协作方普通方）*/
@@ -331,8 +341,7 @@ public enum Msg {
             methodParas = StringBuffer.class,
 			paras= TDCSNewWhiteBoard.class,
             rspSeq = {"DcsNewWhiteBoard_Rsp",
-                    "DcsNewWhiteBoard_Ntf"},
-            timeout = 5)
+                    "DcsNewWhiteBoard_Ntf"})
     DCNewBoard,
 
     /**新建画板响应*/
@@ -347,8 +356,7 @@ public enum Msg {
             paras = {String.class, // 当前会议e164
                     String.class}, // 画板Id
             rspSeq = {"DcsDelWhiteBoard_Rsp",
-                    "DcsDelWhiteBoard_Ntf"},
-            timeout = 5)
+                    "DcsDelWhiteBoard_Ntf"})
     DCDelBoard,
 
     /**删除画板响应*/
@@ -362,8 +370,7 @@ public enum Msg {
             methodParas = StringBuffer.class,
             paras = String.class, // 当前会议e164
             rspSeq = {"DcsDelAllWhiteBoard_Rsp",
-                    "DcsDelAllWhiteBoard_Ntf"},
-            timeout = 5)
+                    "DcsDelAllWhiteBoard_Ntf"})
     DCDelAllBoard,
 
     /**删除所有画板响应*/
@@ -377,8 +384,7 @@ public enum Msg {
             methodParas = StringBuffer.class,
             paras = TDCSSwitchReq.class,
             rspSeq = {"DcsSwitch_Rsp",
-                    "DcsSwitch_Ntf"},
-            timeout = 5)
+                    "DcsSwitch_Ntf"})
     DCSwitchBoard,
 
     /**切换画板响应*/
@@ -391,8 +397,7 @@ public enum Msg {
             methodOwner = DcsCtrl,
             methodParas = {StringBuffer.class},
             paras = String.class, // 会议e164
-            rspSeq = {"DcsGetCurWhiteBoard_Rsp"},
-            timeout = 5)
+            rspSeq = {"DcsGetCurWhiteBoard_Rsp"})
     DCQueryCurBoard,
 
     /**查询当前画板响应*/
@@ -518,12 +523,12 @@ public enum Msg {
             methodOwner = DcsCtrl,
             methodParas = {StringBuffer.class, StringBuffer.class},
             paras = {TDCSOperReq.class, TDCSWbDelPicOperInfo.class})
-    DCDeletePic, // TODO 待调
+    DCDeletePic,
     @Request(name = "DCSOperPitchPicDragCmd",
             methodOwner = DcsCtrl,
             methodParas = {StringBuffer.class, StringBuffer.class},
             paras = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class})
-    DCDragPic, // TODO 待调
+    DCDragPic,
     @Request(name = "DCSOperPitchPicZoomCmd",
             methodOwner = DcsCtrl,
             methodParas = {StringBuffer.class, StringBuffer.class},
