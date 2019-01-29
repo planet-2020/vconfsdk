@@ -935,38 +935,68 @@ public class DataCollaborateManager extends RequestAgent {
 
             case DCNewBoardRsp:
                 DcsNewWhiteBoardRsp newWhiteBoardRsp = (DcsNewWhiteBoardRsp) rspContent;
-                if (newWhiteBoardRsp.MainParam.bSuccess) {
-                    if (null != listener) listener.onSuccess(ToDoConverter.fromTransferObj(newWhiteBoardRsp.AssParam));
-                } else {
+                if (!newWhiteBoardRsp.MainParam.bSuccess) {
                     KLog.p(KLog.ERROR, "new board failed, errorCode=%s", newWhiteBoardRsp.MainParam.dwErrorCode);
+                    cancelReq(reqId, listener); // 后续不会有DCBoardCreatedNtf，取消以防等待超时
                     if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
+            case DCBoardCreatedNtf:
+                TDCSBoardInfo tdcsBoardInfo = (TDCSBoardInfo) rspContent;
+                TDCSNewWhiteBoard newWhiteBoard = (TDCSNewWhiteBoard) reqParas[0];
+                if (newWhiteBoard.tBoardinfo.achWbCreatorE164.equals(tdcsBoardInfo.achWbCreatorE164)) {
+                    if (null != listener) listener.onSuccess(ToDoConverter.fromTransferObj(tdcsBoardInfo));
+                }else{
+                    return false; // 返回false表示未消费该条消息
+                }
+                break;
+
             case DCDelBoardRsp:
                 TDCSBoardResult boardResult = (TDCSBoardResult) rspContent;
-                if (boardResult.bSuccess){
-                    if (null != listener) listener.onSuccess(boardResult.achTabId);
-                }else {
+                if (!boardResult.bSuccess){
                     KLog.p(KLog.ERROR, "del board failed, errorCode=%s", boardResult.dwErrorCode);
+                    cancelReq(reqId, listener);
                     if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
+            case DCBoardDeletedNtf:
+                TDCSDelWhiteBoardInfo boardInfo = (TDCSDelWhiteBoardInfo) rspContent;
+                String boardId = (String) reqParas[1];
+                if (boardId.equals(boardInfo.strIndex)){
+                    if (null != listener) listener.onSuccess(boardInfo.strIndex);
+                }else{
+                    return false;
+                }
+                break;
+
             case DCDelAllBoardRsp:
                 TDCSBoardResult allBoardRes = (TDCSBoardResult) rspContent;
-                if (allBoardRes.bSuccess){
-                    if (null != listener) listener.onSuccess(allBoardRes.achConfE164);
-                }else {
+                if (!allBoardRes.bSuccess){
                     KLog.p(KLog.ERROR, "del all board failed, errorCode=%s", allBoardRes.dwErrorCode);
+                    cancelReq(reqId, listener);
                     if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
+            case DCAllBoardDeletedNtf:
+                TDCSDelWhiteBoardInfo delWhiteBoardInfo = (TDCSDelWhiteBoardInfo) rspContent;
+                if (null != listener) listener.onSuccess(delWhiteBoardInfo.strConfE164);
+                break;
+
             case DCSwitchBoardRsp:
                 DcsSwitchRsp switchRsp = (DcsSwitchRsp) rspContent;
-                if (switchRsp.MainParam.bSuccess){
-                    if (null != listener) listener.onSuccess(switchRsp.AssParam.achTabId);
-                }else {
+                if (!switchRsp.MainParam.bSuccess){
                     KLog.p(KLog.ERROR, "switch board failed, errorCode=%s", switchRsp.MainParam.dwErrorCode);
+                    cancelReq(reqId, listener);
                     if (null != listener) listener.onFailed(ErrCode_Failed);
+                }
+                break;
+            case DCBoardSwitchedNtf:
+                TDCSBoardInfo boardInfo1 = (TDCSBoardInfo) rspContent;
+                TDCSSwitchReq para = (TDCSSwitchReq) reqParas[0];
+                if (para.achTabId.equals(boardInfo1.achTabId)){
+                    if (null != listener) listener.onSuccess(boardInfo1.achTabId);
+                }else{
+                    return false;
                 }
                 break;
 

@@ -330,7 +330,8 @@ public enum Msg {
             methodOwner = DcsCtrl,
             methodParas = StringBuffer.class,
 			paras= TDCSNewWhiteBoard.class,
-            rspSeq = {"DcsNewWhiteBoard_Rsp"},
+            rspSeq = {"DcsNewWhiteBoard_Rsp",
+                    "DcsNewWhiteBoard_Ntf"},
             timeout = 5)
     DCNewBoard,
 
@@ -345,7 +346,8 @@ public enum Msg {
             methodParas = {StringBuffer.class, StringBuffer.class},
             paras = {String.class, // 当前会议e164
                     String.class}, // 画板Id
-            rspSeq = {"DcsDelWhiteBoard_Rsp"},
+            rspSeq = {"DcsDelWhiteBoard_Rsp",
+                    "DcsDelWhiteBoard_Ntf"},
             timeout = 5)
     DCDelBoard,
 
@@ -359,7 +361,9 @@ public enum Msg {
             methodOwner = DcsCtrl,
             methodParas = StringBuffer.class,
             paras = String.class, // 当前会议e164
-            rspSeq = {"DcsDelAllWhiteBoard_Rsp"})
+            rspSeq = {"DcsDelAllWhiteBoard_Rsp",
+                    "DcsDelAllWhiteBoard_Ntf"},
+            timeout = 5)
     DCDelAllBoard,
 
     /**删除所有画板响应*/
@@ -372,7 +376,8 @@ public enum Msg {
             methodOwner = DcsCtrl,
             methodParas = StringBuffer.class,
             paras = TDCSSwitchReq.class,
-            rspSeq = {"DcsSwitch_Rsp"},
+            rspSeq = {"DcsSwitch_Rsp",
+                    "DcsSwitch_Ntf"},
             timeout = 5)
     DCSwitchBoard,
 
@@ -387,8 +392,8 @@ public enum Msg {
             methodParas = {StringBuffer.class},
             paras = String.class, // 会议e164
             rspSeq = {"DcsGetCurWhiteBoard_Rsp"},
-            timeout = 3)
-    DCQueryCurBoard, // TODO 待调
+            timeout = 5)
+    DCQueryCurBoard,
 
     /**查询当前画板响应*/
     @Response(	clz = DcsGetWhiteBoardRsp.class,
@@ -403,7 +408,7 @@ public enum Msg {
             paras = {String.class, // 会议e164
                     String.class}, // 画板id
             rspSeq = {"DcsGetWhiteBoard_Rsp"})
-    DCQueryBoard, // TODO 待调
+    DCQueryBoard,
 
     /**查询画板响应*/
     @Response(	clz = DcsGetWhiteBoardRsp.class,
@@ -442,21 +447,25 @@ public enum Msg {
     /**新建画板通知*/
     @Notification(clz = TDCSBoardInfo.class,
 					name="DcsNewWhiteBoard_Ntf")
+    @Response(name = "DcsNewWhiteBoard_Ntf", clz = TDCSBoardInfo.class)
     DCBoardCreatedNtf,
 
     /**切换画板通知*/
     @Notification(clz = TDCSBoardInfo.class,
 					name="DcsSwitch_Ntf")
+    @Response(name = "DcsSwitch_Ntf", clz = TDCSBoardInfo.class)
     DCBoardSwitchedNtf,
 
     /**删除画板通知*/
     @Notification(clz = TDCSDelWhiteBoardInfo.class,
 					name="DcsDelWhiteBoard_Ntf")
+    @Response(name = "DcsDelWhiteBoard_Ntf", clz = TDCSDelWhiteBoardInfo.class)
     DCBoardDeletedNtf,
 
     /**删除所有画板通知*/
     @Notification(clz = TDCSDelWhiteBoardInfo.class,
             name="DcsDelAllWhiteBoard_Ntf")
+    @Response(name = "DcsDelAllWhiteBoard_Ntf", clz = TDCSDelWhiteBoardInfo.class)
     DCAllBoardDeletedNtf,
 
 
