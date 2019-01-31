@@ -2,25 +2,30 @@ package com.kedacom.vconf.sdk.base;
 
 import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Response;
+import com.kedacom.vconf.sdk.base.basement.IFairy2;
 import com.kedacom.vconf.sdk.base.basement.Witch;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-public abstract class RequestAgent implements Witch.IOnFeedbackListener{
+import androidx.annotation.NonNull;
 
-    private int reqSn = 0; // 请求序列号，唯一标识一次请求。
-    private final Map<Integer, RequestBundle> rspListeners = new HashMap<>();
-    private final Map<String, Set<Object>> ntfListeners = new HashMap<>();
+public abstract class Caster implements IFairy2.ISessionFairy.IListener,
+        IFairy2.INotificationFairy.IListener{
 
-    private Map<Msg, RspProcessor> rspProcessorMap = new HashMap<>();
-    private Map<Msg, NtfProcessor> ntfProcessorMap = new HashMap<>();
-    
+    private IFairy2.ISessionFairy sessionFairy;
+    private IFairy2.INotificationFairy notificationFairy;
 
-    private Witch witch = new Witch();
+    private int reqSn = 0; // 请求序列号，递增。
+    private final Map<ReqKey, RequestBundle> rspListeners = new LinkedHashMap<>();
+    private final Map<String, LinkedHashSet<Object>> ntfListeners = new LinkedHashMap<>();
+
+    private Map<Msg, RspProcessor> rspProcessorMap = new LinkedHashMap<>();
+    private Map<Msg, NtfProcessor> ntfProcessorMap = new LinkedHashMap<>();
 
     private ListenerLifecycleObserver listenerLifecycleObserver;
     private ListenerLifecycleObserver.Callback listenerLifecycleCallback = new ListenerLifecycleObserver.Callback(){
@@ -47,9 +52,11 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         }
     };
 
-    protected RequestAgent(){
+    @SuppressWarnings("ConstantConditions")
+    protected Caster(@NonNull IFairy2.ISessionFairy sessionFairy, @NonNull IFairy2.INotificationFairy notificationFairy){
 
-        witch.setOnFeedbackListener(this);
+        this.sessionFairy = sessionFairy;
+        this.notificationFairy = notificationFairy;
 
         listenerLifecycleObserver = new ListenerLifecycleObserver(listenerLifecycleCallback);
 
@@ -58,9 +65,9 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         Map<Msg, NtfProcessor> ntfProcessorMap = ntfProcessors();
         if (null != ntfProcessorMap){
             for (Msg ntf : ntfProcessorMap.keySet()){
-                String ntfName = ntf.name();
-                if(witch.subscribe(ntfName)){
-                    ntfListeners.put(ntfName, new HashSet<>());
+                String ntfId = ntf.name();
+                if(notificationFairy.subscribe(this, ntfId)){
+                    ntfListeners.put(ntfId, new LinkedHashSet<>());
                     this.ntfProcessorMap.put(ntf, ntfProcessorMap.get(ntf));
                 }
             }
@@ -71,9 +78,9 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
             for (Msg[] ntfs : ntfsProcessorMap.keySet()){
                 NtfProcessor ntfProcessor = ntfsProcessorMap.get(ntfs);
                 for (Msg ntf : ntfs){
-                    String ntfName = ntf.name();
-                    if (witch.subscribe(ntfName)) {
-                        ntfListeners.put(ntfName, new HashSet<>());
+                    String ntfId = ntf.name();
+                    if (notificationFairy.subscribe(this, ntfId)) {
+                        ntfListeners.put(ntfId, new LinkedHashSet<>());
                         this.ntfProcessorMap.put(ntf, ntfProcessor);
                     }
                 }
@@ -138,11 +145,11 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
 
         listenerLifecycleObserver.tryObserve(rspListener);
 
-        if (!witch.req(reqId.name(), ++reqSn, reqPara)){
+        if (!sessionFairy.req(this, reqId.name(), ++reqSn, reqPara)){
             return;
         }
 
-        rspListeners.put(reqSn, new RequestBundle(reqId, rspListener));
+        rspListeners.put(new ReqKey(reqId, reqSn), new RequestBundle(rspListener)); // TODO RequestBundle能否去掉
 
     }
 
@@ -158,23 +165,14 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
             return;
         }
 
-        int BIG_REQSN = 987654321;
-        int earliestReq = BIG_REQSN;
-        RequestBundle bundle;
-        int reqSn;
-        for (Map.Entry<Integer, RequestBundle> entry : rspListeners.entrySet()){
-            reqSn = entry.getKey();
-            bundle = entry.getValue();
-            if (reqId.equals(bundle.reqId)
+        for (Map.Entry<ReqKey, RequestBundle> entry : rspListeners.entrySet()){
+            ReqKey reqKey = entry.getKey();
+            RequestBundle bundle = entry.getValue();
+            if (reqId.equals(reqKey.reqId)
                     && rspListener.equals(bundle.resultListener)){
-                if (reqSn < earliestReq){
-                    earliestReq = reqSn;
-                }
+                sessionFairy.cancelReq(reqKey.reqId.name(), reqKey.reqSn);
+                break;
             }
-        }
-
-        if (BIG_REQSN != earliestReq){
-            witch.cancelReq(reqId.name(), earliestReq);
         }
 
     }
@@ -263,41 +261,35 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
             KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
             return;
         }
-        witch.eject(ntfId.name());
+        notificationFairy.emit(ntfId.name());
     }
 
     /**
      * （驱使下层）发射通知。仅用于模拟模式。
      * */
     protected synchronized void eject(Msg[] ntfIds){
-        String[] ntfs = new String[ntfIds.length];
-        for (int i=0; i<ntfs.length; ++i) {
-            if (!ntfProcessorMap.keySet().contains(ntfIds[i])) {
-                KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfIds[i]);
-                return;
-            }
-            ntfs[i]=ntfIds[i].name();
+        for (Msg ntf : ntfIds) {
+            eject(ntf);
         }
-        witch.eject(ntfs);
     }
 
-    /**
-     * 设置配置
-     * */
-    protected void set(Msg setId, Object para){
-        witch.set(setId.name(), para);
-    }
-
-    /**
-     * 获取配置
-     * */
-    protected Object get(Msg getId){
-        return witch.get(getId.name());
-    }
-
-    protected Object get(Msg getId, Object para){
-        return witch.get(getId.name(), para);
-    }
+//    /**
+//     * 设置配置
+//     * */
+//    protected void set(Msg setId, Object para){
+//        witch.set(setId.name(), para);
+//    }
+//
+//    /**
+//     * 获取配置
+//     * */
+//    protected Object get(Msg getId){
+//        return witch.get(getId.name());
+//    }
+//
+//    protected Object get(Msg getId, Object para){
+//        return witch.get(getId.name(), para);
+//    }
 
     /**
      * 删除监听者。
@@ -337,77 +329,40 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
         }
     }
 
-    @Override
-    public void onFeedbackNtf(String ntfId, Object ntfContent) {
 
-        Set<Object> listeners = ntfListeners.get(ntfId);
-        if (null == listeners){
-            return;
-        }
-        StringBuffer sb = new StringBuffer();
-        for (Object listener : listeners){
-            sb.append(listener).append("; ");
-        }
-
-        Msg ntf = Msg.valueOf(ntfId);
-        KLog.p("ntfId=%s, ntfContent=%s, listeners=%s", ntf, ntfContent, sb);
-        ntfProcessorMap.get(ntf).process(ntf, ntfContent, listeners);
-    }
 
     @Override
-    public void onFeedbackRsp(String rspId, Object rspContent, String reqId, int reqSn, Object[] reqParas) {
-        RequestBundle requestBundle = rspListeners.get(reqSn);
+    public boolean onRsp(boolean bLast, String rspId, Object rspContent, String reqId, int reqSn, Object[] reqParas) {
+        Msg req = Msg.valueOf(reqId);
+        Msg rsp = Msg.valueOf(rspId);
+        RequestBundle requestBundle;
+        if (bLast) {
+            requestBundle = rspListeners.remove(new ReqKey(req, reqSn));
+        }else{
+            requestBundle = rspListeners.get(new ReqKey(req, reqSn));
+        }
         IResultListener resultListener = requestBundle.resultListener;
         if (!requestBundle.bResultArrived){
             requestBundle.bResultArrived = true;
             if(null != resultListener) resultListener.onArrive();
         }
-        Msg req = Msg.valueOf(reqId);
-        Msg rsp = Msg.valueOf(rspId);
         StringBuffer sb = new StringBuffer();
         for (Object para : reqParas){
             sb.append(para).append("; ");
         }
         KLog.p("rspId=%s, rspContent=%s, resultListener=%s, \nreqId=%s, reqSn=%s, reqParas=%s", rsp, rspContent, resultListener, reqId, reqSn, sb);
-        boolean bConsumed = rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
-
-        if (!bConsumed){
-            // 如果响应处理器未消费该条消息，则尝试抛给通知处理器处理（有些消息既可为响应也可为通知）
-            onFeedbackNtf(rspId, rspContent);
-        }
+        return rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
     }
 
     @Override
-    public void onFeedbackRspFin(String rspId, Object rspContent, String reqId, int reqSn, Object[] reqParas) {
-        RequestBundle requestBundle = rspListeners.remove(reqSn);
+    public void onTimeout(String reqId, int reqSn, Object[] reqParas) {
+        Msg req = Msg.valueOf(reqId);
+        RequestBundle requestBundle = rspListeners.remove((new ReqKey(req, reqSn)));
         IResultListener resultListener = requestBundle.resultListener;
         if (!requestBundle.bResultArrived){
             requestBundle.bResultArrived = true;
             if(null != resultListener) resultListener.onArrive();
         }
-        Msg req = Msg.valueOf(reqId);
-        Msg rsp = Msg.valueOf(rspId);
-        StringBuffer sb = new StringBuffer();
-        for (Object para : reqParas){
-            sb.append(para).append("; ");
-        }
-        KLog.p("rspId=%s, rspContent=%s, resultListener=%s, \nreqId=%s, reqSn=%s, reqParas=%s", rsp, rspContent, resultListener, reqId, reqSn, sb);
-        boolean bConsumed = rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
-        if (!bConsumed){
-            // 如果响应处理器未消费该条消息，则尝试抛给通知处理器处理（有些消息既可为响应也可为通知）
-            onFeedbackNtf(rspId, rspContent);
-        }
-    }
-
-    @Override
-    public void onFeedbackTimeout(String reqId, int reqSn, Object[] reqParas) {
-        RequestBundle requestBundle = rspListeners.remove(reqSn);
-        IResultListener resultListener = requestBundle.resultListener;
-        if (!requestBundle.bResultArrived){
-            requestBundle.bResultArrived = true;
-            if(null != resultListener) resultListener.onArrive();
-        }
-        Msg req = Msg.valueOf(reqId);
         StringBuffer sb = new StringBuffer();
         for (Object para : reqParas){
             sb.append(para).append("; ");
@@ -421,27 +376,32 @@ public abstract class RequestAgent implements Witch.IOnFeedbackListener{
     }
 
     @Override
-    public void onFeedbackUserCanceled(String reqId, int reqSn, Object[] reqParas) {
-        RequestBundle requestBundle = rspListeners.remove(reqSn);
+    public void onNtf(String ntfId, Object ntfContent) {
+        Set<Object> listeners = ntfListeners.get(ntfId);
         StringBuffer sb = new StringBuffer();
-        for (Object para : reqParas){
-            sb.append(para).append("; ");
+        for (Object listener : listeners){
+            sb.append(listener).append("; ");
         }
-        KLog.p("reqId=%s, reqSn=%s", reqId, reqSn, sb);
+        Msg ntf = Msg.valueOf(ntfId);
+        KLog.p("ntfId=%s, ntfContent=%s, listeners=%s", ntf, ntfContent, sb);
+        ntfProcessorMap.get(ntf).process(ntf, ntfContent, listeners);
     }
 
-    @Override
-    public void onFeedbackUserCancelFailed(String reqId, int reqSn) {
-        RequestBundle requestBundle = rspListeners.remove(reqSn);
-        KLog.p("reqId=%s, reqSn=%s", reqId, reqSn);
+
+    private static class ReqKey{
+        private final Msg reqId;
+        private final int reqSn;
+
+        ReqKey(Msg reqId, int reqSn) {
+            this.reqId = reqId;
+            this.reqSn = reqSn;
+        }
     }
 
     private static class RequestBundle{
-        private Msg reqId;
         private IResultListener resultListener;
         private boolean bResultArrived = false;
-        RequestBundle(Msg reqId, IResultListener resultListener){
-            this.reqId = reqId;
+        RequestBundle(IResultListener resultListener){
             this.resultListener = resultListener;
         }
     }

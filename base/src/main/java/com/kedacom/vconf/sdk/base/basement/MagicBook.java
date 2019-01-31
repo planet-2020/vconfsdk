@@ -2,6 +2,9 @@ package com.kedacom.vconf.sdk.base.basement;
 
 import com.kedacom.vconf.sdk.annotation.Consumer;
 import com.kedacom.vconf.sdk.annotation.Message;
+import com.kedacom.vconf.sdk.annotation.Notification;
+import com.kedacom.vconf.sdk.annotation.Request;
+import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.KLog;
 
 import java.util.Map;
@@ -23,7 +26,12 @@ final class MagicBook {
 
     private Set<String> sets;
 
-    private Map<String, String> idNameMap; // 消息ID——消息名称
+    /**
+     * 消息ID——消息名称。
+     * 消息ID为消息枚举的字面值，消息名称为
+     * {@link Request#name()},{@link Response#name()},{@link Notification#name()}
+     * */
+    private Map<String, String> idNameMap;
 
     private Map<String, String> nameIdMap; // 消息名称——消息ID
 

@@ -15,7 +15,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
 public @interface Response {
-    String name() default "";  // 下层传递上来的消息名称，若为空则使用被修饰的枚举的name。
+    String name() default "";  // 下层传递上来的消息名称。
     Class clz(); // 响应消息体对应的类
-    int delay() default 500; // 延时（单位：毫秒）。仅模拟模式生效。
+    int delay() default 500; // 触发该响应前的延时（单位：毫秒）。仅模拟模式有效。
 }

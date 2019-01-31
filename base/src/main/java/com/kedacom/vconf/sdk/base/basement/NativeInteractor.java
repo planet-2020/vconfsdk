@@ -12,7 +12,6 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
-@SuppressWarnings("JniMissingFunction")
 public class NativeInteractor implements ICrystalBall, INativeCallback{
     private static final String TAG = NativeInteractor.class.getSimpleName();
     private static NativeInteractor instance;
@@ -38,7 +37,7 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
 
     @Override
     public int yell(String methodOwner, String methodName, Object[] para, Class[] paraType) {
-        Log.d(TAG, "####=yell methodOwner="+methodOwner+" methodName="+methodName+" paras="+para);
+        Log.d(TAG, "####methodOwner="+methodOwner+" methodName="+methodName);
         Method method = cachedMethods.get(methodName);
         if (null != method){
             try {
@@ -53,7 +52,7 @@ public class NativeInteractor implements ICrystalBall, INativeCallback{
         }
 
         try {
-            Class clz = Class.forName(methodOwner);
+            Class<?> clz = Class.forName(methodOwner);
             method = clz.getDeclaredMethod(methodName, paraType);
             method.invoke(null, para);
             cachedMethods.put(methodName, method);
