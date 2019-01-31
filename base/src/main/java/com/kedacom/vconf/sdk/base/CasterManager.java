@@ -2,7 +2,7 @@ package com.kedacom.vconf.sdk.base;
 
 import com.kedacom.vconf.sdk.base.basement.ICrystalBall2;
 import com.kedacom.vconf.sdk.base.basement.IFairy2;
-import com.kedacom.vconf.sdk.base.basement.NativeInteractor2;
+import com.kedacom.vconf.sdk.base.basement.CrystalBall;
 import com.kedacom.vconf.sdk.base.basement.NotificationFairy2;
 import com.kedacom.vconf.sdk.base.basement.SessionFairy2;
 
@@ -33,7 +33,7 @@ public class CasterManager {
                 {
                     IFairy2.ISessionFairy sessionFairy = SessionFairy2.instance();
                     IFairy2.INotificationFairy notificationFairy = NotificationFairy2.instance();
-                    ICrystalBall2 crystalBall = NativeInteractor2.instance();
+                    ICrystalBall2 crystalBall = CrystalBall.instance();
                     sessionFairy.setCrystalBall(crystalBall);
                     notificationFairy.setCrystalBall(crystalBall);
                     caster = ctor.newInstance(sessionFairy, notificationFairy);

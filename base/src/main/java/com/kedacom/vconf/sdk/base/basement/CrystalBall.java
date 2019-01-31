@@ -17,21 +17,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class NativeInteractor2 implements ICrystalBall2{
-    private static final String TAG = NativeInteractor2.class.getSimpleName();
-    private static NativeInteractor2 instance;
+public class CrystalBall implements ICrystalBall2{
+    private static final String TAG = CrystalBall.class.getSimpleName();
+    private static CrystalBall instance;
 
     private final Map<String, Method> cachedMethods = new HashMap<>();
 
     private final List<IListener> listeners = new ArrayList<>();
 
-    private NativeInteractor2(){
+    private CrystalBall(){
 //        setCallback(this);
     }
 
-    public synchronized static NativeInteractor2 instance() {
+    public synchronized static CrystalBall instance() {
         if (null == instance) {
-            instance = new NativeInteractor2();
+            instance = new CrystalBall();
         }
         return instance;
     }
