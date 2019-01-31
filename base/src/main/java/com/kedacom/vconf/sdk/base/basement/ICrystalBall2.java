@@ -9,13 +9,11 @@ public interface ICrystalBall2 {
 
     /**
      * 下发请求。
-     * 请在非主线程调用该接口
      * */
     int spell(String methodOwner, String methodName, Object[] para, Class[] paraType);
 
     /**
      * 上报消息。
-     * 请在非主线程调用该接口
      * */
     void onAppear(String msgName, String msgContent);
 

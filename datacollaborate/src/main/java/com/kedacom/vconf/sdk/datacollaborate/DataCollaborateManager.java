@@ -6,11 +6,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
-import com.kedacom.vconf.sdk.base.AgentManager;
+import com.kedacom.vconf.sdk.base.Caster;
+import com.kedacom.vconf.sdk.base.CasterManager;
 import com.kedacom.vconf.sdk.base.ILifecycleOwner;
 import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.Msg;
-import com.kedacom.vconf.sdk.base.RequestAgent;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.base.bean.dc.BaseTypeString;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsDownloadImageRsp;
@@ -66,7 +66,9 @@ import java.util.UUID;
 import androidx.annotation.Nullable;
 
 
-public class DataCollaborateManager extends RequestAgent {
+public class DataCollaborateManager extends Caster {
+
+    private static DataCollaborateManager instance;
 
     /*同步过程中缓存的操作*/
     private Map<String, PriorityQueue<OpPaint>> cachedPaintOps = new HashMap<>();
@@ -217,11 +219,8 @@ public class DataCollaborateManager extends RequestAgent {
     private static String PIC_SAVE_DIR;
     private static Context context;
 
-    static Context getContext() {
-        return context;
+    private DataCollaborateManager(){
     }
-
-    private DataCollaborateManager(){}
     /**
      * 获取数据协作管理类实例
      * @param ctx 应用上下文
@@ -250,7 +249,12 @@ public class DataCollaborateManager extends RequestAgent {
                 }
             }
         }
-        return AgentManager.obtain(DataCollaborateManager.class);
+
+        if (null == instance) {
+            instance = CasterManager.obtain(DataCollaborateManager.class);
+        }
+
+        return instance;
     }
 
 

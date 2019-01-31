@@ -287,7 +287,7 @@ public final class SessionFairy2 implements IFairy2.ISessionFairy{
     /**
      * 启动会话
      * */
-    private synchronized int startSession(Session s){
+    private synchronized void startSession(Session s){
 
         // 用户参数转换为底层方法需要的参数
         Object[] paras = magicBook.userPara2MethodPara(s.reqPara, magicBook.getReqMethodParaClasses(s.reqName));
@@ -307,7 +307,7 @@ public final class SessionFairy2 implements IFairy2.ISessionFairy{
             s.state = Session.END; // 请求没有响应，会话结束
             sessions.remove(s);
             driveBlockedSession(s.reqName);
-            return 0;
+            return;
         }
 
         s.state = Session.WAITING; // 请求已发出正在等待响应
@@ -317,8 +317,6 @@ public final class SessionFairy2 implements IFairy2.ISessionFairy{
         msg.what = MSG_ID_TIMEOUT;
         msg.obj = s;
         handler.sendMessageDelayed(msg, s.timeoutVal);
-
-        return 0;
     }
 
     /**

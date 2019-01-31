@@ -52,6 +52,9 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
         }
     };
 
+    protected Caster() {
+    }
+
     @SuppressWarnings("ConstantConditions")
     protected Caster(@NonNull IFairy2.ISessionFairy sessionFairy, @NonNull IFairy2.INotificationFairy notificationFairy){
 
@@ -171,6 +174,7 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
             if (reqId.equals(reqKey.reqId)
                     && rspListener.equals(bundle.resultListener)){
                 sessionFairy.cancelReq(reqKey.reqId.name(), reqKey.reqSn);
+                rspListeners.remove(reqKey);
                 break;
             }
         }
