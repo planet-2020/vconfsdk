@@ -17,13 +17,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class CrystalBall implements ICrystalBall2{
+public class CrystalBall implements ICrystalBall {
     private static final String TAG = CrystalBall.class.getSimpleName();
     private static CrystalBall instance;
 
     private final Map<String, Method> cachedMethods = new HashMap<>();
 
-    private final List<IListener> listeners = new ArrayList<>();
+    private final List<IListener> rspListeners = new ArrayList<>();
+    private final List<IListener> ntfListeners = new ArrayList<>();
 
     private CrystalBall(){
 //        setCallback(this);
@@ -75,13 +76,13 @@ public class CrystalBall implements ICrystalBall2{
     }
 
     @Override
-    public void onAppear(String msgName, String msgContent) {
-        if (null == msgName || msgName.isEmpty()){
+    public void onAppear(String msgId, String msgContent) {
+        if (null == msgId || msgId.isEmpty()){
             Log.w(TAG, "invalid msgId");
             return;
         }
         Message msg = Message.obtain();
-        msg.obj = new MsgWrapper(msgName, msgContent);
+        msg.obj = new MsgWrapper(msgId, msgContent);
         handler.sendMessage(msg);
     }
 
@@ -90,18 +91,25 @@ public class CrystalBall implements ICrystalBall2{
      * NOTE: 先添加的监听器优先消费消息。
      * */
     @Override
-    public void addListener(IListener listener) {
-        listeners.add(listener);
+    public void addRspListener(IListener listener) {
+        rspListeners.add(listener);
+    }
+
+    @Override
+    public void addNtfListener(IListener listener) {
+        ntfListeners.add(listener);
     }
 
     @Override
     public void delListener(IListener listener) {
-        listeners.remove(listener);
+        rspListeners.remove(listener);
+        ntfListeners.remove(listener);
     }
 
     @Override
     public void clearListeners() {
-        listeners.clear();
+        rspListeners.clear();
+        ntfListeners.clear();
     }
 
 
@@ -113,16 +121,15 @@ public class CrystalBall implements ICrystalBall2{
                 String msgBody = msgWrapper.msgBody;
                 /*
                  * 消费该消息.
-                 * 先添加的监听器优先消费，若消息被消费则不再传递给后续监听器。
+                 * 响应监听器优先消费，若消息被消费则不再传递给后续监听器。
                  * */
-                boolean bConsumed = false;
-                for (IListener listener : listeners){
-                    if (bConsumed=listener.onMsg(msgName, msgBody)){
-                        break;
+                for (IListener listener : rspListeners){
+                    if (listener.onMsg(msgName, msgBody)){
+                        return;
                     }
                 }
-                if (!bConsumed){
-                    Log.w(TAG, String.format("<-/- %s, unconsumed msg \n%s", msgName, msgBody));
+                for (IListener listener : ntfListeners){
+                    listener.onMsg(msgName, msgBody);
                 }
             }
         };

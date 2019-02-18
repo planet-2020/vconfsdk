@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '0.9.40-SNAPSHOT'
+version = '0.9.50-SNAPSHOT'
 
 android {
     compileSdkVersion 28
@@ -32,6 +32,7 @@ dependencies {
     annotationProcessor project(':processor')
     implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"
     implementation 'com.google.code.gson:gson:2.8.2'
+    implementation 'com.google.guava:guava:27.0.1-android'
 }
 
 apply from: '../publish.gradle'

@@ -2,21 +2,23 @@ package com.kedacom.vconf.sdk.base.basement;
 
 import android.util.Log;
 
+import com.google.common.collect.Lists;
+
+import java.util.List;
+
 final class CommandFairy implements IFairy.ICommandFairy{
 
     private static final String TAG = CommandFairy.class.getSimpleName();
 
     private static CommandFairy instance;
 
-    private JsonProcessor jsonProcessor;
+    private JsonProcessor jsonProcessor = JsonProcessor.instance();
 
-    private MagicBook magicBook;
+    private MagicBook magicBook = MagicBook.instance();
 
-    private IStick.ICommandStick stick;
+    private ICrystalBall crystalBall;
 
     private CommandFairy(){
-        jsonProcessor = JsonProcessor.instance();
-        magicBook = MagicBook.instance();
     }
 
     synchronized static CommandFairy instance() {
@@ -27,77 +29,82 @@ final class CommandFairy implements IFairy.ICommandFairy{
         return instance;
     }
 
-    @Override
-    public void processSet(String setId, Object para){
 
-        if (null == stick){
-            Log.e(TAG, "no command stick ");
+    @Override
+    public void set(String setName, Object... paras) {
+        if (null == crystalBall){
+            Log.e(TAG, "no crystalBall ");
             return;
         }
-
-        String setName = magicBook.getMsgName(setId);
 
         if (!magicBook.isSet(setName)){
-            Log.e(TAG, "Unknown processSet "+setName);
+            Log.e(TAG, "Unknown set command"+setName);
             return;
         }
 
-        if (para.getClass() != magicBook.getSetParaClazz(setName)){
+        // 检查参数合法性
+        Class[] userParaTypes = magicBook.getUserParaClasses(setName);
+        if (userParaTypes.length != paras.length){
+            Log.e(TAG, String.format("invalid para nums for %s, expect #%s but got #%s", setName, userParaTypes.length, paras.length));
             return;
         }
+        for(int i=0; i<userParaTypes.length; ++i){
+            if (null != paras[i]
+                    && userParaTypes[i] != paras[i].getClass()){
+                Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", setName, userParaTypes[i], paras[i].getClass()));
+                return;
+            }
+        }
 
-        stick.set(setName, jsonProcessor.toJson(para));
+        Object[] methodParas = magicBook.userPara2MethodPara(paras, magicBook.getParaClasses(setName));
+
+        crystalBall.spell(magicBook.getMethodOwner(setName), magicBook.getMethod(setName), methodParas, magicBook.getParaClasses(setName));
     }
 
     @Override
-    public Object processGet(String getId){
+    public Object get(String getName, Object... paras) {
 
-        if (null == stick){
-            Log.e(TAG, "no command stick ");
+        if (null == crystalBall){
+            Log.e(TAG, "no crystalBall");
             return null;
         }
-
-        String getName = magicBook.getMsgName(getId);
 
         if (!magicBook.isGet(getName)){
-            Log.e(TAG, "Unknown processGet "+getName);
+            Log.e(TAG, "Unknown get command "+getName);
             return null;
         }
 
-        StringBuffer buffer = new StringBuffer();
-        stick.get(getName, buffer);
+        // 检查参数合法性
+        Class<?>[] userParaTypes = magicBook.getUserParaClasses(getName);
+        if (userParaTypes.length != paras.length){
+            Log.e(TAG, String.format("invalid para nums for %s, expect #%s but got #%s", getName, userParaTypes.length, paras.length));
+            return null;
+        }
+        for(int i=0; i<userParaTypes.length-1; ++i){ // 最后一个参数为出参不校验。为了方便约定用户无需传入出参以获得结果而是通过返回值获取结果。所以用户参数个数比底层方法所需参数个数少1（少了最后一个出参）
+            if (null != paras[i]
+                    && userParaTypes[i] != paras[i].getClass()){
+                Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", getName, userParaTypes[i], paras[i].getClass()));
+                return null;
+            }
+        }
 
-        return jsonProcessor.fromJson(buffer.toString(), magicBook.getGetResultClazz(getName));
+        Object[] methodParas = magicBook.userPara2MethodPara(paras, magicBook.getParaClasses(getName));
+        List<Object> methodParas1 = Lists.newArrayList(methodParas);
+        StringBuffer outPara = new StringBuffer();
+        methodParas1.add(outPara);
+        methodParas = methodParas1.toArray();
+        crystalBall.spell(magicBook.getMethodOwner(getName), magicBook.getMethod(getName), methodParas, magicBook.getParaClasses(getName));
+
+        return jsonProcessor.fromJson(methodParas[methodParas.length-1].toString(), userParaTypes[userParaTypes.length-1]);
     }
 
     @Override
-    public Object processGet(String getId, Object para){
-
-        if (null == stick){
-            Log.e(TAG, "no command stick ");
-            return null;
-        }
-
-        String getName = magicBook.getMsgName(getId);
-
-        if (!magicBook.isGet(getName)){
-            Log.e(TAG, "Unknown processGet "+getName);
-            return null;
-        }
-
-        if (para.getClass() != magicBook.getGetParaClazz(getName)){
-            return null;
-        }
-
-        StringBuffer buffer = new StringBuffer();
-        stick.get(getName, jsonProcessor.toJson(para), buffer);
-
-        return jsonProcessor.fromJson(buffer.toString(), magicBook.getGetResultClazz(getName));
+    public void setCrystalBall(ICrystalBall crystalBall) {
+        this.crystalBall = crystalBall;
     }
 
     @Override
-    public void setCommandStick(IStick.ICommandStick commandStick) {
-        stick = commandStick;
+    public ICrystalBall getCrystalBall() {
+        return crystalBall;
     }
-
 }

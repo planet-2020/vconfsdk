@@ -7,7 +7,6 @@ import android.os.Looper;
 import android.os.Message;
 
 import com.kedacom.vconf.sdk.base.Caster;
-import com.kedacom.vconf.sdk.base.CasterManager;
 import com.kedacom.vconf.sdk.base.ILifecycleOwner;
 import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.Msg;
@@ -251,7 +250,7 @@ public class DataCollaborateManager extends Caster {
         }
 
         if (null == instance) {
-            instance = CasterManager.obtain(DataCollaborateManager.class);
+            instance = new DataCollaborateManager();
         }
 
         return instance;
@@ -301,9 +300,20 @@ public class DataCollaborateManager extends Caster {
         switch (rspId){
             case DCBuildLink4LoginRsp:
                 TDCSConnectResult result = (TDCSConnectResult) rspContent;
-                if (!result.bSuccess && null != listener){
-                    cancelReq(Msg.DCLogin, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
-                    listener.onFailed(ErrCode_BuildLink4LoginFailed);
+                if (Msg.DCLogin == reqId) {
+                    if (!result.bSuccess) { // 链路建立失败
+                        cancelReq(Msg.DCLogin, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
+                        if (null != listener) listener.onFailed(ErrCode_BuildLink4LoginFailed);
+                    }
+                }else if (Msg.DCLogout == reqId){
+                    if (!result.bSuccess) { // 链路已断开
+                        if (null != listener) listener.onSuccess(null);
+                    }else{
+                        // 链路处于连接状态，该消息不是该请求期望的
+                        return false;
+                    }
+                }else{
+                    return false;
                 }
                 break;
 
@@ -320,12 +330,9 @@ public class DataCollaborateManager extends Caster {
 
             case DCLogoutRsp:
                 TDCSResult logoutRes = (TDCSResult) rspContent;
-                if (null != listener){
-                    if (logoutRes.bSucces){
-                        listener.onSuccess(null);
-                    }else{
-                        listener.onFailed(ErrCode_Failed);
-                    }
+                if (!logoutRes.bSucces){
+                    cancelReq(Msg.DCLogout, listener);  // 后续不会有DCBuildLink4LoginRsp上来，取消该请求以防等待超时。
+                    if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
 
@@ -399,13 +406,10 @@ public class DataCollaborateManager extends Caster {
         req(Msg.DCQueryAllBoards, new QueryAllBoardsInnerListener() {
 
                     @Override
-                    public void onArrive() {
+                    public void onSuccess(Object result) {
                         /* 获取所有画板结束，准备阶段结束*/
                         bPreparingSync = false;
-                    }
 
-                    @Override
-                    public void onSuccess(Object result) {
                         bGotAllBoard = true;
                         List<TDCSBoardInfo> dcBoards = (List<TDCSBoardInfo>) result;
                         // 检查准备阶段缓存的图元所在画板是否仍存在，若不存在则删除之。
@@ -492,11 +496,15 @@ public class DataCollaborateManager extends Caster {
 
                     @Override
                     public void onFailed(int errorCode) {
+                        /* 获取所有画板结束，准备阶段结束*/
+                        bPreparingSync = false;
 //                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s failed!", dcConfinfo.confE164);
                     }
 
                     @Override
                     public void onTimeout() {
+                        /* 获取所有画板结束，准备阶段结束*/
+                        bPreparingSync = false;
 //                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s timeout!", dcConfinfo.confE164);
                     }
                 },
@@ -562,9 +570,20 @@ public class DataCollaborateManager extends Caster {
         switch (rspId){
             case DCBuildLink4ConfRsp:
                 TDCSConnectResult result = (TDCSConnectResult) rspContent;
-                if (!result.bSuccess && null != listener){
-                    cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
-                    listener.onFailed(ErrCode_BuildLink4ConfFailed);
+                if (Msg.DCCreateConf == reqId) {
+                    if (!result.bSuccess) { // 链路建立失败
+                        cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
+                        if (null != listener) listener.onFailed(ErrCode_BuildLink4ConfFailed);
+                    }
+                }else if (Msg.DCQuitConf == reqId
+                        || Msg.DCReleaseConf == reqId){
+                    if (!result.bSuccess) { // 链路已断开，退出/结束协作成功
+                        if (null != listener) listener.onSuccess(null);
+                    }else{ // 链路未断开，该消息不是期望的
+                        return false;
+                    }
+                }else{
+                    return false;
                 }
                 break;
             case DCConfCreated:
@@ -583,23 +602,13 @@ public class DataCollaborateManager extends Caster {
                 break;
 
             case DCReleaseConfRsp:
-                TDCSResult releaseRes = (TDCSResult) rspContent;
-                if (null != listener){
-                    if (releaseRes.bSucces){
-                        listener.onSuccess(null);
-                    }else{
-                        listener.onFailed(ErrCode_Failed);
-                    }
-                }
+            case DCReleaseConfNtf:
                 break;
             case DCQuitConfRsp:
                 TDCSResult quitRes = (TDCSResult) rspContent;
-                if (null != listener){
-                    if (quitRes.bSucces){
-                        listener.onSuccess(null);
-                    }else{
-                        listener.onFailed(ErrCode_Failed);
-                    }
+                if (!quitRes.bSucces){
+                    cancelReq(Msg.DCQuitConf, listener);
+                    if (null != listener) listener.onFailed(ErrCode_Failed);
                 }
                 break;
             default:

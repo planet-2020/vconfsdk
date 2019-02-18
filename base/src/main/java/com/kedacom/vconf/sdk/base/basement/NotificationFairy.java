@@ -1,38 +1,28 @@
 package com.kedacom.vconf.sdk.base.basement;
 
-import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 
 
-final class NotificationFairy implements IFairy.ISubscribeFairy,
-        IFairy.IEmitNotificationFairy,
-        IFairy.INotificationFairy{
+public final class NotificationFairy implements IFairy.INotificationFairy{
 
     private static final String TAG = NotificationFairy.class.getSimpleName();
 
     private static NotificationFairy instance;
 
-    private IStick.IEmitNotificationStick stick;
-    private MagicBook magicBook;
-    private JsonProcessor jsonProcessor;
+    private MagicBook magicBook = MagicBook.instance();
+    private JsonProcessor jsonProcessor = JsonProcessor.instance();
 
-    private Map<String, Set<Handler>> subscribers;
+    private Map<String, LinkedHashSet<IListener>> subscribers = new LinkedHashMap<>();
 
-    private NotificationFairy(){
-        magicBook = MagicBook.instance();
-        jsonProcessor = JsonProcessor.instance();
+    private ICrystalBall crystalBall;
 
-        subscribers = new HashMap<>();
-    }
+    private NotificationFairy(){}
 
-    synchronized static NotificationFairy instance() {
+    public synchronized static NotificationFairy instance() {
         if (null == instance) {
             instance = new NotificationFairy();
         }
@@ -41,23 +31,21 @@ final class NotificationFairy implements IFairy.ISubscribeFairy,
     }
 
 
-
     @Override
-    public synchronized boolean processSubscribe(Handler subscriber, String ntfId) {
+    public boolean subscribe(IListener subscriber, String ntfName) {
         if (null == subscriber){
+            Log.e(TAG, "null subscriber ");
             return false;
         }
-
-        String ntfName = magicBook.getMsgName(ntfId);
 
         if (!magicBook.isNotification(ntfName)){
             Log.e(TAG, "Unknown notification "+ntfName);
             return false;
         }
 
-        Set<Handler> subs = subscribers.get(ntfName);
+        LinkedHashSet<IListener> subs = subscribers.get(ntfName);
         if (null == subs){
-            subs = new HashSet<>();
+            subs = new LinkedHashSet<>();
             subscribers.put(ntfName, subs);
         }
 
@@ -67,20 +55,18 @@ final class NotificationFairy implements IFairy.ISubscribeFairy,
     }
 
     @Override
-    public synchronized void processUnsubscribe(Handler subscriber, String ntfId) {
-
+    public void unsubscribe(IListener subscriber, String ntfName) {
         if (null == subscriber){
+            Log.e(TAG, "null subscriber ");
             return;
         }
-
-        String ntfName = magicBook.getMsgName(ntfId);
 
         if (!magicBook.isNotification(ntfName)){
             Log.e(TAG, "Unknown notification "+ntfName);
             return;
         }
 
-        Set<Handler> subs = subscribers.get(ntfName);
+        LinkedHashSet<IListener> subs = subscribers.get(ntfName);
         if (null != subs){
             subs.remove(subscriber);
             if (subs.isEmpty()){
@@ -91,72 +77,64 @@ final class NotificationFairy implements IFairy.ISubscribeFairy,
 
 
     @Override
-    public synchronized boolean processNotification(String ntfName, String ntfBody) {
-        if (!magicBook.isNotification(ntfName)){
+    public boolean onMsg(String msgId, String msgContent) {
+        String msgName = magicBook.getMsgName(msgId);
+        if (!magicBook.isNotification(msgName)){
+            Log.w(TAG, "Unknown notification "+ msgName);
             return false;
         }
-        Set<Handler> subs = subscribers.get(ntfName);
+        LinkedHashSet<IListener> subs = subscribers.get(msgName);
         if (null == subs || 0==subs.size()){
+            Log.w(TAG, "no subscriber for "+ msgName);
             return false;
         }
 
-        Log.d(TAG, String.format("<-~- %s\n%s", ntfName, ntfBody));
+        Log.d(TAG, String.format("<-~- %s\n%s", msgName, msgContent));
 
-        Object ntfContent = jsonProcessor.fromJson(ntfBody, magicBook.getNtfClazz(ntfName));
+        Object ntfContent = jsonProcessor.fromJson(msgContent, magicBook.getRspClazz(msgName));
 
-        for (Handler sub : subs){
-            Message msg = Message.obtain();
-            msg.obj = new FeedbackBundle(magicBook.getMsgId(ntfName),
-                    ntfContent,
-                    FeedbackBundle.NTF);
-            sub.sendMessage(msg);
+        for (IListener sub : subs){
+            sub.onNtf(msgName, ntfContent);
         }
 
-        return true;
+        return false;
     }
 
 
+
     @Override
-    public synchronized boolean processEmitNotification(String ntfId) {
-
-        if (null == stick){
-            Log.e(TAG, "no emit notification stick ");
-            return false;
+    public void emit(String ntfName) {
+        if (null == crystalBall){
+            Log.e(TAG, "no crystalBall ");
+            return;
         }
-
-        String ntfName = magicBook.getMsgName(ntfId);
 
         if (!magicBook.isNotification(ntfName)){
             Log.e(TAG, "Unknown notification "+ ntfName);
-            return false;
+            return;
         }
 
-        return stick.emit(ntfName);
+        // TODO
+//        crystalBall.emit(ntfName);
+    }
+
+    // XXX 上层循环调用
+//    @Override
+//    public void emit(String[] ntfIds) {
+//        for (String ntfId : ntfIds){
+//            emit(ntfId);
+//        }
+//    }
+
+
+    @Override
+    public void setCrystalBall(ICrystalBall crystalBall) {
+        this.crystalBall = crystalBall;
     }
 
     @Override
-    public boolean processEmitNotifications(String[] ntfIds) {
-        if (null == stick){
-            Log.e(TAG, "no emit notification stick ");
-            return false;
-        }
-
-        String[] ntfNames = new String[ntfIds.length];
-
-        for (int i=0; i<ntfNames.length; ++i) {
-            ntfNames[i] = magicBook.getMsgName(ntfIds[i]);
-            if (!magicBook.isNotification(ntfNames[i])) {
-                Log.e(TAG, "Unknown notification " + ntfNames[i]);
-                return false;
-            }
-        }
-
-        return stick.emit(ntfNames);
-    }
-
-    @Override
-    public void setEmitNotificationStick(IStick.IEmitNotificationStick emitNotificationStick) {
-        stick = emitNotificationStick;
+    public ICrystalBall getCrystalBall() {
+        return crystalBall;
     }
 
 }

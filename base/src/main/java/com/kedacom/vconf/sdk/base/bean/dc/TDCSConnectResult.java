@@ -7,4 +7,7 @@ package com.kedacom.vconf.sdk.base.bean.dc;
 public class TDCSConnectResult {
     public boolean bSuccess;
     public EmDcsConnectErrCode dwErrorCode;
+    public TDCSConnectResult() {
+        this.bSuccess = true;
+    }
 }

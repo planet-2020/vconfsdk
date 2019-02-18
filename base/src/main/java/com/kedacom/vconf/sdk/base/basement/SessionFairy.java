@@ -2,50 +2,68 @@ package com.kedacom.vconf.sdk.base.basement;
 
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 import android.util.Log;
 import android.util.SparseIntArray;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 
-@SuppressWarnings("UnusedReturnValue")
-final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
+//@SuppressWarnings("UnusedReturnValue")
+public final class SessionFairy implements IFairy.ISessionFairy{
 
     private static final String TAG = SessionFairy.class.getSimpleName();
 
     private static SessionFairy instance;
 
-    private Set<Session> sessions;  // 进行中的会话
-    private Set<Session> blockedSessions; // 被阻塞的会话
-
-    private int sessionCnt = 0;
-    private static final int MAX_SESSION_NUM = 2000; // 进行中的会话数上限
-    private static final int MAX_BLOCKED_SESSION_NUM = 10000; // 被阻塞的会话数上限
+    private Set<Session> sessions = new LinkedHashSet<>();
 
     private Handler reqHandler;
-    private Handler timeoutHandler;
     private static final int MSG_ID_START_SESSION = 100;
+    private static final int MSG_ID_FIN_DUE_TO_NO_RSP = 102;
     private static final int MSG_ID_TIMEOUT = 999;
 
-    private JsonProcessor jsonProcessor;
-    private MagicBook magicBook;
-    private IStick.IRequestStick stick;
+    private JsonProcessor jsonProcessor = JsonProcessor.instance();
+    private MagicBook magicBook = MagicBook.instance();
+
+    private ICrystalBall crystalBall;
+
+
+    private Handler handler = new Handler(Looper.getMainLooper()){
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what){
+                case MSG_ID_TIMEOUT:
+                    timeout((Session) msg.obj);
+                    break;
+                case MSG_ID_FIN_DUE_TO_NO_RSP:
+                    Session s = (Session) msg.obj;
+                    s.listener.onFinDueToNoRsp(s.reqName, s.reqSn, s.reqPara);
+                    break;
+            }
+        }
+    };
+
 
     private SessionFairy(){
-        sessions = new HashSet<>();
-        blockedSessions = new HashSet<>();
-
-        jsonProcessor = JsonProcessor.instance();
-        magicBook = MagicBook.instance();
-
-        initRequestHandler();
-        initTimeoutHandler();
+        HandlerThread handlerThread = new HandlerThread("reqThr", Process.THREAD_PRIORITY_BACKGROUND);
+        handlerThread.start();
+        reqHandler = new Handler(handlerThread.getLooper()){
+            @Override
+            public void handleMessage(Message msg) {
+                switch (msg.what) {
+                    case MSG_ID_START_SESSION:
+                        startSession((Session) msg.obj);
+                        break;
+                }
+            }
+        };
     }
 
-    synchronized static SessionFairy instance() {
+    public synchronized static SessionFairy instance() {
         if (null == instance) {
             instance = new SessionFairy();
         }
@@ -56,14 +74,25 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
 
 
     @Override
-    public synchronized boolean processRequest(Handler requester, String reqId, int reqSn, Object... reqPara) {
+    public void setCrystalBall(ICrystalBall crystalBall) {
+        this.crystalBall = crystalBall;
+    }
 
-        if (null == stick){
-            Log.e(TAG, "no request stick ");
+    @Override
+    public ICrystalBall getCrystalBall() {
+        return crystalBall;
+    }
+
+
+    @Override
+    public boolean req(IListener listener, String reqName, int reqSn, Object... reqPara) {
+
+        if (null == crystalBall){
+            Log.e(TAG, "no crystalBall");
             return false;
         }
-        if (null == requester){
-            Log.e(TAG, "requester is null");
+        if (null == listener){
+            Log.e(TAG, "listener is null");
             return false;
         }
         if (null == reqPara){
@@ -71,141 +100,78 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
             return false;
         }
 
-        String reqName = magicBook.getMsgName(reqId);
-
-        if (!magicBook.isRequest(reqName)){
-            Log.e(TAG, "no such request: "+reqName);
+        if (!magicBook.isSession(reqName)){
+            Log.e(TAG, "no such session request: "+reqName);
             return false;
         }
 
         // 检查参数合法性
-        Class[] classes = magicBook.getReqParaClasses(reqName);
+        Class[] classes = magicBook.getUserParaClasses(reqName);
         if (classes.length != reqPara.length){
-            Log.e(TAG, String.format("invalid para nums for %s, expect #%s but got #%s", reqId, classes.length, reqPara.length));
+            Log.e(TAG, String.format("invalid para nums for %s, expect #%s but got #%s", reqName, classes.length, reqPara.length));
             return false;
         }
         for(int i=0; i<classes.length; ++i){
             if (null != reqPara[i]
                     && classes[i] != reqPara[i].getClass()){
-                Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", reqId, classes[i], reqPara[i].getClass()));
+                Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", reqName, classes[i], reqPara[i].getClass()));
                 return false;
             }
-        }
-
-        // 检查是否存在未完成的同类请求
-        boolean isReqExist = false;
-        for (Session s : sessions){
-            if (s.reqName.equals(reqName)) {
-                isReqExist = true;
-                break;
-            }
-        }
-
-        if (isReqExist
-                && magicBook.isMutualExclusiveReq(reqName)){
-            Log.w(TAG, String.format("request %s is mutual exclusive", reqName));
-            return false;
         }
 
         // 创建会话
-        Session s = new Session(++sessionCnt, requester, reqSn, reqName, reqPara,
-                magicBook.getTimeout(reqName)*1000,
-                magicBook.getRspSeqs(reqName));
-        // 尝试发送请求
-        if (!isReqExist){
-            if (sessions.size() >= MAX_SESSION_NUM){
-                Log.e(TAG, "request num reach the limit "+MAX_SESSION_NUM);
-                return false;
-            }
-            s.state = Session.READY;
-            sessions.add(s);
-            Message msg = Message.obtain();
-            msg.what = MSG_ID_START_SESSION;
-            msg.obj = s.id;
-            reqHandler.sendMessage(msg);
+        Session s = new Session(listener, reqSn, reqName, reqPara,magicBook.getTimeout(reqName) * 1000, magicBook.getRspSeqs(reqName));
+        s.state = Session.READY;
+        Message msg = Message.obtain();
+        msg.what = MSG_ID_START_SESSION;
+        msg.obj = s;
+        reqHandler.sendMessage(msg);
 
-            return true;
-
-        }else{
-            /* 存在未完成的同类请求则阻塞当前请求直到同类请求完成。 此举的目的是为了尽量保证“请求-响应”是正确匹配的*/
-            if (blockedSessions.size() >= MAX_BLOCKED_SESSION_NUM){
-                Log.e(TAG, "blocked-request num reach the limit "+MAX_BLOCKED_SESSION_NUM);
-                return false;
-            }
-            s.state = Session.BLOCKING;
-            blockedSessions.add(s);
-
-            Log.w(TAG, String.format("-=->| %s (session %d BLOCKED)", s.reqName, s.id)); // XXX 启动超时？阻塞时间算在超时内？
-
-            return true;
-        }
-
+        return true;
     }
 
-    @Override
-    public synchronized void processCancelRequest(Handler requester, String reqId, int reqSn) {
-        if (null == requester){
-            Log.e(TAG, "requester is null");
-            return;
-        }
 
-        Message rsp = Message.obtain();
+    @Override
+    public synchronized void cancelReq(int reqSn) {
         for (Session s : sessions){
-            if (reqSn == s.reqSn
-                    && requester.equals(s.requester)) {
+            if (reqSn == s.reqSn) {
+                if (Session.READY == s.state) {
+                    reqHandler.removeMessages(MSG_ID_START_SESSION, s);
+                }else {
+                    handler.removeMessages(MSG_ID_TIMEOUT, s);
+                }
                 s.state = Session.END;
-                timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
                 sessions.remove(s);
-                Log.d(TAG, String.format("<-=- (session %d FINISHED. %s CANCELED by user)", s.id, s.reqName));
-                rsp.obj = new FeedbackBundle("Canceled", null, FeedbackBundle.RSP_USER_CANCELED, reqId, reqSn, s.reqPara);
-                requester.sendMessage(rsp);
-                driveBlockedSession(s.reqName);// 驱动被当前会话阻塞的会话
+                handler.post(() -> Log.d(TAG, String.format("<-=- (session %d CANCELED. req=%s)", s.id, s.reqName)));
                 return;
             }
         }
-
-        for (Session s : blockedSessions) {
-            if (reqSn == s.reqSn
-                    && requester.equals(s.requester)) {
-                blockedSessions.remove(s);
-                Log.d(TAG, String.format("<-=- (session %d FINISHED. %s CANCELED by user)", s.id, s.reqName));
-                rsp.obj = new FeedbackBundle("Canceled", null, FeedbackBundle.RSP_USER_CANCELED, reqId, reqSn, s.reqPara);
-                requester.sendMessage(rsp);
-                return;
-            }
-        }
-
-        rsp.obj = new FeedbackBundle("Canceled", null, FeedbackBundle.RSP_USER_CANCEL_FAILED, reqId, reqSn, null);
-        requester.sendMessage(rsp);
-
     }
 
-
     @Override
-    public synchronized boolean processResponse(String rspName, String rspBody){
+    public synchronized boolean onMsg(String msgId, String msgContent) {
+        String msgName = magicBook.getMsgName(msgId);
 
-        if (!magicBook.isResponse(rspName)){
+        if (!magicBook.isResponse(msgName)){
+            Log.w(TAG, "Unknown response "+ msgName);
             return false;
         }
 
-        SparseIntArray candidates = new SparseIntArray();
-        String[] candidateRspSeq;
-        String candidateRsp;
-        int rspSeqIndx;
-        int rspIndx;
-        boolean gotLast = false; // 是否匹配到会话的最后一条响应
         for (final Session s : sessions) { // 查找期望该响应的会话
             if (Session.WAITING != s.state
                     && Session.RECVING != s.state) {
                 continue;
             }
 
+            SparseIntArray candidates = new SparseIntArray();
+            boolean gotLast = false; // 是否匹配到会话的最后一条响应
+
             for (int i=0; i<s.candidates.size(); ++i) { // 在候选序列中查找所有能处理该响应的序列。
-                rspSeqIndx = s.candidates.keyAt(i);
-                rspIndx = s.candidates.get(rspSeqIndx);
-                candidateRspSeq = s.rspSeqs[rspSeqIndx];
-                candidateRsp = candidateRspSeq[rspIndx];
-                if (rspName.equals(candidateRsp)){ // 找到了一路匹配的序列
+                int rspSeqIndx = s.candidates.keyAt(i);
+                int rspIndx = s.candidates.get(rspSeqIndx);
+                String[] candidateRspSeq = s.rspSeqs[rspSeqIndx];
+                String candidateRsp = candidateRspSeq[rspIndx];
+                if (msgName.equals(candidateRsp)){ // 找到了一路匹配的序列
                     candidates.put(rspSeqIndx, rspIndx+1); // 记录该序列下一个可匹配的响应
                     if (candidateRspSeq.length == rspIndx+1){ // 该响应为该匹配序列中的最后一条响应
                         gotLast = true;
@@ -221,216 +187,87 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
                 continue; // 该响应不是该会话所期望的，继续寻找期望该响应的会话
             }
 
-            s.candidates = candidates; // 更新候选序列
+            boolean bConsumed = s.listener.onRsp(gotLast, msgName,
+                    jsonProcessor.fromJson(msgContent, magicBook.getRspClazz(msgName)),
+                    s.reqName, s.reqSn, s.reqPara);
 
-            Message rsp = Message.obtain();
-
-            if (gotLast){// 该会话已获取到最后一条期待的响应
-                Log.d(TAG, String.format("<-=- %s (session %d FINISHED. %s) \n%s", rspName, s.id, s.reqName, rspBody));
-                timeoutHandler.removeMessages(MSG_ID_TIMEOUT, s.id); // 移除定时器
-                s.state = Session.END; // 已获取到所有期待的响应，该会话结束
-                sessions.remove(s);
-                rsp.obj = new FeedbackBundle(magicBook.getMsgId(rspName),
-                        jsonProcessor.fromJson(rspBody, magicBook.getRspClazz(rspName)),
-                        FeedbackBundle.RSP_FIN,
-                        magicBook.getMsgId(s.reqName),
-                        s.reqSn, s.reqPara);
-                s.requester.sendMessage(rsp); // 上报该响应
-
-                driveBlockedSession(s.reqName); // 驱动被当前会话阻塞的会话
-
-            } else {
-                Log.d(TAG, String.format("<-=- %s (session %d. %s) \n%s", rspName, s.id, s.reqName, rspBody));
-                s.state = Session.RECVING; // 已收到响应，继续接收后续响应
-                rsp.obj = new FeedbackBundle(magicBook.getMsgId(rspName),
-                        jsonProcessor.fromJson(rspBody, magicBook.getRspClazz(rspName)),
-                        FeedbackBundle.RSP,
-                        magicBook.getMsgId(s.reqName),
-                        s.reqSn, s.reqPara);
-                s.requester.sendMessage(rsp); // 上报该响应
-            }
-
-/*            // for debug
-            Log.i(TAG, String.format("candidate rsp seqs for req %s{\n", s.reqName));
-            for (int i=0; i<candidates.size(); ++i) {
-                int key = candidates.keyAt(i);
-                String[] rspSeq = s.rspSeqs[key];
-                StringBuffer stringBuffer = new StringBuffer();
-                stringBuffer.append("{");
-                for (int j=0; j<rspSeq.length; ++j){
-                    stringBuffer.append(rspSeq[j]+" ");
+            if (bConsumed){
+                s.candidates = candidates; // 更新候选序列
+                if (gotLast){
+                    Log.d(TAG, String.format("<-=- %s (session %d FINISHED. req=%s) \n%s", msgName, s.id, s.reqName, msgContent));
+                    handler.removeMessages(MSG_ID_TIMEOUT, s); // 移除定时器
+                    s.state = Session.END; // 已获取到所有期待的响应，该会话结束
+                    sessions.remove(s);
+                }else{
+                    Log.d(TAG, String.format("<-=- %s (session %d RECVING. req=%s) \n%s", msgName, s.id, s.reqName, msgContent));
+                    s.state = Session.RECVING; // 已收到响应，继续接收后续响应
                 }
-                stringBuffer.append("}");
-                int value = candidates.processGet(key);
-                String next = value<rspSeq.length ? rspSeq[value] : "none";
-                stringBuffer.append(" next "+next+"\n");
-                Log.i(TAG, stringBuffer.toString());
             }
-            Log.i(TAG, "}\n");*/
 
-            return true;
+            return bConsumed;
         }
 
         return false;
     }
 
 
-    @Override
-    public void setRequestStick(IStick.IRequestStick requestStick) {
-        stick = requestStick;
-    }
+    /**
+     * 启动会话
+     * */
+    private synchronized void startSession(Session s){
 
-
-
-    private synchronized Session getActiveSession(int sid){
-        for (Session s: sessions){
-            if (sid == s.id){
-                return s;
-            }
-        }
-
-        return null;
-    }
-
-    private synchronized Session getBlockedSession(String reqName){
-        for (Session s : blockedSessions){
-            if (s.reqName.equals(reqName)) {
-                return s;
-            }
-        }
-        return null;
-    }
-
-
-    private synchronized int startSession(int sid){
-        Session s = getActiveSession(sid);
-        if (null == s){
-            Log.e(TAG, "try to start session failed, no such session, sid="+sid);
-            return -1;
-        }
-
-        if (Session.READY != s.state){
-            Log.e(TAG, "try to start session failed, invalid session state "+s.state);
-            return -1;
-        }
-
-        Object[] paras = magicBook.userPara2MethodPara(s.reqPara, magicBook.getReqMethodParaClasses(s.reqName));
+        // 用户参数转换为底层方法需要的参数
+        Object[] paras = magicBook.userPara2MethodPara(s.reqPara, magicBook.getParaClasses(s.reqName));
         StringBuffer sb = new StringBuffer();
         for (int i=0; i<paras.length; ++i){
             sb.append(paras[i]).append(", ");
         }
         Log.d(TAG, String.format("-=-> %s (session %d START) \nparas={%s}", s.reqName, s.id, sb));
-        stick.request(s.reqName, paras);
+
+        crystalBall.spell(magicBook.getMethodOwner(s.reqName),
+                magicBook.getMethod(s.reqName),
+                paras,
+                magicBook.getParaClasses(s.reqName));
 
         if (null==s.rspSeqs || 0==s.rspSeqs.length){
-            s.state = Session.END; // 请求没有响应，会话结束
-            Log.d(TAG, String.format("<-=- (session %d FINISHED. NO RESPONSE for %s)", s.id, s.reqName));
-            sessions.remove(s);
-            driveBlockedSession(s.reqName);
-            return 0;
+            Log.d(TAG, String.format("<-=- (session %d NO RESPONSE. req=%s)", s.id, s.reqName));
+            Message msg = Message.obtain();
+            msg.what = MSG_ID_FIN_DUE_TO_NO_RSP;
+            msg.obj = s;
+            handler.sendMessage(msg);
+            return;
         }
 
         s.state = Session.WAITING; // 请求已发出正在等待响应
 
-        if (s.timeoutVal > 0) {
-            // 启动超时
-            Message msg = Message.obtain();
-            msg.what = MSG_ID_TIMEOUT;
-            msg.obj = s.id;
-            timeoutHandler.sendMessageDelayed(msg, s.timeoutVal);
-        }
+        sessions.add(s);
 
-        return 0;
+        // 启动超时
+        Message msg = Message.obtain();
+        msg.what = MSG_ID_TIMEOUT;
+        msg.obj = s;
+        handler.sendMessageDelayed(msg, s.timeoutVal);
     }
 
 
     /**
-     * 驱动可能存在的被阻塞的会话。<p>
-     * 相同请求ID的会话同一时间只允许一个处于工作状态，余下的处于阻塞状态。
-     * @param reqName 请求名称
+     * 会话超时
      * */
-    private void driveBlockedSession(String reqName){
-        Session blockedSession = getBlockedSession(reqName);
-        if (null != blockedSession){
-            blockedSessions.remove(blockedSession);
-            blockedSession.state = Session.READY;
-            sessions.add(blockedSession);
-            Message msg = Message.obtain();
-            msg.what = MSG_ID_START_SESSION;
-            msg.obj = blockedSession.id;
-            reqHandler.sendMessage(msg);
-        }
-    }
-
-
-    /**
-     * 处理超时
-     * */
-    private synchronized void timeout(int sid){
-        Session s = getActiveSession(sid);
-        if (null == s){
-            Log.e(TAG, "timeout but no such session. sid="+sid);
-            return;
-        }
-        if (Session.WAITING != s.state
-                && Session.RECVING != s.state){
-            Log.e(TAG, "timeout but invalid session state "+s.state);
-            return;
-        }
-
-        Log.d(TAG, String.format("<-=- (session %d FINISHED. %s TIMEOUT)", s.id, s.reqName));
+    private synchronized void timeout(Session s){
+        Log.d(TAG, String.format("<-=- (session %d TIMEOUT. req=%s)", s.id, s.reqName));
         s.state = Session.END; // 会话结束
-
-        // 通知用户请求超时
-        Message rsp = Message.obtain();
-        rsp.obj = new FeedbackBundle("Timeout",
-                null,
-                FeedbackBundle.RSP_TIMEOUT,
-                magicBook.getMsgId(s.reqName),
-                s.reqSn, s.reqPara);
-        s.requester.sendMessage(rsp);
-
         sessions.remove(s);
-
-        // 驱动被当前会话阻塞的会话
-        driveBlockedSession(s.reqName);
+        // 通知用户请求超时
+        s.listener.onTimeout(s.reqName, s.reqSn, s.reqPara);
     }
-
-
-    private void initRequestHandler(){
-        HandlerThread handlerThread = new HandlerThread("reqThr", Process.THREAD_PRIORITY_BACKGROUND);
-        handlerThread.start();
-        reqHandler = new Handler(handlerThread.getLooper()){
-            @Override
-            public void handleMessage(Message msg) {
-                switch (msg.what) {
-                    case MSG_ID_START_SESSION:
-                        startSession((int) msg.obj);
-                        break;
-                }
-            }
-        };
-    }
-
-
-    private void initTimeoutHandler(){
-        HandlerThread handlerThread = new HandlerThread("reqTimeoutThr", Process.THREAD_PRIORITY_BACKGROUND);
-        handlerThread.start();
-        timeoutHandler = new Handler(handlerThread.getLooper()){
-            @Override
-            public void handleMessage(Message msg) {
-                timeout((int) msg.obj);
-            }
-        };
-    }
-
 
 
     /**
      * 会话 */
-    private final class Session{
+    private static final class Session{
+        private static int count = 0;
         private final int id;   // 会话ID
-        private final Handler requester;// 请求者
+        private final IListener listener;// 会话监听器
         private final int reqSn;        // 请求序列号。上层用来唯一标识一次请求，会话不使用不处理该字段，上报响应时带回给请求者。
         private final String reqName;   // 请求名称。
         private final Object[] reqPara;   // 请求参数。
@@ -446,13 +283,13 @@ final class SessionFairy implements IFairy.IRequestFairy, IFairy.IResponseFairy{
         private static final int RECVING = 4; // 接收。收到第一条响应后，收到最后一条响应之前。
         private static final int END = 5;   // 结束。最终状态。会话已成功结束（接收到最后一个响应）或者已失败（超时或其它失败原因）。
 
-        private Session(int id, Handler requester, int reqSn, String reqName, Object[] reqPara, int timeoutVal, String[][] rspSeqs){
-            this.id = id;
-            this.requester = requester;
+        private Session(IListener listener, int reqSn, String reqName, Object[] reqPara, int timeoutVal, String[][] rspSeqs){
+            this.id = count++;
+            this.listener = listener;
             this.reqSn = reqSn;
             this.reqName = reqName;
             this.reqPara = reqPara;
-            this.timeoutVal = timeoutVal;
+            this.timeoutVal = timeoutVal>0 ? timeoutVal : 5*1000;
             this.rspSeqs = rspSeqs;
 
             candidates = new SparseIntArray(3);

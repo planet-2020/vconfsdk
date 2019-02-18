@@ -564,6 +564,9 @@ final class ToDoConverter {
     }
 
     public static List<DCMember> fromDcUserList(List<TDCSConfUserInfo> userInfos){
+        if (null == userInfos){
+            return null;
+        }
         List<DCMember> members = new ArrayList<>();
         for(TDCSConfUserInfo userInfo : userInfos){
             members.add(fromTransferObj(userInfo));
@@ -572,6 +575,9 @@ final class ToDoConverter {
     }
 
     public static List<TDCSConfUserInfo> toDcUserList(List<DCMember> members){
+        if (null == members){
+            return null;
+        }
         List<TDCSConfUserInfo> userInfos = new ArrayList<>();
         for(DCMember member : members){
             userInfos.add(toTransferObj(member));

@@ -22,6 +22,11 @@ public class DcsGetAllWhiteBoardRsp implements JsonDeserializer<DcsGetAllWhiteBo
     public TDCSResult MainParam;
     public TDCSGetAllBoard AssParam;
 
+    public DcsGetAllWhiteBoardRsp() {
+        MainParam = new TDCSResult();
+        AssParam = new TDCSGetAllBoard();
+    }
+
     @Override
     public DcsGetAllWhiteBoardRsp deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         DcsGetAllWhiteBoardRsp boardRsp = new DcsGetAllWhiteBoardRsp();

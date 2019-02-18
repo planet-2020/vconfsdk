@@ -15,7 +15,4 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.CLASS)
 public @interface Message {
-//    /** 消息前缀。
-//    * 消息前缀需保证全局唯一，否则编译报错。*/
-//    String prefix() default "";
 }

@@ -1,27 +1,26 @@
 package com.kedacom.vconf.sdk.base;
 
-import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Response;
-import com.kedacom.vconf.sdk.base.basement.IFairy2;
-import com.kedacom.vconf.sdk.base.basement.Witch;
+import com.kedacom.vconf.sdk.base.basement.CrystalBall;
+import com.kedacom.vconf.sdk.base.basement.FakeCrystalBall;
+import com.kedacom.vconf.sdk.base.basement.ICrystalBall;
+import com.kedacom.vconf.sdk.base.basement.IFairy;
+import com.kedacom.vconf.sdk.base.basement.NotificationFairy;
+import com.kedacom.vconf.sdk.base.basement.SessionFairy;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-import androidx.annotation.NonNull;
+public abstract class Caster implements IFairy.ISessionFairy.IListener,
+        IFairy.INotificationFairy.IListener{
 
-public abstract class Caster implements IFairy2.ISessionFairy.IListener,
-        IFairy2.INotificationFairy.IListener{
-
-    private IFairy2.ISessionFairy sessionFairy;
-    private IFairy2.INotificationFairy notificationFairy;
+    private IFairy.ISessionFairy sessionFairy;
+    private IFairy.INotificationFairy notificationFairy;
 
     private int reqSn = 0; // 请求序列号，递增。
-    private final Map<ReqKey, RequestBundle> rspListeners = new LinkedHashMap<>();
+    private final Map<Integer, ReqBundle> rspListeners = new LinkedHashMap<>();
     private final Map<String, LinkedHashSet<Object>> ntfListeners = new LinkedHashMap<>();
 
     private Map<Msg, RspProcessor> rspProcessorMap = new LinkedHashMap<>();
@@ -30,7 +29,7 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
     private ListenerLifecycleObserver listenerLifecycleObserver;
     private ListenerLifecycleObserver.Callback listenerLifecycleCallback = new ListenerLifecycleObserver.Callback(){
         @Override
-        public void onListenerResumed(Object listener) { // 该事件是粘滞的，即便activity已经resume很久了，然后才注册生命周期观察者也会收到该事件。
+        public void onListenerResumed(Object listener) { // 该事件是粘滞的，即便activity已经resume很久了然后才注册生命周期观察者也会收到该事件。
 //            KLog.p(""+ listener);
         }
 
@@ -52,12 +51,16 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
         }
     };
 
-    protected Caster() {
-    }
 
     @SuppressWarnings("ConstantConditions")
-    protected Caster(@NonNull IFairy2.ISessionFairy sessionFairy, @NonNull IFairy2.INotificationFairy notificationFairy){
-
+    protected Caster(){
+        IFairy.ISessionFairy sessionFairy = SessionFairy.instance();
+        IFairy.INotificationFairy notificationFairy = NotificationFairy.instance();
+        ICrystalBall crystalBall = CrystalBall.instance();
+        crystalBall.addRspListener(sessionFairy);
+        crystalBall.addNtfListener(notificationFairy);
+        sessionFairy.setCrystalBall(crystalBall);
+        notificationFairy.setCrystalBall(crystalBall);
         this.sessionFairy = sessionFairy;
         this.notificationFairy = notificationFairy;
 
@@ -68,9 +71,9 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
         Map<Msg, NtfProcessor> ntfProcessorMap = ntfProcessors();
         if (null != ntfProcessorMap){
             for (Msg ntf : ntfProcessorMap.keySet()){
-                String ntfId = ntf.name();
-                if(notificationFairy.subscribe(this, ntfId)){
-                    ntfListeners.put(ntfId, new LinkedHashSet<>());
+                String ntfName = ntf.name();
+                if(notificationFairy.subscribe(this, ntfName)){
+                    ntfListeners.put(ntfName, new LinkedHashSet<>());
                     this.ntfProcessorMap.put(ntf, ntfProcessorMap.get(ntf));
                 }
             }
@@ -81,9 +84,9 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
             for (Msg[] ntfs : ntfsProcessorMap.keySet()){
                 NtfProcessor ntfProcessor = ntfsProcessorMap.get(ntfs);
                 for (Msg ntf : ntfs){
-                    String ntfId = ntf.name();
-                    if (notificationFairy.subscribe(this, ntfId)) {
-                        ntfListeners.put(ntfId, new LinkedHashSet<>());
+                    String ntfName = ntf.name();
+                    if (notificationFairy.subscribe(this, ntfName)) {
+                        ntfListeners.put(ntfName, new LinkedHashSet<>());
                         this.ntfProcessorMap.put(ntf, ntfProcessor);
                     }
                 }
@@ -108,73 +111,104 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
     /**响应处理器*/
     protected interface RspProcessor{
         /**
-         * @param rspId 响应ID
+         * @param rsp 响应ID
          * @param rspContent 响应内容，具体类型由响应ID决定，参考{@link Response#clz()}。
          * @param listener 响应监听器，由{@link #req(Msg, IResultListener, Object...)}传入。
          *                 NOTE：可能在会话过程中监听器被销毁，如调用了{@link #delListener(Object)}或者监听器绑定的生命周期对象已销毁，
          *                 则此参数为null，（当然也可能调用{@link #req(Msg, IResultListener, Object...)}时传入的就是null）
          *                 所以使用者需对该参数做非null判断。
-         * @param reqId 请求ID，由{@link #req(Msg, IResultListener, Object...)}传入。
+         * @param req 请求ID，由{@link #req(Msg, IResultListener, Object...)}传入。
          * @param reqParas 请求参数列表，由{@link #req(Msg, IResultListener, Object...)}传入，顺序同传入时的
          * @return true，若该响应已被处理；否则false。
          * */
-        boolean process(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas);
+        boolean process(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas);
     }
 
     /**通知处理器*/
     protected interface NtfProcessor{
         /**
-         * @param ntfId 通知ID
-         * @param ntfContent 通知内容，具体类型由通知ID决定，参考{@link Notification#clz()}。
-         * @param listeners 通知监听器，由{@link #subscribe(Msg, Object)}和{@link #subscribe(Msg[], Object)}传入。
-         * */
-        void process(Msg ntfId, Object ntfContent, Set<Object> listeners);
+         * @param ntf 通知ID
+         * @param ntfContent 通知内容，具体类型由通知ID决定，参考{@link Response#clz()}。
+         * @param listeners 通知监听器，由{@link #subscribe(Msg, Object)}和{@link #subscribe(Msg[], Object)}传入。  */
+        void process(Msg ntf, Object ntfContent, Set<Object> listeners);
     }
 
 
     /**
-     * 发送请求。
-     * @param reqId 请求ID 参考{@link Msg} and {@link com.kedacom.vconf.sdk.annotation.Request}
-     * @param rspListener 响应监听者。可以为null表示请求者不关注请求结果
-     * @param reqPara 请求参数列表，可以没有。
+     * 启用/停用仿真器。
+     * 若启用则仿真器将替代底层组件并反馈模拟的响应/通知；
+     * 若停用则恢复正常模式，即请求通过底层组件发给平台平台反馈消息组件再上抛消息。
+     * NOTE: 仅用于DEBUG版本。
+     * @param bEnable true：启用，false：停用。
      * */
-    protected synchronized void req(Msg reqId, IResultListener rspListener, Object... reqPara){
-//        Log.i(TAG, String.format("rspListener=%s, reqId=%s, para=%s", rspListener, reqId, para));
+    public void enableSimulator(boolean bEnable){
+        if (!SimulatorOnOff.on){
+            KLog.p(KLog.ERROR, "forbidden operation");
+            return;
+        }
+        ICrystalBall crystalBall;
+        if (bEnable){
+            KLog.p(KLog.WARN, "switch to FakeCrystalBall");
+            crystalBall = FakeCrystalBall.instance();
+        }else{
+            crystalBall = CrystalBall.instance();
+        }
+        crystalBall.addRspListener(sessionFairy);
+        crystalBall.addNtfListener(notificationFairy);
+        sessionFairy.getCrystalBall().delListener(sessionFairy);
+        notificationFairy.getCrystalBall().delListener(notificationFairy);
+        sessionFairy.setCrystalBall(crystalBall);
+        notificationFairy.setCrystalBall(crystalBall);
+    }
 
-        if (!rspProcessorMap.keySet().contains(reqId)){
-            KLog.p(KLog.ERROR, "%s is not in 'cared-req-list'", reqId);
+
+
+
+    /**
+     * 发送请求。
+     * @param req 请求ID 参考{@link Msg} and {@link com.kedacom.vconf.sdk.annotation.Request}
+     * @param rspListener 响应监听者。可以为null表示请求者不关注请求结果
+     * @param reqPara 请求参数列表，可以没有。  */
+    protected synchronized void req(Msg req, IResultListener rspListener, Object... reqPara){
+
+        if (!rspProcessorMap.keySet().contains(req)){
+            KLog.p(KLog.ERROR, "%s is not in 'cared-req-list'", req);
             return;
         }
 
-        listenerLifecycleObserver.tryObserve(rspListener);
-
-        if (!sessionFairy.req(this, reqId.name(), ++reqSn, reqPara)){
+        if (!sessionFairy.req(this, req.name(), ++reqSn, reqPara)){
+            KLog.p(KLog.ERROR, "req failed");
             return;
         }
 
-        rspListeners.put(new ReqKey(reqId, reqSn), new RequestBundle(rspListener)); // TODO RequestBundle能否去掉
+        KLog.p("req=%s, reqSn=%s, listener=%s", req, reqSn, rspListener);
+
+        listenerLifecycleObserver.tryObserve(rspListener); // XXX 对于没响应的情形，listener如何注销？此种情形rspListener需得是null。
+
+        rspListeners.put(reqSn, new ReqBundle(req, rspListener));
 
     }
 
     /**
      * 取消请求。
      * 若同样的请求id同样的响应监听者请求了多次，则取消的是最早的请求。*/
-    protected synchronized void cancelReq(Msg reqId, IResultListener rspListener){
-        if (null == reqId || null == rspListener){ // TODO 支持rspListener==null
+    protected synchronized void cancelReq(Msg req, IResultListener rspListener){
+        if (null == req || null == rspListener){ // TODO 支持rspListener==null
             return;
         }
-        if (!rspProcessorMap.keySet().contains(reqId)){
-            KLog.p(KLog.ERROR, "%s is not in 'cared-req-list'", reqId);
+        if (!rspProcessorMap.keySet().contains(req)){
+            KLog.p(KLog.ERROR, "%s is not in 'cared-req-list'", req);
             return;
         }
 
-        for (Map.Entry<ReqKey, RequestBundle> entry : rspListeners.entrySet()){
-            ReqKey reqKey = entry.getKey();
-            RequestBundle bundle = entry.getValue();
-            if (reqId.equals(reqKey.reqId)
-                    && rspListener.equals(bundle.resultListener)){
-                sessionFairy.cancelReq(reqKey.reqId.name(), reqKey.reqSn);
-                rspListeners.remove(reqKey);
+        for (Map.Entry<Integer, ReqBundle> entry : rspListeners.entrySet()){
+            int reqSn = entry.getKey();
+            ReqBundle value = entry.getValue();
+            if (req.equals(value.req)
+                    && rspListener.equals(value.listener)){
+                KLog.p("cancel reqSn=%s, req=%s, listener=%s", reqSn, value.req, value.listener);
+                sessionFairy.cancelReq(reqSn);
+                rspListeners.remove(reqSn);
                 break;
             }
         }
@@ -223,6 +257,7 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
         String ntfName = ntfId.name();
         Set<Object> listeners = ntfListeners.get(ntfName);
         if (null != listeners){
+//            KLog.p("unsubscribe ntf=%s, listener=%s", ntfId, ntfListener);
             listeners.remove(ntfListener);
         }
     }
@@ -231,7 +266,7 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
         return ntfListeners.get(ntfId.name());
     }
 
-    protected boolean containsNtfListener(Object ntfListener){
+    protected boolean containsNtfListener(Object ntfListener){ // TODO 改为containsNtfListener(Msg ntf, Object ntfListener)
         if (null == ntfListener){
             return false;
         }
@@ -244,12 +279,12 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
         return false;
     }
 
-    protected boolean containsRspListener(Object rspListener){
+    protected boolean containsRspListener(Object rspListener){ // TODO 改为containsNtfListener(Msg rsp, Object rspListener)
         if (null == rspListener){
             return false;
         }
-        for (RequestBundle bundle: rspListeners.values()){
-            if (rspListener.equals(bundle.resultListener)){
+        for (ReqBundle val: rspListeners.values()){
+            if (rspListener.equals(val.listener)){
                 return true;
             }
         }
@@ -314,9 +349,12 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
             return;
         }
 
-        for (RequestBundle bundle : rspListeners.values()){
-            if (rspListener.equals(bundle.resultListener)){
-                bundle.resultListener = null;
+        for (Map.Entry<Integer, ReqBundle> entry: rspListeners.entrySet()){
+            int key = entry.getKey();
+            ReqBundle val = entry.getValue();
+            if (rspListener.equals(val.listener)){
+//                KLog.p("delRspListener reqSn=%s, req=%s, listener=%s", key, val.req, val.listener);
+                val.listener = null;
             }
         }
     }
@@ -336,77 +374,68 @@ public abstract class Caster implements IFairy2.ISessionFairy.IListener,
 
 
     @Override
-    public boolean onRsp(boolean bLast, String rspId, Object rspContent, String reqId, int reqSn, Object[] reqParas) {
-        Msg req = Msg.valueOf(reqId);
-        Msg rsp = Msg.valueOf(rspId);
-        RequestBundle requestBundle;
-        if (bLast) {
-            requestBundle = rspListeners.remove(new ReqKey(req, reqSn));
-        }else{
-            requestBundle = rspListeners.get(new ReqKey(req, reqSn));
-        }
-        IResultListener resultListener = requestBundle.resultListener;
-        if (!requestBundle.bResultArrived){
-            requestBundle.bResultArrived = true;
-            if(null != resultListener) resultListener.onArrive();
-        }
+    public boolean onRsp(boolean bLast, String rspName, Object rspContent, String reqName, int reqSn, Object[] reqParas) {
+        Msg req = Msg.valueOf(reqName);
+        Msg rsp = Msg.valueOf(rspName);
+        IResultListener resultListener = rspListeners.get(reqSn).listener;
         StringBuffer sb = new StringBuffer();
         for (Object para : reqParas){
             sb.append(para).append("; ");
         }
-        KLog.p("rspId=%s, rspContent=%s, resultListener=%s, \nreqId=%s, reqSn=%s, reqParas=%s", rsp, rspContent, resultListener, reqId, reqSn, sb);
-        return rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
+        KLog.p("rsp=%s, rspContent=%s, resultListener=%s, req=%s, reqSn=%s, \nreqParas=%s", rsp, rspContent, resultListener, reqName, reqSn, sb);
+        boolean bConsumed = rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
+        if (bConsumed){
+            if (bLast){
+                rspListeners.remove(reqSn); // TODO 注销生命周期绑定
+            }
+        }else{
+            KLog.p(KLog.WARN, "rsp %s not consumed, req=%s, reqSn=%s", rsp, reqName, reqSn);
+        }
+        return bConsumed;
     }
 
     @Override
-    public void onTimeout(String reqId, int reqSn, Object[] reqParas) {
-        Msg req = Msg.valueOf(reqId);
-        RequestBundle requestBundle = rspListeners.remove((new ReqKey(req, reqSn)));
-        IResultListener resultListener = requestBundle.resultListener;
-        if (!requestBundle.bResultArrived){
-            requestBundle.bResultArrived = true;
-            if(null != resultListener) resultListener.onArrive();
-        }
+    public void onTimeout(String reqName, int reqSn, Object[] reqParas) {
+        Msg req = Msg.valueOf(reqName);
+        IResultListener resultListener = rspListeners.remove(reqSn).listener;
         StringBuffer sb = new StringBuffer();
         for (Object para : reqParas){
             sb.append(para).append("; ");
         }
-        KLog.p("rspId=%s, resultListener=%s, \nreqId=%s, reqSn=%s, reqParas=%s", Msg.Timeout, resultListener, reqId, reqSn, sb);
+        KLog.p("rsp=%s, resultListener=%s, \nreq=%s, reqSn=%s, reqParas=%s", Msg.Timeout, resultListener, reqName, reqSn, sb);
         boolean bConsumed = rspProcessorMap.get(req).process(Msg.Timeout, "", resultListener, req, reqParas);
         if (!bConsumed && null != resultListener){
             // 超时未被消费则此处通知用户超时
             resultListener.onTimeout();
-        }
+        }// TODO 注销生命周期绑定
     }
 
     @Override
-    public void onNtf(String ntfId, Object ntfContent) {
-        Set<Object> listeners = ntfListeners.get(ntfId);
+    public void onFinDueToNoRsp(String reqName, int reqSn, Object[] reqParas) {
+        rspListeners.remove(reqSn); // TODO 注销生命周期绑定
+    }
+
+    @Override
+    public void onNtf(String ntfName, Object ntfContent) {
+        Set<Object> listeners = ntfListeners.get(ntfName);
         StringBuffer sb = new StringBuffer();
         for (Object listener : listeners){
             sb.append(listener).append("; ");
         }
-        Msg ntf = Msg.valueOf(ntfId);
+        Msg ntf = Msg.valueOf(ntfName);
         KLog.p("ntfId=%s, ntfContent=%s, listeners=%s", ntf, ntfContent, sb);
         ntfProcessorMap.get(ntf).process(ntf, ntfContent, listeners);
     }
 
 
-    private static class ReqKey{
-        private final Msg reqId;
-        private final int reqSn;
+    private static class ReqBundle{
+        private Msg req;
+        private IResultListener listener;
 
-        ReqKey(Msg reqId, int reqSn) {
-            this.reqId = reqId;
-            this.reqSn = reqSn;
+        public ReqBundle(Msg req, IResultListener listener) {
+            this.req = req;
+            this.listener = listener;
         }
     }
 
-    private static class RequestBundle{
-        private IResultListener resultListener;
-        private boolean bResultArrived = false;
-        RequestBundle(IResultListener resultListener){
-            this.resultListener = resultListener;
-        }
-    }
 }

@@ -1,10 +1,12 @@
 package com.kedacom.vconf.sdk.processor;
 
 import com.google.auto.service.AutoService;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.HashBiMap;
+import com.google.common.collect.Table;
 import com.kedacom.vconf.sdk.annotation.Consumer;
-import com.kedacom.vconf.sdk.annotation.Get;
 import com.kedacom.vconf.sdk.annotation.Message;
-import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.squareup.javapoet.CodeBlock;
@@ -16,7 +18,6 @@ import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,36 +51,36 @@ import javax.tools.Diagnostic;
         "com.kedacom.vconf.sdk.annotation.Message",
         "com.kedacom.vconf.sdk.annotation.Request",
         "com.kedacom.vconf.sdk.annotation.Response",
-        "com.kedacom.vconf.sdk.annotation.Notification",
-        "com.kedacom.vconf.sdk.annotation.Get",
-        "com.kedacom.vconf.sdk.annotation.Set",
         "com.kedacom.vconf.sdk.annotation.Consumer",
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class MessageProcessor extends AbstractProcessor {
     private boolean bDone = false;
 
-    private Map<String, String> idNameMap = new HashMap<>();
-    private Map<String, String> nameIdMap = new HashMap<>();
-    private Map<String, String> reqMethodOwner = new HashMap<>();
-    private Map<String, String[]> reqJniMethodParasMap = new HashMap<>();
-    private Map<String, String[]> reqParasMap = new HashMap<>();
-    private Map<String, String[][]> reqRspsMap = new HashMap<>();
-    private Map<String, Integer> reqTimeoutMap = new HashMap<>();
-    private Map<String, Boolean> reqExclusiveMap = new HashMap<>();
-    private Map<String, String> rspClazzMap = new HashMap<>();
-    private Map<String, Integer> rspDelayMap = new HashMap<>();
-    private Map<String, String> ntfClazzMap = new HashMap<>();
-    private Map<String, Integer> ntfDelayMap = new HashMap<>();
-    private Map<String, String> getParaClazzMap = new HashMap<>();
-    private Map<String, String> getResultClazzMap = new HashMap<>();
-    private Map<String, String> setParaClazzMap = new HashMap<>();
+    /*
+    * 消息枚举名称和消息ID的映射
+    * */
+    private BiMap<String, String> nameIdMap = HashBiMap.create();
+
+    private Table<String, String, Object> reqMap = HashBasedTable.create();
+    private Table<String, String, Object> rspMap = HashBasedTable.create();
 
     private String packageName;
 
     private String className;
 
     private Messager messager;
+
+    private static String COL_METHOD = "method";
+    private static String COL_OWNER = "owner";
+    private static String COL_PARAS = "paras";
+    private static String COL_USERPARAS = "userParas";
+    private static String COL_TYPE = "type";
+    private static String COL_RSPSEQ = "rspSeq";
+    private static String COL_TIMEOUT = "timeout";
+    private static String COL_ID = "id";
+    private static String COL_CLZ = "clz";
+    private static String COL_DELAY = "delay";
 
     @Override
     public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
@@ -143,178 +144,84 @@ public class MessageProcessor extends AbstractProcessor {
         List<? extends Element> msgElements = msgDefClass.getEnclosedElements();
         Request request;
         Response response;
-        Notification notification;
-        Get get;
-        com.kedacom.vconf.sdk.annotation.Set set;
-        Class clz;
-        String rspClazzFullName;
-        String ntfClazzFullName;
-        String getParaFullName;
-        String getResultFullName;
-        String setParaFullName;
-        String reqName;
-        String rspName;
-        String ntfName;
-        String getName;
-        String setName;
+        String name;
         for (Element element : msgElements){
             if (ElementKind.ENUM_CONSTANT != element.getKind()){
                 continue;
             }
 
             if (null != (request = element.getAnnotation(Request.class))){
-                reqName = request.name();
-                reqName = !reqName.isEmpty() ? reqName : element.getSimpleName().toString();
+                name = element.getSimpleName().toString();
+                String method = request.method();
+                method = !method.isEmpty() ? method : name;
+                nameIdMap.put(name, method);
 
-                String mo = request.methodOwner();
-                reqMethodOwner.put(reqName, mo);
+                reqMap.put(name, COL_METHOD, method);
 
-                // 获取请求参数列表
+                String owner = request.owner();
+                reqMap.put(name, COL_OWNER, owner);
+
                 String[] paraClzNames = null;
                 try {
                     Class[] paraClasses = request.paras();
                 }catch (MirroredTypesException mte) {
                     paraClzNames = parseClassNameFromMirroredTypesException(mte);
                 }
-                reqParasMap.put(reqName, paraClzNames);
+                reqMap.put(name, COL_PARAS, paraClzNames);
 
-                // 获取jni方法参数列表
                 try {
-                    Class[] paraClasses = request.methodParas();
+                    Class[] paraClasses = request.userParas();
                 }catch (MirroredTypesException mte) {
                     paraClzNames = parseClassNameFromMirroredTypesException(mte);
                 }
-                reqJniMethodParasMap.put(reqName, paraClzNames);
+                reqMap.put(name, COL_USERPARAS, paraClzNames);
+
+                reqMap.put(name, COL_TYPE, request.type());
 
                 // 获取响应序列
                 if (0 == request.rspSeq().length){
-                    reqRspsMap.put(reqName, new String[][]{});
+                    reqMap.put(name, COL_RSPSEQ, new String[][]{});
                 }else if (0 == request.rspSeq2().length){
-                    reqRspsMap.put(reqName, new String[][]{request.rspSeq()});
+                    reqMap.put(name, COL_RSPSEQ, new String[][]{request.rspSeq()});
                 }else if (0 == request.rspSeq3().length){
-                    reqRspsMap.put(reqName, new String[][]{request.rspSeq(), request.rspSeq2()});
+                    reqMap.put(name, COL_RSPSEQ, new String[][]{request.rspSeq(), request.rspSeq2()});
                 }else{
-                    reqRspsMap.put(reqName, new String[][]{request.rspSeq(), request.rspSeq2(), request.rspSeq3()});
+                    reqMap.put(name, COL_RSPSEQ, new String[][]{request.rspSeq(), request.rspSeq2(), request.rspSeq3()});
                 }
 
                 // 获取超时时长
-                reqTimeoutMap.put(reqName, request.timeout());
-
-                reqExclusiveMap.put(reqName, request.isMutualExclusive());
-
-                idNameMap.put(element.getSimpleName().toString(), reqName);
-                nameIdMap.put(reqName, element.getSimpleName().toString());
+                reqMap.put(name, COL_TIMEOUT, request.timeout());
 
 //                messager.printMessage(Diagnostic.Kind.NOTE, "request: "+reqName
 //                        + " reqParaFullName: "+reqParaFullName
 //                        + " rspSeq: "+request.rspSeq()
 //                        + " timeout: "+request.timeout());
 
-            }else if (null != (get = element.getAnnotation(Get.class))){
-                getName = get.name();
-                getName = !getName.isEmpty() ? getName : element.getSimpleName().toString();
-                // 获取请求参数
-                try {
-                    clz = get.para();
-                    getParaFullName = clz.getCanonicalName();
-                }catch (MirroredTypeException mte) {
-                    getParaFullName = parseClassNameFromMirroredTypeException(mte);
-                }
+            }
+            else if (null != (response = element.getAnnotation(Response.class))){
+                name = element.getSimpleName().toString();
+                String id = response.name();
+                id = !id.isEmpty() ? id : element.getSimpleName().toString();
+                nameIdMap.put(name, id);
 
-
-                getParaClazzMap.put(getName, getParaFullName);
-
-                // 获取结果
-                try {
-                    clz = get.result();
-                    getResultFullName = clz.getCanonicalName();
-                }catch (MirroredTypeException mte) {
-                    getResultFullName = parseClassNameFromMirroredTypeException(mte);
-                }
-
-
-                getResultClazzMap.put(getName, getResultFullName);
-
-                idNameMap.put(element.getSimpleName().toString(), getName);
-                nameIdMap.put(getName, element.getSimpleName().toString());
-
-//                messager.printMessage(Diagnostic.Kind.NOTE, "getName: "+getName
-//                        + " getParaFullName: "+getParaFullName
-//                        + " result class: "+ getResultFullName);
-
-            }else if (null != (set = element.getAnnotation(com.kedacom.vconf.sdk.annotation.Set.class))){
-                setName = set.name();
-                setName = !setName.isEmpty() ? setName : element.getSimpleName().toString();
+                rspMap.put(name, COL_ID, id);
 
                 // 获取响应对应的消息体类型
+                String rspClazzFullName;
                 try {
-                    clz = set.value();
-                    setParaFullName = clz.getCanonicalName();
+                    Class clz = response.clz();
+                    rspClazzFullName = clz.getCanonicalName();
                 }catch (MirroredTypeException mte) {
-                    setParaFullName = parseClassNameFromMirroredTypeException(mte);
+                    rspClazzFullName = parseClassNameFromMirroredTypeException(mte);
                 }
-
-//                messager.printMessage(Diagnostic.Kind.NOTE, "setName: "+setName
-//                        + " setParaFullName: "+setParaFullName);
-
-                setParaClazzMap.put(setName, setParaFullName);
-
-                idNameMap.put(element.getSimpleName().toString(), setName);
-                nameIdMap.put(setName, element.getSimpleName().toString());
-
-            }else{ // 响应或通知，或者既是响应也是通知
-                if (null != (response = element.getAnnotation(Response.class))){
-                    rspName = response.name();
-                    rspName = !rspName.isEmpty() ? rspName : element.getSimpleName().toString();
-
-                    // 获取响应对应的消息体类型
-                    try {
-                        clz = response.clz();
-                        rspClazzFullName = clz.getCanonicalName();
-                    }catch (MirroredTypeException mte) {
-                        rspClazzFullName = parseClassNameFromMirroredTypeException(mte);
-                    }
-
-
-
 //                messager.printMessage(Diagnostic.Kind.NOTE, "response: "+rspName
 //                        + " rspClazzFullName: "+rspClazzFullName);
 
-                    rspClazzMap.put(rspName, rspClazzFullName);
+                rspMap.put(name, COL_CLZ, rspClazzFullName);
 
-                    rspDelayMap.put(rspName, response.delay());
+                rspMap.put(name, COL_DELAY, response.delay());
 
-                    idNameMap.put(element.getSimpleName().toString(), rspName);
-                    nameIdMap.put(rspName, element.getSimpleName().toString());
-
-                }
-
-                if (null != (notification = element.getAnnotation(Notification.class))){ // 此处我们不用"else if"因为一个消息可能既是响应也是通知。
-                    ntfName = notification.name();
-                    ntfName = !ntfName.isEmpty() ? ntfName : element.getSimpleName().toString();
-
-                    // 获取通知对应的消息体类型
-                    try {
-                        clz = notification.clz();
-                        ntfClazzFullName = clz.getCanonicalName();
-                    }catch (MirroredTypeException mte) {
-                        ntfClazzFullName = parseClassNameFromMirroredTypeException(mte);
-                    }
-
-
-//                messager.printMessage(Diagnostic.Kind.NOTE, "ntfName: "+ntfName
-//                        + " ntfClazzFullName: "+ntfClazzFullName);
-
-                    ntfClazzMap.put(ntfName, ntfClazzFullName);
-
-                    ntfDelayMap.put(ntfName, notification.delay());
-
-                    idNameMap.put(element.getSimpleName().toString(), ntfName);
-                    nameIdMap.put(ntfName, element.getSimpleName().toString());
-
-                }
             }
-
         }
     }
 
@@ -415,170 +322,79 @@ public class MessageProcessor extends AbstractProcessor {
     }
 
     private void generateFile(){
-        String fieldNameIdNameMap = "idNameMap";
-        String fieldNameNameIdMap = "nameIdMap";
-        String fieldNameReqMethodOwnerMap = "reqMethodOwner";
-        String fieldNameReqParasMap = "reqParasMap";
-        String fieldNameReqJniMethodParasMap = "reqJniMethodParasMap";
-        String fieldNameReqRspsMap = "reqRspsMap";
-        String fieldNameReqTimeoutMap = "reqTimeoutMap";
-        String fieldNameReqExclusiveMap = "reqExclusiveMap";
-        String fieldNameRspClazzMap = "rspClazzMap";
-        String fieldNameRspDelayMap = "rspDelayMap";
-        String fieldNameNtfClazzMap = "ntfClazzMap";
-        String fieldNameNtfDelayMap = "ntfDelayMap";
-        String fieldNameGetParaClazzMap = "getParaClazzMap";
-        String fieldNameGetResultClazzMap = "getResultClazzMap";
-        String fieldNameSetParaClazzMap = "setParaClazzMap";
+        String fieldNameIdMap = "nameIdMap";
+        String fieldReqMap = "reqMap";
+        String fieldRspMap = "rspMap";
 
         MethodSpec.Builder constructor = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PRIVATE);
 
         // 构建代码块
         CodeBlock.Builder codeBlockBuilder = CodeBlock.builder()
-                .addStatement("$L = new $T<>()", fieldNameIdNameMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameNameIdMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameReqMethodOwnerMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameReqParasMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameReqJniMethodParasMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameReqRspsMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameReqTimeoutMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameReqExclusiveMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameRspClazzMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameRspDelayMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameNtfClazzMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameNtfDelayMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameGetParaClazzMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameGetResultClazzMap, HashMap.class)
-                .addStatement("$L = new $T<>()", fieldNameSetParaClazzMap, HashMap.class)
+                .addStatement("$L = $T.create()", fieldNameIdMap, HashBiMap.class)
+                .addStatement("$L = $T.create()", fieldReqMap, HashBasedTable.class)
+                .addStatement("$L = $T.create()", fieldRspMap, HashBasedTable.class)
                 ;
 
-        for(String name : idNameMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $S)", fieldNameIdNameMap, name, idNameMap.get(name));
-        }
-
         for(String name : nameIdMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $S)", fieldNameNameIdMap, name, nameIdMap.get(name));
+            codeBlockBuilder.addStatement("$L.put($S, $S)", fieldNameIdMap, name, nameIdMap.get(name));
         }
 
-        for(String req : reqMethodOwner.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $S)", fieldNameReqMethodOwnerMap, req, reqMethodOwner.get(req));
-        }
-
-        for(String req : reqParasMap.keySet()){ // TODO 对于为Void.class的情况进行优化不要生成节省空间。
-            StringBuffer value = new StringBuffer();
-            String[] paras = reqParasMap.get(req);
-            for (String para : paras){
-                value.append(para).append(".class, ");
-            }
-            codeBlockBuilder.addStatement("$L.put($S, new Class[]{$L})", fieldNameReqParasMap, req, value);
-        }
-
-        for(String req : reqJniMethodParasMap.keySet()){
-            StringBuffer value = new StringBuffer();
-            String[] paras = reqJniMethodParasMap.get(req);
-            for (String para : paras){
-                value.append(para).append(".class, ");
-            }
-            codeBlockBuilder.addStatement("$L.put($S, new Class[]{$L})", fieldNameReqJniMethodParasMap, req, value);
-        }
-
-        for(String req : reqRspsMap.keySet()){
-            StringBuffer value = new StringBuffer();
-            String[][] rspSeq = reqRspsMap.get(req);
-            for (String[] aRspSeq : rspSeq) {
-                value.append("{");
-                for (String anARspSeq : aRspSeq) {
-                    value.append("\"").append(anARspSeq).append("\", ");
+        for(Table.Cell cell : reqMap.cellSet()){
+            String row = (String) cell.getRowKey();
+            String col = (String) cell.getColumnKey();
+            if (col.equals(COL_METHOD)
+                    || col.equals(COL_OWNER)) {
+                codeBlockBuilder.addStatement("$L.put($S, $S, $S)", fieldReqMap, row, col, cell.getValue());
+            }else if (col.equals(COL_PARAS)
+                    || col.equals(COL_USERPARAS)){
+                StringBuffer value = new StringBuffer();
+                String[] paras = (String[]) cell.getValue();
+                for (String para : paras){
+                    value.append(para).append(".class, ");
                 }
-                value.append("}, ");
+                codeBlockBuilder.addStatement("$L.put($S, $S, new Class[]{$L})", fieldReqMap, row, col, value);
+            }else if (col.equals(COL_RSPSEQ)){
+                StringBuffer value = new StringBuffer();
+                String[][] rspSeq = (String[][]) cell.getValue();
+                for (String[] aRspSeq : rspSeq) {
+                    value.append("{");
+                    for (String anARspSeq : aRspSeq) {
+                        value.append("\"").append(anARspSeq).append("\", ");
+                    }
+                    value.append("}, ");
+                }
+                codeBlockBuilder.addStatement("$L.put($S, $S, new String[][]{$L})", fieldReqMap, row, col, value);
+            }else if (col.equals(COL_TIMEOUT)
+                    || col.equals(COL_TYPE)){
+                codeBlockBuilder.addStatement("$L.put($S, $S, $L)", fieldReqMap, row, col, cell.getValue());
             }
-            codeBlockBuilder.addStatement("$L.put($S, new String[][]{$L})", fieldNameReqRspsMap, req, value);
         }
 
-        for(String req : reqTimeoutMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $L)", fieldNameReqTimeoutMap, req, reqTimeoutMap.get(req));
+        for(Table.Cell cell : rspMap.cellSet()){
+            String row = (String) cell.getRowKey();
+            String col = (String) cell.getColumnKey();
+            if (col.equals(COL_ID)) {
+                codeBlockBuilder.addStatement("$L.put($S, $S, $S)", fieldRspMap, row, col, cell.getValue());
+            }else if (col.equals(COL_CLZ)){
+                codeBlockBuilder.addStatement("$L.put($S, $S, $L.class)", fieldRspMap, row, col, cell.getValue());
+            }else if (col.equals(COL_DELAY)){
+                codeBlockBuilder.addStatement("$L.put($S, $S, $L)", fieldRspMap, row, col, cell.getValue());
+            }
         }
 
-        for(String req : reqExclusiveMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $L)", fieldNameReqExclusiveMap, req, reqExclusiveMap.get(req));
-        }
-
-        for(String rsp : rspClazzMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameRspClazzMap, rsp, rspClazzMap.get(rsp));
-        }
-
-        for(String rsp : rspDelayMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $L)", fieldNameRspDelayMap, rsp, rspDelayMap.get(rsp));
-        }
-
-        for(String ntf : ntfClazzMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameNtfClazzMap, ntf, ntfClazzMap.get(ntf));
-        }
-
-        for(String ntf : ntfDelayMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $L)", fieldNameNtfDelayMap, ntf, ntfDelayMap.get(ntf));
-        }
-
-        for(String get : getParaClazzMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameGetParaClazzMap, get, getParaClazzMap.get(get));
-        }
-
-        for(String get : getResultClazzMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameGetResultClazzMap, get, getResultClazzMap.get(get));
-        }
-
-        for(String set : setParaClazzMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $L.class)", fieldNameSetParaClazzMap, set, setParaClazzMap.get(set));
-        }
 
         // 构建Class
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.FINAL)
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, String.class),
-                        fieldNameIdNameMap, Modifier.STATIC)
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(BiMap.class, String.class, String.class),
+                        fieldNameIdMap, Modifier.STATIC)
                         .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, String.class),
-                        fieldNameNameIdMap, Modifier.STATIC)
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Table.class, String.class, String.class, Object.class),
+                        fieldReqMap, Modifier.STATIC)
                         .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, String.class),
-                        fieldNameReqMethodOwnerMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class[].class),
-                        fieldNameReqParasMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class[].class),
-                        fieldNameReqJniMethodParasMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, String[][].class),
-                        fieldNameReqRspsMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Integer.class),
-                        fieldNameReqTimeoutMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Boolean.class),
-                        fieldNameReqExclusiveMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameRspClazzMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Integer.class),
-                        fieldNameRspDelayMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameNtfClazzMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Integer.class),
-                        fieldNameNtfDelayMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameGetParaClazzMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameGetResultClazzMap, Modifier.STATIC)
-                        .build())
-                .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, String.class, Class.class),
-                        fieldNameSetParaClazzMap, Modifier.STATIC)
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Table.class, String.class, String.class, Object.class),
+                        fieldRspMap, Modifier.STATIC)
                         .build())
                 .addStaticBlock(codeBlockBuilder.build())
                 .addMethod(constructor.build())

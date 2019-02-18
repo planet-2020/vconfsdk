@@ -1,14 +1,10 @@
 package com.kedacom.vconf.sdk.base.basement;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.Table;
 import com.kedacom.vconf.sdk.annotation.Consumer;
 import com.kedacom.vconf.sdk.annotation.Message;
-import com.kedacom.vconf.sdk.annotation.Notification;
-import com.kedacom.vconf.sdk.annotation.Request;
-import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.KLog;
-
-import java.util.Map;
-import java.util.Set;
 
 
 @SuppressWarnings("BooleanMethodIsAlwaysInverted")
@@ -16,79 +12,35 @@ import java.util.Set;
 final class MagicBook {
     private static MagicBook instance;
 
-    private Set<String> reqSet;
-
-    private Set<String> rspSet;
-
-    private Set<String> ntfSet;
-
-    private Set<String> gets;
-
-    private Set<String> sets;
-
-    /**
-     * 消息ID——消息名称。
-     * 消息ID为消息枚举的字面值，消息名称为
-     * {@link Request#name()},{@link Response#name()},{@link Notification#name()}
+    /*
+     * 消息枚举名称和消息ID的映射
      * */
-    private Map<String, String> idNameMap;
+    private BiMap<String, String> nameIdMap;
 
-    private Map<String, String> nameIdMap; // 消息名称——消息ID
+    private Table<String, String, Object> reqMap;
+    private Table<String, String, Object> rspMap;
 
-    private Map<String, String> reqMethodOwner; // 请求——请求对应的方法所在类
+    private static int REQ_TYPE_SESSION = 0; // “请求——响应”，异步。
+    private static int REQ_TYPE_GET = 1; // 如获取配置。
+    private static int REQ_TYPE_SET = 2; // 如设置配置。
 
-    private Map<String, Class[]> reqMethodParasMap; // 请求——请求方法参数对应的类
-
-    private Map<String, Class[]> reqParasMap; // 请求——请求参数对应的类
-
-    private Map<String, String[][]> reqRspSeqsMap; // 请求——响应序列
-
-    private Map<String, Integer> reqTimeoutMap; // 请求——超时时限. 单位: 秒.
-
-    private Map<String, Boolean> reqExclusiveMap; // 请求——是否互斥
-
-    private Map<String, Class> rspClazzMap; // 响应——响应对应的类
-
-    private Map<String, Integer> rspDelayMap; // 响应——响应延时。仅用于模拟模式
-
-    private Map<String, Class> ntfClazzMap; // 通知——通知对应的类
-
-    private Map<String, Integer> ntfDelayMap; // 通知——通知延时。仅用于模拟模式
-
-    private Map<String, Class> getParaClazzMap; // 获取参数——参数对应的类
-
-    private Map<String, Class> getResultClazzMap; // 获取结果——结果对应的类
-
-    private Map<String, Class> setParaClazzMap; // 设置参数——参数对应的类
-    
-//
-//    private final EnumSet<EmRsp> whiteList; // 白名单
-//    private final EnumSet<EmRsp> blackList; // 黑名单
+    private static String COL_ID = "id";
+    private static String COL_METHOD = "method";
+    private static String COL_OWNER = "owner";
+    private static String COL_PARAS = "paras";
+    private static String COL_USERPARAS = "userParas";
+    private static String COL_TYPE = "type";
+    private static String COL_RSPSEQ = "rspSeq";
+    private static String COL_TIMEOUT = "timeout";
+    private static String COL_CLZ = "clz";
+    private static String COL_DELAY = "delay";
 
     private JsonProcessor jsonProcessor = JsonProcessor.instance();
 
     private MagicBook(){
-        idNameMap = Message$$Generated.idNameMap;
         nameIdMap = Message$$Generated.nameIdMap;
-        reqMethodOwner = Message$$Generated.reqMethodOwner;
-        reqParasMap = Message$$Generated.reqParasMap;
-        reqMethodParasMap = Message$$Generated.reqJniMethodParasMap;
-        reqRspSeqsMap = Message$$Generated.reqRspsMap;
-        reqTimeoutMap = Message$$Generated.reqTimeoutMap;
-        reqExclusiveMap = Message$$Generated.reqExclusiveMap;
-        rspClazzMap = Message$$Generated.rspClazzMap;
-        rspDelayMap = Message$$Generated.rspDelayMap;
-        ntfClazzMap = Message$$Generated.ntfClazzMap;
-        ntfDelayMap = Message$$Generated.ntfDelayMap;
-        getParaClazzMap = Message$$Generated.getParaClazzMap;
-        getResultClazzMap = Message$$Generated.getResultClazzMap;
-        setParaClazzMap = Message$$Generated.setParaClazzMap;
-
-        reqSet = reqTimeoutMap.keySet();
-        rspSet = rspClazzMap.keySet();
-        ntfSet = ntfClazzMap.keySet();
-        gets = getParaClazzMap.keySet();
-        sets = setParaClazzMap.keySet();
+        reqMap = Message$$Generated.reqMap;
+        rspMap = Message$$Generated.rspMap;
     }
 
     synchronized static MagicBook instance() {
@@ -100,98 +52,88 @@ final class MagicBook {
     }
 
     String getMsgName(String msgId){
-        return idNameMap.get(msgId);
+        return nameIdMap.inverse().get(msgId);
     }
 
     String getMsgId(String msgName){
         return nameIdMap.get(msgName);
     }
 
-    boolean isRequest(String msg){
-        return reqSet.contains(msg);
+    boolean isRequest(String msgName){
+        return reqMap.rowKeySet().contains(msgName);
     }
 
-    boolean isResponse(String msg){
-        return rspSet.contains(msg);
+    boolean isResponse(String msgName){
+        return rspMap.rowKeySet().contains(msgName);
     }
 
-    boolean isNotification(String msg){
-        return ntfSet.contains(msg);
+    boolean isNotification(String msgName){
+        return isResponse(msgName);
     }
 
-    boolean isGet(String msg){
-        return gets.contains(msg);
+    boolean isSession(String reqName){
+        if (null == reqMap.row(reqName)) return false;
+        return REQ_TYPE_SESSION == (int)reqMap.row(reqName).get(COL_TYPE);
     }
 
-    boolean isSet(String msg){
-        return sets.contains(msg);
+    boolean isGet(String reqName){
+        if (null == reqMap.row(reqName)) return false;
+        return REQ_TYPE_GET == (int)reqMap.row(reqName).get(COL_TYPE);
     }
 
-    String getReqMethodOwner(String req){
-        return reqMethodOwner.get(req);
+    boolean isSet(String reqName){
+        if (null == reqMap.row(reqName)) return false;
+        return REQ_TYPE_SET == (int)reqMap.row(reqName).get(COL_TYPE);
     }
 
-    Class[] getReqMethodParaClasses(String req) {
-        return reqMethodParasMap.get(req);
+    String getMethodOwner(String reqName){
+        if (null == reqMap.row(reqName)) return null;
+        return (String) reqMap.row(reqName).get(COL_OWNER);
     }
-    Class[] getReqParaClasses(String req){
-        return reqParasMap.get(req);
-    }
-
-    String[][] getRspSeqs(String req){
-        return reqRspSeqsMap.get(req);
+    String getMethod(String reqName){
+        if (null == reqMap.row(reqName)) return null;
+        return (String) reqMap.row(reqName).get(COL_METHOD);
     }
 
-    int getTimeout(String req){
-        Integer timeoutVal = reqTimeoutMap.get(req);
-        if (null == timeoutVal) {
-            return 0;
-        }
-
-        return timeoutVal;
+    Class<?>[] getParaClasses(String reqName) {
+        if (null == reqMap.row(reqName)) return null;
+        return (Class[]) reqMap.row(reqName).get(COL_PARAS);
+    }
+    Class<?>[] getUserParaClasses(String reqName){
+        if (null == reqMap.row(reqName)) return null;
+        return (Class[]) reqMap.row(reqName).get(COL_USERPARAS);
     }
 
-    boolean isMutualExclusiveReq(String req){
-        return reqExclusiveMap.get(req);
+    String[][] getRspSeqs(String reqName){
+        if (null == reqMap.row(reqName)) return null;
+        return (String[][]) reqMap.row(reqName).get(COL_RSPSEQ);
     }
 
-    Class<?> getRspClazz(String rsp){
-        return rspClazzMap.get(rsp);
-    }
-
-    Class<?> getNtfClazz(String ntf){
-        return ntfClazzMap.get(ntf);
-    }
-
-    int getRspDelay(String rsp){
-        return rspDelayMap.get(rsp);
-    }
-
-    int getNtfDelay(String ntf){
-        return ntfDelayMap.get(ntf);
-    }
-
-    Class<?> getGetParaClazz(String get){
-        return getParaClazzMap.get(get);
-    }
-
-    Class<?> getGetResultClazz(String get){
-        return getResultClazzMap.get(get);
-    }
-
-    Class<?> getSetParaClazz(String set){
-        return setParaClazzMap.get(set);
+    int getTimeout(String reqName){
+        if (null == reqMap.row(reqName)) return 0;
+        return (int) reqMap.row(reqName).get(COL_TIMEOUT);
     }
 
 
-    Object[] userPara2MethodPara(Object[] userParas, Class[] methodParaTypes){
+    Class<?> getRspClazz(String rspName){
+        if (null == rspMap.row(rspName)) return null;
+        return (Class<?>) rspMap.row(rspName).get(COL_CLZ);
+    }
+
+    int getRspDelay(String rspName){
+        if (null == rspMap.row(rspName)) return 0;
+        return (int) rspMap.row(rspName).get(COL_DELAY);
+    }
+
+
+    Object[] userPara2MethodPara(Object[] userParas, Class<?>[] methodParaTypes){
         if (null == methodParaTypes || userParas.length != methodParaTypes.length){
             KLog.p(KLog.ERROR, "null == methodParaTypes || userParas.length != methodParaTypes.length");
             return userParas;
         }
         Object[] methodParas = new Object[userParas.length];
         Object userPara;
-        Class methodParaType;
+        Class<?> methodParaType;
         for (int i=0; i<userParas.length; ++i){
             userPara = userParas[i];
             methodParaType = methodParaTypes[i];

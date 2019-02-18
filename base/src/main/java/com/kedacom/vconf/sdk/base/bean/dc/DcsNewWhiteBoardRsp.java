@@ -22,6 +22,11 @@ public class DcsNewWhiteBoardRsp  implements JsonDeserializer<DcsNewWhiteBoardRs
     public TDCSBoardResult MainParam;
     public TDCSBoardInfo AssParam;
 
+    public DcsNewWhiteBoardRsp() {
+        MainParam = new TDCSBoardResult();
+        AssParam = new TDCSBoardInfo();
+    }
+
     @Override
     public DcsNewWhiteBoardRsp deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         DcsNewWhiteBoardRsp newWhiteBoardRsp = new DcsNewWhiteBoardRsp();
