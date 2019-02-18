@@ -19,7 +19,6 @@ import com.squareup.javapoet.TypeSpec;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -200,7 +199,7 @@ public class MessageProcessor extends AbstractProcessor {
             }
             else if (null != (response = element.getAnnotation(Response.class))){
                 name = element.getSimpleName().toString();
-                String id = response.name();
+                String id = response.id();
                 id = !id.isEmpty() ? id : element.getSimpleName().toString();
                 nameIdMap.put(name, id);
 
