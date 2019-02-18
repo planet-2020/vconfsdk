@@ -183,7 +183,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
 
         KLog.p("req=%s, reqSn=%s, listener=%s", req, reqSn, rspListener);
 
-        listenerLifecycleObserver.tryObserve(rspListener); // XXX 对于没响应的情形，listener如何注销？此种情形rspListener需得是null。
+        listenerLifecycleObserver.tryObserve(rspListener);
 
         rspListeners.put(reqSn, new ReqBundle(req, rspListener));
 
@@ -209,6 +209,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
                 KLog.p("cancel reqSn=%s, req=%s, listener=%s", reqSn, value.req, value.listener);
                 sessionFairy.cancelReq(reqSn);
                 rspListeners.remove(reqSn);
+                listenerLifecycleObserver.unobserve(rspListener);
                 break;
             }
         }
@@ -258,7 +259,8 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         Set<Object> listeners = ntfListeners.get(ntfName);
         if (null != listeners){
 //            KLog.p("unsubscribe ntf=%s, listener=%s", ntfId, ntfListener);
-            listeners.remove(ntfListener);
+            Object listener = listeners.remove(ntfListener);
+            listenerLifecycleObserver.unobserve(listener);
         }
     }
 
@@ -357,6 +359,8 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
                 val.listener = null;
             }
         }
+
+        listenerLifecycleObserver.unobserve(rspListener);
     }
 
     /**
@@ -386,7 +390,8 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         boolean bConsumed = rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
         if (bConsumed){
             if (bLast){
-                rspListeners.remove(reqSn); // TODO 注销生命周期绑定
+                rspListeners.remove(reqSn);
+                listenerLifecycleObserver.unobserve(resultListener);
             }
         }else{
             KLog.p(KLog.WARN, "rsp %s not consumed, req=%s, reqSn=%s", rsp, reqName, reqSn);
@@ -398,6 +403,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     public void onTimeout(String reqName, int reqSn, Object[] reqParas) {
         Msg req = Msg.valueOf(reqName);
         IResultListener resultListener = rspListeners.remove(reqSn).listener;
+        listenerLifecycleObserver.unobserve(resultListener);
         StringBuffer sb = new StringBuffer();
         for (Object para : reqParas){
             sb.append(para).append("; ");
@@ -407,12 +413,13 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         if (!bConsumed && null != resultListener){
             // 超时未被消费则此处通知用户超时
             resultListener.onTimeout();
-        }// TODO 注销生命周期绑定
+        }
     }
 
     @Override
     public void onFinDueToNoRsp(String reqName, int reqSn, Object[] reqParas) {
-        rspListeners.remove(reqSn); // TODO 注销生命周期绑定
+        ReqBundle reqBundle = rspListeners.remove(reqSn);
+        listenerLifecycleObserver.unobserve(reqBundle.listener);
     }
 
     @Override

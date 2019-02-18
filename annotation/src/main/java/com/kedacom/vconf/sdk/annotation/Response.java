@@ -14,7 +14,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
 public @interface Response {
-    String id();  // 下层传递上来的消息名称。 // TODO 改为id()
+    String id();  // 下层传递上来的消息名称
     Class clz(); // 响应消息体对应的类
     int delay() default 500; // 触发该响应前的延时（单位：毫秒）。仅模拟模式有效。
 }
