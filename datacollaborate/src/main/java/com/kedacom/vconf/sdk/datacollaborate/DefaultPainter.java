@@ -229,9 +229,15 @@ public class DefaultPainter implements IPainter {
         return paintBoards.size();
     }
 
+    @Override
+    public void paint(OpPaint op) {
+        if (doPaint(op)){
+            refresh();
+        }
+    }
 
     @Override
-    public void paint(List<OpPaint> ops){
+    public void batchPaint(List<OpPaint> ops){
         boolean bRefresh = false;
         for (OpPaint op : ops){
             if (doPaint(op)){

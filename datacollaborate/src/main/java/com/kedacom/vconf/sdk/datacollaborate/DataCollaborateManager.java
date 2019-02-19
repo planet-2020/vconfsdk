@@ -1172,7 +1172,7 @@ public class DataCollaborateManager extends Caster {
                         toReportOps.add(ops.poll());
                     }
                     for (Object listener : listeners) {
-                        ((IOnPaintOpListener) listener).onPaintOp(toReportOps);
+                        ((IOnPaintOpListener) listener).onBatchPaint(toReportOps);
                     }
                     break;
             }
@@ -1209,7 +1209,7 @@ public class DataCollaborateManager extends Caster {
                     toReportOps.add(ops.poll());
                 }
                 for (Object listener : listeners) {
-                    ((IOnPaintOpListener) listener).onPaintOp(toReportOps);
+                    ((IOnPaintOpListener) listener).onBatchPaint(toReportOps);
                 }
                 break;
 
@@ -1357,10 +1357,8 @@ public class DataCollaborateManager extends Caster {
                 cachedPaintOps.put(op.getBoardId(), ops1);
             }else {
                 // 过了同步阶段，直接上报用户图元操作
-                List<OpPaint> toReportOps = new ArrayList<>();
-                toReportOps.add(op);
                 for (Object listener : listeners) {
-                    ((IOnPaintOpListener) listener).onPaintOp(toReportOps);
+                    ((IOnPaintOpListener) listener).onPaint(op);
                 }
             }
         }
@@ -1387,14 +1385,12 @@ public class DataCollaborateManager extends Caster {
                 KLog.p(KLog.ERROR,"no listener for DCPicInsertedNtf");
                 return;
             }
-            List<OpPaint> toReportOps = new ArrayList<>();
-            toReportOps.add(opUpdatePic);
             for (Object onPaintOpListener : listeners) {
                 if (!containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener被销毁了删除了
                     KLog.p(KLog.ERROR,"listener %s for DCPicInsertedNtf has been destroyed", onPaintOpListener);
                     continue;
                 }
-                ((IOnPaintOpListener) onPaintOpListener).onPaintOp(toReportOps);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+                ((IOnPaintOpListener) onPaintOpListener).onPaint(opUpdatePic);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
             }
         }
     }
@@ -1486,9 +1482,13 @@ public class DataCollaborateManager extends Caster {
      * 绘制操作包括所有影响画板内容展示的操作，如画线画圆、插图片、擦除、撤销等等。
      * */
     public interface IOnPaintOpListener extends ILifecycleOwner {
+        /**绘制通知
+         * @param op 绘制操作*/
+        void onPaint(OpPaint op);
         /**
-         * @param ops 绘制操作*/
-        void onPaintOp(List<OpPaint> ops);
+         * 批量绘制通知
+         * @param ops 绘制操作列表*/
+        void onBatchPaint(List<OpPaint> ops);
     }
 
     /**
