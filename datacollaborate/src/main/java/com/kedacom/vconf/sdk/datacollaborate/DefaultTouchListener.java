@@ -72,7 +72,7 @@ class DefaultTouchListener implements View.OnTouchListener {
             }
 
             scaleFactor = detector.getScaleFactor();
-            if (Math.abs(scaleFactor-lastScaleFactor) > 0.001){ // XXX 去掉限制看缩放效果会不会更顺滑
+            if (Math.abs(scaleFactor-lastScaleFactor) > 0.001){ // TODO 去掉限制看缩放效果会不会更顺滑
                 onEventListener.onScale(scaleFactor);
                 lastScaleFactor = scaleFactor;
             }

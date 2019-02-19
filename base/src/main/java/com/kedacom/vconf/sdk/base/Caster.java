@@ -346,7 +346,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     /**
      * 删除响应监听者
      * */
-    protected synchronized void delRspListener(Object rspListener){  // TODO 一个监听者可能监听多种响应而他只想删除其中一种响应的监听，所以再加一个响应id参数？
+    protected synchronized void delRspListener(Object rspListener){  // TODO 一个监听者可能监听多种响应而他只想删除其中一种响应的监听，再加一个响应id参数
         if (null == rspListener){
             return;
         }

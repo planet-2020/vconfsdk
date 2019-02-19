@@ -1045,10 +1045,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     private boolean bLastStateIsEmpty =true;
+    /**
+     * 画板是否是空。
+     * NOTE: “空”的必要条件是视觉上画板没有内容，但是使用“擦除”操作清掉画板的内容并不会被判定为画板为空。
+     * */
     @Override
     public boolean isEmpty() {
-        // XXX 如果对端直接擦除、清屏一个空白画板会导致此接口返回false。TODO 在painter中过滤掉此种情形的擦除、清屏消息。
-        // XXX 另外，使用“擦除”的方式清掉画板的内容并不会导致此接口返回true。
+        // XXX: 如果对端直接擦除一个空白画板会导致此接口返回false。TODO 在painter中过滤掉此种情形的擦除、清屏消息。
         return  (picOps.isEmpty() && (shapeOps.isEmpty() || shapeOps.peekLast() instanceof OpClearScreen));
     }
 

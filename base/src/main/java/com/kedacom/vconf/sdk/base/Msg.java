@@ -656,7 +656,7 @@ public enum Msg {
     @Request(method = "DCSUploadFileCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {BaseTypeString.class, // 下载url。XXX 下层规定先将url包装到该类里面转成json然后传下，下层将json解析出来进而萃取出url。
+            userParas = {BaseTypeString.class, // 下载url。NOTE: 下层规定先将url包装到该类里面转成json然后传下，下层将json解析出来进而萃取出url。
                     TDCSFileInfo.class},
             rspSeq = {"DCUploadNtf"},
             timeout = 30)
