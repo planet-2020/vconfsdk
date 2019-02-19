@@ -410,9 +410,9 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         }
         KLog.p("rsp=%s, resultListener=%s, \nreq=%s, reqSn=%s, reqParas=%s", Msg.Timeout, resultListener, reqName, reqSn, sb);
         boolean bConsumed = rspProcessorMap.get(req).process(Msg.Timeout, "", resultListener, req, reqParas);
-        if (!bConsumed && null != resultListener){
+        if (!bConsumed){
             // 超时未被消费则此处通知用户超时
-            resultListener.onTimeout();
+            reportTimeout(resultListener);
         }
     }
 
@@ -434,6 +434,35 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         ntfProcessorMap.get(ntf).process(ntf, ntfContent, listeners);
     }
 
+    /**
+     * 上报用户请求成功结果
+     * */
+    protected void reportSuccess(Object result, IResultListener listener){
+        if (null != listener){
+            listener.onArrive();
+            listener.onSuccess(result);
+        }
+    }
+
+    /**
+     * 上报用户请求失败
+     * */
+    protected void reportFailed(int errorCode, IResultListener listener){
+        if (null != listener){
+            listener.onArrive();
+            listener.onFailed(errorCode);
+        }
+    }
+
+    /**
+     * 上报用户请求超时
+     * */
+    protected void reportTimeout(IResultListener listener){
+        if (null != listener){
+            listener.onArrive();
+            listener.onTimeout();
+        }
+    }
 
     private static class ReqBundle{
         private Msg req;

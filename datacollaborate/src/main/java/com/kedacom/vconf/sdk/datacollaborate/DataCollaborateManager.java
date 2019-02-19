@@ -303,11 +303,11 @@ public class DataCollaborateManager extends Caster {
                 if (Msg.DCLogin == reqId) {
                     if (!result.bSuccess) { // 链路建立失败
                         cancelReq(Msg.DCLogin, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
-                        if (null != listener) listener.onFailed(ErrCode_BuildLink4LoginFailed);
+                        reportFailed(ErrCode_BuildLink4LoginFailed, listener);
                     }
                 }else if (Msg.DCLogout == reqId){
                     if (!result.bSuccess) { // 链路已断开
-                        if (null != listener) listener.onSuccess(null);
+                        reportSuccess(null, listener);
                     }else{
                         // 链路处于连接状态，该消息不是该请求期望的
                         return false;
@@ -319,12 +319,10 @@ public class DataCollaborateManager extends Caster {
 
             case DCLoginRsp:
                 TDCSResult loginRes = (TDCSResult) rspContent;
-                if (null != listener){
-                    if (loginRes.bSucces) {
-                        listener.onSuccess(null);
-                    }else{
-                        listener.onFailed(ErrCode_Failed);
-                    }
+                if (loginRes.bSucces) {
+                    reportSuccess(null, listener);
+                }else{
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
 
@@ -332,7 +330,7 @@ public class DataCollaborateManager extends Caster {
                 TDCSResult logoutRes = (TDCSResult) rspContent;
                 if (!logoutRes.bSucces){
                     cancelReq(Msg.DCLogout, listener);  // 后续不会有DCBuildLink4LoginRsp上来，取消该请求以防等待超时。
-                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
 
@@ -404,11 +402,14 @@ public class DataCollaborateManager extends Caster {
 
         // 获取所有画板
         req(Msg.DCQueryAllBoards, new QueryAllBoardsInnerListener() {
+                    @Override
+                    public void onArrive() {
+                        /* 获取所有画板结束，准备阶段结束*/
+                        bPreparingSync = false;
+                    }
 
                     @Override
                     public void onSuccess(Object result) {
-                        /* 获取所有画板结束，准备阶段结束*/
-                        bPreparingSync = false;
 
                         bGotAllBoard = true;
                         List<TDCSBoardInfo> dcBoards = (List<TDCSBoardInfo>) result;
@@ -496,15 +497,11 @@ public class DataCollaborateManager extends Caster {
 
                     @Override
                     public void onFailed(int errorCode) {
-                        /* 获取所有画板结束，准备阶段结束*/
-                        bPreparingSync = false;
 //                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s failed!", dcConfinfo.confE164);
                     }
 
                     @Override
                     public void onTimeout() {
-                        /* 获取所有画板结束，准备阶段结束*/
-                        bPreparingSync = false;
 //                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s timeout!", dcConfinfo.confE164);
                     }
                 },
@@ -573,12 +570,12 @@ public class DataCollaborateManager extends Caster {
                 if (Msg.DCCreateConf == reqId) {
                     if (!result.bSuccess) { // 链路建立失败
                         cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
-                        if (null != listener) listener.onFailed(ErrCode_BuildLink4ConfFailed);
+                        reportFailed(ErrCode_BuildLink4ConfFailed, listener);
                     }
                 }else if (Msg.DCQuitConf == reqId
                         || Msg.DCReleaseConf == reqId){
                     if (!result.bSuccess) { // 链路已断开，退出/结束协作成功
-                        if (null != listener) listener.onSuccess(null);
+                        reportSuccess(null, listener);
                     }else{ // 链路未断开，该消息不是期望的
                         return false;
                     }
@@ -588,16 +585,12 @@ public class DataCollaborateManager extends Caster {
                 break;
             case DCConfCreated:
                 TDCSCreateConfResult createConfResult = (TDCSCreateConfResult) rspContent;
-                if (createConfResult.bSuccess){
+                if (createConfResult.bSuccess) {
                     curDcConfE164 = createConfResult.achConfE164;
-                }
-                if (null != listener){
-                    if (createConfResult.bSuccess) {
-                        listener.onSuccess(ToDoConverter.fromTransferObj(createConfResult));
-                        synchronizeCachedStuff(createConfResult);
-                    }else{
-                        listener.onFailed(ErrCode_Failed);
-                    }
+                    reportSuccess(ToDoConverter.fromTransferObj(createConfResult), listener);
+                    synchronizeCachedStuff(createConfResult);
+                }else{
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
 
@@ -608,7 +601,7 @@ public class DataCollaborateManager extends Caster {
                 TDCSResult quitRes = (TDCSResult) rspContent;
                 if (!quitRes.bSucces){
                     cancelReq(Msg.DCQuitConf, listener);
-                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
             default:
@@ -741,9 +734,9 @@ public class DataCollaborateManager extends Caster {
                     cancelReq(reqId, listener);
                     if (25607 == result.dwErrorCode) {
                         // 协作方数量已达上限
-                        if (null != listener) listener.onFailed(ErrCode_Operator_Amount_Reach_Limit);
+                        reportFailed(ErrCode_Operator_Amount_Reach_Limit, listener);
                     }else{
-                        if (null != listener) listener.onFailed(ErrCode_Failed);
+                        reportFailed(ErrCode_Failed, listener);
                     }
                 }
                 break;
@@ -752,14 +745,14 @@ public class DataCollaborateManager extends Caster {
                 if (Msg.DCAddOperator == reqId) {
                     TDCSOperator para = (TDCSOperator) reqParas[0];
                     if (para.atOperList.equals(userInfos)) {
-                        if (null != listener) listener.onSuccess(null);
+                        reportSuccess(null, listener);
                     } else {
                         return false;
                     }
                 }else if (Msg.DCApplyOperator == reqId){
                     String e164 = (String) reqParas[0];
                     if (e164.equals(userInfos.get(0).achE164)){
-                        if (null != listener) listener.onSuccess(null);
+                        reportSuccess(null, listener);
                     }else {
                         return false;
                     }
@@ -773,14 +766,14 @@ public class DataCollaborateManager extends Caster {
                 if (!result.bSucces){
                     KLog.p(KLog.ERROR, "del operator failed, errorCode=%s", result.dwErrorCode);
                     cancelReq(reqId, listener);
-                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
             case DCOperatorDeletedNtf:
                 userInfos = ((TDCSUserInfos)rspContent).atUserInfoList;
                 TDCSOperator para = (TDCSOperator) reqParas[0];
                 if (para.atOperList.equals(userInfos)){
-                    if (null != listener) listener.onSuccess(null);
+                    reportSuccess(null, listener);
                 }else {
                     return false;
                 }
@@ -791,26 +784,24 @@ public class DataCollaborateManager extends Caster {
                 if (!result.bSucces){
                     KLog.p(KLog.ERROR, "applying operator failed, errorCode=%s", result.dwErrorCode);
                     cancelReq(reqId, listener);
-                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
             case DCApplyOperatorRejectedNtf:
                 TDCSUserInfo userInfo = (TDCSUserInfo)rspContent;
                 String e164 = (String) reqParas[0];
                 if (e164.equals(userInfo.tUserInfo.achE164)){
-                    if (null != listener) listener.onFailed(ErrCode_Apply_Operator_Rejected);
+                    reportFailed(ErrCode_Apply_Operator_Rejected, listener);
                 }else {
                     return false;
                 }
                 break;
 
             case DCCancelOperatorRsp:
-                if (null != listener){
-                    if (((TDCSResult) rspContent).bSucces){
-                        listener.onSuccess(null);
-                    }else{
-                        listener.onFailed(ErrCode_Failed);
-                    }
+                if (((TDCSResult) rspContent).bSucces){
+                    reportSuccess(null, listener);
+                }else{
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
 
@@ -951,10 +942,10 @@ public class DataCollaborateManager extends Caster {
             case DCQueryBoardRsp:
                 DcsGetWhiteBoardRsp queryBoardsResult = (DcsGetWhiteBoardRsp) rspContent;
                 if (queryBoardsResult.MainParam.bSuccess){
-                    if (null != listener) listener.onSuccess(ToDoConverter.fromTransferObj(queryBoardsResult.AssParam));
+                    reportSuccess(ToDoConverter.fromTransferObj(queryBoardsResult.AssParam), listener);
                 }else{
                     KLog.p(KLog.ERROR, "DCQueryBoard failed, errorCode=%s", queryBoardsResult.MainParam.dwErrorCode);
-                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
 
@@ -962,7 +953,7 @@ public class DataCollaborateManager extends Caster {
                 DcsGetAllWhiteBoardRsp queryAllBoardsResult = (DcsGetAllWhiteBoardRsp) rspContent;
                 if (!queryAllBoardsResult.MainParam.bSucces){
                     KLog.p(KLog.ERROR, "DCQueryAllBoards failed, errorCode=%s", queryAllBoardsResult.MainParam.dwErrorCode);
-                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                     return true;
                 }
 
@@ -974,15 +965,18 @@ public class DataCollaborateManager extends Caster {
                         tdcsBoardInfos.add(priorityQueue.poll());
                     }
 
+                    Object result;
                     if (listener instanceof QueryAllBoardsInnerListener) {
-                        listener.onSuccess(tdcsBoardInfos);
+                        result = tdcsBoardInfos;
                     } else {
                         List<BoardInfo> boardInfos = new ArrayList<>();
                         for (TDCSBoardInfo tdcsBoardInfo : tdcsBoardInfos) {
                             boardInfos.add(ToDoConverter.fromTransferObj(tdcsBoardInfo));
                         }
-                        listener.onSuccess(boardInfos);
+                        result = boardInfos;
                     }
+
+                    reportSuccess(result, listener);
                 }
 
                 break;
@@ -992,14 +986,14 @@ public class DataCollaborateManager extends Caster {
                 if (!newWhiteBoardRsp.MainParam.bSuccess) {
                     KLog.p(KLog.ERROR, "new board failed, errorCode=%s", newWhiteBoardRsp.MainParam.dwErrorCode);
                     cancelReq(reqId, listener); // 后续不会有DCBoardCreatedNtf，取消以防等待超时
-                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
             case DCBoardCreatedNtf:
                 TDCSBoardInfo tdcsBoardInfo = (TDCSBoardInfo) rspContent;
                 TDCSNewWhiteBoard newWhiteBoard = (TDCSNewWhiteBoard) reqParas[0];
                 if (newWhiteBoard.tBoardinfo.achWbCreatorE164.equals(tdcsBoardInfo.achWbCreatorE164)) {
-                    if (null != listener) listener.onSuccess(ToDoConverter.fromTransferObj(tdcsBoardInfo));
+                    reportSuccess(ToDoConverter.fromTransferObj(tdcsBoardInfo), listener);
                 }else{
                     return false; // 返回false表示未消费该条消息
                 }
@@ -1010,14 +1004,14 @@ public class DataCollaborateManager extends Caster {
                 if (!boardResult.bSuccess){
                     KLog.p(KLog.ERROR, "del board failed, errorCode=%s", boardResult.dwErrorCode);
                     cancelReq(reqId, listener);
-                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
             case DCBoardDeletedNtf:
                 TDCSDelWhiteBoardInfo boardInfo = (TDCSDelWhiteBoardInfo) rspContent;
                 String boardId = (String) reqParas[1];
                 if (boardId.equals(boardInfo.strIndex)){
-                    if (null != listener) listener.onSuccess(boardInfo.strIndex);
+                    reportSuccess(boardInfo.strIndex, listener);
                 }else{
                     return false;
                 }
@@ -1028,12 +1022,12 @@ public class DataCollaborateManager extends Caster {
                 if (!allBoardRes.bSuccess){
                     KLog.p(KLog.ERROR, "del all board failed, errorCode=%s", allBoardRes.dwErrorCode);
                     cancelReq(reqId, listener);
-                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
             case DCAllBoardDeletedNtf:
                 TDCSDelWhiteBoardInfo delWhiteBoardInfo = (TDCSDelWhiteBoardInfo) rspContent;
-                if (null != listener) listener.onSuccess(delWhiteBoardInfo.strConfE164);
+                reportSuccess(delWhiteBoardInfo.strConfE164, listener);
                 break;
 
             case DCSwitchBoardRsp:
@@ -1041,14 +1035,14 @@ public class DataCollaborateManager extends Caster {
                 if (!switchRsp.MainParam.bSuccess){
                     KLog.p(KLog.ERROR, "switch board failed, errorCode=%s", switchRsp.MainParam.dwErrorCode);
                     cancelReq(reqId, listener);
-                    if (null != listener) listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
             case DCBoardSwitchedNtf:
                 TDCSBoardInfo boardInfo1 = (TDCSBoardInfo) rspContent;
                 TDCSSwitchReq para = (TDCSSwitchReq) reqParas[0];
                 if (para.achTabId.equals(boardInfo1.achTabId)){
-                    if (null != listener) listener.onSuccess(boardInfo1.achTabId);
+                    reportSuccess(boardInfo1.achTabId, listener);
                 }else{
                     return false;
                 }
@@ -1103,27 +1097,27 @@ public class DataCollaborateManager extends Caster {
             case DCQueryPicUrlRsp:
                 DcsDownloadImageRsp queryPicUrlResult = (DcsDownloadImageRsp) rspContent;
                 if (queryPicUrlResult.MainParam.bSucces){
-                    listener.onSuccess(queryPicUrlResult.AssParam);
+                    reportSuccess(queryPicUrlResult.AssParam, listener);
                 }else{
-                    listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
 
             case DCDownloadRsp:
                 TDCSFileLoadResult result = (TDCSFileLoadResult) rspContent;
                 if (result.bSuccess){
-                    listener.onSuccess(result);
+                    reportSuccess(result, listener);
                 }else{
-                    listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
 
             case DCQueryPicUploadUrlRsp:
                 DcsUploadImageRsp queryPicUploadUrlResult = (DcsUploadImageRsp) rspContent;
                 if (queryPicUploadUrlResult.MainParam.bSucces){
-                    listener.onSuccess(queryPicUploadUrlResult.AssParam);
+                    reportSuccess(queryPicUploadUrlResult.AssParam, listener);
                 }else{
-                    listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
 //            case DCUploadRsp:
@@ -1135,9 +1129,9 @@ public class DataCollaborateManager extends Caster {
                     for (TDCSConfUserInfo user : userListRsp.AssParam.atUserList){
                         dcMembers.add(ToDoConverter.fromTransferObj(user));
                     }
-                    listener.onSuccess(dcMembers);
+                    reportSuccess(dcMembers, listener);
                 }else{
-                    listener.onFailed(ErrCode_Failed);
+                    reportFailed(ErrCode_Failed, listener);
                 }
                 break;
 
