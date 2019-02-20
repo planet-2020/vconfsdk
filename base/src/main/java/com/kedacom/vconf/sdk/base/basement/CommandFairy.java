@@ -109,8 +109,4 @@ public final class CommandFairy implements IFairy.ICommandFairy{
         this.crystalBall = crystalBall;
     }
 
-    @Override
-    public ICrystalBall getCrystalBall() {
-        return crystalBall;
-    }
 }

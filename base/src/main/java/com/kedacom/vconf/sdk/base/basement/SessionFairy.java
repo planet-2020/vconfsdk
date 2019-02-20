@@ -78,11 +78,6 @@ public final class SessionFairy implements IFairy.ISessionFairy{
         this.crystalBall = crystalBall;
     }
 
-    @Override
-    public ICrystalBall getCrystalBall() {
-        return crystalBall;
-    }
-
 
     @Override
     public boolean req(IListener listener, String reqName, int reqSn, Object... reqPara) {

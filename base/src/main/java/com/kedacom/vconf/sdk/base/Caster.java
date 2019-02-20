@@ -7,6 +7,7 @@ import com.kedacom.vconf.sdk.base.basement.CrystalBall;
 import com.kedacom.vconf.sdk.base.basement.FakeCrystalBall;
 import com.kedacom.vconf.sdk.base.basement.ICrystalBall;
 import com.kedacom.vconf.sdk.base.basement.IFairy;
+import com.kedacom.vconf.sdk.base.basement.MagicBook;
 import com.kedacom.vconf.sdk.base.basement.NotificationFairy;
 import com.kedacom.vconf.sdk.base.basement.SessionFairy;
 
@@ -21,6 +22,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     private IFairy.ISessionFairy sessionFairy;
     private IFairy.INotificationFairy notificationFairy;
     private IFairy.ICommandFairy commandFairy;
+    private ICrystalBall crystalBall;
 
     private int reqSn = 0; // 请求序列号，递增。
     private final Map<Integer, ReqBundle> rspListeners = new LinkedHashMap<>();
@@ -57,18 +59,16 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
 
     @SuppressWarnings("ConstantConditions")
     protected Caster(){
-        IFairy.ISessionFairy sessionFairy = SessionFairy.instance();
-        IFairy.INotificationFairy notificationFairy = NotificationFairy.instance();
-        IFairy.ICommandFairy commandFairy = CommandFairy.instance();
-        ICrystalBall crystalBall = CrystalBall.instance();
+        sessionFairy = SessionFairy.instance();
+        notificationFairy = NotificationFairy.instance();
+        commandFairy = CommandFairy.instance();
+        crystalBall = CrystalBall.instance();
+
         crystalBall.addRspListener(sessionFairy);
         crystalBall.addNtfListener(notificationFairy);
         sessionFairy.setCrystalBall(crystalBall);
         notificationFairy.setCrystalBall(crystalBall);
         commandFairy.setCrystalBall(crystalBall);
-        this.sessionFairy = sessionFairy;
-        this.notificationFairy = notificationFairy;
-        this.commandFairy = commandFairy;
 
         listenerLifecycleObserver = new ListenerLifecycleObserver(listenerLifecycleCallback);
 
@@ -141,10 +141,10 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
 
 
     /**
-     * 启用/停用仿真器。
-     * 若启用则仿真器将替代底层组件并反馈模拟的响应/通知；
+     * 启用/停用模拟器。
+     * 若启用则模拟器将替代底层组件并反馈模拟的响应/通知；
      * 若停用则恢复正常模式，即请求通过底层组件发给平台平台反馈消息组件再上抛消息。
-     * NOTE: 仅用于DEBUG版本。
+     * NOTE: 仅用于本地调试。
      * @param bEnable true：启用，false：停用。
      * */
     public void enableSimulator(boolean bEnable){
@@ -152,7 +152,8 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
             KLog.p(KLog.ERROR, "forbidden operation");
             return;
         }
-        ICrystalBall crystalBall;
+        crystalBall.delListener(sessionFairy);
+        crystalBall.delListener(notificationFairy);
         if (bEnable){
             KLog.p(KLog.WARN, "switch to FakeCrystalBall");
             crystalBall = FakeCrystalBall.instance();
@@ -161,8 +162,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         }
         crystalBall.addRspListener(sessionFairy);
         crystalBall.addNtfListener(notificationFairy);
-        sessionFairy.getCrystalBall().delListener(sessionFairy);
-        notificationFairy.getCrystalBall().delListener(notificationFairy);
+
         sessionFairy.setCrystalBall(crystalBall);
         notificationFairy.setCrystalBall(crystalBall);
         commandFairy.setCrystalBall(crystalBall);
@@ -329,24 +329,22 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     }
 
     /**
-     * （驱使下层）发射通知。仅用于模拟模式。
+     * （驱使下层）发射响应/通知。仅用于模拟模式。
      * */
-    protected synchronized void eject(Msg ntfId){
-//        Log.i(TAG, "eject ntf "+ntfId);
-        if (!ntfProcessorMap.keySet().contains(ntfId)){
-            KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
-            return;
-        }
-        notificationFairy.emit(ntfId.name());
+    public synchronized void eject(Msg msg){
+        String msgId = MagicBook.instance().getMsgId(msg.name());
+        crystalBall.emit(msgId);
     }
 
     /**
-     * （驱使下层）发射通知。仅用于模拟模式。
+     * （驱使下层）发射响应/通知。仅用于模拟模式。
      * */
-    protected synchronized void eject(Msg[] ntfIds){
-        for (Msg ntf : ntfIds) {
-            eject(ntf);
+    public synchronized void eject(Msg[] msgs){
+        String[] msgIds = new String[msgs.length];
+        for (int i=0; i<msgIds.length; ++i) {
+            msgIds[i] = MagicBook.instance().getMsgId(msgs[i].name());
         }
+        crystalBall.emit(msgIds);
     }
 
 

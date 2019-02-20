@@ -50,47 +50,6 @@ public class FakeCrystalBall implements ICrystalBall {
         return instance;
     }
 
-//
-//    @Override
-//    public int get(String msgName, StringBuffer output) {
-//        return get(msgName, null, output);
-//    }
-//
-//    @Override
-//    public int get(String msgName, String para, StringBuffer output) {
-//        Object result = createInstanceFromClass(magicBook.getGetResultClazz(msgName));
-//
-//        Log.d(TAG, String.format("GET %s, para= %s, result=%s", msgName, para, jsonProcessor.toJson(result)));
-//
-//        output.append(jsonProcessor.toJson(result));
-//
-//        return 0;
-//    }
-//
-//    @Override
-//    public int set(String msgName, String para){
-//        Log.d(TAG, String.format("SET %s, para= %s", msgName, para));
-//        return 0;
-//    }
-
-//    @Override
-//    public boolean eject(String ntfName) {
-//        if (null == yb){
-//            return false;
-//        }
-//
-//        Object ntfBody = createInstanceFromClass(magicBook.getNtfClazz(ntfName));
-//
-//        final String jsonNtfBody = jsonProcessor.toJson(ntfBody);
-//        nativeHandler.postDelayed(() -> {
-//            Log.d(TAG, String.format("send NTF %s, content=%s", ntfName, jsonNtfBody));
-//            yb.yellback(ntfName, jsonNtfBody);
-//        }, magicBook.getNtfDelay(ntfName));
-//
-//        return true;
-//    }
-
-
     private Object createInstanceFromClass(Class<?> clz){
         Log.d(TAG, "clz="+clz);
         Object instance;
@@ -170,6 +129,50 @@ public class FakeCrystalBall implements ICrystalBall {
         msg.obj = new MsgWrapper(msgId, msgContent);
         handler.sendMessage(msg);
     }
+
+    @Override
+    public void emit(String msgId) {
+        String msgName = magicBook.getMsgName(msgId);
+        if (!magicBook.isResponse(msgName)
+                && !magicBook.isNotification(msgName)){
+            Log.e(TAG, String.format("emit msg failed, %s is not a rsp or ntf", msgName));
+            return;
+        }
+
+        Object rspBody = createInstanceFromClass(magicBook.getRspClazz(msgName));
+        String jsonRspBody = jsonProcessor.toJson(rspBody);
+        int delay = magicBook.getRspDelay(msgName);
+
+        // 上报响应
+        nativeHandler.postDelayed(() -> {
+            Log.d(TAG, String.format("send RSP %s, rspContent=%s", msgName, jsonRspBody));
+            onAppear(msgId, jsonRspBody);
+        }, delay);
+    }
+
+    @Override
+    public void emit(String[] msgIds) {
+        int delay = 0;
+        for (String msgId : msgIds){
+            String msgName = magicBook.getMsgName(msgId);
+            if (!magicBook.isResponse(msgName)
+                    && !magicBook.isNotification(msgName)){
+                Log.e(TAG, String.format("emit msg failed, %s is not a rsp or ntf", msgName));
+                continue;
+            }
+
+            Object rspBody = createInstanceFromClass(magicBook.getRspClazz(msgName));
+            String jsonRspBody = jsonProcessor.toJson(rspBody);
+            delay += magicBook.getRspDelay(msgName);
+
+            // 上报响应
+            nativeHandler.postDelayed(() -> {
+                Log.d(TAG, String.format("send RSP %s, rspContent=%s", msgName, jsonRspBody));
+                onAppear(msgId, jsonRspBody);
+            }, delay);
+        }
+    }
+
     /**
      * 添加消息监听器。
      * NOTE: 先添加的监听器优先消费消息。

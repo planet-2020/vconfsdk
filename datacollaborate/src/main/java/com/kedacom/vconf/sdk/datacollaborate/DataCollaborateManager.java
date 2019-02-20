@@ -452,15 +452,6 @@ public class DataCollaborateManager extends Caster {
                             curBoardId = null;
                         }
 
-                        // 为各画板创建图元缓存队列（刚入会需同步会议中已有图元）
-                        for (TDCSBoardInfo board : dcBoards){
-                            PriorityQueue<OpPaint> ops = cachedPaintOps.get(board.achTabId);
-                            if (null == ops){ // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
-                                ops = new PriorityQueue<>();
-                                cachedPaintOps.put(board.achTabId, ops);
-                            }
-                        }
-
                         // 开始同步所有画板的已有图元
                         for (TDCSBoardInfo board : dcBoards){
 
@@ -468,6 +459,11 @@ public class DataCollaborateManager extends Caster {
                             req(Msg.DCDownload, new IResultListener() {
                                         @Override
                                         public void onSuccess(Object result) {
+                                            PriorityQueue<OpPaint> ops = cachedPaintOps.get(board.achTabId);
+                                            if (null == ops){ // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
+                                                ops = new PriorityQueue<>();
+                                                cachedPaintOps.put(board.achTabId, ops);
+                                            }
                                             // 后续会批量上报当前画板已有图元，直到收到End消息为止。此处我们开启超时机制防止收不到End消息
                                             Message msg = Message.obtain();
                                             msg.what = MsgID_SynchronizingTimeout;
@@ -478,13 +474,11 @@ public class DataCollaborateManager extends Caster {
                                         @Override
                                         public void onFailed(int errorCode) {
 //                                    KLog.p(KLog.ERROR, "download paint element for board %s failed!", board.id);
-//                                    cachedPaintOps.remove(board.id);
                                         }
 
                                         @Override
                                         public void onTimeout() {
 //                                    KLog.p(KLog.ERROR, "download paint element for board %s timeout!", board.id);
-//                                    cachedPaintOps.remove(board.id);
                                         }
                                     },
 
@@ -1185,7 +1179,6 @@ public class DataCollaborateManager extends Caster {
      * 收到绘制操作通知处理
      * */
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         switch (ntfId){
 //            case DCElementBeginNtf:
 //                // NOTHING TO DO. NOTE:此通知并不能准确标记批量图元推送的起点。

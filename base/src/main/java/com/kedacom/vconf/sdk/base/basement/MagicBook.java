@@ -9,7 +9,7 @@ import com.kedacom.vconf.sdk.base.KLog;
 
 @SuppressWarnings("BooleanMethodIsAlwaysInverted")
 @Consumer(Message.class)
-final class MagicBook {
+public final class MagicBook {
     private static MagicBook instance;
 
     /*
@@ -43,7 +43,7 @@ final class MagicBook {
         rspMap = Message$$Generated.rspMap;
     }
 
-    synchronized static MagicBook instance() {
+    public synchronized static MagicBook instance() {
         if (null == instance) {
             instance = new MagicBook();
         }
@@ -55,7 +55,7 @@ final class MagicBook {
         return nameIdMap.inverse().get(msgId);
     }
 
-    String getMsgId(String msgName){
+    public String getMsgId(String msgName){
         return nameIdMap.get(msgName);
     }
 

@@ -64,15 +64,8 @@ public interface IFairy {
             void onNtf(String ntfName, Object ntfContent);
         }
 
-        /**
-         * 触发通知。用于模拟模式
-         *
-         * @param ntfName*/
-        void emit(String ntfName);  // TODO 挪到crystalBall中
-
     }
 
     void setCrystalBall(ICrystalBall crystalBall);
 
-    ICrystalBall getCrystalBall();
 }

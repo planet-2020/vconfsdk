@@ -101,40 +101,9 @@ public final class NotificationFairy implements IFairy.INotificationFairy{
     }
 
 
-
-    @Override
-    public void emit(String ntfName) {
-        if (null == crystalBall){
-            Log.e(TAG, "no crystalBall ");
-            return;
-        }
-
-        if (!magicBook.isNotification(ntfName)){
-            Log.e(TAG, "Unknown notification "+ ntfName);
-            return;
-        }
-
-        // TODO
-//        crystalBall.emit(ntfName);
-    }
-
-    // XXX 上层循环调用
-//    @Override
-//    public void emit(String[] ntfIds) {
-//        for (String ntfId : ntfIds){
-//            emit(ntfId);
-//        }
-//    }
-
-
     @Override
     public void setCrystalBall(ICrystalBall crystalBall) {
         this.crystalBall = crystalBall;
-    }
-
-    @Override
-    public ICrystalBall getCrystalBall() {
-        return crystalBall;
     }
 
 }
