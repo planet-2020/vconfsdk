@@ -5,10 +5,6 @@
 package com.kedacom.vconf.sdk.base.bean.dc;
 
 
-/**
- * 图元操作回调的MainParam
- * Created by chenjun on 2017/10/26.
- */
 public class TDCSOperContent {
     public EmDcsOper emOper;
     public int dwMsgId;

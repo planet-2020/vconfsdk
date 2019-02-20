@@ -6,10 +6,6 @@ package com.kedacom.vconf.sdk.base.bean.dc;
 
 import java.util.List;
 
-/**
- * Created by zhoutianjie on 2018/12/5.
- */
-
 public class TDCSCreateConf {
 
     public EmDcsConfType emConfType;
