@@ -25,6 +25,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardResult;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfAddr;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConf;
@@ -1572,4 +1573,14 @@ public class DataCollaborateManager extends Caster {
     private class QueryAllBoardsInnerListener implements IResultListener{
     }
 
+    // FORDEBUG
+//    public void setDcServerAddr(){
+//        set(Msg.DCSetServerAddr, new TDCSConfAddr("127.0.0.1", "localhost", 12345));
+//    }
+//
+//    public Object getDcServerAddr(){
+//        TDCSConfAddr result = (TDCSConfAddr) get(Msg.DCGetServerAddr);
+//        KLog.p("result="+result);
+//        return result;
+//    }
 }

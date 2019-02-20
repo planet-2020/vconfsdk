@@ -36,18 +36,30 @@ public @interface Request {
 
     /** 对应的native方法所需参数类型
      * 如LoginManager.java中定义如下方法：
-     * public static native void login(String jsonLoginPara);
-     * 则paras为String.class
+     * public static native void login(String jsonLoginPara， String jsonLoginPara2);
+     * 则paras={String.class, String.class}
      * */
     Class[] paras() default {};
 
     /** 用户参数类型。
-     NOTE：userParas不同于paras，paras为native方法的形参列表，目前大部分情形下是StringBuffer类型的json字符串，而userParas是面向用户的参数列表。
+     NOTE：userParas不同于paras，paras为native方法的形参列表，目前大部分情形下是StringBuffer类型的json字符串，而userParas是面向用户（框架使用者）的参数列表。
      例如native方法定义如下：
-     public static native void login(StringBuffer jsonLoginPara);
+     public static native void login(StringBuffer jsonLoginPara1, StringBuffer jsonLoginPara2);
      而为了用户使用方便，面向用户的接口可能定义如下：
-     public void login(LoginPara para)
-     这里的LoginPara即为userParas，StringBuffer即为paras，框架在调用native方法前自动将LoginPara对象转为StringBuffer类型json字符串。
+     public void login(LoginPara1 loginPara1, LoginPara2 loginPara2)
+     则paras和userParas的赋值分别为paras={StringBuffer.class, StringBuffer.class}, userParas={LoginPara1.class, LoginPara2.class}
+     框架在调用native方法前自动将LoginPara对象转为StringBuffer类型json字符串。
+
+     对于{@link #type()}为{@link #GET}的情形，约定{@link #paras()}最后一个值为传出参数类型，{@link #userParas()}最后一个值为返回值类型，
+     如有如下native方法和用户方法定义：
+     public static native void DcsGetServerCfg(String serverId, StringBuffer outpara); // NOTE:最后一个参数为传出参数，native方法使用传出参数反馈请求结果。
+     public DCServerCfg getServerCfg(String serverId); // NOTE: 用户接口比native方法少一个传出参数，而通过返回值接受结果。
+     则paras和userParas的赋值分别为
+     paras={String.class, StringBuffer.class},
+     userParas={String.class,
+     DCServerCfg.class // NOTE: 用户接口并不需要传入该参数，而是通过返回值接受请求结果，此为用户接口的返回值类型。
+     }
+     框架在反馈用户结果前自动将StringBuffer类型json字符串outpara转为DCServerCfg对象。
 
      userPara到para转换规则按优先级从高到低如下：
      1、若userPara为基本类型包装类型，para为对应的基本类型，则将包装类型解包；
@@ -61,8 +73,8 @@ public @interface Request {
      * 请求类型。
      * */
     int SESSION = 0; // “请求——响应”，异步。
-    int GET = 1; // 如获取配置。
-    int SET = 2; // 如设置配置。
+    int GET = 1; // 如获取配置，同步。
+    int SET = 2; // 如设置配置，同步。
     int type() default SESSION;
 
     /**
@@ -85,5 +97,4 @@ public @interface Request {
      * NOTE: 若无响应序列此超时时长无用。
      * */
     int timeout() default 5;
-//    boolean isMutualExclusive() default false; // 是否互斥。若互斥则仅容许存在一个进行中的该类请求。比如若startup互斥，当发出一个startup且响应尚未收到时，此时又来一个startup则后一个被丢弃。
 }

@@ -28,6 +28,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsSwitchRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardResult;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfAddr;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConf;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
@@ -76,11 +77,21 @@ public enum Msg {
     //>>>>>>>>>>>>>>>>>>> 数据协作
 
     // 数据协作基础
-
+//    /**设置数据协作服务器地址*/
+//    @Request(method = "DCSetServerAddr",
+//            owner = DcsCtrl,
+//            paras = StringBuffer.class, // native方法传入参数，注意对比DCGetServerAddr
+//            userParas = TDCSConfAddr.class, // 用户传入参数，注意对比DCGetServerAddr
+//            type = Request.SET)
+//    DCSetServerAddr,
+//
 //    /**获取数据协作服务器地址*/
-//    @Get(result = MsgBeans.DCServerAddr.class)
+//    @Request(method = "DCGetServerAddr",
+//            owner = DcsCtrl,
+//            paras = StringBuffer.class, // native方法传出参数，注意对比DCSetServerAddr
+//            userParas = TDCSConfAddr.class, // 用户方法返回值
+//            type = Request.GET)
 //    DCGetServerAddr,
-
 
     /**
      * 登录数据协作建链响应

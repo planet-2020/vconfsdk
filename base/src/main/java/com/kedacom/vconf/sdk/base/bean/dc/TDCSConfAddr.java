@@ -8,4 +8,19 @@ public class TDCSConfAddr {
     public String achIp;
     public String achDomain;
     public int dwPort;
+
+    public TDCSConfAddr(String achIp, String achDomain, int dwPort) {
+        this.achIp = achIp;
+        this.achDomain = achDomain;
+        this.dwPort = dwPort;
+    }
+
+    @Override
+    public String toString() {
+        return "TDCSConfAddr{" +
+                "achIp='" + achIp + '\'' +
+                ", achDomain='" + achDomain + '\'' +
+                ", dwPort=" + dwPort +
+                '}';
+    }
 }

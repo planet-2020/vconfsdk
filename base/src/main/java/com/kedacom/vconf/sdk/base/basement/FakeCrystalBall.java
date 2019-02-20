@@ -16,7 +16,9 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class FakeCrystalBall implements ICrystalBall {
 
@@ -26,6 +28,7 @@ public class FakeCrystalBall implements ICrystalBall {
 
     private final List<IListener> rspListeners = new ArrayList<>();
     private final List<IListener> ntfListeners = new ArrayList<>();
+    private final Map<Class<?>, Object> cfgCache = new HashMap<>();
 
     private JsonProcessor jsonProcessor;
     private MagicBook magicBook;
@@ -127,7 +130,7 @@ public class FakeCrystalBall implements ICrystalBall {
             if (null == rspSeqs || 0==rspSeqs.length){
                 return 0;
             }
-            String[] rspSeq = rspSeqs[0]; // 若有多路响应序列默认返回第一路
+            String[] rspSeq = rspSeqs[0]; //NOTE: 仅返回第一路响应序列
             Object rspBody;
             int delay = 0;
             for (String rspName : rspSeq) {
@@ -144,9 +147,14 @@ public class FakeCrystalBall implements ICrystalBall {
 
             }
         }else if (magicBook.isSet(msgName)){
-
+            Class<?>[] classes = magicBook.getUserParaClasses(msgName);
+            Class<?> type = classes[classes.length-1]; // 最后一个为设置参数
+            cfgCache.put(type, para[para.length-1]);
         }else if (magicBook.isGet(msgName)){
-
+            Class<?>[] classes = magicBook.getUserParaClasses(msgName);
+            Class<?> type = classes[classes.length-1];
+            Object cfg = cfgCache.get(type);
+            para[para.length-1] = cfg; // 最后一个参数为传出参数
         }
 
         return 0;
