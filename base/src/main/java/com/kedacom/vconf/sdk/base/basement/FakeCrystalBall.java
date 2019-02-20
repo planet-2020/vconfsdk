@@ -7,27 +7,20 @@ package com.kedacom.vconf.sdk.base.basement;
 
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Looper;
-import android.os.Message;
 import android.os.Process;
 import android.util.Log;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-public class FakeCrystalBall implements ICrystalBall {
+public class FakeCrystalBall extends CrystalBall {
 
-    private static final String TAG = "FakeCrystalBall";
+    private static final String TAG = FakeCrystalBall.class.getSimpleName();
 
     private static FakeCrystalBall instance;
-
-    private final List<PriorityListener> listeners = new ArrayList<>();
 
     private final Map<Class<?>, Object> cfgCache = new HashMap<>();
 
@@ -121,17 +114,6 @@ public class FakeCrystalBall implements ICrystalBall {
     }
 
     @Override
-    public void onAppear(String msgId, String msgContent) {
-        if (null == msgId || msgId.isEmpty()){
-            Log.w(TAG, "invalid msgId");
-            return;
-        }
-        Message msg = Message.obtain();
-        msg.obj = new MsgWrapper(msgId, msgContent);
-        handler.sendMessage(msg);
-    }
-
-    @Override
     public void emit(String msgId) {
         String msgName = magicBook.getMsgName(msgId);
         if (!magicBook.isResponse(msgName)
@@ -174,81 +156,4 @@ public class FakeCrystalBall implements ICrystalBall {
         }
     }
 
-    @Override
-    public void addListener(IListener listener, int priority) {
-        for (PriorityListener priorityListener : listeners){
-            if (listener == priorityListener){
-                priorityListener.priority = priority;
-                Collections.sort(listeners);
-                return;
-            }
-        }
-
-        listeners.add(new PriorityListener(listener, priority));
-        Collections.sort(listeners);
-    }
-
-    @Override
-    public void delListener(IListener listener) {
-        for (PriorityListener priorityListener : listeners){
-            if (listener == priorityListener){
-                listeners.remove(priorityListener);
-                return;
-            }
-        }
-    }
-
-    @Override
-    public void clearListeners() {
-        listeners.clear();
-    }
-
-
-    private Handler handler = new Handler(Looper.getMainLooper()){
-        @Override
-        public void handleMessage(Message msg) {
-            MsgWrapper msgWrapper = (MsgWrapper) msg.obj;
-            String msgName = msgWrapper.msgName;
-            String msgBody = msgWrapper.msgBody;
-            /*
-             * 消费该消息.
-             * 响应监听器优先消费，若消息被消费则不再传递给后续监听器。
-             * */
-            for (PriorityListener priorityListener : listeners){
-                if (priorityListener.listener.onMsg(msgName, msgBody)){
-                    return;
-                }
-            }
-        }
-    };
-
-
-    private class MsgWrapper {
-        String msgName;
-        String msgBody;
-        MsgWrapper(String msgName, String msgBody){this.msgName =msgName; this.msgBody=msgBody;}
-    }
-
-    private class PriorityListener implements Comparable<PriorityListener>{
-        IListener listener;
-        int priority;
-
-        PriorityListener(IListener listener, int priority) {
-            this.listener = listener;
-            this.priority = priority;
-        }
-
-        @Override
-        public int compareTo(PriorityListener o) {
-            return priority - o.priority;
-        }
-
-        @Override
-        public String toString() {
-            return "PriorityListener{" +
-                    "listener=" + listener +
-                    ", priority=" + priority +
-                    '}';
-        }
-    }
 }

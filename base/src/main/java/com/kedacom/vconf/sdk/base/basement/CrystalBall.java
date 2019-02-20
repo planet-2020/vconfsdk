@@ -26,7 +26,7 @@ public class CrystalBall implements ICrystalBall {
 
     private final List<PriorityListener> listeners = new ArrayList<>();
 
-    private CrystalBall(){
+    protected CrystalBall(){
     }
 
     public synchronized static CrystalBall instance() {
