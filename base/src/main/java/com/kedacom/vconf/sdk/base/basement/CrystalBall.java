@@ -13,6 +13,7 @@ import android.util.Log;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,11 +24,9 @@ public class CrystalBall implements ICrystalBall {
 
     private final Map<String, Method> cachedMethods = new HashMap<>();
 
-    private final List<IListener> rspListeners = new ArrayList<>();
-    private final List<IListener> ntfListeners = new ArrayList<>();
+    private final List<PriorityListener> listeners = new ArrayList<>();
 
     private CrystalBall(){
-//        setCallback(this);
     }
 
     public synchronized static CrystalBall instance() {
@@ -86,30 +85,34 @@ public class CrystalBall implements ICrystalBall {
         handler.sendMessage(msg);
     }
 
-    /**
-     * 添加消息监听器。
-     * NOTE: 先添加的监听器优先消费消息。
-     * */
-    @Override
-    public void addRspListener(IListener listener) {
-        rspListeners.add(listener);
-    }
 
     @Override
-    public void addNtfListener(IListener listener) {
-        ntfListeners.add(listener);
+    public void addListener(IListener listener, int priority) {
+        for (PriorityListener priorityListener : listeners){
+            if (listener == priorityListener){
+                priorityListener.priority = priority;
+                Collections.sort(listeners);
+                return;
+            }
+        }
+
+        listeners.add(new PriorityListener(listener, priority));
+        Collections.sort(listeners);
     }
 
     @Override
     public void delListener(IListener listener) {
-        rspListeners.remove(listener);
-        ntfListeners.remove(listener);
+        for (PriorityListener priorityListener : listeners){
+            if (listener == priorityListener){
+                listeners.remove(priorityListener);
+                return;
+            }
+        }
     }
 
     @Override
     public void clearListeners() {
-        rspListeners.clear();
-        ntfListeners.clear();
+        listeners.clear();
     }
 
 
@@ -119,17 +122,10 @@ public class CrystalBall implements ICrystalBall {
                 MsgWrapper msgWrapper = (MsgWrapper) msg.obj;
                 String msgName = msgWrapper.msgName;
                 String msgBody = msgWrapper.msgBody;
-                /*
-                 * 消费该消息.
-                 * 响应监听器优先消费，若消息被消费则不再传递给后续监听器。
-                 * */
-                for (IListener listener : rspListeners){
-                    if (listener.onMsg(msgName, msgBody)){
+                for (PriorityListener priorityListener : listeners){
+                    if (priorityListener.listener.onMsg(msgName, msgBody)){
                         return;
                     }
-                }
-                for (IListener listener : ntfListeners){
-                    listener.onMsg(msgName, msgBody);
                 }
             }
         };
@@ -138,6 +134,21 @@ public class CrystalBall implements ICrystalBall {
         String msgName;
         String msgBody;
         MsgWrapper(String msgName, String msgBody){this.msgName =msgName; this.msgBody=msgBody;}
+    }
+
+    private class PriorityListener implements Comparable<PriorityListener>{
+        IListener listener;
+        int priority;
+
+        PriorityListener(IListener listener, int priority) {
+            this.listener = listener;
+            this.priority = priority;
+        }
+
+        @Override
+        public int compareTo(PriorityListener o) {
+            return priority - o.priority;
+        }
     }
 
 }

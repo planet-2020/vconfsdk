@@ -24,6 +24,14 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     private IFairy.ICommandFairy commandFairy;
     private ICrystalBall crystalBall;
 
+    /**
+     * 会话和通知处理的优先级定义，越小优先级越高。
+     * 保证会话先于通知处理。
+     * */
+    private static int count = 0;
+    private static final int SESSION_FAIRY_BASE_PRIORITY = -10000;
+    private static final int NOTIFICATION_FAIRY_BASE_PRIORITY = SESSION_FAIRY_BASE_PRIORITY+10000;
+
     private int reqSn = 0; // 请求序列号，递增。
     private final Map<Integer, ReqBundle> rspListeners = new LinkedHashMap<>();
     private final Map<String, LinkedHashSet<Object>> ntfListeners = new LinkedHashMap<>();
@@ -59,13 +67,15 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
 
     @SuppressWarnings("ConstantConditions")
     protected Caster(){
+        ++count;
         sessionFairy = SessionFairy.instance();
         notificationFairy = NotificationFairy.instance();
         commandFairy = CommandFairy.instance();
         crystalBall = CrystalBall.instance();
 
-        crystalBall.addRspListener(sessionFairy);
-        crystalBall.addNtfListener(notificationFairy);
+        crystalBall.addListener(sessionFairy, SESSION_FAIRY_BASE_PRIORITY+count);
+        crystalBall.addListener(notificationFairy, NOTIFICATION_FAIRY_BASE_PRIORITY+count);
+
         sessionFairy.setCrystalBall(crystalBall);
         notificationFairy.setCrystalBall(crystalBall);
         commandFairy.setCrystalBall(crystalBall);
@@ -160,8 +170,9 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         }else{
             crystalBall = CrystalBall.instance();
         }
-        crystalBall.addRspListener(sessionFairy);
-        crystalBall.addNtfListener(notificationFairy);
+
+        crystalBall.addListener(notificationFairy, NOTIFICATION_FAIRY_BASE_PRIORITY+count);
+        crystalBall.addListener(sessionFairy, SESSION_FAIRY_BASE_PRIORITY+count);
 
         sessionFairy.setCrystalBall(crystalBall);
         notificationFairy.setCrystalBall(crystalBall);

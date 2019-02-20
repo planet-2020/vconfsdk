@@ -37,9 +37,18 @@ public interface ICrystalBall {
          * */
         boolean onMsg(String msgId, String msgContent);
     }
-    void addRspListener(IListener listener);
-    void addNtfListener(IListener listener);
+    /**
+     * 添加消息监听器
+     * @param priority 优先级，越小越高。高优先级的监听器优先消费消息，{@link IListener#onMsg(String, String)}
+     * */
+    void addListener(IListener listener, int priority);
+    /**
+     * 删除监听器
+     * */
     void delListener(IListener listener);
+    /**
+     * 清除所有监听器
+     * */
     void clearListeners();
 
 }
