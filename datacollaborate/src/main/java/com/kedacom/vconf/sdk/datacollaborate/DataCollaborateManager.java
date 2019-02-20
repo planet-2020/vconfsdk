@@ -372,7 +372,6 @@ public class DataCollaborateManager extends Caster {
 
                 curDcConfE164 = dcConfinfo.achConfE164;
                 DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj(dcConfinfo);
-                KLog.p("dcConfInfo: %s", dcConfInfo);
                 for (Object listener : listeners){
                     ((IOnSessionEventListener)listener).onJoinDcSuccess(dcConfInfo);
                 }
@@ -473,12 +472,12 @@ public class DataCollaborateManager extends Caster {
 
                                         @Override
                                         public void onFailed(int errorCode) {
-//                                    KLog.p(KLog.ERROR, "download paint element for board %s failed!", board.id);
+                                            KLog.p(KLog.ERROR, "download paint element for board %s failed, errorCode=%s", board.achTabId, errorCode);
                                         }
 
                                         @Override
                                         public void onTimeout() {
-//                                    KLog.p(KLog.ERROR, "download paint element for board %s timeout!", board.id);
+                                            KLog.p(KLog.ERROR, "download paint element for board %s timeout!", board.achTabId);
                                         }
                                     },
 
@@ -492,12 +491,12 @@ public class DataCollaborateManager extends Caster {
 
                     @Override
                     public void onFailed(int errorCode) {
-//                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s failed!", dcConfinfo.confE164);
+                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s failed, errorCode=%s", dcConfInfo.achConfE164, errorCode);
                     }
 
                     @Override
                     public void onTimeout() {
-//                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s timeout!", dcConfinfo.confE164);
+                        KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s timeout!", dcConfInfo.achConfE164);
                     }
                 },
 
@@ -809,7 +808,6 @@ public class DataCollaborateManager extends Caster {
     }
 
     private void onOperatorNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         switch (ntfId){
             case DCUserJoinedNtf:
                 for (Object listener : listeners){
@@ -854,7 +852,6 @@ public class DataCollaborateManager extends Caster {
      *                  请求者自身也会收到该通知，避免在该通知监听器中和结果监听器中做重复的处理逻辑。
      * */
     public void newBoard(String creatorE164, IResultListener listener){
-        KLog.p("creatorE164=%s, listener=%s", creatorE164, listener);
         req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164, new TDCSBoardInfo(UUID.randomUUID().toString(), creatorE164)));
     }
 
@@ -1057,7 +1054,6 @@ public class DataCollaborateManager extends Caster {
      * （其他与会者）画板操作通知处理。
      * */
     private void onBoardNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
-        KLog.p("listener==%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
             for (Object listener : listeners) {
                 ((IOnBoardOpListener) listener).onBoardCreated(ToDoConverter.fromTransferObj((TDCSBoardInfo) ntfContent));
@@ -1218,7 +1214,7 @@ public class DataCollaborateManager extends Caster {
                 int pageId = dcInertPicOp.MainParam.dwWbPageId;
                 String picId = dcInertPicOp.AssParam.achImgId;
                 if (new File(getPicSavePath(picId)).exists()){ // 图片已下载到本地
-                    KLog.p("pic already exists: %s", getPicSavePath(picId));
+                    KLog.p(KLog.WARN,"pic already exists: %s", getPicSavePath(picId));
                     updateInsertPicOp(new OpUpdatePic(boardId, picId, getPicSavePath(picId)), listeners);
 
                 }else if (null != cachedPaintOps.get(boardId)){ // 图片尚未下载到本地且正在同步图元
@@ -1236,19 +1232,18 @@ public class DataCollaborateManager extends Caster {
                                     new IResultListener() {
                                         @Override
                                         public void onSuccess(Object result) {
-//                                            KLog.p("download pic %s for board %s success! save path=%s", picUrl.picId, picUrl.boardId, getPicPath(picUrl.picId));
                                             TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
                                             updateInsertPicOp(new OpUpdatePic(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName), listeners);
                                         }
 
                                         @Override
                                         public void onFailed(int errorCode) {
-//                                            KLog.p(KLog.ERROR, "download pic %s for board %s failed!", picUrl.picId, picUrl.boardId);
+                                            KLog.p(KLog.ERROR, "download pic %s for board %s failed, errorCode=%s", picUrl.achWbPicentityId, picUrl.achTabId, errorCode);
                                         }
 
                                         @Override
                                         public void onTimeout() {
-//                                            KLog.p(KLog.ERROR, "download pic %s for board %s timeout!", picUrl.picId, picUrl.boardId);
+                                            KLog.p(KLog.ERROR, "download pic %s for board %s timeout!", picUrl.achWbPicentityId, picUrl.achTabId);
                                         }
                                     },
 
@@ -1259,12 +1254,12 @@ public class DataCollaborateManager extends Caster {
 
                             @Override
                             public void onFailed(int errorCode) {
-//                                KLog.p(KLog.ERROR, "query url of pic %s for board %s failed!", dcInertPicOp.picId, dcInertPicOp.boardId);
+                                KLog.p(KLog.ERROR, "query url of pic %s for board %s failed, errorCode=%s", picId, boardId, errorCode);
                             }
 
                             @Override
                             public void onTimeout() {
-//                                KLog.p(KLog.ERROR, "query url of pic %s for board %s timeout!", dcInertPicOp.picId, dcInertPicOp.boardId);
+                                KLog.p(KLog.ERROR, "query url of pic %s for board %s timeout!", picId, boardId);
                             }
                         },
 
@@ -1287,7 +1282,6 @@ public class DataCollaborateManager extends Caster {
     /**发布绘制操作
      * @param op 绘制操作*/
     public void publishPaintOp(OpPaint op){
-        KLog.p("publish op=%s", op);
         Object to = ToDoConverter.toPaintTransferObj(op);
         if (null != to) {
             req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
@@ -1306,12 +1300,11 @@ public class DataCollaborateManager extends Caster {
                     req(Msg.DCUpload, new IResultListener() {
                                 @Override
                                 public void onSuccess(Object result) {
-                                    KLog.p(KLog.ERROR, "upload pic %s for board %s success!", ((OpInsertPic) op).getPicId(), op.getBoardId());
                                 }
 
                                 @Override
                                 public void onFailed(int errorCode) {
-                                    KLog.p(KLog.ERROR, "upload pic %s for board %s failed!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                                    KLog.p(KLog.ERROR, "upload pic %s for board %s failed, errorCode=%s", ((OpInsertPic) op).getPicId(), op.getBoardId(), errorCode);
                                 }
 
                                 @Override
@@ -1326,7 +1319,7 @@ public class DataCollaborateManager extends Caster {
 
                 @Override
                 public void onFailed(int errorCode) {
-                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s failed!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s failed, errorCode=%s", ((OpInsertPic) op).getPicId(), op.getBoardId(), errorCode);
                 }
 
                 @Override
@@ -1392,7 +1385,6 @@ public class DataCollaborateManager extends Caster {
 
 
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
-        KLog.p("listener=%s, ntfId=%s, ntfContent=%s", listeners, ntfId, ntfContent);
         switch (ntfId){
 
             // 图片可下载通知。
@@ -1412,19 +1404,18 @@ public class DataCollaborateManager extends Caster {
                         new IResultListener() {
                             @Override
                             public void onSuccess(Object result) {
-                                KLog.p("download pic %s for board %s success! save path=%s",dcPicUrl.achWbPicentityId, dcPicUrl.achTabId, getPicSavePath(dcPicUrl.achWbPicentityId));
                                 TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
                                 updateInsertPicOp(new OpUpdatePic(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName), getNtfListeners(Msg.DCPicInsertedNtf));
                             }
 
                             @Override
                             public void onFailed(int errorCode) {
-
+                                KLog.p(KLog.ERROR,"download pic %s for board %s failed, errorCode=%s",dcPicUrl.achWbPicentityId, dcPicUrl.achTabId, errorCode);
                             }
 
                             @Override
                             public void onTimeout() {
-
+                                KLog.p(KLog.ERROR,"download pic %s for board %s timeout",dcPicUrl.achWbPicentityId, dcPicUrl.achTabId);
                             }
                         },
                         new BaseTypeString(dcPicUrl.achPicUrl),
