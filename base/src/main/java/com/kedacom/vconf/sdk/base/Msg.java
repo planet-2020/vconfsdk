@@ -64,6 +64,10 @@ import static com.kedacom.vconf.sdk.base.NativeMethodOwners.DcsCtrl;
 /**
  * Created by Sissi on 2018/9/3.
  * 消息。
+ *
+ * TODO 消息最好按模块划分到各自类，并放置到各个模块的目录下面（如datacollaberate相关的消息抽取到DcMsg.java放到com.kedacom.vconf.sdk.datacollaberate下），
+ * 而不是像现在这样所有消息都定义在Msg.java放置在base模块。但由于目前尚未找到注解处理器跨模块处理整合注解的方法，期待将来改进。
+ *
  */
 
 @SuppressWarnings("unused")
