@@ -750,6 +750,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private static final int SAVE_PADDING = 20; // 保存画板时插入的边距，单位： pixel
     private Bitmap doSave(){
         KLog.p("=#=>>");
+
+        float windowW = getWidth();
+        float windowH = getHeight();
+        if (windowW<=0||windowH<=0){
+            KLog.p(KLog.ERROR,"invalid windowW %s|| windowH %s", windowW, windowH);
+            return null;
+        }
+
         // 筛选需要保存的操作
         MyConcurrentLinkedDeque<OpPaint> ops = getOpsBySnapshot();
         if (ops.isEmpty()){
@@ -776,8 +784,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         curRelativeBoardMatrix.mapRect(bound);
         float boundW = bound.width();
         float boundH = bound.height();
-        float windowW = getWidth();
-        float windowH = getHeight();
         float scale = 1;
         if (boundW/boundH > windowW/windowH){
             scale = windowW/boundW;
@@ -1317,7 +1323,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }else if (MSGID_SAVE == msg.what){
                 ISaveListener saveListener = (ISaveListener) msg.obj;
                 Bitmap bt = doSave();   // TODO 在子线程做。
-                saveListener.onFinish(bt);
+                if (null != bt) {
+                    saveListener.onFinish(bt);
+                }
             }
         }
     };
