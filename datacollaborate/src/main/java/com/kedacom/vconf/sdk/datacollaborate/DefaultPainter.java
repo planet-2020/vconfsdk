@@ -572,7 +572,7 @@ public class DefaultPainter implements IPainter {
                 matrix.set(paintBoard.getDensityRelativeBoardMatrix());
 
                 // 图形层绘制
-                Canvas shapePaintViewCanvas = paintBoard.lockCanvas(IPaintBoard.LAYER_SHAPE);
+                Canvas shapePaintViewCanvas = paintBoard.lockCanvas(DefaultPaintBoard.LAYER_SHAPE);
                 if (null != shapePaintViewCanvas) {
                     // 每次绘制前先清空画布以避免残留
                     shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
@@ -595,7 +595,7 @@ public class DefaultPainter implements IPainter {
                 }
 
                 // 图片层绘制
-                Canvas picPaintViewCanvas = paintBoard.lockCanvas(IPaintBoard.LAYER_PIC);
+                Canvas picPaintViewCanvas = paintBoard.lockCanvas(DefaultPaintBoard.LAYER_PIC);
                 if (null != picPaintViewCanvas) {  // TODO 优化，尝试如果没有影响图片层的操作，如插入/删除/拖动/放缩图片，就不刷新图片层。
                     // 清空画布
                     picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
@@ -608,7 +608,7 @@ public class DefaultPainter implements IPainter {
                 }
 
                 // 临时图片层绘制
-                Canvas tmpPaintViewCanvas = paintBoard.lockCanvas(IPaintBoard.LAYER_PIC_TMP);
+                Canvas tmpPaintViewCanvas = paintBoard.lockCanvas(DefaultPaintBoard.LAYER_PIC_TMP);
                 if (null != tmpPaintViewCanvas) {
                     // 清空画布
                     tmpPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
@@ -627,9 +627,9 @@ public class DefaultPainter implements IPainter {
 
                 // 提交绘制任务，执行绘制
 //                KLog.p("go render!");
-                paintBoard.unlockCanvasAndPost(IPaintBoard.LAYER_SHAPE, shapePaintViewCanvas);
-                paintBoard.unlockCanvasAndPost(IPaintBoard.LAYER_PIC, picPaintViewCanvas);
-                paintBoard.unlockCanvasAndPost(IPaintBoard.LAYER_PIC_TMP, tmpPaintViewCanvas);
+                paintBoard.unlockCanvasAndPost(DefaultPaintBoard.LAYER_SHAPE, shapePaintViewCanvas);
+                paintBoard.unlockCanvasAndPost(DefaultPaintBoard.LAYER_PIC, picPaintViewCanvas);
+                paintBoard.unlockCanvasAndPost(DefaultPaintBoard.LAYER_PIC_TMP, tmpPaintViewCanvas);
 
             }
         }

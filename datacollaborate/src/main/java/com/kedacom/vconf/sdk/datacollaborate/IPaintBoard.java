@@ -92,24 +92,39 @@ public interface IPaintBoard {
      * */
     void insertPic(String picPath);
 
-    // 图层
-    int LAYER_NONE = 100;
-    int LAYER_PIC =  101;
-    int LAYER_SHAPE =102;
-    int LAYER_PIC_TMP =103;
-    int LAYER_PIC_AND_SHAPE =104;
-    int LAYER_ALL =  109;
-    /**
-     * 截屏。
-     * @param layer 图层。
-     * */
-    Bitmap snapshot(int layer);
 
-    /**保存*/
-    void save(ISaveListener saveListener);
-    interface ISaveListener{
-        void onFinish(Bitmap bt);
+    /**
+     * 所有区域，包括画板窗口内和窗口外。
+     * */
+    int AREA_ALL = 0;
+    /**
+     * 仅画板窗口内
+     * */
+    int AREA_WINDOW = 1;
+//    /**
+//     * 所有区域的图形
+//     * */
+//    int AREA_ALL_SHAPE = 2;
+//    /**
+//     * 所有区域的图片
+//     * */
+//    int AREA_ALL_PIC = 3;
+
+    /**
+     * 快照。
+     * @param area 区域{@link #AREA_ALL},{@link #AREA_WINDOW}。
+     * @param listener 快照结果监听器。// TODO 加一个尺寸的参数
+     *                 因快照可能较耗时，故异步处理，结果通过监听器反馈用户，反馈走主线程。
+     * @return true：快照请求成功受理，结果通过监听器反馈；false: 快照请求失败，不会触发结果监听器。
+     * */
+    boolean snapshot(int area, ISnapshotResultListener listener);
+    /**
+     * 快照结果监听器
+     * */
+    interface ISnapshotResultListener{
+        void onResult(Bitmap bt);
     }
+
     /**
      * 从上次保存{@link #save(ISaveListener)}以来内容是否有变更。
      * 可用来决定是否需要再次保存。

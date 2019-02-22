@@ -99,6 +99,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private Bitmap del_pic_active_icon;
 
     // 图层
+    static int LAYER_NONE = 100;
+    static int LAYER_PIC =  101;
+    static int LAYER_SHAPE =102;
+    static int LAYER_PIC_TMP =103;
+    static int LAYER_PIC_AND_SHAPE =104;
+    static int LAYER_ALL =  109;
     private int focusedLayer = LAYER_ALL;
 
     // 工具
@@ -855,54 +861,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    @Override
-    public Bitmap snapshot(int layer) {
-        KLog.p("layer=%s", layer);
-        Bitmap shot = null;
-        if (LAYER_ALL == layer) {
-            Bitmap picBt = picPaintView.getBitmap();
-            Bitmap shapeBt = shapePaintView.getBitmap();
-
-            if (picBt==null || shapeBt==null){ // TODO 暂时规避，排查原因
-                return null;
-            }
-
-            int picW = picBt.getWidth();
-            int picH = picBt.getHeight();
-            int shapeW = shapeBt.getWidth();
-            int shapeH = shapeBt.getHeight();
-            int maxW = picW>shapeW?picW:shapeW;
-            int maxH = picH>shapeH?picH:shapeH;
-            KLog.p("picW=%s, picH=%s, shapeW=%s, shapeH=%s", picW, picH, shapeW, shapeH);
-            shot = Bitmap.createBitmap(maxW, maxH, Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(shot);
-            draw(canvas);
-            canvas.drawBitmap(picBt, 0, 0, null);
-            canvas.drawBitmap(shapeBt, 0, 0, null);
-        }else if (LAYER_PIC_AND_SHAPE == layer){
-            Bitmap picBt = picPaintView.getBitmap();
-            Bitmap shapeBt = shapePaintView.getBitmap();
-            int picW = picBt.getWidth();
-            int picH = picBt.getHeight();
-            int shapeW = shapeBt.getWidth();
-            int shapeH = shapeBt.getHeight();
-            int maxW = picW>shapeW?picW:shapeW;
-            int maxH = picH>shapeH?picH:shapeH;
-            KLog.p("picW=%s, picH=%s, shapeW=%s, shapeH=%s", picW, picH, shapeW, shapeH);
-            shot = Bitmap.createBitmap(maxW, maxH, Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(shot);
-            canvas.drawBitmap(picBt, 0, 0, null);
-            canvas.drawBitmap(shapeBt, 0, 0, null);
-        } else if (LAYER_SHAPE == layer){
-            shot = shapePaintView.getBitmap();
-        }else if (LAYER_PIC == layer){
-            shot = picPaintView.getBitmap();
-        }
-
-        return shot;
-    }
-
-
     /*用来记录最后一次保存时各操作的状态，
     用来判断操作是否有变化，是否需要重新保存*/
     private OpPaint lastShapeOpSinceSave;
@@ -912,115 +870,121 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private static final int SAVE_PADDING = 20; // 保存画板时插入的边距，单位： pixel
 
-    /**
-     * 保存画板内容。
-     * 不同于{@link #snapshot(int)}只是截取保存画板可视区域内容，该接口保存画板所有已绘制的内容。
-     * 若内容全部在画板可视区域内则原样保存；
-     * 若内容超出可视区域则：
-     * 若内容边界小于画板尺寸则内容居中而后保存；
-     * 若内容边界大于画板尺寸则内容居中并按比例缩放以致刚好充满可视区域而后保存；
-     *
-     * 保存前可通过判断画板是否为空{@link #isEmpty()}
-     * 以及自上次保存过后画板内容是否有改变{@link #changedSinceLastSave()}来决定是否调用该接口保存。
-     *
-     * NOTE: 因保存可能耗时故结果通过回调接口反馈。请在删除画板前调用该接口，
-     * 若画板从view树上删除后调用该接口会导致接口反馈的值为null。
-     *
-     * */
     @Override
-    public void save(@NonNull ISaveListener saveListener) {  // TODO 于snapshot合并为一个方法snapshot，参数传入int area, ISnapshotListener.
-        if (null == saveListener){
-            KLog.p(KLog.ERROR,"null == saveListener");
-            return;
+    public boolean snapshot(int area, ISnapshotResultListener listener) {
+        if (null == listener){
+            KLog.p(KLog.ERROR,"null == listener");
+            return false;
         }
-        float windowW = getWidth();
-        float windowH = getHeight();
+        int windowW = getWidth();
+        int windowH = getHeight();
         if (windowW<=0||windowH<=0){
             KLog.p(KLog.ERROR,"invalid windowW %s|| windowH %s", windowW, windowH);
-            saveListener.onFinish(null);
-            return;
+            return false;
         }
 
-        Bitmap bt = Bitmap.createBitmap((int)windowW, (int)windowH, Bitmap.Config.ARGB_8888);
+        Bitmap bt = Bitmap.createBitmap(windowW, windowH, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bt);
 
         // 绘制背景
         draw(canvas);
 
-        assistHandler.post( () -> {
+        if (AREA_WINDOW == area){
+            assistHandler.post(() -> {
+                Bitmap picBt = picPaintView.getBitmap(); // TODO 在painter.render中保存，使用postdelay(500ms)——remove——postdelay模式
+                Bitmap shapeBt = shapePaintView.getBitmap();
 
-            // 筛选需要保存的操作
-            MyConcurrentLinkedDeque<OpPaint> ops = getOpsBySnapshot();
-            if (ops.isEmpty()){
-                KLog.p(KLog.WARN, "no content!");
-                handler.post(() -> saveListener.onFinish(bt));
-            }
-
-            // 记录保存时各操作的状态，可用来判断内容是否有变，进而决定是否需要再次保存
-            lastShapeOpSinceSave = shapeOps.peekLast();
-            lastTmpShapeOpSinceSave = tmpShapeOps.peekLast();
-            lastPicOpSinceSave = picOps.peekLast();
-            if (null != picEditStuffs.peekLast()) {
-                lastEditingPicOpSinceSave = picEditStuffs.peekLast().pic;
-            }else {
-                lastEditingPicOpSinceSave = null;
-            }
-
-            // 计算操作的边界
-            RectF bound = calcBoundary(ops);
-            KLog.p("calcBoundary=%s", bound);
-
-            // 根据操作边界结合当前画板缩放计算绘制操作需要的缩放及位移
-            Matrix curRelativeBoardMatrix = getDensityRelativeBoardMatrix();
-            curRelativeBoardMatrix.mapRect(bound);
-            float boundW = bound.width();
-            float boundH = bound.height();
-            float scale = 1;
-            if (boundW/boundH > windowW/windowH){
-                scale = windowW/boundW;
-            }else {
-                scale = windowH/boundH;
-            }
-
-            KLog.p("bound=%s, curRelativeBoardMatrix=%s", bound, curRelativeBoardMatrix);
-
-            Matrix matrix = new Matrix(curRelativeBoardMatrix);
-            if (scale > 1){ // 画板尺寸大于操作边界尺寸
-                if (0<bound.left&&boundW<windowW
-                        && 0<bound.right&&boundH<windowH){
-                    // 操作已在画板中全景展示则无需做任何放缩或位移，直接原样展示
-                    // DO NOTHING
-                }else { // 尽管操作边界尺寸较画板小，但操作目前展示在画板外，则移动操作以保证全景展示。
-                    // 操作居中展示
-                    matrix.postTranslate(-bound.left + (windowW - boundW) / 2, -bound.top + (windowH - boundH) / 2);
+                if (picBt==null || shapeBt==null){ // TODO 暂时规避，排查原因
+                    KLog.p(KLog.ERROR,"picBt==null || shapeBt==null");
+                    handler.post(() -> listener.onResult(null));
+                    return;
                 }
-            }else{
-                // 画板尺寸小于操作边界尺寸则需将操作缩放以适应画板尺寸
-                // 操作边界外围加塞padding使展示效果更友好
-                float refinedBoundW = boundW + 2*SAVE_PADDING;
-                float refinedBoundH = boundH + 2*SAVE_PADDING;
-                float refinedScale;
-                if (refinedBoundW/refinedBoundH > windowW/windowH){
-                    refinedScale = windowW/refinedBoundW;
+
+                canvas.drawBitmap(picBt, 0, 0, null);
+                canvas.drawBitmap(shapeBt, 0, 0, null);
+
+                handler.post(() -> listener.onResult(bt));
+            });
+
+        }else{
+
+            assistHandler.post( () -> {
+
+                // 筛选需要保存的操作
+                MyConcurrentLinkedDeque<OpPaint> ops = getOpsBySnapshot();
+                if (ops.isEmpty()){
+                    KLog.p(KLog.WARN, "no content!");
+                    handler.post(() -> listener.onResult(bt));
+                }
+
+                // 记录保存时各操作的状态，可用来判断内容是否有变，进而决定是否需要再次保存
+                lastShapeOpSinceSave = shapeOps.peekLast();
+                lastTmpShapeOpSinceSave = tmpShapeOps.peekLast();
+                lastPicOpSinceSave = picOps.peekLast();
+                if (null != picEditStuffs.peekLast()) {
+                    lastEditingPicOpSinceSave = picEditStuffs.peekLast().pic;
                 }else {
-                    refinedScale = windowH/refinedBoundH;
+                    lastEditingPicOpSinceSave = null;
                 }
-                // 先让操作边界居中
-                matrix.postTranslate(-bound.left+(windowW-boundW)/2, -bound.top+(windowH-boundH)/2);
-                // 再以屏幕中心为缩放中心缩小操作边界
-                matrix.postScale(refinedScale, refinedScale, windowW/2, windowH/2);
-            }
 
-            KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, windowW, windowH, scale, matrix);
+                // 计算操作的边界
+                RectF bound = calcBoundary(ops);
+                KLog.p("calcBoundary=%s", bound);
 
-            canvas.setMatrix(matrix);
+                // 根据操作边界结合当前画板缩放计算绘制操作需要的缩放及位移
+                Matrix curRelativeBoardMatrix = getDensityRelativeBoardMatrix();
+                curRelativeBoardMatrix.mapRect(bound);
+                float boundW = bound.width();
+                float boundH = bound.height();
+                float scale = 1;
+                if (boundW/boundH > windowW/windowH){
+                    scale = windowW/boundW;
+                }else {
+                    scale = windowH/boundH;
+                }
 
-            // 绘制操作
-            render(ops, canvas);
+                KLog.p("bound=%s, curRelativeBoardMatrix=%s", bound, curRelativeBoardMatrix);
 
-            handler.post(() -> saveListener.onFinish(bt));
+                Matrix matrix = new Matrix(curRelativeBoardMatrix);
+                if (scale > 1){ // 画板尺寸大于操作边界尺寸
+                    if (0<bound.left&&boundW<windowW
+                            && 0<bound.right&&boundH<windowH){
+                        // 操作已在画板中全景展示则无需做任何放缩或位移，直接原样展示
+                        // DO NOTHING
+                    }else { // 尽管操作边界尺寸较画板小，但操作目前展示在画板外，则移动操作以保证全景展示。
+                        // 操作居中展示
+                        matrix.postTranslate(-bound.left + (windowW - boundW) / 2, -bound.top + (windowH - boundH) / 2);
+                    }
+                }else{
+                    // 画板尺寸小于操作边界尺寸则需将操作缩放以适应画板尺寸
+                    // 操作边界外围加塞padding使展示效果更友好
+                    float refinedBoundW = boundW + 2*SAVE_PADDING;
+                    float refinedBoundH = boundH + 2*SAVE_PADDING;
+                    float refinedScale;
+                    if (refinedBoundW/refinedBoundH > windowW/windowH){
+                        refinedScale = windowW/refinedBoundW;
+                    }else {
+                        refinedScale = windowH/refinedBoundH;
+                    }
+                    // 先让操作边界居中
+                    matrix.postTranslate(-bound.left+(windowW-boundW)/2, -bound.top+(windowH-boundH)/2);
+                    // 再以屏幕中心为缩放中心缩小操作边界
+                    matrix.postScale(refinedScale, refinedScale, windowW/2, windowH/2);
+                }
 
-        });
+                KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, windowW, windowH, scale, matrix);
+
+                canvas.setMatrix(matrix);
+
+                // 绘制操作
+                render(ops, canvas);
+
+                handler.post(() -> listener.onResult(bt));
+
+            });
+        }
+
+        return true;
     }
 
     @Override
