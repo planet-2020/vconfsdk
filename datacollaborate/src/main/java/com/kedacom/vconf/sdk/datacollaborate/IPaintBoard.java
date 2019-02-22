@@ -35,15 +35,12 @@ public interface IPaintBoard {
     View getBoardView();
 
     // 工具
-    int TOOL_NONE = 0;
-    int TOOL_HAND = 7;
     int TOOL_PENCIL = 1;
     int TOOL_LINE = 2;
     int TOOL_RECT = 3;
     int TOOL_OVAL = 4;
-    int TOOL_ERASER = 8;
     int TOOL_RECT_ERASER = 5;
-    int TOOL_PIC_SELECTOR = 6;
+    int TOOL_ERASER = 6;
     /**
      * 设置画板工具。
      * 在进行相关绘制操作前需先设置好对应的工具。
@@ -88,13 +85,6 @@ public interface IPaintBoard {
      * 获取橡皮擦尺寸
      * */
     int getEraserSize();
-
-    /**
-     * 聚焦图层。
-     * 聚焦图层后，放缩、位移、擦除、清屏、截屏等操作均针对该图层，并且触屏事件只被该图层处理。
-     * 默认是LAYER_ALL。
-     * */
-    void focusLayer(int layer);  // TODO 尚未实现
 
     /**
      * 插入图片
