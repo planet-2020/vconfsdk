@@ -30,6 +30,7 @@ import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
 import com.kedacom.vconf.sdk.datacollaborate.bean.IBoundary;
+import com.kedacom.vconf.sdk.datacollaborate.bean.IRepealable;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
@@ -45,6 +46,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -76,6 +78,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private TextureView shapePaintView;
     // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private OpPaint adjustingShapeOp;
+    private final Object adjustingOpLock = new Object();
     // 临时图形操作。手指拿起绘制完成，但并不表示此绘制已生效，需等到平台广播NTF后方能确认为生效的操作，在此之前的操作都作为临时操作保存在这里。
     private MyConcurrentLinkedDeque<OpPaint> tmpShapeOps = new MyConcurrentLinkedDeque<>();
     // 图形操作。已经平台NTF确认过的操作。
@@ -623,6 +626,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             List<PointF> points = opErase.getPoints();
             PointF lastPoint = points.get(points.size()-1);
             opErase.getPath().lineTo(lastPoint.x, lastPoint.y);
+        }else{
+            KLog.p(KLog.ERROR, "unsupported tool %s", tool);
+            return;
         }
     }
 
@@ -773,92 +779,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return new RectF(left, top, right, bottom);
     }
 
-
-
-    private Paint paint = new Paint();
-    private final PorterDuffXfermode DUFFMODE_SRCIN = new PorterDuffXfermode(PorterDuff.Mode.SRC_IN);
-    //    private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
-    private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
-    private Paint cfgPaint(OpPaint opPaint){
-        paint.reset();
-        switch (opPaint.getType()){
-            case INSERT_PICTURE:
-                paint.setStyle(Paint.Style.STROKE);
-                break;
-            case RECT_ERASE:
-            case CLEAR_SCREEN:
-                paint.setStyle(Paint.Style.FILL);
-                paint.setXfermode(DUFFMODE_CLEAR);
-                break;
-            default:
-                if (opPaint instanceof OpDraw) {
-                    OpDraw opDraw = (OpDraw) opPaint;
-                    paint.setStyle(Paint.Style.STROKE);
-                    paint.setAntiAlias(true);
-                    paint.setStrokeWidth(opDraw.getStrokeWidth());
-                    paint.setColor((int) opDraw.getColor());
-                    if (OpDraw.DASH == opDraw.getLineStyle()){
-                        paint.setPathEffect(new DashPathEffect( new float[]{10, 4},0));
-                    }
-                    if (EOpType.DRAW_PATH == opPaint.getType()){
-                        paint.setStrokeJoin(Paint.Join.ROUND);
-                    } else if (EOpType.ERASE == opPaint.getType()){
-                        int w = ((OpErase)opDraw).getWidth();
-                        int h = ((OpErase)opDraw).getHeight();
-                        paint.setStrokeWidth(w>h?w:h);
-                        paint.setStrokeJoin(Paint.Join.ROUND);
-                        paint.setAlpha(0);
-                        paint.setXfermode(DUFFMODE_SRCIN);
-                    }
-                }
-                break;
-        }
-
-        return paint;
-    }
-
-    private RectF rect = new RectF();
-    private void render(MyConcurrentLinkedDeque<OpPaint> ops, Canvas canvas){
-        for (OpPaint op : ops) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
-            KLog.p("to render %s", op);
-            switch (op.getType()) {
-                case DRAW_LINE:
-                    OpDrawLine lineOp = (OpDrawLine) op;
-                    canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
-                    break;
-                case DRAW_RECT:
-                    OpDrawRect rectOp = (OpDrawRect) op;
-                    canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
-                    break;
-                case DRAW_OVAL:
-                    OpDrawOval ovalOp = (OpDrawOval) op;
-                    rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
-                    canvas.drawOval(rect, cfgPaint(ovalOp));
-                    break;
-                case DRAW_PATH:
-                    OpDrawPath pathOp = (OpDrawPath) op;
-                    canvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
-                    break;
-                case ERASE:
-                    OpErase opErase = (OpErase) op;
-                    canvas.drawPath(opErase.getPath(), cfgPaint(opErase));
-                    break;
-                case RECT_ERASE:
-                    OpRectErase eraseOp = (OpRectErase) op;
-                    canvas.drawRect(eraseOp.getLeft(), eraseOp.getTop(), eraseOp.getRight(), eraseOp.getBottom(), cfgPaint(eraseOp));
-                    break;
-                case CLEAR_SCREEN:
-                    canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-                    break;
-                case INSERT_PICTURE:
-                    OpInsertPic insertPicOp = (OpInsertPic) op;
-                    if (null != insertPicOp.getPic()) {
-                        canvas.drawBitmap(insertPicOp.getPic(), insertPicOp.getMatrix(), cfgPaint(insertPicOp));
-                    }
-                    break;
-            }
-        }
-    }
 
 
     /*用来记录最后一次保存时各操作的状态，
@@ -1501,6 +1421,398 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     }
 
+
+
+
+    /**
+     * @return true 需要刷新，false不需要。
+     * */
+    boolean onPaintOp(OpPaint op){
+        String boardId = op.getBoardId();
+        if(!boardId.equals(getBoardId())){
+            KLog.p(KLog.ERROR,"op %s is not for %s", op, getBoardId());
+            return false;
+        }
+        KLog.p(KLog.DEBUG, "recv op %s", op);
+
+        MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapeOps;
+        Stack<OpPaint> shapeRepealedOps = repealedShapeOps;
+        MyConcurrentLinkedDeque<OpPaint> picRenderOps = picOps;
+        Matrix boardMatrix1 = boardMatrix;
+
+        // 检查是否为主动绘制触发的响应。若是则我们不再重复绘制，因为它已经展示在界面上。
+        OpPaint shapeTmpOp = tmpShapeOps.pollFirst();
+        if (null != shapeTmpOp && shapeTmpOp.getUuid().equals(op.getUuid())) {
+            KLog.p("tmp op %s confirmed", shapeTmpOp);
+            if (!shapeRepealedOps.isEmpty() && shapeTmpOp instanceof IRepealable) {
+                //撤销/恢复操作流被“可撤销”操作中断，则重置撤销/恢复相关状态
+                shapeRepealedOps.clear();
+                repealableStateChanged();
+            }
+            boolean bEmpty = shapeRenderOps.isEmpty();
+            shapeRenderOps.offerLast(shapeTmpOp); // 临时工转正
+            if (bEmpty && shapeTmpOp instanceof IRepealable){ // 可撤销操作从无到有
+                repealableStateChanged();
+            }
+            return false;
+        }
+
+        // 不是主动绘制的响应则清空临时绘制 // TODO 本端还是加时间戳吧3S超时可清空，清空在绘制线程中重绘时去做，不在这里做
+        tmpShapeOps.clear();
+
+        boolean bRefresh = true;
+        OpPaint tmpOp;
+
+        switch (op.getType()){
+            case INSERT_PICTURE:
+                for (OpPaint opPaint : picRenderOps){
+                    if (opPaint instanceof OpInsertPic
+                            && ((OpInsertPic)opPaint).getPicId().equals(((OpInsertPic) op).getPicId())
+                            ){
+                        KLog.p("pic op %s already exist!", opPaint);
+                        return false;
+                    }
+                }
+                picRenderOps.offerLast(op);
+                OpInsertPic opInsertPic = (OpInsertPic) op;
+                opInsertPic.setBoardMatrix(boardMatrix1);
+                if (null == opInsertPic.getPic()) {
+                    if (null != opInsertPic.getPicPath()) {
+                        opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicPath())); // TODO 优化。比如大分辨率图片裁剪
+                    } else {
+                        bRefresh = false; // 图片为空不需刷新界面（图片可能正在下载）
+                    }
+                }
+
+                Bitmap pic = opInsertPic.getPic();
+                if (null != pic){
+                    /*计算mixMatrix。
+                    可将mixMatrix理解为：把左上角在原点处的未经缩放的图片变换为对端所描述的图片（插入图片时传过来的insertPos, picWidth, picHeight这些信息所描述的图片）
+                    所需经历的矩形变换*/
+                    PointF insertPos = opInsertPic.getInsertPos();
+                    Matrix mixMatrix = MatrixHelper.calcTransMatrix(new RectF(0, 0, pic.getWidth(), pic.getHeight()),
+                            new RectF(insertPos.x, insertPos.y, insertPos.x+opInsertPic.getPicWidth(), insertPos.y+opInsertPic.getPicHeight()));
+                    opInsertPic.setMixMatrix(mixMatrix);
+
+                    // 计算picMatrix= mixMatrix * transMatrix / boardMatrix
+                    Matrix picMatrix = new Matrix(mixMatrix);
+                    picMatrix.postConcat(opInsertPic.getTransMatrix());
+                    picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
+                    opInsertPic.setMatrix(picMatrix);
+                }
+
+                picCountChanged();
+
+                break;
+
+            case DELETE_PICTURE:
+                bRefresh = false;
+                OpPaint picRenderOp;
+                boolean got =false;
+                for (String picId : ((OpDeletePic) op).getPicIds()) {
+                    got = false;
+                    Iterator it = picRenderOps.iterator();
+                    while (it.hasNext()) {
+                        picRenderOp = (OpPaint) it.next();
+                        if (EOpType.INSERT_PICTURE == picRenderOp.getType()
+                                && ((OpInsertPic) picRenderOp).getPicId().equals(picId)) {
+                            it.remove();
+                            got = true;
+                            bRefresh = true;
+                            break;
+                        }
+                    }
+                    if (!got) {
+                        // 可能图片正在被编辑
+                        if (isExistEditingPic(picId)){
+                            got = true;
+                            bRefresh = true;
+                            delEditingPic(picId);
+                        }
+                    }
+                }
+                if (bRefresh){
+                    picCountChanged();
+                }
+                break;
+
+            case DRAG_PICTURE: // TODO NOTE 己端拖动图片也会触发此通知，尚未过滤，需过滤。
+                for (Map.Entry<String, Matrix> dragOp : ((OpDragPic) op).getPicMatrices().entrySet()) {
+                    for (OpPaint opPaint : picRenderOps) {
+                        if (EOpType.INSERT_PICTURE == opPaint.getType()
+                                && ((OpInsertPic) opPaint).getPicId().equals(dragOp.getKey())) {
+                            opInsertPic = (OpInsertPic) opPaint;
+                            if (null != opInsertPic.getPic()) {
+                                /*图片已经准备好了则直接求取picmatrix
+                                 * mixMatrix * dragMatrix = picMatrix * boardMatrix
+                                 * => picMatrix = mixMatrix * dragMatrix / boardMatrix
+                                 * */
+                                Matrix matrix = new Matrix(opInsertPic.getMixMatrix());
+                                matrix.postConcat(dragOp.getValue());
+                                matrix.postConcat(MatrixHelper.invert(boardMatrix1));
+                                if (matrix.equals(opInsertPic.getMatrix())) {
+                                    // 计算出的matrix跟当前matrix相等则不需拖动
+                                    bRefresh = false;
+                                }else{
+                                    opInsertPic.setMatrix(matrix);
+                                }
+                            }else{
+                                // 图片尚未准备好，我们先保存matrix，等图片准备好了再计算
+                                opInsertPic.setDragMatrix(dragOp.getValue());
+                                opInsertPic.setBoardMatrix(boardMatrix1);
+                                bRefresh = false; // 图片尚未准备好不需刷新
+                            }
+                            break;
+                        }
+                    }
+                }
+                break;
+            case UPDATE_PICTURE: // XXX 己端插入图片也会收到该通知，需过滤
+                OpUpdatePic updatePic = (OpUpdatePic) op;
+                for (OpPaint opPaint : picRenderOps) {
+                    if (EOpType.INSERT_PICTURE == opPaint.getType()
+                            && ((OpInsertPic) opPaint).getPicId().equals(updatePic.getPicId())) {
+                        opInsertPic = (OpInsertPic) opPaint;
+                        opInsertPic.setPicPath(updatePic.getPicSavePath());
+                        pic = BitmapFactory.decodeFile(updatePic.getPicSavePath());
+                        opInsertPic.setPic(pic); // TODO 优化。比如大分辨率图片裁剪
+                        if (null != pic){
+                            PointF insertPos = opInsertPic.getInsertPos();
+                            Matrix mixMatrix = MatrixHelper.calcTransMatrix(new RectF(0, 0, pic.getWidth(), pic.getHeight()),
+                                    new RectF(insertPos.x, insertPos.y, insertPos.x+opInsertPic.getPicWidth(), insertPos.y+opInsertPic.getPicHeight()));
+                            opInsertPic.setMixMatrix(mixMatrix);
+
+                            Matrix picMatrix = new Matrix(opInsertPic.getMixMatrix());
+                            Matrix dragMatrix = opInsertPic.getDragMatrix();
+                            if (null != dragMatrix) { // XXX 还有其它影响图片matrix的操作呢？
+                                /* 在此之前有图片拖动操作则以图片拖动操作中的dragMatrix来计算picMatrix
+                                 * picMatrix = mixMatrix * dragMatrix / boardMatrix*/
+                                picMatrix.postConcat(opInsertPic.getDragMatrix());
+                                opInsertPic.setDragMatrix(null);
+                            }else{
+                                // picMatrix = mixMatrix * transMatrix / boardMatrix
+                                picMatrix.postConcat(opInsertPic.getTransMatrix());
+                            }
+
+                            picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
+
+                            opInsertPic.setMatrix(picMatrix);
+                        }
+                        break;
+                    }
+                }
+                break;
+            case FULLSCREEN_MATRIX: // 全局放缩、位移，包括图片和图形
+                setBoardMatrix(((OpMatrix) op).getMatrix());
+                zoomRateChanged();
+                break;
+
+            default:  // 图形操作
+
+                switch (op.getType()){
+                    case UNDO:
+                        tmpOp = shapeRenderOps.pollLast(); // 撤销最近的操作
+                        if (null != tmpOp){
+                            KLog.p(KLog.WARN, "repeal %s",tmpOp);
+                            shapeRepealedOps.push(tmpOp); // 缓存撤销的操作以供恢复
+                            repealableStateChanged();
+                        }else{
+                            bRefresh = false;
+                        }
+                        break;
+                    case REDO:
+                        if (!shapeRepealedOps.empty()) {
+                            tmpOp = shapeRepealedOps.pop();
+                            KLog.p(KLog.WARN, "restore %s",tmpOp);
+                            shapeRenderOps.offerLast(tmpOp); // 恢复最近操作
+                            repealableStateChanged();
+                        }else {
+                            bRefresh = false;
+                        }
+                        break;
+                    default:
+
+                        if (!shapeRepealedOps.isEmpty() && op instanceof IRepealable) {
+//                            KLog.p(KLog.WARN, "clean repealed ops");
+                            //撤销/恢复操作流被“可撤销”操作中断，则重置撤销/恢复相关状态
+                            shapeRepealedOps.clear();
+                            repealableStateChanged();
+                        }
+                        boolean bEmpty = shapeRenderOps.isEmpty(); // XXX 如果shapeOps中将来也有不可撤销操作呢？也就是说将来可能不能简单根据是否空来判断是否该改变可撤销状态
+                        shapeRenderOps.offerLast(op);
+                        if (bEmpty && op instanceof IRepealable){ // 可撤销操作从无到有
+                            repealableStateChanged();
+                        }
+
+                        if (EOpType.CLEAR_SCREEN == op.getType()){
+                            screenCleared();
+                        }
+                        //                KLog.p(KLog.WARN, "need render op %s", op);
+                        break;
+
+                }
+
+                break;
+
+        }
+
+        return bRefresh;
+    }
+
+
+    void paint(){
+        Matrix matrix = getDensityRelativeBoardMatrix();
+
+        // 图形层绘制
+        Canvas shapePaintViewCanvas = lockCanvas(DefaultPaintBoard.LAYER_SHAPE);
+        if (null != shapePaintViewCanvas) {
+            // 每次绘制前先清空画布以避免残留
+            shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+
+            // 设置画布matrix
+            shapePaintViewCanvas.setMatrix(matrix);
+
+            // 图形绘制
+            render(getShapeOps(), shapePaintViewCanvas);
+
+            // 临时图形绘制
+            render(getTmpShapeOps(), shapePaintViewCanvas);
+
+            // 绘制正在调整中的操作
+            synchronized (adjustingOpLock) {
+                if (null != adjustingShapeOp) render(adjustingShapeOp, shapePaintViewCanvas);
+            }
+        }
+
+        // 图片层绘制
+        Canvas picPaintViewCanvas = lockCanvas(DefaultPaintBoard.LAYER_PIC);
+        if (null != picPaintViewCanvas) {  // TODO 优化，尝试如果没有影响图片层的操作，如插入/删除/拖动/放缩图片，就不刷新图片层。
+            // 清空画布
+            picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+
+            // 设置画布matrix
+            picPaintViewCanvas.setMatrix(matrix);
+
+            // 图片绘制
+            render(getPicOps(), picPaintViewCanvas);
+        }
+
+        // 临时图片层绘制
+        Canvas tmpPaintViewCanvas = lockCanvas(DefaultPaintBoard.LAYER_PIC_TMP);
+        if (null != tmpPaintViewCanvas) {
+            // 清空画布
+            tmpPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+
+            // 设置缩放比例
+            tmpPaintViewCanvas.setMatrix(getTmpPicViewMatrix());
+
+            // 绘制
+            MyConcurrentLinkedDeque<DefaultPaintBoard.PicEditStuff> picEditStuffs = getPicEditStuffs();
+            for (DefaultPaintBoard.PicEditStuff picEditStuff : picEditStuffs) {
+                render(picEditStuff.pic, tmpPaintViewCanvas);
+                render(picEditStuff.dashedRect, tmpPaintViewCanvas);
+                render(picEditStuff.delIcon, tmpPaintViewCanvas);
+            }
+        }
+
+        // 提交绘制任务，执行绘制
+//                KLog.p("go render!");
+        unlockCanvasAndPost(DefaultPaintBoard.LAYER_SHAPE, shapePaintViewCanvas);
+        unlockCanvasAndPost(DefaultPaintBoard.LAYER_PIC, picPaintViewCanvas);
+        unlockCanvasAndPost(DefaultPaintBoard.LAYER_PIC_TMP, tmpPaintViewCanvas);
+    }
+
+
+    private Paint paint = new Paint();
+    private final PorterDuffXfermode DUFFMODE_SRCIN = new PorterDuffXfermode(PorterDuff.Mode.SRC_IN);
+    //    private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
+    private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
+    private Paint cfgPaint(OpPaint opPaint){
+        paint.reset();
+        switch (opPaint.getType()){
+            case INSERT_PICTURE:
+                paint.setStyle(Paint.Style.STROKE);
+                break;
+            case RECT_ERASE:
+            case CLEAR_SCREEN:
+                paint.setStyle(Paint.Style.FILL);
+                paint.setXfermode(DUFFMODE_CLEAR);
+                break;
+            default:
+                if (opPaint instanceof OpDraw) {
+                    OpDraw opDraw = (OpDraw) opPaint;
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setAntiAlias(true);
+                    paint.setStrokeWidth(opDraw.getStrokeWidth());
+                    paint.setColor((int) opDraw.getColor());
+                    if (OpDraw.DASH == opDraw.getLineStyle()){
+                        paint.setPathEffect(new DashPathEffect( new float[]{10, 4},0));
+                    }
+                    if (EOpType.DRAW_PATH == opPaint.getType()){
+                        paint.setStrokeJoin(Paint.Join.ROUND);
+                    } else if (EOpType.ERASE == opPaint.getType()){
+                        int w = ((OpErase)opDraw).getWidth();
+                        int h = ((OpErase)opDraw).getHeight();
+                        paint.setStrokeWidth(w>h?w:h);
+                        paint.setStrokeJoin(Paint.Join.ROUND);
+                        paint.setAlpha(0);
+                        paint.setXfermode(DUFFMODE_SRCIN);
+                    }
+                }
+                break;
+        }
+
+        return paint;
+    }
+
+
+
+    private RectF rect = new RectF();
+    private void render(OpPaint op, Canvas canvas){
+        KLog.p("to render %s", op);
+        switch (op.getType()) {
+            case DRAW_LINE:
+                OpDrawLine lineOp = (OpDrawLine) op;
+                canvas.drawLine(lineOp.getStartX(), lineOp.getStartY(), lineOp.getStopX(), lineOp.getStopY(), cfgPaint(lineOp));
+                break;
+            case DRAW_RECT:
+                OpDrawRect rectOp = (OpDrawRect) op;
+                canvas.drawRect(rectOp.getLeft(), rectOp.getTop(), rectOp.getRight(), rectOp.getBottom(), cfgPaint(rectOp));
+                break;
+            case DRAW_OVAL:
+                OpDrawOval ovalOp = (OpDrawOval) op;
+                rect.set(ovalOp.getLeft(), ovalOp.getTop(), ovalOp.getRight(), ovalOp.getBottom());
+                canvas.drawOval(rect, cfgPaint(ovalOp));
+                break;
+            case DRAW_PATH:
+                OpDrawPath pathOp = (OpDrawPath) op;
+                canvas.drawPath(pathOp.getPath(), cfgPaint(pathOp));
+                break;
+            case ERASE:
+                OpErase opErase = (OpErase) op;
+                canvas.drawPath(opErase.getPath(), cfgPaint(opErase));
+                break;
+            case RECT_ERASE:
+                OpRectErase eraseOp = (OpRectErase) op;
+                canvas.drawRect(eraseOp.getLeft(), eraseOp.getTop(), eraseOp.getRight(), eraseOp.getBottom(), cfgPaint(eraseOp));
+                break;
+            case CLEAR_SCREEN:
+                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+                break;
+            case INSERT_PICTURE:
+                OpInsertPic insertPicOp = (OpInsertPic) op;
+                if (null != insertPicOp.getPic()) {
+                    canvas.drawBitmap(insertPicOp.getPic(), insertPicOp.getMatrix(), cfgPaint(insertPicOp));
+                }
+                break;
+        }
+    }
+
+    private void render(MyConcurrentLinkedDeque<OpPaint> ops, Canvas canvas){
+        for (OpPaint op : ops) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
+            render(op, canvas);
+        }
+    }
 
 
 }
