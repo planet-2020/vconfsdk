@@ -50,21 +50,14 @@ public class DefaultPainter implements IPainter {
 
     private String curBoardId;
 
-    private Paint paint = new Paint();
-
     private boolean bNeedRender = false;
 
     private boolean bPaused = false;
 
     // 调整中的操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
-    private OpPaint adjustingOp;
-    private final Object adjustingOpLock = new Object();
     private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener() {
         @Override
         public void onOp(OpPaint opPaint) {
-            synchronized (adjustingOpLock) {
-                adjustingOp = opPaint;
-            }
             refresh();
         }
     };
@@ -262,47 +255,6 @@ public class DefaultPainter implements IPainter {
         }
     }
 
-
-    private final PorterDuffXfermode DUFFMODE_SRCIN = new PorterDuffXfermode(PorterDuff.Mode.SRC_IN);
-//    private final PorterDuffXfermode DUFFMODE_DSTOVER = new PorterDuffXfermode(PorterDuff.Mode.DST_OVER);
-    private final PorterDuffXfermode DUFFMODE_CLEAR = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
-    private Paint cfgPaint(OpPaint opPaint){
-        paint.reset();
-        switch (opPaint.getType()){
-            case INSERT_PICTURE:
-                paint.setStyle(Paint.Style.STROKE);
-                break;
-            case RECT_ERASE:
-            case CLEAR_SCREEN:
-                paint.setStyle(Paint.Style.FILL);
-                paint.setXfermode(DUFFMODE_CLEAR);
-                break;
-            default:
-                if (opPaint instanceof OpDraw) {
-                    OpDraw opDraw = (OpDraw) opPaint;
-                    paint.setStyle(Paint.Style.STROKE);
-                    paint.setAntiAlias(true);
-                    paint.setStrokeWidth(opDraw.getStrokeWidth());
-                    paint.setColor((int) opDraw.getColor());
-                    if (OpDraw.DASH == opDraw.getLineStyle()){
-                        paint.setPathEffect(new DashPathEffect( new float[]{10, 4},0));
-                    }
-                    if (EOpType.DRAW_PATH == opPaint.getType()){
-                        paint.setStrokeJoin(Paint.Join.ROUND);
-                    } else if (EOpType.ERASE == opPaint.getType()){
-                        int w = ((OpErase)opDraw).getWidth();
-                        int h = ((OpErase)opDraw).getHeight();
-                        paint.setStrokeWidth(w>h?w:h);
-                        paint.setStrokeJoin(Paint.Join.ROUND);
-                        paint.setAlpha(0);
-                        paint.setXfermode(DUFFMODE_SRCIN);
-                    }
-                }
-                break;
-        }
-
-        return paint;
-    }
 
 
     private final Thread renderThread = new Thread("DCRenderThr"){
