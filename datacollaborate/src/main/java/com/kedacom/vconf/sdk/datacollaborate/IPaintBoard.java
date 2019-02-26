@@ -113,24 +113,16 @@ public interface IPaintBoard {
     /**
      * 快照。
      * @param area 区域{@link #AREA_ALL},{@link #AREA_WINDOW}。
-     * @param listener 快照结果监听器。// TODO 加一个尺寸的参数
-     *                 因快照可能较耗时，故异步处理，结果通过监听器反馈用户，反馈走主线程。
-     * @return true：快照请求成功受理，结果通过监听器反馈；false: 快照请求失败，不会触发结果监听器。
      * */
-    boolean snapshot(int area, ISnapshotResultListener listener);
-    /**
-     * 快照结果监听器
-     * */
-    interface ISnapshotResultListener{
-        void onResult(Bitmap bt);
-    }
+    Bitmap snapshot(int area); // TODO 添加宽高
+
 
     /**
-     * 从上次保存{@link #save(ISaveListener)}以来内容是否有变更。
+     * 从上次保存以来内容是否有变更。
      * 可用来决定是否需要再次保存。
      * @return 返回true如果从上次保存以来内容有变更，否则返回false。
      * */
-    boolean changedSinceLastSave();
+    boolean changedSinceLastSave(); // TODO hasContentChangedSinceLastSnapshot
 
     /**
      * 撤销。
