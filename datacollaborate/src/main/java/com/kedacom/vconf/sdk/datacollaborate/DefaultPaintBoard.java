@@ -138,10 +138,21 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private DefaultTouchListener tmpPicViewTouchListener;
 
 
-    private static final int MSGID_EDIT_PIC_FIN = 100;
-    private HandlerThread assistThread;
-    private Handler assistHandler;
-    private Handler handler;
+    private static Handler assistHandler;
+    private static Handler handler;
+    static {
+        HandlerThread assistThread = new HandlerThread("BoardAss", Process.THREAD_PRIORITY_BACKGROUND);
+        assistThread.start();
+        assistHandler = new Handler(assistThread.getLooper());
+        handler = new Handler(Looper.getMainLooper());
+    }
+
+    private final Runnable finishEditPicRunnable = () -> {
+        KLog.p("edit picture timeout! picEditStuffs.isEmpty? %s", picEditStuffs.isEmpty());
+        if (!picEditStuffs.isEmpty()) {
+            finishEditPic(picEditStuffs.pollFirst());
+        }
+    };
 
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
         super(context);
@@ -193,28 +204,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         setBackgroundColor(Color.DKGRAY);
 
-        assistThread = new HandlerThread("BoardAss", Process.THREAD_PRIORITY_BACKGROUND);
-        assistThread.start();
-        assistHandler = new Handler(assistThread.getLooper()){
-            @Override
-            public void handleMessage(Message msg) {
-                switch (msg.what) {
-                }
-            }
-        };
-
-        handler = new Handler(Looper.getMainLooper()){
-            @Override
-            public void handleMessage(Message msg) {
-                switch (msg.what) {
-                    case MSGID_EDIT_PIC_FIN:
-                        if (!picEditStuffs.isEmpty()) {
-                            finishEditPic(picEditStuffs.pollFirst());
-                        }
-                        break;
-                }
-            }
-        };
     }
 
     public DefaultPaintBoard(@NonNull Context context, @Nullable AttributeSet attrs) {
@@ -298,6 +287,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     void delEditingPic(String picId){
+        handler.removeCallbacks(finishEditPicRunnable);
         Iterator<PicEditStuff> it = picEditStuffs.iterator();
         while (it.hasNext()) {
             PicEditStuff picEditStuff = it.next();
@@ -645,7 +635,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         paintOpGeneratedListener = null;
         onBoardStateChangedListener = null;
         assistHandler.removeCallbacksAndMessages(null);
-        assistThread.quit();
         handler.removeCallbacksAndMessages(null);
     }
 
@@ -1101,12 +1090,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public boolean onDown(float x, float y) {
-            KLog.p("onDown tmp pic layer, x=%s. y=%s", x, y);
+            KLog.p("onDown tmp pic layer, picEditStuffs.isEmpty()=%s. picOps.isEmpty()=%s", picEditStuffs.isEmpty(), picOps.isEmpty());
             if (picEditStuffs.isEmpty() && picOps.isEmpty()){
                 return false; // 放弃处理后续事件
             }
             if (!picEditStuffs.isEmpty()){
-                handler.removeMessages(MSGID_EDIT_PIC_FIN);
+                handler.removeCallbacks(finishEditPicRunnable);
                 PicEditStuff picEditStuff = picEditStuffs.peekFirst(); // NOTE: 目前仅同时编辑一张图片
                 if (picEditStuff.isInDelPicIcon(x, y)){
                     picEditStuff.delIcon.setPic(del_pic_active_icon);
@@ -1122,10 +1111,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (!picEditStuffs.isEmpty()) {
                 PicEditStuff picEditStuff = picEditStuffs.peekFirst();
                 if (picEditStuff.isInDelPicIcon(x, y)){
-                    handler.removeMessages(MSGID_EDIT_PIC_FIN);
                     delPic(picEditStuffs.pollFirst());
                 }else {
-                    handler.sendEmptyMessageDelayed(MSGID_EDIT_PIC_FIN, 3000);
+                    handler.postDelayed(finishEditPicRunnable, 5000);
                 }
             }
         }
@@ -1155,7 +1143,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (!picEditStuffs.isEmpty()) {
                 PicEditStuff picEditStuff = picEditStuffs.peekFirst();
                 if (!picEditStuff.isInDashedRect(x, y)&&!picEditStuff.isInDelPicIcon(x,y)){
-                    handler.removeMessages(MSGID_EDIT_PIC_FIN);
                     finishEditPic(picEditStuffs.pollFirst());
                 }
             }
@@ -1167,7 +1154,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (picEditStuffs.isEmpty()){
                 return;
             }
-            handler.removeMessages(MSGID_EDIT_PIC_FIN);
             preDragX = x; preDragY = y;
         }
 
@@ -1187,7 +1173,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (picEditStuffs.isEmpty()){
                 return;
             }
-            handler.removeMessages(MSGID_EDIT_PIC_FIN);
             scaleCenterX = getWidth()/2;
             scaleCenterY = getHeight()/2;
         }
@@ -1214,7 +1199,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             return;
         }
 
-        handler.removeMessages(MSGID_EDIT_PIC_FIN);
+        handler.removeCallbacks(finishEditPicRunnable);
         if (!picEditStuffs.isEmpty()){
             finishEditPic(picEditStuffs.pollFirst());
         }
@@ -1235,6 +1220,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         if (null != paintOpGeneratedListener) {
             editPic(op);
+            handler.postDelayed(finishEditPicRunnable, 5000);
         }
     }
 
@@ -1387,8 +1373,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         savedLayerBeforeEditPic = focusedLayer;
         focusedLayer = LAYER_PIC_TMP;
-        // 一段时间无操作则编辑结束，插入图片
-        handler.sendEmptyMessageDelayed(MSGID_EDIT_PIC_FIN, 5000);
     }
 
 
