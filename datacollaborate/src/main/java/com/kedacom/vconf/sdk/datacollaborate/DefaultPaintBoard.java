@@ -15,10 +15,7 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Looper;
-import android.os.Message;
-import android.os.Process;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -92,9 +89,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();
 
     // 图片编辑画布。
-    private TextureView tmpPicPaintView;
+    private TextureView picEditPaintView;
     // 图片编辑画布缩放及位移
-    private Matrix tmpPicViewMatrix = new Matrix();
+    private Matrix picEditViewMatrix = new Matrix();
     // 图片编辑操作
     private MyConcurrentLinkedDeque<PicEditStuff> picEditStuffs = new MyConcurrentLinkedDeque<>();
     // 删除图片按钮
@@ -138,14 +135,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private DefaultTouchListener tmpPicViewTouchListener;
 
 
-    private static Handler assistHandler;
-    private static Handler handler;
-    static {
-        HandlerThread assistThread = new HandlerThread("BoardAss", Process.THREAD_PRIORITY_BACKGROUND);
-        assistThread.start();
-        assistHandler = new Handler(assistThread.getLooper());
-        handler = new Handler(Looper.getMainLooper());
-    }
+    private Handler handler = new Handler(Looper.getMainLooper());
 
     private final Runnable finishEditPicRunnable = () -> {
         KLog.p("edit picture timeout! picEditStuffs.isEmpty? %s", picEditStuffs.isEmpty());
@@ -168,12 +158,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         picPaintView.setOpaque(false);
         shapePaintView = whiteBoard.findViewById(R.id.pb_shape_paint_view);
         shapePaintView.setOpaque(false);
-        tmpPicPaintView = whiteBoard.findViewById(R.id.pb_tmp_paint_view);
-        tmpPicPaintView.setOpaque(false);
+        picEditPaintView = whiteBoard.findViewById(R.id.pb_tmp_paint_view);
+        picEditPaintView.setOpaque(false);
 
         shapePaintView.setSurfaceTextureListener(surfaceTextureListener);
         picPaintView.setSurfaceTextureListener(surfaceTextureListener);
-        tmpPicPaintView.setSurfaceTextureListener(surfaceTextureListener);
+        picEditPaintView.setSurfaceTextureListener(surfaceTextureListener);
 
         shapeViewTouchListener = new DefaultTouchListener(context, shapeViewEventListener);
         picViewTouchListener = new DefaultTouchListener(context, picViewEventListener);
@@ -181,7 +171,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         boardViewTouchListener = new DefaultTouchListener(context, boardViewEventListener);
         picPaintView.setOnTouchListener( picViewTouchListener);
         shapePaintView.setOnTouchListener(shapeViewTouchListener);
-        tmpPicPaintView.setOnTouchListener(tmpPicViewTouchListener);
+        picEditPaintView.setOnTouchListener(tmpPicViewTouchListener);
 
         try {
             AssetManager am = context.getAssets();
@@ -268,8 +258,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return picOps;
     }
 
-    public Matrix getTmpPicViewMatrix() {
-        return tmpPicViewMatrix;
+    public Matrix getPicEditViewMatrix() {
+        return picEditViewMatrix;
     }
 
     MyConcurrentLinkedDeque<PicEditStuff> getPicEditStuffs(){
@@ -297,7 +287,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 if (picEditStuffs.isEmpty()) {
                     // 如果最后一张正在编辑的图片被删除则重置画板到编辑前的状态
                     focusedLayer = savedLayerBeforeEditPic;
-                    tmpPicViewMatrix.reset();
+                    picEditViewMatrix.reset();
                 }
                 return;
             }
@@ -311,7 +301,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }else if (LAYER_PIC == layer){
             return picPaintView.lockCanvas();
         }else if (LAYER_PIC_TMP == layer){
-            return tmpPicPaintView.lockCanvas();
+            return picEditPaintView.lockCanvas();
         }
         return null;
     }
@@ -322,7 +312,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }else if (LAYER_PIC == layer){
             picPaintView.unlockCanvasAndPost(canvas);
         }else if (LAYER_PIC_TMP == layer){
-            tmpPicPaintView.unlockCanvasAndPost(canvas);
+            picEditPaintView.unlockCanvasAndPost(canvas);
         }
     }
 
@@ -338,10 +328,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             boardViewTouchListener.onTouch(this, ev);
             boolean ret2 = picPaintView.dispatchTouchEvent(ev);
             boolean ret1 = shapePaintView.dispatchTouchEvent(ev);
-            boolean ret3 = tmpPicPaintView.dispatchTouchEvent(ev);
+            boolean ret3 = picEditPaintView.dispatchTouchEvent(ev);
             return ret1||ret2||ret3;
         } else if (LAYER_PIC_TMP == focusedLayer){
-            return tmpPicPaintView.dispatchTouchEvent(ev);
+            return picEditPaintView.dispatchTouchEvent(ev);
         } else if (LAYER_NONE == focusedLayer){
             return true;
         }else if (LAYER_PIC == focusedLayer){
@@ -465,8 +455,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
             picOps.remove(opInsertPic);
             // 选中图片是所见即所得的效果，所以需要把图片层的matrix拷贝到图片编辑层
-            tmpPicViewMatrix.set(getDensityRelativeBoardMatrix());
-            savedMatrixBeforeEditPic.set(tmpPicViewMatrix);
+            picEditViewMatrix.set(getDensityRelativeBoardMatrix());
+            savedMatrixBeforeEditPic.set(picEditViewMatrix);
             editPic(opInsertPic);
         }
     };
@@ -634,7 +624,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         publisher = null;
         paintOpGeneratedListener = null;
         onBoardStateChangedListener = null;
-        assistHandler.removeCallbacksAndMessages(null);
         handler.removeCallbacksAndMessages(null);
     }
 
@@ -978,7 +967,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 //        picPaintView.setOnTouchListener(null!=publisher ? picViewTouchListener : null);
 //        shapePaintView.setOnTouchListener(null!=publisher ? shapeViewTouchListener : null);
-//        tmpPicPaintView.setOnEventListener(null!=publisher ? tmpPicViewEventListener : null);
+//        picEditPaintView.setOnEventListener(null!=publisher ? tmpPicViewEventListener : null);
 
         return this;
     }
@@ -1148,7 +1137,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (picEditStuffs.isEmpty()){
                 return;
             }
-            tmpPicViewMatrix.postTranslate(x-preDragX, y-preDragY);
+            picEditViewMatrix.postTranslate(x-preDragX, y-preDragY);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
             preDragX = x; preDragY = y;
         }
@@ -1168,7 +1157,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (picEditStuffs.isEmpty()){
                 return;
             }
-            tmpPicViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+            picEditViewMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
@@ -1192,8 +1181,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         bInsertingPic = true;
 
         // 插入图片是所见即所得的效果
-        tmpPicViewMatrix.reset();
-        savedMatrixBeforeEditPic.set(tmpPicViewMatrix);
+        picEditViewMatrix.reset();
+        savedMatrixBeforeEditPic.set(picEditViewMatrix);
 
         Matrix matrix = new Matrix();
         BitmapFactory.Options options = new BitmapFactory.Options();
@@ -1217,7 +1206,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         OpInsertPic opInsertPic = picEditStuff.pic;
 
         // 图片在编辑过程中生成的matrix计入图片“自身”的matrix
-        Matrix increasedMatrix = new Matrix(tmpPicViewMatrix);
+        Matrix increasedMatrix = new Matrix(picEditViewMatrix);
         increasedMatrix.postConcat(MatrixHelper.invert(savedMatrixBeforeEditPic));
         opInsertPic.getMatrix().postConcat(increasedMatrix);
 
@@ -1277,7 +1266,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         focusedLayer = savedLayerBeforeEditPic;
 
         // 清空tmpPaintView设置。
-        tmpPicViewMatrix.reset();
+        picEditViewMatrix.reset();
     }
 
 
@@ -1285,7 +1274,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         OpInsertPic opInsertPic = picEditStuff.pic;
 
         focusedLayer = savedLayerBeforeEditPic;
-        tmpPicViewMatrix.reset();
+        picEditViewMatrix.reset();
         if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         if (bInsertingPic) {
             // publisher.publish(opDelPic); 如果是正在插入中就删除就不用走发布
@@ -1346,7 +1335,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         Matrix matrix = new Matrix();
         matrix.postTranslate(dashRect.left+(dashRect.width()-del_pic_icon.getWidth())/2f,
                 dashRect.bottom+DEL_ICON_TOP_PADDING);
-        matrix.postScale(1/MatrixHelper.getScaleX(tmpPicViewMatrix), 1/MatrixHelper.getScaleY(tmpPicViewMatrix),
+        matrix.postScale(1/MatrixHelper.getScaleX(picEditViewMatrix), 1/MatrixHelper.getScaleY(picEditViewMatrix),
                 dashRect.centerX(), dashRect.bottom); // 使图标以正常尺寸展示，不至于因画板缩小/放大而过小/过大
         delPicIcon.setMatrix(matrix);
 
@@ -1378,13 +1367,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         boolean isInDashedRect(float x, float y){
             RectF rectF = new RectF(dashedRect.boundary());
-            tmpPicViewMatrix.mapRect(rectF);
+            picEditViewMatrix.mapRect(rectF);
             return rectF.contains(x, y);
         }
 
         boolean isInDelPicIcon(float x, float y){
             RectF rectF = new RectF(delIcon.boundary());
-            tmpPicViewMatrix.mapRect(rectF);
+            picEditViewMatrix.mapRect(rectF);
             return rectF.contains(x, y);
         }
 
@@ -1651,9 +1640,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         if (!picEditStuffs.isEmpty()){
             if (null == picEditingLayerSnapshot) {
-                picEditingLayerSnapshot = tmpPicPaintView.getBitmap();
+                picEditingLayerSnapshot = picEditPaintView.getBitmap();
             } else {
-                tmpPicPaintView.getBitmap(picEditingLayerSnapshot);
+                picEditPaintView.getBitmap(picEditingLayerSnapshot);
             }
         }
     }
@@ -1703,7 +1692,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             tmpPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
             // 设置缩放比例
-            tmpPaintViewCanvas.setMatrix(getTmpPicViewMatrix());
+            tmpPaintViewCanvas.setMatrix(getPicEditViewMatrix());
 
             // 绘制
             MyConcurrentLinkedDeque<DefaultPaintBoard.PicEditStuff> picEditStuffs = getPicEditStuffs();
