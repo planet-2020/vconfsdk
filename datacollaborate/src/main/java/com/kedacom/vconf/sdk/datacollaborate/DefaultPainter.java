@@ -275,6 +275,10 @@ public class DefaultPainter implements IPainter {
                     try {
                         if (!bNeedRender) {
 //                            KLog.p("waiting...");
+                            DefaultPaintBoard paintBoard = paintBoards.get(curBoardId);
+                            if (null != paintBoard){
+                                paintBoard.cacheSnapshot();
+                            }
                             wait();
 //                            KLog.p("resume run");
                         }

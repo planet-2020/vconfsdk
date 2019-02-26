@@ -800,17 +800,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         if (AREA_WINDOW == area){
             assistHandler.post(() -> {
-                Bitmap picBt = picPaintView.getBitmap(); // TODO 在painter.render中保存，使用postdelay(500ms)——remove——postdelay模式
-                Bitmap shapeBt = shapePaintView.getBitmap();
-
-                if (picBt==null || shapeBt==null){ // TODO 暂时规避，排查原因
-                    KLog.p(KLog.ERROR,"picBt==null || shapeBt==null");
-                    handler.post(() -> listener.onResult(null));
-                    return;
+                if (!shapeOps.isEmpty() && !isEmpty() && null != shapeLayerSnapshot) { // TODO 加锁
+                    canvas.drawBitmap(shapeLayerSnapshot, 0, 0, null);
                 }
-
-                canvas.drawBitmap(picBt, 0, 0, null);
-                canvas.drawBitmap(shapeBt, 0, 0, null);
+                if (!picOps.isEmpty() && null != picLayerSnapshot) {
+                    canvas.drawBitmap(picLayerSnapshot, 0, 0, null);
+                }
+                if (!picEditStuffs.isEmpty() && null != picEditingLayerSnapshot) {
+                    canvas.drawBitmap(picEditingLayerSnapshot, 0, 0, null);
+                }
 
                 handler.post(() -> listener.onResult(bt));
             });
@@ -1641,6 +1639,36 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         return bRefresh;
+    }
+
+
+    private Bitmap shapeLayerSnapshot;
+    private Bitmap picLayerSnapshot;
+    private Bitmap picEditingLayerSnapshot;
+    void cacheSnapshot(){
+        if (!shapeOps.isEmpty() && !isEmpty()) {
+            if (null == shapeLayerSnapshot) {
+                shapeLayerSnapshot = shapePaintView.getBitmap();
+            } else {
+                shapePaintView.getBitmap(shapeLayerSnapshot);
+            }
+        }
+
+        if (!picOps.isEmpty()){
+            if (null == picLayerSnapshot) {
+                picLayerSnapshot = picPaintView.getBitmap();
+            } else {
+                picPaintView.getBitmap(picLayerSnapshot);
+            }
+        }
+
+        if (!picEditStuffs.isEmpty()){
+            if (null == picEditingLayerSnapshot) {
+                picEditingLayerSnapshot = tmpPicPaintView.getBitmap();
+            } else {
+                tmpPicPaintView.getBitmap(picEditingLayerSnapshot);
+            }
+        }
     }
 
 
