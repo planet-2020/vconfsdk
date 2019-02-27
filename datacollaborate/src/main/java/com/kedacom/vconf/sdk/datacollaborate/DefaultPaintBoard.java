@@ -606,9 +606,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             List<PointF> points = opErase.getPoints();
             PointF lastPoint = points.get(points.size()-1);
             opErase.getPath().lineTo(lastPoint.x, lastPoint.y);
-        }else{
-            KLog.p(KLog.ERROR, "unsupported tool %s", tool);
-            return;
         }
     }
 
