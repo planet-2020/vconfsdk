@@ -11,7 +11,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
  * 负责：
  * 提供画板界面；
  * 提供工具栏相关接口如设置画直线画圆，设置颜色画笔粗细，插入图片等；
- * 处理用户触屏事件结合工具栏设置生成相应绘制操作并上报给用户；
+ * 处理触屏事件结合工具栏设置生成相应绘制操作并通过用户下设的监听器反馈给用户；
  * */
 public interface IPaintBoard {
 
@@ -35,21 +35,40 @@ public interface IPaintBoard {
     View getBoardView();
 
     // 工具
-    int TOOL_PENCIL = 1;
-    int TOOL_LINE = 2;
-    int TOOL_RECT = 3;
-    int TOOL_OVAL = 4;
-    int TOOL_RECT_ERASER = 5;
-    int TOOL_ERASER = 6;
     /**
-     * 设置画板工具。
+     * 铅笔（任意曲线）
+     * */
+    int TOOL_PENCIL = 1;
+    /**
+     * 直线
+     * */
+    int TOOL_LINE = 2;
+    /**
+     * 矩形
+     * */
+    int TOOL_RECT = 3;
+    /**
+     * 椭圆及圆
+     * */
+    int TOOL_OVAL = 4;
+    /**
+     * 矩形擦除
+     * */
+    int TOOL_RECT_ERASER = 5;
+    /**
+     * 任意擦除
+     * */
+    int TOOL_ERASER = 6;
+
+    /**
+     * 设置工具。
      * 在进行相关绘制操作前需先设置好对应的工具。
      * 如画任意曲线需设置TOOL_PENCIL, 画直线需设置TOOL_LINE。
      * */
     void setTool(int style);
 
     /**
-     * 获取当前画板工具
+     * 获取当前使用的工具
      * */
     int getTool();
 
@@ -60,7 +79,7 @@ public interface IPaintBoard {
     void setPaintStrokeWidth(int width);
 
     /**
-     * 获取画笔粗细
+     * 获取当前画笔粗细
      * */
     int getPaintStrokeWidth();
 
@@ -71,7 +90,7 @@ public interface IPaintBoard {
     void setPaintColor(long color);
 
     /**
-     * 获取画笔颜色
+     * 获取当前画笔颜色
      * */
     long getPaintColor();
 
@@ -93,8 +112,9 @@ public interface IPaintBoard {
     void insertPic(String picPath);
 
 
+    // 快照区域
     /**
-     * 所有区域，包括画板窗口内和窗口外。
+     * 所有区域，包括画板窗口内和窗口外（可见部分和不可见部分）。
      * */
     int AREA_ALL = 0;
     /**
@@ -125,7 +145,7 @@ public interface IPaintBoard {
      * 可用来决定是否需要再次保存。
      * @return 返回true如果从上次保存以来内容有变更，否则返回false。
      * */
-    boolean changedSinceLastSave(); // TODO hasContentChangedSinceLastSnapshot
+    boolean changedSinceLastSave();  // XXX  思考是否有必要。
 
     /**
      * 撤销。
@@ -133,7 +153,7 @@ public interface IPaintBoard {
     void undo();
 
     /**
-     * 恢复被撤销的操作。
+     * 恢复被撤销的操作（与撤销互为正反操作）
      * */
     void redo();
 
@@ -142,11 +162,13 @@ public interface IPaintBoard {
      * */
     void clearScreen();
 
-    /**
-     * 放缩
-     * @param percentage 百分数。如50代表50%。
-     * */
-    void zoom(int percentage);
+//    /**
+//     * 放缩
+//     * @param percentage 百分数。如50代表50%。
+    // SEALED 目前仅支持触摸交互方式，放缩都是画板内部通过感应用户触摸事件做掉了。
+    // 该接口需界面存在放缩按钮的场景下才有用（鼠标操作模式下会有这样的按钮）
+//     * */
+//    void zoom(int percentage);
 
     /**
      * 获取放缩百分数
@@ -179,12 +201,20 @@ public interface IPaintBoard {
     int getMaxZoomRate();
 
     /**
-     * 获取被撤销操作数量
+     * 获取被撤销操作数量。
+     * 对于有限制撤销步数的情形可用来判断是否应该允许用户继续撤销。
+     * 画板提供了相关的监听接口用于主动上报用户当前撤销状态{@link IOnBoardStateChangedListener#onRepealableStateChanged(int, int)}
+     * NOTE: 撤销数量会在收到可撤销操作时清零。
      * */
     int getRepealedOpsCount();
 
     /**
      * 获取图形操作数量
+     * 包括：
+     * 诸如画线、画圆之类的操作；
+     * 清屏、擦除操作；
+     * 不包括：
+     * 拖动、放缩、旋转、撤销、恢复。
      * */
     int getShapeOpsCount();
 
@@ -217,7 +247,7 @@ public interface IPaintBoard {
          * 3、执行了恢复操作；
          * @param repealedOpsCount 已被撤销操作数量
          * @param remnantOpsCount 剩下的可撤销操作数量。如画了3条线撤销了1条则repealedOpsCount=1，remnantOpsCount=2。
-         *                        NOTE: 此处的可撤销数量是具体业务无关的，“可撤销”指示的是操作类型，如画线画圆等操作是可撤销的而插入图片放缩等是不可撤销的。
+         *                        NOTE: 此处的可撤销数量是具体需求无关的，“可撤销”指示的是操作类型，如画线画圆等操作是可撤销的而插入图片放缩等是不可撤销的。
          * */
         default void onRepealableStateChanged(int repealedOpsCount, int remnantOpsCount){}
         /**

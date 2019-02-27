@@ -919,15 +919,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         dealSimpleOp(new OpClearScreen());
     }
 
-    @Override
-    public void zoom(int percentage) {
-        float zoomRate = percentage/100f;
-        zoomRate = (minZoomRate <=zoomRate && zoomRate<= maxZoomRate) ? zoomRate : (zoomRate< minZoomRate ? minZoomRate : maxZoomRate);
-        KLog.p("zoomRate=%s, width=%s, height=%s", zoomRate, getWidth(), getHeight());
-        OpMatrix opMatrix = new OpMatrix();
-        opMatrix.getMatrix().setScale(zoomRate, zoomRate, getWidth()/2, getHeight()/2);
-        dealSimpleOp(opMatrix);
-    }
+// SEALED
+//    @Override
+//    public void zoom(int percentage) {
+//        float zoomRate = percentage/100f;
+//        zoomRate = (minZoomRate <=zoomRate && zoomRate<= maxZoomRate) ? zoomRate : (zoomRate< minZoomRate ? minZoomRate : maxZoomRate);
+//        KLog.p("zoomRate=%s, width=%s, height=%s", zoomRate, getWidth(), getHeight());
+//        OpMatrix opMatrix = new OpMatrix();
+//        opMatrix.getMatrix().setScale(zoomRate, zoomRate, getWidth()/2, getHeight()/2);
+//        dealSimpleOp(opMatrix);
+//    }
 
     float[] zoomVals = new float[9];
     @Override

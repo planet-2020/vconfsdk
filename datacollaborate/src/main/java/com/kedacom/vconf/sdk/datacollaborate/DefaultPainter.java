@@ -1,42 +1,15 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.DashPathEffect;
-import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.PointF;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
-import android.graphics.RectF;
 import android.os.Process;
 
 import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
-import com.kedacom.vconf.sdk.datacollaborate.bean.IRepealable;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.DefaultLifecycleObserver;
