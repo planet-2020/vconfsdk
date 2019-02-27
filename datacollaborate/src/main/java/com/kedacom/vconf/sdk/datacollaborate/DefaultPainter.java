@@ -17,8 +17,6 @@ import androidx.lifecycle.LifecycleOwner;
 
 public class DefaultPainter implements IPainter {
 
-    private Context context;
-
     private Map<String, DefaultPaintBoard> paintBoards = new LinkedHashMap<>();
 
     private String curBoardId;
@@ -37,8 +35,6 @@ public class DefaultPainter implements IPainter {
 
 
     public DefaultPainter(Context context) {
-
-        this.context = context;
 
         if (context instanceof LifecycleOwner){
             ((LifecycleOwner)context).getLifecycle().addObserver(new DefaultLifecycleObserver(){

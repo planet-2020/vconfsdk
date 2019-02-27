@@ -60,7 +60,6 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 
 public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
-    private Context context;
 
     // 画板matrix
     private Matrix boardMatrix = new Matrix();
@@ -146,7 +145,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
         super(context);
-        this.context = context;
 
         relativeDensity = context.getResources().getDisplayMetrics().density/2;
 
