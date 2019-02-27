@@ -45,16 +45,17 @@ public interface IPainter {
     int getPaintBoardCount();
 
     /**开始绘制*/
-    default void start(){}
+    void start();
 
     /**暂停绘制*/
-    default void pause(){}
+    void pause();
 
-    /**继续绘制*/
-    default void resume(){}
+    /**继续绘制。
+     * 在暂停绘制后可调用该接口继续绘制*/
+    void resume();
 
     /**停止绘制*/
-    default void stop(){}
+    void stop();
 
     /**绘制
      * @param op 绘制操作*/
