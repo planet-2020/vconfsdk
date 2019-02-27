@@ -224,47 +224,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     };
 
 
-    Matrix getBoardMatrix() {
-        return boardMatrix;
-    }
-
-    void setBoardMatrix(Matrix boardMatrix) {
-        this.boardMatrix.set(boardMatrix);
-    }
-
     private Matrix densityRelativeBoardMatrix = new Matrix();
-    Matrix getDensityRelativeBoardMatrix(){
+    private Matrix getDensityRelativeBoardMatrix(){
         densityRelativeBoardMatrix.reset();
         densityRelativeBoardMatrix.postScale(relativeDensity, relativeDensity);
         densityRelativeBoardMatrix.postConcat(boardMatrix);
         return  densityRelativeBoardMatrix;
     }
 
-    MyConcurrentLinkedDeque<OpPaint> getTmpShapeOps() {
-        return tmpShapeOps;
-    }
 
-    MyConcurrentLinkedDeque<OpPaint> getShapeOps() {
-        return shapeOps;
-    }
-
-    Stack<OpPaint> getRepealedShapeOps() {
-        return repealedShapeOps;
-    }
-
-    MyConcurrentLinkedDeque<OpPaint> getPicOps() {
-        return picOps;
-    }
-
-    public Matrix getPicEditViewMatrix() {
-        return picEditViewMatrix;
-    }
-
-    MyConcurrentLinkedDeque<PicEditStuff> getPicEditStuffs(){
-        return picEditStuffs;
-    }
-
-    boolean isExistEditingPic(String picId){
+    private boolean isExistEditingPic(String picId){
         for (PicEditStuff picEditStuff : picEditStuffs){
             OpInsertPic op = picEditStuff.pic;
             if (picId.equals(op.getPicId())) {
@@ -274,7 +243,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return false;
     }
 
-    void delEditingPic(String picId){
+    private void delEditingPic(String picId){
         handler.removeCallbacks(finishEditPicRunnable);
         Iterator<PicEditStuff> it = picEditStuffs.iterator();
         while (it.hasNext()) {
@@ -289,28 +258,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
                 return;
             }
-        }
-    }
-
-    Canvas lockCanvas(int layer){
-        // NOTE: TextureView.lockCanvas()获取的canvas没有硬件加速。
-        if (LAYER_SHAPE == layer){
-            return shapePaintView.lockCanvas();
-        }else if (LAYER_PIC == layer){
-            return picPaintView.lockCanvas();
-        }else if (LAYER_PIC_TMP == layer){
-            return picEditPaintView.lockCanvas();
-        }
-        return null;
-    }
-
-    void unlockCanvasAndPost(int layer, Canvas canvas){
-        if (LAYER_SHAPE == layer){
-            shapePaintView.unlockCanvasAndPost(canvas);
-        }else if (LAYER_PIC == layer){
-            picPaintView.unlockCanvasAndPost(canvas);
-        }else if (LAYER_PIC_TMP == layer){
-            picEditPaintView.unlockCanvasAndPost(canvas);
         }
     }
 
@@ -1015,27 +962,27 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     }
 
-    void repealableStateChanged(){
+    private void repealableStateChanged(){
         if (null != onBoardStateChangedListener){
             onBoardStateChangedListener.onRepealableStateChanged(getRepealedOpsCount(), getShapeOpsCount());
             refreshEmptyState();
         }
     }
 
-    void screenCleared(){
+    private void screenCleared(){
         if (null != onBoardStateChangedListener){
             refreshEmptyState();
         }
     }
 
-    void picCountChanged(){
+    private void picCountChanged(){
         if (null != onBoardStateChangedListener){
             onBoardStateChangedListener.onPictureCountChanged(getPicCount());
             refreshEmptyState();
         }
     }
 
-    void zoomRateChanged(){
+    private void zoomRateChanged(){
         if (null != onBoardStateChangedListener){
             onBoardStateChangedListener.onZoomRateChanged(getZoom());
         }
@@ -1573,7 +1520,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
                 break;
             case FULLSCREEN_MATRIX: // 全局放缩、位移，包括图片和图形
-                setBoardMatrix(((OpMatrix) op).getMatrix());
+                boardMatrix.set(((OpMatrix) op).getMatrix());
                 zoomRateChanged();
                 break;
 
@@ -1667,7 +1614,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         Matrix matrix = getDensityRelativeBoardMatrix();
 
         // 图形层绘制
-        Canvas shapePaintViewCanvas = lockCanvas(DefaultPaintBoard.LAYER_SHAPE);
+        Canvas shapePaintViewCanvas = shapePaintView.lockCanvas();
         if (null != shapePaintViewCanvas) {
             // 每次绘制前先清空画布以避免残留
             shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
@@ -1676,10 +1623,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             shapePaintViewCanvas.setMatrix(matrix);
 
             // 图形绘制
-            render(getShapeOps(), shapePaintViewCanvas);
+            render(shapeOps, shapePaintViewCanvas);
 
             // 临时图形绘制
-            render(getTmpShapeOps(), shapePaintViewCanvas);
+            render(tmpShapeOps, shapePaintViewCanvas);
 
             // 绘制正在调整中的操作
             synchronized (adjustingOpLock) {
@@ -1688,7 +1635,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         // 图片层绘制
-        Canvas picPaintViewCanvas = lockCanvas(DefaultPaintBoard.LAYER_PIC);
+        Canvas picPaintViewCanvas = picPaintView.lockCanvas();
         if (null != picPaintViewCanvas) {  // TODO 优化，尝试如果没有影响图片层的操作，如插入/删除/拖动/放缩图片，就不刷新图片层。
             // 清空画布
             picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
@@ -1697,20 +1644,19 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             picPaintViewCanvas.setMatrix(matrix);
 
             // 图片绘制
-            render(getPicOps(), picPaintViewCanvas);
+            render(picOps, picPaintViewCanvas);
         }
 
-        // 临时图片层绘制
-        Canvas tmpPaintViewCanvas = lockCanvas(DefaultPaintBoard.LAYER_PIC_TMP);
+        // 图片编辑层绘制
+        Canvas tmpPaintViewCanvas = picEditPaintView.lockCanvas();
         if (null != tmpPaintViewCanvas) {
             // 清空画布
             tmpPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
             // 设置缩放比例
-            tmpPaintViewCanvas.setMatrix(getPicEditViewMatrix());
+            tmpPaintViewCanvas.setMatrix(picEditViewMatrix);
 
             // 绘制
-            MyConcurrentLinkedDeque<DefaultPaintBoard.PicEditStuff> picEditStuffs = getPicEditStuffs();
             for (DefaultPaintBoard.PicEditStuff picEditStuff : picEditStuffs) {
                 render(picEditStuff.pic, tmpPaintViewCanvas);
                 render(picEditStuff.dashedRect, tmpPaintViewCanvas);
@@ -1720,9 +1666,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         // 提交绘制任务，执行绘制
 //                KLog.p("go render!");
-        unlockCanvasAndPost(DefaultPaintBoard.LAYER_SHAPE, shapePaintViewCanvas);
-        unlockCanvasAndPost(DefaultPaintBoard.LAYER_PIC, picPaintViewCanvas);
-        unlockCanvasAndPost(DefaultPaintBoard.LAYER_PIC_TMP, tmpPaintViewCanvas);
+        shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
+        picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
+        picEditPaintView.unlockCanvasAndPost(tmpPaintViewCanvas);
     }
 
 
