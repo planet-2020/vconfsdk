@@ -113,8 +113,11 @@ public interface IPaintBoard {
     /**
      * 快照。
      * @param area 区域{@link #AREA_ALL},{@link #AREA_WINDOW}。
+     * @param outputWidth 生成的图片的宽
+     * @param outputHeight 生成的图片的高
+     * @return 快照。
      * */
-    Bitmap snapshot(int area); // TODO 添加宽高
+    Bitmap snapshot(int area, int outputWidth, int outputHeight);
 
 
     /**

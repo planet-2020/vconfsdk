@@ -768,30 +768,47 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private static final int SAVE_PADDING = 20; // 保存画板时插入的边距，单位： pixel
 
+    /**
+     * 快照。
+     * @param area 区域{@link #AREA_ALL},{@link #AREA_WINDOW}。
+     * @param outputWidth 生成的图片的宽，若大于画板宽或者小于等于0则取值画板的宽。
+     * @param outputHeight 生成的图片的高，若大于画板高或者小于等于0则取值画板的高。
+     * @return 快照。
+     * */
     @Override
-    public Bitmap snapshot(int area) {
-        int windowW = getWidth();
-        int windowH = getHeight();
-        if (windowW<=0||windowH<=0){
-            KLog.p(KLog.ERROR,"invalid windowW %s|| windowH %s", windowW, windowH);
+    public Bitmap snapshot(int area, int outputWidth, int outputHeight) {
+        KLog.p("area = %s, picWidth = %s, picHeight=%s", area, outputWidth, outputHeight);
+        int boardW = getWidth();
+        int boardH = getHeight();
+        if (boardW<=0||boardH<=0){
+            KLog.p(KLog.ERROR,"invalid board size(%s, %s)", boardW, boardH);
             return null;
         }
 
-        Bitmap bt = Bitmap.createBitmap(windowW, windowH, Bitmap.Config.ARGB_8888);
+        int outputW = (outputWidth <=0 || boardW< outputWidth) ? boardW : outputWidth;
+        int outputH = (outputHeight <=0 || boardH< outputHeight) ? boardH : outputHeight;
+
+        Bitmap bt = Bitmap.createBitmap(outputW, outputH, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bt);
+        Matrix matrix1 = new Matrix();
+        matrix1.postScale(outputW/(float)boardW, outputH/(float)boardH);
+        canvas.setMatrix(matrix1);
 
         // 绘制背景
         draw(canvas);
 
         if (AREA_WINDOW == area){
-            if (!shapeOps.isEmpty() && !isEmpty() && null != shapeLayerSnapshot) { // TODO 加锁
-                canvas.drawBitmap(shapeLayerSnapshot, 0, 0, null);
-            }
-            if (!picOps.isEmpty() && null != picLayerSnapshot) {
-                canvas.drawBitmap(picLayerSnapshot, 0, 0, null);
-            }
-            if (!picEditStuffs.isEmpty() && null != picEditingLayerSnapshot) {
-                canvas.drawBitmap(picEditingLayerSnapshot, 0, 0, null);
+            synchronized (snapshotLock) {
+                Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+                if (!picOps.isEmpty() && null != picLayerSnapshot) {
+                    canvas.drawBitmap(picLayerSnapshot, 0, 0, paint);
+                }
+                if (!shapeOps.isEmpty() && !isEmpty() && null != shapeLayerSnapshot) {
+                    canvas.drawBitmap(shapeLayerSnapshot, 0, 0, paint);
+                }
+                if (!picEditStuffs.isEmpty() && null != picEditingLayerSnapshot) {
+                    canvas.drawBitmap(picEditingLayerSnapshot, 0, 0, paint);
+                }
             }
 
         }else{
@@ -823,23 +840,23 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             float boundW = bound.width();
             float boundH = bound.height();
             float scale = 1;
-            if (boundW/boundH > windowW/windowH){
-                scale = windowW/boundW;
+            if (boundW/boundH > boardW/boardH){
+                scale = boardW/boundW;
             }else {
-                scale = windowH/boundH;
+                scale = boardH/boundH;
             }
 
             KLog.p("bound=%s, curRelativeBoardMatrix=%s", bound, curRelativeBoardMatrix);
 
             Matrix matrix = new Matrix(curRelativeBoardMatrix);
             if (scale > 1){ // 画板尺寸大于操作边界尺寸
-                if (0<bound.left&&boundW<windowW
-                        && 0<bound.right&&boundH<windowH){
+                if (0<bound.left&&boundW<boardW
+                        && 0<bound.right&&boundH<boardH){
                     // 操作已在画板中全景展示则无需做任何放缩或位移，直接原样展示
                     // DO NOTHING
                 }else { // 尽管操作边界尺寸较画板小，但操作目前展示在画板外，则移动操作以保证全景展示。
                     // 操作居中展示
-                    matrix.postTranslate(-bound.left + (windowW - boundW) / 2, -bound.top + (windowH - boundH) / 2);
+                    matrix.postTranslate(-bound.left + (boardW - boundW) / 2, -bound.top + (boardH - boundH) / 2);
                 }
             }else{
                 // 画板尺寸小于操作边界尺寸则需将操作缩放以适应画板尺寸
@@ -847,24 +864,23 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 float refinedBoundW = boundW + 2*SAVE_PADDING;
                 float refinedBoundH = boundH + 2*SAVE_PADDING;
                 float refinedScale;
-                if (refinedBoundW/refinedBoundH > windowW/windowH){
-                    refinedScale = windowW/refinedBoundW;
+                if (refinedBoundW/refinedBoundH > boardW/boardH){
+                    refinedScale = boardW/refinedBoundW;
                 }else {
-                    refinedScale = windowH/refinedBoundH;
+                    refinedScale = boardH/refinedBoundH;
                 }
                 // 先让操作边界居中
-                matrix.postTranslate(-bound.left+(windowW-boundW)/2, -bound.top+(windowH-boundH)/2);
+                matrix.postTranslate(-bound.left+(boardW-boundW)/2, -bound.top+(boardH-boundH)/2);
                 // 再以屏幕中心为缩放中心缩小操作边界
-                matrix.postScale(refinedScale, refinedScale, windowW/2, windowH/2);
+                matrix.postScale(refinedScale, refinedScale, boardW/2, boardH/2);
             }
 
-            KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, windowW, windowH, scale, matrix);
-
+//            KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, boardW, boardH, scale, matrix);
+            matrix.postConcat(matrix1);
             canvas.setMatrix(matrix);
 
             // 绘制操作
             render(ops, canvas);
-
         }
 
         return bt;
@@ -1618,31 +1634,34 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
+    private final Object snapshotLock = new Object();
     private Bitmap shapeLayerSnapshot;
     private Bitmap picLayerSnapshot;
     private Bitmap picEditingLayerSnapshot;
     void cacheSnapshot(){
-        if (!shapeOps.isEmpty() && !isEmpty()) {
-            if (null == shapeLayerSnapshot) {
-                shapeLayerSnapshot = shapePaintView.getBitmap();
-            } else {
-                shapePaintView.getBitmap(shapeLayerSnapshot);
+        synchronized (snapshotLock) {
+            if (!shapeOps.isEmpty() && !isEmpty()) {
+                if (null == shapeLayerSnapshot) {
+                    shapeLayerSnapshot = shapePaintView.getBitmap();
+                } else {
+                    shapePaintView.getBitmap(shapeLayerSnapshot);
+                }
             }
-        }
 
-        if (!picOps.isEmpty()){
-            if (null == picLayerSnapshot) {
-                picLayerSnapshot = picPaintView.getBitmap();
-            } else {
-                picPaintView.getBitmap(picLayerSnapshot);
+            if (!picOps.isEmpty()) {
+                if (null == picLayerSnapshot) {
+                    picLayerSnapshot = picPaintView.getBitmap();
+                } else {
+                    picPaintView.getBitmap(picLayerSnapshot);
+                }
             }
-        }
 
-        if (!picEditStuffs.isEmpty()){
-            if (null == picEditingLayerSnapshot) {
-                picEditingLayerSnapshot = picEditPaintView.getBitmap();
-            } else {
-                picEditPaintView.getBitmap(picEditingLayerSnapshot);
+            if (!picEditStuffs.isEmpty()) {
+                if (null == picEditingLayerSnapshot) {
+                    picEditingLayerSnapshot = picEditPaintView.getBitmap();
+                } else {
+                    picEditPaintView.getBitmap(picEditingLayerSnapshot);
+                }
             }
         }
     }
