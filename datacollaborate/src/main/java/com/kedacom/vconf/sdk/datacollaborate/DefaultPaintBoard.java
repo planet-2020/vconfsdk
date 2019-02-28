@@ -311,19 +311,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onMultiFingerDragBegin() {
-            KLog.p("#######onMultiFingerDragBegin");
         }
 
         @Override
         public void onMultiFingerDrag(float dx, float dy) {
-            KLog.p("~~> dx=%s, dy=%s", dx, dy);
             boardMatrix.postTranslate(dx, dy);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
         }
 
         @Override
         public void onMultiFingerDragEnd() {
-//            KLog.p("~~>");
             OpMatrix opMatrix = new OpMatrix(boardMatrix);
             assignBasicInfo(opMatrix);
             publisher.publish(opMatrix);
@@ -331,7 +328,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onScaleBegin() {
-            KLog.p("#######onScaleBegin");
             scaleCenterX = getWidth()/2;
             scaleCenterY = getHeight()/2;
         }
@@ -353,7 +349,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onScaleEnd() {
-            KLog.p("#######onScaleEnd");
             OpMatrix opMatrix = new OpMatrix(boardMatrix);
             assignBasicInfo(opMatrix);
             publisher.publish(opMatrix);
@@ -365,22 +360,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onDragBegin(float x, float y) {
-            KLog.p("~~> x=%s, y=%s", x, y);
             createShapeOp(x, y);
         }
 
         @Override
         public void onDrag(float x, float y) {
-//            KLog.p("~~> x=%s, y=%s", x, y);
             adjustShapeOp(x, y);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(adjustingShapeOp);
         }
 
         @Override
         public void onDragEnd() {
-//            KLog.p("~~>");
             confirmShapeOp();
-            KLog.p("new tmp op %s", adjustingShapeOp);
             tmpShapeOps.offerLast(adjustingShapeOp);
             if (null != paintOpGeneratedListener) paintOpGeneratedListener.onOp(null);
             publisher.publish(adjustingShapeOp);
@@ -394,7 +385,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public boolean onDown(float x, float y) {
             if (picOps.isEmpty()){
-                KLog.p("pic layer is empty");
                 return false; // 当前没有图片不用处理后续事件
             }
             return true;
@@ -403,7 +393,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onLongPress(float x, float y) {
-            KLog.p("onLongPress pic layer,  x=%s, y=%s", x, y);
             OpInsertPic opInsertPic = selectPic(x, y);
             if (null == opInsertPic){
                 KLog.p("no pic selected(x=%s, y=%s)", x, y);
@@ -730,6 +719,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * */
     @Override
     public Bitmap snapshot(int area, int outputWidth, int outputHeight) {
+        KLog.p("=>");
         int boardW = getWidth()>0 ? getWidth() : boardWidth;
         int boardH = getHeight()>0 ? getHeight() : boardHeight;
         int outputW = (outputWidth <=0 || boardW< outputWidth) ? boardW : outputWidth;
@@ -833,6 +823,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             render(ops, canvas);
         }
 
+        KLog.p("<=");
         return bt;
     }
 
@@ -1031,7 +1022,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public boolean onDown(float x, float y) {
-            KLog.p("onDown tmp pic layer, picEditStuffs.isEmpty()=%s. picOps.isEmpty()=%s", picEditStuffs.isEmpty(), picOps.isEmpty());
             if (picEditStuffs.isEmpty() && picOps.isEmpty()){
                 return false; // 放弃处理后续事件
             }
@@ -1091,7 +1081,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onDragBegin(float x, float y) {
-            KLog.p("onDragBegin tmp pic layer, x=%s. y=%s", x, y);
             if (picEditStuffs.isEmpty()){
                 return;
             }
@@ -1120,7 +1109,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onScale(float factor) {
-            KLog.p("onScale tmp pic layer, factor=%s", factor);
             if (picEditStuffs.isEmpty()){
                 return;
             }
@@ -1590,6 +1578,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private Bitmap picLayerSnapshot;
     private Bitmap picEditingLayerSnapshot;
     void cacheSnapshot(){
+        KLog.p("=>");
         synchronized (snapshotLock) {
             if (!shapeOps.isEmpty() && !isEmpty()) {
                 if (null == shapeLayerSnapshot) {
@@ -1615,6 +1604,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
             }
         }
+        KLog.p("<=");
     }
 
 
