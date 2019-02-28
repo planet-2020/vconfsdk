@@ -14,6 +14,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
+import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.AttributeSet;
@@ -196,6 +197,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     public DefaultPaintBoard(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
+    }
+
+
+    private static int boardWidth = 1920;
+    private static int boardHeight = 1080;
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (0!=w)  boardWidth = w;
+        if (0!=h)  boardHeight = h;
     }
 
 
@@ -719,25 +730,23 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * */
     @Override
     public Bitmap snapshot(int area, int outputWidth, int outputHeight) {
-        KLog.p("area = %s, picWidth = %s, picHeight=%s", area, outputWidth, outputHeight);
-        int boardW = getWidth();
-        int boardH = getHeight();
-        if (boardW<=0||boardH<=0){
-            KLog.p(KLog.ERROR,"invalid board size(%s, %s)", boardW, boardH);
-            return null;
-        }
-
+        int boardW = getWidth()>0 ? getWidth() : boardWidth;
+        int boardH = getHeight()>0 ? getHeight() : boardHeight;
         int outputW = (outputWidth <=0 || boardW< outputWidth) ? boardW : outputWidth;
         int outputH = (outputHeight <=0 || boardH< outputHeight) ? boardH : outputHeight;
 
+        KLog.p("area = %s, boardW=%s, boardH=%s, outputWidth = %s, outputHeight=%s", area, boardW, boardH, outputWidth, outputHeight);
+
         Bitmap bt = Bitmap.createBitmap(outputW, outputH, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bt);
-        Matrix matrix1 = new Matrix();
-        matrix1.postScale(outputW/(float)boardW, outputH/(float)boardH);
-        canvas.setMatrix(matrix1);
+        if (!(outputW==boardW && outputH==boardH)) {
+            canvas.scale(outputW/(float)boardW, outputH/(float)boardH);
+        }
 
         // 绘制背景
-        draw(canvas);
+        Drawable background = getBackground();
+        background.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+        background.draw(canvas);
 
         if (AREA_WINDOW == area){
             synchronized (snapshotLock) {
@@ -818,8 +827,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
 
 //            KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, boardW, boardH, scale, matrix);
-            matrix.postConcat(matrix1);
-            canvas.setMatrix(matrix);
+            canvas.concat(matrix);
 
             // 绘制操作
             render(ops, canvas);
