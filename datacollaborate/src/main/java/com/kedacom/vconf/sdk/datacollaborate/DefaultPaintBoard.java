@@ -709,7 +709,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private OpPaint lastEditingPicOpSinceSave;
 
     private static final int SAVE_PADDING = 20; // 保存画板时插入的边距，单位： pixel
-
     /**
      * 快照。
      * @param area 区域{@link #AREA_ALL},{@link #AREA_WINDOW}。
@@ -774,15 +773,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 return bt;
             }
 
-            // 记录保存时各操作的状态，可用来判断内容是否有变，进而决定是否需要再次保存
-            lastShapeOpSinceSave = shapeOps.peekLast();
-            lastTmpShapeOpSinceSave = tmpShapeOps.peekLast();
-            lastPicOpSinceSave = picOps.peekLast();
-            if (null != picEditStuffs.peekLast()) {
-                lastEditingPicOpSinceSave = picEditStuffs.peekLast().pic;
-            }else {
-                lastEditingPicOpSinceSave = null;
-            }
+//            // 记录保存时各操作的状态，可用来判断内容是否有变，进而决定是否需要再次保存
+//            lastShapeOpSinceSave = shapeOps.peekLast();
+//            lastTmpShapeOpSinceSave = tmpShapeOps.peekLast();
+//            lastPicOpSinceSave = picOps.peekLast();
+//            if (null != picEditStuffs.peekLast()) {
+//                lastEditingPicOpSinceSave = picEditStuffs.peekLast().pic;
+//            }else {
+//                lastEditingPicOpSinceSave = null;
+//            }
 
             // 计算操作的边界
             RectF bound = calcBoundary(ops);
@@ -840,14 +839,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return bt;
     }
 
-    @Override
-    public boolean changedSinceLastSave() {
-        return (lastShapeOpSinceSave != shapeOps.peekLast()
-                || lastTmpShapeOpSinceSave != tmpShapeOps.peekLast()
-                || lastPicOpSinceSave != picOps.peekLast()
-                || (null != picEditStuffs.peekLast() && lastEditingPicOpSinceSave != picEditStuffs.peekLast().pic)
-                || (null == picEditStuffs.peekLast() && lastEditingPicOpSinceSave != null));
-    }
+//    @Override
+//    public boolean changedSinceLastSave() {
+//        return (lastShapeOpSinceSave != shapeOps.peekLast()
+//                || lastTmpShapeOpSinceSave != tmpShapeOps.peekLast()
+//                || lastPicOpSinceSave != picOps.peekLast()
+//                || (null != picEditStuffs.peekLast() && lastEditingPicOpSinceSave != picEditStuffs.peekLast().pic)
+//                || (null == picEditStuffs.peekLast() && lastEditingPicOpSinceSave != null));
+//    }
 
     private void dealSimpleOp(OpPaint op){
         if (null == publisher){
@@ -1366,6 +1365,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         MyConcurrentLinkedDeque<OpPaint> picRenderOps = picOps;
         Matrix boardMatrix1 = boardMatrix;
 
+        if (null != onBoardStateChangedListener){
+            onBoardStateChangedListener.onChanged();
+        }
+
         // 检查是否为主动绘制触发的响应。若是则我们不再重复绘制，因为它已经展示在界面上。
         OpPaint shapeTmpOp = tmpShapeOps.pollFirst();
         if (null != shapeTmpOp && shapeTmpOp.getUuid().equals(op.getUuid())) {
@@ -1622,6 +1625,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     void paint(){
+        KLog.p("=>");
         Matrix matrix = getDensityRelativeBoardMatrix();
 
         // 图形层绘制
@@ -1680,6 +1684,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
         picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
         picEditPaintView.unlockCanvasAndPost(tmpPaintViewCanvas);
+
+        cacheSnapshot();
+
+        KLog.p("<=");
     }
 
 

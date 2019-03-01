@@ -140,12 +140,12 @@ public interface IPaintBoard {
     Bitmap snapshot(int area, int outputWidth, int outputHeight);
 
 
-    /**
-     * 从上次保存以来内容是否有变更。
-     * 可用来决定是否需要再次保存。
-     * @return 返回true如果从上次保存以来内容有变更，否则返回false。
-     * */
-    boolean changedSinceLastSave();  // XXX  思考是否有必要。
+//    /**
+//     * 从上次保存以来内容是否有变更。
+//     * 可用来决定是否需要再次保存。
+//     * @return 返回true如果从上次保存以来内容有变更，否则返回false。
+//     * */
+//    boolean changedSinceLastSave();  // XXX  思考是否有必要。
 
     /**
      * 撤销。
@@ -233,6 +233,13 @@ public interface IPaintBoard {
      * 画板状态变化监听器
      * */
     interface IOnBoardStateChangedListener{
+        /**
+         * 画板状态发生了改变。
+         * 此回调是下面所有回调的先驱，方便用户做一些公共处理。
+         * 如：用户可根据该回调决定是否需要重新“快照”{@link #snapshot(int, int, int)}。
+         * */
+        default void onChanged(){}
+
         /**图片数量变化
          * @param count  当前图片数量*/
         default void onPictureCountChanged(int count){}
