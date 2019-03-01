@@ -725,7 +725,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         int outputW = (outputWidth <=0 || boardW< outputWidth) ? boardW : outputWidth;
         int outputH = (outputHeight <=0 || boardH< outputHeight) ? boardH : outputHeight;
 
-        KLog.p("area = %s, boardW=%s, boardH=%s, outputWidth = %s, outputHeight=%s", area, boardW, boardH, outputWidth, outputHeight);
 
         Bitmap bt = Bitmap.createBitmap(outputW, outputH, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bt);
@@ -733,13 +732,27 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             canvas.scale(outputW/(float)boardW, outputH/(float)boardH);
         }
 
+        KLog.p("area = %s, boardW=%s, boardH=%s, outputWidth = %s, outputHeight=%s, canvasW=%s, canvasH=%s",
+                area, boardW, boardH, outputWidth, outputHeight, canvas.getWidth(), canvas.getHeight());
+
         // 绘制背景
-        Drawable background = getBackground();
-        background.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-        background.draw(canvas);
+        if (getWidth()>0 && getHeight()>0){
+            draw(canvas);
+        }else {
+            Drawable.ConstantState constantState = getBackground().getConstantState();
+            if (null != constantState) {
+                Drawable background = constantState.newDrawable().mutate();
+                background.setBounds(0, 0, boardW, boardH);
+                background.draw(canvas);
+            }
+        }
 
         if (AREA_WINDOW == area){
             synchronized (snapshotLock) {
+                KLog.p("picOps.isEmpty() = %s, shapeOps.isEmpty()=%s, isEmpty()=%s, picEditStuffs.isEmpty() = %s, " +
+                                "picLayerSnapshot=%s, shapeLayerSnapshot=%s, picEditingLayerSnapshot=%s",
+                        picOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
+                        picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
                 Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
                 if (!picOps.isEmpty() && null != picLayerSnapshot) {
                     canvas.drawBitmap(picLayerSnapshot, 0, 0, paint);
@@ -1346,7 +1359,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             KLog.p(KLog.ERROR,"op %s is not for %s", op, getBoardId());
             return false;
         }
-        KLog.p(KLog.DEBUG, "recv op %s", op);
+        KLog.p("recv op %s", op);
 
         MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapeOps;
         Stack<OpPaint> shapeRepealedOps = repealedShapeOps;
