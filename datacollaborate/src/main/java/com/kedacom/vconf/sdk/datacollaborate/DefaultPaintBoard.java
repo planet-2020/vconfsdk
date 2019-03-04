@@ -71,7 +71,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     以该相对密度作为缩放因子进行展示。TL的屏幕密度接近xhdpi，故以xhdpi作为基准*/
     private float relativeDensity=1;
 
-    // 图形画布。用于图形绘制如画线、画圈、擦除等等
+    // 图形层。用于图形绘制如画线、画圈、擦除等等
     private TextureView shapePaintView;
     // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private OpPaint adjustingShapeOp;
@@ -83,14 +83,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     // 被撤销的图形操作。撤销只针对已经平台NTF确认过的操作。
     private Stack<OpPaint> repealedShapeOps = new Stack<>();
 
-    // 图片画布。用于绘制图片。
+    // 图片层。用于绘制图片。
     private TextureView picPaintView;
     // 图片操作。
     private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();
 
-    // 图片编辑画布。
+    // 图片编辑层。
     private TextureView picEditPaintView;
-    // 图片编辑画布缩放及位移
+    // 图片编辑层缩放及位移
     private Matrix picEditViewMatrix = new Matrix();
     // 图片编辑操作
     private MyConcurrentLinkedDeque<PicEditStuff> picEditStuffs = new MyConcurrentLinkedDeque<>();
@@ -119,11 +119,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     // 橡皮擦尺寸。单位：pixel
     private int eraserSize = 25;
 
+    // 放缩比例上下限
     private float minZoomRate = 0.1f;
     private float maxZoomRate = 10f;
 
     private IOnPaintOpGeneratedListener paintOpGeneratedListener;
+    // 画板状态监听器
     private IOnBoardStateChangedListener onBoardStateChangedListener;
+    // 画板绘制操作发布者
     private IPublisher publisher;
 
     // 画板信息
@@ -200,6 +203,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
+    // 画板未加载时保存画板内容使用的画板宽高值
     private static int boardWidth = 1920;
     private static int boardHeight = 1080;
     @Override
@@ -564,7 +568,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     void clean(){
         publisher = null;
-        paintOpGeneratedListener = null;
         onBoardStateChangedListener = null;
         handler.removeCallbacksAndMessages(null);
     }
@@ -753,13 +756,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                         picOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
                         picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
                 Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
-                if (!picOps.isEmpty() && null != picLayerSnapshot) {
+                if (null != picLayerSnapshot) {
                     canvas.drawBitmap(picLayerSnapshot, 0, 0, paint);
                 }
-                if (!shapeOps.isEmpty() && !isEmpty() && null != shapeLayerSnapshot) {
+                if (null != shapeLayerSnapshot) {
                     canvas.drawBitmap(shapeLayerSnapshot, 0, 0, paint);
                 }
-                if (!picEditStuffs.isEmpty() && null != picEditingLayerSnapshot) {
+                if (null != picEditingLayerSnapshot) {
                     canvas.drawBitmap(picEditingLayerSnapshot, 0, 0, paint);
                 }
             }
@@ -1596,28 +1599,22 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     void cacheSnapshot(){
         KLog.p("=>");
         synchronized (snapshotLock) {
-            if (!shapeOps.isEmpty() && !isEmpty()) {
-                if (null == shapeLayerSnapshot) {
-                    shapeLayerSnapshot = shapePaintView.getBitmap();
-                } else {
-                    shapePaintView.getBitmap(shapeLayerSnapshot);
-                }
+            if (null == shapeLayerSnapshot) {
+                shapeLayerSnapshot = shapePaintView.getBitmap();
+            } else {
+                shapePaintView.getBitmap(shapeLayerSnapshot);
             }
 
-            if (!picOps.isEmpty()) {
-                if (null == picLayerSnapshot) {
-                    picLayerSnapshot = picPaintView.getBitmap();
-                } else {
-                    picPaintView.getBitmap(picLayerSnapshot);
-                }
+            if (null == picLayerSnapshot) {
+                picLayerSnapshot = picPaintView.getBitmap();
+            } else {
+                picPaintView.getBitmap(picLayerSnapshot);
             }
 
-            if (!picEditStuffs.isEmpty()) {
-                if (null == picEditingLayerSnapshot) {
-                    picEditingLayerSnapshot = picEditPaintView.getBitmap();
-                } else {
-                    picEditPaintView.getBitmap(picEditingLayerSnapshot);
-                }
+            if (null == picEditingLayerSnapshot) {
+                picEditingLayerSnapshot = picEditPaintView.getBitmap();
+            } else {
+                picEditPaintView.getBitmap(picEditingLayerSnapshot);
             }
         }
         KLog.p("<=");
@@ -1684,8 +1681,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
         picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
         picEditPaintView.unlockCanvasAndPost(tmpPaintViewCanvas);
-
-        cacheSnapshot();
 
         KLog.p("<=");
     }

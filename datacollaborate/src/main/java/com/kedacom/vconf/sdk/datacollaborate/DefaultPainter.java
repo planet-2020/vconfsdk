@@ -132,7 +132,8 @@ public class DefaultPainter implements IPainter {
         }
         DefaultPaintBoard board =  paintBoards.remove(boardId);
         if (null != board){
-            board.clean();
+            board.setOnPaintOpGeneratedListener(null);
+            board.clean();  // XXX 按理说不应该在删除时清理board，删除后再加载应仍能使用
         }
         return board;
     }
@@ -140,8 +141,9 @@ public class DefaultPainter implements IPainter {
     @Override
     public void deleteAllPaintBoards() {
         KLog.p(KLog.WARN,"delete all boards");
-        for (String boardId : paintBoards.keySet()){
-            paintBoards.get(boardId).clean();
+        for (DefaultPaintBoard board : paintBoards.values()){
+            board.setOnPaintOpGeneratedListener(null);
+            board.clean();  // XXX 按理说不应该在删除时清理board，删除后再加载应仍能使用
         }
         paintBoards.clear();
         curBoardId = null;
@@ -243,11 +245,11 @@ public class DefaultPainter implements IPainter {
                 synchronized (this) {
                     try {
                         if (!bNeedRender) {
-//                            KLog.p("waiting...");
-//                            DefaultPaintBoard paintBoard = paintBoards.get(curBoardId);
-//                            if (null != paintBoard){
-//                                paintBoard.cacheSnapshot();
-//                            }
+                            KLog.p("waiting...");
+                            DefaultPaintBoard paintBoard = paintBoards.get(curBoardId);
+                            if (null != paintBoard){
+                                paintBoard.cacheSnapshot();
+                            }
                             wait();
 //                            KLog.p("resume run");
                         }
