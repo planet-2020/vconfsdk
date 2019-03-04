@@ -1622,7 +1622,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     void paint(){
-        KLog.p("=>");
+        KLog.p("=> board=%s", getBoardId());
         Matrix matrix = getDensityRelativeBoardMatrix();
 
         // 图形层绘制

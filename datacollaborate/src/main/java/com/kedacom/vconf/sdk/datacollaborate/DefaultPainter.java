@@ -21,9 +21,10 @@ public class DefaultPainter implements IPainter {
 
     private String curBoardId;
 
-    private boolean bNeedRender = false;
-
+    private boolean bDirty = false;
     private boolean bPaused = false;
+    private final Object renderLock = new Object();
+
 
     // 调整中的操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener() {
@@ -77,12 +78,16 @@ public class DefaultPainter implements IPainter {
 
     @Override
     public void pause() {
-        bPaused = true;
+        synchronized (renderLock) {
+            bPaused = true;
+        }
     }
 
     @Override
     public void resume() {
-        bPaused = false;
+        synchronized (renderLock) {
+            bPaused = false;
+        }
         refresh();
     }
 
@@ -99,12 +104,9 @@ public class DefaultPainter implements IPainter {
     }
 
     private void refresh(){
-        synchronized (renderThread) {
-            bNeedRender = true;
-            if (Thread.State.WAITING == renderThread.getState()) {
-//                KLog.p(KLog.WARN, "notify");
-                renderThread.notify();
-            }
+        synchronized (renderLock){
+            bDirty = true;
+            renderLock.notify();
         }
     }
 
@@ -229,52 +231,56 @@ public class DefaultPainter implements IPainter {
 
 
     private final Thread renderThread = new Thread("DCRenderThr"){
+        private boolean bNeedRender;
 
         @Override
         public void run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
 
             while (true){
-//                KLog.p("start loop run");
+                KLog.p("start loop run");
                 if (isInterrupted()){
                     KLog.p(KLog.WARN, "quit renderThread");
                     return;
                 }
 
+                synchronized (renderLock) {
+                    bNeedRender = bDirty && !bPaused;
+                }
+
+                if (!bNeedRender){
+                    DefaultPaintBoard paintBoard = paintBoards.get(curBoardId);
+                    if (null != paintBoard){
+                        paintBoard.cacheSnapshot();
+                    }
+                }
+
                 // 判断当前是否有渲染任务
-                synchronized (this) {
+                synchronized (renderLock) {
+                    bNeedRender = bDirty && !bPaused;
                     try {
                         if (!bNeedRender) {
-                            KLog.p("waiting...");
-                            DefaultPaintBoard paintBoard = paintBoards.get(curBoardId);
-                            if (null != paintBoard){
-                                paintBoard.cacheSnapshot();
-                            }
-                            wait();
-//                            KLog.p("resume run");
-                        }
-                        bNeedRender = false;
-                        if (bPaused){
-//                            KLog.p("paused");
-                            continue;
+                            do{
+                                KLog.p("waiting...");
+                                renderLock.wait();
+                                bNeedRender = bDirty && !bPaused;
+                                KLog.p("awaken! bNeedRender=%s", bNeedRender);
+                            }while (!bNeedRender);
                         }
                     } catch (InterruptedException e) {
                         KLog.p(KLog.WARN, "quit renderThread");
                         return;
                     }
+
+                    bDirty = false;
+
                 }
 
                 // 获取当前画板
-                DefaultPaintBoard paintBoard = paintBoards.get(curBoardId);
-                if (null == paintBoard){
-                    continue;
+                DefaultPaintBoard paintBoard = paintBoards.get(curBoardId); // TODO 直接保存curBoard
+                if (null != paintBoard){
+                    paintBoard.paint();
                 }
-
-                synchronized (this) {
-                    bNeedRender = false;
-                }
-
-                paintBoard.paint();
 
             }
         }
