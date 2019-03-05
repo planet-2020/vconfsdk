@@ -729,8 +729,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             KLog.p(KLog.ERROR, "null == resultListener");
             return;
         }
-        int boardW = getWidth()>0 ? getWidth() : boardWidth;
-        int boardH = getHeight()>0 ? getHeight() : boardHeight;
+
+        boolean bLoaded = getWidth()>0 && getHeight()>0;
+
+        int boardW = bLoaded ? getWidth() : boardWidth;
+        int boardH = bLoaded ? getHeight() : boardHeight;
         int outputW = (outputWidth <=0 || boardW< outputWidth) ? boardW : outputWidth;
         int outputH = (outputHeight <=0 || boardH< outputHeight) ? boardH : outputHeight;
 
@@ -746,7 +749,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 isHardwareAccelerated(), canvas.isHardwareAccelerated());
 
         // 绘制背景
-        if (getWidth()>0 && getHeight()>0){
+        if (bLoaded){
             draw(canvas);
         }else {
             Drawable.ConstantState constantState = getBackground().getConstantState();
@@ -757,95 +760,103 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
         }
 
-        if (AREA_WINDOW == area){
-            assHandler.post(() -> {
-                synchronized (snapshotLock) {
-                    KLog.p("picOps.isEmpty() = %s, shapeOps.isEmpty()=%s, isEmpty()=%s, picEditStuffs.isEmpty() = %s, " +
-                                    "picLayerSnapshot=%s, shapeLayerSnapshot=%s, picEditingLayerSnapshot=%s",
-                            picOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
-                            picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
-                    Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
-                    if (null != picLayerSnapshot) {
-                        canvas.drawBitmap(picLayerSnapshot, 0, 0, paint);
-                    }
-                    if (null != shapeLayerSnapshot) {
-                        canvas.drawBitmap(shapeLayerSnapshot, 0, 0, paint);
-                    }
-                    if (null != picEditingLayerSnapshot) {
-                        canvas.drawBitmap(picEditingLayerSnapshot, 0, 0, paint);
-                    }
-
-                    handler.post(() -> resultListener.onResult(bt));
-                }
-            });
-
-        }else{
-
-            assHandler.post(() -> {
-                // 筛选需要保存的操作
-                MyConcurrentLinkedDeque<OpPaint> ops = getOpsBySnapshot();
-                if (ops.isEmpty()){
-                    KLog.p(KLog.WARN, "no content!");
-                    handler.post(() -> resultListener.onResult(bt));
-                }
-
-                // 计算操作的边界
-                RectF bound = calcBoundary(ops);
-                KLog.p("calcBoundary=%s", bound);
-
-                // 根据操作边界结合当前画板缩放计算绘制操作需要的缩放及位移
-                Matrix curRelativeBoardMatrix = getDensityRelativeBoardMatrix();
-                curRelativeBoardMatrix.mapRect(bound);
-                float boundW = bound.width();
-                float boundH = bound.height();
-                float scale = 1;
-                if (boundW/boundH > boardW/boardH){
-                    scale = boardW/boundW;
-                }else {
-                    scale = boardH/boundH;
-                }
-
-                KLog.p("bound=%s, curRelativeBoardMatrix=%s", bound, curRelativeBoardMatrix);
-
-                Matrix matrix = new Matrix(curRelativeBoardMatrix);
-                if (scale > 1){ // 画板尺寸大于操作边界尺寸
-                    if (0<bound.left&&boundW<boardW
-                            && 0<bound.right&&boundH<boardH){
-                        // 操作已在画板中全景展示则无需做任何放缩或位移，直接原样展示
-                        // DO NOTHING
-                    }else { // 尽管操作边界尺寸较画板小，但操作目前展示在画板外，则移动操作以保证全景展示。
-                        // 操作居中展示
-                        matrix.postTranslate(-bound.left + (boardW - boundW) / 2, -bound.top + (boardH - boundH) / 2);
-                    }
+        assHandler.post(() -> {
+            if (AREA_WINDOW == area) {
+                if (bLoaded) {
+                    snapshotWindow(canvas);
                 }else{
-                    // 画板尺寸小于操作边界尺寸则需将操作缩放以适应画板尺寸
-                    // 操作边界外围加塞padding使展示效果更友好
-                    float refinedBoundW = boundW + 2*20;
-                    float refinedBoundH = boundH + 2*20;
-                    float refinedScale;
-                    if (refinedBoundW/refinedBoundH > boardW/boardH){
-                        refinedScale = boardW/refinedBoundW;
-                    }else {
-                        refinedScale = boardH/refinedBoundH;
-                    }
-                    // 先让操作边界居中
-                    matrix.postTranslate(-bound.left+(boardW-boundW)/2, -bound.top+(boardH-boundH)/2);
-                    // 再以屏幕中心为缩放中心缩小操作边界
-                    matrix.postScale(refinedScale, refinedScale, boardW/2, boardH/2);
+                    snapshotAll(canvas);
                 }
+            }else{
+                snapshotAll(canvas);
+            }
+            handler.post(() -> resultListener.onResult(bt));
+        });
 
-//            KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, boardW, boardH, scale, matrix);
-                canvas.concat(matrix);
+    }
 
-                // 绘制操作
-                render(ops, canvas);
 
-                handler.post(() -> resultListener.onResult(bt));
-
-            });
-
+    private void snapshotAll(Canvas canvas){
+        // 筛选需要保存的操作
+        MyConcurrentLinkedDeque<OpPaint> ops = getOpsBySnapshot();
+        if (ops.isEmpty()){
+            KLog.p(KLog.WARN, "no content!");
+            return;
         }
 
+        int boardW = getWidth()>0 ? getWidth() : boardWidth;
+        int boardH = getHeight()>0 ? getHeight() : boardHeight;
+
+        // 计算操作的边界
+        RectF bound = calcBoundary(ops);
+        KLog.p("calcBoundary=%s", bound);
+
+        // 根据操作边界结合当前画板缩放计算绘制操作需要的缩放及位移
+        Matrix curRelativeBoardMatrix = getDensityRelativeBoardMatrix();
+        curRelativeBoardMatrix.mapRect(bound);
+        float boundW = bound.width();
+        float boundH = bound.height();
+        float scale = 1;
+        if (boundW/boundH > boardW/boardH){
+            scale = boardW/boundW;
+        }else {
+            scale = boardH/boundH;
+        }
+
+        KLog.p("bound=%s, curRelativeBoardMatrix=%s", bound, curRelativeBoardMatrix);
+
+        Matrix matrix = new Matrix(curRelativeBoardMatrix);
+        if (scale > 1){ // 画板尺寸大于操作边界尺寸
+            if (0<bound.left&&boundW<boardW
+                    && 0<bound.right&&boundH<boardH){
+                // 操作已在画板中全景展示则无需做任何放缩或位移，直接原样展示
+                // DO NOTHING
+            }else { // 尽管操作边界尺寸较画板小，但操作目前展示在画板外，则移动操作以保证全景展示。
+                // 操作居中展示
+                matrix.postTranslate(-bound.left + (boardW - boundW) / 2, -bound.top + (boardH - boundH) / 2);
+            }
+        }else{
+            // 画板尺寸小于操作边界尺寸则需将操作缩放以适应画板尺寸
+            // 操作边界外围加塞padding使展示效果更友好
+            float refinedBoundW = boundW + 2*20;
+            float refinedBoundH = boundH + 2*20;
+            float refinedScale;
+            if (refinedBoundW/refinedBoundH > boardW/boardH){
+                refinedScale = boardW/refinedBoundW;
+            }else {
+                refinedScale = boardH/refinedBoundH;
+            }
+            // 先让操作边界居中
+            matrix.postTranslate(-bound.left+(boardW-boundW)/2, -bound.top+(boardH-boundH)/2);
+            // 再以屏幕中心为缩放中心缩小操作边界
+            matrix.postScale(refinedScale, refinedScale, boardW/2, boardH/2);
+        }
+
+//            KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, boardW, boardH, scale, matrix);
+        canvas.concat(matrix);
+
+        // 绘制操作
+        render(ops, canvas);
+
+    }
+
+    private void snapshotWindow(Canvas canvas){
+        synchronized (snapshotLock) {
+            KLog.p("picOps.isEmpty() = %s, shapeOps.isEmpty()=%s, isEmpty()=%s, picEditStuffs.isEmpty() = %s, " +
+                            "picLayerSnapshot=%s, shapeLayerSnapshot=%s, picEditingLayerSnapshot=%s",
+                    picOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
+                    picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
+            Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+            if (null != picLayerSnapshot) {
+                canvas.drawBitmap(picLayerSnapshot, 0, 0, paint);
+            }
+            if (null != shapeLayerSnapshot) {
+                canvas.drawBitmap(shapeLayerSnapshot, 0, 0, paint);
+            }
+            if (null != picEditingLayerSnapshot) {
+                canvas.drawBitmap(picEditingLayerSnapshot, 0, 0, paint);
+            }
+        }
     }
 
 
