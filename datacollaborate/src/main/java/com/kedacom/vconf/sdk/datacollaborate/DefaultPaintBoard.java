@@ -700,13 +700,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         OpPaint op;
         while (!ops.isEmpty()){
             op = ops.pollFirst();
-            KLog.p("op =%s", op);
+//            KLog.p("op =%s", op);
             bd = ((IBoundary) op).boundary();
             left = bd.left < left ? bd.left : left;
             top = bd.top < top ? bd.top : top;
             right = bd.right > right ? bd.right: right;
             bottom = bd.bottom > bottom ? bd.bottom : bottom;
-            KLog.p("bound[%s, %s, %s, %s]", left, top, right, bottom);
+//            KLog.p("bound[%s, %s, %s, %s]", left, top, right, bottom);
         }
 
         return new RectF(left, top, right, bottom);

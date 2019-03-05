@@ -88,19 +88,9 @@ publishing {
      }
 
     repositories {
-//        maven {
-//            // change URLs to point to your repos, e.g. http://my.org/repo
-////            def releasesRepoUrl = "$buildDir/repos/releases"
-////            def snapshotsRepoUrl = "$buildDir/repos/snapshots"
-////            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
-//
-//            credentials {
-//                username "admin"
-//                password "admin123"
-//            }
-//        }
-
         maven {
+//            def releasesRepoUrl = "$buildDir/repos/releases"  // 调试用可直接发布到本地
+//            def snapshotsRepoUrl = "$buildDir/repos/snapshots"
             def releasesRepoUrl = "http://172.16.6.154:9081/repository/releases/"
             def snapshotsRepoUrl = "http://172.16.6.154:9081/repository/snapshots/"
             url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
