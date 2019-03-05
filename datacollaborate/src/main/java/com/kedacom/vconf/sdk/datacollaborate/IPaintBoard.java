@@ -135,9 +135,12 @@ public interface IPaintBoard {
      * @param area 区域{@link #AREA_ALL},{@link #AREA_WINDOW}。
      * @param outputWidth 生成的图片的宽
      * @param outputHeight 生成的图片的高
-     * @return 快照。
+     * @param resultListener 结果监听器。（截图可能耗时）
      * */
-    Bitmap snapshot(int area, int outputWidth, int outputHeight);
+    void snapshot(int area, int outputWidth, int outputHeight, ISnapshotResultListener resultListener);
+    interface ISnapshotResultListener{
+        void onResult(Bitmap bitmap);
+    }
 
 
 //    /**

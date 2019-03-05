@@ -277,7 +277,7 @@ public class DefaultPainter implements IPainter {
                 }
 
                 // 获取当前画板
-                DefaultPaintBoard paintBoard = paintBoards.get(curBoardId); // TODO 直接保存curBoard
+                DefaultPaintBoard paintBoard = paintBoards.get(curBoardId);
                 if (null != paintBoard){
                     paintBoard.paint();
                 }
