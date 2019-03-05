@@ -743,10 +743,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             canvas.scale(outputW/(float)boardW, outputH/(float)boardH);
         }
 
-        KLog.p("area = %s, boardW=%s, boardH=%s, outputWidth = %s, outputHeight=%s, canvasW=%s, canvasH=%s, " +
-                        "isHardwareAccelerated=%s, canvas.isHardwareAccelerated=%s",
-                area, boardW, boardH, outputWidth, outputHeight, canvas.getWidth(), canvas.getHeight(),
-                isHardwareAccelerated(), canvas.isHardwareAccelerated());
+//        KLog.p("area = %s, boardW=%s, boardH=%s, outputWidth = %s, outputHeight=%s, canvasW=%s, canvasH=%s, " +
+//                        "isHardwareAccelerated=%s, canvas.isHardwareAccelerated=%s",
+//                area, boardW, boardH, outputWidth, outputHeight, canvas.getWidth(), canvas.getHeight(),
+//                isHardwareAccelerated(), canvas.isHardwareAccelerated());
 
         // 绘制背景
         if (bLoaded){
@@ -784,12 +784,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             return;
         }
 
-        int boardW = getWidth()>0 ? getWidth() : boardWidth;
-        int boardH = getHeight()>0 ? getHeight() : boardHeight;
+        float boardW = getWidth()>0 ? getWidth() : boardWidth;
+        float boardH = getHeight()>0 ? getHeight() : boardHeight;
 
         // 计算操作的边界
         RectF bound = calcBoundary(ops);
-        KLog.p("calcBoundary=%s", bound);
+//        KLog.p("calcBoundary=%s", bound);
 
         // 根据操作边界结合当前画板缩放计算绘制操作需要的缩放及位移
         Matrix curRelativeBoardMatrix = getDensityRelativeBoardMatrix();
@@ -803,7 +803,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             scale = boardH/boundH;
         }
 
-        KLog.p("bound=%s, curRelativeBoardMatrix=%s", bound, curRelativeBoardMatrix);
+//        KLog.p("bound=%s, curRelativeBoardMatrix=%s", bound, curRelativeBoardMatrix);
 
         Matrix matrix = new Matrix(curRelativeBoardMatrix);
         if (scale > 1){ // 画板尺寸大于操作边界尺寸
@@ -832,8 +832,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             matrix.postScale(refinedScale, refinedScale, boardW/2, boardH/2);
         }
 
-//            KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s", boundW, boundH, boardW, boardH, scale, matrix);
+//        KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s, " +
+//                        "canvas.matrix=%s, canvasW=%s, canvasH=%s",
+//                boundW, boundH, boardW, boardH, scale, matrix,
+//                canvas.getMatrix(), canvas.getWidth(), canvas.getHeight());
         canvas.concat(matrix);
+//        KLog.p("canvas.matrix=%s, canvasW=%s, canvasH=%s", canvas.getMatrix(), canvas.getWidth(), canvas.getHeight());
 
         // 绘制操作
         render(ops, canvas);
@@ -842,10 +846,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private void snapshotWindow(Canvas canvas){
         synchronized (snapshotLock) {
-            KLog.p("picOps.isEmpty() = %s, shapeOps.isEmpty()=%s, isEmpty()=%s, picEditStuffs.isEmpty() = %s, " +
-                            "picLayerSnapshot=%s, shapeLayerSnapshot=%s, picEditingLayerSnapshot=%s",
-                    picOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
-                    picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
+//            KLog.p("picOps.isEmpty() = %s, shapeOps.isEmpty()=%s, isEmpty()=%s, picEditStuffs.isEmpty() = %s, " +
+//                            "picLayerSnapshot=%s, shapeLayerSnapshot=%s, picEditingLayerSnapshot=%s",
+//                    picOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
+//                    picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
             Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
             if (null != picLayerSnapshot) {
                 canvas.drawBitmap(picLayerSnapshot, 0, 0, paint);

@@ -98,16 +98,16 @@ publishing {
 //                username "admin"
 //                password "admin123"
 //            }
-//
-//            url = "http://localhost:8081/repository/maven-releases/"
 //        }
 
         maven {
+            def releasesRepoUrl = "http://172.16.6.154:9081/repository/releases/"
+            def snapshotsRepoUrl = "http://172.16.6.154:9081/repository/snapshots/"
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
             credentials {
                 username "TrueTouch_Android"
                 password "android"
             }
-            url = "http://172.16.6.154:9081/repository/snapshots/"
         }
     }
 }
