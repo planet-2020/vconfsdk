@@ -740,8 +740,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             canvas.scale(outputW/(float)boardW, outputH/(float)boardH);
         }
 
-        KLog.p("area = %s, boardW=%s, boardH=%s, outputWidth = %s, outputHeight=%s, canvasW=%s, canvasH=%s",
-                area, boardW, boardH, outputWidth, outputHeight, canvas.getWidth(), canvas.getHeight());
+        KLog.p("area = %s, boardW=%s, boardH=%s, outputWidth = %s, outputHeight=%s, canvasW=%s, canvasH=%s, " +
+                        "isHardwareAccelerated=%s, canvas.isHardwareAccelerated=%s",
+                area, boardW, boardH, outputWidth, outputHeight, canvas.getWidth(), canvas.getHeight(),
+                isHardwareAccelerated(), canvas.isHardwareAccelerated());
 
         // 绘制背景
         if (getWidth()>0 && getHeight()>0){
