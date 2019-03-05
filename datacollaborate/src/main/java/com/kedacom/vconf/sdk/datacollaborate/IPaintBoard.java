@@ -135,20 +135,13 @@ public interface IPaintBoard {
      * @param area 区域{@link #AREA_ALL},{@link #AREA_WINDOW}。
      * @param outputWidth 生成的图片的宽
      * @param outputHeight 生成的图片的高
-     * @param resultListener 结果监听器。（截图可能耗时）
+     * @param resultListener 结果监听器。
      * */
     void snapshot(int area, int outputWidth, int outputHeight, ISnapshotResultListener resultListener);
     interface ISnapshotResultListener{
         void onResult(Bitmap bitmap);
     }
 
-
-//    /**
-//     * 从上次保存以来内容是否有变更。
-//     * 可用来决定是否需要再次保存。
-//     * @return 返回true如果从上次保存以来内容有变更，否则返回false。
-//     * */
-//    boolean changedSinceLastSave();  // XXX  思考是否有必要。
 
     /**
      * 撤销。
@@ -207,7 +200,7 @@ public interface IPaintBoard {
      * 获取被撤销操作数量。
      * 对于有限制撤销步数的情形可用来判断是否应该允许用户继续撤销。
      * 画板提供了相关的监听接口用于主动上报用户当前撤销状态{@link IOnBoardStateChangedListener#onRepealableStateChanged(int, int)}
-     * NOTE: 撤销数量会在收到可撤销操作时清零。
+     * NOTE: 撤销数量会在画板上新添可撤销操作时清零。
      * */
     int getRepealedOpsCount();
 
@@ -239,7 +232,7 @@ public interface IPaintBoard {
         /**
          * 画板状态发生了改变。
          * 此回调是下面所有回调的先驱，方便用户做一些公共处理。
-         * 如：用户可根据该回调决定是否需要重新“快照”{@link #snapshot(int, int, int)}。
+         * 如：用户可根据该回调决定是否需要重新“快照”{@link #snapshot(int, int, int, ISnapshotResultListener)}。
          * */
         default void onChanged(){}
 
