@@ -695,11 +695,9 @@ public class DataCollaborateManager extends Caster {
      *                       {@link #ErrCode_Failed}
      *                       resultListener.onFailed(errorCode);
      *
-     *                       注意：该监听器返回成功与否仅表示该请求是否已成功被平台受理，
-     *                       平台成功受理后会将该请求转给管理方，管理方同意后，才真正表明申请成功。
-     *                       管理方同意或拒绝后平台会转发相应通知给申请者，
-     *                       申请者需要监听{@link IOnOperatorEventListener#onOperatorAdded(List)}
-     *                       和{@link IOnOperatorEventListener#onApplyOperatorRejected()}来判断申请是成功了还是被拒绝了。
+     *                       注意：申请协作权需等管理方审批，很可能出现等待超时然后管理方才审批的场景。
+     *                       此场景下该监听器会回onTimeout，然后待管理方审批通过后上报通知{@link IOnOperatorEventListener#onOperatorAdded(List)}。
+     *                       至于超时后管理方拒绝的情形我们不予处理。
      *                       */
     public void applyForOperator(String e164, IResultListener resultListener){
         req(Msg.DCApplyOperator, resultListener, e164);
@@ -827,11 +825,6 @@ public class DataCollaborateManager extends Caster {
             case DCApplyOperatorNtf:
                 for (Object listener : listeners){
                     ((IOnOperatorEventListener)listener).onApplyOperator(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
-                }
-                break;
-            case DCApplyOperatorRejectedNtf:
-                for (Object listener : listeners){
-                    ((IOnOperatorEventListener)listener).onApplyOperatorRejected();
                 }
                 break;
         }
@@ -1538,12 +1531,7 @@ public class DataCollaborateManager extends Caster {
          * */
         default void onApplyOperator(DCMember member){}
         /**
-         *  （申请方收到）申请协作权被拒通知。{@link #applyForOperator(String, IResultListener)}
-         * */
-        default void onApplyOperatorRejected(){}
-        /**
          * （所有与会方收到）协作方被添加通知。
-         * 特别地，申请方申请协作权通过后也会导致自己收到该通知。{@link #applyForOperator(String, IResultListener)}
          * @param members 被添加的协作方信息
          * */
         default void onOperatorAdded(List<DCMember> members){}
