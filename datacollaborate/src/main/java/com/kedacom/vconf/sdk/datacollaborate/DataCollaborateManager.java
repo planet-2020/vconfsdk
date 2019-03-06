@@ -1341,7 +1341,6 @@ public class DataCollaborateManager extends Caster {
                 if (op instanceof OpInsertPic && ((OpInsertPic)op).getPicId().equals(opUpdatePic.getPicId())){
                     ((OpInsertPic)op).setPicPath(opUpdatePic.getPicSavePath()); // 更新图片的所在路径
                     bUpdated = true;
-                    break;
                 }
             }
             if (!bUpdated){
