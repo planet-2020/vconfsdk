@@ -50,8 +50,7 @@ public interface IPainter {
     /**暂停绘制*/
     void pause();
 
-    /**继续绘制。
-     * 在暂停绘制后可调用该接口继续绘制*/
+    /**继续绘制*/
     void resume();
 
     /**停止绘制*/

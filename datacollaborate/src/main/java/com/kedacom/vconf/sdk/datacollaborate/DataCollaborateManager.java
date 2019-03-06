@@ -693,11 +693,12 @@ public class DataCollaborateManager extends Caster {
      *                       resultListener.onSuccess(null);
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
+     *                       {@link #ErrCode_Apply_Operator_Rejected}
      *                       resultListener.onFailed(errorCode);
      *
      *                       注意：申请协作权需等管理方审批，很可能出现等待超时然后管理方才审批的场景。
      *                       此场景下该监听器会回onTimeout，然后待管理方审批通过后上报通知{@link IOnOperatorEventListener#onOperatorAdded(List)}。
-     *                       至于超时后管理方拒绝的情形我们不予处理。
+     *                       至于超时后管理方拒绝的情形无需处理。
      *                       */
     public void applyForOperator(String e164, IResultListener resultListener){
         req(Msg.DCApplyOperator, resultListener, e164);
@@ -840,9 +841,6 @@ public class DataCollaborateManager extends Caster {
      *                  失败返回错误码：
      *                  {@link #ErrCode_Failed}
      *                  resultListener.onFailed(errorCode);
-     *
-     *                  注意：该请求会触发通知{@link IOnBoardOpListener#onBoardCreated(BoardInfo)}，
-     *                  请求者自身也会收到该通知，避免在该通知监听器中和结果监听器中做重复的处理逻辑。
      * */
     public void newBoard(String creatorE164, IResultListener listener){
         req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164, new TDCSBoardInfo(UUID.randomUUID().toString(), creatorE164)));
@@ -860,9 +858,6 @@ public class DataCollaborateManager extends Caster {
      *                  失败返回错误码：
      *                  {@link #ErrCode_Failed}
      *                  resultListener.onFailed(errorCode);
-     *
-     *                  注意：该请求会触发通知{@link IOnBoardOpListener#onBoardCreated(BoardInfo)}，
-     *                  请求者自身也会收到该通知，避免在该通知监听器中和结果监听器中做重复的处理逻辑。
      * */
     public void newDocBoard(String boardName, int pageCount, int curPageIndex, String creatorE164, IResultListener listener){
         req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164,
@@ -878,9 +873,6 @@ public class DataCollaborateManager extends Caster {
      *                  失败返回错误码：
      *                  {@link #ErrCode_Failed}
      *                  resultListener.onFailed(errorCode);
-     *
-     *                  注意：该请求会触发通知{@link IOnBoardOpListener#onBoardDeleted(String)}，
-     *                  请求者自身也会收到该通知，避免在该通知监听器中和结果监听器中做重复的处理逻辑。
      * */
     public void delBoard(String boardId, IResultListener listener){
         req(Msg.DCDelBoard, listener, curDcConfE164, boardId);
@@ -909,9 +901,6 @@ public class DataCollaborateManager extends Caster {
      *                  失败返回错误码：
      *                  {@link #ErrCode_Failed}
      *                  resultListener.onFailed(errorCode);
-     *
-     *                  注意：该请求会触发通知{@link IOnBoardOpListener#onBoardSwitched(String)}，
-     *                  请求者自身也会收到该通知，避免在该通知监听器中和结果监听器中做重复的处理逻辑。
      * */
     public void switchBoard(String boardId, IResultListener listener){
         req(Msg.DCSwitchBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
@@ -1470,7 +1459,10 @@ public class DataCollaborateManager extends Caster {
     }
 
     /**
-     * 画板操作通知监听器
+     * 画板操作通知监听器。
+     * NOTE：其他方进行画板操作才会触发该监听器，
+     * 己端进行画板操作结果是通过请求方法中的{@link IResultListener}反馈的，如：
+     * {@link #newBoard(String, IResultListener)}创建画板的结果是直接通过传入的结果监听器反馈给用户的。
      * */
     public interface IOnBoardOpListener extends ILifecycleOwner{
         /**画板创建通知
