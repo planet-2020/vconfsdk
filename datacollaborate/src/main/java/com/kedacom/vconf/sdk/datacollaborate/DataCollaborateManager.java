@@ -1117,7 +1117,7 @@ public class DataCollaborateManager extends Caster {
 
 
     private String getPicSavePath(String picId){
-        return PIC_SAVE_DIR +File.pathSeparator+ picId + ".jpg";
+        return PIC_SAVE_DIR +"/"+ picId + ".jpg";
     }
 
 

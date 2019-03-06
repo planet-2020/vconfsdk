@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-import androidx.annotation.NonNull;
 
 /**
  * 更新图片。
@@ -18,10 +17,12 @@ public class OpUpdatePic extends OpPaint {
         type = EOpType.UPDATE_PICTURE;
     }
 
-    @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("picId=%s, picSavePath=%s", picId, picSavePath)+super.toString()+"}";
+        return "OpUpdatePic{" +
+                "picId='" + picId + '\'' +
+                ", picSavePath='" + picSavePath + '\'' +
+                '}';
     }
 
     public String getPicId() {
