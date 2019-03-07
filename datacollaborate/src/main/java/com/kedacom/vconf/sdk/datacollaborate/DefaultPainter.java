@@ -244,17 +244,6 @@ public class DefaultPainter implements IPainter {
                     return;
                 }
 
-                synchronized (renderLock) {
-                    bNeedRender = bDirty && !bPaused;
-                }
-
-                if (!bNeedRender){
-                    DefaultPaintBoard paintBoard = paintBoards.get(curBoardId);
-                    if (null != paintBoard){
-                        paintBoard.cacheSnapshot();
-                    }
-                }
-
                 // 判断当前是否有渲染任务
                 synchronized (renderLock) {
                     bNeedRender = bDirty && !bPaused;

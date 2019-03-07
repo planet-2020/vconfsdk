@@ -15,6 +15,7 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -762,9 +763,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         assHandler.post(() -> {
             if (AREA_WINDOW == area) {
-                if (bLoaded) {
+                if (bLoaded && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     snapshotWindow(canvas);
-                }else{
+                } else {
                     snapshotAll(canvas);
                 }
             }else{
@@ -844,12 +845,42 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     }
 
+
+    private final Object snapshotLock = new Object();
+    private Bitmap shapeLayerSnapshot;
+    private Bitmap picLayerSnapshot;
+    private Bitmap picEditingLayerSnapshot;
+    /**
+     * NOTE: 该方法需在API LEVEL >= 21时使用，21以下TextureView.getBitmap方法有bug，
+     * @see <a href="https://github.com/mapbox/mapbox-gl-native/issues/4911">
+     *     Android 4.4.x (KitKat) Hardware Acceleration Thread Bug #4911
+     *     </a>
+     * */
     private void snapshotWindow(Canvas canvas){
         synchronized (snapshotLock) {
 //            KLog.p("picOps.isEmpty() = %s, shapeOps.isEmpty()=%s, isEmpty()=%s, picEditStuffs.isEmpty() = %s, " +
 //                            "picLayerSnapshot=%s, shapeLayerSnapshot=%s, picEditingLayerSnapshot=%s",
 //                    picOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
 //                    picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
+
+            if (null == picLayerSnapshot) {
+                picLayerSnapshot = picPaintView.getBitmap();
+            } else {
+                picPaintView.getBitmap(picLayerSnapshot);
+            }
+
+            if (null == shapeLayerSnapshot) {
+                shapeLayerSnapshot = shapePaintView.getBitmap();
+            } else {
+                shapePaintView.getBitmap(shapeLayerSnapshot);
+            }
+
+            if (null == picEditingLayerSnapshot) {
+                picEditingLayerSnapshot = picEditPaintView.getBitmap();
+            } else {
+                picEditPaintView.getBitmap(picEditingLayerSnapshot);
+            }
+
             Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
             if (null != picLayerSnapshot) {
                 canvas.drawBitmap(picLayerSnapshot, 0, 0, paint);
@@ -1605,96 +1636,68 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    private final Object snapshotLock = new Object();
-    private Bitmap shapeLayerSnapshot;
-    private Bitmap picLayerSnapshot;
-    private Bitmap picEditingLayerSnapshot;
-    void cacheSnapshot(){
-        KLog.p("=>");
-        synchronized (snapshotLock) {
-            if (null == shapeLayerSnapshot) {
-                shapeLayerSnapshot = shapePaintView.getBitmap();
-            } else {
-                shapePaintView.getBitmap(shapeLayerSnapshot);
-            }
-
-            if (null == picLayerSnapshot) {
-                picLayerSnapshot = picPaintView.getBitmap();
-            } else {
-                picPaintView.getBitmap(picLayerSnapshot);
-            }
-
-            if (null == picEditingLayerSnapshot) {
-                picEditingLayerSnapshot = picEditPaintView.getBitmap();
-            } else {
-                picEditPaintView.getBitmap(picEditingLayerSnapshot);
-            }
-        }
-        KLog.p("<=");
-    }
-
-
     void paint(){
         KLog.p("=> board=%s", getBoardId());
         Matrix matrix = getDensityRelativeBoardMatrix();
 
-        // 图形层绘制
-        Canvas shapePaintViewCanvas = shapePaintView.lockCanvas();
-        if (null != shapePaintViewCanvas) {
-            // 每次绘制前先清空画布以避免残留
-            shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+        synchronized (snapshotLock) {
+            // 图形层绘制
+            Canvas shapePaintViewCanvas = shapePaintView.lockCanvas();
+            if (null != shapePaintViewCanvas) {
+                // 每次绘制前先清空画布以避免残留
+                shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
-            // 设置画布matrix
-            shapePaintViewCanvas.setMatrix(matrix);
+                // 设置画布matrix
+                shapePaintViewCanvas.setMatrix(matrix);
 
-            // 图形绘制
-            render(shapeOps, shapePaintViewCanvas);
+                // 图形绘制
+                render(shapeOps, shapePaintViewCanvas);
 
-            // 临时图形绘制
-            render(tmpShapeOps, shapePaintViewCanvas);
+                // 临时图形绘制
+                render(tmpShapeOps, shapePaintViewCanvas);
 
-            // 绘制正在调整中的操作
-            synchronized (adjustingOpLock) {
-                if (null != adjustingShapeOp) render(adjustingShapeOp, shapePaintViewCanvas);
+                // 绘制正在调整中的操作
+                synchronized (adjustingOpLock) {
+                    if (null != adjustingShapeOp) render(adjustingShapeOp, shapePaintViewCanvas);
+                }
             }
-        }
 
-        // 图片层绘制
-        Canvas picPaintViewCanvas = picPaintView.lockCanvas();
-        if (null != picPaintViewCanvas) {  // TODO 优化，尝试如果没有影响图片层的操作，如插入/删除/拖动/放缩图片，就不刷新图片层。
-            // 清空画布
-            picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+            // 图片层绘制
+            Canvas picPaintViewCanvas = picPaintView.lockCanvas();
+            if (null != picPaintViewCanvas) {  // TODO 优化，尝试如果没有影响图片层的操作，如插入/删除/拖动/放缩图片，就不刷新图片层。
+                // 清空画布
+                picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
-            // 设置画布matrix
-            picPaintViewCanvas.setMatrix(matrix);
+                // 设置画布matrix
+                picPaintViewCanvas.setMatrix(matrix);
 
-            // 图片绘制
-            render(picOps, picPaintViewCanvas);
-        }
-
-        // 图片编辑层绘制
-        Canvas tmpPaintViewCanvas = picEditPaintView.lockCanvas();
-        if (null != tmpPaintViewCanvas) {
-            // 清空画布
-            tmpPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-
-            // 设置缩放比例
-            tmpPaintViewCanvas.setMatrix(picEditViewMatrix);
-
-            // 绘制
-            for (DefaultPaintBoard.PicEditStuff picEditStuff : picEditStuffs) {
-                render(picEditStuff.pic, tmpPaintViewCanvas);
-                render(picEditStuff.dashedRect, tmpPaintViewCanvas);
-                render(picEditStuff.delIcon, tmpPaintViewCanvas);
+                // 图片绘制
+                render(picOps, picPaintViewCanvas);
             }
-        }
 
-        // 提交绘制任务，执行绘制
+            // 图片编辑层绘制
+            Canvas tmpPaintViewCanvas = picEditPaintView.lockCanvas();
+            if (null != tmpPaintViewCanvas) {
+                // 清空画布
+                tmpPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+
+                // 设置缩放比例
+                tmpPaintViewCanvas.setMatrix(picEditViewMatrix);
+
+                // 绘制
+                for (DefaultPaintBoard.PicEditStuff picEditStuff : picEditStuffs) {
+                    render(picEditStuff.pic, tmpPaintViewCanvas);
+                    render(picEditStuff.dashedRect, tmpPaintViewCanvas);
+                    render(picEditStuff.delIcon, tmpPaintViewCanvas);
+                }
+            }
+
+            // 提交绘制任务，执行绘制
 //                KLog.p("go render!");
-        shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
-        picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
-        picEditPaintView.unlockCanvasAndPost(tmpPaintViewCanvas);
-
+            shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
+            picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
+            picEditPaintView.unlockCanvasAndPost(tmpPaintViewCanvas);
+        }
         KLog.p("<=");
     }
 
