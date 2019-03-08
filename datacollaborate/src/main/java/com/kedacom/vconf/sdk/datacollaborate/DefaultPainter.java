@@ -26,7 +26,6 @@ public class DefaultPainter implements IPainter {
     private final Object renderLock = new Object();
 
 
-    // 调整中的操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener() {
         @Override
         public void onOp(OpPaint opPaint) {
@@ -70,10 +69,9 @@ public class DefaultPainter implements IPainter {
 
     @Override
     public void start() {
-        if (renderThread.isAlive()){
-            return;
+        if (!renderThread.isAlive()){
+            renderThread.start();
         }
-        renderThread.start();
     }
 
     @Override
@@ -129,11 +127,11 @@ public class DefaultPainter implements IPainter {
     @Override
     public IPaintBoard deletePaintBoard(String boardId) {
         KLog.p(KLog.WARN,"delete board %s", boardId);
-        if (boardId.equals(curBoardId)){
-            curBoardId = null;
-        }
         DefaultPaintBoard board =  paintBoards.remove(boardId);
         if (null != board){
+            if (board.getBoardId().equals(curBoardId)){
+                curBoardId = null;
+            }
             board.setOnPaintOpGeneratedListener(null);
             board.clean();  // XXX 按理说不应该在删除时清理board，删除后再加载应仍能使用
         }
