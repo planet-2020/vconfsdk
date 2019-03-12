@@ -865,13 +865,19 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         if (hasEraseOp[0]) {
             // 保存已绘制的内容，避免被擦除
-            canvas.saveLayer(0, 0, canvas.getWidth(), canvas.getHeight(), null, Canvas.ALL_SAVE_FLAG);
-        }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+                canvas.saveLayer(null, null);
+            }else {
+                canvas.saveLayer(null, null, Canvas.ALL_SAVE_FLAG);
+            }
 
-        render(shapeOps, canvas);
+            render(shapeOps, canvas);
 
-        if (hasEraseOp[0]) {
             canvas.restore();
+
+        }else{
+
+            render(shapeOps, canvas);
         }
 
         render(editingPicOps, canvas);
