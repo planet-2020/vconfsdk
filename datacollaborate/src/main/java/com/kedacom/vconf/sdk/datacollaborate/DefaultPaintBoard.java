@@ -640,52 +640,73 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    /**
-     * 获取需要纳入快照的操作集
-     * */
-    private MyConcurrentLinkedDeque<OpPaint> getOpsBySnapshot(){
-        KLog.p("=#=>");
-        MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
-        MyConcurrentLinkedDeque<OpPaint> refinedShapeOps = new MyConcurrentLinkedDeque<>();
-        MyConcurrentLinkedDeque<OpPaint> refinedPicOps = new MyConcurrentLinkedDeque<>();
+    private MyConcurrentLinkedDeque<OpPaint> getPicOpsBySnapshot(){
+        MyConcurrentLinkedDeque<OpPaint> allOps = new MyConcurrentLinkedDeque<>();
         MyConcurrentLinkedDeque<OpPaint> refinedOps = new MyConcurrentLinkedDeque<>();
+        // 筛选需要纳入快照的图片操作
+        allOps.addAll(picOps);
+        while (!allOps.isEmpty()){
+            OpPaint op = allOps.pollFirst();
+            if (op instanceof IBoundary){
+                refinedOps.offerLast(op);
+            }
+        }
+        return refinedOps;
+    }
 
-        // 筛选需要纳入快照的图形操作
-        ops.addAll(shapeOps);
-        ops.addAll(tmpShapeOps);
-        while (!ops.isEmpty()){
-            OpPaint op = ops.pollFirst();
+    private MyConcurrentLinkedDeque<OpPaint> getShapeOpsBySnapshot(boolean[] hasEraseOp){
+        MyConcurrentLinkedDeque<OpPaint> allOps = new MyConcurrentLinkedDeque<>();
+        MyConcurrentLinkedDeque<OpPaint> refinedOps = new MyConcurrentLinkedDeque<>();
+        allOps.addAll(shapeOps);
+        allOps.addAll(tmpShapeOps);
+        while (!allOps.isEmpty()){
+            OpPaint op = allOps.pollFirst();
             if (EOpType.CLEAR_SCREEN == op.getType()){
-                refinedShapeOps.clear(); // 剔除清屏及其之前的操作（清屏不影响图片，所以筛选图片不在此处做）
+                refinedOps.clear(); // 剔除清屏及其之前的操作（清屏/擦除不影响图片）
                 continue;
             }
             if (op instanceof IBoundary) {
-                refinedShapeOps.offerLast(op);
+                refinedOps.offerLast(op);
+                if (op instanceof OpErase || op instanceof OpRectErase){
+                    hasEraseOp[0] = true;
+                }
             }
         }
-
-        // 筛选需要纳入快照的图片操作
-        ops.addAll(picOps);
-        while (!ops.isEmpty()){
-            OpPaint op = ops.pollFirst();
-            if (op instanceof IBoundary){
-                refinedPicOps.offerLast(op);
-            }
-        }
-        // 正在编辑的图片也纳入快照
-        for(PicEditStuff picEditStuff : picEditStuffs){
-            refinedPicOps.offerLast(picEditStuff.pic);
-            refinedPicOps.offerLast(picEditStuff.dashedRect);
-            refinedPicOps.offerLast(picEditStuff.delIcon);
-        }
-
-        refinedOps.addAll(refinedPicOps);
-        refinedOps.addAll(refinedShapeOps);
-
-        KLog.p("<=#=");
 
         return refinedOps;
+    }
 
+    private MyConcurrentLinkedDeque<OpPaint> getEditingPicOpsBySnapshot(){
+        MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
+        Matrix increasedMatrix = new Matrix(picEditViewMatrix);
+        increasedMatrix.postConcat(MatrixHelper.invert(savedMatrixBeforeEditPic));
+        RectF bound = new RectF();
+        // 正在编辑的图片也纳入快照
+        for(PicEditStuff picEditStuff : picEditStuffs){
+            OpInsertPic pic = new OpInsertPic();
+            pic.setPic(picEditStuff.pic.getPic());
+            pic.setMatrix(picEditStuff.pic.getMatrix());
+            pic.getMatrix().postConcat(increasedMatrix);
+
+            OpInsertPic delIcon = new OpInsertPic();
+            delIcon.setPic(picEditStuff.delIcon.getPic());
+            delIcon.setMatrix(picEditStuff.delIcon.getMatrix());
+            delIcon.getMatrix().postConcat(increasedMatrix);
+
+            OpDrawRect dashedRect = new OpDrawRect();
+            bound.set(picEditStuff.dashedRect.boundary());
+            increasedMatrix.mapRect(bound);
+            dashedRect.setValues(bound);
+            dashedRect.setLineStyle(picEditStuff.dashedRect.getLineStyle());
+            dashedRect.setStrokeWidth(picEditStuff.dashedRect.getStrokeWidth());
+            dashedRect.setColor(picEditStuff.dashedRect.getColor());
+
+            ops.offerLast(pic);
+            ops.offerLast(dashedRect);
+            ops.offerLast(delIcon);
+        }
+
+        return ops;
     }
 
     /**计算操作集合的边界*/
@@ -744,11 +765,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             canvas.scale(outputW/(float)boardW, outputH/(float)boardH);
         }
 
-//        KLog.p("area = %s, boardW=%s, boardH=%s, outputWidth = %s, outputHeight=%s, canvasW=%s, canvasH=%s, " +
-//                        "isHardwareAccelerated=%s, canvas.isHardwareAccelerated=%s",
-//                area, boardW, boardH, outputWidth, outputHeight, canvas.getWidth(), canvas.getHeight(),
-//                isHardwareAccelerated(), canvas.isHardwareAccelerated());
-
         // 绘制背景
         if (bLoaded){
             draw(canvas);
@@ -778,8 +794,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     private void snapshotAll(Canvas canvas){
+
         // 筛选需要保存的操作
-        MyConcurrentLinkedDeque<OpPaint> ops = getOpsBySnapshot();
+        MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
+
+        boolean[] hasEraseOp = new boolean[1];
+        MyConcurrentLinkedDeque<OpPaint> picOps = getPicOpsBySnapshot();
+        MyConcurrentLinkedDeque<OpPaint> shapeOps = getShapeOpsBySnapshot(hasEraseOp);
+        MyConcurrentLinkedDeque<OpPaint> editingPicOps = getEditingPicOpsBySnapshot();
+        ops.addAll(picOps);
+        ops.addAll(shapeOps);
+        ops.addAll(editingPicOps);
+
         if (ops.isEmpty()){
             KLog.p(KLog.WARN, "no content!");
             return;
@@ -833,15 +859,22 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             matrix.postScale(refinedScale, refinedScale, boardW/2, boardH/2);
         }
 
-//        KLog.p("boundW=%s, boundH=%s, windowW=%s, windowH=%s, scale=%s, snapshotmatrix=%s, " +
-//                        "canvas.matrix=%s, canvasW=%s, canvasH=%s",
-//                boundW, boundH, boardW, boardH, scale, matrix,
-//                canvas.getMatrix(), canvas.getWidth(), canvas.getHeight());
         canvas.concat(matrix);
-//        KLog.p("canvas.matrix=%s, canvasW=%s, canvasH=%s", canvas.getMatrix(), canvas.getWidth(), canvas.getHeight());
 
-        // 绘制操作
-        render(ops, canvas);
+        render(picOps, canvas);
+
+        if (hasEraseOp[0]) {
+            // 保存已绘制的内容，避免被擦除
+            canvas.saveLayer(0, 0, canvas.getWidth(), canvas.getHeight(), null, Canvas.ALL_SAVE_FLAG);
+        }
+
+        render(shapeOps, canvas);
+
+        if (hasEraseOp[0]) {
+            canvas.restore();
+        }
+
+        render(editingPicOps, canvas);
 
     }
 
