@@ -19,7 +19,7 @@ import androidx.lifecycle.LifecycleOwner;
 
 public class DefaultPainter implements IPainter {
 
-    private int role = ROLE_COPYER;
+    private int role = ROLE_COPIER;
 
     private Map<String, DefaultPaintBoard> paintBoards = new LinkedHashMap<>();
 

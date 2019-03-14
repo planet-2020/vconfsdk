@@ -65,7 +65,7 @@ public interface IPainter {
      * 临摹者角色。
      * 临摹者只能被动接收画板绘制操作，不能主动增/删/切画板及主动在画板上绘制。
      * */
-    int ROLE_COPYER = 1;
+    int ROLE_COPIER = 1;
     /**
      * 创作者角色。
      * 创作者既能临摹亦能主动增/删/切画板及主动在画板上绘制。
