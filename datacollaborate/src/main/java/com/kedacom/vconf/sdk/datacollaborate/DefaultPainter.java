@@ -134,7 +134,6 @@ public class DefaultPainter implements IPainter {
                 curBoardId = null;
             }
             board.setOnStateChangedListener(null);
-//            board.clean();  // XXX 按理说不应该在删除时清理board，删除后再加载应仍能使用
         }
         return board;
     }
@@ -144,7 +143,6 @@ public class DefaultPainter implements IPainter {
         KLog.p(KLog.WARN,"delete all boards");
         for (DefaultPaintBoard board : paintBoards.values()){
             board.setOnStateChangedListener(null);
-//            board.clean();  // XXX 按理说不应该在删除时清理board，删除后再加载应仍能使用
         }
         paintBoards.clear();
         curBoardId = null;

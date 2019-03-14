@@ -569,11 +569,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    void clean(){
-        handler.removeCallbacksAndMessages(null);
-        assHandler.removeCallbacksAndMessages(this);
-    }
-
     @Override
     public String getBoardId() {
         return null!=boardInfo ? boardInfo.getId() : null;
@@ -778,7 +773,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }else{
                 snapshotAll(canvas);
             }
-            handler.post(() -> resultListener.onResult(bt));
+            handler.post(() -> resultListener.onResult(bt));  // XXX：可能发生resultListener被销毁后仍收到该回调的情形。
         });
 
     }
