@@ -467,7 +467,7 @@ public class DataCollaborateManager extends Caster {
                                             Message msg = Message.obtain();
                                             msg.what = MsgID_SynchronizingTimeout;
                                             msg.obj = board.achTabId;
-                                            handler.sendMessageDelayed(msg, 10*1000);
+                                            handler.sendMessageDelayed(msg, 5*1000);
                                         }
 
                                         @Override
@@ -1144,8 +1144,10 @@ public class DataCollaborateManager extends Caster {
                     while (!ops.isEmpty()) {
                         toReportOps.add(ops.poll());
                     }
-                    for (Object listener : listeners) {
-                        ((IOnPaintOpListener) listener).onBatchPaint(toReportOps);
+                    for (OpPaint op : toReportOps) {
+                        for (Object listener : listeners) {
+                            ((IOnPaintOpListener) listener).onPaint(op);
+                        }
                     }
                     break;
             }
@@ -1180,8 +1182,10 @@ public class DataCollaborateManager extends Caster {
                 while (!ops.isEmpty()) {
                     toReportOps.add(ops.poll());
                 }
-                for (Object listener : listeners) {
-                    ((IOnPaintOpListener) listener).onBatchPaint(toReportOps);
+                for (OpPaint op : toReportOps) {
+                    for (Object listener : listeners) {
+                        ((IOnPaintOpListener) listener).onPaint(op);
+                    }
                 }
                 break;
 
@@ -1451,10 +1455,6 @@ public class DataCollaborateManager extends Caster {
         /**绘制通知
          * @param op 绘制操作*/
         void onPaint(OpPaint op);
-        /**
-         * 批量绘制通知
-         * @param ops 绘制操作列表*/
-        void onBatchPaint(List<OpPaint> ops);
     }
 
     /**

@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Process;
 
 import com.kedacom.vconf.sdk.base.KLog;
@@ -27,9 +29,10 @@ public class DefaultPainter implements IPainter {
     private boolean bPaused = false;
     private final Object renderLock = new Object();
 
+    private HandlerThread handlerThread;
+    private Handler handler;
 
     public DefaultPainter(Context context) {
-
         if (context instanceof LifecycleOwner){
             ((LifecycleOwner)context).getLifecycle().addObserver(new DefaultLifecycleObserver(){
                 @Override
@@ -58,6 +61,10 @@ public class DefaultPainter implements IPainter {
             });
         }
 
+
+        handlerThread = new HandlerThread("PainterAss", Process.THREAD_PRIORITY_BACKGROUND);
+        handlerThread.start();
+        handler = new Handler(handlerThread.getLooper());
     }
 
     @Override
@@ -96,6 +103,8 @@ public class DefaultPainter implements IPainter {
         if (renderThread.isAlive()) {
             renderThread.interrupt();
         }
+        handler.removeCallbacksAndMessages(null);
+        handlerThread.quit();
         deleteAllPaintBoards();
     }
 
@@ -192,6 +201,8 @@ public class DefaultPainter implements IPainter {
         return paintBoards.size();
     }
 
+
+    private Runnable refreshRunnable = this::refresh;
     @Override
     public void paint(OpPaint op) {
         String boardId = op.getBoardId();
@@ -201,29 +212,11 @@ public class DefaultPainter implements IPainter {
             return;
         }
         if (paintBoard.onPaintOp(op)){
-            refresh();
+            handler.removeCallbacks(refreshRunnable);
+            handler.postDelayed(refreshRunnable, 50);
         }
     }
 
-    @Override
-    public void batchPaint(List<OpPaint> ops){
-        boolean bRefresh = false;
-        for (OpPaint op : ops){
-            String boardId = op.getBoardId();
-            DefaultPaintBoard paintBoard = paintBoards.get(boardId);
-            if(null == paintBoard){
-                KLog.p(KLog.WARN,"no board %s for op %s", boardId, op);
-                continue;
-            }
-            if (paintBoard.onPaintOp(op)
-                    && boardId.equals(curBoardId)){
-                bRefresh = true;
-            }
-        }
-        if (bRefresh) {
-            refresh();
-        }
-    }
 
     @Override
     public void setRole(int role) {

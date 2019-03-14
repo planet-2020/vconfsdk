@@ -60,10 +60,6 @@ public interface IPainter {
      * @param op 绘制操作*/
     void paint(OpPaint op);
 
-    /**批量绘制
-     * @param ops 绘制操作列表*/
-    void batchPaint(List<OpPaint> ops);
-
 
     /**
      * 临摹者角色。
