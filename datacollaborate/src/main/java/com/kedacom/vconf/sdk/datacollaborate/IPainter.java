@@ -64,21 +64,6 @@ public interface IPainter {
      * @param ops 绘制操作列表*/
     void batchPaint(List<OpPaint> ops);
 
-//    /**
-//     * 发布者。
-//     * 己端作为“创作者”角色完成创作后通过发布者将内容（绘制操作）发布出去。
-//     * */
-//    interface IPublisher{
-//        /**
-//         * 产生了绘制操作可供发布
-//         * @param Op 绘制操作*/
-//        void publish(OpPaint Op);
-//    }
-//    /**
-//     * 设置发布者。
-//     * NOTE: 只有设置了发布者才可以在画板上主动绘制
-//     * */
-//    void setPublisher(IPublisher publisher);
 
     /**
      * 临摹者角色。
