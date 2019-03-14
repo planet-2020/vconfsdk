@@ -17,6 +17,8 @@ import androidx.lifecycle.LifecycleOwner;
 
 public class DefaultPainter implements IPainter {
 
+    private int role = ROLE_COPYER;
+
     private Map<String, DefaultPaintBoard> paintBoards = new LinkedHashMap<>();
 
     private String curBoardId;
@@ -24,14 +26,6 @@ public class DefaultPainter implements IPainter {
     private boolean bDirty = false;
     private boolean bPaused = false;
     private final Object renderLock = new Object();
-
-
-    private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener() {
-        @Override
-        public void onOp(OpPaint opPaint) {
-            refresh();
-        }
-    };
 
 
     public DefaultPainter(Context context) {
@@ -60,7 +54,6 @@ public class DefaultPainter implements IPainter {
                 public void onDestroy(@NonNull LifecycleOwner owner) {
                     KLog.p("LifecycleOwner %s to be destroyed", owner);
                     stop();
-                    clean();
                 }
             });
         }
@@ -74,6 +67,9 @@ public class DefaultPainter implements IPainter {
         }
     }
 
+    /**
+     * 调用该方法暂停绘制
+     * */
     @Override
     public void pause() {
         synchronized (renderLock) {
@@ -81,6 +77,9 @@ public class DefaultPainter implements IPainter {
         }
     }
 
+    /**
+     * 调用{@link #pause()}后再调用该方法恢复正常运行状态。
+     * */
     @Override
     public void resume() {
         synchronized (renderLock) {
@@ -89,18 +88,20 @@ public class DefaultPainter implements IPainter {
         refresh();
     }
 
+    /**
+     * 调用该接口后painter释放了所有资源，已无用，不可再调用start恢复。
+     * */
     @Override
     public void stop() {
         if (renderThread.isAlive()) {
             renderThread.interrupt();
         }
-    }
-
-
-    private void clean(){
         deleteAllPaintBoards();
     }
 
+    /**
+     * 刷新画板
+     * */
     private void refresh(){
         synchronized (renderLock){
             bDirty = true;
@@ -117,7 +118,7 @@ public class DefaultPainter implements IPainter {
             return false;
         }
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
-        defaultPaintBoard.setOnPaintOpGeneratedListener(onPaintOpGeneratedListener);
+        defaultPaintBoard.setOnStateChangedListener(onStateChangedListener);
         paintBoards.put(boardId, defaultPaintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 
@@ -132,8 +133,8 @@ public class DefaultPainter implements IPainter {
             if (board.getBoardId().equals(curBoardId)){
                 curBoardId = null;
             }
-            board.setOnPaintOpGeneratedListener(null);
-            board.clean();  // XXX 按理说不应该在删除时清理board，删除后再加载应仍能使用
+            board.setOnStateChangedListener(null);
+//            board.clean();  // XXX 按理说不应该在删除时清理board，删除后再加载应仍能使用
         }
         return board;
     }
@@ -142,8 +143,8 @@ public class DefaultPainter implements IPainter {
     public void deleteAllPaintBoards() {
         KLog.p(KLog.WARN,"delete all boards");
         for (DefaultPaintBoard board : paintBoards.values()){
-            board.setOnPaintOpGeneratedListener(null);
-            board.clean();  // XXX 按理说不应该在删除时清理board，删除后再加载应仍能使用
+            board.setOnStateChangedListener(null);
+//            board.clean();  // XXX 按理说不应该在删除时清理board，删除后再加载应仍能使用
         }
         paintBoards.clear();
         curBoardId = null;
@@ -226,6 +227,76 @@ public class DefaultPainter implements IPainter {
         }
     }
 
+    @Override
+    public void setRole(int role) {
+        this.role = role;
+    }
+
+
+    private IOnBoardStateChangedListener onBoardStateChangedListener;
+    @Override
+    public void setOnBoardStateChangedListener(IOnBoardStateChangedListener onBoardStateChangedListener) {
+        this.onBoardStateChangedListener = onBoardStateChangedListener;
+    }
+
+
+    private DefaultPaintBoard.IOnStateChangedListener onStateChangedListener = new DefaultPaintBoard.IOnStateChangedListener() {
+        @Override
+        public void onPaintOpGenerated(String boardId, OpPaint opPaint, boolean bNeedRefresh) {
+            if (ROLE_COPYER == role){
+                return;
+            }
+
+            if (boardId.equals(curBoardId) && bNeedRefresh) {
+                refresh();
+            }
+
+            if (null != opPaint && null != onBoardStateChangedListener){
+                onBoardStateChangedListener.onPaintOpGenerated(boardId, opPaint);
+            }
+        }
+
+        @Override
+        public void onChanged(String boardId) {
+            if (ROLE_COPYER == role){
+                return;
+            }
+            if (null != onBoardStateChangedListener) onBoardStateChangedListener.onChanged(boardId);
+        }
+
+        @Override
+        public void onPictureCountChanged(String boardId, int count) {
+            if (ROLE_COPYER == role){
+                return;
+            }
+            if (null != onBoardStateChangedListener) onBoardStateChangedListener.onPictureCountChanged(boardId, count);
+        }
+
+        @Override
+        public void onZoomRateChanged(String boardId, int percentage) {
+            if (ROLE_COPYER == role){
+                return;
+            }
+            if (null != onBoardStateChangedListener) onBoardStateChangedListener.onZoomRateChanged(boardId, percentage);
+        }
+
+        @Override
+        public void onRepealableStateChanged(String boardId, int repealedOpsCount, int remnantOpsCount) {
+            if (ROLE_COPYER == role){
+                return;
+            }
+            if (null != onBoardStateChangedListener) onBoardStateChangedListener.onRepealableStateChanged(boardId, repealedOpsCount, remnantOpsCount);
+        }
+
+        @Override
+        public void onEmptyStateChanged(String boardId, boolean bEmptied) {
+            if (ROLE_COPYER == role){
+                return;
+            }
+            if (null != onBoardStateChangedListener) onBoardStateChangedListener.onEmptyStateChanged(boardId, bEmptied);
+        }
+    };
+
 
 
     private final Thread renderThread = new Thread("DCRenderThr"){
@@ -273,11 +344,7 @@ public class DefaultPainter implements IPainter {
         }
 
 
-
     };
-
-
-
 
 
 }
