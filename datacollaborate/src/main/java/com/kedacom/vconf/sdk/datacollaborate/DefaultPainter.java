@@ -118,7 +118,7 @@ public class DefaultPainter implements IPainter {
             return false;
         }
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
-        defaultPaintBoard.setOnStateChangedListener(onStateChangedListener);
+        defaultPaintBoard.setOnStateChangedListener(ROLE_AUTHOR==role ? onStateChangedListener : null);
         paintBoards.put(boardId, defaultPaintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 
@@ -230,6 +230,9 @@ public class DefaultPainter implements IPainter {
     @Override
     public void setRole(int role) {
         this.role = role;
+        for (DefaultPaintBoard board : paintBoards.values()){
+            board.setOnStateChangedListener(ROLE_AUTHOR==role ? onStateChangedListener : null);
+        }
     }
 
 
@@ -243,10 +246,6 @@ public class DefaultPainter implements IPainter {
     private DefaultPaintBoard.IOnStateChangedListener onStateChangedListener = new DefaultPaintBoard.IOnStateChangedListener() {
         @Override
         public void onPaintOpGenerated(String boardId, OpPaint opPaint, boolean bNeedRefresh) {
-            if (ROLE_COPYER == role){
-                return;
-            }
-
             if (boardId.equals(curBoardId) && bNeedRefresh) {
                 refresh();
             }
@@ -258,41 +257,26 @@ public class DefaultPainter implements IPainter {
 
         @Override
         public void onChanged(String boardId) {
-            if (ROLE_COPYER == role){
-                return;
-            }
             if (null != onBoardStateChangedListener) onBoardStateChangedListener.onChanged(boardId);
         }
 
         @Override
         public void onPictureCountChanged(String boardId, int count) {
-            if (ROLE_COPYER == role){
-                return;
-            }
             if (null != onBoardStateChangedListener) onBoardStateChangedListener.onPictureCountChanged(boardId, count);
         }
 
         @Override
         public void onZoomRateChanged(String boardId, int percentage) {
-            if (ROLE_COPYER == role){
-                return;
-            }
             if (null != onBoardStateChangedListener) onBoardStateChangedListener.onZoomRateChanged(boardId, percentage);
         }
 
         @Override
         public void onRepealableStateChanged(String boardId, int repealedOpsCount, int remnantOpsCount) {
-            if (ROLE_COPYER == role){
-                return;
-            }
             if (null != onBoardStateChangedListener) onBoardStateChangedListener.onRepealableStateChanged(boardId, repealedOpsCount, remnantOpsCount);
         }
 
         @Override
         public void onEmptyStateChanged(String boardId, boolean bEmptied) {
-            if (ROLE_COPYER == role){
-                return;
-            }
             if (null != onBoardStateChangedListener) onBoardStateChangedListener.onEmptyStateChanged(boardId, bEmptied);
         }
     };
