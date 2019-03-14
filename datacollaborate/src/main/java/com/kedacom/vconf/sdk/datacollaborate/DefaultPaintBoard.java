@@ -1155,7 +1155,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     @Override
     public void insertPic(String path) {
         if (null == onStateChangedListener){
-            KLog.p(KLog.ERROR,"opGeneratedListener is null");
+            KLog.p(KLog.ERROR,"onStateChangedListener is null");
             return;
         }
 

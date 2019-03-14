@@ -211,7 +211,7 @@ public class DefaultPainter implements IPainter {
             KLog.p(KLog.ERROR,"no board %s for op %s", boardId, op);
             return;
         }
-        if (paintBoard.onPaintOp(op)){
+        if (paintBoard.onPaintOp(op) && boardId.equals(curBoardId)){
             handler.removeCallbacks(refreshRunnable);
             handler.postDelayed(refreshRunnable, 50);
         }
