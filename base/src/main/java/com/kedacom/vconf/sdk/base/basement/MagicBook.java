@@ -127,14 +127,14 @@ public final class MagicBook {
 
 
     Object[] userPara2MethodPara(Object[] userParas, Class<?>[] methodParaTypes){
-        if (null == methodParaTypes || userParas.length != methodParaTypes.length){
-            KLog.p(KLog.ERROR, "null == methodParaTypes || userParas.length != methodParaTypes.length");
+        if (null == methodParaTypes || userParas.length < methodParaTypes.length){
+            KLog.p(KLog.ERROR, "null == methodParaTypes || userParas.length < methodParaTypes.length");
             return userParas;
         }
-        Object[] methodParas = new Object[userParas.length];
+        Object[] methodParas = new Object[methodParaTypes.length];
         Object userPara;
         Class<?> methodParaType;
-        for (int i=0; i<userParas.length; ++i){
+        for (int i=0; i<methodParaTypes.length; ++i){
             userPara = userParas[i];
             methodParaType = methodParaTypes[i];
             KLog.p("userPara[%s].class=%s, methodPara[%s].class=%s", i, null==userPara? null : userPara.getClass(), i, methodParaType);

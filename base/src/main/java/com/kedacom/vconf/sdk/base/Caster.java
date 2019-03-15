@@ -82,7 +82,20 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
 
         listenerLifecycleObserver = new ListenerLifecycleObserver(listenerLifecycleCallback);
 
-        rspProcessorMap.putAll(rspProcessors());
+        Map<Msg, RspProcessor> rspProcessorMap = rspProcessors();
+        if (null != rspProcessorMap) {
+            this.rspProcessorMap.putAll(rspProcessorMap);
+        }
+
+        Map<Msg[], RspProcessor> rspsProcessorMap = rspsProcessors();
+        if (null != rspsProcessorMap){
+            for (Msg[] reqs : rspsProcessorMap.keySet()){
+                RspProcessor rspProcessor = rspsProcessorMap.get(reqs);
+                for (Msg req : reqs) {
+                    this.rspProcessorMap.put(req, rspProcessor);
+                }
+            }
+        }
 
         Map<Msg, NtfProcessor> ntfProcessorMap = ntfProcessors();
         if (null != ntfProcessorMap){
@@ -112,16 +125,17 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     }
 
 
-    /**注册：请求——请求对应的响应处理器。
-     * 子类如有请求，则需重写该方法。*/
+    /**注册请求对应的响应处理器
+     * NOTE @return 返回的Map中的Msg为Request*/
     protected Map<Msg, RspProcessor> rspProcessors(){return null;}
 
-    /**注册：通知——通知处理器
-     * 子类如需要订阅通知，则需重写该方法和{@link this#ntfsProcessors()}中的一个或者全部。*/
+    /**批量注册请求对应的响应处理器*/
+    protected Map<Msg[], RspProcessor> rspsProcessors(){return null;}
+
+    /**注册通知处理器*/
     protected Map<Msg, NtfProcessor> ntfProcessors(){return null;}
 
-    /**注册：通知列表——通知处理器
-     * 子类如需要订阅通知，则需重写该方法和{@link this#ntfProcessors()}中的一个或者全部。*/
+    /**批量注册通知处理器*/
     protected Map<Msg[], NtfProcessor> ntfsProcessors(){return null;}
 
     /**响应处理器*/
@@ -155,6 +169,8 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
      * 若启用则模拟器将替代底层组件并反馈模拟的响应/通知；
      * 若停用则恢复正常模式，即请求通过底层组件发给平台平台反馈消息组件再上抛消息。
      * NOTE: 仅用于本地调试。
+     * TODO, XXX: Fairy不要使用单例模式，这样可同时存在不同的Fairy*CrystalBall组合方式，
+     * 进而可针对单独的模块启用模拟模式而其他模块使用正常模式。
      * @param bEnable true：启用，false：停用。
      * */
     public void enableSimulator(boolean bEnable){

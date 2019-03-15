@@ -25,7 +25,6 @@ import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardResult;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfAddr;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConf;
@@ -145,55 +144,70 @@ public class DataCollaborateManager extends Caster {
     };
 
 
+    private static final Msg[] sessionReqs = new Msg[]{
+            Msg.DCLogin,
+            Msg.DCLogout,
+            Msg.DCCreateConf,
+            Msg.DCQuitConf,
+            Msg.DCReleaseConf,
+    };
+
+    private static final Msg[] boardReqs = new Msg[]{
+            Msg.DCQueryCurBoard,
+            Msg.DCQueryBoard,
+            Msg.DCQueryAllBoards,
+            Msg.DCNewBoard,
+            Msg.DCDelBoard,
+            Msg.DCDelAllBoard,
+            Msg.DCSwitchBoard,
+    };
+
+    private static final Msg[] operatorReqs = new Msg[]{
+            Msg.DCAddOperator,
+            Msg.DCDelOperator,
+            Msg.DCRejectApplyOperator,
+            Msg.DCApplyOperator,
+            Msg.DCCancelOperator,
+            Msg.DCQueryAllMembers,
+    };
+
+    private static final Msg[] downUploadReqs = new Msg[]{
+            Msg.DCQueryPicUrl,
+            Msg.DCDownload,
+            Msg.DCQueryPicUploadUrl,
+            Msg.DCUpload,
+    };
+
+    private static final Msg[] paintReqs = new Msg[]{
+            Msg.DCDrawLine,
+            Msg.DCDrawOval,
+            Msg.DCDrawRect,
+            Msg.DCDrawPath,
+            Msg.DCUndo,
+            Msg.DCRedo,
+            Msg.DCClearScreen,
+            Msg.DCErase,
+            Msg.DCRectErase,
+//        Msg.DCZoom,
+//        Msg.DCRotateLeft,
+//        Msg.DCRotateRight,
+//        Msg.DCScrollScreen,
+            Msg.DCMatrix,
+            Msg.DCInsertPic,
+            Msg.DCDeletePic,
+            Msg.DCDragPic,
+    };
+
 
     @Override
-    protected Map<Msg, RspProcessor> rspProcessors() {
-        Map<Msg, RspProcessor> processorMap = new HashMap<>();
-        processorMap.put(Msg.DCLogin, this::onSessionRsps);
-        processorMap.put(Msg.DCLogout, this::onSessionRsps);
+    protected Map<Msg[], RspProcessor> rspsProcessors() {
+        Map<Msg[], RspProcessor> processorMap = new HashMap<>();
 
-        processorMap.put(Msg.DCCreateConf, this::onConfOpRsps);
-        processorMap.put(Msg.DCReleaseConf, this::onConfOpRsps);
-        processorMap.put(Msg.DCQuitConf, this::onConfOpRsps);
-
-        processorMap.put(Msg.DCQueryCurBoard, this::onBoardOpRsps);
-        processorMap.put(Msg.DCQueryBoard, this::onBoardOpRsps);
-        processorMap.put(Msg.DCQueryAllBoards, this::onBoardOpRsps);
-        processorMap.put(Msg.DCNewBoard, this::onBoardOpRsps);
-        processorMap.put(Msg.DCDelBoard, this::onBoardOpRsps);
-        processorMap.put(Msg.DCDelAllBoard, this::onBoardOpRsps);
-        processorMap.put(Msg.DCSwitchBoard, this::onBoardOpRsps);
-
-        processorMap.put(Msg.DCAddOperator, this::onChangeOperatorsRsps);
-        processorMap.put(Msg.DCDelOperator, this::onChangeOperatorsRsps);
-        processorMap.put(Msg.DCRejectApplyOperator, null);
-        processorMap.put(Msg.DCApplyOperator, this::onChangeOperatorsRsps);
-        processorMap.put(Msg.DCCancelOperator, this::onChangeOperatorsRsps);
-
-        processorMap.put(Msg.DCQueryAllMembers, this::onRsps);
-
-        processorMap.put(Msg.DCQueryPicUrl, this::onRsps);
-        processorMap.put(Msg.DCDownload, this::onRsps);
-        processorMap.put(Msg.DCQueryPicUploadUrl, this::onRsps);
-        processorMap.put(Msg.DCUpload, this::onRsps);
-
-        processorMap.put(Msg.DCDrawLine, null);
-        processorMap.put(Msg.DCDrawOval, null);
-        processorMap.put(Msg.DCDrawRect, null);
-        processorMap.put(Msg.DCDrawPath, null);
-        processorMap.put(Msg.DCUndo, null);
-        processorMap.put(Msg.DCRedo, null);
-        processorMap.put(Msg.DCClearScreen, null);
-        processorMap.put(Msg.DCErase, null);
-        processorMap.put(Msg.DCRectErase, null);
-//        processorMap.put(Msg.DCZoom, null);
-//        processorMap.put(Msg.DCRotateLeft, null);
-//        processorMap.put(Msg.DCRotateRight, null);
-//        processorMap.put(Msg.DCScrollScreen, null);
-        processorMap.put(Msg.DCMatrix, null);
-        processorMap.put(Msg.DCInsertPic, null);
-        processorMap.put(Msg.DCDeletePic, null);
-        processorMap.put(Msg.DCDragPic, null);
+        processorMap.put(sessionReqs, this::onSessionRsps);
+        processorMap.put(boardReqs, this::onBoardOpRsps);
+        processorMap.put(operatorReqs, this::onOperatorRsps);
+        processorMap.put(downUploadReqs, this::onDownUpLoadRsps);
+        processorMap.put(paintReqs, this::onPublishPaintOpRsps);
 
         return processorMap;
     }
@@ -292,7 +306,7 @@ public class DataCollaborateManager extends Caster {
     }
 
     /**
-     * 会话（登陆/注销）响应处理
+     * 会话响应处理
      * @param rspId 响应消息Id
      * @param rspContent 响应内容
      * @param listener 结果监听器（为请求时传下的）
@@ -331,6 +345,47 @@ public class DataCollaborateManager extends Caster {
                 TDCSResult logoutRes = (TDCSResult) rspContent;
                 if (!logoutRes.bSucces){
                     cancelReq(Msg.DCLogout, listener);  // 后续不会有DCBuildLink4LoginRsp上来，取消该请求以防等待超时。
+                    reportFailed(ErrCode_Failed, listener);
+                }
+                break;
+
+
+            case DCBuildLink4ConfRsp:
+                result = (TDCSConnectResult) rspContent;
+                if (Msg.DCCreateConf == reqId) {
+                    if (!result.bSuccess) { // 链路建立失败
+                        cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
+                        reportFailed(ErrCode_BuildLink4ConfFailed, listener);
+                    }
+                }else if (Msg.DCQuitConf == reqId
+                        || Msg.DCReleaseConf == reqId){
+                    if (!result.bSuccess) { // 链路已断开，退出/结束协作成功
+                        reportSuccess(null, listener);
+                    }else{ // 链路未断开，该消息不是期望的
+                        return false;
+                    }
+                }else{
+                    return false;
+                }
+                break;
+            case DCConfCreated:
+                TDCSCreateConfResult createConfResult = (TDCSCreateConfResult) rspContent;
+                if (createConfResult.bSuccess) {
+                    curDcConfE164 = createConfResult.achConfE164;
+                    reportSuccess(ToDoConverter.fromTransferObj(createConfResult), listener);
+                    synchronizeCachedStuff(createConfResult);
+                }else{
+                    reportFailed(ErrCode_Failed, listener);
+                }
+                break;
+
+            case DCReleaseConfRsp:
+            case DCReleaseConfNtf:
+                break;
+            case DCQuitConfRsp:
+                TDCSResult quitRes = (TDCSResult) rspContent;
+                if (!quitRes.bSucces){
+                    cancelReq(Msg.DCQuitConf, listener);
                     reportFailed(ErrCode_Failed, listener);
                 }
                 break;
@@ -557,53 +612,6 @@ public class DataCollaborateManager extends Caster {
     }
 
 
-    private boolean onConfOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
-        switch (rspId){
-            case DCBuildLink4ConfRsp:
-                TDCSConnectResult result = (TDCSConnectResult) rspContent;
-                if (Msg.DCCreateConf == reqId) {
-                    if (!result.bSuccess) { // 链路建立失败
-                        cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
-                        reportFailed(ErrCode_BuildLink4ConfFailed, listener);
-                    }
-                }else if (Msg.DCQuitConf == reqId
-                        || Msg.DCReleaseConf == reqId){
-                    if (!result.bSuccess) { // 链路已断开，退出/结束协作成功
-                        reportSuccess(null, listener);
-                    }else{ // 链路未断开，该消息不是期望的
-                        return false;
-                    }
-                }else{
-                    return false;
-                }
-                break;
-            case DCConfCreated:
-                TDCSCreateConfResult createConfResult = (TDCSCreateConfResult) rspContent;
-                if (createConfResult.bSuccess) {
-                    curDcConfE164 = createConfResult.achConfE164;
-                    reportSuccess(ToDoConverter.fromTransferObj(createConfResult), listener);
-                    synchronizeCachedStuff(createConfResult);
-                }else{
-                    reportFailed(ErrCode_Failed, listener);
-                }
-                break;
-
-            case DCReleaseConfRsp:
-            case DCReleaseConfNtf:
-                break;
-            case DCQuitConfRsp:
-                TDCSResult quitRes = (TDCSResult) rspContent;
-                if (!quitRes.bSucces){
-                    cancelReq(Msg.DCQuitConf, listener);
-                    reportFailed(ErrCode_Failed, listener);
-                }
-                break;
-            default:
-                return false;
-        }
-
-        return true;
-    }
 
 
     /**（管理方）添加协作方
@@ -718,7 +726,7 @@ public class DataCollaborateManager extends Caster {
     /**
      * 协作方变更（添加/删除/申请/取消）响应处理
      * */
-    private boolean onChangeOperatorsRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
+    private boolean onOperatorRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
             case DCAddOperatorRsp:
                 TDCSResult result = (TDCSResult) rspContent;
@@ -793,6 +801,19 @@ public class DataCollaborateManager extends Caster {
             case DCCancelOperatorRsp:
                 if (((TDCSResult) rspContent).bSucces){
                     reportSuccess(null, listener);
+                }else{
+                    reportFailed(ErrCode_Failed, listener);
+                }
+                break;
+
+            case DCQueryAllMembersRsp:
+                DcsGetUserListRsp userListRsp = (DcsGetUserListRsp) rspContent;
+                if (userListRsp.MainParam.bSucces){
+                    List<DCMember> dcMembers = new ArrayList<>();
+                    for (TDCSConfUserInfo user : userListRsp.AssParam.atUserList){
+                        dcMembers.add(ToDoConverter.fromTransferObj(user));
+                    }
+                    reportSuccess(dcMembers, listener);
                 }else{
                     reportFailed(ErrCode_Failed, listener);
                 }
@@ -1065,7 +1086,7 @@ public class DataCollaborateManager extends Caster {
     }
 
 
-    private boolean onRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
+    private boolean onDownUpLoadRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
             case DCQueryPicUrlRsp:
                 DcsDownloadImageRsp queryPicUrlResult = (DcsDownloadImageRsp) rspContent;
@@ -1095,18 +1116,6 @@ public class DataCollaborateManager extends Caster {
                 break;
 //            case DCUploadRsp:
 //                break;
-            case DCQueryAllMembersRsp:
-                DcsGetUserListRsp userListRsp = (DcsGetUserListRsp) rspContent;
-                if (userListRsp.MainParam.bSucces){
-                    List<DCMember> dcMembers = new ArrayList<>();
-                    for (TDCSConfUserInfo user : userListRsp.AssParam.atUserList){
-                        dcMembers.add(ToDoConverter.fromTransferObj(user));
-                    }
-                    reportSuccess(dcMembers, listener);
-                }else{
-                    reportFailed(ErrCode_Failed, listener);
-                }
-                break;
 
             default:
                 return false;
@@ -1267,14 +1276,14 @@ public class DataCollaborateManager extends Caster {
 
     /**发布绘制操作
      * @param op 绘制操作*/
-    public void publishPaintOp(OpPaint op){
+    public void publishPaintOp(String publisherE164, OpPaint op, IResultListener resultListener){ // TODO publisherE164可删掉，像curConfE164一样保存为成员变量？在登录的时候填入？那SDK就只能同时供一个人使用了
         Object to = ToDoConverter.toPaintTransferObj(op);
         if (null != to) {
-            req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
-                    ToDoConverter.toCommonPaintTransferObj(op), to);
+            req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
+                    ToDoConverter.toCommonPaintTransferObj(op), to, publisherE164);
         }else{
-            req(ToDoConverter.opTypeToReqMsg(op.getType()), null,
-                    ToDoConverter.toCommonPaintTransferObj(op));
+            req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
+                    ToDoConverter.toCommonPaintTransferObj(op), publisherE164);
         }
 
         // 对于图片插入操作还需上传图片。
@@ -1314,6 +1323,19 @@ public class DataCollaborateManager extends Caster {
                 }
             }, new TDCSImageUrl(op.getConfE164(), op.getBoardId(), op.getPageId(), ((OpInsertPic) op).getPicId()));
         }
+    }
+
+
+    private boolean onPublishPaintOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
+        switch (rspId){
+            case DCAddOperatorRsp:
+                break;
+
+            default:
+                return false;
+        }
+
+        return true;
     }
 
 

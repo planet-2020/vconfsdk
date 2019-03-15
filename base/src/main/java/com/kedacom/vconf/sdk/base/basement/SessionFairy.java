@@ -102,7 +102,7 @@ public final class SessionFairy implements IFairy.ISessionFairy{
 
         // 检查参数合法性
         Class[] classes = magicBook.getUserParaClasses(reqName);
-        if (classes.length != reqPara.length){
+        if (reqPara.length < classes.length){ // 传入的请求参数个数不得小于期望的，但可以大于，多余的被弃掉。
             Log.e(TAG, String.format("invalid para nums for %s, expect #%s but got #%s", reqName, classes.length, reqPara.length));
             return false;
         }
