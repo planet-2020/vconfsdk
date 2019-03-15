@@ -91,13 +91,17 @@ public class DataCollaborateManager extends Caster {
     // 申请协作权被拒
     public static final int ErrCode_Apply_Operator_Rejected = -6;
 
+    // 当前用户e164
+    private String curUserE164;
+
+    // 当前会议e164号
     private String curDcConfE164;
     String getCurDcConfE164(){
         return curDcConfE164;
     }
 
-    // 终端类型
-    private EmDcsType terminalType;
+    // 当前终端类型
+    private EmDcsType curTerminalType;
 
     // 会话相关通知
     private static final Msg[] sessionNtfs = new Msg[]{
@@ -275,6 +279,7 @@ public class DataCollaborateManager extends Caster {
     /**登录数据协作
      * @param serverIp 数据协作服务器Ip
      * @param port 数据协作服务器port
+     * @param userE164 登陆者e164
      * @param terminalType 己端终端类型
      * @param resultListener 登陆结果监听器。
      *                       成功返回结果null：
@@ -285,9 +290,15 @@ public class DataCollaborateManager extends Caster {
      *                       {@link #ErrCode_Failed}
      *                       resultListener.onFailed(errorCode);
      **/
-    public void login(String serverIp, int port, ETerminalType terminalType, IResultListener resultListener){
-        this.terminalType = ToDoConverter.toTransferObj(terminalType);
-        req(Msg.DCLogin, resultListener, new TDCSRegInfo(serverIp, port, this.terminalType));
+    public void login(String serverIp, int port, String userE164, ETerminalType terminalType, IResultListener resultListener){
+        if (null==userE164 || userE164.isEmpty()){
+            KLog.p(KLog.ERROR, "null==userE164 || userE164.isEmpty()");
+            resultListener.onFailed(ErrCode_Failed);
+            return;
+        }
+        curUserE164 = userE164;
+        curTerminalType = ToDoConverter.toTransferObj(terminalType);
+        req(Msg.DCLogin, resultListener, new TDCSRegInfo(serverIp, port, curTerminalType));
     }
 
     /**注销数据协作
@@ -303,6 +314,7 @@ public class DataCollaborateManager extends Caster {
         req(Msg.DCLogout, resultListener);
         cachedPaintOps.clear();
         curDcConfE164 = null;
+        curUserE164 = null;
     }
 
 
@@ -325,7 +337,7 @@ public class DataCollaborateManager extends Caster {
         req(Msg.DCCreateConf, resultListener,
                 new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
                         confE164, confName, ToDoConverter.toTransferObj(dcMode),
-                        ToDoConverter.toDcUserList(members), adminE164, terminalType));
+                        ToDoConverter.toDcUserList(members), adminE164, curTerminalType));
         cachedPaintOps.clear();
         curDcConfE164 = null;
     }
@@ -371,7 +383,7 @@ public class DataCollaborateManager extends Caster {
      *                       resultListener.onFailed(errorCode);*/
     public void addOperator(String memberE164, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
-        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, true, false));
+        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, true, false));
         req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
     /**（管理方）批量添加协作方
@@ -385,7 +397,7 @@ public class DataCollaborateManager extends Caster {
     public void addOperator(List<String> memberE164List, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
         for (String e164 : memberE164List){
-            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", terminalType, true, true, false));
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", curTerminalType, true, true, false));
         }
         req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
@@ -400,7 +412,7 @@ public class DataCollaborateManager extends Caster {
      *                       resultListener.onFailed(errorCode);*/
     public void delOperator(String memberE164, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
-        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, true, false));
+        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, true, false));
         req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
 
@@ -415,7 +427,7 @@ public class DataCollaborateManager extends Caster {
     public void delOperator(List<String> memberE164List, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
         for (String e164 : memberE164List){
-            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", terminalType, true, true, false));
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", curTerminalType, true, true, false));
         }
         req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
@@ -425,7 +437,7 @@ public class DataCollaborateManager extends Caster {
      * */
     public void rejectApplyOperator(String memberE164){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, false, false));
+        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, false, false));
         req(Msg.DCRejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
     /**
@@ -435,7 +447,7 @@ public class DataCollaborateManager extends Caster {
     public void rejectApplyOperator(List<String> memberE164List){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
         for (String memberE164 : memberE164List) {
-            tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, false, false));
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, false, false));
         }
         req(Msg.DCRejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
@@ -550,14 +562,14 @@ public class DataCollaborateManager extends Caster {
 
     /**发布绘制操作
      * @param op 绘制操作*/
-    public void publishPaintOp(String publisherE164, OpPaint op, IResultListener resultListener){ // TODO publisherE164可删掉，像curConfE164一样保存为成员变量？在登录的时候填入？那SDK就只能同时供一个人使用了
+    public void publishPaintOp(OpPaint op, IResultListener resultListener){
         Object to = ToDoConverter.toPaintTransferObj(op);
         if (null != to) {
             req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
-                    ToDoConverter.toCommonPaintTransferObj(op), to, publisherE164);
+                    ToDoConverter.toCommonPaintTransferObj(op), to);
         }else{
             req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
-                    ToDoConverter.toCommonPaintTransferObj(op), publisherE164);
+                    ToDoConverter.toCommonPaintTransferObj(op));
         }
 
         // 对于图片插入操作还需上传图片。
@@ -1226,13 +1238,16 @@ public class DataCollaborateManager extends Caster {
 
 
     private boolean onPublishPaintOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
-        switch (rspId){
-            case DCAddOperatorRsp:
-                break;
-
-            default:
-                return false;
+        if (Msg.Timeout == rspId){
+            return false;
         }
+
+        OpPaint opPaint = ToDoConverter.fromPaintTransferObj(rspContent);
+        if (null==opPaint || !opPaint.getAuthorE164().equals(curUserE164)){
+            return false;
+        }
+
+        listener.onSuccess(opPaint);
 
         return true;
     }

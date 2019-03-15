@@ -12,6 +12,7 @@ public abstract class OpPaint implements Comparable<OpPaint>{
 
     protected String   confE164;   // 所属会议e164号
     protected String   boardId;    // 画板ID
+    protected String   authorE164; // 绘制者e164
     protected int      pageId;     // 文档页ID（仅文档模式下有效）
     protected int      sn;         // 操作序号，用来表示操作的先后顺序，越小越靠前。由平台填写。
 
@@ -62,6 +63,14 @@ public abstract class OpPaint implements Comparable<OpPaint>{
 
     public void setBoardId(String boardId) {
         this.boardId = boardId;
+    }
+
+    public String getAuthorE164() {
+        return authorE164;
+    }
+
+    public void setAuthorE164(String authorE164) {
+        this.authorE164 = authorE164;
     }
 
     public int getPageId() {

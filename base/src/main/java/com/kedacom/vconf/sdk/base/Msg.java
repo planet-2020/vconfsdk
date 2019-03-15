@@ -534,7 +534,8 @@ public enum Msg {
     @Request(method = "DCSOperLineOperInfoCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbLineOperInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbLineOperInfo.class},
+            rspSeq = "DCLineDrawnNtf")
     DCDrawLine,
 
     /**
@@ -561,7 +562,8 @@ public enum Msg {
     @Request(method = "DCSOperPencilOperInfoCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbPencilOperInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbPencilOperInfo.class},
+            rspSeq = "DCPathDrawnNtf")
     DCDrawPath,
 
     @Request(method = "DCSOperInsertPicCmd",

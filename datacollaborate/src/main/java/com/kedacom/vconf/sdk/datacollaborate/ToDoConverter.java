@@ -426,6 +426,7 @@ final class ToDoConverter {
 
     public static void assignPaintDomainObj(TDCSOperContent transferObj, String uuid, OpPaint domainObj){
         domainObj.setUuid(uuid);
+        domainObj.setAuthorE164(transferObj.achFromE164);
         domainObj.setConfE164(transferObj.achConfE164);
         domainObj.setBoardId(transferObj.achTabId);
         domainObj.setPageId(transferObj.dwWbPageId);
