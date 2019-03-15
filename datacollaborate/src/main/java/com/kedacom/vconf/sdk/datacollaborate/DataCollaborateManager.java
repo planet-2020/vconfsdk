@@ -305,6 +305,303 @@ public class DataCollaborateManager extends Caster {
         curDcConfE164 = null;
     }
 
+
+    /**创建数据协作
+     * @param confE164 会议e164
+     * @param confName 会议名称
+     * @param dcMode 数据协作模式
+     * @param confType 会议类型
+     * @param adminE164 主席e164
+     * @param members 与会成员
+     * @param resultListener 结果监听器。
+     *                       成功返回创会信息{@link DcConfInfo}
+     *                       resultListener.onSuccess(DcConfInfo);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       {@link #ErrCode_BuildLink4ConfFailed}
+     *                       resultListener.onFailed(errorCode);*/
+    public void createDcConf(String confE164, String confName, EDcMode dcMode, EConfType confType,
+                             String adminE164, List<DCMember> members, IResultListener resultListener){
+        req(Msg.DCCreateConf, resultListener,
+                new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
+                        confE164, confName, ToDoConverter.toTransferObj(dcMode),
+                        ToDoConverter.toDcUserList(members), adminE164, terminalType));
+        cachedPaintOps.clear();
+        curDcConfE164 = null;
+    }
+
+    /**结束数据协作
+     * @param resultListener 结果监听器。
+     *                       成功返回null
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
+    public void releaseDcConf(IResultListener resultListener){
+        req(Msg.DCReleaseConf, resultListener, curDcConfE164);
+        curDcConfE164 = null;
+        cachedPaintOps.clear();
+    }
+
+    /**退出数据协作。
+     * 注：仅自己退出，协作仍存在，不影响其他人继续
+     * @param bQuitConf 是否同时退出会议
+     * @param resultListener 结果监听器。
+     *                       成功返回null
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
+    public void quitDcConf(boolean bQuitConf, IResultListener resultListener){
+        req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
+        curDcConfE164 = null;
+        cachedPaintOps.clear();
+    }
+
+
+
+
+    /**（管理方）添加协作方
+     * @param memberE164 待添加对象e164
+     * @param resultListener 结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
+    public void addOperator(String memberE164, IResultListener resultListener){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
+        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, true, false));
+        req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+    }
+    /**（管理方）批量添加协作方
+     * @param memberE164List 待添加对象e164列表
+     * @param resultListener 结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
+    public void addOperator(List<String> memberE164List, IResultListener resultListener){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        for (String e164 : memberE164List){
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", terminalType, true, true, false));
+        }
+        req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+    }
+
+    /**（管理方）删除协作方
+     * @param memberE164 待删除对象e164
+     * @param resultListener 结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
+    public void delOperator(String memberE164, IResultListener resultListener){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
+        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, true, false));
+        req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+    }
+
+    /**（管理方）批量删除协作方
+     * @param memberE164List 待删除对象e164列表
+     * @param resultListener 结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
+    public void delOperator(List<String> memberE164List, IResultListener resultListener){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        for (String e164 : memberE164List){
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", terminalType, true, true, false));
+        }
+        req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+    }
+    /**
+     * （管理方）拒绝协作权申请
+     * @param memberE164 被拒绝对象的e164
+     * */
+    public void rejectApplyOperator(String memberE164){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, false, false));
+        req(Msg.DCRejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+    }
+    /**
+     * （管理方）批量拒绝协作权申请
+     * @param memberE164List 被拒绝对象的e164列表
+     * */
+    public void rejectApplyOperator(List<String> memberE164List){
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        for (String memberE164 : memberE164List) {
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, false, false));
+        }
+        req(Msg.DCRejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+    }
+
+
+    /**（普通方）申请协作权
+     * @param e164 申请者e164
+     * @param resultListener 结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       {@link #ErrCode_Apply_Operator_Rejected}
+     *                       resultListener.onFailed(errorCode);
+     *
+     *                       注意：申请协作权需等管理方审批，很可能出现等待超时然后管理方才审批的场景。
+     *                       此场景下该监听器会回onTimeout，然后待管理方审批通过后上报通知{@link IOnOperatorEventListener#onOperatorAdded(List)}。
+     *                       至于超时后管理方拒绝的情形无需处理。
+     *                       */
+    public void applyForOperator(String e164, IResultListener resultListener){
+        req(Msg.DCApplyOperator, resultListener, e164);
+    }
+    /**（协作方）释放协作权
+     * @param e164 申请者e164
+     * @param resultListener 结果监听器。
+     *                       成功返回结果null：
+     *                       resultListener.onSuccess(null);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
+    public void cancelOperator(String e164, IResultListener resultListener){
+        req(Msg.DCCancelOperator, resultListener, e164);
+    }
+
+
+
+    /**
+     * 新建普通画板
+     * @param creatorE164 创建者E164
+     * @param listener 新建画板结果监听器
+     *                  成功返回{@link BoardInfo}：
+     *                  resultListener.onSuccess(boardInfo);
+     *                  失败返回错误码：
+     *                  {@link #ErrCode_Failed}
+     *                  resultListener.onFailed(errorCode);
+     * */
+    public void newBoard(String creatorE164, IResultListener listener){
+        req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164, new TDCSBoardInfo(UUID.randomUUID().toString(), creatorE164)));
+    }
+
+    /**
+     * 新建文档模式画板
+     * @param boardName 画板名
+     * @param pageCount 文档总页数
+     * @param curPageIndex 当前文档页
+     * @param creatorE164 创建者E164
+     * @param listener 新建画板结果监听器
+     *                  成功返回{@link BoardInfo}：
+     *                  resultListener.onSuccess(boardInfo);
+     *                  失败返回错误码：
+     *                  {@link #ErrCode_Failed}
+     *                  resultListener.onFailed(errorCode);
+     * */
+    public void newDocBoard(String boardName, int pageCount, int curPageIndex, String creatorE164, IResultListener listener){
+        req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164,
+                new TDCSBoardInfo(EmDcsWbMode.emWBModeDOC, boardName, pageCount, UUID.randomUUID().toString(), curPageIndex, creatorE164)));
+    }
+
+    /**
+     * 删除画板
+     * @param boardId 待删除画板Id
+     * @param listener 删除画板结果监听器
+     *                  成功返回boardId：
+     *                  resultListener.onSuccess(boardId);
+     *                  失败返回错误码：
+     *                  {@link #ErrCode_Failed}
+     *                  resultListener.onFailed(errorCode);
+     * */
+    public void delBoard(String boardId, IResultListener listener){
+        req(Msg.DCDelBoard, listener, curDcConfE164, boardId);
+    }
+
+
+    /**
+     * 删除所有画板
+     * @param listener 结果监听器
+     *                  成功返回会议e164：
+     *                  resultListener.onSuccess(confE164);
+     *                  失败返回错误码：
+     *                  {@link #ErrCode_Failed}
+     *                  resultListener.onFailed(errorCode);
+     * */
+    public void delAllBoard(IResultListener listener){
+        req(Msg.DCDelAllBoard, listener, curDcConfE164);
+    }
+
+    /**
+     * 切换画板
+     * @param boardId 目标画板Id
+     * @param listener 切换画板结果监听器
+     *                  成功返回boardId：
+     *                  resultListener.onSuccess(boardId);
+     *                  失败返回错误码：
+     *                  {@link #ErrCode_Failed}
+     *                  resultListener.onFailed(errorCode);
+     * */
+    public void switchBoard(String boardId, IResultListener listener){
+        req(Msg.DCSwitchBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
+    }
+
+
+
+    /**发布绘制操作
+     * @param op 绘制操作*/
+    public void publishPaintOp(String publisherE164, OpPaint op, IResultListener resultListener){ // TODO publisherE164可删掉，像curConfE164一样保存为成员变量？在登录的时候填入？那SDK就只能同时供一个人使用了
+        Object to = ToDoConverter.toPaintTransferObj(op);
+        if (null != to) {
+            req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
+                    ToDoConverter.toCommonPaintTransferObj(op), to, publisherE164);
+        }else{
+            req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
+                    ToDoConverter.toCommonPaintTransferObj(op), publisherE164);
+        }
+
+        // 对于图片插入操作还需上传图片。
+        if (EOpType.INSERT_PICTURE == op.getType()){
+            req(Msg.DCQueryPicUploadUrl, new IResultListener() {
+                @Override
+                public void onSuccess(Object result) {
+                    TDCSImageUrl picUploadUrl = (TDCSImageUrl) result;
+                    req(Msg.DCUpload, new IResultListener() {
+                                @Override
+                                public void onSuccess(Object result) {
+                                }
+
+                                @Override
+                                public void onFailed(int errorCode) {
+                                    KLog.p(KLog.ERROR, "upload pic %s for board %s failed, errorCode=%s", ((OpInsertPic) op).getPicId(), op.getBoardId(), errorCode);
+                                }
+
+                                @Override
+                                public void onTimeout() {
+                                    KLog.p(KLog.ERROR, "upload pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                                }
+                            },
+                            new BaseTypeString(picUploadUrl.achPicUrl),
+                            new TDCSFileInfo(((OpInsertPic) op).getPicPath(), picUploadUrl.achWbPicentityId,
+                                    picUploadUrl.achTabId, false, (int) new File(((OpInsertPic) op).getPicPath()).length()));
+                }
+
+                @Override
+                public void onFailed(int errorCode) {
+                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s failed, errorCode=%s", ((OpInsertPic) op).getPicId(), op.getBoardId(), errorCode);
+                }
+
+                @Override
+                public void onTimeout() {
+                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
+                }
+            }, new TDCSImageUrl(op.getConfE164(), op.getBoardId(), op.getPageId(), ((OpInsertPic) op).getPicId()));
+        }
+    }
+
+
+
+
     /**
      * 会话响应处理
      * @param rspId 响应消息Id
@@ -559,169 +856,6 @@ public class DataCollaborateManager extends Caster {
         );
     }
 
-    /**创建数据协作
-     * @param confE164 会议e164
-     * @param confName 会议名称
-     * @param dcMode 数据协作模式
-     * @param confType 会议类型
-     * @param adminE164 主席e164
-     * @param members 与会成员
-     * @param resultListener 结果监听器。
-     *                       成功返回创会信息{@link DcConfInfo}
-     *                       resultListener.onSuccess(DcConfInfo);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       {@link #ErrCode_BuildLink4ConfFailed}
-     *                       resultListener.onFailed(errorCode);*/
-    public void createDcConf(String confE164, String confName, EDcMode dcMode, EConfType confType,
-                             String adminE164, List<DCMember> members, IResultListener resultListener){
-        req(Msg.DCCreateConf, resultListener,
-                new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
-                        confE164, confName, ToDoConverter.toTransferObj(dcMode),
-                        ToDoConverter.toDcUserList(members), adminE164, terminalType));
-        cachedPaintOps.clear();
-        curDcConfE164 = null;
-    }
-
-    /**结束数据协作
-     * @param resultListener 结果监听器。
-     *                       成功返回null
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
-    public void releaseDcConf(IResultListener resultListener){
-        req(Msg.DCReleaseConf, resultListener, curDcConfE164);
-        curDcConfE164 = null;
-        cachedPaintOps.clear();
-    }
-
-    /**退出数据协作。
-     * 注：仅自己退出，协作仍存在，不影响其他人继续
-     * @param bQuitConf 是否同时退出会议
-     * @param resultListener 结果监听器。
-     *                       成功返回null
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
-    public void quitDcConf(boolean bQuitConf, IResultListener resultListener){
-        req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
-        curDcConfE164 = null;
-        cachedPaintOps.clear();
-    }
-
-
-
-
-    /**（管理方）添加协作方
-     * @param memberE164 待添加对象e164
-     * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
-    public void addOperator(String memberE164, IResultListener resultListener){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
-        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, true, false));
-        req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-    /**（管理方）批量添加协作方
-     * @param memberE164List 待添加对象e164列表
-     * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
-    public void addOperator(List<String> memberE164List, IResultListener resultListener){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        for (String e164 : memberE164List){
-            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", terminalType, true, true, false));
-        }
-        req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-
-    /**（管理方）删除协作方
-     * @param memberE164 待删除对象e164
-     * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
-    public void delOperator(String memberE164, IResultListener resultListener){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
-        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, true, false));
-        req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-
-    /**（管理方）批量删除协作方
-     * @param memberE164List 待删除对象e164列表
-     * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
-    public void delOperator(List<String> memberE164List, IResultListener resultListener){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        for (String e164 : memberE164List){
-            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", terminalType, true, true, false));
-        }
-        req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-    /**
-     * （管理方）拒绝协作权申请
-     * @param memberE164 被拒绝对象的e164
-     * */
-    public void rejectApplyOperator(String memberE164){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, false, false));
-        req(Msg.DCRejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-    /**
-     * （管理方）批量拒绝协作权申请
-     * @param memberE164List 被拒绝对象的e164列表
-     * */
-    public void rejectApplyOperator(List<String> memberE164List){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        for (String memberE164 : memberE164List) {
-            tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", terminalType, true, false, false));
-        }
-        req(Msg.DCRejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-
-
-    /**（普通方）申请协作权
-     * @param e164 申请者e164
-     * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       {@link #ErrCode_Apply_Operator_Rejected}
-     *                       resultListener.onFailed(errorCode);
-     *
-     *                       注意：申请协作权需等管理方审批，很可能出现等待超时然后管理方才审批的场景。
-     *                       此场景下该监听器会回onTimeout，然后待管理方审批通过后上报通知{@link IOnOperatorEventListener#onOperatorAdded(List)}。
-     *                       至于超时后管理方拒绝的情形无需处理。
-     *                       */
-    public void applyForOperator(String e164, IResultListener resultListener){
-        req(Msg.DCApplyOperator, resultListener, e164);
-    }
-    /**（协作方）释放协作权
-     * @param e164 申请者e164
-     * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
-    public void cancelOperator(String e164, IResultListener resultListener){
-        req(Msg.DCCancelOperator, resultListener, e164);
-    }
 
     /**
      * 协作方变更（添加/删除/申请/取消）响应处理
@@ -853,83 +987,9 @@ public class DataCollaborateManager extends Caster {
     }
 
 
-    /**
-     * 新建普通画板
-     * @param creatorE164 创建者E164
-     * @param listener 新建画板结果监听器
-     *                  成功返回{@link BoardInfo}：
-     *                  resultListener.onSuccess(boardInfo);
-     *                  失败返回错误码：
-     *                  {@link #ErrCode_Failed}
-     *                  resultListener.onFailed(errorCode);
-     * */
-    public void newBoard(String creatorE164, IResultListener listener){
-        req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164, new TDCSBoardInfo(UUID.randomUUID().toString(), creatorE164)));
-    }
 
     /**
-     * 新建文档模式画板
-     * @param boardName 画板名
-     * @param pageCount 文档总页数
-     * @param curPageIndex 当前文档页
-     * @param creatorE164 创建者E164
-     * @param listener 新建画板结果监听器
-     *                  成功返回{@link BoardInfo}：
-     *                  resultListener.onSuccess(boardInfo);
-     *                  失败返回错误码：
-     *                  {@link #ErrCode_Failed}
-     *                  resultListener.onFailed(errorCode);
-     * */
-    public void newDocBoard(String boardName, int pageCount, int curPageIndex, String creatorE164, IResultListener listener){
-        req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164,
-                new TDCSBoardInfo(EmDcsWbMode.emWBModeDOC, boardName, pageCount, UUID.randomUUID().toString(), curPageIndex, creatorE164)));
-    }
-
-    /**
-     * 删除画板
-     * @param boardId 待删除画板Id
-     * @param listener 删除画板结果监听器
-     *                  成功返回boardId：
-     *                  resultListener.onSuccess(boardId);
-     *                  失败返回错误码：
-     *                  {@link #ErrCode_Failed}
-     *                  resultListener.onFailed(errorCode);
-     * */
-    public void delBoard(String boardId, IResultListener listener){
-        req(Msg.DCDelBoard, listener, curDcConfE164, boardId);
-    }
-
-
-    /**
-     * 删除所有画板
-     * @param listener 结果监听器
-     *                  成功返回会议e164：
-     *                  resultListener.onSuccess(confE164);
-     *                  失败返回错误码：
-     *                  {@link #ErrCode_Failed}
-     *                  resultListener.onFailed(errorCode);
-     * */
-    public void delAllBoard(IResultListener listener){
-        req(Msg.DCDelAllBoard, listener, curDcConfE164);
-    }
-
-    /**
-     * 切换画板
-     * @param boardId 目标画板Id
-     * @param listener 切换画板结果监听器
-     *                  成功返回boardId：
-     *                  resultListener.onSuccess(boardId);
-     *                  失败返回错误码：
-     *                  {@link #ErrCode_Failed}
-     *                  resultListener.onFailed(errorCode);
-     * */
-    public void switchBoard(String boardId, IResultListener listener){
-        req(Msg.DCSwitchBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
-    }
-
-
-    /**
-     * （己端）画板操作响应处理
+     *  画板操作（增/删/切/查）响应处理
      * */
     private boolean onBoardOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
@@ -1164,6 +1224,21 @@ public class DataCollaborateManager extends Caster {
     };
 
 
+
+    private boolean onPublishPaintOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
+        switch (rspId){
+            case DCAddOperatorRsp:
+                break;
+
+            default:
+                return false;
+        }
+
+        return true;
+    }
+
+
+
     /**
      * 收到绘制操作通知处理
      * */
@@ -1274,71 +1349,6 @@ public class DataCollaborateManager extends Caster {
     }
 
 
-    /**发布绘制操作
-     * @param op 绘制操作*/
-    public void publishPaintOp(String publisherE164, OpPaint op, IResultListener resultListener){ // TODO publisherE164可删掉，像curConfE164一样保存为成员变量？在登录的时候填入？那SDK就只能同时供一个人使用了
-        Object to = ToDoConverter.toPaintTransferObj(op);
-        if (null != to) {
-            req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
-                    ToDoConverter.toCommonPaintTransferObj(op), to, publisherE164);
-        }else{
-            req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
-                    ToDoConverter.toCommonPaintTransferObj(op), publisherE164);
-        }
-
-        // 对于图片插入操作还需上传图片。
-        if (EOpType.INSERT_PICTURE == op.getType()){
-            req(Msg.DCQueryPicUploadUrl, new IResultListener() {
-                @Override
-                public void onSuccess(Object result) {
-                    TDCSImageUrl picUploadUrl = (TDCSImageUrl) result;
-                    req(Msg.DCUpload, new IResultListener() {
-                                @Override
-                                public void onSuccess(Object result) {
-                                }
-
-                                @Override
-                                public void onFailed(int errorCode) {
-                                    KLog.p(KLog.ERROR, "upload pic %s for board %s failed, errorCode=%s", ((OpInsertPic) op).getPicId(), op.getBoardId(), errorCode);
-                                }
-
-                                @Override
-                                public void onTimeout() {
-                                    KLog.p(KLog.ERROR, "upload pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
-                                }
-                            },
-                            new BaseTypeString(picUploadUrl.achPicUrl),
-                            new TDCSFileInfo(((OpInsertPic) op).getPicPath(), picUploadUrl.achWbPicentityId,
-                                    picUploadUrl.achTabId, false, (int) new File(((OpInsertPic) op).getPicPath()).length()));
-                }
-
-                @Override
-                public void onFailed(int errorCode) {
-                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s failed, errorCode=%s", ((OpInsertPic) op).getPicId(), op.getBoardId(), errorCode);
-                }
-
-                @Override
-                public void onTimeout() {
-                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
-                }
-            }, new TDCSImageUrl(op.getConfE164(), op.getBoardId(), op.getPageId(), ((OpInsertPic) op).getPicId()));
-        }
-    }
-
-
-    private boolean onPublishPaintOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
-        switch (rspId){
-            case DCAddOperatorRsp:
-                break;
-
-            default:
-                return false;
-        }
-
-        return true;
-    }
-
-
     private void cacheOrReportPaintOp(OpPaint op, Set<Object> listeners){
         PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(op.getBoardId());
         if (null != cachedOps){ // 当前正在同步该画板的图元则缓存图元
@@ -1365,7 +1375,7 @@ public class DataCollaborateManager extends Caster {
             boolean bUpdated = false;
             for (OpPaint op : cachedOps){
                 if (op instanceof OpInsertPic && ((OpInsertPic)op).getPicId().equals(opUpdatePic.getPicId())){
-                    ((OpInsertPic)op).setPicPath(opUpdatePic.getPicSavePath()); // 更新图片的所在路径
+                    ((OpInsertPic)op).setPicPath(opUpdatePic.getPicSavePath()); // 更新图片的所在路径。NOTE: 可能有重复的绘制通知上报。
                     bUpdated = true;
                 }
             }
