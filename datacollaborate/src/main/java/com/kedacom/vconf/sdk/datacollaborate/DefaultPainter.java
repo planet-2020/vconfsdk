@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
 
+import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
@@ -236,13 +237,13 @@ public class DefaultPainter implements IPainter {
 
     private DefaultPaintBoard.IOnStateChangedListener onStateChangedListener = new DefaultPaintBoard.IOnStateChangedListener() {
         @Override
-        public void onPaintOpGenerated(String boardId, OpPaint opPaint, boolean bNeedRefresh) {
+        public void onPaintOpGenerated(String boardId, OpPaint opPaint, IResultListener publishResultListener, boolean bNeedRefresh) {
             if (boardId.equals(curBoardId) && bNeedRefresh) {
                 refresh();
             }
 
             if (null != opPaint && null != onBoardStateChangedListener){
-                onBoardStateChangedListener.onPaintOpGenerated(boardId, opPaint);
+                onBoardStateChangedListener.onPaintOpGenerated(boardId, opPaint, publishResultListener);
             }
         }
 

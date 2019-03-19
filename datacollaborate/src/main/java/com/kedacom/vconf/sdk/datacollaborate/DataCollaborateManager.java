@@ -1247,7 +1247,7 @@ public class DataCollaborateManager extends Caster {
             return false;
         }
 
-        listener.onSuccess(opPaint);
+        reportSuccess(opPaint, listener);
 
         return true;
     }

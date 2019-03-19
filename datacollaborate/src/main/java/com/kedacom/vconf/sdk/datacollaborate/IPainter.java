@@ -7,6 +7,7 @@
 
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
 import java.util.List;
@@ -84,8 +85,9 @@ public interface IPainter {
 
         /**
          * 生成了绘制操作。（主动绘制）
-         * @param op 绘制操作*/
-        default void onPaintOpGenerated(String boardId, OpPaint op){}
+         * @param op 绘制操作
+         * @param publishResultListener 发布结果监听器。（生成的绘制操作可发布给其他与会方）*/
+        default void onPaintOpGenerated(String boardId, OpPaint op, IResultListener publishResultListener){}
 
         /**
          * 画板状态发生了改变。
