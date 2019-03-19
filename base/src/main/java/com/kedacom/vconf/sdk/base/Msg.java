@@ -622,7 +622,8 @@ public enum Msg {
     @Request(method = "DCSOperFullScreenCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbDisPlayInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbDisPlayInfo.class},
+            rspSeq = "DCFullScreenMatrixOpNtf")
     DCMatrix,
 
     /**

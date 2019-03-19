@@ -322,28 +322,53 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private boolean bDragging = false;
         private boolean bScaling = false;
 
+        private Matrix confirmedMatrix = new Matrix();
+        private IResultListener publishResultListener = new IResultListener() {
+            @Override
+            public void onSuccess(Object result) {
+//                KLog.p("success to publish matrix op %s", result);
+                confirmedMatrix.set(boardMatrix);
+            }
+        };
+
         @Override
         public void onMultiFingerDragBegin() {
             bDragging = true;
             bDoingMatrixOp = true;
+            confirmedMatrix.set(boardMatrix);
         }
 
         @Override
         public void onMultiFingerDrag(float dx, float dy) {
             boardMatrix.postTranslate(dx, dy);
             OpMatrix opMatrix = null;
+            IResultListener publishListener = null;
             if (System.currentTimeMillis()-timestamp > 70) { // 每70ms发布一次
                 opMatrix = new OpMatrix(boardMatrix);
                 assignBasicInfo(opMatrix);
+                publishListener = publishResultListener;
             }
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(),opMatrix, null, true);
+            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(),opMatrix, publishListener, true);
         }
 
         @Override
         public void onMultiFingerDragEnd() {
             OpMatrix opMatrix = new OpMatrix(boardMatrix);
             assignBasicInfo(opMatrix);
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(),opMatrix, null,true);
+            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, new IResultListener() {
+                @Override
+                public void onFailed(int errorCode) {
+                    KLog.p("failed to publish matrix op %s ", opMatrix);
+                    boardMatrix.set(confirmedMatrix);
+                }
+
+                @Override
+                public void onTimeout() {
+                    KLog.p("timeout to publish matrix op %s ", opMatrix);
+                    boardMatrix.set(confirmedMatrix);
+                }
+            }, true);
+
             bDragging = false;
             if (!bScaling) bDoingMatrixOp = false;
         }
@@ -355,6 +380,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
             scaleCenterX = getWidth()/2;
             scaleCenterY = getHeight()/2;
+
+            confirmedMatrix.set(boardMatrix);
         }
 
         @Override
@@ -370,12 +397,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
 
             OpMatrix opMatrix = null;
+            IResultListener publishListener = null;
             if (System.currentTimeMillis()-timestamp > 70) { // 每70ms发布一次
                 opMatrix = new OpMatrix(boardMatrix);
                 assignBasicInfo(opMatrix);
+                publishListener = publishResultListener;
             }
 
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, null,true);
+            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, publishListener,true);
             zoomRateChanged();
         }
 
@@ -383,7 +412,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onScaleEnd() {
             OpMatrix opMatrix = new OpMatrix(boardMatrix);
             assignBasicInfo(opMatrix);
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(),opMatrix, null,true);
+            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, new IResultListener() {
+                @Override
+                public void onFailed(int errorCode) {
+                    KLog.p("failed to publish matrix op %s ", opMatrix);
+                    boardMatrix.set(confirmedMatrix);
+                }
+
+                @Override
+                public void onTimeout() {
+                    KLog.p("timeout to publish matrix op %s ", opMatrix);
+                    boardMatrix.set(confirmedMatrix);
+                }
+            }, true);
+
             bScaling = false;
             if (!bDragging) bDoingMatrixOp = false;
         }
