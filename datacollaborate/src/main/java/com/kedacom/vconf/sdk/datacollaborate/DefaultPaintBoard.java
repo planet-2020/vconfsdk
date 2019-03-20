@@ -154,6 +154,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         assHandler = new Handler(handlerThread.getLooper());
     }
 
+
+    /* 若画板未加载（宽高为0）使用该值作为画板的默认宽高值*/
+    private static int boardWidth = 1920;
+    private static int boardHeight = 1080;
+
+
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
         super(context);
 
@@ -203,21 +209,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         setBackgroundColor(Color.DKGRAY);
 
+        this.post(() -> {
+            boardWidth = getWidth();
+            boardHeight = getHeight();
+        });
     }
 
     public DefaultPaintBoard(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
-    }
-
-
-    // 画板未加载时保存画板内容使用的画板宽高值
-    private static int boardWidth = 1920;
-    private static int boardHeight = 1080;
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-        if (0!=w)  boardWidth = w;
-        if (0!=h)  boardHeight = h;
     }
 
 
