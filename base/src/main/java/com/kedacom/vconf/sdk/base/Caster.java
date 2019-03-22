@@ -60,7 +60,8 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         @Override
         public void onListenerDestroy(Object listener) {
             KLog.p(""+ listener);
-            delListener(listener);
+            delRspListener(listener);
+            delNtfListener(null, listener);
         }
     };
 
@@ -256,7 +257,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
      * */
     protected synchronized void subscribe(Msg ntfId, Object ntfListener){
 //        Log.i(TAG, String.format("ntfListener=%s, ntfId=%s", ntfListener, ntfId));
-        if (null == ntfListener){
+        if (null==ntfId || null == ntfListener){
             return;
         }
 
@@ -265,20 +266,30 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
             return;
         }
 
-        listenerLifecycleObserver.tryObserve(ntfListener);
-
         ntfListeners.get(ntfId.name()).add(ntfListener);
+
+        listenerLifecycleObserver.tryObserve(ntfListener);
     }
 
     /**
      * 批量订阅通知
      * */
     protected synchronized void subscribe(Msg[] ntfIds, Object ntfListener){
-        if (null == ntfIds){
+        if (null == ntfIds || null == ntfListener){
             return;
         }
+        boolean bSuccess = false;
         for (Msg ntfId : ntfIds){
-            subscribe(ntfId, ntfListener);
+            if (!ntfProcessorMap.keySet().contains(ntfId)){
+                KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
+                continue;
+            }
+            ntfListeners.get(ntfId.name()).add(ntfListener);
+            bSuccess = true;
+        }
+
+        if (bSuccess) {
+            listenerLifecycleObserver.tryObserve(ntfListener);
         }
     }
 
@@ -290,16 +301,35 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
             return;
         }
 
-        String ntfName = ntfId.name();
-        Set<Object> listeners = ntfListeners.get(ntfName);
-        if (null != listeners){
-//            KLog.p("unsubscribe ntf=%s, listener=%s", ntfId, ntfListener);
-            Object listener = listeners.remove(ntfListener);
-            listenerLifecycleObserver.unobserve(listener);
+        if (delNtfListener(new Msg[]{ntfId}, ntfListener)){
+            listenerLifecycleObserver.unobserve(ntfListener);
         }
     }
 
+    /**
+     * 批量取消订阅通知
+     * */
+    protected synchronized void unsubscribe(Msg[] ntfIds, Object ntfListener){
+        if (null==ntfIds || null == ntfListener){
+            return;
+        }
 
+        if (delNtfListener(ntfIds, ntfListener)){
+            listenerLifecycleObserver.unobserve(ntfListener);
+        }
+    }
+
+    /**
+     * 取消所有订阅的通知
+     * */
+    protected synchronized void unsubscribe(Object ntfListener){
+        if (null == ntfListener){
+            return;
+        }
+        if (delNtfListener(null, ntfListener)){
+            listenerLifecycleObserver.unobserve(ntfListener);
+        }
+    }
 
     /**
      * 设置请求。
@@ -382,42 +412,43 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         if (null == listener){
             return;
         }
-        delRspListener(listener);
-        delNtfListener(listener);
+        boolean bDelRspSuccess = delRspListener(listener);
+        boolean bDelNtfSuccess = delNtfListener(null, listener);
+        if (bDelRspSuccess || bDelNtfSuccess){
+            listenerLifecycleObserver.unobserve(listener);
+        }
     }
 
-    /**
-     * 删除响应监听者
-     * */
-    protected synchronized void delRspListener(Object rspListener){  // TODO 一个监听者可能监听多种响应而他只想删除其中一种响应的监听，再加一个响应id参数
-        if (null == rspListener){
-            return;
-        }
 
+    protected synchronized boolean delRspListener(Object rspListener){
+        boolean bSuccess = false;
         for (Map.Entry<Integer, ReqBundle> entry: rspListeners.entrySet()){
             int key = entry.getKey();
             ReqBundle val = entry.getValue();
             if (rspListener.equals(val.listener)){
 //                KLog.p("delRspListener reqSn=%s, req=%s, listener=%s", key, val.req, val.listener);
-                val.listener = null;
+                val.listener = null;  // 保留会话，仅删除监听器
+                bSuccess = true;
             }
         }
-
-        listenerLifecycleObserver.unobserve(rspListener);
+        return bSuccess;
     }
 
-    /**
-     * 删除通知监听者
-     * */
-    protected synchronized void delNtfListener(Object ntfListener){
-        if (null == ntfListener){
-            return;
+    private synchronized boolean delNtfListener(Msg[] ntfIds, Object ntfListener){
+        boolean bSuccess = false;
+        if (null != ntfIds) {
+            for (Msg ntfId : ntfIds) {
+                Set<Object> listeners = ntfListeners.get(ntfId.name());
+                if (null != listeners) bSuccess = listeners.remove(ntfListener);
+            }
+        }else{
+            for (String ntfName : ntfListeners.keySet()) {
+                Set<Object> listeners = ntfListeners.get(ntfName);
+                if (null != listeners) bSuccess = listeners.remove(ntfListener);
+            }
         }
-        for (String ntfId : ntfListeners.keySet()) {
-            unsubscribe(Msg.valueOf(ntfId), ntfListener);
-        }
+        return bSuccess;
     }
-
 
 
     @Override

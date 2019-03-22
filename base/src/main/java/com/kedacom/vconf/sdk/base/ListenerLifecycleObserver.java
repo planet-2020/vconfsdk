@@ -47,16 +47,16 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
         if (listener instanceof ILifecycleOwner &&
                 null != ((ILifecycleOwner)listener).getLifecycleOwner()){ // listener指定了其需要绑定的生命周期对象
-            KLog.p("%s getLifecycleOwner = %s", listener, ((ILifecycleOwner)listener).getLifecycleOwner());
+//            KLog.p("%s getLifecycleOwner = %s", listener, ((ILifecycleOwner)listener).getLifecycleOwner());
             observe(((ILifecycleOwner)listener).getLifecycleOwner(), listener);
         }else if (listener instanceof LifecycleOwner){ // listener本身即为生命周期拥有者
             // 监控该listener。该listener作为被监控的生命周期拥有者亦可被其他listener绑定。
-            KLog.p("%s is LifecycleOwner itself", listener);
-            observe((LifecycleOwner) listener, null);
+//            KLog.p("%s is LifecycleOwner itself", listener);
+            observe((LifecycleOwner) listener, listener);
         }else{ // 没有指定绑定的生命周期对象，自身也不是生命周期拥有者，则尝试监控其外部类对象的生命周期（如果有外部类对象且该外部类对象拥有生命周期）。
             Object encloser = getEncloserEx(listener);
             LifecycleOwner owner = getBoundLifecycleOwner(encloser);
-            KLog.p("%s's encloser %s has bind LifecycleOwner %s", listener, encloser, owner);
+//            KLog.p("%s's encloser %s has bind LifecycleOwner %s", listener, encloser, owner);
             if (null != owner){ // 外部类对象有绑定的生命周期对象
                 observe(owner, listener); // 则将该listener绑定到其外部类所绑定的生命周期对象
             }else{
@@ -86,17 +86,17 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
         for (Map.Entry<LifecycleOwner, Set<Object>> owner : lifecycleOwnerBindListeners.entrySet()){
             LifecycleOwner key = owner.getKey();
             Set<Object> val = owner.getValue();
-            if (key == listener && val.isEmpty()){
-                lifecycleOwnerBindListeners.remove(key);
-                KLog.p("%s unobserved", listener);
-                return;
-            }
+//            if (key == listener){
+//                // NOTE: 对于listener自身即是key的情形，需等其下挂的所有listener（包括它自己）均解绑后方能解除监控。
+//                  换句话说，此种情形下调用该接口并未真正的解除监控。
+//            }
             if (val.contains(listener)){
                 val.remove(listener);
+                KLog.p(KLog.WARN,"unbind %s's lifecycle from %s", listener, key);
                 if (val.isEmpty()){
                     lifecycleOwnerBindListeners.remove(key);
+                    KLog.p(KLog.WARN, "unobserve %s's lifecycle", key);
                 }
-                KLog.p("%s unobserved", listener);
                 return;
             }
         }
@@ -119,8 +119,7 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
     private boolean hasObserved(Object listener){
         for (Map.Entry<LifecycleOwner, Set<Object>> owner : lifecycleOwnerBindListeners.entrySet()){
-            if (owner.getKey() == listener
-                    || owner.getValue().contains(listener)){
+            if (owner.getValue().contains(listener)){
                 return true;
             }
         }
@@ -135,20 +134,15 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
      *                 可以为null表示owner暂时没有附庸者，owner自身生命周期仍被监控。
     * */
     private void observe(LifecycleOwner owner, Object listener){
+        KLog.p(KLog.WARN,"bind %s's lifecycle to %s", listener, owner);
         if (isLifecycleOwnerExists(owner)) { // 该生命周期对象已经被监控了
-            if (null != listener) {
-                KLog.p(KLog.WARN,"bind %s to %s", listener, owner);
-                lifecycleOwnerBindListeners.get(owner).add(listener); // 绑定该listener到该生命周期对象
-            }
+            lifecycleOwnerBindListeners.get(owner).add(listener); // 绑定该listener到该生命周期对象
         }else { // 该生命周期对象尚未被监控
             Set<Object> listeners = new HashSet<>();
-            if (null != listener) {
-                KLog.p("bind %s to %s", listener, owner);
-                listeners.add(listener);
-            }
+            listeners.add(listener);
             lifecycleOwnerBindListeners.put(owner, listeners); // 绑定该listener到该生命周期对象
-            KLog.p("observe %s", owner);
             owner.getLifecycle().addObserver(this); // 监控该生命周期对象
+            KLog.p(KLog.WARN, "observe %s's lifecycle", owner);
         }
     }
 
@@ -222,40 +216,40 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
     @Override
     public void onResume(@NonNull LifecycleOwner owner) {
         if (null != cb){
-            notify(owner, cb::onListenerResumed);
+            notify(lifecycleOwnerBindListeners.get(owner), cb::onListenerResumed);
         }
     }
 
     @Override
     public void onPause(@NonNull LifecycleOwner owner) {
         if (null != cb){
-            notify(owner, cb::onListenerPause);
+            notify(lifecycleOwnerBindListeners.get(owner), cb::onListenerPause);
         }
     }
 
     @Override
     public void onStop(@NonNull LifecycleOwner owner) {
         if (null != cb){
-            notify(owner, cb::onListenerStop);
+            notify(lifecycleOwnerBindListeners.get(owner), cb::onListenerStop);
         }
-//        lifecycleOwnerBindListeners.remove(owner);
     }
 
     @Override
     public void onDestroy(@NonNull LifecycleOwner owner) {
         if (null != cb){
-            notify(owner, cb::onListenerDestroy);
+            notify(lifecycleOwnerBindListeners.get(owner), cb::onListenerDestroy);
         }
-        lifecycleOwnerBindListeners.remove(owner);
+        Set<Object> listeners = lifecycleOwnerBindListeners.remove(owner);
+        for (Object listener : listeners){
+            KLog.p(KLog.WARN,"unbind %s's lifecycle from %s", listener, owner);
+        }
+        KLog.p(KLog.WARN, "unobserve %s's lifecycle", owner);
     }
 
-    private void notify(LifecycleOwner owner, Action action){
-        action.act(owner); // owner自身即为listener
-
-        if (lifecycleOwnerBindListeners.keySet().contains(owner)){
-            Set<Object> objects = lifecycleOwnerBindListeners.get(owner);
-            for (Object obj : objects){
-                action.act(obj);
+    private void notify(Set<Object> listeners, Action action){
+        if (null != listeners){
+            for (Object listener : listeners){
+                action.act(listener);
             }
         }
     }
