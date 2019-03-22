@@ -827,10 +827,17 @@ public class DataCollaborateManager extends Caster {
                                                 ops = new PriorityQueue<>();
                                                 cachedPaintOps.put(board.achTabId, ops);
                                             }
+                                            String boardId = null;
+                                            for (String id : cachedPaintOps.keySet()){
+                                                if (id.equals(board.achTabId)){
+                                                    boardId = id;
+                                                    break;
+                                                }
+                                            }
                                             // 后续会批量上报当前画板已有图元，直到收到End消息为止。此处我们开启超时机制防止收不到End消息
                                             Message msg = Message.obtain();
                                             msg.what = MsgID_SynchronizingTimeout;
-                                            msg.obj = board.achTabId;
+                                            msg.obj = boardId;
                                             handler.sendMessageDelayed(msg, 5*1000);
                                         }
 
@@ -1214,6 +1221,7 @@ public class DataCollaborateManager extends Caster {
                         KLog.p(KLog.ERROR, "unexpected MsgID_SynchronizingTimeout, no such synchronizing board(%s) exists", msg.obj);
                         return;
                     }
+                    KLog.p("synchronize ops for board %s timeout", msg.obj);
                     Set<Object> listeners = getNtfListeners(Msg.DCElementEndNtf);
                     if (null == listeners || listeners.isEmpty()){// 判断监听者是否还在，因为监听者（如activity）可能已经销毁了
                         KLog.p(KLog.ERROR, "listeners for DCElementEndNtf not exists");
@@ -1270,7 +1278,16 @@ public class DataCollaborateManager extends Caster {
                 比如协作方操作顺序是“画线、清屏、画圆”最终效果是一个圆，但推送到达己方的时序可能是“画圆、清屏、画线”，
                 若不做处理直接上报用户，用户界面展示的效果将是一条线。*/
                 TDcsCacheElementParseResult end = (TDcsCacheElementParseResult) ntfContent;
-                handler.removeMessages(MsgID_SynchronizingTimeout, end.achTabId);
+                String bdId = null;
+                for (String id : cachedPaintOps.keySet()){
+                    if (id.equals(end.achTabId)){
+                        bdId = id;
+                        break;
+                    }
+                }
+                if (null != bdId) {
+                    handler.removeMessages(MsgID_SynchronizingTimeout, bdId);
+                }
                 PriorityQueue<OpPaint> ops = cachedPaintOps.remove(end.achTabId);
                 if (null == ops){
                     KLog.p(KLog.ERROR, "unexpected DCElementEndNtf, no such synchronizing board(%s) exists", end.achTabId);
@@ -1369,6 +1386,8 @@ public class DataCollaborateManager extends Caster {
         if (null != cachedOps){ // 当前正在同步该画板的图元则缓存图元
             if (!cachedOps.contains(op)) { // 去重。 同步期间有可能收到重复的图元
                 cachedOps.offer(op);
+            }else{
+                KLog.p(KLog.WARN, "duplicated op %s", op);
             }
         } else {
             if (bPreparingSync){ // 入会后同步前收到的图元也需缓存下来
