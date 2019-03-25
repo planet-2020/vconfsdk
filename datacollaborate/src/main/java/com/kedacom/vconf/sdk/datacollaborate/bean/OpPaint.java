@@ -1,9 +1,11 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import java.util.Arrays;
 import java.util.UUID;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 public abstract class OpPaint implements Comparable<OpPaint>{
 
@@ -31,6 +33,30 @@ public abstract class OpPaint implements Comparable<OpPaint>{
     @Override
     public String toString() {
         return String.format("\n uuid=%s, type=%s, confE164=%s, boardId=%s, pageId=%s", uuid, type, confE164, boardId, pageId);
+    }
+
+    @Override
+    public boolean equals(@Nullable Object obj) {
+        if (obj == this){
+            return true;
+        }
+        if (null == obj){
+            return false;
+        }
+        if (obj.getClass()!=getClass()){
+            return false;
+        }
+
+        OpPaint otherOp = (OpPaint) obj;
+        return confE164.equals(otherOp.confE164)
+                && boardId.equals(otherOp.boardId)
+                && pageId == otherOp.pageId
+                && sn == otherOp.sn;
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(new Object[]{confE164, boardId, pageId, sn});
     }
 
     public String getUuid() {
