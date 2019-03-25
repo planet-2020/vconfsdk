@@ -312,9 +312,6 @@ public class DataCollaborateManager extends Caster {
      * */
     public void logout(@Nullable IResultListener resultListener){
         req(Msg.DCLogout, resultListener);
-        cachedPaintOps.clear();
-        curDcConfE164 = null;
-        curUserE164 = null;
     }
 
 
@@ -334,12 +331,11 @@ public class DataCollaborateManager extends Caster {
      *                       resultListener.onFailed(errorCode);*/
     public void createDcConf(String confE164, String confName, EDcMode dcMode, EConfType confType,
                              String adminE164, List<DCMember> members, IResultListener resultListener){
+        curDcConfE164 = null;
         req(Msg.DCCreateConf, resultListener,
                 new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
                         confE164, confName, ToDoConverter.toTransferObj(dcMode),
                         ToDoConverter.toDcUserList(members), adminE164, curTerminalType));
-        cachedPaintOps.clear();
-        curDcConfE164 = null;
     }
 
     /**结束数据协作
@@ -351,8 +347,6 @@ public class DataCollaborateManager extends Caster {
      *                       resultListener.onFailed(errorCode);*/
     public void releaseDcConf(IResultListener resultListener){
         req(Msg.DCReleaseConf, resultListener, curDcConfE164);
-        curDcConfE164 = null;
-        cachedPaintOps.clear();
     }
 
     /**退出数据协作。
@@ -366,8 +360,6 @@ public class DataCollaborateManager extends Caster {
      *                       resultListener.onFailed(errorCode);*/
     public void quitDcConf(boolean bQuitConf, IResultListener resultListener){
         req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
-        curDcConfE164 = null;
-        cachedPaintOps.clear();
     }
 
 
@@ -670,6 +662,7 @@ public class DataCollaborateManager extends Caster {
                         || Msg.DCReleaseConf == reqId){
                     if (!result.bSuccess) { // 链路已断开，退出/结束协作成功
                         reportSuccess(null, listener);
+                        curDcConfE164 = null;
                     }else{ // 链路未断开，该消息不是期望的
                         return false;
                     }
@@ -718,6 +711,7 @@ public class DataCollaborateManager extends Caster {
                             ((IOnSessionEventListener) listener).onDcException(ErrCode_Disconnect);
                         }
                     }
+                    curDcConfE164 = null;
                 }
                 break;
 
