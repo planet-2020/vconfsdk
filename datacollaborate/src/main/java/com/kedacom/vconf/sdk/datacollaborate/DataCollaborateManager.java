@@ -751,6 +751,16 @@ public class DataCollaborateManager extends Caster {
         }
     }
 
+
+    private String getCachedOpsBoardId(String boardId){
+        for (String id : cachedPaintOps.keySet()){
+            if (id.equals(boardId)){
+                return id;
+            }
+        }
+        return null;
+    }
+
     // 同步数据协作中已有内容
     void synchronizeCachedStuff(TDCSCreateConfResult dcConfInfo){
 
@@ -821,17 +831,10 @@ public class DataCollaborateManager extends Caster {
                                                 ops = new PriorityQueue<>();
                                                 cachedPaintOps.put(board.achTabId, ops);
                                             }
-                                            String boardId = null;
-                                            for (String id : cachedPaintOps.keySet()){
-                                                if (id.equals(board.achTabId)){
-                                                    boardId = id;
-                                                    break;
-                                                }
-                                            }
                                             // 后续会批量上报当前画板已有图元，直到收到End消息为止。此处我们开启超时机制防止收不到End消息
                                             Message msg = Message.obtain();
                                             msg.what = MsgID_SynchronizingTimeout;
-                                            msg.obj = boardId;
+                                            msg.obj = getCachedOpsBoardId(board.achTabId);
                                             handler.sendMessageDelayed(msg, 5*1000);
                                         }
 
@@ -1272,13 +1275,7 @@ public class DataCollaborateManager extends Caster {
                 比如协作方操作顺序是“画线、清屏、画圆”最终效果是一个圆，但推送到达己方的时序可能是“画圆、清屏、画线”，
                 若不做处理直接上报用户，用户界面展示的效果将是一条线。*/
                 TDcsCacheElementParseResult end = (TDcsCacheElementParseResult) ntfContent;
-                String bdId = null;
-                for (String id : cachedPaintOps.keySet()){
-                    if (id.equals(end.achTabId)){
-                        bdId = id;
-                        break;
-                    }
-                }
+                String bdId = getCachedOpsBoardId(end.achTabId);
                 if (null != bdId) {
                     handler.removeMessages(MsgID_SynchronizingTimeout, bdId);
                 }
