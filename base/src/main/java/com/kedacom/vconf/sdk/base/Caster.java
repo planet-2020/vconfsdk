@@ -227,9 +227,11 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
 
     /**
      * 取消会话请求。
+     * @param req 请求消息
+     * @param rspListener 监听者，可能为null（对应的req时传入的是null）
      * 若同样的请求id同样的响应监听者请求了多次，则取消的是最早的请求。*/
     protected synchronized void cancelReq(Msg req, IResultListener rspListener){
-        if (null == req || null == rspListener){ // TODO 支持rspListener==null
+        if (null == req){
             return;
         }
         if (!rspProcessorMap.keySet().contains(req)){
@@ -240,8 +242,8 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         for (Map.Entry<Integer, ReqBundle> entry : rspListeners.entrySet()){
             int reqSn = entry.getKey();
             ReqBundle value = entry.getValue();
-            if (req.equals(value.req)
-                    && rspListener.equals(value.listener)){
+            if (req == value.req
+                    && rspListener==value.listener){
                 KLog.p("cancel reqSn=%s, req=%s, listener=%s", reqSn, value.req, value.listener);
                 sessionFairy.cancelReq(reqSn);
                 rspListeners.remove(reqSn);
