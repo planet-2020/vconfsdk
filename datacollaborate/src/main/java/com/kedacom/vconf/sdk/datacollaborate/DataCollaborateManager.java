@@ -71,6 +71,7 @@ public class DataCollaborateManager extends Caster {
 
     /*同步过程中缓存的操作*/
     private Map<String, PriorityQueue<OpPaint>> cachedPaintOps = new HashMap<>();
+    private Map<String, Long> syncTimestamps = new HashMap<>();
 
     /* 是否正在准备同步。
     标记从入会成功到开始同步会议中已有图元这段时间，对这段时间内到达的图元
@@ -144,7 +145,7 @@ public class DataCollaborateManager extends Caster {
             Msg.DCUndoneNtf,
             Msg.DCRedoneNtf,
             Msg.DCScreenClearedNtf,
-            Msg.DCElementEndNtf,
+//            Msg.DCElementEndNtf,
     };
 
 
@@ -831,11 +832,15 @@ public class DataCollaborateManager extends Caster {
                                                 ops = new PriorityQueue<>();
                                                 cachedPaintOps.put(board.achTabId, ops);
                                             }
-                                            // 后续会批量上报当前画板已有图元，直到收到End消息为止。此处我们开启超时机制防止收不到End消息
+                                            /* 后续会收到画板缓存的图元。
+                                            * 由于下层的begin-final消息不可靠，我们定时检查当前是否仍在同步图元，若同步结束则上报用户*/
+                                            String boardId = getCachedOpsBoardId(board.achTabId);
                                             Message msg = Message.obtain();
-                                            msg.what = MsgID_SynchronizingTimeout;
-                                            msg.obj = getCachedOpsBoardId(board.achTabId);
-                                            handler.sendMessageDelayed(msg, 5*1000);
+                                            msg.what = MsgID_CheckSynchronizing;
+                                            msg.obj = boardId;
+                                            handler.sendMessageDelayed(msg, 2000);
+                                            KLog.p("synchronizing ops for board %s", boardId);
+                                            syncTimestamps.put(boardId, System.currentTimeMillis());
                                         }
 
                                         @Override
@@ -1207,34 +1212,46 @@ public class DataCollaborateManager extends Caster {
 
 
 
-    private final int MsgID_SynchronizingTimeout = 10;
+    private final int MsgID_CheckSynchronizing = 10;
     private Handler handler = new Handler(Looper.getMainLooper()){
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
-                case MsgID_SynchronizingTimeout:
-                    PriorityQueue<OpPaint> ops = cachedPaintOps.remove(msg.obj);
-                    if (null == ops){
-                        KLog.p(KLog.ERROR, "unexpected MsgID_SynchronizingTimeout, no such synchronizing board(%s) exists", msg.obj);
-                        return;
-                    }
-                    KLog.p("synchronize ops for board %s timeout", msg.obj);
-                    Set<Object> listeners = getNtfListeners(Msg.DCElementEndNtf);
-                    if (null == listeners || listeners.isEmpty()){// 判断监听者是否还在，因为监听者（如activity）可能已经销毁了
-                        KLog.p(KLog.ERROR, "listeners for DCElementEndNtf not exists");
-                        return;
-                    }
-                    // 上报用户目前为止已同步的图元操作
-
-                    List<OpPaint> toReportOps = new ArrayList<>();
-                    while (!ops.isEmpty()) {
-                        toReportOps.add(ops.poll());
-                    }
-                    for (OpPaint op : toReportOps) {
-                        for (Object listener : listeners) {
-                            ((IOnPaintOpListener) listener).onPaint(op);
+                case MsgID_CheckSynchronizing:
+                    long timestamp = syncTimestamps.get(msg.obj);
+                    if (System.currentTimeMillis()-timestamp > 2000){ // 同步阶段若2s未收到后续绘制操作则认为同步结束
+                        syncTimestamps.remove(msg.obj);
+                        PriorityQueue<OpPaint> ops = cachedPaintOps.remove(msg.obj);
+                        if (null == ops){
+                            KLog.p(KLog.ERROR, "unexpected MsgID_CheckSynchronizing, no such synchronizing board(%s) exists", msg.obj);
+                            return;
                         }
+                        KLog.p("finish synchronizing ops for board %s", msg.obj);
+                        Set<Object> listeners = getNtfListeners(Msg.DCPathDrawnNtf);
+                        if (null == listeners || listeners.isEmpty()){// 判断监听者是否还在，因为监听者（如activity）可能已经销毁了
+                            KLog.p(KLog.ERROR, "listeners for paint op ntf not exists");
+                            return;
+                        }
+                        /* 同步结束，上报用户该画板已同步的绘制操作。
+                        NOTE：之所以同步结束时才上报而不是边收边上报，是因为同步过程中操作到达时序可能跟操作实际时序不一致，
+                        所以需要收齐后排好序再上报给用户才能保证用户接收到的操作时序是正确的，进而正确绘制。
+                        比如实际的操作时序是“画线、清屏、画圆”最终效果是一个圆，但同步过来的时序可能是“画圆、清屏、画线”，
+                        若不做处理直接上报用户，用户界面展示的效果将是一条线。
+                        此种时序错乱的情形只在同步过程中有，实时广播的操作没有这个问题。*/
+                        List<OpPaint> toReportOps = new ArrayList<>();
+                        while (!ops.isEmpty()) {
+                            toReportOps.add(ops.poll()); // 排序
+                        }
+                        for (OpPaint op : toReportOps) {
+                            for (Object listener : listeners) {
+                                ((IOnPaintOpListener) listener).onPaint(op); // 上报
+                            }
+                        }
+                    }else{
+                        KLog.p("synchronizing ops for board %s", msg.obj);
+                        handler.sendMessageDelayed(Message.obtain(msg), 2000); // 同步正在进行中，2s后再做检查是否已结束
                     }
+
                     break;
             }
         }
@@ -1265,36 +1282,9 @@ public class DataCollaborateManager extends Caster {
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         switch (ntfId){
 //            case DCElementBeginNtf:
-//                // NOTHING TO DO. NOTE:此通知并不能准确标记批量图元推送的起点。
 //                break;
-            // 图元同步结束通知
-            case DCElementEndNtf:
-                /*当前画板已有图元推送结束，我们上报给用户。
-                NOTE：之所以推送结束时才上报而不是边收到推送边上报，是因为推送的这些图元操作到达时序可能跟图元操作顺序不一致，
-                所以需要收齐后排好序再上报给用户才能保证用户接收时序和图元操作顺序一致，进而正确绘制。
-                比如协作方操作顺序是“画线、清屏、画圆”最终效果是一个圆，但推送到达己方的时序可能是“画圆、清屏、画线”，
-                若不做处理直接上报用户，用户界面展示的效果将是一条线。*/
-                TDcsCacheElementParseResult end = (TDcsCacheElementParseResult) ntfContent;
-                String bdId = getCachedOpsBoardId(end.achTabId);
-                if (null != bdId) {
-                    handler.removeMessages(MsgID_SynchronizingTimeout, bdId);
-                }
-                PriorityQueue<OpPaint> ops = cachedPaintOps.remove(end.achTabId);
-                if (null == ops){
-                    KLog.p(KLog.ERROR, "unexpected DCElementEndNtf, no such synchronizing board(%s) exists", end.achTabId);
-                    return;
-                }
-                // 上报用户图元绘制操作
-                List<OpPaint> toReportOps = new ArrayList<>();
-                while (!ops.isEmpty()) {
-                    toReportOps.add(ops.poll());
-                }
-                for (OpPaint op : toReportOps) {
-                    for (Object listener : listeners) {
-                        ((IOnPaintOpListener) listener).onPaint(op);
-                    }
-                }
-                break;
+//            case DCElementEndNtf:  // NOTE: 下层“开始——结束”通知不可靠，时序数量均有问题，故弃用。
+//                break;
 
             // 插入图片通知。 NOTE:插入图片比较特殊，通知中只有插入图片操作的基本信息，图片本身还需进一步下载
             case DCPicInsertedNtf:
@@ -1380,6 +1370,7 @@ public class DataCollaborateManager extends Caster {
             }else{
                 KLog.p(KLog.WARN, "duplicated op %s", op);
             }
+            syncTimestamps.put(op.getBoardId(), System.currentTimeMillis()); // 更新时间戳
         } else {
             if (bPreparingSync){ // 入会后同步前收到的图元也需缓存下来
                 PriorityQueue<OpPaint> ops1 = new PriorityQueue<>();
