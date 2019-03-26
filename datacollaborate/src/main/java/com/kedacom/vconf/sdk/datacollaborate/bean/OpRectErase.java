@@ -3,8 +3,6 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.RectF;
 
-import androidx.annotation.NonNull;
-
 public class OpRectErase extends OpPaint implements IRepealable, IBoundary{
     private float left;
     private float top;
@@ -22,10 +20,16 @@ public class OpRectErase extends OpPaint implements IRepealable, IBoundary{
         type = EOpType.RECT_ERASE;
     }
 
-    @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("left=%s, top=%s, right=%s, bottom=%s", left, top, right, bottom)+super.toString()+"}";
+        return "OpRectErase{" +
+                "left=" + left +
+                ", top=" + top +
+                ", right=" + right +
+                ", bottom=" + bottom +
+                ", bound=" + bound +'\n'+
+                super.toString() +
+                '}';
     }
 
     public float getLeft() {

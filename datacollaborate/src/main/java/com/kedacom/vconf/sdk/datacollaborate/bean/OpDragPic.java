@@ -4,8 +4,6 @@ import android.graphics.Matrix;
 
 import java.util.Map;
 
-import androidx.annotation.NonNull;
-
 public class OpDragPic extends OpPaint {
 
     /**
@@ -24,14 +22,12 @@ public class OpDragPic extends OpPaint {
         type = EOpType.DRAG_PICTURE;
     }
 
-    @NonNull
     @Override
     public String toString() {
-        StringBuffer stringBuffer = new StringBuffer();
-        for (String picId : picMatrices.keySet()){
-            stringBuffer.append(picMatrices.get(picId)).append(", ");
-        }
-        return "{"+String.format("picMatrices={%s}", stringBuffer.toString())+super.toString()+"}";
+        return "OpDragPic{" +
+                "picMatrices=" + picMatrices +'\n'+
+                super.toString() +
+                '}';
     }
 
     public Map<String, Matrix> getPicMatrices() {

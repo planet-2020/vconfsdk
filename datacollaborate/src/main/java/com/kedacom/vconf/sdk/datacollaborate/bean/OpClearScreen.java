@@ -6,4 +6,8 @@ public class OpClearScreen extends OpPaint implements IRepealable{
         type = EOpType.CLEAR_SCREEN;
     }
 
+    @Override
+    public String toString() {
+        return String.format("OpClearScreen{%s}", super.toString());
+    }
 }

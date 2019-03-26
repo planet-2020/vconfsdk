@@ -1,7 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
-import androidx.annotation.NonNull;
+import java.util.Arrays;
 
 public class OpDeletePic extends OpPaint {
     private String[] picIds;
@@ -15,16 +15,12 @@ public class OpDeletePic extends OpPaint {
         type = EOpType.DELETE_PICTURE;
     }
 
-    @NonNull
     @Override
     public String toString() {
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append("(");
-        for (String picId : picIds){
-            stringBuffer.append(picId).append(",");
-        }
-        stringBuffer.append(")");
-        return "{"+String.format("picIds=%s", stringBuffer.toString())+super.toString()+"}";
+        return "OpDeletePic{" +
+                "picIds=" + Arrays.toString(picIds) +'\n'+
+                super.toString() +
+                '}';
     }
 
     public String[] getPicIds() {

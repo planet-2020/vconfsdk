@@ -6,4 +6,8 @@ public class OpRedo extends OpPaint {
         type = EOpType.REDO;
     }
 
+    @Override
+    public String toString() {
+        return String.format("OpRedo{%s}", super.toString());
+    }
 }

@@ -124,7 +124,6 @@ public class OpInsertPic extends OpPaint implements IBoundary{
         type = EOpType.INSERT_PICTURE;
     }
 
-
     @Override
     public String toString() {
         return "OpInsertPic{" +
@@ -135,11 +134,13 @@ public class OpInsertPic extends OpPaint implements IBoundary{
                 ", insertPos=" + insertPos +
                 ", picWidth=" + picWidth +
                 ", picHeight=" + picHeight +
-                ", \ntransMatrix=" + transMatrix +
+                ", transMatrix=" + transMatrix +
                 ", mixMatrix=" + mixMatrix +
                 ", matrix=" + matrix +
+                ", boardMatrix=" + boardMatrix +
                 ", dragMatrix=" + dragMatrix +
-                ", bound=" + bound +
+                ", bound=" + bound +'\n'+
+                super.toString() +
                 '}';
     }
 

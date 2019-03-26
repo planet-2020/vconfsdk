@@ -3,8 +3,6 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.RectF;
 
-import androidx.annotation.NonNull;
-
 public class OpDrawOval extends OpDraw {
     private float left;
     private float top;
@@ -25,10 +23,16 @@ public class OpDrawOval extends OpDraw {
         type = EOpType.DRAW_OVAL;
     }
 
-    @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("left=%s, top=%s, right=%s, bottom=%s", left, top, right, bottom)+super.toString()+"}";
+        return "OpDrawOval{" +
+                "left=" + left +
+                ", top=" + top +
+                ", right=" + right +
+                ", bottom=" + bottom +
+                ", bound=" + bound +'\n'+
+                super.toString() +
+                '}';
     }
 
     public float getLeft() {

@@ -3,8 +3,6 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.Matrix;
 
-import androidx.annotation.NonNull;
-
 public class OpMatrix extends OpPaint {
     private Matrix matrix = new Matrix();
 
@@ -22,10 +20,12 @@ public class OpMatrix extends OpPaint {
         type = EOpType.FULLSCREEN_MATRIX;
     }
 
-    @NonNull
     @Override
     public String toString() {
-        return "{matrix="+matrix+super.toString()+"}";
+        return "OpMatrix{" +
+                "matrix=" + matrix +'\n'+
+                super.toString() +
+                '}';
     }
 
     public float[] getMatrixValue() {

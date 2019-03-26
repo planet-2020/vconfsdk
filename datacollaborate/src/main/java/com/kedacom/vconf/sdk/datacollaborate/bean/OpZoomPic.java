@@ -4,8 +4,6 @@ import android.graphics.Matrix;
 
 import java.util.Map;
 
-import androidx.annotation.NonNull;
-
 public class OpZoomPic extends OpPaint {
 
     private Map<String, Matrix> picMatrices;
@@ -19,14 +17,12 @@ public class OpZoomPic extends OpPaint {
         type = EOpType.ZOOM_PICTURE;
     }
 
-    @NonNull
     @Override
     public String toString() {
-        StringBuffer stringBuffer = new StringBuffer();
-        for (String picId : picMatrices.keySet()){
-            stringBuffer.append(picMatrices.get(picId)).append(", ");
-        }
-        return "{"+String.format("picMatrices={%s}", stringBuffer.toString())+super.toString()+"}";
+        return "OpZoomPic{" +
+                "picMatrices=" + picMatrices +
+                super.toString() +'\n'+
+                '}';
     }
 
     public Map<String, Matrix> getPicMatrices() {

@@ -6,8 +6,6 @@ import android.graphics.RectF;
 
 import java.util.List;
 
-import androidx.annotation.NonNull;
-
 public class OpDrawPath extends OpDraw {
     private List<PointF> points;
     private Path path;
@@ -50,10 +48,19 @@ public class OpDrawPath extends OpDraw {
         type = EOpType.DRAW_PATH;
     }
 
-    @NonNull
     @Override
     public String toString() {
-        return  String.format("{ boundary=[%s,%s,%s,%s] %s}", left, top, right, bottom, super.toString());
+        return "OpDrawPath{" +
+                "points=" + points +
+                ", path=" + path +
+                ", left=" + left +
+                ", top=" + top +
+                ", right=" + right +
+                ", bottom=" + bottom +
+                ", lastPointCount=" + lastPointCount +
+                ", bound=" + bound +'\n'+
+                super.toString() +
+                '}';
     }
 
     public List<PointF> getPoints() {

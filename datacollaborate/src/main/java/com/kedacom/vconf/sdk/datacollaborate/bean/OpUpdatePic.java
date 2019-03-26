@@ -21,7 +21,8 @@ public class OpUpdatePic extends OpPaint {
     public String toString() {
         return "OpUpdatePic{" +
                 "picId='" + picId + '\'' +
-                ", picSavePath='" + picSavePath + '\'' +
+                ", picSavePath='" + picSavePath + '\'' +'\n'+
+                super.toString() +
                 '}';
     }
 

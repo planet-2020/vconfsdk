@@ -21,8 +21,8 @@ public class OpErase extends OpDrawPath {
     public String toString() {
         return "OpErase{" +
                 "width=" + width +
-                ", height=" + height +
-                 super.toString()+
+                ", height=" + height +'\n'+
+                super.toString() +
                 '}';
     }
 
