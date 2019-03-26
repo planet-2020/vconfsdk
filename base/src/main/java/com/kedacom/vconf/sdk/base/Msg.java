@@ -544,7 +544,8 @@ public enum Msg {
     @Request(method = "DCSOperCircleOperInfoCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbCircleOperInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbCircleOperInfo.class},
+            rspSeq = "DCOvalDrawnNtf")
     DCDrawOval,
 
     /**
@@ -553,7 +554,8 @@ public enum Msg {
     @Request(method = "DCSOperRectangleOperInfoCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbRectangleOperInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbRectangleOperInfo.class},
+            rspSeq = "DCRectDrawnNtf")
     DCDrawRect,
 
     /**
@@ -593,7 +595,8 @@ public enum Msg {
     @Request(method = "DCSOperReginEraseCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbReginEraseOperInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbReginEraseOperInfo.class},
+            rspSeq = "DCErasedNtf")
     DCErase,
 
     /**
@@ -602,7 +605,8 @@ public enum Msg {
     @Request(method = "DCSOperEraseOperInfoCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbEraseOperInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbEraseOperInfo.class},
+            rspSeq = "DCRectErasedNtf")
     DCRectErase,
 
     /**
@@ -611,7 +615,8 @@ public enum Msg {
     @Request(method = "DCSOperClearScreenCmd",
             owner = DcsCtrl,
             paras = StringBuffer.class,
-            userParas = TDCSOperReq.class)
+            userParas = TDCSOperReq.class,
+            rspSeq = "DCScreenClearedNtf")
     DCClearScreen,
 
 
@@ -653,7 +658,8 @@ public enum Msg {
     @Request(method = "DCSOperUndoCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbTabPageIdInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbTabPageIdInfo.class},
+            rspSeq = "DCUndoneNtf")
     DCUndo,
 
     /**
@@ -662,7 +668,8 @@ public enum Msg {
     @Request(method = "DCSOperRedoCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbTabPageIdInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbTabPageIdInfo.class},
+            rspSeq = "DCRedoneNtf")
     DCRedo,
 
 
@@ -855,12 +862,12 @@ public enum Msg {
             id = "DcsOperClearScreen_Ntf")
     DCScreenClearedNtf,
 
-    /**
-     * 图元序列结束通知
-     */
-    @Response(clz = TDcsCacheElementParseResult.class,
-            id = "DcsElementOperFinal_Ntf")
-    DCElementEndNtf,
+//    /**
+//     * 图元序列结束通知
+//     */ //NOTE: 下层“开始——结束”通知不可靠，时序数量均有问题，故废弃不用。
+//    @Response(clz = TDcsCacheElementParseResult.class,
+//            id = "DcsElementOperFinal_Ntf")
+//    DCElementEndNtf,
 
 
     //<<<<<<<<<<<<<<<<<< 数据协作
