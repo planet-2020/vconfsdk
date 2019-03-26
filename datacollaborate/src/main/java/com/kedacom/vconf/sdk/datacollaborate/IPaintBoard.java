@@ -4,14 +4,13 @@ import android.graphics.Bitmap;
 import android.view.View;
 
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
 /**
  * 画板。
  * 负责：
  * 提供画板界面；
  * 提供工具栏相关接口如设置画直线画圆，设置颜色画笔粗细，插入图片等；
- * 处理触屏事件结合工具栏设置生成相应绘制操作并通过用户下设的监听器反馈给用户；
+ * 处理触屏事件结合工具栏设置生成相应绘制操作；
  * */
 public interface IPaintBoard {
 
@@ -220,8 +219,14 @@ public interface IPaintBoard {
 
     /**
      * 画板内容是否为空。
+     * NOTE: “空”的必要条件是视觉上画板没有内容，但是使用“擦除”而非清屏操作清掉画板的内容并不会被判定为画板为空。
      * */
     boolean isEmpty();
 
+    /**
+     * 是否清屏状态。
+     * 清屏状态不代表画板内容为空，目前清屏只针对图形操作，清屏状态只表示画板上所有图形操作已被清掉。
+     * */
+    boolean isClear();
 
 }

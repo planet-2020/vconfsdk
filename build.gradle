@@ -28,6 +28,9 @@ allprojects {
         maven {
             url "http://172.16.6.154:9081/repository/snapshots/"
         }
+        maven {
+            url 'http://172.16.6.154:9081/repository/public/'
+        }
 
     }
 

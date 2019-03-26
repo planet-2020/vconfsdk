@@ -435,7 +435,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onDragBegin(float x, float y) {
-            createShapeOp(x, y);
+            startShapeOp(x, y);
         }
 
         @Override
@@ -446,37 +446,25 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onDragEnd() {
-            confirmShapeOp();
+            finishShapeOp();
             final OpPaint tmpOp = adjustingShapeOp;
             tmpShapeOps.offerLast(tmpOp);
             if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), tmpOp, new IResultListener() {
 
                 @Override
                 public void onArrive() {
-                    tmpShapeOps.remove(tmpOp);
+                    tmpShapeOps.remove(tmpOp); // 不论成功/失败/超时临时操作均已不需要，若成功该操作将被添加到“正式”的操作集，若失败则该操作被丢弃。
                 }
 
                 @Override
                 public void onSuccess(Object result) {
-
-                    if (null != onStateChangedListener) onStateChangedListener.onChanged(getBoardId());
-
-                    if (!repealedShapeOps.isEmpty() && tmpOp instanceof IRepealable) {
-                        //撤销/恢复操作流被“可撤销”操作中断，则重置撤销/恢复相关状态
-                        repealedShapeOps.clear();
-                        repealableStateChanged();
-                    }
-
-                    boolean bEmpty = shapeOps.isEmpty();
-
-                    shapeOps.offerLast(tmpOp); // 临时工转正
-
-                    if (bEmpty && tmpOp instanceof IRepealable){ // 可撤销操作从无到有
-                        repealableStateChanged();
-                    }
+                    dealShapeOp(tmpOp);
                 }
 
-            }, true);
+            },
+                    true /* 不同于undo/redo/clearscreen操作，绘制操作本端立即展示不等平台反馈结果以免展示效果出现迟滞。
+                                       若平台反馈结果成功则保持现有展示的绘制不变，若平台没有反馈结果或者反馈失败则再清除该绘制。*/
+            );
 
             adjustingShapeOp = null;
         }
@@ -512,7 +500,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private float[] mapPoint= new float[2];
     private Matrix invertedDensityRelativeBoardMatrix;
-    private void createShapeOp(float startX, float startY){
+    private void startShapeOp(float startX, float startY){
         invertedDensityRelativeBoardMatrix = MatrixHelper.invert(getDensityRelativeBoardMatrix());
 //        KLog.p("invert success?=%s, orgX=%s, orgY=%s", suc, x, y);
         mapPoint[0] = startX;
@@ -639,7 +627,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    private void confirmShapeOp(){
+    private void finishShapeOp(){
         if (TOOL_RECT_ERASER == tool){
             OpDrawRect opDrawRect = (OpDrawRect) adjustingShapeOp;
             adjustingShapeOp = new OpRectErase(opDrawRect.getLeft(), opDrawRect.getTop(), opDrawRect.getRight(), opDrawRect.getBottom());
@@ -982,21 +970,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                    picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
 
         if (null == picLayerSnapshot) {
-            KLog.p("picPaintView.isAvailable()=%s", picPaintView.isAvailable());
             picLayerSnapshot = picPaintView.getBitmap();
         } else {
             picPaintView.getBitmap(picLayerSnapshot);
         }
 
         if (null == shapeLayerSnapshot) {
-            KLog.p("shapePaintView.isAvailable()=%s", shapePaintView.isAvailable());
             shapeLayerSnapshot = shapePaintView.getBitmap();
         } else {
             shapePaintView.getBitmap(shapeLayerSnapshot);
         }
 
         if (null == picEditingLayerSnapshot) {
-            KLog.p("picEditPaintView.isAvailable()=%s", picEditPaintView.isAvailable());
             picEditingLayerSnapshot = picEditPaintView.getBitmap();
         } else {
             picEditPaintView.getBitmap(picEditingLayerSnapshot);
@@ -1025,17 +1010,77 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void undo() {
-        dealSimpleOp(new OpUndo());
+        if (shapeOps.isEmpty()){
+            KLog.p(KLog.ERROR,"no op to undo");
+            return;
+        }
+
+        if (null != onStateChangedListener) {
+            OpPaint opUndo = new OpUndo();
+            assignBasicInfo(opUndo);
+            onStateChangedListener.onPaintOpGenerated(getBoardId(), opUndo, new IResultListener() {
+                @Override
+                public void onSuccess(Object result) {
+                    if (dealUndoOp((OpUndo) result)){
+                        onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null,
+                                true // 平台反馈撤销成功，此时刷新
+                        );
+                    }
+                }
+            },
+
+            false // 暂不刷新，等平台反馈结果再刷新
+
+            );
+        }
     }
 
     @Override
     public void redo() {
-        dealSimpleOp(new OpRedo());
+        if (repealedShapeOps.isEmpty()){
+            KLog.p(KLog.ERROR,"no op to repeal");
+            return;
+        }
+
+        if (null != onStateChangedListener) {
+            OpPaint opRedo = new OpRedo();
+            assignBasicInfo(opRedo);
+            onStateChangedListener.onPaintOpGenerated(getBoardId(), opRedo, new IResultListener() {
+                        @Override
+                        public void onSuccess(Object result) {
+                            if (dealRedoOp((OpRedo) result)){
+                                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                            }
+                        }
+                    },
+
+                    false // 暂不刷新，等平台反馈结果再刷新
+
+            );
+        }
     }
 
     @Override
     public void clearScreen() {
-        dealSimpleOp(new OpClearScreen());
+        if (isClear()){
+            KLog.p(KLog.ERROR, "already cleared");
+            return;
+        }
+        if (null != onStateChangedListener) {
+            OpPaint opCls = new OpClearScreen();
+            assignBasicInfo(opCls);
+            onStateChangedListener.onPaintOpGenerated(getBoardId(), opCls, new IResultListener() {
+                        @Override
+                        public void onSuccess(Object result) {
+                            if (dealClearScreenOp((OpClearScreen) result)){
+                                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                            }
+                        }
+                    },
+
+                    false // 暂不刷新，等平台反馈结果再刷新
+            );
+        }
     }
 
 // SEALED
@@ -1083,10 +1128,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * */
     @Override
     public boolean isEmpty() {
-        // XXX: 如果对端直接擦除一个空白画板会导致此接口返回false。TODO 在painter中过滤掉此种情形的擦除、清屏消息。
-        return  (picOps.isEmpty() && (shapeOps.isEmpty() || shapeOps.peekLast() instanceof OpClearScreen));
+        return  (picOps.isEmpty() && isClear());
     }
 
+    /**
+     * 是否清屏状态。
+     * 清屏状态不代表画板内容为空，目前清屏只针对图形操作，清屏状态只表示画板上所有图形操作已被清掉。
+     * @return 若画板没有图形操作或者最后一个图形操作是清屏则返回true，否则返回false。
+     * */
+    @Override
+    public boolean isClear(){
+        return shapeOps.isEmpty() || shapeOps.peekLast() instanceof OpClearScreen;
+    }
 
     @Override
     public int getRepealedOpsCount() {
@@ -1118,26 +1171,19 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     }
 
-    private void repealableStateChanged(){
-        if (null != onStateChangedListener){
-            onStateChangedListener.onRepealableStateChanged(getBoardId(), getRepealedOpsCount(), getShapeOpsCount());
-            refreshEmptyState();
-        }
-    }
-
-    private void screenCleared(){
-        refreshEmptyState();
-    }
-
     private void picCountChanged(){
         if (null != onStateChangedListener){
+            onStateChangedListener.onChanged(getBoardId());
             onStateChangedListener.onPictureCountChanged(getBoardId(), getPicCount());
             refreshEmptyState();
         }
     }
 
     private void zoomRateChanged(){
-        if (null != onStateChangedListener) onStateChangedListener.onZoomRateChanged(getBoardId(), getZoom());
+        if (null != onStateChangedListener) {
+            onStateChangedListener.onChanged(getBoardId());
+            onStateChangedListener.onZoomRateChanged(getBoardId(), getZoom());
+        }
     }
 
 
@@ -1458,8 +1504,83 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
 
+    private boolean dealShapeOp(OpPaint shapeOp){
+        boolean bEmpty = shapeOps.isEmpty(); // XXX 如果shapeOps中将来也有不可撤销操作呢？也就是说将来可能不能简单根据是否空来判断是否该改变可撤销状态
+        boolean bRepealedShapeOpEmpty = repealedShapeOps.isEmpty();
+
+        // 操作入队列
+        shapeOps.offerLast(shapeOp);
+
+        if (shapeOp instanceof IRepealable) {
+            repealedShapeOps.clear(); // 有新的可撤销操作加入时重置撤销/恢复相关状态（需求要求的）
+        }
+
+        if (null != onStateChangedListener){
+            onStateChangedListener.onChanged(getBoardId());
+            if (shapeOp instanceof IRepealable){
+                if (bEmpty // 可撤销操作从无到有
+                        || !bRepealedShapeOpEmpty //撤销/恢复操作流被“可撤销”操作中断
+                        ){
+                    onStateChangedListener.onRepealableStateChanged(getBoardId(), repealedShapeOps.size(),
+                            shapeOps.size() // NOTE: 此方法会遍历整个队列以获取size，较低效。
+                    );
+                }
+            }
+
+            refreshEmptyState();
+        }
+
+        return true;
+
+    }
+
+    private boolean dealClearScreenOp(OpClearScreen opClearScreen){
+        if (isClear()){
+            KLog.p(KLog.ERROR, "already cleared");
+            return false;
+        }
+
+        return dealShapeOp(opClearScreen);
+    }
+
+    private boolean dealUndoOp(OpUndo opUndo){
+        OpPaint op = shapeOps.pollLast(); // 撤销最近的操作
+        if (null == op){
+            KLog.p(KLog.ERROR, "no op to repeal");
+            return false;
+        }
+
+        repealedShapeOps.push(op); // 缓存撤销的操作以供恢复
+
+        if (null != onStateChangedListener){
+            onStateChangedListener.onChanged(getBoardId());
+            onStateChangedListener.onRepealableStateChanged(getBoardId(), repealedShapeOps.size(), shapeOps.size());
+            refreshEmptyState();
+        }
+
+        return true;
+    }
+
+    private boolean dealRedoOp(OpRedo opRedo){
+        if (repealedShapeOps.isEmpty()){
+            KLog.p(KLog.ERROR, "no op to restore");
+            return false;
+        }
+
+        OpPaint op = repealedShapeOps.pop();
+        shapeOps.offerLast(op); // 恢复最近被撤销的操作
+
+        if (null != onStateChangedListener){
+            onStateChangedListener.onChanged(getBoardId());
+            onStateChangedListener.onRepealableStateChanged(getBoardId(), repealedShapeOps.size(), shapeOps.size());
+            refreshEmptyState();
+        }
+
+        return true;
+    }
 
     /**
+     * 接收绘制操作
      * @return true 需要刷新，false不需要。
      * */
     boolean onPaintOp(OpPaint op){
@@ -1470,15 +1591,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
         KLog.p("recv op %s", op);
 
-        MyConcurrentLinkedDeque<OpPaint> shapeRenderOps = shapeOps;
-        Stack<OpPaint> shapeRepealedOps = repealedShapeOps;
         MyConcurrentLinkedDeque<OpPaint> picRenderOps = picOps;
         Matrix boardMatrix1 = boardMatrix;
 
-        if (null != onStateChangedListener) onStateChangedListener.onChanged(getBoardId());
-
         boolean bRefresh = true;
-        OpPaint tmpOp;
 
         switch (op.getType()){
             case INSERT_PICTURE:
@@ -1582,7 +1698,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                             break;
                         }
                     }
-                }
+                } // XXX TODO 拖动图片和下面的更新图片都应要通知用户boardState.onChanged()
                 break;
             case UPDATE_PICTURE: // XXX 己端插入图片也会收到该通知，需过滤
                 OpUpdatePic updatePic = (OpUpdatePic) op;
@@ -1628,51 +1744,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
                 break;
 
-            default:  // 图形操作
+            case UNDO:
+                bRefresh = dealUndoOp((OpUndo) op);
+                break;
+            case REDO:
+                bRefresh = dealRedoOp((OpRedo) op);
+                break;
+            case CLEAR_SCREEN:
+                bRefresh = dealClearScreenOp((OpClearScreen) op);
+                break;
 
-                switch (op.getType()){
-                    case UNDO:
-                        tmpOp = shapeRenderOps.pollLast(); // 撤销最近的操作
-                        if (null != tmpOp){
-                            KLog.p(KLog.WARN, "repeal %s",tmpOp);
-                            shapeRepealedOps.push(tmpOp); // 缓存撤销的操作以供恢复
-                            repealableStateChanged();
-                        }else{
-                            bRefresh = false;
-                        }
-                        break;
-                    case REDO:
-                        if (!shapeRepealedOps.empty()) {
-                            tmpOp = shapeRepealedOps.pop();
-                            KLog.p(KLog.WARN, "restore %s",tmpOp);
-                            shapeRenderOps.offerLast(tmpOp); // 恢复最近操作
-                            repealableStateChanged();
-                        }else {
-                            bRefresh = false;
-                        }
-                        break;
-                    default:
-
-                        if (!shapeRepealedOps.isEmpty() && op instanceof IRepealable) {
-//                            KLog.p(KLog.WARN, "clean repealed ops");
-                            //撤销/恢复操作流被“可撤销”操作中断，则重置撤销/恢复相关状态
-                            shapeRepealedOps.clear();
-                            repealableStateChanged();
-                        }
-                        boolean bEmpty = shapeRenderOps.isEmpty(); // XXX 如果shapeOps中将来也有不可撤销操作呢？也就是说将来可能不能简单根据是否空来判断是否该改变可撤销状态
-                        shapeRenderOps.offerLast(op);
-                        if (bEmpty && op instanceof IRepealable){ // 可撤销操作从无到有
-                            repealableStateChanged();
-                        }
-
-                        if (EOpType.CLEAR_SCREEN == op.getType()){
-                            screenCleared();
-                        }
-                        //                KLog.p(KLog.WARN, "need render op %s", op);
-                        break;
-
-                }
-
+            default:
+                bRefresh = dealShapeOp(op);
                 break;
 
         }
@@ -1853,9 +1936,31 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
          * */
         default void onChanged(String boardId){}
 
+//        /**图形操作数量变化
+//         * @param count  当前图形操作数量*/
+//        default void onShapeOpCountChanged(String boardId, int count){}
+
         /**图片数量变化
          * @param count  当前图片数量*/
         default void onPictureCountChanged(String boardId, int count){}
+
+        int PIC_STATE_IDLE = 0;
+        /**
+         * 图片被选中
+         * */
+        int PIC_STATE_SELECTED = 1;
+        /**
+         * 图片正在进行拖拽放缩等操作
+         * */
+        int PIC_STATE_MATRIXING = 2;
+        /**
+         * 图片状态发生变化。如图片被选中，图片被拖动，被放缩。
+         * @param picName 图片名称
+         * @param state 图片当前状态
+         * @param zoomRate 图片放缩比率，如50为50%
+         * */
+        default void onPicStateChanged(String boardId, String picName, int state, int zoomRate){}
+
         /**缩放比例变化
          * @param percentage  当前屏幕缩放比率百分数。如50代表50%。*/
         default void onZoomRateChanged(String boardId, int percentage){}
