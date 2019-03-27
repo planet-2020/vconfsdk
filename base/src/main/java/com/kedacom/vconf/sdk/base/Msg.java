@@ -571,17 +571,20 @@ public enum Msg {
     @Request(method = "DCSOperInsertPicCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbInsertPicOperInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbInsertPicOperInfo.class},
+            rspSeq = "DCPicInsertedNtf")
     DCInsertPic,
     @Request(method = "DCSOperPitchPicDelCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbDelPicOperInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbDelPicOperInfo.class},
+            rspSeq = "DCPicDeletedNtf")
     DCDeletePic,
     @Request(method = "DCSOperPitchPicDragCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class})
+            userParas = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class},
+            rspSeq = "DCPicDraggedNtf")
     DCDragPic,
     @Request(method = "DCSOperPitchPicZoomCmd",
             owner = DcsCtrl,
@@ -683,8 +686,9 @@ public enum Msg {
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {BaseTypeString.class, // 下载url。NOTE: 下层规定先将url包装到该类里面转成json然后传下，下层将json解析出来进而萃取出url。
                     TDCSFileInfo.class},
-            rspSeq = {"DCUploadNtf"},
-            timeout = 30)
+            rspSeq = {"DCUploadNtf", "DCPicDownloadableNtf"},
+            rspSeq2 = "DCPicDownloadableNtf",
+            timeout = 15)
     DCUpload,
 
     /**
@@ -722,7 +726,7 @@ public enum Msg {
             userParas = {BaseTypeString.class,
                     TDCSFileInfo.class},
             rspSeq = {"DCDownloadRsp"},
-            timeout = 30)
+            timeout = 15)
     DCDownload,
 
     /**

@@ -3,9 +3,12 @@ package com.kedacom.vconf.sdk.datacollaborate;
 import android.app.Application;
 import android.content.Context;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Process;
 
+import com.google.common.io.Files;
 import com.kedacom.vconf.sdk.base.Caster;
 import com.kedacom.vconf.sdk.base.ILifecycleOwner;
 import com.kedacom.vconf.sdk.base.IResultListener;
@@ -40,7 +43,6 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSSwitchReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfos;
-import com.kedacom.vconf.sdk.base.bean.dc.TDcsCacheElementParseResult;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DcConfInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
 import com.kedacom.vconf.sdk.datacollaborate.bean.EDcMode;
@@ -53,6 +55,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.ETerminalType;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -103,6 +106,8 @@ public class DataCollaborateManager extends Caster {
 
     // 当前终端类型
     private EmDcsType curTerminalType;
+
+    private Handler assHandler;
 
     // 会话相关通知
     private static final Msg[] sessionNtfs = new Msg[]{
@@ -239,6 +244,13 @@ public class DataCollaborateManager extends Caster {
     private static Context context;
 
     private DataCollaborateManager(){
+        HandlerThread handlerThread = new HandlerThread("DcAss", Process.THREAD_PRIORITY_BACKGROUND);
+        handlerThread.start();
+        assHandler = new Handler(handlerThread.getLooper()){
+            @Override
+            public void handleMessage(Message msg) {
+            }
+        };
     }
     /**
      * 获取数据协作管理类实例
@@ -574,6 +586,17 @@ public class DataCollaborateManager extends Caster {
                     req(Msg.DCUpload, new IResultListener() {
                                 @Override
                                 public void onSuccess(Object result) {
+                                    OpInsertPic insertPic = (OpInsertPic) op;
+                                    assHandler.post(() ->
+                                            {
+                                                try {
+                                                    // 把图片拷贝到图片缓存目录，这样下次加入协作时图片能立马加载。
+                                                    Files.copy(new File(insertPic.getPicPath()), new File(getPicSavePath(insertPic.getPicId())) );
+                                                } catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                    );
                                 }
 
                                 @Override
@@ -1195,8 +1218,24 @@ public class DataCollaborateManager extends Caster {
                     reportFailed(ErrCode_Failed, listener);
                 }
                 break;
-//            case DCUploadRsp:
-//                break;
+
+            case DCUploadNtf:
+                result = (TDCSFileLoadResult) rspContent;
+                if (!result.bSuccess){
+                    KLog.p(KLog.ERROR, "upload file %s failed!", result.achWbPicentityId);
+                    cancelReq(reqId, listener);
+                    reportFailed(ErrCode_Failed, listener);
+                }
+                break;
+            case DCPicDownloadableNtf:
+                TDCSFileInfo uploadFileInfo = (TDCSFileInfo) reqParas[1];
+                TDCSImageUrl downloadableFileInfo = (TDCSImageUrl) rspContent;
+                if (uploadFileInfo.achWbPicentityId.equals(downloadableFileInfo.achWbPicentityId)) {
+                    reportSuccess(rspContent, listener);
+                }else{
+                    return false;
+                }
+                break;
 
             default:
                 return false;
@@ -1219,7 +1258,7 @@ public class DataCollaborateManager extends Caster {
             switch (msg.what) {
                 case MsgID_CheckSynchronizing:
                     long timestamp = syncTimestamps.get(msg.obj);
-                    if (System.currentTimeMillis()-timestamp > 2000){ // 同步阶段若2s未收到后续绘制操作则认为同步结束
+                    if (System.currentTimeMillis()-timestamp > 1000){ // 同步阶段若1s未收到后续绘制操作则认为同步结束
                         syncTimestamps.remove(msg.obj);
                         PriorityQueue<OpPaint> ops = cachedPaintOps.remove(msg.obj);
                         if (null == ops){
@@ -1249,7 +1288,7 @@ public class DataCollaborateManager extends Caster {
                         }
                     }else{
                         KLog.p("synchronizing ops for board %s", msg.obj);
-                        handler.sendMessageDelayed(Message.obtain(msg), 2000); // 同步正在进行中，2s后再做检查是否已结束
+                        handler.sendMessageDelayed(Message.obtain(msg), 1000); // 同步正在进行中，稍后再做检查是否已结束
                     }
 
                     break;
@@ -1297,7 +1336,7 @@ public class DataCollaborateManager extends Caster {
                 int pageId = dcInertPicOp.MainParam.dwWbPageId;
                 String picId = dcInertPicOp.AssParam.achImgId;
                 if (new File(getPicSavePath(picId)).exists()){ // 图片已下载到本地
-                    KLog.p(KLog.WARN,"pic already exists: %s", getPicSavePath(picId));
+                    KLog.p("pic already exists: %s", getPicSavePath(picId));
                     updateInsertPicOp(new OpUpdatePic(boardId, picId, getPicSavePath(picId)), listeners);
 
                 }else if (null != cachedPaintOps.get(boardId)){ // 图片尚未下载到本地且正在同步图元
