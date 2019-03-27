@@ -39,7 +39,7 @@ public class CrystalBall implements ICrystalBall {
 
     @Override
     public int spell(String methodOwner, String methodName, Object[] para, Class[] paraType) {
-        Log.d(TAG, "####=yell methodOwner="+methodOwner+" methodName="+methodName+" paras="+para);
+//        Log.d(TAG, "####=yell methodOwner="+methodOwner+" methodName="+methodName+" paras="+para);
         Method method = cachedMethods.get(methodName);
         if (null != method){
             try {
@@ -49,7 +49,7 @@ public class CrystalBall implements ICrystalBall {
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             }
-            Log.d(TAG, "####call cached method: "+method);
+//            Log.d(TAG, "####call cached method: "+method);
             return 0;
         }
 
@@ -69,7 +69,7 @@ public class CrystalBall implements ICrystalBall {
             e.printStackTrace();
         }
 
-        Log.d(TAG, "####call method: "+method);
+//        Log.d(TAG, "####call method: "+method);
 
         return 0;
     }

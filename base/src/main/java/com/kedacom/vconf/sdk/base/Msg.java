@@ -568,29 +568,38 @@ public enum Msg {
             rspSeq = "DCPathDrawnNtf")
     DCDrawPath,
 
+    /**
+     * 插入图片
+     * */
     @Request(method = "DCSOperInsertPicCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbInsertPicOperInfo.class},
             rspSeq = "DCPicInsertedNtf")
     DCInsertPic,
+    /**
+     * 删除图片
+     * */
     @Request(method = "DCSOperPitchPicDelCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbDelPicOperInfo.class},
             rspSeq = "DCPicDeletedNtf")
     DCDeletePic,
+    /**
+     * 拖动/放缩图片
+     * */
     @Request(method = "DCSOperPitchPicDragCmd",
             owner = DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class},
             rspSeq = "DCPicDraggedNtf")
     DCDragPic,
-    @Request(method = "DCSOperPitchPicZoomCmd",
-            owner = DcsCtrl,
-            paras = {StringBuffer.class, StringBuffer.class},
-            userParas = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class})
-    DCZoomPic, // TODO 待调
+//    @Request(method = "DCSOperPitchPicZoomCmd",
+//            owner = DcsCtrl,
+//            paras = {StringBuffer.class, StringBuffer.class},
+//            userParas = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class})
+//    DCZoomPic, // TODO 待调
 
     /**
      * 黑板擦擦除
