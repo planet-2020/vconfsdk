@@ -1579,6 +1579,184 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return true;
     }
 
+    private boolean dealMatrixOp(OpMatrix opMatrix){
+        if (bDoingMatrixOp){
+            // 本地正在执行matrix操作则屏蔽外来的matrix操作
+            return false;
+        }
+
+        // 更新画板matrix
+        boardMatrix.set((opMatrix.getMatrix()));
+
+        zoomRateChanged();
+
+        return true;
+    }
+
+
+    private boolean dealInsertPicOp(OpInsertPic opInsertPic){
+        for (OpPaint opPaint : picOps){
+            if (opPaint instanceof OpInsertPic
+                    && ((OpInsertPic)opPaint).getPicId().equals(opInsertPic.getPicId())
+                    ){
+                KLog.p("pic op %s already exist!", opPaint);
+                return false;
+            }
+        }
+
+        boolean bRefresh = true;
+
+        picOps.offerLast(opInsertPic);
+
+        opInsertPic.setBoardMatrix(boardMatrix);
+        if (null == opInsertPic.getPic()) {
+            if (null != opInsertPic.getPicPath()) {
+                opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicPath())); // XXX TODO 优化。比如大分辨率图片裁剪
+            } else {
+                bRefresh = false; // 图片为空不需刷新界面（图片可能正在下载）
+            }
+        }
+
+        Bitmap pic = opInsertPic.getPic();
+        if (null != pic){
+            /*计算mixMatrix。
+            可将mixMatrix理解为：把左上角在原点处的未经缩放的图片变换为对端所描述的图片（插入图片时传过来的insertPos, picWidth, picHeight这些信息综合起来所描述的图片）
+            所需经历的矩形变换*/
+            PointF insertPos = opInsertPic.getInsertPos();
+            Matrix mixMatrix = MatrixHelper.calcTransMatrix(new RectF(0, 0, pic.getWidth(), pic.getHeight()),
+                    new RectF(insertPos.x, insertPos.y, insertPos.x+opInsertPic.getPicWidth(), insertPos.y+opInsertPic.getPicHeight()));
+            opInsertPic.setMixMatrix(mixMatrix);
+
+            // 计算picMatrix= mixMatrix * transMatrix / boardMatrix
+            Matrix picMatrix = new Matrix(mixMatrix);
+            picMatrix.postConcat(opInsertPic.getTransMatrix());
+            picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
+            opInsertPic.setMatrix(picMatrix);
+        }
+
+        picCountChanged();
+
+        return bRefresh;
+    }
+
+
+    private boolean dealDelPicOp(OpDeletePic opDelPic){
+        boolean bRefresh = false;
+        OpPaint picOp;
+        boolean got =false;
+        for (String picId : opDelPic.getPicIds()) {
+            got = false;
+            Iterator it = picOps.iterator();
+            while (it.hasNext()) {
+                picOp = (OpPaint) it.next();
+                if (EOpType.INSERT_PICTURE == picOp.getType()
+                        && ((OpInsertPic) picOp).getPicId().equals(picId)) {
+                    it.remove();
+                    got = true;
+                    bRefresh = true;
+                    break;
+                }
+            }
+            if (!got) {
+                // 可能图片正在被编辑
+                if (isExistEditingPic(picId)){
+                    got = true;
+                    bRefresh = true;
+                    delEditingPic(picId);
+                }
+            }
+        }
+
+        if (bRefresh){
+            picCountChanged();
+        }
+
+        return bRefresh;
+
+    }
+
+
+    private boolean dealDragPicOp(OpDragPic opDragPic){
+        boolean bRefresh = true;
+        OpInsertPic opInsertPic;
+        for (Map.Entry<String, Matrix> dragOp : opDragPic.getPicMatrices().entrySet()) {
+            for (OpPaint picOp : picOps) {
+                if (EOpType.INSERT_PICTURE == picOp.getType()
+                        && ((OpInsertPic) picOp).getPicId().equals(dragOp.getKey())) {
+                    opInsertPic = (OpInsertPic) picOp;
+                    if (null != opInsertPic.getPic()) {
+                        /*图片已经准备好了则直接求取picmatrix
+                         * mixMatrix * dragMatrix = picMatrix * boardMatrix
+                         * => picMatrix = mixMatrix * dragMatrix / boardMatrix
+                         * */
+                        Matrix matrix = new Matrix(opInsertPic.getMixMatrix());
+                        matrix.postConcat(dragOp.getValue());
+                        matrix.postConcat(MatrixHelper.invert(boardMatrix));
+                        if (matrix.equals(opInsertPic.getMatrix())) {
+                            // 计算出的matrix跟当前matrix相等则不需拖动
+                            bRefresh = false;
+                        }else{
+                            // 更新图片的matrix
+                            opInsertPic.setMatrix(matrix);
+                        }
+                    }else{
+                        // 图片尚未准备好，我们先保存matrix，等图片准备好了再计算
+                        opInsertPic.setDragMatrix(dragOp.getValue());
+                        opInsertPic.setBoardMatrix(boardMatrix);
+                        bRefresh = false; // 图片尚未准备好不需刷新
+                    }
+                    break;
+                }
+            }
+        }
+
+        return bRefresh;
+    }
+
+
+    private boolean dealUpdatePicOp(OpUpdatePic opUpdatePic){
+        boolean bRefresh = false;
+        OpInsertPic opInsertPic;
+        for (OpPaint picOp : picOps) {
+            if (EOpType.INSERT_PICTURE == picOp.getType()
+                    && ((OpInsertPic) picOp).getPicId().equals(opUpdatePic.getPicId())) {
+                opInsertPic = (OpInsertPic) picOp;
+                opInsertPic.setPicPath(opUpdatePic.getPicSavePath());
+                Bitmap pic = BitmapFactory.decodeFile(opInsertPic.getPicPath());
+                opInsertPic.setPic(pic); // TODO 优化。比如大分辨率图片裁剪
+                if (null != pic){
+                    PointF insertPos = opInsertPic.getInsertPos();
+                    Matrix mixMatrix = MatrixHelper.calcTransMatrix(new RectF(0, 0, pic.getWidth(), pic.getHeight()),
+                            new RectF(insertPos.x, insertPos.y, insertPos.x+opInsertPic.getPicWidth(), insertPos.y+opInsertPic.getPicHeight()));
+                    opInsertPic.setMixMatrix(mixMatrix);
+
+                    Matrix picMatrix = new Matrix(opInsertPic.getMixMatrix());
+                    Matrix dragMatrix = opInsertPic.getDragMatrix();
+                    if (null != dragMatrix) { // XXX 还有其它影响图片matrix的操作呢？
+                        /* 在此之前有图片拖动操作则以图片拖动操作中的dragMatrix来计算picMatrix
+                         * picMatrix = mixMatrix * dragMatrix / boardMatrix*/
+                        picMatrix.postConcat(opInsertPic.getDragMatrix());
+                        opInsertPic.setDragMatrix(null);
+                    }else{
+                        // picMatrix = mixMatrix * transMatrix / boardMatrix
+                        picMatrix.postConcat(opInsertPic.getTransMatrix());
+                    }
+
+                    picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
+
+                    opInsertPic.setMatrix(picMatrix); // 更新图片matrix
+
+                    bRefresh = true;
+                }
+
+                break;
+            }
+        }
+
+        return bRefresh;
+    }
+
+
     /**
      * 接收绘制操作
      * @return true 需要刷新，false不需要。
@@ -1591,176 +1769,36 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
         KLog.p("recv op %s", op);
 
-        MyConcurrentLinkedDeque<OpPaint> picRenderOps = picOps;
-        Matrix boardMatrix1 = boardMatrix;
-
-        boolean bRefresh = true;
-
         switch (op.getType()){
             case INSERT_PICTURE:
-                for (OpPaint opPaint : picRenderOps){
-                    if (opPaint instanceof OpInsertPic
-                            && ((OpInsertPic)opPaint).getPicId().equals(((OpInsertPic) op).getPicId())
-                            ){
-                        KLog.p("pic op %s already exist!", opPaint);
-                        return false;
-                    }
-                }
-                picRenderOps.offerLast(op);
-                OpInsertPic opInsertPic = (OpInsertPic) op;
-                opInsertPic.setBoardMatrix(boardMatrix1);
-                if (null == opInsertPic.getPic()) {
-                    if (null != opInsertPic.getPicPath()) {
-                        opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicPath())); // TODO 优化。比如大分辨率图片裁剪
-                    } else {
-                        bRefresh = false; // 图片为空不需刷新界面（图片可能正在下载）
-                    }
-                }
-
-                Bitmap pic = opInsertPic.getPic();
-                if (null != pic){
-                    /*计算mixMatrix。
-                    可将mixMatrix理解为：把左上角在原点处的未经缩放的图片变换为对端所描述的图片（插入图片时传过来的insertPos, picWidth, picHeight这些信息所描述的图片）
-                    所需经历的矩形变换*/
-                    PointF insertPos = opInsertPic.getInsertPos();
-                    Matrix mixMatrix = MatrixHelper.calcTransMatrix(new RectF(0, 0, pic.getWidth(), pic.getHeight()),
-                            new RectF(insertPos.x, insertPos.y, insertPos.x+opInsertPic.getPicWidth(), insertPos.y+opInsertPic.getPicHeight()));
-                    opInsertPic.setMixMatrix(mixMatrix);
-
-                    // 计算picMatrix= mixMatrix * transMatrix / boardMatrix
-                    Matrix picMatrix = new Matrix(mixMatrix);
-                    picMatrix.postConcat(opInsertPic.getTransMatrix());
-                    picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
-                    opInsertPic.setMatrix(picMatrix);
-                }
-
-                picCountChanged();
-
-                break;
+                return dealInsertPicOp((OpInsertPic) op);
 
             case DELETE_PICTURE:
-                bRefresh = false;
-                OpPaint picRenderOp;
-                boolean got =false;
-                for (String picId : ((OpDeletePic) op).getPicIds()) {
-                    got = false;
-                    Iterator it = picRenderOps.iterator();
-                    while (it.hasNext()) {
-                        picRenderOp = (OpPaint) it.next();
-                        if (EOpType.INSERT_PICTURE == picRenderOp.getType()
-                                && ((OpInsertPic) picRenderOp).getPicId().equals(picId)) {
-                            it.remove();
-                            got = true;
-                            bRefresh = true;
-                            break;
-                        }
-                    }
-                    if (!got) {
-                        // 可能图片正在被编辑
-                        if (isExistEditingPic(picId)){
-                            got = true;
-                            bRefresh = true;
-                            delEditingPic(picId);
-                        }
-                    }
-                }
-                if (bRefresh){
-                    picCountChanged();
-                }
-                break;
+                return dealDelPicOp((OpDeletePic) op);
 
-            case DRAG_PICTURE: // TODO NOTE 己端拖动图片也会触发此通知，尚未过滤，需过滤。
-                for (Map.Entry<String, Matrix> dragOp : ((OpDragPic) op).getPicMatrices().entrySet()) {
-                    for (OpPaint opPaint : picRenderOps) {
-                        if (EOpType.INSERT_PICTURE == opPaint.getType()
-                                && ((OpInsertPic) opPaint).getPicId().equals(dragOp.getKey())) {
-                            opInsertPic = (OpInsertPic) opPaint;
-                            if (null != opInsertPic.getPic()) {
-                                /*图片已经准备好了则直接求取picmatrix
-                                 * mixMatrix * dragMatrix = picMatrix * boardMatrix
-                                 * => picMatrix = mixMatrix * dragMatrix / boardMatrix
-                                 * */
-                                Matrix matrix = new Matrix(opInsertPic.getMixMatrix());
-                                matrix.postConcat(dragOp.getValue());
-                                matrix.postConcat(MatrixHelper.invert(boardMatrix1));
-                                if (matrix.equals(opInsertPic.getMatrix())) {
-                                    // 计算出的matrix跟当前matrix相等则不需拖动
-                                    bRefresh = false;
-                                }else{
-                                    opInsertPic.setMatrix(matrix);
-                                }
-                            }else{
-                                // 图片尚未准备好，我们先保存matrix，等图片准备好了再计算
-                                opInsertPic.setDragMatrix(dragOp.getValue());
-                                opInsertPic.setBoardMatrix(boardMatrix1);
-                                bRefresh = false; // 图片尚未准备好不需刷新
-                            }
-                            break;
-                        }
-                    }
-                } // XXX TODO 拖动图片和下面的更新图片都应要通知用户boardState.onChanged()
-                break;
-            case UPDATE_PICTURE: // XXX 己端插入图片也会收到该通知，需过滤
-                OpUpdatePic updatePic = (OpUpdatePic) op;
-                for (OpPaint opPaint : picRenderOps) {
-                    if (EOpType.INSERT_PICTURE == opPaint.getType()
-                            && ((OpInsertPic) opPaint).getPicId().equals(updatePic.getPicId())) {
-                        opInsertPic = (OpInsertPic) opPaint;
-                        opInsertPic.setPicPath(updatePic.getPicSavePath());
-                        pic = BitmapFactory.decodeFile(updatePic.getPicSavePath());
-                        opInsertPic.setPic(pic); // TODO 优化。比如大分辨率图片裁剪
-                        if (null != pic){
-                            PointF insertPos = opInsertPic.getInsertPos();
-                            Matrix mixMatrix = MatrixHelper.calcTransMatrix(new RectF(0, 0, pic.getWidth(), pic.getHeight()),
-                                    new RectF(insertPos.x, insertPos.y, insertPos.x+opInsertPic.getPicWidth(), insertPos.y+opInsertPic.getPicHeight()));
-                            opInsertPic.setMixMatrix(mixMatrix);
+            case DRAG_PICTURE:
+                return dealDragPicOp((OpDragPic) op);
 
-                            Matrix picMatrix = new Matrix(opInsertPic.getMixMatrix());
-                            Matrix dragMatrix = opInsertPic.getDragMatrix();
-                            if (null != dragMatrix) { // XXX 还有其它影响图片matrix的操作呢？
-                                /* 在此之前有图片拖动操作则以图片拖动操作中的dragMatrix来计算picMatrix
-                                 * picMatrix = mixMatrix * dragMatrix / boardMatrix*/
-                                picMatrix.postConcat(opInsertPic.getDragMatrix());
-                                opInsertPic.setDragMatrix(null);
-                            }else{
-                                // picMatrix = mixMatrix * transMatrix / boardMatrix
-                                picMatrix.postConcat(opInsertPic.getTransMatrix());
-                            }
+// XXX TODO 拖动图片和下面的更新图片都应要通知用户boardState.onChanged()
+            case UPDATE_PICTURE:
+                return dealUpdatePicOp((OpUpdatePic) op);
 
-                            picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
-
-                            opInsertPic.setMatrix(picMatrix);
-                        }
-                        break;
-                    }
-                }
-                break;
-            case FULLSCREEN_MATRIX: // 全局放缩、位移，包括图片和图形
-                if (!bDoingMatrixOp) {
-                    boardMatrix.set(((OpMatrix) op).getMatrix());
-                    zoomRateChanged();
-                }else{
-                    bRefresh = false;
-                }
-                break;
+            case FULLSCREEN_MATRIX:
+                return dealMatrixOp((OpMatrix) op);
 
             case UNDO:
-                bRefresh = dealUndoOp((OpUndo) op);
-                break;
+                return dealUndoOp((OpUndo) op);
+
             case REDO:
-                bRefresh = dealRedoOp((OpRedo) op);
-                break;
+                return dealRedoOp((OpRedo) op);
+
             case CLEAR_SCREEN:
-                bRefresh = dealClearScreenOp((OpClearScreen) op);
-                break;
+                return dealClearScreenOp((OpClearScreen) op);
 
             default:
-                bRefresh = dealShapeOp(op);
-                break;
-
+                return dealShapeOp(op);
         }
 
-        return bRefresh;
     }
 
 
