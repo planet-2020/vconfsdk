@@ -260,7 +260,7 @@ public class DataCollaborateManager extends Caster {
         if (null == context
                 && null != ctx){
             context = ctx;
-            File dir = new File(ctx.getCacheDir(), ".dc_pic");
+            File dir = new File(ctx.getFilesDir(), "dc_pic");
             if (!dir.exists()){
                 dir.mkdir();
             }
@@ -1319,25 +1319,30 @@ public class DataCollaborateManager extends Caster {
      * 收到绘制操作通知处理
      * */
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
+
+        OpPaint opPaint = ToDoConverter.fromPaintTransferObj(ntfContent);
+        if (null == opPaint){
+            return;
+        }
+
         switch (ntfId){
 //            case DCElementBeginNtf:
 //                break;
 //            case DCElementEndNtf:  // NOTE: 下层“开始——结束”通知不可靠，时序数量均有问题，故弃用。
 //                break;
 
-            // 插入图片通知。 NOTE:插入图片比较特殊，通知中只有插入图片操作的基本信息，图片本身还需进一步下载
+            // 插入图片通知。 NOTE:插入图片比较特殊，通知中只有插入图片操作的基本信息，图片本身可能还需进一步下载
             case DCPicInsertedNtf:
-                DcsOperInsertPicNtf dcInertPicOp = (DcsOperInsertPicNtf) ntfContent;
+                OpInsertPic opInsertPic = (OpInsertPic) opPaint;
+                String confE164 = opInsertPic.getConfE164();
+                String boardId = opInsertPic.getBoardId();
+                int pageId = opInsertPic.getPageId();
+                String picId = opInsertPic.getPicId();
 
-                cacheOrReportPaintOp(ToDoConverter.fromTransferObj(dcInertPicOp), listeners);
-
-                String confE164 = dcInertPicOp.MainParam.achConfE164;
-                String boardId = dcInertPicOp.MainParam.achTabId;
-                int pageId = dcInertPicOp.MainParam.dwWbPageId;
-                String picId = dcInertPicOp.AssParam.achImgId;
-                if (new File(getPicSavePath(picId)).exists()){ // 图片已下载到本地
+                if (new File(getPicSavePath(picId)).exists()){
                     KLog.p("pic already exists: %s", getPicSavePath(picId));
-                    updateInsertPicOp(new OpUpdatePic(boardId, picId, getPicSavePath(picId)), listeners);
+                    // 图片已本地缓存则不用去服务器下载，直接将图片赋给该插入操作
+                    opInsertPic.setPicPath(getPicSavePath(picId));
 
                 }else if (null != cachedPaintOps.get(boardId)){ // 图片尚未下载到本地且正在同步图元
                     /* 获取图片下载地址。
@@ -1354,8 +1359,9 @@ public class DataCollaborateManager extends Caster {
                                     new IResultListener() {
                                         @Override
                                         public void onSuccess(Object result) {
+                                            // 图片下载成功，更新“插入图片”操作
                                             TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
-                                            updateInsertPicOp(new OpUpdatePic(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName), listeners);
+                                            updateInsertPicOp(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName, listeners);
                                         }
 
                                         @Override
@@ -1387,13 +1393,16 @@ public class DataCollaborateManager extends Caster {
 
                         new TDCSImageUrl(confE164, boardId, pageId, picId)
                     );
+
                 }
+
+                cacheOrReportPaintOp(opInsertPic, listeners);
 
                 break;
 
             default:
 
-                cacheOrReportPaintOp(ToDoConverter.fromPaintTransferObj(ntfContent), listeners);
+                cacheOrReportPaintOp(opPaint, listeners);
 
                 break;
         }
@@ -1406,6 +1415,7 @@ public class DataCollaborateManager extends Caster {
         if (null != cachedOps){ // 当前正在同步该画板的图元则缓存图元
             if (!cachedOps.contains(op)) { // 去重。 同步期间有可能收到重复的图元
                 cachedOps.offer(op);
+//                KLog.p("cached op %s", op);
             }else{
                 KLog.p(KLog.WARN, "duplicated op %s", op);
             }
@@ -1415,7 +1425,9 @@ public class DataCollaborateManager extends Caster {
                 PriorityQueue<OpPaint> ops1 = new PriorityQueue<>();
                 ops1.offer(op);
                 cachedPaintOps.put(op.getBoardId(), ops1);
+                KLog.p("preparingSync, cached op %s", op);
             }else {
+//                KLog.p("report op %s", op);
                 // 过了同步阶段，直接上报用户图元操作
                 for (Object listener : listeners) {
                     ((IOnPaintOpListener) listener).onPaint(op);
@@ -1424,19 +1436,25 @@ public class DataCollaborateManager extends Caster {
         }
     }
 
-    private void updateInsertPicOp(OpUpdatePic opUpdatePic, Set<Object> listeners){
-        PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(opUpdatePic.getBoardId());
+    private void updateInsertPicOp(String boardId, String picId, String picPath, Set<Object> listeners){
+        PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(boardId);
         if (null != cachedOps){ // 当前正在同步中，插入图片的操作被缓存尚未上报给用户，故我们直接更新“插入图片”的操作
             boolean bUpdated = false;
             for (OpPaint op : cachedOps){
-                if (op instanceof OpInsertPic && ((OpInsertPic)op).getPicId().equals(opUpdatePic.getPicId())){
-                    ((OpInsertPic)op).setPicPath(opUpdatePic.getPicSavePath()); // 更新图片的所在路径。NOTE: 可能有重复的绘制通知上报。
+                if (!(op instanceof OpInsertPic)){
+                    continue;
+                }
+                OpInsertPic opInsertPic = (OpInsertPic) op;
+                if (opInsertPic.getBoardId().equals(boardId)
+                        && opInsertPic.getPicId().equals(picId)){
+                    opInsertPic.setPicPath(picPath); // 更新图片的所在路径。
                     bUpdated = true;
+                    KLog.p("during sync, updated insertPicOp %s of board %s", opInsertPic, boardId);
+                    break;
                 }
             }
             if (!bUpdated){
-                KLog.p(KLog.ERROR, "update pic %s failed", opUpdatePic.getPicId());
-                return;
+                KLog.p(KLog.ERROR, "during sync, update pic %s of board %s failed", picId, boardId);
             }
 
         }else{ // 同步已结束则上报用户“更新图片”
@@ -1444,12 +1462,14 @@ public class DataCollaborateManager extends Caster {
                 KLog.p(KLog.ERROR,"no listener for DCPicInsertedNtf");
                 return;
             }
+            OpUpdatePic opUpdatePic = new OpUpdatePic(boardId, picId, picPath);
+            KLog.p("report user opUpdatePic %s", opUpdatePic);
             for (Object onPaintOpListener : listeners) {
                 if (!containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener被销毁了删除了
                     KLog.p(KLog.ERROR,"listener %s for DCPicInsertedNtf has been destroyed", onPaintOpListener);
                     continue;
                 }
-                ((IOnPaintOpListener) onPaintOpListener).onPaint(opUpdatePic);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，我们更新之前置空的图片。
+                ((IOnPaintOpListener) onPaintOpListener).onPaint(opUpdatePic);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，通知用户更新图片。
             }
         }
     }
@@ -1477,7 +1497,7 @@ public class DataCollaborateManager extends Caster {
                             @Override
                             public void onSuccess(Object result) {
                                 TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
-                                updateInsertPicOp(new OpUpdatePic(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName), getNtfListeners(Msg.DCPicInsertedNtf));
+                                updateInsertPicOp(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName, getNtfListeners(Msg.DCPicInsertedNtf));
                             }
 
                             @Override
