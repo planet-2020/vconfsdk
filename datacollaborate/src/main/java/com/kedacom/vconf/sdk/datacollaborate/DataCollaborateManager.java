@@ -1413,13 +1413,15 @@ public class DataCollaborateManager extends Caster {
     private void cacheOrReportPaintOp(OpPaint op, Set<Object> listeners){
         PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(op.getBoardId());
         if (null != cachedOps){ // 当前正在同步该画板的图元则缓存图元
-            if (!cachedOps.contains(op)) { // 去重。 同步期间有可能收到重复的图元
-                cachedOps.offer(op);
-//                KLog.p("cached op %s", op);
-            }else{
-                KLog.p(KLog.WARN, "duplicated op %s", op);
-            }
             syncTimestamps.put(op.getBoardId(), System.currentTimeMillis()); // 更新时间戳
+            for (OpPaint cachedOp : cachedOps){
+                if (cachedOp.isDuplicate(op)){
+                    KLog.p(KLog.WARN, "duplicated op %s", op);
+                    return;
+                }
+            }
+            cachedOps.offer(op);
+//                KLog.p("cached op %s", op);
         } else {
             if (bPreparingSync){ // 入会后同步前收到的图元也需缓存下来
                 PriorityQueue<OpPaint> ops1 = new PriorityQueue<>();

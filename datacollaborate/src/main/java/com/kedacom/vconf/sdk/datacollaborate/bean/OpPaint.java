@@ -39,28 +39,18 @@ public abstract class OpPaint implements Comparable<OpPaint>{
                 '}';
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this){
+    public boolean isDuplicate(OpPaint otherOp) {
+        if (otherOp == this){
             return true;
         }
-        if (null == obj){
-            return false;
-        }
-        if (obj.getClass()!=getClass()){
+        if (null == otherOp){
             return false;
         }
 
-        OpPaint otherOp = (OpPaint) obj;
         return confE164.equals(otherOp.confE164)
                 && boardId.equals(otherOp.boardId)
                 && pageId == otherOp.pageId
                 && sn == otherOp.sn;
-    }
-
-    @Override
-    public int hashCode() {
-        return Arrays.hashCode(new Object[]{confE164, boardId, pageId, sn});
     }
 
     public String getUuid() {
