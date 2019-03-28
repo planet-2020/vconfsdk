@@ -1698,6 +1698,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                         }else{
                             // 更新图片的matrix
                             opInsertPic.setMatrix(matrix);
+
+                            onStateChangedListener.onChanged(getBoardId());
                         }
                     }else{
                         // 图片尚未准备好，我们先保存matrix，等图片准备好了再计算
@@ -1746,7 +1748,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                     opInsertPic.setMatrix(picMatrix); // 更新图片matrix
 
+                    onStateChangedListener.onChanged(getBoardId());
+
                     bRefresh = true;
+                }else{
+                    KLog.p(KLog.ERROR, "pic is null!");
                 }
 
                 break;
@@ -1779,7 +1785,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             case DRAG_PICTURE:
                 return dealDragPicOp((OpDragPic) op);
 
-// XXX TODO 拖动图片和下面的更新图片都应要通知用户boardState.onChanged()
             case UPDATE_PICTURE:
                 return dealUpdatePicOp((OpUpdatePic) op);
 
