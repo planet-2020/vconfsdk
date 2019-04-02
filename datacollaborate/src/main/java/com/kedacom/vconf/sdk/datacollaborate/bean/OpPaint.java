@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-import java.util.Arrays;
 import java.util.UUID;
 
 

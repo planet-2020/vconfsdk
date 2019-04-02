@@ -28,8 +28,8 @@ public class OpMatrix extends OpPaint {
                 '}';
     }
 
+    private float[] matrixValue = new float[9];
     public float[] getMatrixValue() {
-        float[] matrixValue = new float[9];
         matrix.getValues(matrixValue);
         return matrixValue;
     }

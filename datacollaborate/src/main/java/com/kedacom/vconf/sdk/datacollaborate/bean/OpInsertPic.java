@@ -7,6 +7,8 @@ import android.graphics.PointF;
 import android.graphics.RectF;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 
@@ -97,6 +99,11 @@ public class OpInsertPic extends OpPaint implements IBoundary{
     /*图片的边界。
     图片的原始宽高组成的矩形相对于picMatrix映射后得到的矩形*/
     private RectF bound = new RectF();
+
+    /*
+    * 图片的注解
+    * */
+    private List<OpPaint> notes = new ArrayList<>();
 
     public OpInsertPic(){
         type = EOpType.INSERT_PICTURE;
@@ -239,6 +246,14 @@ public class OpInsertPic extends OpPaint implements IBoundary{
 
     public void setDragMatrix(Matrix dragMatrix) {
         this.dragMatrix = dragMatrix;
+    }
+
+    public List<OpPaint> getNotes() {
+        return notes;
+    }
+
+    public void setNotes(List<OpPaint> notes) {
+        this.notes = notes;
     }
 
     @Override
