@@ -29,26 +29,7 @@ import android.widget.FrameLayout;
 
 import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
-import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
-import com.kedacom.vconf.sdk.datacollaborate.bean.IBoundary;
-import com.kedacom.vconf.sdk.datacollaborate.bean.IRepealable;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -64,33 +45,21 @@ import androidx.annotation.Nullable;
 
 public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
-    // 画板matrix
-    private Matrix boardMatrix = new Matrix();
-
-    /* 相对于xhdpi的屏幕密度。
-    因为TL和网呈已经实现数据协作在先，他们传过来的是原始的像素值，
-    为了使得展示效果尽量在各设备上保持一致并兼顾TL和网呈已有实现，我们以TL的屏幕密度为基准算出一个相对密度，
-    以该相对密度作为缩放因子进行展示。TL的屏幕密度接近xhdpi，故以xhdpi作为基准*/
-    private float relativeDensity=1;
-
     // 图形层。用于图形绘制如画线、画圈、擦除等等
     private TextureView shapePaintView;
     // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private OpPaint adjustingShapeOp;
-    private final Object adjustingOpLock = new Object();
+//    private final Object adjustingOpLock = new Object();
     // 临时图形操作。手指拿起绘制完成，但并不表示此绘制已生效，需等到平台广播NTF后方能确认为生效的操作，在此之前的操作都作为临时操作保存在这里。
     private MyConcurrentLinkedDeque<OpPaint> tmpShapeOps = new MyConcurrentLinkedDeque<>();
-    // 图形操作。已经平台NTF确认过的操作。
-    private MyConcurrentLinkedDeque<OpPaint> shapeOps = new MyConcurrentLinkedDeque<>();
-    // 被撤销的图形操作。撤销只针对已经平台NTF确认过的操作。
-    private Stack<OpPaint> repealedShapeOps = new Stack<>();
+
+    // 所有已经确认过的操作
+    private OpWrapper opWrapper = new OpWrapper();
 
     // 图片层。用于绘制图片。
     private TextureView picPaintView;
-    // 图片操作。
-    private MyConcurrentLinkedDeque<OpPaint> picOps = new MyConcurrentLinkedDeque<>();
 
-    // 图片编辑层。
+    // 图片编辑层。  // TODO 只保留图形图片两层
     private TextureView picEditPaintView;
     // 图片编辑层缩放及位移
     private Matrix picEditViewMatrix = new Matrix();
@@ -188,6 +157,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         shapePaintView.setOnTouchListener(shapeViewTouchListener);
         picEditPaintView.setOnTouchListener(tmpPicViewTouchListener);
 
+        // 赋值图片删除图标
         try {
             AssetManager am = context.getAssets();
             InputStream is = am.open("del_pic.png");
@@ -209,10 +179,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         setBackgroundColor(Color.DKGRAY);
 
+        // 获取画板宽高
         this.post(() -> {
             boardWidth = getWidth();
             boardHeight = getHeight();
         });
+
+        // 初始化matrix
+        OpMatrix opMatrix = new OpMatrix();
+        assignBasicInfo(opMatrix);
+        opWrapper.addMatrixOp(opMatrix);
     }
 
     public DefaultPaintBoard(@NonNull Context context, @Nullable AttributeSet attrs) {
@@ -244,12 +220,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     };
 
-
+    /* 相对于xhdpi的屏幕密度。
+    因为TL和网呈已经实现数据协作在先，他们传过来的是原始的像素值，
+    为了使得展示效果尽量在各设备上保持一致并兼顾TL和网呈已有实现，我们以TL的屏幕密度为基准算出一个相对密度，
+    以该相对密度作为缩放因子进行展示。TL的屏幕密度接近xhdpi，故以xhdpi作为基准*/
+    private float relativeDensity=1;
     private Matrix densityRelativeBoardMatrix = new Matrix();
     private Matrix getDensityRelativeBoardMatrix(){
         densityRelativeBoardMatrix.reset();
         densityRelativeBoardMatrix.postScale(relativeDensity, relativeDensity);
-        densityRelativeBoardMatrix.postConcat(boardMatrix);
+        densityRelativeBoardMatrix.postConcat(opWrapper.getLastMatrixOp().getMatrix());
         return  densityRelativeBoardMatrix;
     }
 
@@ -320,51 +300,66 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private long timestamp = System.currentTimeMillis();
         private boolean bDragging = false;
         private boolean bScaling = false;
-
+        private Matrix tmpMatrix = new Matrix();
         private Matrix confirmedMatrix = new Matrix();
         private IResultListener publishResultListener = new IResultListener() {
             @Override
             public void onSuccess(Object result) {
 //                KLog.p("success to publish matrix op %s", result);
-                confirmedMatrix.set(boardMatrix);
+                confirmedMatrix.set(tmpMatrix);
             }
         };
+
+        private OpMatrix update(){
+            OpMatrix opMatrix = new OpMatrix(tmpMatrix);
+            assignBasicInfo(opMatrix);
+            opWrapper.addMatrixOp(opMatrix);
+            return opMatrix;
+        }
+
+        private void publish(OpMatrix opMatrix){
+            if (System.currentTimeMillis()-timestamp > 70) {
+                timestamp = System.currentTimeMillis();
+                // 每70ms发布一次
+                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, publishResultListener, true);
+            }else{
+                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+            }
+        }
+
+        private void rollback(){
+            // 若发布失败则回退matrix
+            OpMatrix opMatrix = new OpMatrix(confirmedMatrix);
+            assignBasicInfo(opMatrix);
+            opWrapper.addMatrixOp(opMatrix);
+            // 立即刷新
+            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+        }
 
         @Override
         public void onMultiFingerDragBegin() {
             bDragging = true;
             bDoingMatrixOp = true;
-            confirmedMatrix.set(boardMatrix);
+            tmpMatrix.set(opWrapper.getLastMatrixOp().getMatrix());
+            confirmedMatrix.set(tmpMatrix);
         }
 
         @Override
         public void onMultiFingerDrag(float dx, float dy) {
-            boardMatrix.postTranslate(dx, dy);
-            OpMatrix opMatrix = null;
-            IResultListener publishListener = null;
-            if (System.currentTimeMillis()-timestamp > 70) { // 每70ms发布一次
-                opMatrix = new OpMatrix(boardMatrix);
-                assignBasicInfo(opMatrix);
-                publishListener = publishResultListener;
-            }
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(),opMatrix, publishListener, true);
+            tmpMatrix.postTranslate(dx, dy);
+            publish(update());
         }
 
         @Override
         public void onMultiFingerDragEnd() {
-            OpMatrix opMatrix = new OpMatrix(boardMatrix);
-            assignBasicInfo(opMatrix);
+            OpMatrix opMatrix = update();
             if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, new IResultListener() {
                 @Override
-                public void onFailed(int errorCode) {
-                    KLog.p("failed to publish matrix op %s ", opMatrix);
-                    boardMatrix.set(confirmedMatrix);
-                }
-
-                @Override
-                public void onTimeout() {
-                    KLog.p("timeout to publish matrix op %s ", opMatrix);
-                    boardMatrix.set(confirmedMatrix);
+                public void onArrive(boolean bSuccess) {
+                    if (!bSuccess) {
+                        KLog.p(KLog.ERROR,"failed to publish matrix op %s, rollback to %s", opMatrix, confirmedMatrix);
+                        rollback();
+                    }
                 }
             }, true);
 
@@ -376,52 +371,40 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onScaleBegin() {
             bScaling = true;
             bDoingMatrixOp = true;
+            tmpMatrix.set(opWrapper.getLastMatrixOp().getMatrix());
+            confirmedMatrix.set(tmpMatrix);
 
             scaleCenterX = getWidth()/2;
             scaleCenterY = getHeight()/2;
-
-            confirmedMatrix.set(boardMatrix);
         }
 
         @Override
         public void onScale(float factor) {
-            float curZoomRate = MatrixHelper.getScale(boardMatrix);
+            float curZoomRate = MatrixHelper.getScale(tmpMatrix);
             float zoomRate = curZoomRate * factor;
             if (zoomRate < minZoomRate) {
-                boardMatrix.postScale(minZoomRate/curZoomRate, minZoomRate/curZoomRate, scaleCenterX, scaleCenterY);
+                tmpMatrix.postScale(minZoomRate/curZoomRate, minZoomRate/curZoomRate, scaleCenterX, scaleCenterY);
             }else if (zoomRate > maxZoomRate){
-                boardMatrix.postScale(maxZoomRate/curZoomRate, maxZoomRate/curZoomRate, scaleCenterX, scaleCenterY);
+                tmpMatrix.postScale(maxZoomRate/curZoomRate, maxZoomRate/curZoomRate, scaleCenterX, scaleCenterY);
             }else {
-                boardMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+                tmpMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
             }
 
-            OpMatrix opMatrix = null;
-            IResultListener publishListener = null;
-            if (System.currentTimeMillis()-timestamp > 70) { // 每70ms发布一次
-                opMatrix = new OpMatrix(boardMatrix);
-                assignBasicInfo(opMatrix);
-                publishListener = publishResultListener;
-            }
+            publish(update());
 
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, publishListener,true);
             zoomRateChanged();
         }
 
         @Override
         public void onScaleEnd() {
-            OpMatrix opMatrix = new OpMatrix(boardMatrix);
-            assignBasicInfo(opMatrix);
+            OpMatrix opMatrix = update();
             if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, new IResultListener() {
                 @Override
-                public void onFailed(int errorCode) {
-                    KLog.p("failed to publish matrix op %s ", opMatrix);
-                    boardMatrix.set(confirmedMatrix);
-                }
-
-                @Override
-                public void onTimeout() {
-                    KLog.p("timeout to publish matrix op %s ", opMatrix);
-                    boardMatrix.set(confirmedMatrix);
+                public void onArrive(boolean bSuccess) {
+                    if (!bSuccess) {
+                        KLog.p(KLog.ERROR,"failed to publish matrix op %s, rollback to %s", opMatrix, confirmedMatrix);
+                        rollback();
+                    }
                 }
             }, true);
 
@@ -452,8 +435,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), tmpOp, new IResultListener() {
 
                 @Override
-                public void onArrive() {
+                public void onArrive(boolean bSuccess) {
                     tmpShapeOps.remove(tmpOp); // 不论成功/失败/超时临时操作均已不需要，若成功该操作将被添加到“正式”的操作集，若失败则该操作被丢弃。
+                    if (!bSuccess){
+                        KLog.p(KLog.ERROR, "failed to publish shape op %s", tmpOp);
+                        // 立即刷新
+                        if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                    }
                 }
 
                 @Override
@@ -475,7 +463,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     DefaultTouchListener.IOnEventListener picViewEventListener = new DefaultTouchListener.IOnEventListener(){
         @Override
         public boolean onDown(float x, float y) {
-            if (picOps.isEmpty()){
+            if (0 == opWrapper.getInsertPicOpsCount()){
                 return false; // 当前没有图片不用处理后续事件
             }
             return true;
@@ -489,7 +477,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 KLog.p("no pic selected(x=%s, y=%s)", x, y);
                 return;
             }
-            picOps.remove(opInsertPic);
+            OpDeletePic opDeletePic = new OpDeletePic(new String[]{opInsertPic.getPicId()});
+            assignBasicInfo(opDeletePic);
+            opWrapper.addPicOp(opDeletePic); // 编辑图片的操作我们认为是先删除图片（本地删除不走发布）然后再编辑再插入图片。
             // 选中图片是所见即所得的效果，所以需要把图片层的matrix拷贝到图片编辑层
             picEditViewMatrix.set(getDensityRelativeBoardMatrix());
             savedMatrixBeforeEditPic.set(picEditViewMatrix);
@@ -710,41 +700,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    private MyConcurrentLinkedDeque<OpPaint> getPicOpsBySnapshot(){
-        MyConcurrentLinkedDeque<OpPaint> allOps = new MyConcurrentLinkedDeque<>();
-        MyConcurrentLinkedDeque<OpPaint> refinedOps = new MyConcurrentLinkedDeque<>();
-        // 筛选需要纳入快照的图片操作
-        allOps.addAll(picOps);
-        while (!allOps.isEmpty()){
-            OpPaint op = allOps.pollFirst();
-            if (op instanceof IBoundary){
-                refinedOps.offerLast(op);
-            }
-        }
-        return refinedOps;
-    }
-
-    private MyConcurrentLinkedDeque<OpPaint> getShapeOpsBySnapshot(boolean[] hasEraseOp){
-        MyConcurrentLinkedDeque<OpPaint> allOps = new MyConcurrentLinkedDeque<>();
-        MyConcurrentLinkedDeque<OpPaint> refinedOps = new MyConcurrentLinkedDeque<>();
-        allOps.addAll(shapeOps);
-        allOps.addAll(tmpShapeOps);
-        while (!allOps.isEmpty()){
-            OpPaint op = allOps.pollFirst();
-            if (EOpType.CLEAR_SCREEN == op.getType()){
-                refinedOps.clear(); // 剔除清屏及其之前的操作（清屏/擦除不影响图片）
-                continue;
-            }
-            if (op instanceof IBoundary) {
-                refinedOps.offerLast(op);
-                if (op instanceof OpErase || op instanceof OpRectErase){
-                    hasEraseOp[0] = true;
-                }
-            }
-        }
-
-        return refinedOps;
-    }
 
     private MyConcurrentLinkedDeque<OpPaint> getEditingPicOpsBySnapshot(){
         MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
@@ -779,30 +734,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return ops;
     }
 
-    /**计算操作集合的边界*/
-    private RectF calcBoundary(MyConcurrentLinkedDeque<OpPaint> bounds){
-        MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
-        ops.addAll(bounds);
-        IBoundary bound = (IBoundary) ops.peekFirst();
-        RectF bd = bound.boundary();
-        float left = bd.left;
-        float top = bd.top;
-        float right = bd.right;
-        float bottom = bd.bottom;
-        OpPaint op;
-        while (!ops.isEmpty()){
-            op = ops.pollFirst();
-//            KLog.p("op =%s", op);
-            bd = ((IBoundary) op).boundary();
-            left = bd.left < left ? bd.left : left;
-            top = bd.top < top ? bd.top : top;
-            right = bd.right > right ? bd.right: right;
-            bottom = bd.bottom > bottom ? bd.bottom : bottom;
-//            KLog.p("bound[%s, %s, %s, %s]", left, top, right, bottom);
-        }
-
-        return new RectF(left, top, right, bottom);
-    }
 
     /**
      * 快照。
@@ -855,7 +786,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }else{
             assHandler.post(() -> {
                 snapshotAll(canvas);
-                handler.post(() -> resultListener.onResult(bt));  // XXX：可能发生resultListener被销毁后仍收到该回调的情形。
+                handler.post(() -> resultListener.onResult(bt));  // XXX：可能发生resultListener被销毁后用户仍收到该回调的情形。
             });
         }
 
@@ -867,13 +798,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         // 筛选需要保存的操作
         MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
 
-        boolean[] hasEraseOp = new boolean[1];
-        MyConcurrentLinkedDeque<OpPaint> picOps = getPicOpsBySnapshot();
-        MyConcurrentLinkedDeque<OpPaint> shapeOps = getShapeOpsBySnapshot(hasEraseOp);
+        boolean hasEraseOp =false;
+        MyConcurrentLinkedDeque<OpInsertPic> picOps = opWrapper.getInsertPicOps();
+        MyConcurrentLinkedDeque<OpPaint> shapeOps = opWrapper.getShapeOpsAfterCls();
         MyConcurrentLinkedDeque<OpPaint> editingPicOps = getEditingPicOpsBySnapshot();
         ops.addAll(picOps);
         ops.addAll(shapeOps);
         ops.addAll(editingPicOps);
+
+        for (OpPaint op : shapeOps) {
+            if (op instanceof OpErase || op instanceof OpRectErase) {
+                hasEraseOp = true;
+                break;
+            }
+        }
 
         if (ops.isEmpty()){
             KLog.p(KLog.WARN, "no content!");
@@ -884,7 +822,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         float boardH = getHeight()>0 ? getHeight() : boardHeight;
 
         // 计算操作的边界
-        RectF bound = calcBoundary(ops);
+//        RectF bound = calcBoundary(ops);
+        RectF bound = opWrapper.calcBoundary(true);
 //        KLog.p("calcBoundary=%s", bound);
 
         // 根据操作边界结合当前画板缩放计算绘制操作需要的缩放及位移
@@ -932,7 +871,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         render(picOps, canvas);
 
-        if (hasEraseOp[0]) {
+        if (hasEraseOp) {
             // 保存已绘制的内容，避免被擦除
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
                 canvas.saveLayer(null, null);
@@ -964,9 +903,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      *     </a>
      * */
     private void snapshotWindow(Canvas canvas){
-//            KLog.p("picOps.isEmpty() = %s, shapeOps.isEmpty()=%s, isEmpty()=%s, picEditStuffs.isEmpty() = %s, " +
+//            KLog.p("insertPicOps.isEmpty() = %s, shapeOps.isEmpty()=%s, isEmpty()=%s, picEditStuffs.isEmpty() = %s, " +
 //                            "picLayerSnapshot=%s, shapeLayerSnapshot=%s, picEditingLayerSnapshot=%s",
-//                    picOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
+//                    insertPicOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
 //                    picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
 
         if (null == picLayerSnapshot) {
@@ -1001,16 +940,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    private void dealSimpleOp(OpPaint op){
-        if (null != onStateChangedListener) {
-            assignBasicInfo(op);
-            onStateChangedListener.onPaintOpGenerated(getBoardId(), op, null,false); // 等到平台广播ntf才刷新
-        }
-    }
-
     @Override
     public void undo() {
-        if (shapeOps.isEmpty()){
+        if (0 == opWrapper.getShapeOpsCount()){
             KLog.p(KLog.ERROR,"no op to undo");
             return;
         }
@@ -1021,7 +953,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             onStateChangedListener.onPaintOpGenerated(getBoardId(), opUndo, new IResultListener() {
                 @Override
                 public void onSuccess(Object result) {
-                    if (dealUndoOp((OpUndo) result)){
+                    if (dealControlOp((OpUndo) result)){
                         onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null,
                                 true // 平台反馈撤销成功，此时刷新
                         );
@@ -1037,7 +969,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void redo() {
-        if (repealedShapeOps.isEmpty()){
+        if (0==opWrapper.getRepealedOpsCount()){
             KLog.p(KLog.ERROR,"no op to repeal");
             return;
         }
@@ -1048,7 +980,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             onStateChangedListener.onPaintOpGenerated(getBoardId(), opRedo, new IResultListener() {
                         @Override
                         public void onSuccess(Object result) {
-                            if (dealRedoOp((OpRedo) result)){
+                            if (dealControlOp((OpRedo) result)){
                                 onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
                             }
                         }
@@ -1062,7 +994,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void clearScreen() {
-        if (isClear()){
+        if (opWrapper.isClear()){
             KLog.p(KLog.ERROR, "already cleared");
             return;
         }
@@ -1072,7 +1004,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             onStateChangedListener.onPaintOpGenerated(getBoardId(), opCls, new IResultListener() {
                         @Override
                         public void onSuccess(Object result) {
-                            if (dealClearScreenOp((OpClearScreen) result)){
+                            if (dealShapeOp((OpClearScreen) result)){
                                 onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
                             }
                         }
@@ -1094,11 +1026,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //        dealSimpleOp(opMatrix);
 //    }
 
-    float[] zoomVals = new float[9];
     @Override
     public int getZoom() {
-        boardMatrix.getValues(zoomVals);
-        return (int) Math.ceil(zoomVals[Matrix.MSCALE_X]*100);
+        float[] matrixValue = opWrapper.getLastMatrixOp().getMatrixValue();
+        return (int) Math.ceil(matrixValue[Matrix.MSCALE_X]*100);
     }
 
     @Override
@@ -1121,14 +1052,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return (int) (maxZoomRate * 100);
     }
 
-    private boolean bLastStateIsEmpty =true;
     /**
      * 画板是否是空。
      * NOTE: “空”的必要条件是视觉上画板没有内容，但是使用“擦除”操作清掉画板的内容并不会被判定为画板为空。
+     * @return 若没有图片且 {@link #isClear()}为真则返回true，否则返回false。
      * */
     @Override
     public boolean isEmpty() {
-        return  (picOps.isEmpty() && isClear());
+        return opWrapper.isEmpty();
     }
 
     /**
@@ -1138,31 +1069,26 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * */
     @Override
     public boolean isClear(){
-        return shapeOps.isEmpty() || shapeOps.peekLast() instanceof OpClearScreen;
+        return opWrapper.isClear();
     }
 
     @Override
     public int getRepealedOpsCount() {
-        return repealedShapeOps.size();
+        return opWrapper.getRepealedOpsCount();
     }
 
     @Override
     public int getShapeOpsCount() {
-        return shapeOps.size();
+        return opWrapper.getShapeOpsCount();
     }
 
     @Override
     public int getPicCount() {
-        int count = 0;
-        for (OpPaint op : picOps){
-            if (EOpType.INSERT_PICTURE == op.getType()){
-                ++count;
-            }
-        }
-        return count;
+        return opWrapper.getInsertPicOps().size();
     }
 
 
+    private boolean bLastStateIsEmpty =true;
     private void refreshEmptyState(){
         if (!bLastStateIsEmpty && isEmpty()){   // 之前是不为空的状态现在为空了
             if (null != onStateChangedListener) onStateChangedListener.onEmptyStateChanged(getBoardId(), bLastStateIsEmpty=true);
@@ -1195,7 +1121,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public boolean onDown(float x, float y) {
-            if (picEditStuffs.isEmpty() && picOps.isEmpty()){
+            if (picEditStuffs.isEmpty() && 0==opWrapper.getInsertPicOpsCount()){
                 return false; // 放弃处理后续事件
             }
             if (!picEditStuffs.isEmpty()){
@@ -1336,7 +1262,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         increasedMatrix.postConcat(MatrixHelper.invert(savedMatrixBeforeEditPic));
         opInsertPic.getMatrix().postConcat(increasedMatrix);
 
-        picOps.offerLast(opInsertPic);
+        opWrapper.addPicOp(opInsertPic);
 
         OpPaint op;
 
@@ -1347,7 +1273,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             //插入时是所见即所得的效果，所以需要抵消掉画板的matrix
             opInsertPic.getMatrix().postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix()));
 
-            opInsertPic.setBoardMatrix(boardMatrix);
+            opInsertPic.setBoardMatrix(opWrapper.getLastMatrixOp().getMatrix());
 
             /*求取transMatrix
              * transMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
@@ -1373,7 +1299,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
              * => dragMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
              * */
             Matrix dragMatrix = new Matrix(opInsertPic.getMatrix());
-            dragMatrix.postConcat(boardMatrix);
+            dragMatrix.postConcat(opWrapper.getLastMatrixOp().getMatrix());
             dragMatrix.preConcat(MatrixHelper.invert(opInsertPic.getMixMatrix()));
 
             Map<String, Matrix> picMatrices = new HashMap<>();
@@ -1418,19 +1344,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private OpInsertPic selectPic(float x, float y){
         RectF picBoundary = new RectF();
-        Iterator<OpPaint> it = picOps.descendingIterator();
+        Iterator<? extends OpPaint> it = opWrapper.getInsertPicOps().descendingIterator();
         while (it.hasNext()){
-            OpPaint op = it.next();
-            if (op instanceof OpInsertPic){
-                OpInsertPic opInsertPic = (OpInsertPic) op;
-                if (null == opInsertPic.getPic()){
-                    continue; // 图片操作有但图片可能还未获取到（如，协作方上传图片尚未完成）
-                }
-                picBoundary.set(opInsertPic.boundary()); // 图片边界仅包含了图片自身的matrix未包含boardMatrix
-                getDensityRelativeBoardMatrix().mapRect(picBoundary);
-                if (picBoundary.contains(x, y)){
-                    return opInsertPic;
-                }
+            OpInsertPic opInsertPic = (OpInsertPic) it.next();
+            if (null == opInsertPic.getPic()){
+                continue; // 图片操作有但图片可能还未获取到（如，协作方上传图片尚未完成）
+            }
+            picBoundary.set(opInsertPic.boundary()); // 图片边界仅包含了图片自身的matrix未包含boardMatrix
+            getDensityRelativeBoardMatrix().mapRect(picBoundary);
+            if (picBoundary.contains(x, y)){
+                return opInsertPic;
             }
         }
         return null;
@@ -1505,28 +1428,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     private boolean dealShapeOp(OpPaint shapeOp){
-        boolean bEmpty = shapeOps.isEmpty(); // XXX 如果shapeOps中将来也有不可撤销操作呢？也就是说将来可能不能简单根据是否空来判断是否该改变可撤销状态
-        boolean bRepealedShapeOpEmpty = repealedShapeOps.isEmpty();
 
-        // 操作入队列
-        shapeOps.offerLast(shapeOp);
-
-        if (shapeOp instanceof IRepealable) {
-            repealedShapeOps.clear(); // 有新的可撤销操作加入时重置撤销/恢复相关状态（需求要求的）
-        }
+        if (!opWrapper.addShapeOp(shapeOp)) return false;
 
         if (null != onStateChangedListener){
             onStateChangedListener.onChanged(getBoardId());
-            if (shapeOp instanceof IRepealable){
-                if (bEmpty // 可撤销操作从无到有
-                        || !bRepealedShapeOpEmpty //撤销/恢复操作流被“可撤销”操作中断
-                        ){
-                    onStateChangedListener.onRepealableStateChanged(getBoardId(), repealedShapeOps.size(),
-                            shapeOps.size() // NOTE: 此方法会遍历整个队列以获取size，较低效。
-                    );
-                }
-            }
-
+            KLog.p("opWrapper.getRepealedOpsCount()=%s,opWrapper.getShapeOpsCount()=%s", opWrapper.getRepealedOpsCount(),opWrapper.getShapeOpsCount());
+            onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRepealedOpsCount(),opWrapper.getShapeOpsCount());
             refreshEmptyState();
         }
 
@@ -1534,233 +1442,63 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     }
 
-    private boolean dealClearScreenOp(OpClearScreen opClearScreen){
-        if (isClear()){
-            KLog.p(KLog.ERROR, "already cleared");
-            return false;
-        }
 
-        return dealShapeOp(opClearScreen);
-    }
+    private boolean dealControlOp(OpPaint op){
 
-    private boolean dealUndoOp(OpUndo opUndo){
-        OpPaint op = shapeOps.pollLast(); // 撤销最近的操作
-        if (null == op){
-            KLog.p(KLog.ERROR, "no op to repeal");
-            return false;
-        }
-
-        repealedShapeOps.push(op); // 缓存撤销的操作以供恢复
+        if (!opWrapper.addControlOp(op)) return false;
 
         if (null != onStateChangedListener){
             onStateChangedListener.onChanged(getBoardId());
-            onStateChangedListener.onRepealableStateChanged(getBoardId(), repealedShapeOps.size(), shapeOps.size());
+            onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRepealedOpsCount(),opWrapper.getShapeOpsCount());
             refreshEmptyState();
         }
 
         return true;
     }
 
-    private boolean dealRedoOp(OpRedo opRedo){
-        if (repealedShapeOps.isEmpty()){
-            KLog.p(KLog.ERROR, "no op to restore");
-            return false;
-        }
 
-        OpPaint op = repealedShapeOps.pop();
-        shapeOps.offerLast(op); // 恢复最近被撤销的操作
-
-        if (null != onStateChangedListener){
-            onStateChangedListener.onChanged(getBoardId());
-            onStateChangedListener.onRepealableStateChanged(getBoardId(), repealedShapeOps.size(), shapeOps.size());
-            refreshEmptyState();
-        }
-
-        return true;
-    }
-
-    private boolean dealMatrixOp(OpMatrix opMatrix){
+    private boolean dealMatrixOp(OpMatrix op){
         if (bDoingMatrixOp){
             // 本地正在执行matrix操作则屏蔽外来的matrix操作
             return false;
         }
 
         // 更新画板matrix
-        boardMatrix.set((opMatrix.getMatrix()));
-
+        opWrapper.addMatrixOp(op);
         zoomRateChanged();
 
         return true;
     }
 
-
-    private boolean dealInsertPicOp(OpInsertPic opInsertPic){
-        for (OpPaint opPaint : picOps){
-            if (opPaint instanceof OpInsertPic
-                    && ((OpInsertPic)opPaint).getPicId().equals(opInsertPic.getPicId())
-                    ){
-                KLog.p("pic op %s already exist!", opPaint);
-                return false;
-            }
-        }
-
-        boolean bRefresh = true;
-
-        picOps.offerLast(opInsertPic);
-
-        opInsertPic.setBoardMatrix(boardMatrix);
-        if (null == opInsertPic.getPic()) {
-            if (null != opInsertPic.getPicPath()) {
-                opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicPath())); // XXX TODO 优化。比如大分辨率图片裁剪
-            } else {
-                bRefresh = false; // 图片为空不需刷新界面（图片可能正在下载）
-            }
-        }
-
-        Bitmap pic = opInsertPic.getPic();
-        if (null != pic){
-            /*计算mixMatrix。
-            可将mixMatrix理解为：把左上角在原点处的未经缩放的图片变换为对端所描述的图片（插入图片时传过来的insertPos, picWidth, picHeight这些信息综合起来所描述的图片）
-            所需经历的矩形变换*/
-            PointF insertPos = opInsertPic.getInsertPos();
-            Matrix mixMatrix = MatrixHelper.calcTransMatrix(new RectF(0, 0, pic.getWidth(), pic.getHeight()),
-                    new RectF(insertPos.x, insertPos.y, insertPos.x+opInsertPic.getPicWidth(), insertPos.y+opInsertPic.getPicHeight()));
-            opInsertPic.setMixMatrix(mixMatrix);
-
-            // 计算picMatrix= mixMatrix * transMatrix / boardMatrix
-            Matrix picMatrix = new Matrix(mixMatrix);
-            picMatrix.postConcat(opInsertPic.getTransMatrix());
-            picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
-            opInsertPic.setMatrix(picMatrix);
-        }
-
-        picCountChanged();
-
-        return bRefresh;
-    }
-
-
-    private boolean dealDelPicOp(OpDeletePic opDelPic){
-        boolean bRefresh = false;
-        OpPaint picOp;
-        boolean got =false;
-        for (String picId : opDelPic.getPicIds()) {
-            got = false;
-            Iterator it = picOps.iterator();
-            while (it.hasNext()) {
-                picOp = (OpPaint) it.next();
-                if (EOpType.INSERT_PICTURE == picOp.getType()
-                        && ((OpInsertPic) picOp).getPicId().equals(picId)) {
-                    it.remove();
-                    got = true;
-                    bRefresh = true;
-                    break;
-                }
-            }
-            if (!got) {
+    private boolean dealPicOp(OpPaint picOp){
+        boolean bEffective = opWrapper.addPicOp(picOp);
+        if (!bEffective && EOpType.DELETE_PICTURE == picOp.getType()){
+            OpDeletePic opDeletePic = (OpDeletePic) picOp;
+            for (String picId : opDeletePic.getPicIds()) {
                 // 可能图片正在被编辑
                 if (isExistEditingPic(picId)){
-                    got = true;
-                    bRefresh = true;
+                    bEffective = true;
                     delEditingPic(picId);
                 }
             }
         }
 
-        if (bRefresh){
-            picCountChanged();
+        if (!bEffective){
+            return false;
         }
 
-        return bRefresh;
-
-    }
-
-
-    private boolean dealDragPicOp(OpDragPic opDragPic){
-        boolean bRefresh = true;
-        OpInsertPic opInsertPic;
-        for (Map.Entry<String, Matrix> dragOp : opDragPic.getPicMatrices().entrySet()) {
-            for (OpPaint picOp : picOps) {
-                if (EOpType.INSERT_PICTURE == picOp.getType()
-                        && ((OpInsertPic) picOp).getPicId().equals(dragOp.getKey())) {
-                    opInsertPic = (OpInsertPic) picOp;
-                    if (null != opInsertPic.getPic()) {
-                        /*图片已经准备好了则直接求取picmatrix
-                         * mixMatrix * dragMatrix = picMatrix * boardMatrix
-                         * => picMatrix = mixMatrix * dragMatrix / boardMatrix
-                         * */
-                        Matrix matrix = new Matrix(opInsertPic.getMixMatrix());
-                        matrix.postConcat(dragOp.getValue());
-                        matrix.postConcat(MatrixHelper.invert(boardMatrix));
-                        if (matrix.equals(opInsertPic.getMatrix())) {
-                            // 计算出的matrix跟当前matrix相等则不需拖动
-                            bRefresh = false;
-                        }else{
-                            // 更新图片的matrix
-                            opInsertPic.setMatrix(matrix);
-
-                            onStateChangedListener.onChanged(getBoardId());
-                        }
-                    }else{
-                        // 图片尚未准备好，我们先保存matrix，等图片准备好了再计算
-                        opInsertPic.setDragMatrix(dragOp.getValue());
-                        opInsertPic.setBoardMatrix(boardMatrix);
-                        bRefresh = false; // 图片尚未准备好不需刷新
-                    }
-                    break;
-                }
-            }
-        }
-
-        return bRefresh;
-    }
-
-
-    private boolean dealUpdatePicOp(OpUpdatePic opUpdatePic){
-        boolean bRefresh = false;
-        OpInsertPic opInsertPic;
-        for (OpPaint picOp : picOps) {
+        if (null != onStateChangedListener) {
+            onStateChangedListener.onChanged(getBoardId());
             if (EOpType.INSERT_PICTURE == picOp.getType()
-                    && ((OpInsertPic) picOp).getPicId().equals(opUpdatePic.getPicId())) {
-                opInsertPic = (OpInsertPic) picOp;
-                opInsertPic.setPicPath(opUpdatePic.getPicSavePath());
-                Bitmap pic = BitmapFactory.decodeFile(opInsertPic.getPicPath());
-                opInsertPic.setPic(pic); // TODO 优化。比如大分辨率图片裁剪
-                if (null != pic){
-                    PointF insertPos = opInsertPic.getInsertPos();
-                    Matrix mixMatrix = MatrixHelper.calcTransMatrix(new RectF(0, 0, pic.getWidth(), pic.getHeight()),
-                            new RectF(insertPos.x, insertPos.y, insertPos.x+opInsertPic.getPicWidth(), insertPos.y+opInsertPic.getPicHeight()));
-                    opInsertPic.setMixMatrix(mixMatrix);
-
-                    Matrix picMatrix = new Matrix(opInsertPic.getMixMatrix());
-                    Matrix dragMatrix = opInsertPic.getDragMatrix();
-                    if (null != dragMatrix) { // XXX 还有其它影响图片matrix的操作呢？
-                        /* 在此之前有图片拖动操作则以图片拖动操作中的dragMatrix来计算picMatrix
-                         * picMatrix = mixMatrix * dragMatrix / boardMatrix*/
-                        picMatrix.postConcat(opInsertPic.getDragMatrix());
-                        opInsertPic.setDragMatrix(null);
-                    }else{
-                        // picMatrix = mixMatrix * transMatrix / boardMatrix
-                        picMatrix.postConcat(opInsertPic.getTransMatrix());
-                    }
-
-                    picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
-
-                    opInsertPic.setMatrix(picMatrix); // 更新图片matrix
-
-                    onStateChangedListener.onChanged(getBoardId());
-
-                    bRefresh = true;
-                }else{
-                    KLog.p(KLog.ERROR, "pic is null!");
-                }
-
-                break;
+                    || EOpType.DELETE_PICTURE == picOp.getType()) {
+                onStateChangedListener.onPictureCountChanged(getBoardId(), getPicCount());
+                refreshEmptyState();
             }
         }
 
-        return bRefresh;
+        return true;
     }
+
 
 
     /**
@@ -1777,28 +1515,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         switch (op.getType()){
             case INSERT_PICTURE:
-                return dealInsertPicOp((OpInsertPic) op);
-
             case DELETE_PICTURE:
-                return dealDelPicOp((OpDeletePic) op);
-
             case DRAG_PICTURE:
-                return dealDragPicOp((OpDragPic) op);
-
             case UPDATE_PICTURE:
-                return dealUpdatePicOp((OpUpdatePic) op);
+                return dealPicOp(op);
 
             case FULLSCREEN_MATRIX:
                 return dealMatrixOp((OpMatrix) op);
 
             case UNDO:
-                return dealUndoOp((OpUndo) op);
-
             case REDO:
-                return dealRedoOp((OpRedo) op);
-
-            case CLEAR_SCREEN:
-                return dealClearScreenOp((OpClearScreen) op);
+                return dealControlOp(op);
 
             default:
                 return dealShapeOp(op);
@@ -1821,15 +1548,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             shapePaintViewCanvas.setMatrix(matrix);
 
             // 图形绘制
-            render(shapeOps, shapePaintViewCanvas);
+            render(opWrapper.getShapeOps(), shapePaintViewCanvas);
 
             // 临时图形绘制
             render(tmpShapeOps, shapePaintViewCanvas);
 
             // 绘制正在调整中的操作
-            synchronized (adjustingOpLock) {
+//            synchronized (adjustingOpLock) {
                 if (null != adjustingShapeOp) render(adjustingShapeOp, shapePaintViewCanvas);
-            }
+//            }
         }
 
         // 图片层绘制
@@ -1842,7 +1569,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             picPaintViewCanvas.setMatrix(matrix);
 
             // 图片绘制
-            render(picOps, picPaintViewCanvas);
+            render(opWrapper.getInsertPicOps(), picPaintViewCanvas);
         }
 
         // 图片编辑层绘制
@@ -1956,7 +1683,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     }
 
-    private void render(MyConcurrentLinkedDeque<OpPaint> ops, Canvas canvas){
+    private void render(MyConcurrentLinkedDeque<? extends OpPaint> ops, Canvas canvas){
         for (OpPaint op : ops) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
             render(op, canvas);
         }
@@ -2038,6 +1765,406 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     void setOnStateChangedListener(IOnStateChangedListener onStateChangedListener){
         this.onStateChangedListener = onStateChangedListener;
+    }
+
+
+
+
+    private class OpWrapper{
+
+        /**
+         * 所有操作（忠实于现场，致力于保存所有细节，可用于“录制/回放”）。
+         * NOTE: 所有保存于此的操作均是经平台确认过生效的操作，不包括临时操作，如本端正在进行的图形绘制，正在进行的图片编辑。
+         * */
+        private MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
+
+        /**
+         * 图形操作
+         * */
+        private MyConcurrentLinkedDeque<OpPaint> shapeOps = new MyConcurrentLinkedDeque<>();
+        /**
+         * 插入图片操作
+         * */
+        private MyConcurrentLinkedDeque<OpInsertPic> insertPicOps = new MyConcurrentLinkedDeque<>();
+        /**
+         * matrix操作
+         * */
+        private MyConcurrentLinkedDeque<OpMatrix> matrixOps = new MyConcurrentLinkedDeque<>();
+        /**
+         * 已撤销操作
+         * */
+        private Stack<OpPaint> repealedOps = new Stack<>();
+
+        /**
+         * 已撤销操作数量。
+         * NOTE: 该值不一定等于{@link #repealedOps}的size，因为根据需求该值会在一些场景下被重置。
+         * */
+        private int repealedOpsCount;
+
+        /**
+         * 图形操作数量。
+         * 因为MyConcurrentLinkedDeque.size需要遍历队列且shapeOps可能数目较大则较低效，所以自行维护计数。
+         * */
+        private int shapeOpsCount;
+
+
+        /***********************************************************************************
+         * NOTE: 以下getXXX系列方法返回的集合被设计为仅用于读操作，请勿对返回的对象执行修改操作。
+         * ************************************************************************************/
+
+        MyConcurrentLinkedDeque<OpPaint> getShapeOps(){
+            return shapeOps;
+        }
+
+        /**
+         * 获取最后一次清屏操作之后的图形操作。（目前清屏仅针对图形）
+         * */
+        MyConcurrentLinkedDeque<OpPaint> getShapeOpsAfterCls(){
+            MyConcurrentLinkedDeque<OpPaint> allShapeOps = new MyConcurrentLinkedDeque<>();
+            MyConcurrentLinkedDeque<OpPaint> shapeOpsAfterCls = new MyConcurrentLinkedDeque<>();
+            allShapeOps.addAll(shapeOps);
+            while (!allShapeOps.isEmpty()){
+                OpPaint op = allShapeOps.pollLast();
+                if (EOpType.CLEAR_SCREEN == op.getType()){
+                    break;
+                }
+                shapeOpsAfterCls.offerFirst(op);
+            }
+            return shapeOpsAfterCls;
+        }
+
+        MyConcurrentLinkedDeque<OpInsertPic> getInsertPicOps(){
+            return insertPicOps;
+        }
+
+        MyConcurrentLinkedDeque<OpMatrix> getMatrixOps(){
+            return matrixOps;
+        }
+
+        OpMatrix getLastMatrixOp(){
+            return matrixOps.peekLast();
+        }
+
+        MyConcurrentLinkedDeque<OpPaint> getAllOps(){
+            return ops;
+        }
+
+
+        int getShapeOpsCount(){
+            return shapeOpsCount;
+        }
+
+        int getRepealedOpsCount(){
+            return repealedOpsCount;
+        }
+        /**
+         * 获取真实的历来已被撤销的操作的数量。
+         * 不同于{@link #getRepealedOpsCount()}可能被重置（需求要求某些场景需重置可撤销操作计数），
+         * 该方法获取的是历来所有已被撤销未恢复的操作。
+         * */
+        int getRealRepealedOpsCount(){
+            return repealedOps.size();
+        }
+
+        int getInsertPicOpsCount(){
+            return insertPicOps.size();
+        }
+
+        boolean isClear(){
+            return shapeOps.isEmpty() || shapeOps.peekLast() instanceof OpClearScreen;
+        }
+
+        boolean isEmpty(){
+            return insertPicOps.isEmpty() && isClear();
+        }
+
+
+        /********************************************************
+         * 以下addXXX系列接口为添加各种操作，没有相应的delXXX接口
+         * ****************************************************/
+
+        /**
+         * 添加图形操作。包括画线、画圆、擦除、清屏等。
+         * */
+        boolean addShapeOp(OpPaint op){
+
+            ops.offerLast(op);
+
+            if (EOpType.CLEAR_SCREEN==op.getType() && isClear()){
+                KLog.p(KLog.ERROR, "already cleared");
+                return false;
+            }
+            shapeOps.offerLast(op);
+            ++shapeOpsCount;
+            if (op instanceof IRepealable) {
+                repealedOpsCount=0; // 有新的可撤销操作加入时重置已撤销操作数量（需求要求）
+            }
+            return true;
+        }
+
+
+        /**
+         * 添加图片操作。包括插入/删除/拖动/放缩图片等。目前仅入队插入/删除图片。
+         * // TODO 若将来需要录制/回放功能则所有中间效果的操作均需入队。
+         * */
+        boolean addPicOp(OpPaint op){
+
+            OpInsertPic opInsertPic;
+
+            if (EOpType.INSERT_PICTURE==op.getType()){
+
+                ops.offerLast(op); // 保存插入图片操作
+
+                opInsertPic = (OpInsertPic) op;
+                for (OpPaint picOp : insertPicOps){
+                    if (((OpInsertPic)picOp).getPicId().equals(opInsertPic.getPicId())){
+                        KLog.p("pic op %s already exist!", picOp);
+                        return false;
+                    }
+                }
+
+                insertPicOps.offerLast(opInsertPic);
+
+                opInsertPic.setBoardMatrix(getLastMatrixOp().getMatrix());
+                if (null == opInsertPic.getPic()
+                        && null != opInsertPic.getPicPath()) {
+                    opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicPath())); // XXX TODO 优化。比如大分辨率图片裁剪
+                }
+
+                Bitmap pic = opInsertPic.getPic();
+                if (null != pic){
+                /*计算mixMatrix。
+                可将mixMatrix理解为：把左上角在原点处的未经缩放的图片变换为对端所描述的图片（插入图片时传过来的insertPos, picWidth, picHeight这些信息综合起来所描述的图片）
+                所需经历的矩形变换*/
+                    PointF insertPos = opInsertPic.getInsertPos();
+                    Matrix mixMatrix = MatrixHelper.calcTransMatrix(new RectF(0, 0, pic.getWidth(), pic.getHeight()),
+                            new RectF(insertPos.x, insertPos.y, insertPos.x+opInsertPic.getPicWidth(), insertPos.y+opInsertPic.getPicHeight()));
+                    opInsertPic.setMixMatrix(mixMatrix);
+
+                    // 计算picMatrix= mixMatrix * transMatrix / boardMatrix
+                    Matrix picMatrix = new Matrix(mixMatrix);
+                    picMatrix.postConcat(opInsertPic.getTransMatrix());
+                    picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
+                    opInsertPic.setMatrix(picMatrix);
+                }
+
+                return true;
+
+            }else if (EOpType.DELETE_PICTURE==op.getType()){
+
+                ops.offerLast(op); // 保存删除图片操作
+
+                OpDeletePic opDeletePic = (OpDeletePic) op;
+                boolean bSuccess = false;
+                for (String picId : opDeletePic.getPicIds()) {
+                    boolean bDel = false;
+                    Iterator it = insertPicOps.iterator();
+                    while (it.hasNext()) {
+                        OpInsertPic picOp = (OpInsertPic) it.next();
+                        if (picOp.getPicId().equals(picId)) {
+                            it.remove();
+                            bDel = true;
+                            bSuccess = true;
+                            break;
+                        }
+                    }
+                    if (!bDel){
+                        KLog.p(KLog.ERROR, "del pic %s failed", picId);
+                    }
+                }
+                if (!bSuccess){
+                    KLog.p(KLog.ERROR, "del pics failed: %s ", opDeletePic);
+                    return false;
+                }
+
+                return true;
+
+            }else if (EOpType.DRAG_PICTURE==op.getType()){
+
+//                ops.offerLast(op); // 目前不支持“录制/回放”功能，所以拖动图片这类中间效果操作暂不保存
+
+                boolean bEffective = false;
+                OpDragPic opDragPic = (OpDragPic) op;
+                for (Map.Entry<String, Matrix> dragOp : opDragPic.getPicMatrices().entrySet()) {
+                    for (OpPaint picOp : insertPicOps) {
+                        opInsertPic = (OpInsertPic) picOp;
+                        if (opInsertPic.getPicId().equals(dragOp.getKey())) {
+                            if (null != opInsertPic.getPic()) {
+                                /*图片已经准备好了则直接求取picmatrix
+                                 * mixMatrix * dragMatrix = picMatrix * boardMatrix
+                                 * => picMatrix = mixMatrix * dragMatrix / boardMatrix
+                                 * */
+                                Matrix matrix = new Matrix(opInsertPic.getMixMatrix());
+                                matrix.postConcat(dragOp.getValue());
+                                matrix.postConcat(MatrixHelper.invert(getLastMatrixOp().getMatrix()));
+                                if (!matrix.equals(opInsertPic.getMatrix())) {
+                                    // 更新图片的matrix
+                                    opInsertPic.setMatrix(matrix);
+                                    bEffective = true;
+                                }else {
+                                    // 计算出的matrix跟当前matrix相等则不需拖动
+                                    KLog.p(KLog.WARN, "drag pic %s no effect, matrix no change", opInsertPic.getPicId());
+                                }
+                            }else{
+                                // 图片尚未准备好，我们先保存matrix，等图片准备好了再计算
+                                opInsertPic.setDragMatrix(dragOp.getValue());
+                                opInsertPic.setBoardMatrix(getLastMatrixOp().getMatrix());
+                                KLog.p(KLog.WARN, "drag pic %s no effect, pic is null", opInsertPic.getPicId());
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                return bEffective;
+
+            }else if (EOpType.UPDATE_PICTURE==op.getType()){
+                boolean bSuccess = false;
+                OpUpdatePic opUpdatePic = (OpUpdatePic) op;
+                for (OpPaint picOp : insertPicOps) {
+                    opInsertPic = (OpInsertPic) picOp;
+                    if (opInsertPic.getPicId().equals(opUpdatePic.getPicId())) {
+                        opInsertPic.setPicPath(opUpdatePic.getPicSavePath()); // 更新图片路径
+                        Bitmap pic = BitmapFactory.decodeFile(opInsertPic.getPicPath());
+                        opInsertPic.setPic(pic); // TODO 优化。比如大分辨率图片裁剪
+                        if (null != pic){
+                            PointF insertPos = opInsertPic.getInsertPos();
+                            Matrix mixMatrix = MatrixHelper.calcTransMatrix(new RectF(0, 0, pic.getWidth(), pic.getHeight()),
+                                    new RectF(insertPos.x, insertPos.y, insertPos.x+opInsertPic.getPicWidth(), insertPos.y+opInsertPic.getPicHeight()));
+                            opInsertPic.setMixMatrix(mixMatrix);
+
+                            Matrix picMatrix = new Matrix(opInsertPic.getMixMatrix());
+                            Matrix dragMatrix = opInsertPic.getDragMatrix();
+                            if (null != dragMatrix) { // XXX 还有其它影响图片matrix的操作呢？
+                                /* 在此之前有图片拖动操作则以图片拖动操作中的dragMatrix来计算picMatrix
+                                 * picMatrix = mixMatrix * dragMatrix / boardMatrix*/
+                                picMatrix.postConcat(opInsertPic.getDragMatrix());
+                                opInsertPic.setDragMatrix(null);
+                            }else{
+                                // picMatrix = mixMatrix * transMatrix / boardMatrix
+                                picMatrix.postConcat(opInsertPic.getTransMatrix());
+                            }
+
+                            picMatrix.postConcat(MatrixHelper.invert(opInsertPic.getBoardMatrix()));
+
+                            opInsertPic.setMatrix(picMatrix); // 更新图片matrix
+
+                            bSuccess = true;
+                        }else{
+                            KLog.p(KLog.ERROR, "pic is null!");
+                        }
+
+                        break;
+                    }
+                }
+
+                if (!bSuccess){
+                    KLog.p(KLog.ERROR, "update pic failed: %s ", opUpdatePic);
+                    return false;
+                }
+                return true;
+
+            } else{
+                KLog.p(KLog.ERROR, "unknown pic op %s", op);
+                return false;
+            }
+
+        }
+
+
+        /**
+         * 添加控制操作。包括撤销/恢复。
+         * */
+        boolean addControlOp(OpPaint op){
+            ops.offerLast(op);
+
+            if (EOpType.UNDO==op.getType()){
+                OpPaint shapeOp = shapeOps.pollLast(); // 撤销最近的操作（目前仅图形操作支持撤销）
+                if (null == shapeOp){
+                    KLog.p(KLog.ERROR, "no op to repeal");
+                    return false;
+                }
+                --shapeOpsCount;
+                repealedOps.push(shapeOp); // 缓存撤销的操作以供恢复
+                ++repealedOpsCount;
+            }else if (EOpType.REDO==op.getType()){
+                if (repealedOps.isEmpty()){
+                    KLog.p(KLog.ERROR, "no op to restore");
+                    return false;
+                }
+
+                OpPaint repealedOp = repealedOps.pop();
+                if (--repealedOpsCount<0) repealedOpsCount = 0;
+
+                shapeOps.offerLast(repealedOp); // 恢复最近被撤销的操作
+                ++shapeOpsCount;
+            }else{
+                KLog.p(KLog.ERROR, "unknown control op %s", op);
+                return false;
+            }
+
+            return true;
+        }
+
+        /**
+         * 添加matrix操作
+         * */
+        boolean addMatrixOp(OpMatrix op){
+
+//            ops.offerLast(op); // 目前不支持“录制/回放”功能，所以拖动放缩这类中间效果操作暂不保存
+
+            if (EOpType.FULLSCREEN_MATRIX != op.getType()){
+                return false;
+            }
+
+            matrixOps.offerLast(op);
+            if (matrixOps.size()>1) {
+                matrixOps.pollFirst(); //NOTE: 目前仅保存一个，后续如果要支持“录制/回放”功能则需保存matrix操作序列。
+            }
+
+            return true;
+        }
+
+
+        /**计算操作集合的边界
+         * @param bExcludeClearedOps 是否排除被清屏的操作。true排除。
+         * */
+        private RectF calcBoundary(boolean bExcludeClearedOps){
+            MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
+            ops.addAll(insertPicOps);
+            if (bExcludeClearedOps){
+                ops.addAll(getShapeOpsAfterCls());
+            }else {
+                ops.addAll(shapeOps);
+            }
+            if (ops.isEmpty()){
+                return null;
+            }
+            RectF calcBound = null;
+            OpPaint op;
+            while (!ops.isEmpty()){
+                op = ops.pollFirst();
+                if (!(op instanceof IBoundary)){
+                    continue;
+                }
+//                KLog.p("op =%s", op);
+                if (null == calcBound){
+                    calcBound = ((IBoundary) op).boundary();
+                    continue;
+                }
+//                KLog.p("1 calcBound=%s", calcBound);
+                RectF bound = ((IBoundary) op).boundary();
+                if (bound.left < calcBound.left) calcBound.left = bound.left;
+                if (bound.top < calcBound.top) calcBound.top = bound.top;
+                if (bound.right > calcBound.right) calcBound.right = bound.right;
+                if (bound.bottom > calcBound.bottom) calcBound.bottom = bound.bottom;
+//                KLog.p("2 calcBound=%s", calcBound);
+            }
+
+            return calcBound;
+        }
+
+
     }
 
 }
