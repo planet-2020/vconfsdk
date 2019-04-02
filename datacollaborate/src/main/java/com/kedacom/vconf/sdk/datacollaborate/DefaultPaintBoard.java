@@ -49,7 +49,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private TextureView shapePaintView;
     // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private OpPaint adjustingShapeOp;
-//    private final Object adjustingOpLock = new Object();
     // 临时图形操作。手指拿起绘制完成，但并不表示此绘制已生效，需等到平台广播NTF后方能确认为生效的操作，在此之前的操作都作为临时操作保存在这里。
     private MyConcurrentLinkedDeque<OpPaint> tmpShapeOps = new MyConcurrentLinkedDeque<>();
 
@@ -472,7 +471,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onLongPress(float x, float y) {
-            OpInsertPic opInsertPic = selectPic(x, y);
+            float[] pos = new float[]{x, y};
+            MatrixHelper.invert(getDensityRelativeBoardMatrix()).mapPoints(pos);
+            OpInsertPic opInsertPic = opWrapper.selectPic(pos[0], pos[1]);
             if (null == opInsertPic){
                 KLog.p("no pic selected(x=%s, y=%s)", x, y);
                 return;
@@ -1342,22 +1343,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    private OpInsertPic selectPic(float x, float y){
-        RectF picBoundary = new RectF();
-        Iterator<? extends OpPaint> it = opWrapper.getInsertPicOps().descendingIterator();
-        while (it.hasNext()){
-            OpInsertPic opInsertPic = (OpInsertPic) it.next();
-            if (null == opInsertPic.getPic()){
-                continue; // 图片操作有但图片可能还未获取到（如，协作方上传图片尚未完成）
-            }
-            picBoundary.set(opInsertPic.boundary()); // 图片边界仅包含了图片自身的matrix未包含boardMatrix
-            getDensityRelativeBoardMatrix().mapRect(picBoundary);
-            if (picBoundary.contains(x, y)){
-                return opInsertPic;
-            }
-        }
-        return null;
-    }
 
     private int savedLayerBeforeEditPic;
     private static final int DASH_RECT_PADDING = 5; // 图片编辑时的虚线矩形框和图片之间的间隙。单位：pixel
@@ -1554,9 +1539,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             render(tmpShapeOps, shapePaintViewCanvas);
 
             // 绘制正在调整中的操作
-//            synchronized (adjustingOpLock) {
-                if (null != adjustingShapeOp) render(adjustingShapeOp, shapePaintViewCanvas);
-//            }
+            if (null != adjustingShapeOp) render(adjustingShapeOp, shapePaintViewCanvas);
         }
 
         // 图片层绘制
@@ -2162,6 +2145,22 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
 
             return calcBound;
+        }
+
+        private OpInsertPic selectPic(float x, float y){
+            RectF picBoundary = new RectF();
+            Iterator<OpInsertPic> it = insertPicOps.descendingIterator();
+            while (it.hasNext()){
+                OpInsertPic opInsertPic = it.next();
+                if (null == opInsertPic.getPic()){
+                    continue; // 图片操作有但图片可能还未获取到（如，协作方上传图片尚未完成）
+                }
+                picBoundary.set(opInsertPic.boundary());
+                if (picBoundary.contains(x, y)){
+                    return opInsertPic;
+                }
+            }
+            return null;
         }
 
 
