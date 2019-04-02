@@ -795,7 +795,7 @@ public class DataCollaborateManager extends Caster {
         // 获取所有画板
         req(Msg.DCQueryAllBoards, new QueryAllBoardsInnerListener() {
                     @Override
-                    public void onArrive() {
+                    public void onArrive(boolean bSuccess) {
                         /* 获取所有画板结束，准备阶段结束*/
                         bPreparingSync = false;
                     }
