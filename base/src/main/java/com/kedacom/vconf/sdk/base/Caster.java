@@ -515,7 +515,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
      * */
     protected void reportSuccess(Object result, IResultListener listener){
         if (null != listener){
-            listener.onArrive();
+            listener.onArrive(true);
             listener.onSuccess(result);
         }
     }
@@ -525,7 +525,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
      * */
     protected void reportFailed(int errorCode, IResultListener listener){
         if (null != listener){
-            listener.onArrive();
+            listener.onArrive(false);
             listener.onFailed(errorCode);
         }
     }
@@ -535,7 +535,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
      * */
     protected void reportTimeout(IResultListener listener){
         if (null != listener){
-            listener.onArrive();
+            listener.onArrive(false);
             listener.onTimeout();
         }
     }
