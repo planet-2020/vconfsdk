@@ -27,6 +27,7 @@ import android.view.TextureView;
 import android.view.View;
 import android.widget.FrameLayout;
 
+import com.google.common.collect.Sets;
 import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.*;
@@ -34,6 +35,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -101,7 +103,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private DefaultTouchListener shapeViewTouchListener;
     private DefaultTouchListener picViewTouchListener;
 
+    // 是否正在执行matrix操作
     private boolean bDoingMatrixOp = false;
+    // 是否正在插入图片
+    private boolean bInsertingPic = false;
 
     private Handler handler = new Handler(Looper.getMainLooper());
 
@@ -486,7 +491,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    private boolean bInsertingPic = false;
     @Override
     public void insertPic(String path) {
         if (null == onStateChangedListener){
@@ -879,6 +883,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private float preDragX, preDragY;
         private float scaleCenterX, scaleCenterY;
 
+        private long timestamp = System.currentTimeMillis();
+        private Matrix confirmedMatrix = new Matrix();
+        private IResultListener publishResultListener = new IResultListener() {
+            @Override
+            public void onSuccess(Object result) {
+                if (null != picEditStuff) {
+                    confirmedMatrix.set(picEditStuff.matrix);
+                }
+            }
+        };
+
         private void refreshDelIconState(float x, float y){
             Bitmap lastPic = picEditStuff.delIcon.getPic();
             if (picEditStuff.isInDelPicIcon(x, y)) {
@@ -892,6 +907,29 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
             }
         }
+
+
+        private void publish(OpDragPic opDragPic){
+            if (System.currentTimeMillis()-timestamp > 70) {
+                timestamp = System.currentTimeMillis();
+                // 每70ms发布一次
+                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opDragPic, publishResultListener, true);
+            }else{
+                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+            }
+        }
+
+        private void rollback(){
+            if (null != picEditStuff) {
+                picEditStuff.matrix.set(confirmedMatrix);
+                // 立即刷新
+                if (null != onStateChangedListener)
+                    onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+            }
+        }
+
+
+
 
         @Override
         public boolean onDown(float x, float y) {
@@ -965,6 +1003,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onDragBegin(float x, float y) {
             if (null != picEditStuff){
+                confirmedMatrix.set(picEditStuff.matrix);
                 preDragX = x; preDragY = y;
             }
         }
@@ -974,8 +1013,25 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //            KLog.p("onDrag tmp pic layer, x=%s. y=%s", x, y);
             if (null != picEditStuff){
                 picEditStuff.matrix.postTranslate(x-preDragX, y-preDragY);
-                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null,true);
                 preDragX = x; preDragY = y;
+                publish(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
+            }
+        }
+
+        @Override
+        public void onDragEnd() {
+            if (null != picEditStuff) {
+                OpDragPic dragPicOp = createDragPicOp(picEditStuff.pics, picEditStuff.matrix);
+                if (null != onStateChangedListener)
+                    onStateChangedListener.onPaintOpGenerated(getBoardId(), dragPicOp, new IResultListener() {
+                        @Override
+                        public void onArrive(boolean bSuccess) {
+                            if (!bSuccess) {
+                                KLog.p(KLog.ERROR, "failed to publish pic matrix op %s, rollback to %s", dragPicOp, confirmedMatrix);
+                                rollback(); // 发布失败则回退matrix
+                            }
+                        }
+                    }, true);
             }
         }
 
@@ -983,6 +1039,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onScaleBegin() {
             if (null != picEditStuff){
+                confirmedMatrix.set(picEditStuff.matrix);
                 scaleCenterX = getWidth()/2;
                 scaleCenterY = getHeight()/2;
             }
@@ -992,10 +1049,27 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onScale(float factor) {
             if (null != picEditStuff){
                 picEditStuff.matrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
-                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null,true);
+                publish(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
         }
 
+        @Override
+        public void onScaleEnd() {
+            if (null != picEditStuff) {
+                OpDragPic dragPicOp = createDragPicOp(picEditStuff.pics, picEditStuff.matrix);
+                if (null != onStateChangedListener)
+                    onStateChangedListener.onPaintOpGenerated(getBoardId(), dragPicOp, new IResultListener() {
+                        @Override
+                        public void onArrive(boolean bSuccess) {
+                            if (!bSuccess) {
+                                KLog.p(KLog.ERROR, "failed to publish pic matrix op %s, rollback to %s", dragPicOp, confirmedMatrix);
+                                rollback(); // 发布失败则回退matrix
+                            }
+                        }
+                    }, true);
+            }
+
+        }
 
     };
 
@@ -1229,21 +1303,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         } else {
             // 正在拖动放缩图片
-
-            /* 求取dragMatrix。
-             mixMatrix*dragMatrix = picMatrix * boardMatrix
-             * => dragMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
-             * */
-            Matrix dragMatrix = new Matrix(opInsertPic.getMatrix());
-            dragMatrix.postConcat(opWrapper.getLastMatrixOp().getMatrix());
-            dragMatrix.preConcat(MatrixHelper.invert(opInsertPic.getMixMatrix()));
-
-            Map<String, Matrix> picMatrices = new HashMap<>();
-            picMatrices.put(opInsertPic.getPicId(), dragMatrix);
-            OpDragPic opDragPic = new OpDragPic(picMatrices);
-            assignBasicInfo(opDragPic);
-
-            op = opDragPic;
+            op = createDragPicOp(Sets.newHashSet(opInsertPic));
         }
 
         synchronized (picEditStuffLock) {
@@ -1254,6 +1314,29 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), op, null,true);
 
+    }
+
+    private OpDragPic createDragPicOp(Collection<OpInsertPic> opInsertPicSet){
+        return createDragPicOp(opInsertPicSet, new Matrix());
+    }
+
+    private OpDragPic createDragPicOp(Collection<OpInsertPic> opInsertPicSet, Matrix matrix){
+        Map<String, Matrix> picMatrices = new HashMap<>();
+        for (OpInsertPic opInsertPic : opInsertPicSet) {
+             /* 求取dragMatrix。
+             mixMatrix*dragMatrix = picMatrix * boardMatrix
+             * => dragMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
+             * */
+            Matrix dragMatrix = new Matrix(opInsertPic.getMatrix());
+            dragMatrix.postConcat(matrix);
+            dragMatrix.postConcat(opWrapper.getLastMatrixOp().getMatrix());
+            dragMatrix.preConcat(MatrixHelper.invert(opInsertPic.getMixMatrix()));
+            picMatrices.put(opInsertPic.getPicId(), dragMatrix);
+        }
+        OpDragPic opDragPic = new OpDragPic(picMatrices);
+        assignBasicInfo(opDragPic);
+
+        return opDragPic;
     }
 
 
