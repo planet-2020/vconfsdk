@@ -45,8 +45,14 @@ import androidx.annotation.Nullable;
 
 public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
+    // 画板信息
+    private BoardInfo boardInfo;
+
     // 图形层。用于图形绘制如画线、画圈、擦除等等
     private TextureView shapePaintView;
+
+    // 图片层。用于绘制图片。
+    private TextureView picPaintView;
 
     // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private OpPaint adjustingShapeOp;
@@ -55,13 +61,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     // 临时图形操作。手指拿起绘制完成，但并不表示此绘制已生效，需等到平台广播NTF后方能确认为生效的操作，在此之前的操作都作为临时操作保存在这里。
     private MyConcurrentLinkedDeque<OpPaint> tmpShapeOps = new MyConcurrentLinkedDeque<>();
 
-    // 图片层。用于绘制图片。
-    private TextureView picPaintView;
-
     // 编辑中的图片
     private PicEditStuff picEditStuff;
     private final Object picEditStuffLock = new Object();
-    // 删除图片按钮
+
+    // 图片删除图标
     private Bitmap del_pic_icon;
     private Bitmap del_pic_active_icon;
 
@@ -93,9 +97,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     // 画板状态监听器
     private IOnStateChangedListener onStateChangedListener;
 
-    // 画板信息
-    private BoardInfo boardInfo;
-
     private DefaultTouchListener boardViewTouchListener;
     private DefaultTouchListener shapeViewTouchListener;
     private DefaultTouchListener picViewTouchListener;
@@ -122,9 +123,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
         super(context);
 
-        relativeDensity = context.getResources().getDisplayMetrics().density/2;
-
         this.boardInfo = boardInfo;
+
+        relativeDensity = context.getResources().getDisplayMetrics().density/2;
 
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         View whiteBoard = layoutInflater.inflate(R.layout.default_whiteboard_layout, this);
@@ -139,8 +140,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         shapeViewTouchListener = new DefaultTouchListener(context, shapeViewEventListener);
         picViewTouchListener = new DefaultTouchListener(context, picViewEventListener);
         boardViewTouchListener = new DefaultTouchListener(context, boardViewEventListener);
-        picPaintView.setOnTouchListener( picViewTouchListener);
-        shapePaintView.setOnTouchListener(shapeViewTouchListener);
 
         // 赋值图片删除图标
         try {
@@ -198,6 +197,494 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     };
 
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (null == onStateChangedListener){
+            return true;
+        }
+
+        if (LAYER_ALL == focusedLayer){
+            boardViewTouchListener.onTouch(this, ev);
+            boolean ret1 = picViewTouchListener.onTouch(picPaintView, ev);
+            boolean ret2 = shapeViewTouchListener.onTouch(shapePaintView, ev);
+            return ret1||ret2;
+        }else if (LAYER_PIC == focusedLayer){
+            return picViewTouchListener.onTouch(picPaintView, ev);
+        }else if (LAYER_SHAPE == focusedLayer){
+            return shapeViewTouchListener.onTouch(shapePaintView, ev);
+        }else if (LAYER_NONE == focusedLayer){
+            return true;
+        }
+
+        return false;
+    }
+
+
+
+
+    @Override
+    public String getBoardId() {
+        return null!=boardInfo ? boardInfo.getId() : null;
+    }
+
+    @Override
+    public BoardInfo getBoardInfo(){
+        return boardInfo;
+    }
+
+    @Override
+    public View getBoardView() {
+        return this;
+    }
+
+
+    @Override
+    public void setTool(int style) {
+        this.tool = style;
+    }
+
+    @Override
+    public int getTool() {
+        return tool;
+    }
+
+    @Override
+    public void setPaintStrokeWidth(int width) {
+        this.paintStrokeWidth = width;
+    }
+
+    @Override
+    public int getPaintStrokeWidth() {
+        return paintStrokeWidth;
+    }
+
+    @Override
+    public void setPaintColor(long color) {
+        this.paintColor = color;
+    }
+
+    @Override
+    public long getPaintColor() {
+        return paintColor;
+    }
+
+    @Override
+    public void setEraserSize(int size) {
+        eraserSize = size;
+    }
+
+    @Override
+    public int getEraserSize() {
+        return eraserSize;
+    }
+
+
+    /**
+     * 快照。
+     * @param area 区域{@link #AREA_ALL},{@link #AREA_WINDOW}。
+     *             取值AREA_WINDOW时是直接获取的缓存图片，效率较高，但仅截取了画板窗口内的内容且若定制的尺寸较小输出的图片较模糊；
+     *             取值AREA_ALL时是经过一系列计算调整内容的大小和位置，然后把所有的内容重新绘制一遍生成一个图片，
+     *             效率较低，但输出图片包含了画板所有内容且无论定制尺寸多大内容均清晰；
+     *             截取缩略图优先使用AREA_WINDOW，保存画板内容使用AREA_ALL。
+     * @param outputWidth 生成的图片的宽，若大于画板宽或者小于等于0则取值画板的宽。
+     * @param outputHeight 生成的图片的高，若大于画板高或者小于等于0则取值画板的高。
+     * */
+    @Override
+    public void snapshot(int area, int outputWidth, int outputHeight, ISnapshotResultListener resultListener) {
+        KLog.p("=>");
+        if (null == resultListener){
+            KLog.p(KLog.ERROR, "null == resultListener");
+            return;
+        }
+
+        boolean bLoaded = getWidth()>0 && getHeight()>0;
+
+        int boardW = bLoaded ? getWidth() : boardWidth;
+        int boardH = bLoaded ? getHeight() : boardHeight;
+        int outputW = (outputWidth <=0 || boardW< outputWidth) ? boardW : outputWidth;
+        int outputH = (outputHeight <=0 || boardH< outputHeight) ? boardH : outputHeight;
+
+        Bitmap bt = Bitmap.createBitmap(outputW, outputH, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bt);
+        if (!(outputW==boardW && outputH==boardH)) {
+            canvas.scale(outputW/(float)boardW, outputH/(float)boardH);
+        }
+
+        // 绘制背景
+        if (bLoaded){
+            draw(canvas);
+        }else {
+            Drawable.ConstantState constantState = getBackground().getConstantState();
+            if (null != constantState) {
+                Drawable background = constantState.newDrawable().mutate();
+                background.setBounds(0, 0, boardW, boardH);
+                background.draw(canvas);
+            }
+        }
+
+        if (AREA_WINDOW == area
+                && bLoaded
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            snapshotWindow(canvas);
+            resultListener.onResult(bt);
+        }else{
+            assHandler.post(() -> {
+                snapshotAll(canvas);
+                handler.post(() -> resultListener.onResult(bt));  // XXX：可能发生resultListener被销毁后用户仍收到该回调的情形。
+            });
+        }
+
+    }
+
+
+    @Override
+    public void undo() {
+        if (0 == opWrapper.getShapeOpsCount()){
+            KLog.p(KLog.ERROR,"no op to undo");
+            return;
+        }
+
+        if (null != onStateChangedListener) {
+            OpPaint opUndo = new OpUndo();
+            assignBasicInfo(opUndo);
+            onStateChangedListener.onPaintOpGenerated(getBoardId(), opUndo, new IResultListener() {
+                @Override
+                public void onSuccess(Object result) {
+                    if (dealControlOp((OpUndo) result)){
+                        onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null,
+                                true // 平台反馈撤销成功，此时刷新
+                        );
+                    }
+                }
+            },
+
+            false // 暂不刷新，等平台反馈结果再刷新
+
+            );
+        }
+    }
+
+    @Override
+    public void redo() {
+        if (0==opWrapper.getRepealedOpsCount()){
+            KLog.p(KLog.ERROR,"no op to repeal");
+            return;
+        }
+
+        if (null != onStateChangedListener) {
+            OpPaint opRedo = new OpRedo();
+            assignBasicInfo(opRedo);
+            onStateChangedListener.onPaintOpGenerated(getBoardId(), opRedo, new IResultListener() {
+                        @Override
+                        public void onSuccess(Object result) {
+                            if (dealControlOp((OpRedo) result)){
+                                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                            }
+                        }
+                    },
+
+                    false // 暂不刷新，等平台反馈结果再刷新
+
+            );
+        }
+    }
+
+    @Override
+    public void clearScreen() {
+        if (opWrapper.isClear()){
+            KLog.p(KLog.ERROR, "already cleared");
+            return;
+        }
+        if (null != onStateChangedListener) {
+            OpPaint opCls = new OpClearScreen();
+            assignBasicInfo(opCls);
+            onStateChangedListener.onPaintOpGenerated(getBoardId(), opCls, new IResultListener() {
+                        @Override
+                        public void onSuccess(Object result) {
+                            if (dealShapeOp((OpClearScreen) result)){
+                                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                            }
+                        }
+                    },
+
+                    false // 暂不刷新，等平台反馈结果再刷新
+            );
+        }
+    }
+
+// SEALED
+//    @Override
+//    public void zoom(int percentage) {
+//        float zoomRate = percentage/100f;
+//        zoomRate = (minZoomRate <=zoomRate && zoomRate<= maxZoomRate) ? zoomRate : (zoomRate< minZoomRate ? minZoomRate : maxZoomRate);
+//        KLog.p("zoomRate=%s, width=%s, height=%s", zoomRate, getWidth(), getHeight());
+//        OpMatrix opMatrix = new OpMatrix();
+//        opMatrix.getMatrix().setScale(zoomRate, zoomRate, getWidth()/2, getHeight()/2);
+//        dealSimpleOp(opMatrix);
+//    }
+
+    @Override
+    public int getZoom() {
+        float[] matrixValue = opWrapper.getLastMatrixOp().getMatrixValue();
+        return (int) Math.ceil(matrixValue[Matrix.MSCALE_X]*100);
+    }
+
+    @Override
+    public void setMinZoomRate(int rate) {
+        minZoomRate = rate/100f;
+    }
+
+    @Override
+    public int getMinZoomRate() {
+        return (int) (minZoomRate*100);
+    }
+
+    @Override
+    public void setMaxZoomRate(int rate) {
+        maxZoomRate = rate/100f;
+    }
+
+    @Override
+    public int getMaxZoomRate() {
+        return (int) (maxZoomRate * 100);
+    }
+
+    /**
+     * 画板是否是空。
+     * NOTE: “空”的必要条件是视觉上画板没有内容，但是使用“擦除”操作清掉画板的内容并不会被判定为画板为空。
+     * @return 若没有图片且 {@link #isClear()}为真则返回true，否则返回false。
+     * */
+    @Override
+    public boolean isEmpty() {
+        return opWrapper.isEmpty();
+    }
+
+    /**
+     * 是否清屏状态。
+     * 清屏状态不代表画板内容为空，目前清屏只针对图形操作，清屏状态只表示画板上所有图形操作已被清掉。
+     * @return 若画板没有图形操作或者最后一个图形操作是清屏则返回true，否则返回false。
+     * */
+    @Override
+    public boolean isClear(){
+        return opWrapper.isClear();
+    }
+
+    @Override
+    public int getRepealedOpsCount() {
+        return opWrapper.getRepealedOpsCount();
+    }
+
+    @Override
+    public int getShapeOpsCount() {
+        return opWrapper.getShapeOpsCount();
+    }
+
+    @Override
+    public int getPicCount() {
+        return opWrapper.getInsertPicOps().size();
+    }
+
+
+    private boolean bInsertingPic = false;
+    @Override
+    public void insertPic(String path) {
+        if (null == onStateChangedListener){
+            KLog.p(KLog.ERROR,"onStateChangedListener is null");
+            return;
+        }
+
+        handler.removeCallbacks(finishEditPicRunnable);
+        if (null != picEditStuff){
+            finishEditPic();
+        }
+
+        bInsertingPic = true;
+
+        Matrix matrix = new Matrix();
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(path, options);
+        matrix.setTranslate((getWidth()-options.outWidth)/2f, (getHeight()-options.outHeight)/2f);
+        matrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix()));
+        OpInsertPic op = new OpInsertPic(path, matrix);
+        assignBasicInfo(op);
+
+        startEditPic(op);
+        handler.postDelayed(finishEditPicRunnable, 5000);
+    }
+
+
+
+
+
+    private boolean bLastStateIsEmpty =true;
+    private void refreshEmptyState(){
+        if (!bLastStateIsEmpty && isEmpty()){   // 之前是不为空的状态现在为空了
+            if (null != onStateChangedListener) onStateChangedListener.onEmptyStateChanged(getBoardId(), bLastStateIsEmpty=true);
+        }else if (bLastStateIsEmpty && !isEmpty()){ // 之前是为空的状态现在不为空了
+            if (null != onStateChangedListener) onStateChangedListener.onEmptyStateChanged(getBoardId(), bLastStateIsEmpty=false);
+        }
+    }
+
+    private void picCountChanged(){
+        if (null != onStateChangedListener){
+            onStateChangedListener.onChanged(getBoardId());
+            onStateChangedListener.onPictureCountChanged(getBoardId(), getPicCount());
+            refreshEmptyState();
+        }
+    }
+
+    private void zoomRateChanged(){
+        if (null != onStateChangedListener) {
+            onStateChangedListener.onChanged(getBoardId());
+            onStateChangedListener.onZoomRateChanged(getBoardId(), getZoom());
+        }
+    }
+
+
+
+
+    private void snapshotAll(Canvas canvas){
+        MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
+
+        MyConcurrentLinkedDeque<OpInsertPic> picOps = opWrapper.getInsertPicOps();
+        MyConcurrentLinkedDeque<OpPaint> shapeOps = opWrapper.getShapeOpsAfterCls();
+        ops.addAll(picOps);
+        ops.addAll(shapeOps);
+
+        RectF bound = opWrapper.calcBoundary(ops);
+        if (null != picEditStuff){
+            if (null != bound) {
+                bound.union(picEditStuff.bound());
+            }else {
+                bound = picEditStuff.bound();
+            }
+        }
+        if (null == bound){
+            KLog.p(KLog.ERROR,"no content!");
+            return;
+        }
+
+//        KLog.p("calcBoundary=%s", bound);
+
+        float boardW = getWidth()>0 ? getWidth() : boardWidth;
+        float boardH = getHeight()>0 ? getHeight() : boardHeight;
+
+        // 根据操作边界结合当前画板缩放计算绘制操作需要的缩放及位移
+        Matrix curRelativeBoardMatrix = getDensityRelativeBoardMatrix();
+        curRelativeBoardMatrix.mapRect(bound);
+        float boundW = bound.width();
+        float boundH = bound.height();
+        float scale = 1;
+        if (boundW/boundH > boardW/boardH){
+            scale = boardW/boundW;
+        }else {
+            scale = boardH/boundH;
+        }
+
+        Matrix matrix = new Matrix(curRelativeBoardMatrix);
+        if (scale > 1){ // 画板尺寸大于操作边界尺寸
+            if (0<bound.left&&boundW<boardW
+                    && 0<bound.right&&boundH<boardH){
+                // 操作已在画板中全景展示则无需做任何放缩或位移，直接原样展示
+                // DO NOTHING
+            }else { // 尽管操作边界尺寸较画板小，但操作目前展示在画板外，则移动操作以保证全景展示。
+                // 操作居中展示
+                matrix.postTranslate(-bound.left + (boardW - boundW) / 2, -bound.top + (boardH - boundH) / 2);
+            }
+        }else{
+            // 画板尺寸小于操作边界尺寸则需将操作缩放以适应画板尺寸
+            // 操作边界外围加塞padding使展示效果更友好
+            float refinedBoundW = boundW + 2*40;
+            float refinedBoundH = boundH + 2*40;
+            float refinedScale;
+            if (refinedBoundW/refinedBoundH > boardW/boardH){
+                refinedScale = boardW/refinedBoundW;
+            }else {
+                refinedScale = boardH/refinedBoundH;
+            }
+            // 先让操作边界居中
+            matrix.postTranslate(-bound.left+(boardW-boundW)/2, -bound.top+(boardH-boundH)/2);
+            // 再以屏幕中心为缩放中心缩小操作边界
+            matrix.postScale(refinedScale, refinedScale, boardW/2, boardH/2);
+        }
+
+        canvas.concat(matrix);
+
+        // 绘制图片
+        render(picOps, canvas);
+
+        boolean hasEraseOp =false;
+        for (OpPaint op : shapeOps) {
+            if (op instanceof OpErase || op instanceof OpRectErase) {
+                hasEraseOp = true;
+                break;
+            }
+        }
+        // 绘制图形
+        if (hasEraseOp) {
+            // 保存已绘制的内容，避免被擦除
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+                canvas.saveLayer(null, null);
+            }else {
+                canvas.saveLayer(null, null, Canvas.ALL_SAVE_FLAG);
+            }
+
+            render(shapeOps, canvas);
+
+            canvas.restore();
+
+        }else{
+            render(shapeOps, canvas);
+        }
+
+        // 绘制正在编辑的图片
+        synchronized (picEditStuffLock) {
+            if (null != picEditStuff) render(picEditStuff, canvas);
+        }
+
+    }
+
+
+    private Bitmap shapeLayerSnapshot;
+    private Bitmap picLayerSnapshot;
+    /**
+     * NOTE: 该方法需在API LEVEL >= 21时使用，21以下TextureView.getBitmap方法有bug，
+     * @see <a href="https://github.com/mapbox/mapbox-gl-native/issues/4911">
+     *     Android 4.4.x (KitKat) Hardware Acceleration Thread Bug #4911
+     *     </a>
+     * */
+    private void snapshotWindow(Canvas canvas){
+//            KLog.p("insertPicOps.isEmpty() = %s, shapeOps.isEmpty()=%s, isEmpty()=%s, picEditStuffs.isEmpty() = %s, " +
+//                            "picLayerSnapshot=%s, shapeLayerSnapshot=%s, picEditingLayerSnapshot=%s",
+//                    insertPicOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
+//                    picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
+
+        if (null == picLayerSnapshot) {
+            picLayerSnapshot = picPaintView.getBitmap();
+        } else {
+            picPaintView.getBitmap(picLayerSnapshot);
+        }
+
+        if (null == shapeLayerSnapshot) {
+            shapeLayerSnapshot = shapePaintView.getBitmap();
+        } else {
+            shapePaintView.getBitmap(shapeLayerSnapshot);
+        }
+
+        Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+        if (null != picLayerSnapshot) {
+            canvas.drawBitmap(picLayerSnapshot, 0, 0, paint);
+        }
+        if (null != shapeLayerSnapshot) {
+            canvas.drawBitmap(shapeLayerSnapshot, 0, 0, paint);
+        }
+
+    }
+
+
+
     /* 相对于xhdpi的屏幕密度。
     因为TL和网呈已经实现数据协作在先，他们传过来的是原始的像素值，
     为了使得展示效果尽量在各设备上保持一致并兼顾TL和网呈已有实现，我们以TL的屏幕密度为基准算出一个相对密度，
@@ -211,33 +698,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return  densityRelativeBoardMatrix;
     }
 
-
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (null == onStateChangedListener){
-            return true;
-        }
-
-        if (LAYER_ALL == focusedLayer){
-            boardViewTouchListener.onTouch(this, ev);
-            boolean ret2 = picPaintView.dispatchTouchEvent(ev);
-            boolean ret1 = shapePaintView.dispatchTouchEvent(ev);
-            return ret1||ret2;
-        }else if (LAYER_PIC == focusedLayer){
-            return picPaintView.dispatchTouchEvent(ev);
-        }else if (LAYER_SHAPE == focusedLayer){
-            return shapePaintView.dispatchTouchEvent(ev);
-        }else if (LAYER_NONE == focusedLayer){
-            return true;
-        }
-
-        return false;
-    }
-
-
-
+    /* 返回去掉放缩位移等matrix操作影响后的坐标*/
     private float[] mappedPoint= new float[2];
-    // 返回去掉放缩位移等matrix操作影响后的坐标
     private float[] getRidOfMatrix(float x, float y){
         mappedPoint[0] = x; mappedPoint[1] = y;
         MatrixHelper.invert(getDensityRelativeBoardMatrix()).mapPoints(mappedPoint);
@@ -385,22 +847,22 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             tmpShapeOps.offerLast(tmpOp);
             if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), tmpOp, new IResultListener() {
 
-                @Override
-                public void onArrive(boolean bSuccess) {
-                    tmpShapeOps.remove(tmpOp); // 不论成功/失败/超时临时操作均已不需要，若成功该操作将被添加到“正式”的操作集，若失败则该操作被丢弃。
-                    if (!bSuccess){
-                        KLog.p(KLog.ERROR, "failed to publish shape op %s", tmpOp);
-                        // 立即刷新
-                        if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
-                    }
-                }
+                        @Override
+                        public void onArrive(boolean bSuccess) {
+                            tmpShapeOps.remove(tmpOp); // 不论成功/失败/超时临时操作均已不需要，若成功该操作将被添加到“正式”的操作集，若失败则该操作被丢弃。
+                            if (!bSuccess){
+                                KLog.p(KLog.ERROR, "failed to publish shape op %s", tmpOp);
+                                // 立即刷新
+                                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                            }
+                        }
 
-                @Override
-                public void onSuccess(Object result) {
-                    dealShapeOp(tmpOp);
-                }
+                        @Override
+                        public void onSuccess(Object result) {
+                            dealShapeOp(tmpOp);
+                        }
 
-            },
+                    },
                     true /* 不同于undo/redo/clearscreen操作，绘制操作本端立即展示不等平台反馈结果以免展示效果出现迟滞。
                                        若平台反馈结果成功则保持现有展示的绘制不变，若平台没有反馈结果或者反馈失败则再清除该绘制。*/
             );
@@ -449,7 +911,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (null != picEditStuff) {
                 float[] pos = getRidOfMatrix(x, y);
                 if (picEditStuff.isInDelPicIcon(pos[0], pos[1])) {
-                    delEditingPic(); // TODO 删除框、图标
+                    delEditingPic();
                 }else{
                     handler.postDelayed(finishEditPicRunnable, 5000);
                 }
@@ -461,15 +923,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onLongPress(float x, float y) {
             float[] pos = getRidOfMatrix(x, y);
             OpInsertPic opInsertPic = opWrapper.selectPic(pos[0], pos[1]);
-            if (null == opInsertPic){
-                KLog.p("no pic selected(x=%s, y=%s)", x, y);
-                return;
-            }
-            OpDeletePic opDeletePic = new OpDeletePic(new String[]{opInsertPic.getPicId()});
-            assignBasicInfo(opDeletePic);
-            opWrapper.addPicOp(opDeletePic); // 编辑图片的操作我们认为是先删除图片（本地删除不走发布），然后编辑完成再插入图片。
+            if (null != opInsertPic){
+                OpDeletePic opDeletePic = new OpDeletePic(new String[]{opInsertPic.getPicId()});
+                assignBasicInfo(opDeletePic);
+                opWrapper.addPicOp(opDeletePic); // 编辑图片的操作我们认为是先删除图片（本地删除不走发布），然后编辑完成再插入图片。
 
-            startEditPic(opInsertPic);
+                startEditPic(opInsertPic);
+            }
         }
 
         @Override
@@ -802,467 +1262,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         op.setBoardId(boardInfo.getId());
         op.setPageId(boardInfo.getPageId());
     }
-
-
-    @Override
-    public String getBoardId() {
-        return null!=boardInfo ? boardInfo.getId() : null;
-    }
-
-    @Override
-    public BoardInfo getBoardInfo(){
-        return boardInfo;
-    }
-
-    @Override
-    public View getBoardView() {
-        return this;
-    }
-
-
-    @Override
-    public void setTool(int style) {
-        this.tool = style;
-    }
-
-    @Override
-    public int getTool() {
-        return tool;
-    }
-
-    @Override
-    public void setPaintStrokeWidth(int width) {
-        this.paintStrokeWidth = width;
-    }
-
-    @Override
-    public int getPaintStrokeWidth() {
-        return paintStrokeWidth;
-    }
-
-    @Override
-    public void setPaintColor(long color) {
-        this.paintColor = color;
-    }
-
-    @Override
-    public long getPaintColor() {
-        return paintColor;
-    }
-
-    @Override
-    public void setEraserSize(int size) {
-        eraserSize = size;
-    }
-
-    @Override
-    public int getEraserSize() {
-        return eraserSize;
-    }
-
-
-
-    /**
-     * 快照。
-     * @param area 区域{@link #AREA_ALL},{@link #AREA_WINDOW}。
-     *             取值AREA_WINDOW时是直接获取的缓存图片，效率较高，但仅截取了画板窗口内的内容且若定制的尺寸较小输出的图片较模糊；
-     *             取值AREA_ALL时是经过一系列计算调整内容的大小和位置，然后把所有的内容重新绘制一遍生成一个图片，
-     *             效率较低，但输出图片包含了画板所有内容且无论定制尺寸多大内容均清晰；
-     *             截取缩略图优先使用AREA_WINDOW，保存画板内容使用AREA_ALL。
-     * @param outputWidth 生成的图片的宽，若大于画板宽或者小于等于0则取值画板的宽。
-     * @param outputHeight 生成的图片的高，若大于画板高或者小于等于0则取值画板的高。
-     * */
-    @Override
-    public void snapshot(int area, int outputWidth, int outputHeight, ISnapshotResultListener resultListener) {
-        KLog.p("=>");
-        if (null == resultListener){
-            KLog.p(KLog.ERROR, "null == resultListener");
-            return;
-        }
-
-        boolean bLoaded = getWidth()>0 && getHeight()>0;
-
-        int boardW = bLoaded ? getWidth() : boardWidth;
-        int boardH = bLoaded ? getHeight() : boardHeight;
-        int outputW = (outputWidth <=0 || boardW< outputWidth) ? boardW : outputWidth;
-        int outputH = (outputHeight <=0 || boardH< outputHeight) ? boardH : outputHeight;
-
-        Bitmap bt = Bitmap.createBitmap(outputW, outputH, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bt);
-        if (!(outputW==boardW && outputH==boardH)) {
-            canvas.scale(outputW/(float)boardW, outputH/(float)boardH);
-        }
-
-        // 绘制背景
-        if (bLoaded){
-            draw(canvas);
-        }else {
-            Drawable.ConstantState constantState = getBackground().getConstantState();
-            if (null != constantState) {
-                Drawable background = constantState.newDrawable().mutate();
-                background.setBounds(0, 0, boardW, boardH);
-                background.draw(canvas);
-            }
-        }
-
-        if (AREA_WINDOW == area
-                && bLoaded
-                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            snapshotWindow(canvas);
-            resultListener.onResult(bt);
-        }else{
-            assHandler.post(() -> {
-                snapshotAll(canvas);
-                handler.post(() -> resultListener.onResult(bt));  // XXX：可能发生resultListener被销毁后用户仍收到该回调的情形。
-            });
-        }
-
-    }
-
-
-    private void snapshotAll(Canvas canvas){
-        MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
-
-        MyConcurrentLinkedDeque<OpInsertPic> picOps = opWrapper.getInsertPicOps();
-        MyConcurrentLinkedDeque<OpPaint> shapeOps = opWrapper.getShapeOpsAfterCls();
-        ops.addAll(picOps);
-        ops.addAll(shapeOps);
-
-        RectF bound = opWrapper.calcBoundary(ops);
-        if (null != picEditStuff){
-            if (null != bound) {
-                bound.union(picEditStuff.bound());
-            }else {
-                bound = picEditStuff.bound();
-            }
-        }
-        if (null == bound){
-            KLog.p(KLog.ERROR,"no content!");
-            return;
-        }
-
-//        KLog.p("calcBoundary=%s", bound);
-
-        float boardW = getWidth()>0 ? getWidth() : boardWidth;
-        float boardH = getHeight()>0 ? getHeight() : boardHeight;
-
-        // 根据操作边界结合当前画板缩放计算绘制操作需要的缩放及位移
-        Matrix curRelativeBoardMatrix = getDensityRelativeBoardMatrix();
-        curRelativeBoardMatrix.mapRect(bound);
-        float boundW = bound.width();
-        float boundH = bound.height();
-        float scale = 1;
-        if (boundW/boundH > boardW/boardH){
-            scale = boardW/boundW;
-        }else {
-            scale = boardH/boundH;
-        }
-
-        Matrix matrix = new Matrix(curRelativeBoardMatrix);
-        if (scale > 1){ // 画板尺寸大于操作边界尺寸
-            if (0<bound.left&&boundW<boardW
-                    && 0<bound.right&&boundH<boardH){
-                // 操作已在画板中全景展示则无需做任何放缩或位移，直接原样展示
-                // DO NOTHING
-            }else { // 尽管操作边界尺寸较画板小，但操作目前展示在画板外，则移动操作以保证全景展示。
-                // 操作居中展示
-                matrix.postTranslate(-bound.left + (boardW - boundW) / 2, -bound.top + (boardH - boundH) / 2);
-            }
-        }else{
-            // 画板尺寸小于操作边界尺寸则需将操作缩放以适应画板尺寸
-            // 操作边界外围加塞padding使展示效果更友好
-            float refinedBoundW = boundW + 2*40;
-            float refinedBoundH = boundH + 2*40;
-            float refinedScale;
-            if (refinedBoundW/refinedBoundH > boardW/boardH){
-                refinedScale = boardW/refinedBoundW;
-            }else {
-                refinedScale = boardH/refinedBoundH;
-            }
-            // 先让操作边界居中
-            matrix.postTranslate(-bound.left+(boardW-boundW)/2, -bound.top+(boardH-boundH)/2);
-            // 再以屏幕中心为缩放中心缩小操作边界
-            matrix.postScale(refinedScale, refinedScale, boardW/2, boardH/2);
-        }
-
-        canvas.concat(matrix);
-
-        // 绘制图片
-        render(picOps, canvas);
-
-        boolean hasEraseOp =false;
-        for (OpPaint op : shapeOps) {
-            if (op instanceof OpErase || op instanceof OpRectErase) {
-                hasEraseOp = true;
-                break;
-            }
-        }
-        // 绘制图形
-        if (hasEraseOp) {
-            // 保存已绘制的内容，避免被擦除
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
-                canvas.saveLayer(null, null);
-            }else {
-                canvas.saveLayer(null, null, Canvas.ALL_SAVE_FLAG);
-            }
-
-            render(shapeOps, canvas);
-
-            canvas.restore();
-
-        }else{
-            render(shapeOps, canvas);
-        }
-
-        // 绘制正在编辑的图片
-        synchronized (picEditStuffLock) {
-            if (null != picEditStuff) render(picEditStuff, canvas);
-        }
-
-    }
-
-
-    private Bitmap shapeLayerSnapshot;
-    private Bitmap picLayerSnapshot;
-    /**
-     * NOTE: 该方法需在API LEVEL >= 21时使用，21以下TextureView.getBitmap方法有bug，
-     * @see <a href="https://github.com/mapbox/mapbox-gl-native/issues/4911">
-     *     Android 4.4.x (KitKat) Hardware Acceleration Thread Bug #4911
-     *     </a>
-     * */
-    private void snapshotWindow(Canvas canvas){
-//            KLog.p("insertPicOps.isEmpty() = %s, shapeOps.isEmpty()=%s, isEmpty()=%s, picEditStuffs.isEmpty() = %s, " +
-//                            "picLayerSnapshot=%s, shapeLayerSnapshot=%s, picEditingLayerSnapshot=%s",
-//                    insertPicOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
-//                    picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
-
-        if (null == picLayerSnapshot) {
-            picLayerSnapshot = picPaintView.getBitmap();
-        } else {
-            picPaintView.getBitmap(picLayerSnapshot);
-        }
-
-        if (null == shapeLayerSnapshot) {
-            shapeLayerSnapshot = shapePaintView.getBitmap();
-        } else {
-            shapePaintView.getBitmap(shapeLayerSnapshot);
-        }
-
-        Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
-        if (null != picLayerSnapshot) {
-            canvas.drawBitmap(picLayerSnapshot, 0, 0, paint);
-        }
-        if (null != shapeLayerSnapshot) {
-            canvas.drawBitmap(shapeLayerSnapshot, 0, 0, paint);
-        }
-
-    }
-
-
-    @Override
-    public void undo() {
-        if (0 == opWrapper.getShapeOpsCount()){
-            KLog.p(KLog.ERROR,"no op to undo");
-            return;
-        }
-
-        if (null != onStateChangedListener) {
-            OpPaint opUndo = new OpUndo();
-            assignBasicInfo(opUndo);
-            onStateChangedListener.onPaintOpGenerated(getBoardId(), opUndo, new IResultListener() {
-                @Override
-                public void onSuccess(Object result) {
-                    if (dealControlOp((OpUndo) result)){
-                        onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null,
-                                true // 平台反馈撤销成功，此时刷新
-                        );
-                    }
-                }
-            },
-
-            false // 暂不刷新，等平台反馈结果再刷新
-
-            );
-        }
-    }
-
-    @Override
-    public void redo() {
-        if (0==opWrapper.getRepealedOpsCount()){
-            KLog.p(KLog.ERROR,"no op to repeal");
-            return;
-        }
-
-        if (null != onStateChangedListener) {
-            OpPaint opRedo = new OpRedo();
-            assignBasicInfo(opRedo);
-            onStateChangedListener.onPaintOpGenerated(getBoardId(), opRedo, new IResultListener() {
-                        @Override
-                        public void onSuccess(Object result) {
-                            if (dealControlOp((OpRedo) result)){
-                                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
-                            }
-                        }
-                    },
-
-                    false // 暂不刷新，等平台反馈结果再刷新
-
-            );
-        }
-    }
-
-    @Override
-    public void clearScreen() {
-        if (opWrapper.isClear()){
-            KLog.p(KLog.ERROR, "already cleared");
-            return;
-        }
-        if (null != onStateChangedListener) {
-            OpPaint opCls = new OpClearScreen();
-            assignBasicInfo(opCls);
-            onStateChangedListener.onPaintOpGenerated(getBoardId(), opCls, new IResultListener() {
-                        @Override
-                        public void onSuccess(Object result) {
-                            if (dealShapeOp((OpClearScreen) result)){
-                                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
-                            }
-                        }
-                    },
-
-                    false // 暂不刷新，等平台反馈结果再刷新
-            );
-        }
-    }
-
-// SEALED
-//    @Override
-//    public void zoom(int percentage) {
-//        float zoomRate = percentage/100f;
-//        zoomRate = (minZoomRate <=zoomRate && zoomRate<= maxZoomRate) ? zoomRate : (zoomRate< minZoomRate ? minZoomRate : maxZoomRate);
-//        KLog.p("zoomRate=%s, width=%s, height=%s", zoomRate, getWidth(), getHeight());
-//        OpMatrix opMatrix = new OpMatrix();
-//        opMatrix.getMatrix().setScale(zoomRate, zoomRate, getWidth()/2, getHeight()/2);
-//        dealSimpleOp(opMatrix);
-//    }
-
-    @Override
-    public int getZoom() {
-        float[] matrixValue = opWrapper.getLastMatrixOp().getMatrixValue();
-        return (int) Math.ceil(matrixValue[Matrix.MSCALE_X]*100);
-    }
-
-    @Override
-    public void setMinZoomRate(int rate) {
-        minZoomRate = rate/100f;
-    }
-
-    @Override
-    public int getMinZoomRate() {
-        return (int) (minZoomRate*100);
-    }
-
-    @Override
-    public void setMaxZoomRate(int rate) {
-        maxZoomRate = rate/100f;
-    }
-
-    @Override
-    public int getMaxZoomRate() {
-        return (int) (maxZoomRate * 100);
-    }
-
-    /**
-     * 画板是否是空。
-     * NOTE: “空”的必要条件是视觉上画板没有内容，但是使用“擦除”操作清掉画板的内容并不会被判定为画板为空。
-     * @return 若没有图片且 {@link #isClear()}为真则返回true，否则返回false。
-     * */
-    @Override
-    public boolean isEmpty() {
-        return opWrapper.isEmpty();
-    }
-
-    /**
-     * 是否清屏状态。
-     * 清屏状态不代表画板内容为空，目前清屏只针对图形操作，清屏状态只表示画板上所有图形操作已被清掉。
-     * @return 若画板没有图形操作或者最后一个图形操作是清屏则返回true，否则返回false。
-     * */
-    @Override
-    public boolean isClear(){
-        return opWrapper.isClear();
-    }
-
-    @Override
-    public int getRepealedOpsCount() {
-        return opWrapper.getRepealedOpsCount();
-    }
-
-    @Override
-    public int getShapeOpsCount() {
-        return opWrapper.getShapeOpsCount();
-    }
-
-    @Override
-    public int getPicCount() {
-        return opWrapper.getInsertPicOps().size();
-    }
-
-
-    private boolean bLastStateIsEmpty =true;
-    private void refreshEmptyState(){
-        if (!bLastStateIsEmpty && isEmpty()){   // 之前是不为空的状态现在为空了
-            if (null != onStateChangedListener) onStateChangedListener.onEmptyStateChanged(getBoardId(), bLastStateIsEmpty=true);
-        }else if (bLastStateIsEmpty && !isEmpty()){ // 之前是为空的状态现在不为空了
-            if (null != onStateChangedListener) onStateChangedListener.onEmptyStateChanged(getBoardId(), bLastStateIsEmpty=false);
-        }
-    }
-
-    private void picCountChanged(){
-        if (null != onStateChangedListener){
-            onStateChangedListener.onChanged(getBoardId());
-            onStateChangedListener.onPictureCountChanged(getBoardId(), getPicCount());
-            refreshEmptyState();
-        }
-    }
-
-    private void zoomRateChanged(){
-        if (null != onStateChangedListener) {
-            onStateChangedListener.onChanged(getBoardId());
-            onStateChangedListener.onZoomRateChanged(getBoardId(), getZoom());
-        }
-    }
-
-
-
-
-    private boolean bInsertingPic = false;
-    @Override
-    public void insertPic(String path) {
-        if (null == onStateChangedListener){
-            KLog.p(KLog.ERROR,"onStateChangedListener is null");
-            return;
-        }
-
-        handler.removeCallbacks(finishEditPicRunnable);
-        if (null != picEditStuff){
-            finishEditPic();
-        }
-
-        bInsertingPic = true;
-
-        Matrix matrix = new Matrix();
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(path, options);
-        matrix.setTranslate((getWidth()-options.outWidth)/2f, (getHeight()-options.outHeight)/2f);
-        matrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix()));
-        OpInsertPic op = new OpInsertPic(path, matrix);
-        assignBasicInfo(op);
-
-        startEditPic(op);
-        handler.postDelayed(finishEditPicRunnable, 5000);
-    }
-
-
 
 
 
