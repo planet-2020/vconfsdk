@@ -1486,6 +1486,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             synchronized (adjustingShapeOpLock) {
                 if (null != adjustingShapeOp) render(adjustingShapeOp, shapePaintViewCanvas);
             }
+
+            // 绘制正在编辑中的图片
+            synchronized (picEditStuffLock) {
+                if (null != picEditStuff) render(picEditStuff, shapePaintViewCanvas);
+            }
         }
 
         // 图片层绘制
@@ -1499,11 +1504,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
             // 图片绘制
             render(opWrapper.getInsertPicOps(), picPaintViewCanvas);
-
-            // 正在编辑中的图片绘制
-            synchronized (picEditStuffLock) {
-                if (null != picEditStuff) render(picEditStuff, picPaintViewCanvas);
-            }
 
         }
 
