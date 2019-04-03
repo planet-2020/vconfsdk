@@ -7,6 +7,7 @@ import android.os.Build;
 
 import com.kedacom.vconf.sdk.base.KLog;
 
+import java.util.Collection;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -14,17 +15,15 @@ import java.util.concurrent.LinkedBlockingDeque;
 
 import androidx.annotation.NonNull;
 
-public class MyConcurrentLinkedDeque<E> implements Iterable<E>{
+public class MyConcurrentLinkedDeque<E> implements Iterable<E>, Collection<E> {
 
     private Deque<E> deque;
 
     public MyConcurrentLinkedDeque(){
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
             deque = new ConcurrentLinkedDeque<>();
-            KLog.p("deque is ConcurrentLinkedDeque");
         }else{
             deque = new LinkedBlockingDeque<>();
-            KLog.p("deque is LinkedBlockingDeque");
         }
     }
 
@@ -52,12 +51,14 @@ public class MyConcurrentLinkedDeque<E> implements Iterable<E>{
         return deque.peekLast();
     }
 
-    public boolean remove(E e){
-        return deque.remove(e);
-    }
 
     public boolean isEmpty(){
         return deque.isEmpty();
+    }
+
+    @Override
+    public boolean contains(Object o) {
+        return deque.contains(o);
     }
 
     public int size(){
@@ -68,14 +69,51 @@ public class MyConcurrentLinkedDeque<E> implements Iterable<E>{
         deque.clear();
     }
 
-    public void addAll(MyConcurrentLinkedDeque<? extends E> myConcurrentLinkedDeque){
-        deque.addAll(myConcurrentLinkedDeque.deque);
-    }
 
     @NonNull
     @Override
     public Iterator<E> iterator() {
         return deque.iterator();
+    }
+
+    @Override
+    public Object[] toArray() {
+        return deque.toArray();
+    }
+
+    @Override
+    public <T> T[] toArray(T[] a) {
+        return deque.toArray(a);
+    }
+
+    @Override
+    public boolean add(E e) {
+        return deque.add(e);
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        return deque.remove(o);
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> c) {
+        return deque.containsAll(c);
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends E> c) {
+        return deque.addAll(c);
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> c) {
+        return deque.removeAll(c);
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> c) {
+        return deque.retainAll(c);
     }
 
     public Iterator<E> descendingIterator(){
