@@ -71,14 +71,15 @@ class DefaultTouchListener implements View.OnTouchListener {
                 return false;
             }
 
+            float focusX = detector.getFocusX();
+            float focusY = detector.getFocusY();
+
             scaleFactor = detector.getScaleFactor();
-            if (Math.abs(scaleFactor-lastScaleFactor) > 0.001){ // TODO 去掉限制看缩放效果会不会更顺滑
-                onEventListener.onScale(scaleFactor);
+            if (Math.abs(scaleFactor-lastScaleFactor) > 0.001){
+                onEventListener.onScale(scaleFactor, focusX, focusY);
                 lastScaleFactor = scaleFactor;
             }
 
-            float focusX = detector.getFocusX();
-            float focusY = detector.getFocusY();
             if (!isTolerable(lastMultiFingersFocusPoint.x, lastMultiFingersFocusPoint.y, focusX, focusY)) {
                 onEventListener.onMultiFingerDrag(focusX - lastMultiFingersFocusPoint.x, focusY - lastMultiFingersFocusPoint.y);
                 lastMultiFingersFocusPoint.x = focusX; lastMultiFingersFocusPoint.y = focusY;
@@ -262,8 +263,10 @@ class DefaultTouchListener implements View.OnTouchListener {
         default void onScaleBegin(){}
         /**缩放
          * @param factor 缩放因子。如1.0为没有缩放，2.0为放大至200%
+         * @param focusX 放缩中心点X坐标
+         * @param focusY 放缩中心点Y坐标
          * */
-        default void onScale(float factor){}
+        default void onScale(float factor, float focusX, float focusY){}
         /**缩放结束*/
         default void onScaleEnd(){}
         /**长按*/

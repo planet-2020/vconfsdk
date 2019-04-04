@@ -345,7 +345,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void undo() {
-        if (0 == opWrapper.getShapeOpsCount()){
+        if (0 == opWrapper.getRepealableOpsCount()){
             KLog.p(KLog.ERROR,"no op to undo");
             return;
         }
@@ -487,7 +487,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public int getPicCount() {
-        return opWrapper.getInsertPicOps().size();
+        return opWrapper.getInsertPicOpsCount();
     }
 
 
@@ -712,7 +712,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     DefaultTouchListener.IOnEventListener boardViewEventListener = new DefaultTouchListener.IOnEventListener(){
-        private float scaleCenterX, scaleCenterY;
         private long timestamp = System.currentTimeMillis();
         private boolean bDragging = false;
         private boolean bScaling = false;
@@ -788,21 +787,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             bDoingMatrixOp = true;
             tmpMatrix.set(opWrapper.getLastMatrixOp().getMatrix());
             confirmedMatrix.set(tmpMatrix);
-
-            scaleCenterX = getWidth()/2;
-            scaleCenterY = getHeight()/2;
         }
 
         @Override
-        public void onScale(float factor) {
+        public void onScale(float factor, float focusX, float focusY) {
             float curZoomRate = MatrixHelper.getScale(tmpMatrix);
             float zoomRate = curZoomRate * factor;
             if (zoomRate < minZoomRate) {
-                tmpMatrix.postScale(minZoomRate/curZoomRate, minZoomRate/curZoomRate, scaleCenterX, scaleCenterY);
+                tmpMatrix.postScale(minZoomRate/curZoomRate, minZoomRate/curZoomRate, focusX, focusY);
             }else if (zoomRate > maxZoomRate){
-                tmpMatrix.postScale(maxZoomRate/curZoomRate, maxZoomRate/curZoomRate, scaleCenterX, scaleCenterY);
+                tmpMatrix.postScale(maxZoomRate/curZoomRate, maxZoomRate/curZoomRate, focusX, focusY);
             }else {
-                tmpMatrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+                tmpMatrix.postScale(factor, factor, focusX, focusY);
             }
 
             publish(update());
@@ -848,6 +844,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onDragEnd() {
             finishShapeOp();
             final OpPaint tmpOp = adjustingShapeOp;
+            synchronized (adjustingShapeOpLock) {
+                adjustingShapeOp = null;
+            }
             tmpShapeOps.offerLast(tmpOp);
             if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), tmpOp, new IResultListener() {
 
@@ -871,9 +870,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                                        若平台反馈结果成功则保持现有展示的绘制不变，若平台没有反馈结果或者反馈失败则再清除该绘制。*/
             );
 
-            synchronized (adjustingShapeOpLock) {
-                adjustingShapeOp = null;
-            }
         }
 
     };
@@ -881,7 +877,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private DefaultTouchListener.IOnEventListener picViewEventListener = new DefaultTouchListener.IOnEventListener(){
         private float preDragX, preDragY;
-        private float scaleCenterX, scaleCenterY;
 
         private long timestamp = System.currentTimeMillis();
         private Matrix confirmedMatrix = new Matrix();
@@ -960,6 +955,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onLongPress(float x, float y) {
             float[] pos = getRidOfMatrix(x, y);
+            if (null!=picEditStuff){
+                if (picEditStuff.contains(pos[0], pos[1])){
+                    return;
+                }else {
+                    finishEditPic();
+                }
+            }
             OpInsertPic opInsertPic = opWrapper.selectPic(pos[0], pos[1]);
             if (null != opInsertPic){
                 OpDeletePic opDeletePic = new OpDeletePic(new String[]{opInsertPic.getPicId()});
@@ -1045,15 +1047,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onScaleBegin() {
             if (null != picEditStuff){
                 confirmedMatrix.set(picEditStuff.matrix);
-                scaleCenterX = getWidth()/2;
-                scaleCenterY = getHeight()/2;
             }
         }
 
         @Override
-        public void onScale(float factor) {
+        public void onScale(float factor, float focusX, float focusY) {
             if (null != picEditStuff){
-                picEditStuff.matrix.postScale(factor, factor, scaleCenterX, scaleCenterY);
+                picEditStuff.matrix.postScale(factor, factor, focusX, focusY);
                 publish(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
         }
@@ -1292,24 +1292,25 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             pics.offerLast(opInsertPic);
         }
 
-            // 发布
+        // 发布
         if (bInsertingPic) {
             // 正在插入图片
-            while(!pics.isEmpty()) {
-                OpInsertPic opInsertPic = pics.pollFirst();
+            if (null != onStateChangedListener) {
+                while (!pics.isEmpty()) {
+                    OpInsertPic opInsertPic = pics.pollFirst();
 
-                /*求取transMatrix
-                 * transMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
-                 * NOTE: 己端的策略插入图片时是把图片的缩放位移信息全部放入transMatrix中，插入点恒为(0,0)，宽高恒为原始宽高。
-                 * 所以mixMatrix为单位矩阵，所以 transMatrix = picMatrix * boardMatrix
-                 * */
-                opInsertPic.setBoardMatrix(opWrapper.getLastMatrixOp().getMatrix());
-                Matrix transMatrix = new Matrix(opInsertPic.getMatrix());
-                transMatrix.postConcat(opInsertPic.getBoardMatrix());
-                opInsertPic.setTransMatrix(transMatrix);
+                    /*求取transMatrix
+                     * transMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
+                     * NOTE: 己端的策略插入图片时是把图片的缩放位移信息全部放入transMatrix中，插入点恒为(0,0)，宽高恒为原始宽高。
+                     * 所以mixMatrix为单位矩阵，所以 transMatrix = picMatrix * boardMatrix
+                     * */
+                    opInsertPic.setBoardMatrix(opWrapper.getLastMatrixOp().getMatrix());
+                    Matrix transMatrix = new Matrix(opInsertPic.getMatrix());
+                    transMatrix.postConcat(opInsertPic.getBoardMatrix());
+                    opInsertPic.setTransMatrix(transMatrix);
 
-                if (null != onStateChangedListener)
                     onStateChangedListener.onPaintOpGenerated(getBoardId(), opInsertPic, null, true);
+                }
             }
 
             // 通知用户图片数量变化
@@ -1447,8 +1448,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         if (null != onStateChangedListener){
             onStateChangedListener.onChanged(getBoardId());
-            KLog.p("opWrapper.getRepealedOpsCount()=%s,opWrapper.getShapeOpsCount()=%s", opWrapper.getRepealedOpsCount(),opWrapper.getShapeOpsCount());
-            onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRepealedOpsCount(),opWrapper.getShapeOpsCount());
+            onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRepealedOpsCount(),opWrapper.getRepealableOpsCount());
             refreshEmptyState();
         }
 
@@ -1463,7 +1463,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         if (null != onStateChangedListener){
             onStateChangedListener.onChanged(getBoardId());
-            onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRepealedOpsCount(),opWrapper.getShapeOpsCount());
+            onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRepealedOpsCount(),opWrapper.getRepealableOpsCount());
             refreshEmptyState();
         }
 
@@ -1478,7 +1478,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         // 更新画板matrix
-        opWrapper.addMatrixOp(op);
+        if (!opWrapper.addMatrixOp(op)) return false;
+
         zoomRateChanged();
 
         return true;
@@ -1598,7 +1599,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 if (null != adjustingShapeOp) render(adjustingShapeOp, shapePaintViewCanvas);
             }
 
-            // 绘制正在编辑中的图片
+            // 绘制正在编辑中的图片（编辑中的图片展示在图形上层）
             synchronized (picEditStuffLock) {
                 if (null != picEditStuff) render(picEditStuff, shapePaintViewCanvas);
             }
@@ -1673,7 +1674,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private RectF rect = new RectF();
     private void render(OpPaint op, Canvas canvas){
-        KLog.p("to render %s", op);
+//        KLog.p("to render %s", op);
         switch (op.getType()) {
             case DRAW_LINE:
                 OpDrawLine lineOp = (OpDrawLine) op;
@@ -1894,9 +1895,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             return shapeOpsCount;
         }
 
+        /**
+         * 获取可被撤销的操作的数量
+         * */
+        int getRepealableOpsCount(){
+            return shapeOpsCount;
+        }
+
+        /**
+         * 获取已被撤销的操作数量
+         * */
         int getRepealedOpsCount(){
             return repealedOpsCount;
         }
+
         /**
          * 获取真实的历来已被撤销的操作的数量。
          * 不同于{@link #getRepealedOpsCount()}可能被重置（需求要求某些场景需重置可撤销操作计数），
@@ -2099,10 +2111,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     KLog.p(KLog.ERROR, "no op to restore");
                     return false;
                 }
-
                 OpPaint repealedOp = repealedOps.pop();
                 if (--repealedOpsCount<0) repealedOpsCount = 0;
-
                 shapeOps.offerLast(repealedOp); // 恢复最近被撤销的操作
                 ++shapeOpsCount;
             }else{
