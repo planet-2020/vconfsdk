@@ -514,7 +514,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         OpInsertPic op = new OpInsertPic(path, matrix);
         assignBasicInfo(op);
 
-        startEditPic(op);
+        startEditPic(Sets.newHashSet(op));
         handler.postDelayed(finishEditPicRunnable, 5000);
     }
 
@@ -966,8 +966,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 assignBasicInfo(opDeletePic);
                 opWrapper.addPicOp(opDeletePic); // 编辑图片的操作我们认为是先删除图片（本地删除不走发布），然后编辑完成再插入图片。
 
-                startEditPic(opInsertPic);
+                startEditPic(Sets.newHashSet(opInsertPic));
             }
+
+            // SEALED 编辑多个图片
+//            Collection<OpInsertPic> opInsertPics = opWrapper.getInsertPicOps();
+//            startEditPic(opInsertPics);
+//            opWrapper.addPicOp(createDelPicOp(opInsertPics));
         }
 
         @Override
@@ -1208,11 +1213,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
 
-    private void startEditPic(OpInsertPic opInsertPic){
+    private void startEditPic(Collection<OpInsertPic> opInsertPics){
 
         // 在图片外围绘制一个虚线矩形框
         OpDrawRect opDrawRect = new OpDrawRect();
-        RectF dashRect = new RectF(opInsertPic.boundary());
+        RectF dashRect = new RectF(opWrapper.calcBoundary(opInsertPics));
         dashRect.inset(-5, -5);
         opDrawRect.setValues(dashRect);
         opDrawRect.setLineStyle(OpDraw.DASH);
@@ -1229,10 +1234,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         delPicIcon.setMatrix(matrix);
 
         MyConcurrentLinkedDeque<OpInsertPic> editPics = new MyConcurrentLinkedDeque<>();
-        editPics.offerLast(opInsertPic);
+        for (OpInsertPic opInsertPic : opInsertPics) {
+            KLog.p("edit pic %s", opInsertPic);
+            editPics.offerLast(opInsertPic);
+        }
         picEditStuff = new PicEditStuff(editPics, delPicIcon, opDrawRect);
-
-        KLog.p("edit pic %s", opInsertPic);
 
         focusedLayer = LAYER_PIC;
 
@@ -1243,76 +1249,81 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     private void delEditingPic(){
-        OpInsertPic opInsertPic = picEditStuff.pics.pollFirst();  // TODO 处理多张图片
-        if (null == opInsertPic){
-            KLog.p(KLog.ERROR,"null == opInsertPic");
+        if (null == picEditStuff){
+            KLog.p(KLog.ERROR,"null == picEditStuff");
             return;
         }
-
+        PicEditStuff editStuff = picEditStuff;
         synchronized (picEditStuffLock) {
             picEditStuff = null;
         }
-
-        focusedLayer = LAYER_ALL;
 
         if (bInsertingPic) {
             // 如果是正在插入中就删除就不用走发布，仅刷新本端界面
             if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null,true);
             bInsertingPic = false;
         }else{
-            OpDeletePic opDeletePic = new OpDeletePic(new String[]{opInsertPic.getPicId()});
-            assignBasicInfo(opDeletePic);
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opDeletePic, null,true);
+            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), createDelPicOp(editStuff.pics), null,true);
 
             picCountChanged();
         }
+
+        focusedLayer = LAYER_ALL;
+
     }
 
 
 
     private void finishEditPic(){
         if (null == picEditStuff){
+            KLog.p(KLog.ERROR,"null == picEditStuff");
             return;
         }
-        OpInsertPic opInsertPic = picEditStuff.pics.pollFirst(); // TODO 处理多张图片
-        opInsertPic.getMatrix().postConcat(picEditStuff.matrix);
-        opWrapper.addPicOp(opInsertPic);
 
-        OpPaint op;
+        PicEditStuff editStuff = picEditStuff;
+        synchronized (picEditStuffLock) {
+            picEditStuff = null;
+        }
+        MyConcurrentLinkedDeque<OpInsertPic> pics = new MyConcurrentLinkedDeque<>();
+        while(!editStuff.pics.isEmpty()) {
+            OpInsertPic opInsertPic = editStuff.pics.pollFirst();
+            opInsertPic.getMatrix().postConcat(editStuff.matrix);
+            opWrapper.addPicOp(opInsertPic);
+            pics.offerLast(opInsertPic);
+        }
 
-        // 发布
+            // 发布
         if (bInsertingPic) {
             // 正在插入图片
+            while(!pics.isEmpty()) {
+                OpInsertPic opInsertPic = pics.pollFirst();
 
-            /*求取transMatrix
-             * transMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
-             * NOTE: 己端的策略插入图片时是把图片的缩放位移信息全部放入transMatrix中，插入点恒为(0,0)，宽高恒为原始宽高。
-             * 所以mixMatrix为单位矩阵，所以 transMatrix = picMatrix * boardMatrix
-             * */
-            opInsertPic.setBoardMatrix(opWrapper.getLastMatrixOp().getMatrix());
-            Matrix transMatrix = new Matrix(opInsertPic.getMatrix());
-            transMatrix.postConcat(opInsertPic.getBoardMatrix());
-            opInsertPic.setTransMatrix(transMatrix);
+                /*求取transMatrix
+                 * transMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
+                 * NOTE: 己端的策略插入图片时是把图片的缩放位移信息全部放入transMatrix中，插入点恒为(0,0)，宽高恒为原始宽高。
+                 * 所以mixMatrix为单位矩阵，所以 transMatrix = picMatrix * boardMatrix
+                 * */
+                opInsertPic.setBoardMatrix(opWrapper.getLastMatrixOp().getMatrix());
+                Matrix transMatrix = new Matrix(opInsertPic.getMatrix());
+                transMatrix.postConcat(opInsertPic.getBoardMatrix());
+                opInsertPic.setTransMatrix(transMatrix);
 
-            bInsertingPic = false;
+                if (null != onStateChangedListener)
+                    onStateChangedListener.onPaintOpGenerated(getBoardId(), opInsertPic, null, true);
+            }
 
             // 通知用户图片数量变化
             picCountChanged();
 
-            op = opInsertPic;
+            bInsertingPic = false;
 
         } else {
             // 正在拖动放缩图片
-            op = createDragPicOp(Sets.newHashSet(opInsertPic));
-        }
-
-        synchronized (picEditStuffLock) {
-            picEditStuff = null;
+            if (null != onStateChangedListener)
+                onStateChangedListener.onPaintOpGenerated(getBoardId(), createDragPicOp(pics), null, true);
         }
 
         focusedLayer = LAYER_ALL;
-
-        if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), op, null,true);
 
     }
 
@@ -1321,6 +1332,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     private OpDragPic createDragPicOp(Collection<OpInsertPic> opInsertPicSet, Matrix matrix){
+        if (opInsertPicSet.isEmpty()){
+            return null;
+        }
         Map<String, Matrix> picMatrices = new HashMap<>();
         for (OpInsertPic opInsertPic : opInsertPicSet) {
              /* 求取dragMatrix。
@@ -1337,6 +1351,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         assignBasicInfo(opDragPic);
 
         return opDragPic;
+    }
+
+
+    private OpDeletePic createDelPicOp(Collection<OpInsertPic> opInsertPicSet){
+        if (opInsertPicSet.isEmpty()){
+            return null;
+        }
+        List<String> delPics = new ArrayList<>();
+        for(OpInsertPic opInsertPic : opInsertPicSet) {
+            delPics.add(opInsertPic.getPicId());
+        }
+        OpDeletePic opDeletePic = new OpDeletePic(delPics.toArray(new String[]{}));
+        assignBasicInfo(opDeletePic);
+        return opDeletePic;
     }
 
 
@@ -1684,7 +1712,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     }
 
-    private void render(MyConcurrentLinkedDeque<? extends OpPaint> ops, Canvas canvas){
+    private void render(Collection<? extends OpPaint> ops, Canvas canvas){
         for (OpPaint op : ops) {  //NOTE: Iterators are weakly consistent. 此遍历过程不感知并发的添加操作，但感知并发的删除操作。
             render(op, canvas);
         }
@@ -2107,14 +2135,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         /**计算操作集合的边界
          * */
-        private RectF calcBoundary(MyConcurrentLinkedDeque<? extends OpPaint> ops){
+        private RectF calcBoundary(Collection<? extends OpPaint> ops){
             if (null == ops || ops.isEmpty()){
                 return null;
             }
             RectF bound = null;
-            OpPaint op;
-            while (!ops.isEmpty()){
-                op = ops.pollFirst();
+            for (OpPaint op : ops){
                 if (!(op instanceof IBoundary)){
                     continue;
                 }
