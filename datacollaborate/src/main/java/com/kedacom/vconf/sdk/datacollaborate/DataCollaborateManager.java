@@ -1258,7 +1258,7 @@ public class DataCollaborateManager extends Caster {
             switch (msg.what) {
                 case MsgID_CheckSynchronizing:
                     long timestamp = syncTimestamps.get(msg.obj);
-                    if (System.currentTimeMillis()-timestamp > 1000){ // 同步阶段若1s未收到后续绘制操作则认为同步结束
+                    if (System.currentTimeMillis()-timestamp > 2000){ // 同步阶段若2s未收到后续绘制操作则认为同步结束
                         syncTimestamps.remove(msg.obj);
                         PriorityQueue<OpPaint> ops = cachedPaintOps.remove(msg.obj);
                         if (null == ops){

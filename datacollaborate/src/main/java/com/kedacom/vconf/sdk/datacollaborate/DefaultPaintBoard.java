@@ -1965,7 +1965,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                 ops.offerLast(op); // 保存插入图片操作
 
-                insertPicOps.offerLast((OpInsertPic) op);
+                OpInsertPic opInsertPic = (OpInsertPic) op;
+
+                for (OpInsertPic insertPic : insertPicOps){
+                    if (insertPic.getPicId().equals(opInsertPic.getPicId())){
+                        KLog.p(KLog.ERROR, "pic op %s already exist!", opInsertPic);
+                        return false;
+                    }
+                }
+
+                insertPicOps.offerLast(opInsertPic);
 
                 return true;
 
