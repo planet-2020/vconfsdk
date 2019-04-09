@@ -706,7 +706,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private boolean bScaling = false;
         private Matrix tmpMatrix = new Matrix();
         private Matrix confirmedMatrix = new Matrix();
-        private IResultListener publishResultListener = new IResultListener() {
+        private IResultListener publishAdjustingOpResultListener = new IResultListener() {
             @Override
             public void onSuccess(Object result) {
 //                KLog.p("success to publish matrix op %s", result);
@@ -714,28 +714,32 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
         };
 
-        private OpMatrix update(){
-            OpMatrix opMatrix = assignBasicInfo(new OpMatrix(tmpMatrix));
+        private void publishAdjustingOp(OpMatrix opMatrix){
             opWrapper.addMatrixOp(opMatrix);
-            return opMatrix;
-        }
-
-        private void publish(OpMatrix opMatrix){
             if (System.currentTimeMillis()-timestamp > 70) {
                 timestamp = System.currentTimeMillis();
                 // 每70ms发布一次
-                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, publishResultListener, true);
+                onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, publishAdjustingOpResultListener, true);
             }else{
-                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
             }
         }
 
-        private void rollback(){
-            OpMatrix opMatrix = assignBasicInfo(new OpMatrix(confirmedMatrix));
+        private void publishConfirmedOp(OpMatrix opMatrix){
             opWrapper.addMatrixOp(opMatrix);
-            // 立即刷新
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+            onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, new IResultListener() {
+                @Override
+                public void onArrive(boolean bSuccess) {
+                    if (!bSuccess) {
+                        KLog.p(KLog.ERROR,"failed to publish matrix op %s, rollback to %s", opMatrix, confirmedMatrix);
+                        // 发布失败回退matrix
+                        opWrapper.addMatrixOp(assignBasicInfo(new OpMatrix(confirmedMatrix)));
+                        onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true); // 立即刷新
+                    }
+                }
+            }, true);
         }
+
 
         @Override
         public void onMultiFingerDragBegin() {
@@ -748,22 +752,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onMultiFingerDrag(float dx, float dy) {
             tmpMatrix.postTranslate(dx, dy);
-            publish(update());
+            if (null != onStateChangedListener) publishAdjustingOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
         }
 
         @Override
         public void onMultiFingerDragEnd() {
-            OpMatrix opMatrix = update();
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, new IResultListener() {
-                @Override
-                public void onArrive(boolean bSuccess) {
-                    if (!bSuccess) {
-                        KLog.p(KLog.ERROR,"failed to publish matrix op %s, rollback to %s", opMatrix, confirmedMatrix);
-                        rollback(); // 发布失败则回退matrix
-                    }
-                }
-            }, true);
-
+            if (null != onStateChangedListener) publishConfirmedOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
             bDragging = false;
             if (!bScaling) bDoingMatrixOp = false;
         }
@@ -788,27 +782,18 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 tmpMatrix.postScale(factor, factor, focusX, focusY);
             }
 
-            publish(update());
+            if (null != onStateChangedListener) publishAdjustingOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
 
             zoomRateChanged();
         }
 
         @Override
         public void onScaleEnd() {
-            OpMatrix opMatrix = update();
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, new IResultListener() {
-                @Override
-                public void onArrive(boolean bSuccess) {
-                    if (!bSuccess) {
-                        KLog.p(KLog.ERROR,"failed to publish matrix op %s, rollback to %s", opMatrix, confirmedMatrix);
-                        rollback(); // 发布失败则回退matrix
-                    }
-                }
-            }, true);
-
+            if (null != onStateChangedListener) publishConfirmedOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
             bScaling = false;
             if (!bDragging) bDoingMatrixOp = false;
         }
+
     };
 
 
@@ -912,7 +897,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         private long timestamp = System.currentTimeMillis();
         private Matrix confirmedMatrix = new Matrix();
-        private IResultListener publishResultListener = new IResultListener() {
+        private IResultListener publishAdjustingOpResultListener = new IResultListener() {
             @Override
             public void onSuccess(Object result) {
                 if (null != picEditStuff) {
@@ -936,25 +921,30 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
 
-        private void publish(OpDragPic opDragPic){
+        private void publishAdjustingOp(OpDragPic opDragPic){
             if (System.currentTimeMillis()-timestamp > 70) {
                 timestamp = System.currentTimeMillis();
                 // 每70ms发布一次
-                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), opDragPic, publishResultListener, true);
+                onStateChangedListener.onPaintOpGenerated(getBoardId(), opDragPic, publishAdjustingOpResultListener, true);
             }else{
-                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
             }
         }
 
-        private void rollback(){
-            if (null != picEditStuff) {
-                picEditStuff.matrix.set(confirmedMatrix);
-                // 立即刷新
-                if (null != onStateChangedListener)
-                    onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
-            }
-        }
+        private void publishConfirmedOp(OpDragPic opDragPic){
+            onStateChangedListener.onPaintOpGenerated(getBoardId(), opDragPic, new IResultListener() {
+                @Override
+                public void onArrive(boolean bSuccess) {
+                    if (!bSuccess) {
+                        KLog.p(KLog.ERROR, "failed to publish pic matrix op %s, rollback to %s", opDragPic, confirmedMatrix);
+                        // 发布失败则回退matrix
+                        picEditStuff.matrix.set(confirmedMatrix);
+                        onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true); // 立即刷新
+                    }
+                }
+            }, true);
 
+        }
 
 
 
@@ -1054,24 +1044,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 float[] pos = getRidOfMatrix(x, y);
                 picEditStuff.matrix.postTranslate(pos[0]-preDragX, pos[1]-preDragY);
                 preDragX = pos[0]; preDragY = pos[1];
-                publish(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
+                if (null != onStateChangedListener) publishAdjustingOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
         }
 
         @Override
         public void onDragEnd() {
             if (null != picEditStuff) {
-                OpDragPic dragPicOp = createDragPicOp(picEditStuff.pics, picEditStuff.matrix);
-                if (null != onStateChangedListener)
-                    onStateChangedListener.onPaintOpGenerated(getBoardId(), dragPicOp, new IResultListener() {
-                        @Override
-                        public void onArrive(boolean bSuccess) {
-                            if (!bSuccess) {
-                                KLog.p(KLog.ERROR, "failed to publish pic matrix op %s, rollback to %s", dragPicOp, confirmedMatrix);
-                                rollback(); // 发布失败则回退matrix
-                            }
-                        }
-                    }, true);
+                if (null != onStateChangedListener) publishConfirmedOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
         }
 
@@ -1088,26 +1068,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (null != picEditStuff){
                 float[] pos = getRidOfMatrix(focusX, focusY);
                 picEditStuff.matrix.postScale(factor, factor, pos[0], pos[1]);
-                publish(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
+                if (null != onStateChangedListener) publishAdjustingOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
         }
 
         @Override
         public void onScaleEnd() {
             if (null != picEditStuff) {
-                OpDragPic dragPicOp = createDragPicOp(picEditStuff.pics, picEditStuff.matrix);
-                if (null != onStateChangedListener)
-                    onStateChangedListener.onPaintOpGenerated(getBoardId(), dragPicOp, new IResultListener() {
-                        @Override
-                        public void onArrive(boolean bSuccess) {
-                            if (!bSuccess) {
-                                KLog.p(KLog.ERROR, "failed to publish pic matrix op %s, rollback to %s", dragPicOp, confirmedMatrix);
-                                rollback(); // 发布失败则回退matrix
-                            }
-                        }
-                    }, true);
+                if (null != onStateChangedListener) publishConfirmedOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
-
         }
 
     };
