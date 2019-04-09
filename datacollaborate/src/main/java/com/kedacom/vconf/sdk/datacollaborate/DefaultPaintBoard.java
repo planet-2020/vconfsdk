@@ -168,8 +168,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         });
 
         // 初始化matrix
-        OpMatrix opMatrix = new OpMatrix();
-        assignBasicInfo(opMatrix);
+        OpMatrix opMatrix = assignBasicInfo(new OpMatrix());
         opWrapper.addMatrixOp(opMatrix);
     }
 
@@ -351,8 +350,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         if (null != onStateChangedListener) {
-            OpPaint opUndo = new OpUndo();
-            assignBasicInfo(opUndo);
+            OpPaint opUndo = assignBasicInfo(new OpUndo());
             onStateChangedListener.onPaintOpGenerated(getBoardId(), opUndo, new IResultListener() {
                 @Override
                 public void onSuccess(Object result) {
@@ -378,8 +376,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         if (null != onStateChangedListener) {
-            OpPaint opRedo = new OpRedo();
-            assignBasicInfo(opRedo);
+            OpPaint opRedo = assignBasicInfo(new OpRedo());
             onStateChangedListener.onPaintOpGenerated(getBoardId(), opRedo, new IResultListener() {
                         @Override
                         public void onSuccess(Object result) {
@@ -402,8 +399,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             return;
         }
         if (null != onStateChangedListener) {
-            OpPaint opCls = new OpClearScreen();
-            assignBasicInfo(opCls);
+            OpPaint opCls = assignBasicInfo(new OpClearScreen());
             onStateChangedListener.onPaintOpGenerated(getBoardId(), opCls, new IResultListener() {
                         @Override
                         public void onSuccess(Object result) {
@@ -511,8 +507,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         BitmapFactory.decodeFile(path, options);
         matrix.setTranslate((getWidth()-options.outWidth)/2f, (getHeight()-options.outHeight)/2f);
         matrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix()));
-        OpInsertPic op = new OpInsertPic(path, matrix);
-        assignBasicInfo(op);
+        OpInsertPic op = assignBasicInfo(new OpInsertPic(path, matrix));
 
         startEditPic(Sets.newHashSet(op));
         handler.postDelayed(finishEditPicRunnable, 5000);
@@ -726,8 +721,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         };
 
         private OpMatrix update(){
-            OpMatrix opMatrix = new OpMatrix(tmpMatrix);
-            assignBasicInfo(opMatrix);
+            OpMatrix opMatrix = assignBasicInfo(new OpMatrix(tmpMatrix));
             opWrapper.addMatrixOp(opMatrix);
             return opMatrix;
         }
@@ -743,8 +737,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         private void rollback(){
-            OpMatrix opMatrix = new OpMatrix(confirmedMatrix);
-            assignBasicInfo(opMatrix);
+            OpMatrix opMatrix = assignBasicInfo(new OpMatrix(confirmedMatrix));
             opWrapper.addMatrixOp(opMatrix);
             // 立即刷新
             if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
@@ -842,10 +835,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     List<PointF> points = ((OpDrawPath) adjustingShapeOp).getPoints();
                     int pointsSize = points.size();
                     if (pointsSize>0) {
-                        OpDrawPath opDrawPath = new OpDrawPath(points.subList(publishIndex, pointsSize), false);
-                        opDrawPath.setStrokeWidth(paintStrokeWidth);
-                        opDrawPath.setColor(paintColor);
-                        assignBasicInfo(opDrawPath);
+                        OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, pointsSize), false));
                         opDrawPath.setUuid(adjustingShapeOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
                         op = opDrawPath;
                         publishIndex = pointsSize;
@@ -886,10 +876,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     ((OpDrawPath) tmpOp).setFinished(true);
                     List<PointF> points = ((OpDrawPath) tmpOp).getPoints();
                     int pointsSize = points.size();
-                    OpDrawPath opDrawPath = new OpDrawPath(points.subList(publishIndex, pointsSize), false);
-                    opDrawPath.setStrokeWidth(paintStrokeWidth);
-                    opDrawPath.setColor(paintColor);
-                    assignBasicInfo(opDrawPath);
+                    OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, pointsSize), false));
                     opDrawPath.setUuid(tmpOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
                     opDrawPath.setFinished(true); // 增量绘制完成
                     publishIndex = pointsSize;
@@ -1015,8 +1002,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
             OpInsertPic opInsertPic = opWrapper.selectPic(pos[0], pos[1]);
             if (null != opInsertPic){
-                OpDeletePic opDeletePic = new OpDeletePic(new String[]{opInsertPic.getPicId()});
-                assignBasicInfo(opDeletePic);
+                OpDeletePic opDeletePic = assignBasicInfo(new OpDeletePic(new String[]{opInsertPic.getPicId()}));
                 opWrapper.addPicOp(opDeletePic); // 编辑图片的操作我们认为是先删除图片（本地删除不走发布），然后编辑完成再插入图片。
 
                 startEditPic(Sets.newHashSet(opInsertPic));
@@ -1174,19 +1160,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 KLog.p(KLog.ERROR, "unknown TOOL %s", tool);
                 return;
         }
-        if (adjustingShapeOp instanceof OpDraw){
-            OpDraw opDraw = (OpDraw) adjustingShapeOp;
-            if (TOOL_ERASER == tool){
-                opDraw.setStrokeWidth(eraserSize);
-            }else if(TOOL_RECT_ERASER == tool){
-                opDraw.setLineStyle(OpDraw.DASH);
-                opDraw.setStrokeWidth(2);
-                opDraw.setColor(0xFF08b1f2L);
-            } else {
-                opDraw.setStrokeWidth(paintStrokeWidth);
-                opDraw.setColor(paintColor);
-            }
-        }
+
         assignBasicInfo(adjustingShapeOp);
     }
 
@@ -1247,8 +1221,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private void finishShapeOp(){
         if (TOOL_RECT_ERASER == tool){
             OpDrawRect opDrawRect = (OpDrawRect) adjustingShapeOp;
-            adjustingShapeOp = new OpRectErase(opDrawRect.getLeft(), opDrawRect.getTop(), opDrawRect.getRight(), opDrawRect.getBottom());
-            assignBasicInfo(adjustingShapeOp);
+            adjustingShapeOp = assignBasicInfo(new OpRectErase(opDrawRect.getLeft(), opDrawRect.getTop(), opDrawRect.getRight(), opDrawRect.getBottom()));
         }else if (TOOL_PENCIL == tool){
             OpDrawPath opDrawPath = (OpDrawPath) adjustingShapeOp;
             List<PointF> points = opDrawPath.getPoints();
@@ -1399,10 +1372,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             dragMatrix.preConcat(MatrixHelper.invert(opInsertPic.getMixMatrix()));
             picMatrices.put(opInsertPic.getPicId(), dragMatrix);
         }
-        OpDragPic opDragPic = new OpDragPic(picMatrices);
-        assignBasicInfo(opDragPic);
 
-        return opDragPic;
+        return assignBasicInfo(new OpDragPic(picMatrices));
     }
 
 
@@ -1414,16 +1385,29 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         for(OpInsertPic opInsertPic : opInsertPicSet) {
             delPics.add(opInsertPic.getPicId());
         }
-        OpDeletePic opDeletePic = new OpDeletePic(delPics.toArray(new String[]{}));
-        assignBasicInfo(opDeletePic);
-        return opDeletePic;
+        return assignBasicInfo(new OpDeletePic(delPics.toArray(new String[]{})));
     }
 
 
-    private void assignBasicInfo(OpPaint op){
+    private <T extends OpPaint> T assignBasicInfo(T op){
+        if (op instanceof OpDraw){
+            OpDraw opDraw = (OpDraw) op;
+            if (TOOL_ERASER == tool){
+                opDraw.setStrokeWidth(eraserSize);
+            }else if(TOOL_RECT_ERASER == tool){
+                opDraw.setLineStyle(OpDraw.DASH);
+                opDraw.setStrokeWidth(2);
+                opDraw.setColor(0xFF08b1f2L);
+            } else {
+                opDraw.setStrokeWidth(paintStrokeWidth);
+                opDraw.setColor(paintColor);
+            }
+        }
         op.setConfE164(boardInfo.getConfE164());
         op.setBoardId(boardInfo.getId());
         op.setPageId(boardInfo.getPageId());
+
+        return op;
     }
 
 
@@ -1519,6 +1503,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
 
         }else{
+//            if (EOpType.CLEAR_SCREEN == shapeOp.getType()) {
+//                tmpShapeOps.clear();
+//                synchronized (adjustingShapeOpLock) {
+//                    adjustingShapeOp = null;
+//                }
+//            }
             if (!opWrapper.addShapeOp(shapeOp)) return false;
         }
 
