@@ -168,8 +168,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         });
 
         // 初始化matrix
-        OpMatrix opMatrix = assignBasicInfo(new OpMatrix());
-        opWrapper.addMatrixOp(opMatrix);
+        opWrapper.addMatrixOp(assignBasicInfo(new OpMatrix()));
     }
 
     public DefaultPaintBoard(@NonNull Context context, @Nullable AttributeSet attrs) {
@@ -655,11 +654,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      *     </a>
      * */
     private void snapshotWindow(Canvas canvas){
-//            KLog.p("insertPicOps.isEmpty() = %s, shapeOps.isEmpty()=%s, isEmpty()=%s, picEditStuffs.isEmpty() = %s, " +
-//                            "picLayerSnapshot=%s, shapeLayerSnapshot=%s, picEditingLayerSnapshot=%s",
-//                    insertPicOps.isEmpty(), shapeOps.isEmpty(), isEmpty(), picEditStuffs.isEmpty(),
-//                    picLayerSnapshot, shapeLayerSnapshot, picEditingLayerSnapshot);
-
         if (null == picLayerSnapshot) {
             picLayerSnapshot = picPaintView.getBitmap();
         } else {
@@ -1262,7 +1256,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         MyConcurrentLinkedDeque<OpInsertPic> editPics = new MyConcurrentLinkedDeque<>();
         for (OpInsertPic opInsertPic : opInsertPics) {
-            KLog.p("edit pic %s", opInsertPic);
+//            KLog.p("edit pic %s", opInsertPic);
             editPics.offerLast(opInsertPic);
         }
         picEditStuff = new PicEditStuff(editPics, delPicIcon, opDrawRect);
