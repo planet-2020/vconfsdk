@@ -4,11 +4,13 @@ import android.graphics.Path;
 import android.graphics.PointF;
 import android.graphics.RectF;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class OpDrawPath extends OpDraw {
     private List<PointF> points;
     private Path path;
+    private boolean finished; // 是否已完成（曲线是增量同步的）
 
     // path 的边界
     private float left, top, right, bottom;
@@ -18,9 +20,14 @@ public class OpDrawPath extends OpDraw {
     private RectF bound = new RectF();
 
     public OpDrawPath(List<PointF> points){
-        if (null != points) {
-            this.points = points;
-            path = new Path();
+        this(points, true);
+    }
+
+    public OpDrawPath(List<PointF> points, boolean bCreatePath) {
+        this.points = points;
+        if (null != points) path = new Path();
+
+        if (null != points && bCreatePath) {
             if (points.size()>=3){
                 PointF pointF = points.get(0);
                 path.moveTo(pointF.x, pointF.y);
@@ -45,6 +52,8 @@ public class OpDrawPath extends OpDraw {
                 }
             }
         }
+
+        finished = false;
         type = EOpType.DRAW_PATH;
     }
 
@@ -57,8 +66,9 @@ public class OpDrawPath extends OpDraw {
                 ", right=" + right +
                 ", bottom=" + bottom +
                 ", lastPointCount=" + lastPointCount +
-                ", bound=" + bound +'\n'+
-                super.toString() +
+                ", bound=" + bound +
+                ", finished=" + finished +
+                '\n'+super.toString() +
                 '}';
     }
 
@@ -68,6 +78,14 @@ public class OpDrawPath extends OpDraw {
 
     public Path getPath() {
         return path;
+    }
+
+    public boolean isFinished() {
+        return finished;
+    }
+
+    public void setFinished(boolean finished) {
+        this.finished = finished;
     }
 
     private void calcBoundary(){
@@ -102,4 +120,35 @@ public class OpDrawPath extends OpDraw {
         bound.set(left, top, right, bottom);
         return bound;
     }
+
+    public void addPoints(List<PointF> appendPoints){
+        if (null == appendPoints|| appendPoints.isEmpty()){
+            return;
+        }
+        if (null == points){
+            points = new ArrayList<>();
+            path = new Path();
+        }
+
+        PointF prePoint;
+        if (!points.isEmpty()){
+            prePoint = points.get(points.size()-1);
+        }else{
+            prePoint = appendPoints.get(0);
+            path.reset();
+            path.moveTo(appendPoints.get(0).x, appendPoints.get(0).y);
+        }
+
+        points.addAll(appendPoints);
+
+        for (int i=0; i<appendPoints.size()-1; ++i){
+            PointF pointF = appendPoints.get(i);
+            float midX = (prePoint.x+pointF.x)/2;
+            float midY = (prePoint.y+pointF.y)/2;
+            path.quadTo(prePoint.x, prePoint.y, midX, midY);
+            prePoint = pointF;
+        }
+    }
+
+
 }

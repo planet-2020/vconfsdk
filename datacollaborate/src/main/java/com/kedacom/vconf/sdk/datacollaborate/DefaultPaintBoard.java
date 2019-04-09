@@ -827,17 +827,49 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     DefaultTouchListener.IOnEventListener shapeViewEventListener = new DefaultTouchListener.IOnEventListener(){
 
+        private boolean bDrawSuccess = true;
+        private long timestamp = System.currentTimeMillis();
+        private int publishIndex = 0;
+
+        private void publish(){
+            OpPaint op = null;
+            IResultListener publishResultListener = null;
+
+            if (System.currentTimeMillis()-timestamp > 70) {
+                timestamp = System.currentTimeMillis();
+                // 针对曲线绘制和擦除实时发布
+                if (EOpType.DRAW_PATH == adjustingShapeOp.getType()){
+                    List<PointF> points = ((OpDrawPath) adjustingShapeOp).getPoints();
+                    int pointsSize = points.size();
+                    if (pointsSize>0) {
+                        OpDrawPath opDrawPath = new OpDrawPath(points.subList(publishIndex, pointsSize), false);
+                        opDrawPath.setStrokeWidth(paintStrokeWidth);
+                        opDrawPath.setColor(paintColor);
+                        assignBasicInfo(opDrawPath);
+                        opDrawPath.setUuid(adjustingShapeOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
+                        op = opDrawPath;
+                        publishIndex = pointsSize;
+                    }
+                }else if (EOpType.ERASE == adjustingShapeOp.getType()){
+                    // TODO 目前需求没要求但按理说这个和曲线绘制一样
+                }
+            }
+
+            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), op, publishResultListener, true); // TODO publishResultListener
+        }
+
         @Override
         public void onDragBegin(float x, float y) {
             float[] pos = getRidOfMatrix(x, y);
             startShapeOp(pos[0], pos[1]);
+            publishIndex = 0;
         }
 
         @Override
         public void onDrag(float x, float y) {
             float[] pos = getRidOfMatrix(x, y);
             adjustShapeOp(pos[0], pos[1]);
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null,true);
+            publish();
         }
 
         @Override
@@ -847,28 +879,47 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             synchronized (adjustingShapeOpLock) {
                 adjustingShapeOp = null;
             }
-            tmpShapeOps.offerLast(tmpOp);
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), tmpOp, new IResultListener() {
+            if (null != onStateChangedListener) {
+                tmpShapeOps.offerLast(tmpOp);
+                OpPaint publishOp = tmpOp;
+                if (EOpType.DRAW_PATH == tmpOp.getType()){
+                    ((OpDrawPath) tmpOp).setFinished(true);
+                    List<PointF> points = ((OpDrawPath) tmpOp).getPoints();
+                    int pointsSize = points.size();
+                    OpDrawPath opDrawPath = new OpDrawPath(points.subList(publishIndex, pointsSize), false);
+                    opDrawPath.setStrokeWidth(paintStrokeWidth);
+                    opDrawPath.setColor(paintColor);
+                    assignBasicInfo(opDrawPath);
+                    opDrawPath.setUuid(tmpOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
+                    opDrawPath.setFinished(true); // 增量绘制完成
+                    publishIndex = pointsSize;
 
-                        @Override
-                        public void onArrive(boolean bSuccess) {
-                            tmpShapeOps.remove(tmpOp); // 不论成功/失败/超时临时操作均已不需要，若成功该操作将被添加到“正式”的操作集，若失败则该操作被丢弃。
-                            if (!bSuccess){
-                                KLog.p(KLog.ERROR, "failed to publish shape op %s", tmpOp);
-                                // 立即刷新
-                                if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                    publishOp = opDrawPath;
+                }
+
+                onStateChangedListener.onPaintOpGenerated(getBoardId(), publishOp, new IResultListener() {
+
+                            @Override
+                            public void onArrive(boolean bSuccess) {
+                                tmpShapeOps.remove(tmpOp); // 不论成功/失败/超时临时操作均已不需要，若成功该操作将被添加到“正式”的操作集，若失败则该操作被丢弃。
+                                if (!bSuccess) {
+                                    KLog.p(KLog.ERROR, "failed to publish shape op %s", tmpOp);
+                                    // 立即刷新
+                                    if (null != onStateChangedListener)
+                                        onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                                }
                             }
-                        }
 
-                        @Override
-                        public void onSuccess(Object result) {
-                            dealShapeOp(tmpOp);
-                        }
+                            @Override
+                            public void onSuccess(Object result) {
+                                dealShapeOp(tmpOp);
+                            }
 
-                    },
-                    true /* 不同于undo/redo/clearscreen操作，绘制操作本端立即展示不等平台反馈结果以免展示效果出现迟滞。
-                                       若平台反馈结果成功则保持现有展示的绘制不变，若平台没有反馈结果或者反馈失败则再清除该绘制。*/
-            );
+                        },
+                        true /* 不同于undo/redo/clearscreen操作，绘制操作本端立即展示不等平台反馈结果以免展示效果出现迟滞。
+                                   若平台反馈结果成功则保持现有展示的绘制不变，若平台没有反馈结果或者反馈失败则再清除该绘制。*/
+                );
+            }
 
         }
 
@@ -1444,7 +1495,32 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private boolean dealShapeOp(OpPaint shapeOp){
 
-        if (!opWrapper.addShapeOp(shapeOp)) return false;
+        if (EOpType.DRAW_PATH == shapeOp.getType()) {
+            OpDrawPath opDrawPath = (OpDrawPath) shapeOp;
+            OpDrawPath tmpOpDrawPath = null;
+
+            for (OpPaint opPaint : tmpShapeOps){
+                if (opPaint.getUuid().equals(opDrawPath.getUuid())){
+                    tmpOpDrawPath = (OpDrawPath) opPaint;
+                    tmpOpDrawPath.addPoints(opDrawPath.getPoints());
+                    tmpOpDrawPath.setFinished(opDrawPath.isFinished());
+                    break;
+                }
+            }
+            if (null == tmpOpDrawPath) {
+                if (!opDrawPath.isFinished()){
+                    tmpShapeOps.offerLast(opDrawPath);
+                }else{
+                    if (!opWrapper.addShapeOp(opDrawPath)) return false;
+                }
+            }else if (tmpOpDrawPath.isFinished()){
+                tmpShapeOps.remove(tmpOpDrawPath);
+                if (!opWrapper.addShapeOp(tmpOpDrawPath)) return false;
+            }
+
+        }else{
+            if (!opWrapper.addShapeOp(shapeOp)) return false;
+        }
 
         if (null != onStateChangedListener){
             onStateChangedListener.onChanged(getBoardId());
