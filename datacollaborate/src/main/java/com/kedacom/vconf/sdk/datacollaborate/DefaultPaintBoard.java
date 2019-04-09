@@ -1048,7 +1048,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onDragBegin(float x, float y) {
             if (null != picEditStuff){
                 confirmedMatrix.set(picEditStuff.matrix);
-                preDragX = x; preDragY = y;
+                float[] pos = getRidOfMatrix(x, y);
+                preDragX = pos[0]; preDragY = pos[1];
             }
         }
 
@@ -1056,8 +1057,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onDrag(float x, float y) {
 //            KLog.p("onDrag tmp pic layer, x=%s. y=%s", x, y);
             if (null != picEditStuff){
-                picEditStuff.matrix.postTranslate(x-preDragX, y-preDragY);
-                preDragX = x; preDragY = y;
+                float[] pos = getRidOfMatrix(x, y);
+                picEditStuff.matrix.postTranslate(pos[0]-preDragX, pos[1]-preDragY);
+                preDragX = pos[0]; preDragY = pos[1];
                 publish(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
         }
@@ -1090,7 +1092,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onScale(float factor, float focusX, float focusY) {
             if (null != picEditStuff){
-                picEditStuff.matrix.postScale(factor, factor, focusX, focusY);
+                float[] pos = getRidOfMatrix(focusX, focusY);
+                picEditStuff.matrix.postScale(factor, factor, pos[0], pos[1]);
                 publish(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
         }
