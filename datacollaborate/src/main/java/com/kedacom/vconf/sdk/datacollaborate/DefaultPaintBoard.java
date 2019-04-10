@@ -61,6 +61,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private final Object adjustingShapeOpLock = new Object();
 
     // 临时图形操作。手指拿起绘制完成，但并不表示此绘制已生效，需等到平台广播NTF后方能确认为生效的操作，在此之前的操作都作为临时操作保存在这里。
+    // （因为时序有要求我们不能把临时操作直接插入正式的操作集，正式操作集中的操作时序均已平台反馈的为准而非己端的操作时序为准）
     private MyConcurrentLinkedDeque<OpPaint> tmpShapeOps = new MyConcurrentLinkedDeque<>();
 
     // 编辑中的图片
@@ -814,7 +815,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     List<PointF> points = ((OpDrawPath) adjustingShapeOp).getPoints();
                     int pointsSize = points.size();
                     if (pointsSize>0) {
-                        OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, pointsSize), false));
+                        OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, pointsSize)));
                         opDrawPath.setUuid(adjustingShapeOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
                         op = opDrawPath;
                         publishIndex = pointsSize;
@@ -855,7 +856,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     ((OpDrawPath) tmpOp).setFinished(true);
                     List<PointF> points = ((OpDrawPath) tmpOp).getPoints();
                     int pointsSize = points.size();
-                    OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, pointsSize), false));
+                    OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, pointsSize)));
                     opDrawPath.setUuid(tmpOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
                     opDrawPath.setFinished(true); // 增量绘制完成
                     publishIndex = pointsSize;
