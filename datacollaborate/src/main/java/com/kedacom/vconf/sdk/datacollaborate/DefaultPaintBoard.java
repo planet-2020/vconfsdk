@@ -394,7 +394,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void clearScreen() {
-        if (opWrapper.isClear()){
+        if (isClear()){
             KLog.p(KLog.ERROR, "already cleared");
             return;
         }
@@ -458,7 +458,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * */
     @Override
     public boolean isEmpty() {
-        return opWrapper.isEmpty();
+        return null==adjustingShapeOp && tmpShapeOps.isEmpty() && opWrapper.isEmpty();
     }
 
     /**
@@ -468,7 +468,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * */
     @Override
     public boolean isClear(){
-        return opWrapper.isClear();
+        return null==adjustingShapeOp && tmpShapeOps.isEmpty() && opWrapper.isClear();
     }
 
     @Override
@@ -844,6 +844,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onDrag(float x, float y) {
+            if (null == adjustingShapeOp) return; // 当前绘制被清掉了
             float[] pos = getRidOfMatrix(x, y);
             adjustShapeOp(pos[0], pos[1]);
             if (null != onStateChangedListener) publish();  // 曲线绘制要求时序以落笔时为准（不同于其他绘制以抬笔时为准）
@@ -851,6 +852,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onDragEnd() {
+            if (null == adjustingShapeOp) return; // 当前绘制被清掉了
             finishShapeOp();
             OpPaint tmpOp = adjustingShapeOp;
             synchronized (adjustingShapeOpLock) {
@@ -1423,7 +1425,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     private boolean dealShapeOp(OpPaint shapeOp){
-
+        if (EOpType.CLEAR_SCREEN==shapeOp.getType()){
+            synchronized (adjustingShapeOpLock) {
+                adjustingShapeOp = null; // 清空己端正在绘制中的操作
+            }
+            tmpShapeOps.clear(); // 清空己端正在等待平台确认的操作
+        }
         if (!opWrapper.addShapeOp(shapeOp)) return false;
 
         if (null != onStateChangedListener){
