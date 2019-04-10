@@ -8,9 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class OpDrawPath extends OpDraw {
-    private List<PointF> points;
-    private Path path;
-    private boolean finished; // 是否已完成（曲线是增量同步的）
+    private List<PointF> points = new ArrayList<>();
+    private Path path = new Path();
+    private boolean finished = false; // 是否已完成（曲线是增量同步的）
 
     // path 的边界
     private float left, top, right, bottom;
@@ -19,15 +19,10 @@ public class OpDrawPath extends OpDraw {
 
     private RectF bound = new RectF();
 
-    public OpDrawPath(List<PointF> points){
-        this(points, true);
-    }
+    public OpDrawPath(List<PointF> points) {
+        this.points.addAll(points);
 
-    public OpDrawPath(List<PointF> points, boolean bCreatePath) {
-        this.points = points;
-        if (null != points) path = new Path();
-
-        if (null != points && bCreatePath) {
+        if (!points.isEmpty()) {
             if (points.size()>=3){
                 PointF pointF = points.get(0);
                 path.moveTo(pointF.x, pointF.y);
@@ -45,7 +40,7 @@ public class OpDrawPath extends OpDraw {
                 }
                 pointF = points.get(i);
                 path.lineTo(pointF.x, pointF.y);
-            }else if(!points.isEmpty()){
+            }else {
                 path.moveTo(points.get(0).x, points.get(0).y);
                 if (points.size()==2){
                     path.lineTo(points.get(1).x, points.get(1).y);
@@ -53,7 +48,6 @@ public class OpDrawPath extends OpDraw {
             }
         }
 
-        finished = false;
         type = EOpType.DRAW_PATH;
     }
 
@@ -124,10 +118,6 @@ public class OpDrawPath extends OpDraw {
     public void addPoints(List<PointF> appendPoints){
         if (null == appendPoints|| appendPoints.isEmpty()){
             return;
-        }
-        if (null == points){
-            points = new ArrayList<>();
-            path = new Path();
         }
 
         PointF prePoint;
