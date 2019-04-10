@@ -813,19 +813,26 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 // 针对曲线绘制和擦除实时发布
                 if (EOpType.DRAW_PATH == adjustingShapeOp.getType()){
                     List<PointF> points = ((OpDrawPath) adjustingShapeOp).getPoints();
-                    int pointsSize = points.size();
-                    if (pointsSize>0) {
-                        OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, pointsSize)));
-                        opDrawPath.setUuid(adjustingShapeOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
-                        op = opDrawPath;
-                        publishIndex = pointsSize;
-                    }
+                    OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, points.size())));
+                    opDrawPath.setUuid(adjustingShapeOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
+                    op = opDrawPath;
+                    publishIndex = points.size();
+
+                    onStateChangedListener.onPaintOpGenerated(getBoardId(), opDrawPath, new IResultListener() {
+                        @Override
+                        public void onSuccess(Object result) {
+                            dealShapeOp(opDrawPath);
+                        }
+                    }, true);
+
+                    return;
+
                 }else if (EOpType.ERASE == adjustingShapeOp.getType()){
                     // TODO 目前需求没要求但按理说这个和曲线绘制一样
                 }
             }
 
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), op, publishResultListener, true); // TODO publishResultListener
+            onStateChangedListener.onPaintOpGenerated(getBoardId(), op, publishResultListener, true); // TODO publishResultListener
         }
 
         @Override
@@ -839,21 +846,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onDrag(float x, float y) {
             float[] pos = getRidOfMatrix(x, y);
             adjustShapeOp(pos[0], pos[1]);
-            publish();
+            if (null != onStateChangedListener) publish();  // 曲线绘制要求时序以落笔时为准（不同于其他绘制以抬笔时为准）
         }
 
         @Override
         public void onDragEnd() {
             finishShapeOp();
-            final OpPaint tmpOp = adjustingShapeOp;
+            OpPaint tmpOp = adjustingShapeOp;
             synchronized (adjustingShapeOpLock) {
                 adjustingShapeOp = null;
             }
             if (null != onStateChangedListener) {
                 tmpShapeOps.offerLast(tmpOp);
-                OpPaint publishOp = tmpOp;
+                OpPaint finalTmpOp = tmpOp;
                 if (EOpType.DRAW_PATH == tmpOp.getType()){
-                    ((OpDrawPath) tmpOp).setFinished(true);
                     List<PointF> points = ((OpDrawPath) tmpOp).getPoints();
                     int pointsSize = points.size();
                     OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, pointsSize)));
@@ -861,16 +867,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     opDrawPath.setFinished(true); // 增量绘制完成
                     publishIndex = pointsSize;
 
-                    publishOp = opDrawPath;
+                    tmpOp = opDrawPath;
                 }
 
+                OpPaint publishOp = tmpOp;
                 onStateChangedListener.onPaintOpGenerated(getBoardId(), publishOp, new IResultListener() {
 
                             @Override
                             public void onArrive(boolean bSuccess) {
-                                tmpShapeOps.remove(tmpOp); // 不论成功/失败/超时临时操作均已不需要，若成功该操作将被添加到“正式”的操作集，若失败则该操作被丢弃。
+                                tmpShapeOps.remove(finalTmpOp); // 不论成功/失败/超时临时操作均已不需要，若成功该操作将被添加到“正式”的操作集，若失败则该操作被丢弃。
                                 if (!bSuccess) {
-                                    KLog.p(KLog.ERROR, "failed to publish shape op %s", tmpOp);
+                                    KLog.p(KLog.ERROR, "failed to publish shape op %s", finalTmpOp);
                                     // 立即刷新
                                     if (null != onStateChangedListener)
                                         onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
@@ -879,7 +886,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                             @Override
                             public void onSuccess(Object result) {
-                                dealShapeOp(tmpOp);
+                                dealShapeOp(publishOp);
                             }
 
                         },
@@ -1088,9 +1095,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         switch (tool){
             case TOOL_PENCIL:
                 OpDrawPath opDrawPath = new OpDrawPath(new ArrayList<>());
-                opDrawPath.getPoints().add(new PointF(x, y));
-                opDrawPath.getPath().moveTo(x, y);
+                opDrawPath.addPoint(new PointF(x, y));
                 adjustingShapeOp = opDrawPath;
+                break;
+            case TOOL_ERASER:
+                OpErase opErase = new OpErase(eraserSize, eraserSize, new ArrayList<>());
+                opErase.addPoint(new PointF(x, y));
+                adjustingShapeOp = opErase;
                 break;
             case TOOL_LINE:
                 OpDrawLine opDrawLine = new OpDrawLine();
@@ -1109,12 +1120,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 opDrawOval.setLeft(x);
                 opDrawOval.setTop(y);
                 adjustingShapeOp = opDrawOval;
-                break;
-            case TOOL_ERASER:
-                OpErase opErase = new OpErase(eraserSize, eraserSize, new ArrayList<>());
-                opErase.getPoints().add(new PointF(x, y));
-                opErase.getPath().moveTo(x, y);
-                adjustingShapeOp = opErase;
                 break;
             case TOOL_RECT_ERASER:
                 // 矩形擦除先绘制一个虚线矩形框选择擦除区域
@@ -1135,16 +1140,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         switch (tool){
             case TOOL_PENCIL:
                 OpDrawPath opDrawPath = (OpDrawPath) adjustingShapeOp;
-                List<PointF> pointFS = opDrawPath.getPoints();
-                float preX, preY, midX, midY;
-                preX = pointFS.get(pointFS.size()-1).x;
-                preY = pointFS.get(pointFS.size()-1).y;
-                midX = (preX + x) / 2;
-                midY = (preY + y) / 2;
-//                    KLog.p("=pathPreX=%s, pathPreY=%s, midX=%s, midY=%s", preX, preY, midX, midY);
-                opDrawPath.getPath().quadTo(preX, preY, midX, midY);
-                pointFS.add(new PointF(x, y));
-
+                opDrawPath.addPoint(new PointF(x, y));
+                break;
+            case TOOL_ERASER:
+                OpErase opErase = (OpErase) adjustingShapeOp;
+                opErase.addPoint(new PointF(x, y));
                 break;
             case TOOL_LINE:
                 OpDrawLine opDrawLine = (OpDrawLine) adjustingShapeOp;
@@ -1160,18 +1160,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 OpDrawOval opDrawOval = (OpDrawOval) adjustingShapeOp;
                 opDrawOval.setRight(x);
                 opDrawOval.setBottom(y);
-                break;
-            case TOOL_ERASER:
-                OpErase opErase = (OpErase) adjustingShapeOp;
-                pointFS = opErase.getPoints();
-                preX = pointFS.get(pointFS.size()-1).x;
-                preY = pointFS.get(pointFS.size()-1).y;
-                midX = (preX + x) / 2;
-                midY = (preY + y) / 2;
-//                    KLog.p("=pathPreX=%s, pathPreY=%s, midX=%s, midY=%s", preX, preY, midX, midY);
-                opErase.getPath().quadTo(preX, preY, midX, midY);
-                pointFS.add(new PointF(x, y));
-
                 break;
             case TOOL_RECT_ERASER:
                 OpDrawRect opDrawRect1 = (OpDrawRect) adjustingShapeOp;
@@ -1189,16 +1177,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         if (TOOL_RECT_ERASER == tool){
             OpDrawRect opDrawRect = (OpDrawRect) adjustingShapeOp;
             adjustingShapeOp = assignBasicInfo(new OpRectErase(opDrawRect.getLeft(), opDrawRect.getTop(), opDrawRect.getRight(), opDrawRect.getBottom()));
-        }else if (TOOL_PENCIL == tool){
-            OpDrawPath opDrawPath = (OpDrawPath) adjustingShapeOp;
-            List<PointF> points = opDrawPath.getPoints();
-            PointF lastPoint = points.get(points.size()-1);
-            opDrawPath.getPath().lineTo(lastPoint.x, lastPoint.y);
-        }else if (TOOL_ERASER == tool){
-            OpErase opErase = (OpErase) adjustingShapeOp;
-            List<PointF> points = opErase.getPoints();
-            PointF lastPoint = points.get(points.size()-1);
-            opErase.getPath().lineTo(lastPoint.x, lastPoint.y);
         }
     }
 
@@ -1446,38 +1424,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private boolean dealShapeOp(OpPaint shapeOp){
 
-        if (EOpType.DRAW_PATH == shapeOp.getType()) {
-            OpDrawPath opDrawPath = (OpDrawPath) shapeOp;
-            OpDrawPath tmpOpDrawPath = null;
-
-            for (OpPaint opPaint : tmpShapeOps){
-                if (opPaint.getUuid().equals(opDrawPath.getUuid())){
-                    tmpOpDrawPath = (OpDrawPath) opPaint;
-                    tmpOpDrawPath.addPoints(opDrawPath.getPoints());
-                    tmpOpDrawPath.setFinished(opDrawPath.isFinished());
-                    break;
-                }
-            }
-            if (null == tmpOpDrawPath) {
-                if (!opDrawPath.isFinished()){
-                    tmpShapeOps.offerLast(opDrawPath);
-                }else{
-                    if (!opWrapper.addShapeOp(opDrawPath)) return false;
-                }
-            }else if (tmpOpDrawPath.isFinished()){
-                tmpShapeOps.remove(tmpOpDrawPath);
-                if (!opWrapper.addShapeOp(tmpOpDrawPath)) return false;
-            }
-
-        }else{
-//            if (EOpType.CLEAR_SCREEN == shapeOp.getType()) {
-//                tmpShapeOps.clear();
-//                synchronized (adjustingShapeOpLock) {
-//                    adjustingShapeOp = null;
-//                }
-//            }
-            if (!opWrapper.addShapeOp(shapeOp)) return false;
-        }
+        if (!opWrapper.addShapeOp(shapeOp)) return false;
 
         if (null != onStateChangedListener){
             onStateChangedListener.onChanged(getBoardId());
@@ -1972,6 +1919,30 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
          * 添加图形操作。包括画线、画圆、擦除、清屏等。
          * */
         boolean addShapeOp(OpPaint op){
+
+            if (EOpType.DRAW_PATH==op.getType()){ // 曲线是增量同步的
+                OpDrawPath opDrawPath = (OpDrawPath) op;
+                OpDrawPath tmpOpDrawPath = null;
+                Iterator<OpPaint> it = shapeOps.descendingIterator();
+                while (it.hasNext()){
+                    OpPaint opPaint = it.next();
+                    if (opPaint.getUuid().equals(opDrawPath.getUuid())){
+                        tmpOpDrawPath = (OpDrawPath) opPaint;
+                        tmpOpDrawPath.addPoints(opDrawPath.getPoints());
+                        tmpOpDrawPath.setFinished(opDrawPath.isFinished());
+                        break;
+                    }
+                }
+
+                if (null == tmpOpDrawPath) {
+                    ops.offerLast(opDrawPath);
+                    shapeOps.offerLast(opDrawPath);
+                    ++shapeOpsCount;
+                    repealedOpsCount=0; // 有新的可撤销操作加入时重置已撤销操作数量（需求要求）
+                }
+
+                return true;
+            }
 
             ops.offerLast(op);
 
