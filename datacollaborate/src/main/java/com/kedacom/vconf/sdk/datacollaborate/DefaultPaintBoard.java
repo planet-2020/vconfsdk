@@ -2116,18 +2116,56 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     KLog.p(KLog.ERROR, "no op to repeal");
                     return false;
                 }
+
+                if (EOpType.DRAW_PATH == shapeOp.getType() && !((OpDrawPath)shapeOp).isFinished()){
+                    // 对于曲线绘制，需要考虑是否已完成，未完成的曲线绘制不能撤销（需求要求）
+                    MyConcurrentLinkedDeque<OpPaint> tmpOps = new MyConcurrentLinkedDeque<>();
+                    tmpOps.offerLast(shapeOp);
+                    while (!shapeOps.isEmpty()){
+                        shapeOp = shapeOps.pollLast();
+                        if (EOpType.DRAW_PATH == shapeOp.getType() && !((OpDrawPath)shapeOp).isFinished()){
+                            tmpOps.offerLast(shapeOp);
+                            continue;
+                        }
+                        break;
+                    }
+                    shapeOps.addAll(tmpOps);
+                }
+
                 --shapeOpsCount;
                 repealedOps.push(shapeOp); // 缓存撤销的操作以供恢复
                 ++repealedOpsCount;
+
             }else if (EOpType.REDO==op.getType()){
                 if (repealedOps.isEmpty()){
                     KLog.p(KLog.ERROR, "no op to restore");
                     return false;
                 }
+
                 OpPaint repealedOp = repealedOps.pop();
                 if (--repealedOpsCount<0) repealedOpsCount = 0;
-                shapeOps.offerLast(repealedOp); // 恢复最近被撤销的操作
-                ++shapeOpsCount;
+
+                // 判断当前最后一笔是否正在绘制中的曲线，若为绘制中的曲线则恢复的绘制要插入其前，对比撤销操作，如此才能保持一致。
+                OpPaint shapeOp = shapeOps.peekLast();
+                if (null!=shapeOp && EOpType.DRAW_PATH == shapeOp.getType() && !((OpDrawPath)shapeOp).isFinished()){
+                    MyConcurrentLinkedDeque<OpPaint> tmpOps = new MyConcurrentLinkedDeque<>();
+                    while (!shapeOps.isEmpty()){
+                        shapeOp = shapeOps.pollLast();
+                        tmpOps.offerLast(shapeOp);
+                        if (EOpType.DRAW_PATH == shapeOp.getType() && !((OpDrawPath)shapeOp).isFinished()){
+                            continue;
+                        }
+                        break;
+                    }
+                    shapeOps.offerLast(repealedOp); // 恢复最近被撤销的操作
+                    ++shapeOpsCount;
+                    shapeOps.addAll(tmpOps);
+
+                }else{
+                    shapeOps.offerLast(repealedOp); // 恢复最近被撤销的操作
+                    ++shapeOpsCount;
+                }
+
             }else{
                 KLog.p(KLog.ERROR, "unknown control op %s", op);
                 return false;
