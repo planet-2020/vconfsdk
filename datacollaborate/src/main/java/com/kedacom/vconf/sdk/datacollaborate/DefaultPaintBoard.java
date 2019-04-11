@@ -344,7 +344,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void undo() {
-        if (0 == opWrapper.getRepealableOpsCount()){
+        if (0 == opWrapper.getRevocableOpsCount()){
             KLog.p(KLog.ERROR,"no op to undo");
             return;
         }
@@ -370,7 +370,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void redo() {
-        if (0==opWrapper.getRepealedOpsCount()){
+        if (0==opWrapper.getRevokedOpsCount()){
             KLog.p(KLog.ERROR,"no op to repeal");
             return;
         }
@@ -473,7 +473,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public int getRepealedOpsCount() {
-        return opWrapper.getRepealedOpsCount();
+        return opWrapper.getRevokedOpsCount();
     }
 
     @Override
@@ -1435,7 +1435,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         if (null != onStateChangedListener){
             onStateChangedListener.onChanged(getBoardId());
-            onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRepealedOpsCount(),opWrapper.getRepealableOpsCount());
+            onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRevokedOpsCount(),opWrapper.getRevocableOpsCount());
             refreshEmptyState();
         }
 
@@ -1450,7 +1450,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         if (null != onStateChangedListener){
             onStateChangedListener.onChanged(getBoardId());
-            onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRepealedOpsCount(),opWrapper.getRepealableOpsCount());
+            onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRevokedOpsCount(),opWrapper.getRevocableOpsCount());
             refreshEmptyState();
         }
 
@@ -1822,13 +1822,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         /**
          * 已撤销操作
          * */
-        private Stack<OpPaint> repealedOps = new Stack<>();
-
-        /**
-         * 已撤销操作数量。
-         * NOTE: 该值不一定等于{@link #repealedOps}的size，因为根据需求该值会在一些场景下被重置。
-         * */
-        private int repealedOpsCount;
+        private Stack<OpPaint> revokedOps = new Stack<>();
 
         /**
          * 图形操作数量。
@@ -1886,24 +1880,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         /**
          * 获取可被撤销的操作的数量
          * */
-        int getRepealableOpsCount(){
+        int getRevocableOpsCount(){
             return shapeOpsCount;
         }
 
         /**
          * 获取已被撤销的操作数量
          * */
-        int getRepealedOpsCount(){
-            return repealedOpsCount;
-        }
-
-        /**
-         * 获取真实的历来已被撤销的操作的数量。
-         * 不同于{@link #getRepealedOpsCount()}可能被重置（需求要求某些场景需重置可撤销操作计数），
-         * 该方法获取的是历来所有已被撤销未恢复的操作。
-         * */
-        int getRealRepealedOpsCount(){
-            return repealedOps.size();
+        int getRevokedOpsCount(){
+            return revokedOps.size();
         }
 
         int getInsertPicOpsCount(){
@@ -1946,7 +1931,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     ops.offerLast(opDrawPath);
                     shapeOps.offerLast(opDrawPath);
                     ++shapeOpsCount;
-                    repealedOpsCount=0; // 有新的可撤销操作加入时重置已撤销操作数量（需求要求）
+                    revokedOps.clear(); // 有新的可撤销操作加入时清空已撤销操作
                 }
 
                 return true;
@@ -1961,7 +1946,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             shapeOps.offerLast(op);
             ++shapeOpsCount;
             if (op instanceof IRepealable) {
-                repealedOpsCount=0; // 有新的可撤销操作加入时重置已撤销操作数量（需求要求）
+                revokedOps.clear(); // 有新的可撤销操作加入时清空已撤销操作
             }
             return true;
         }
@@ -2150,17 +2135,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
 
                 --shapeOpsCount;
-                repealedOps.push(shapeOp); // 缓存撤销的操作以供恢复
-                ++repealedOpsCount;
+                revokedOps.push(shapeOp); // 缓存撤销的操作以供恢复
 
             }else if (EOpType.REDO==op.getType()){
-                if (repealedOps.isEmpty()){
+                if (revokedOps.isEmpty()){
                     KLog.p(KLog.ERROR, "no op to restore");
                     return false;
                 }
 
-                OpPaint repealedOp = repealedOps.pop();
-                if (--repealedOpsCount<0) repealedOpsCount = 0;
+                OpPaint repealedOp = revokedOps.pop();
 
                 // 判断当前最后一笔是否正在绘制中的曲线，若为绘制中的曲线则恢复的绘制要插入其前，对比撤销操作，如此才能保持一致。
                 OpPaint shapeOp = shapeOps.peekLast();
@@ -2175,13 +2158,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                         break;
                     }
                     shapeOps.offerLast(repealedOp); // 恢复最近被撤销的操作
-                    ++shapeOpsCount;
                     shapeOps.addAll(tmpOps);
 
                 }else{
                     shapeOps.offerLast(repealedOp); // 恢复最近被撤销的操作
-                    ++shapeOpsCount;
                 }
+
+                ++shapeOpsCount;
 
             }else{
                 KLog.p(KLog.ERROR, "unknown control op %s", op);
