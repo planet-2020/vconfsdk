@@ -506,7 +506,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         options.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(path, options);
         matrix.setTranslate((getWidth()-options.outWidth)/2f, (getHeight()-options.outHeight)/2f);
-        matrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix()));
+        matrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix(new Matrix())));
         OpInsertPic op = assignBasicInfo(new OpInsertPic(path, matrix));
 
         startEditPic(Sets.newHashSet(op));
@@ -571,7 +571,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         float boardH = getHeight()>0 ? getHeight() : boardHeight;
 
         // 根据操作边界结合当前画板缩放计算绘制操作需要的缩放及位移
-        Matrix curRelativeBoardMatrix = getDensityRelativeBoardMatrix();
+        Matrix curRelativeBoardMatrix = getDensityRelativeBoardMatrix(new Matrix());
         curRelativeBoardMatrix.mapRect(bound);
         float boundW = bound.width();
         float boundH = bound.height();
@@ -684,19 +684,19 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     为了使得展示效果尽量在各设备上保持一致并兼顾TL和网呈已有实现，我们以TL的屏幕密度为基准算出一个相对密度，
     以该相对密度作为缩放因子进行展示。TL的屏幕密度接近xhdpi，故以xhdpi作为基准*/
     private float relativeDensity=1;
-    private Matrix densityRelativeBoardMatrix = new Matrix();
-    private Matrix getDensityRelativeBoardMatrix(){
-        densityRelativeBoardMatrix.reset();
-        densityRelativeBoardMatrix.postScale(relativeDensity, relativeDensity);
-        densityRelativeBoardMatrix.postConcat(opWrapper.getLastMatrixOp().getMatrix());
-        return  densityRelativeBoardMatrix;
+    private Matrix getDensityRelativeBoardMatrix(Matrix matrix){
+        matrix.reset();
+        matrix.postScale(relativeDensity, relativeDensity);
+        matrix.postConcat(opWrapper.getLastMatrixOp().getMatrix());
+        return matrix;
     }
 
     /* 返回去掉放缩位移等matrix操作影响后的坐标*/
     private float[] mappedPoint= new float[2];
+    private Matrix densityRelativeBoardMatrix = new Matrix();
     private float[] getRidOfMatrix(float x, float y){
         mappedPoint[0] = x; mappedPoint[1] = y;
-        MatrixHelper.invert(getDensityRelativeBoardMatrix()).mapPoints(mappedPoint);
+        MatrixHelper.invert(getDensityRelativeBoardMatrix(densityRelativeBoardMatrix)).mapPoints(mappedPoint);
         return mappedPoint;
     }
 
@@ -1562,9 +1562,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
+    private Matrix paintBoardMatrix = new Matrix();
     void paint(){
         KLog.p("=> board=%s", getBoardId());
-        Matrix matrix = getDensityRelativeBoardMatrix();
+        Matrix matrix = getDensityRelativeBoardMatrix(paintBoardMatrix);
 
         // 图形层绘制
         Canvas shapePaintViewCanvas = shapePaintView.lockCanvas();
