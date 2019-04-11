@@ -19,7 +19,7 @@ public class OpInsertPic extends OpPaint implements IBoundary{
     private Bitmap pic;
 
     /*图片插入点。
-    * NOTE: 网呈和TL传的该插入点会进行一些倍数缩放后传过来；
+    * NOTE: 网呈和TL传的该插入点并非原始插入点会进行一些倍数缩放后传过来；
     * 己端传的该插入点恒为(0,0)
     * */
     private PointF insertPos = new PointF();
@@ -33,15 +33,18 @@ public class OpInsertPic extends OpPaint implements IBoundary{
 
     /*
     * 传输的matrix。
-    * NOTE: 网呈和TL传的该matrix为一种混合体，含义没弄清。但通过分析网呈和TL代码发现满足关系：
+    * NOTE: 网呈和TL传的该matrix为一种混合体，含义混沌不明，跟网呈的具体实现强相关。
+    * 通过分析网呈和TL代码发现满足关系：
     * 先canvas.setMatrix(transMatrix)，再canvas.drawBitmap(bitmap, dstRect, )，
      * 其中dstRect由insertPos和picWidth、picHeight得来，能正确展示图片。
     *
     * 己端传的该Matrix为包含了图片完整缩放位移信息的：picMatrix*boardMatrix
     * */
     private Matrix transMatrix = new Matrix();
-    /*以上定义为网呈定义的传输协议。
-     插入点、宽高、transMatrix共同决定了图片的最终位置。
+    /*以上为网呈针对插入图片定义的数据结构。
+      作为协议，它不通用（跟网呈具体实现强相关），相对于它需要传递的信息而言（图片的位置信息），难以置信的复杂晦涩，难以置信的草率。
+     这大大增加了图片这块的复杂度，严重制约了其它终端在图片这块的可选实现方案，
+     然而网呈实现在先不会改，只能向其对齐
      * */
 
 
@@ -49,10 +52,11 @@ public class OpInsertPic extends OpPaint implements IBoundary{
 
     /*
      以下为方便己端处理而定义的一些成员。
-    * 针对图片展示，己端的策略是将图片最终位置信息分成两部分：picMatrix和boardMatrix，
-    * 图片位置=picMatrix*boardMatrix，其中boardMatrix是画板的缩放位移信息，就是全屏缩放位移时传过来的matrix，
-    * picMatrix是图片本身的缩放位移信息，在插入图片时以及编辑图片时（拖动旋转等）生成，
-    * 按网呈和TL定的协议，picMatrix没有直接传过来，己端通过insertPos、picWidth、picHeight、transMatrix以及图片本身的宽高计算得到。
+    * NOTE: 针对图片展示，己端的策略是将图片最终位置信息分成两部分：picMatrix和boardMatrix，
+    * 图片最终展示位置=picMatrix*boardMatrix，其中boardMatrix是画板的缩放位移信息，就是全屏缩放影响的那个matrix，
+    * picMatrix是图片本身的缩放位移信息，在插入图片时以及编辑图片时（拖动旋转等）产生的matrix都计入picMatrix。
+    * 按网呈和TL定的协议，picMatrix没有直接传过来而是混杂在"insertPos、picWidth、picHeight、transMatrix以及图片本身的宽高"这几个变量中，
+    * 己端需通过这几个变量计算得到picMatrix。
     * */
 
 
@@ -61,9 +65,9 @@ public class OpInsertPic extends OpPaint implements IBoundary{
     *
     * 分析网呈和TL代码，图片位置 = mix(insertPos, picWidth, picHeight) * transMatrix，
     * 记为mixMatrix * transMatrix。
-     * 己端策略为
+    * 其中transMatrix即为网呈插入图片时传来的matrix。
+     * 因为己端策略为
     * 图片位置= picMatrix * boardMatrix
-    *
     * 所以得到等式：mixMatrix * transMatrix == picMatrix * boardMatrix
     * NOTE: 此等式是己端进行图片位置相关计算的基础。
     *
@@ -81,7 +85,8 @@ public class OpInsertPic extends OpPaint implements IBoundary{
 
     /*
     * 计算picMatrix时需要的boardMatrix。
-    * 之所以需要保存该boardMatrix是因为计算picMatrix有可能是延后的。
+    * 之所以需要保存该boardMatrix是因为计算picMatrix有可能是延后的，因为网呈传过来的数据所限，
+    * 计算picMatrix我们需要图片的实际宽高，而图片实际宽高需等到图片下载完成。
     * */
     private Matrix boardMatrix = new Matrix();
 
@@ -91,7 +96,7 @@ public class OpInsertPic extends OpPaint implements IBoundary{
      * 部分信息只能从图片本身中获得）。mixMatrix不知道也就无法求取picMatrix，进而无法在当前picMatrix基础上更新图片位置。
      *
      * 故这种场景下需要先保存拖动传过来的matrix，用以将来计算图片的正确展示位置。
-     * picMatri和dragMatrix的关系是：
+     * picMatrix和dragMatrix的关系是：
      *  mixMatrix * dragMatrix = picMatrix * boardMatrix
      * */
     private Matrix dragMatrix;
