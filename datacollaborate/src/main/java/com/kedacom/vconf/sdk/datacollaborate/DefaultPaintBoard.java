@@ -2024,9 +2024,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                 boolean bEffective = false;
                 OpDragPic opDragPic = (OpDragPic) op;
-                for (Map.Entry<String, Matrix> dragOp : opDragPic.getPicMatrices().entrySet()) {
-                    for (OpPaint picOp : insertPicOps) {
-                        OpInsertPic opInsertPic = (OpInsertPic) picOp;
+                MyConcurrentLinkedDeque<OpInsertPic> draggedPics = new MyConcurrentLinkedDeque<>();
+                Iterator<OpInsertPic> it = insertPicOps.iterator();
+                while (it.hasNext()){
+                    OpInsertPic opInsertPic = it.next();
+                    for (Map.Entry<String, Matrix> dragOp : opDragPic.getPicMatrices().entrySet()) {
                         if (opInsertPic.getPicId().equals(dragOp.getKey())) {
                             if (null != opInsertPic.getPic()) {
                                 /*图片已经准备好了则直接求取picmatrix
@@ -2050,10 +2052,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                                 opInsertPic.setBoardMatrix(getLastMatrixOp().getMatrix());
                                 KLog.p(KLog.WARN, "drag pic %s no effect, pic is null", opInsertPic.getPicId());
                             }
+
+                            it.remove(); // 拖动的图片置顶显示（先删除然后再添加到顶部）
+                            draggedPics.offerLast(opInsertPic);
+
                             break;
                         }
                     }
                 }
+
+
+                insertPicOps.addAll(draggedPics); // 拖动的图片置顶显示（前面先删除了此处再添加到顶部）
 
                 return bEffective;
 
