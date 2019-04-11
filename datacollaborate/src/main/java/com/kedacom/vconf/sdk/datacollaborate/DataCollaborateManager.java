@@ -1194,6 +1194,10 @@ public class DataCollaborateManager extends Caster {
         switch (rspId){
             case DCQueryPicUrlRsp:
                 DcsDownloadImageRsp queryPicUrlResult = (DcsDownloadImageRsp) rspContent;
+                TDCSImageUrl para0 = (TDCSImageUrl) reqParas[0];
+                if (!para0.achWbPicentityId.equals(queryPicUrlResult.AssParam.achWbPicentityId)) {
+                    return false; // 不是我请求的图片的结果。（下层消息不可靠，可能乱序、重复，故需做这样的过滤）
+                }
                 if (queryPicUrlResult.MainParam.bSucces){
                     reportSuccess(queryPicUrlResult.AssParam, listener);
                 }else{
@@ -1203,6 +1207,10 @@ public class DataCollaborateManager extends Caster {
 
             case DCDownloadRsp:
                 TDCSFileLoadResult result = (TDCSFileLoadResult) rspContent;
+                TDCSFileInfo para1 = (TDCSFileInfo) reqParas[1];
+                if (null != para1.achWbPicentityId && !para1.achWbPicentityId.equals(result.achWbPicentityId)) {
+                    return false; // 这是下载图片的响应且不是我请求的图片的结果。（下层消息不可靠，可能乱序、重复，故需做这样的过滤）
+                }
                 if (result.bSuccess){
                     reportSuccess(result, listener);
                 }else{
