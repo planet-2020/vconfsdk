@@ -2024,14 +2024,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                                 Matrix matrix = new Matrix(opInsertPic.getMixMatrix());
                                 matrix.postConcat(dragOp.getValue());
                                 matrix.postConcat(MatrixHelper.invert(getLastMatrixOp().getMatrix()));
-                                if (!matrix.equals(opInsertPic.getMatrix())) {
-                                    // 更新图片的matrix
-                                    opInsertPic.setMatrix(matrix);
-                                    bEffective = true;
-                                }else {
-                                    // 计算出的matrix跟当前matrix相等则不需拖动
-                                    KLog.p(KLog.WARN, "drag pic %s no effect, matrix no change", opInsertPic.getPicId());
-                                }
+                                opInsertPic.setMatrix(matrix); // 更新图片的matrix
+                                bEffective = true;
                             }else{
                                 // 图片尚未准备好，我们先保存matrix，等图片准备好了再计算
                                 opInsertPic.setDragMatrix(dragOp.getValue());
