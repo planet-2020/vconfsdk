@@ -353,7 +353,7 @@ public enum Msg {
             paras = StringBuffer.class,
             userParas = String.class, // 会议e164
             rspSeq = {"DCQueryAllMembersRsp"})
-    DCQueryAllMembers, // TODO 待调
+    DCQueryAllMembers,
 
     /**
      * 获取数据协作会议中的所有成员响应

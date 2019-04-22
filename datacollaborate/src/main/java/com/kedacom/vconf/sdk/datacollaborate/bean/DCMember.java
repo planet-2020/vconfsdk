@@ -21,6 +21,18 @@ public class DCMember {
         this.bOnline = bOnline;
     }
 
+    @Override
+    public String toString() {
+        return "DCMember{" +
+                "e164='" + e164 + '\'' +
+                ", name='" + name + '\'' +
+                ", type=" + type +
+                ", bOperator=" + bOperator +
+                ", bChairman=" + bChairman +
+                ", bOnline=" + bOnline +
+                '}';
+    }
+
     public String getE164() {
         return e164;
     }

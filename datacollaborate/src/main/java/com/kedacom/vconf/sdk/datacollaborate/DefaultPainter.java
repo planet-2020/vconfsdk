@@ -8,6 +8,7 @@ import android.os.Process;
 import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+import com.kedacom.vconf.sdk.datacollaborate.bean.PainterInfo;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -33,7 +34,12 @@ public class DefaultPainter implements IPainter {
     private HandlerThread handlerThread;
     private Handler handler;
 
-    public DefaultPainter(Context context) {
+    private PainterInfo painterInfo;
+
+    public DefaultPainter(Context context, PainterInfo painterInfo) {
+
+        this.painterInfo = painterInfo;
+
         if (context instanceof LifecycleOwner){
             ((LifecycleOwner)context).getLifecycle().addObserver(new DefaultLifecycleObserver(){
                 @Override
@@ -242,8 +248,9 @@ public class DefaultPainter implements IPainter {
                 refresh();
             }
 
-            if (null != opPaint && null != onBoardStateChangedListener){
-                onBoardStateChangedListener.onPaintOpGenerated(boardId, opPaint, publishResultListener);
+            if (null != opPaint){
+                opPaint.setAuthorE164(painterInfo.getE164());
+                if (null != onBoardStateChangedListener) onBoardStateChangedListener.onPaintOpGenerated(boardId, opPaint, publishResultListener);
             }
         }
 

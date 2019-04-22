@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.PainterInfo;
 
 import androidx.annotation.NonNull;
 
@@ -11,7 +12,7 @@ public interface IPaintFactory {
     /**
      * 创建画师
      * */
-    IPainter createPainter();
+    IPainter createPainter(@NonNull PainterInfo painterInfo);
     /**
      * 创建画板
      * @param boardInfo 画板信息*/

@@ -805,8 +805,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private int publishIndex = 0;
 
         private void publish(){
-            OpPaint op = null;
-            IResultListener publishResultListener = null;
 
             if (System.currentTimeMillis()-timestamp > 70) {
                 timestamp = System.currentTimeMillis();
@@ -815,7 +813,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     List<PointF> points = ((OpDrawPath) adjustingShapeOp).getPoints();
                     OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, points.size())));
                     opDrawPath.setUuid(adjustingShapeOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
-                    op = opDrawPath;
                     publishIndex = points.size();
 
                     onStateChangedListener.onPaintOpGenerated(getBoardId(), opDrawPath, new IResultListener() {
@@ -832,7 +829,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
             }
 
-            onStateChangedListener.onPaintOpGenerated(getBoardId(), op, publishResultListener, true); // TODO publishResultListener
+            onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
         }
 
         @Override

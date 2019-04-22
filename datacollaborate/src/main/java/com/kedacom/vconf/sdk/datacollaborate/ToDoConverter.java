@@ -562,7 +562,7 @@ final class ToDoConverter {
     }
 
     public static DCMember fromTransferObj(TDCSConfUserInfo userInfo){
-        return new DCMember(userInfo.achE164, userInfo.achName, fromTransferObj(userInfo.emMttype), true, false, true);
+        return new DCMember(userInfo.achE164, userInfo.achName, fromTransferObj(userInfo.emMttype), userInfo.bIsOper, userInfo.bIsConfAdmin, userInfo.bOnline);
     }
 
     public static TDCSConfUserInfo toTransferObj(DCMember member){

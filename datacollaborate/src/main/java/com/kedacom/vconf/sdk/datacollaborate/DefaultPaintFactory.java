@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.datacollaborate;
 import android.content.Context;
 
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.PainterInfo;
 
 import androidx.annotation.NonNull;
 
@@ -20,9 +21,9 @@ public class DefaultPaintFactory implements IPaintFactory {
 
 
     @Override
-    public IPainter createPainter() {
-        return new DefaultPainter(context);
-    }  // TODO 添加PainterInfo参数
+    public IPainter createPainter(@NonNull PainterInfo painterInfo) {
+        return new DefaultPainter(context, painterInfo);
+    }
 
     @Override
     public IPaintBoard createPaintBoard(@NonNull BoardInfo boardInfo) {

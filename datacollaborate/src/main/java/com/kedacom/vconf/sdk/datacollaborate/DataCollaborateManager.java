@@ -96,9 +96,6 @@ public class DataCollaborateManager extends Caster {
     // 申请协作权被拒
     public static final int ErrCode_Apply_Operator_Rejected = -6;
 
-    // 当前用户e164
-    private String curUserE164; // TODO 删掉
-
     // 当前会议e164号
     private String curDcConfE164;
     String getCurDcConfE164(){
@@ -294,7 +291,6 @@ public class DataCollaborateManager extends Caster {
     /**登录数据协作
      * @param serverIp 数据协作服务器Ip
      * @param port 数据协作服务器port
-     * @param userE164 登陆者e164
      * @param terminalType 己端终端类型
      * @param resultListener 登陆结果监听器。
      *                       成功返回结果null：
@@ -305,13 +301,7 @@ public class DataCollaborateManager extends Caster {
      *                       {@link #ErrCode_Failed}
      *                       resultListener.onFailed(errorCode);
      **/
-    public void login(String serverIp, int port, String userE164, ETerminalType terminalType, IResultListener resultListener){
-        if (null==userE164 || userE164.isEmpty()){
-            KLog.p(KLog.ERROR, "null==userE164 || userE164.isEmpty()");
-            resultListener.onFailed(ErrCode_Failed);
-            return;
-        }
-        curUserE164 = userE164;
+    public void login(String serverIp, int port, ETerminalType terminalType, IResultListener resultListener){
         curTerminalType = ToDoConverter.toTransferObj(terminalType);
         req(Msg.DCLogin, resultListener, new TDCSRegInfo(serverIp, port, curTerminalType));
     }
@@ -584,10 +574,14 @@ public class DataCollaborateManager extends Caster {
         Object to = ToDoConverter.toPaintTransferObj(op);
         if (null != to) {
             req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
-                    ToDoConverter.toCommonPaintTransferObj(op), to);
+                    ToDoConverter.toCommonPaintTransferObj(op), to,
+                    op.getAuthorE164() /* NOTE: 这个参数并非请求真正需要的（查看Msg中的消息参数定义可发现并没有这个参数），
+                    传入的目的是想框架替我们缓存（虽然Msg中定义不需该参数，但框架能接受多余的参数并缓存下来在响应抵达时上报用户），
+                    在响应抵达时我们需要使用该参数判断响应的合法性*/
+            );
         }else{
             req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
-                    ToDoConverter.toCommonPaintTransferObj(op));
+                    ToDoConverter.toCommonPaintTransferObj(op), op.getAuthorE164());
         }
 
         // 对于图片插入操作还需上传图片。
@@ -1336,7 +1330,8 @@ public class DataCollaborateManager extends Caster {
         }
 
         OpPaint opPaint = ToDoConverter.fromPaintTransferObj(rspContent);
-        if (null==opPaint || !opPaint.getAuthorE164().equals(curUserE164)){
+        String authorE164 = (String) reqParas[reqParas.length-1];
+        if (null==opPaint || !opPaint.getAuthorE164().equals(authorE164)){
             return false;
         }
 

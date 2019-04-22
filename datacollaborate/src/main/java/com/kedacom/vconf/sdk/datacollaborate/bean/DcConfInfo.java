@@ -1,7 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
-import androidx.annotation.NonNull;
-
 public class DcConfInfo {
     private String  confE164; // 会议e164
     private String  confName; // 会议名称
@@ -17,10 +15,15 @@ public class DcConfInfo {
         this.bCreator = bCreator;
     }
 
-    @NonNull
     @Override
     public String toString() {
-        return "{"+String.format("confE164=%s, confName=%s, mode=%s, confType=%s", confE164, confName, confMode, confType)+"}";
+        return "DcConfInfo{" +
+                "confE164='" + confE164 + '\'' +
+                ", confName='" + confName + '\'' +
+                ", confMode=" + confMode +
+                ", confType=" + confType +
+                ", bCreator=" + bCreator +
+                '}';
     }
 
     public String getConfE164() {
