@@ -29,6 +29,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfAddr;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConf;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
@@ -217,6 +218,14 @@ public enum Msg {
     @Response(clz = BaseTypeString.class,
             id = "DcsReleaseConf_Ntf")
     DCReleaseConfNtf,
+
+
+    /**
+     * 数据协作相关参数设置变更，如协作模式被修改。
+     * */
+    @Response(clz = TDCSConfInfo.class,
+            id = "DcsUpdateConfInfo_Ntf")
+    DCConfParaChanged,
 
 
     // 数据协作权限控制相关

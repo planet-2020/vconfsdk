@@ -23,6 +23,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.EmDcsOper;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperContent;
@@ -554,6 +555,10 @@ final class ToDoConverter {
 
     public static DcConfInfo fromTransferObj(TDCSCreateConfResult to) {
         return new DcConfInfo(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType), to.bCreator);
+    }
+
+    public static DcConfInfo fromTransferObj(TDCSConfInfo to) {
+        return new DcConfInfo(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType), false);
     }
 
     public static DCMember fromTransferObj(TDCSConfUserInfo userInfo){

@@ -28,6 +28,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardResult;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConf;
@@ -96,7 +97,7 @@ public class DataCollaborateManager extends Caster {
     public static final int ErrCode_Apply_Operator_Rejected = -6;
 
     // 当前用户e164
-    private String curUserE164;
+    private String curUserE164; // TODO 删掉
 
     // 当前会议e164号
     private String curDcConfE164;
@@ -114,6 +115,7 @@ public class DataCollaborateManager extends Caster {
             Msg.DCBuildLink4ConfRsp,
             Msg.DCConfCreated,
             Msg.DCReleaseConfNtf,
+            Msg.DCConfParaChanged,
     };
 
     // 协作权相关通知
@@ -487,6 +489,17 @@ public class DataCollaborateManager extends Caster {
         req(Msg.DCCancelOperator, resultListener, e164);
     }
 
+    /**获取所有成员
+     * @param resultListener 结果监听器。
+     *                       成功返回结果List<{@link DCMember}>：
+     *                       resultListener.onSuccess(List<DCMember>);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
+    public void queryAllMembers(IResultListener resultListener){
+        req(Msg.DCQueryAllMembers, resultListener, curDcConfE164);
+    }
+
 
 
     /**
@@ -772,7 +785,18 @@ public class DataCollaborateManager extends Caster {
                     curDcConfE164 = null;
                 }
                 break;
+
+            case DCConfParaChanged:
+                dcConfInfo = ToDoConverter.fromTransferObj((TDCSConfInfo)ntfContent);
+                if (dcConfInfo.getConfE164().equals(curDcConfE164)){
+                    for (Object listener : listeners){
+                        ((IOnSessionEventListener)listener).onDCConfParaChanged(dcConfInfo);
+                    }
+                }
+                break;
+
         }
+
     }
 
 
@@ -1615,6 +1639,12 @@ public class DataCollaborateManager extends Caster {
          * 数据协作结束
          * */
         void onDcReleased();
+
+        /**
+         * 数据协作会议参数设置变更（如协作模式被修改）
+         * @param dcConfInfo 数据协作会议信息
+         * */
+        void onDCConfParaChanged(DcConfInfo dcConfInfo);
 
         /**
          * 数据协作异常，如中途断链等。

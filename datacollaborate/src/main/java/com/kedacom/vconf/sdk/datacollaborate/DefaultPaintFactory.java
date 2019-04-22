@@ -22,7 +22,7 @@ public class DefaultPaintFactory implements IPaintFactory {
     @Override
     public IPainter createPainter() {
         return new DefaultPainter(context);
-    }
+    }  // TODO 添加PainterInfo参数
 
     @Override
     public IPaintBoard createPaintBoard(@NonNull BoardInfo boardInfo) {
