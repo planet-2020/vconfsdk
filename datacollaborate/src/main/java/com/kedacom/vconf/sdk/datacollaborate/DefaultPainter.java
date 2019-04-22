@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 
@@ -36,7 +37,7 @@ public class DefaultPainter implements IPainter {
 
     private PainterInfo painterInfo;
 
-    public DefaultPainter(Context context, PainterInfo painterInfo) {
+    public DefaultPainter(@NonNull Context context, @NonNull PainterInfo painterInfo) {
 
         this.painterInfo = painterInfo;
 
@@ -127,7 +128,7 @@ public class DefaultPainter implements IPainter {
 
 
     @Override
-    public boolean addPaintBoard(IPaintBoard paintBoard) {
+    public boolean addPaintBoard(@NonNull IPaintBoard paintBoard) {
         String boardId = paintBoard.getBoardId();
         if (paintBoards.containsKey(boardId)){
             KLog.p(KLog.ERROR,"board %s already exist!", boardId);
@@ -141,8 +142,9 @@ public class DefaultPainter implements IPainter {
         return true;
     }
 
+    @Nullable
     @Override
-    public IPaintBoard deletePaintBoard(String boardId) {
+    public IPaintBoard deletePaintBoard(@NonNull String boardId) {
         KLog.p(KLog.WARN,"delete board %s", boardId);
         DefaultPaintBoard board =  paintBoards.remove(boardId);
         if (null != board){
@@ -165,8 +167,9 @@ public class DefaultPainter implements IPainter {
     }
 
 
+    @Nullable
     @Override
-    public IPaintBoard switchPaintBoard(String boardId) {
+    public IPaintBoard switchPaintBoard(@NonNull String boardId) {
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
         if(null == paintBoard){
             KLog.p(KLog.ERROR,"no such board %s", boardId);
@@ -178,6 +181,7 @@ public class DefaultPainter implements IPainter {
         return paintBoard;
     }
 
+    @Nullable
     @Override
     public IPaintBoard getPaintBoard(String boardId) {
         return paintBoards.get(boardId);
@@ -194,6 +198,7 @@ public class DefaultPainter implements IPainter {
         return  boards;
     }
 
+    @Nullable
     @Override
     public IPaintBoard getCurrentPaintBoard(){
         if (null == curBoardId) {
@@ -211,7 +216,7 @@ public class DefaultPainter implements IPainter {
 
     private Runnable refreshRunnable = this::refresh;
     @Override
-    public void paint(OpPaint op) {
+    public void paint(@NonNull OpPaint op) {
         String boardId = op.getBoardId();
         DefaultPaintBoard paintBoard = paintBoards.get(boardId);
         if(null == paintBoard){

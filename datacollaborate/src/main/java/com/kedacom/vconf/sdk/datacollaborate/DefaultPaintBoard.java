@@ -126,7 +126,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private static int boardHeight = 1080;
 
 
-    public DefaultPaintBoard(@NonNull Context context, BoardInfo boardInfo) {
+    public DefaultPaintBoard(@NonNull Context context, @NonNull BoardInfo boardInfo) {
         super(context);
 
         this.boardInfo = boardInfo;
@@ -229,7 +229,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public String getBoardId() {
-        return null!=boardInfo ? boardInfo.getId() : null;
+        return boardInfo.getId();
     }
 
     @Override
@@ -295,7 +295,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * @param outputHeight 生成的图片的高，若大于画板高或者小于等于0则取值画板的高。
      * */
     @Override
-    public void snapshot(int area, int outputWidth, int outputHeight, ISnapshotResultListener resultListener) {
+    public void snapshot(int area, int outputWidth, int outputHeight, @NonNull ISnapshotResultListener resultListener) {
         KLog.p("=>");
         if (null == resultListener){
             KLog.p(KLog.ERROR, "null == resultListener");
@@ -488,7 +488,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     @Override
-    public void insertPic(String path) {
+    public void insertPic(@NonNull String path) {
         if (null == onStateChangedListener){
             KLog.p(KLog.ERROR,"onStateChangedListener is null");
             return;
@@ -1490,7 +1490,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * 接收绘制操作
      * @return true 需要刷新，false不需要。
      * */
-    boolean onPaintOp(OpPaint op){
+    boolean onPaintOp(@NonNull OpPaint op){
         String boardId = op.getBoardId();
         if(!boardId.equals(getBoardId())){
             KLog.p(KLog.ERROR,"op %s is not for %s", op, getBoardId());
