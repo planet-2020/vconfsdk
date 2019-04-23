@@ -452,6 +452,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     /**
+     * 设置可撤销步数上限（为了对齐网呈的实现）
+     * @param limit 步数上限，不设置或者limit<=0则默认为5步
+     * */
+    @Override
+    public void setWcRevocableOpsCountLimit(int limit) {
+        wcRevocableOpsCountLimit = limit>0?limit:5;
+    }
+
+    @Override
+    public int getWcRevocableOpsCountLimit() {
+        return wcRevocableOpsCountLimit;
+    }
+
+    /**
      * 画板是否是空。
      * NOTE: “空”的必要条件是视觉上画板没有内容，但是使用“擦除”操作清掉画板的内容并不会被判定为画板为空。
      * @return 若没有图片且 {@link #isClear()}为真则返回true，否则返回false。
@@ -1428,11 +1442,41 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
             tmpShapeOps.clear(); // 清空己端正在等待平台确认的操作
         }
+
+        int lastWcRevocableOpsCount = wcRevocableOpsCount;
+        int lastWcRestorableOpsCount = wcRestorableOpsCount;
+        int lastRevokedOpsCount = opWrapper.getRevokedOpsCount();
+        int lastRevocableOpsCount = opWrapper.getRevocableOpsCount();
+
         if (!opWrapper.addShapeOp(shapeOp)) return false;
+
+        if (shapeOp instanceof IRepealable) {
+            boolean bRefresh = true;
+            if (EOpType.DRAW_PATH == shapeOp.getType()
+                    && !((OpDrawPath) shapeOp).isFinished()){ // 未完成的画线不能被撤销
+                bRefresh = false;
+            }
+            if (bRefresh) {
+                wcRestorableOpsCount = 0;
+                ++wcRevocableOpsCount;
+                wcRevocableOpsCount = wcRevocableOpsCount > wcRevocableOpsCountLimit ? wcRevocableOpsCountLimit : wcRevocableOpsCount;
+            }
+        }
 
         if (null != onStateChangedListener){
             onStateChangedListener.onChanged(getBoardId());
-            onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRevokedOpsCount(),opWrapper.getRevocableOpsCount());
+            int revokedOpsCount = opWrapper.getRevokedOpsCount();
+            int revocableOpsCount = opWrapper.getRevocableOpsCount();
+            if (lastRevokedOpsCount != revokedOpsCount
+                    || lastRevocableOpsCount != revocableOpsCount) {
+//                KLog.p("revokedOpsCount=%s, revocableOpsCount=%s", revokedOpsCount, revocableOpsCount);
+                onStateChangedListener.onRepealableStateChanged(getBoardId(), revokedOpsCount, revocableOpsCount);
+            }
+            if (lastWcRevocableOpsCount != wcRevocableOpsCount
+                    || lastWcRestorableOpsCount != wcRestorableOpsCount) {
+//                KLog.p("wcRevocableOpsCount=%s, wcRestorableOpsCount=%s", wcRevocableOpsCount, wcRestorableOpsCount);
+                onStateChangedListener.onWcRevocableStateChanged(getBoardId(), wcRevocableOpsCount, wcRestorableOpsCount);
+            }
             refreshEmptyState();
         }
 
@@ -1441,13 +1485,37 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
+    /**
+     * 对齐网呈的可撤销操作数上限
+     * */
+    private int wcRevocableOpsCountLimit = 5;
+    /**
+     * 对齐网呈的可撤销操作数
+     * */
+    private int wcRevocableOpsCount;
+    /**
+     * 对齐网呈的可恢复操作数
+     * */
+    private int wcRestorableOpsCount;
+
     private boolean dealControlOp(OpPaint op){
 
         if (!opWrapper.addControlOp(op)) return false;
 
+        if (EOpType.UNDO==op.getType()){
+            --wcRevocableOpsCount;
+            ++wcRestorableOpsCount;
+        }else if (EOpType.REDO==op.getType()){
+            --wcRestorableOpsCount;
+            ++wcRevocableOpsCount;
+        }
+
         if (null != onStateChangedListener){
             onStateChangedListener.onChanged(getBoardId());
+//            KLog.p("revokedOpsCount=%s, revocableOpsCount=%s", opWrapper.getRevokedOpsCount(), opWrapper.getRevocableOpsCount());
             onStateChangedListener.onRepealableStateChanged(getBoardId(), opWrapper.getRevokedOpsCount(),opWrapper.getRevocableOpsCount());
+//            KLog.p("wcRevocableOpsCount=%s, wcRestorableOpsCount=%s", wcRevocableOpsCount, wcRestorableOpsCount);
+            onStateChangedListener.onWcRevocableStateChanged(getBoardId(), wcRevocableOpsCount, wcRestorableOpsCount);
             refreshEmptyState();
         }
 
@@ -1762,15 +1830,19 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         default void onZoomRateChanged(String boardId, int percentage){}
         /**
          * 可撤销状态变化。
-         * 触发该方法的场景：
-         * 1、新画板画了第一笔；
-         * 2、执行了撤销操作；
-         * 3、执行了恢复操作；
          * @param repealedOpsCount 已被撤销操作数量
          * @param remnantOpsCount 剩下的可撤销操作数量。如画了3条线撤销了1条则repealedOpsCount=1，remnantOpsCount=2。
          *                        NOTE: 此处的可撤销数量是具体需求无关的，“可撤销”指示的是操作类型，如画线画圆等操作是可撤销的而插入图片放缩等是不可撤销的。
          * */
         default void onRepealableStateChanged(String boardId, int repealedOpsCount, int remnantOpsCount){}
+
+        /**
+         * 可撤销状态变化（对齐网呈实现）。
+         * @param revocableOpsCount 可撤销操作数量
+         * @param restorableOpsCount 可恢复操作数量
+         * */
+        default void onWcRevocableStateChanged(String boardId, int revocableOpsCount, int restorableOpsCount){}
+
         /**
          * 画板内容为空状态变化（即画板内容从有到无或从无到有）。
          * 画板内容包括图形和图片。

@@ -104,15 +104,17 @@ public interface IPainter {
         default void onZoomRateChanged(String boardId, int percentage){}
         /**
          * 可撤销状态变化。
-         * 触发该方法的场景：
-         * 1、新画板画了第一笔；
-         * 2、执行了撤销操作；
-         * 3、执行了恢复操作；
          * @param repealedOpsCount 已被撤销操作数量
          * @param remnantOpsCount 剩下的可撤销操作数量。如画了3条线撤销了1条则repealedOpsCount=1，remnantOpsCount=2。
          *                        NOTE: 此处的可撤销数量是具体需求无关的，“可撤销”指示的是操作类型，如画线画圆等操作是可撤销的而插入图片放缩等是不可撤销的。
          * */
         default void onRepealableStateChanged(String boardId, int repealedOpsCount, int remnantOpsCount){}
+        /**
+         * 可撤销状态变化（对齐网呈实现）。
+         * @param revocableOpsCount 可撤销操作数量
+         * @param restorableOpsCount 可恢复操作数量
+         * */
+        default void onWcRevocableStateChanged(String boardId, int revocableOpsCount, int restorableOpsCount){}
         /**
          * 画板内容为空状态变化（即画板内容从有到无或从无到有）。
          * 画板内容包括图形和图片。

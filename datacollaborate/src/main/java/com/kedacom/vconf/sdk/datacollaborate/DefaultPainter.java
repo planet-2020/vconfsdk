@@ -280,6 +280,11 @@ public class DefaultPainter implements IPainter {
         }
 
         @Override
+        public void onWcRevocableStateChanged(String boardId, int revocableOpsCount, int restorableOpsCount) {
+            if (null != onBoardStateChangedListener) onBoardStateChangedListener.onWcRevocableStateChanged(boardId, revocableOpsCount, restorableOpsCount);
+        }
+
+        @Override
         public void onEmptyStateChanged(String boardId, boolean bEmptied) {
             if (null != onBoardStateChangedListener) onBoardStateChangedListener.onEmptyStateChanged(boardId, bEmptied);
         }

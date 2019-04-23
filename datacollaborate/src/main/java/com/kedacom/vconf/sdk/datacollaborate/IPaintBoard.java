@@ -196,6 +196,16 @@ public interface IPaintBoard {
     int getMaxZoomRate();
 
     /**
+     * 设置可撤销步数上限（为了对齐网呈的实现）
+     * */
+    void setWcRevocableOpsCountLimit(int limit);
+    /**
+     * 获取可撤销步数上限（对齐网呈的实现）
+     * */
+    int getWcRevocableOpsCountLimit();
+
+
+    /**
      * 获取被撤销操作数量。
      * 对于有限制撤销步数的情形可用来判断是否应该允许用户继续撤销。
      * NOTE: 撤销数量会在画板上新添可撤销操作时清零。
