@@ -79,7 +79,7 @@ public interface IPainter {
 
     /**
      * 画板状态变化监听器。
-     * NOTE: 临摹者不能监听画板状态变化。（临摹者设置无效）
+     * NOTE: 若画师角色为临摹者{@link #ROLE_COPIER}则该监听器的回调不会被触发
      * */
     interface IOnBoardStateChangedListener{
 
@@ -104,15 +104,21 @@ public interface IPainter {
         default void onZoomRateChanged(String boardId, int percentage){}
         /**
          * 可撤销状态变化。
+         * NOTE: 该接口和{@link #onWcRevocableStateChanged(String, int, int)} 二选一，不要同时实现。
          * @param repealedOpsCount 已被撤销操作数量
-         * @param remnantOpsCount 剩下的可撤销操作数量。如画了3条线撤销了1条则repealedOpsCount=1，remnantOpsCount=2。
+         * @param remnantOpsCount 剩下的可撤销操作数量。
+         *                        如画了10条线撤销了2条则repealedOpsCount=2，remnantOpsCount=8。
+         *                        然后又画了一条则repealedOpsCount=0（新的可撤销操作会导致已撤销操作清空），remnantOpsCount=9
          *                        NOTE: 此处的可撤销数量是具体需求无关的，“可撤销”指示的是操作类型，如画线画圆等操作是可撤销的而插入图片放缩等是不可撤销的。
          * */
         default void onRepealableStateChanged(String boardId, int repealedOpsCount, int remnantOpsCount){}
-        /**
-         * 可撤销状态变化（对齐网呈实现）。
+        /** 可撤销状态变化（对齐网呈实现）。
          * @param revocableOpsCount 可撤销操作数量
          * @param restorableOpsCount 可恢复操作数量
+         * NOTE: 该接口和{@link #onRepealableStateChanged(String, int, int)}二选一，不要同时实现。
+         * 该接口的行为模仿了某些软件如PS的“保存历史记录条数X”功能，如使用{@link IPaintBoard#setWcRevocableOpsCountLimit(int)}
+         * 设置撤销步数上限为5，然后绘制10笔，撤销2笔，再画一笔，则revocableOpsCount=4, restorableOpsCount=0，作为对比
+         * {@link #onRepealableStateChanged(String, int, int)}将返回repealedOpsCount=0, remnantOpsCount=9
          * */
         default void onWcRevocableStateChanged(String boardId, int revocableOpsCount, int restorableOpsCount){}
         /**

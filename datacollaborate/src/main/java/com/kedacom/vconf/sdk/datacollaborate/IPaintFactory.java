@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 public interface IPaintFactory {
     /**
      * 创建画师
+     * @param painterInfo 画师信息
      * */
     IPainter createPainter(@NonNull PainterInfo painterInfo);
     /**

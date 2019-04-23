@@ -569,7 +569,10 @@ public class DataCollaborateManager extends Caster {
 
 
     /**发布绘制操作
-     * @param op 绘制操作*/
+     * @param op 绘制操作
+     * @param resultListener 结果监听器
+     *                       成功返回平台广播的发布成功的OpPaint，否则返回超时
+     * */
     public void publishPaintOp(OpPaint op, IResultListener resultListener){
         Object to = ToDoConverter.toPaintTransferObj(op);
         if (null != to) {
