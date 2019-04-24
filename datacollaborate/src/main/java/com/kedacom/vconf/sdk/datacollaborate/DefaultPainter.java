@@ -37,12 +37,12 @@ public class DefaultPainter implements IPainter {
 
     private PainterInfo painterInfo;
 
-    public DefaultPainter(@NonNull Context context, @NonNull PainterInfo painterInfo) {
+    public DefaultPainter(@NonNull Context context, @NonNull PainterInfo painterInfo, LifecycleOwner lifecycleOwner) {
 
         this.painterInfo = painterInfo;
 
-        if (context instanceof LifecycleOwner){
-            ((LifecycleOwner)context).getLifecycle().addObserver(new DefaultLifecycleObserver(){
+        if (null != lifecycleOwner){
+            lifecycleOwner.getLifecycle().addObserver(new DefaultLifecycleObserver(){
                 @Override
                 public void onCreate(@NonNull LifecycleOwner owner) {
                     KLog.p("LifecycleOwner %s created", owner);

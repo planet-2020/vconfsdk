@@ -6,23 +6,26 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.PainterInfo;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.lifecycle.LifecycleOwner;
 
 public class DefaultPaintFactory implements IPaintFactory {
 
-    Context context;
+    private Context context;
+    private LifecycleOwner lifecycleOwner;
 
     /**
-     * @param context 工厂上下文。NOTE: 如果该上下文为生命周期拥有者（LifecycleOwner实例），
-     *                则工厂创建出来的产品生命周期将自动与其绑定，即当该上下文被销毁时产品亦被销毁。
+     * @param lifecycleOwner 绑定的生命周期拥有者，若不为null则生产的产品的生命周期将绑定到该lifecycleOwner——当其销毁时产品亦随之销毁。
      * */
-    public DefaultPaintFactory(@NonNull Context context){
+    public DefaultPaintFactory(@NonNull Context context, @Nullable LifecycleOwner lifecycleOwner){
         this.context = context;
+        this.lifecycleOwner = lifecycleOwner;
     }
 
 
     @Override
     public IPainter createPainter(@NonNull PainterInfo painterInfo) {
-        return new DefaultPainter(context, painterInfo);
+        return new DefaultPainter(context, painterInfo, lifecycleOwner);
     }
 
     @Override
