@@ -270,15 +270,15 @@ final class ToDoConverter {
         OpDrawPath opDrawPath = new OpDrawPath(fromTransferObj(pencil.atPList));
         assignDrawDomainObj(dcPathOp.MainParam, dcPathOp.AssParam.tPencil.tEntity.achEntityId,
                 pencil.dwLineWidth, pencil.dwRgb, opDrawPath);
-        opDrawPath.setFinished(dcPathOp.AssParam.tPencil.tEntity.bLock);
+        opDrawPath.setFinished(dcPathOp.AssParam.bFinished);
         return opDrawPath;
     }
 
     public static TDCSWbPencilOperInfo toTransferObj(OpDrawPath domainObj) {
-        TDCSWbPencil tdcsWbPencil = new TDCSWbPencil(new TDCSWbEntity(domainObj.getUuid(), domainObj.isFinished()),
+        TDCSWbPencil tdcsWbPencil = new TDCSWbPencil(new TDCSWbEntity(domainObj.getUuid()),
                 toTransferObj(domainObj.getPoints()),
                 domainObj.getStrokeWidth(), domainObj.getColor());
-        return new TDCSWbPencilOperInfo(domainObj.getBoardId(), tdcsWbPencil);
+        return new TDCSWbPencilOperInfo(domainObj.getBoardId(), 0, tdcsWbPencil, domainObj.isFinished());
     }
 
 
