@@ -129,13 +129,6 @@ public interface IPaintBoard {
      * */
     boolean isClear();
 
-
-
-    /**
-     * 设置画板配置
-     * */
-    void setConfig(@NonNull Config config);
-
     /**
      * 获取画板配置
      * */

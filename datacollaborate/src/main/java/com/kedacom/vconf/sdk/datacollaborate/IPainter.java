@@ -48,16 +48,11 @@ public interface IPainter {
     int getPaintBoardCount();
 
     /**
-     * 设置下辖所有画板的画板配置
-     * NOTE: 假设下辖A、B两画板，
-     * 若先通过该接口设置了CfgAll，然后对B画板使用{@link IPaintBoard#setConfig(IPaintBoard.Config)}设置了CfgB，
-     * 则此时A画板配置为CfgAll，B画板配置为CfgB；
-     * 若先对B画板使用{@link IPaintBoard#setConfig(IPaintBoard.Config)}设置了CfgB，然后通过该接口设置了CfgAll，
-     * 则此时A、B两画板配置均为CfgAll；
-     * 后设置的覆盖前设置的，后设置的生效。
+     * 设置下辖所有画板的画板配置。
+     * NOTE: 对某个特定画板而言此方法跟{@link IPaintBoard#getConfig()}.setXXX是竞争关系，后设置的生效。
+     * @param config 画板配置。
      * */
     void setBoardConfig(@NonNull IPaintBoard.Config config);
-
 
     /**开始绘制*/
     void start();

@@ -84,7 +84,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private int focusedLayer = LAYER_ALL;
 
     // 画板配置
-    private Config config = new Config();
+    private final Config config = new Config();
 
     // 画板状态监听器
     private IOnStateChangedListener onStateChangedListener;
@@ -399,11 +399,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     @Override
     public boolean isClear(){
         return null==adjustingShapeOp && tmpShapeOps.isEmpty() && opWrapper.isClear();
-    }
-
-    @Override
-    public void setConfig(Config config) {
-        this.config.set(config);
     }
 
     @Override
