@@ -5,6 +5,8 @@ import android.view.View;
 
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 
+import androidx.annotation.NonNull;
+
 /**
  * 画板。
  * 负责：
@@ -33,82 +35,11 @@ public interface IPaintBoard {
      * */
     View getBoardView();
 
-    // 工具
-    /**
-     * 铅笔（任意曲线）
-     * */
-    int TOOL_PENCIL = 1;
-    /**
-     * 直线
-     * */
-    int TOOL_LINE = 2;
-    /**
-     * 矩形
-     * */
-    int TOOL_RECT = 3;
-    /**
-     * 椭圆及圆
-     * */
-    int TOOL_OVAL = 4;
-    /**
-     * 矩形擦除
-     * */
-    int TOOL_RECT_ERASER = 5;
-    /**
-     * 任意擦除
-     * */
-    int TOOL_ERASER = 6;
-
-    /**
-     * 设置工具。
-     * 在进行相关绘制操作前需先设置好对应的工具。
-     * 如画任意曲线需设置TOOL_PENCIL, 画直线需设置TOOL_LINE。
-     * */
-    void setTool(int style);
-
-    /**
-     * 获取当前使用的工具
-     * */
-    int getTool();
-
-    /**
-     * 设置画笔粗细。
-     * @param width 粗细。单位：pixel
-     * */
-    void setPaintStrokeWidth(int width);
-
-    /**
-     * 获取当前画笔粗细
-     * */
-    int getPaintStrokeWidth();
-
-    /**
-     * 设置画笔颜色。
-     * @param color 颜色值。NOTE:必须为正整数，如果是字面值注意加后缀"L"，如0xFFFFFFFFL。
-     * */
-    void setPaintColor(long color);
-
-    /**
-     * 获取当前画笔颜色
-     * */
-    long getPaintColor();
-
-    /**
-     * 设置橡皮擦尺寸（size*size）。
-     * @param size 橡皮擦尺寸。单位：pixel
-     * */
-    void setEraserSize(int size);
-
-    /**
-     * 获取橡皮擦尺寸
-     * */
-    int getEraserSize();
-
     /**
      * 插入图片
      * @param picPath 图片绝对路径
      * */
-    void insertPic(String picPath);
+    void insertPic(@NonNull String picPath);
 
 
     // 快照区域
@@ -136,7 +67,7 @@ public interface IPaintBoard {
      * @param outputHeight 生成的图片的高
      * @param resultListener 结果监听器。
      * */
-    void snapshot(int area, int outputWidth, int outputHeight, ISnapshotResultListener resultListener);
+    void snapshot(int area, int outputWidth, int outputHeight, @NonNull ISnapshotResultListener resultListener);
     interface ISnapshotResultListener{
         void onResult(Bitmap bitmap);
     }
@@ -157,13 +88,6 @@ public interface IPaintBoard {
      * */
     void clearScreen();
 
-//    /**
-//     * 放缩
-//     * @param percentage 百分数。如50代表50%。
-    // SEALED 目前仅支持触摸交互方式，放缩都是画板内部通过感应用户触摸事件做掉了。
-    // 该接口需界面存在放缩按钮的场景下才有用（鼠标操作模式下会有这样的按钮）
-//     * */
-//    void zoom(int percentage);
 
     /**
      * 获取放缩百分数
@@ -171,44 +95,10 @@ public interface IPaintBoard {
      * */
     int getZoom();
 
-    /**
-     * 设置最小缩放率
-     * @param rate 缩放率。如50代表50%。
-     * */
-    void setMinZoomRate(int rate);
-
-    /**
-     * 获取最小缩放率
-     * @return  缩放率。如50代表50%。
-     * */
-    int getMinZoomRate();
-
-    /**
-     * 设置最大缩放率
-     * @param rate 缩放率。如300代表300%。
-     * */
-    void setMaxZoomRate(int rate);
-
-    /**
-     * 获取最大缩放率
-     * @@return  缩放率。如300代表300%。
-     * */
-    int getMaxZoomRate();
-
-    /**
-     * 设置可撤销步数上限（为了对齐网呈的实现）
-     * */
-    void setWcRevocableOpsCountLimit(int limit);
-    /**
-     * 获取可撤销步数上限（对齐网呈的实现）
-     * */
-    int getWcRevocableOpsCountLimit();
-
 
     /**
      * 获取被撤销操作数量。
      * 对于有限制撤销步数的情形可用来判断是否应该允许用户继续撤销。
-     * NOTE: 撤销数量会在画板上新添可撤销操作时清零。
      * */
     int getRepealedOpsCount();
 
@@ -238,5 +128,145 @@ public interface IPaintBoard {
      * 清屏状态不代表画板内容为空，目前清屏只针对图形操作，清屏状态只表示画板上所有图形操作已被清掉。
      * */
     boolean isClear();
+
+
+
+    /**
+     * 设置画板配置
+     * */
+    void setConfig(@NonNull Config config);
+
+    /**
+     * 获取画板配置
+     * */
+    Config getConfig();
+
+    /**
+     * 画板配置
+     * */
+    class Config {
+
+        public Config() {
+            tool = Tool.PENCIL;
+            strokeWidth = 5;
+            paintColor = 0xFFFFFFFFL;
+            eraserSize = 20;
+            minZoomRate = 50;
+            maxZoomRate = 300;
+            wcRevocableOpsCountLimit = 5;
+        }
+
+        public Config(@NonNull Tool tool, int strokeWidth, long paintColor, int eraserSize, int minZoomRate, int maxZoomRate, int wcRevocableOpsCountLimit) {
+            this.tool = tool;
+            this.strokeWidth = strokeWidth>0?strokeWidth:5;
+            this.paintColor = paintColor>0?paintColor:0xFFFFFFFFL;
+            this.eraserSize = eraserSize>0?eraserSize:20;
+            this.minZoomRate = minZoomRate>0?minZoomRate:50;
+            this.maxZoomRate = maxZoomRate>100?maxZoomRate:100;
+            this.wcRevocableOpsCountLimit = wcRevocableOpsCountLimit>0?wcRevocableOpsCountLimit:5;
+        }
+
+
+        public void set(@NonNull Config config){
+            tool = config.tool;
+            strokeWidth = config.strokeWidth;
+            paintColor = config.paintColor;
+            eraserSize = config.eraserSize;
+            minZoomRate = config.minZoomRate;
+            maxZoomRate = config.maxZoomRate;
+            wcRevocableOpsCountLimit = config.wcRevocableOpsCountLimit;
+        }
+
+        /**
+         * 绘制工具。
+         * 在进行相关绘制操作前需先设置好对应的工具。
+         * 如画任意曲线需设置PENCIL, 画直线需设置LINE。
+         * */
+        public enum Tool{
+            PENCIL,     // 铅笔（任意曲线）
+            LINE,       // 直线
+            RECT,       // 矩形
+            OVAL,       // 椭圆/圆
+            ERASER,     // 擦除器
+            RECT_ERASER, // 矩形擦除器
+        }
+
+        Tool tool;
+        public void setTool(@NonNull Tool tool){
+            this.tool = tool;
+        }
+        public Tool getTool(){
+            return tool;
+        }
+
+        /**
+         * 画笔粗细，单位：pixel
+         * */
+        int strokeWidth;
+        public void setPaintStrokeWidth(int width){
+            this.strokeWidth = width>0?width:5;
+        }
+        public int getPaintStrokeWidth(){
+            return strokeWidth;
+        }
+
+        /**
+         * 画笔颜色。
+         * NOTE:必须为正整数，如果是字面值注意加后缀"L"，如0xFFFFFFFFL。
+         * */
+        long paintColor;
+        public void setPaintColor(long color){
+            paintColor = color>0?color:0xFFFFFFFFL;
+        }
+        public long getPaintColor(){
+            return paintColor;
+        }
+
+        /**
+         * 橡皮擦尺寸， 单位：pixel
+         * */
+        int eraserSize;
+        public void setEraserSize(int size){
+            eraserSize = size>0?size:20;
+        }
+        public int getEraserSize(){
+            return eraserSize;
+        }
+
+        /**
+         * 最小缩放率, 如50代表50%。
+         * */
+        int minZoomRate;
+        public void setMinZoomRate(int rate){
+            minZoomRate = rate>0?rate:50;
+        }
+        public int getMinZoomRate(){
+            return minZoomRate;
+        }
+
+        /**
+         * 最大缩放率,如300代表300%。
+         * */
+        int maxZoomRate;
+        public void setMaxZoomRate(int rate){
+            maxZoomRate = rate>100?rate:100;
+        }
+        public int getMaxZoomRate(){
+            return maxZoomRate;
+        }
+
+        /**
+         * 可撤销步数上限（为了对齐网呈的实现）
+         * */
+        int wcRevocableOpsCountLimit;
+        public void setWcRevocableOpsCountLimit(int limit){
+            wcRevocableOpsCountLimit = limit>0?limit:5;
+        }
+        public int getWcRevocableOpsCountLimit(){
+            return wcRevocableOpsCountLimit;
+        }
+
+    }
+
 
 }

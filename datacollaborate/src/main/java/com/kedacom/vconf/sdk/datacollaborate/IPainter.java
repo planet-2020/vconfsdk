@@ -12,6 +12,8 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 
 import java.util.List;
 
+import androidx.annotation.NonNull;
+
 /**
  * 画师。
  * 负责管理画板以及在画板上绘制。
@@ -19,22 +21,22 @@ import java.util.List;
 public interface IPainter {
 
     /**添加画板*/
-    boolean addPaintBoard(IPaintBoard paintBoard);
+    boolean addPaintBoard(@NonNull IPaintBoard paintBoard);
 
     /**删除画板
      * @param boardId 画板Id*/
-    IPaintBoard deletePaintBoard(String boardId);
+    IPaintBoard deletePaintBoard(@NonNull String boardId);
 
     /**删除所有画板*/
     void deleteAllPaintBoards();
 
     /**切换画板
      * @param boardId 画板Id*/
-    IPaintBoard switchPaintBoard(String boardId);
+    IPaintBoard switchPaintBoard(@NonNull String boardId);
 
     /**获取画板
      * @param boardId 画板Id*/
-    IPaintBoard getPaintBoard(String boardId);
+    IPaintBoard getPaintBoard(@NonNull String boardId);
 
     /**获取所有画板*/
     List<IPaintBoard> getAllPaintBoards();
@@ -44,6 +46,18 @@ public interface IPainter {
 
     /**获取画板数量*/
     int getPaintBoardCount();
+
+    /**
+     * 设置下辖所有画板的画板配置
+     * NOTE: 假设下辖A、B两画板，
+     * 若先通过该接口设置了CfgAll，然后对B画板使用{@link IPaintBoard#setConfig(IPaintBoard.Config)}设置了CfgB，
+     * 则此时A画板配置为CfgAll，B画板配置为CfgB；
+     * 若先对B画板使用{@link IPaintBoard#setConfig(IPaintBoard.Config)}设置了CfgB，然后通过该接口设置了CfgAll，
+     * 则此时A、B两画板配置均为CfgAll；
+     * 后设置的覆盖前设置的，后设置的生效。
+     * */
+    void setBoardConfig(@NonNull IPaintBoard.Config config);
+
 
     /**开始绘制*/
     void start();
@@ -59,7 +73,7 @@ public interface IPainter {
 
     /**绘制
      * @param op 绘制操作*/
-    void paint(OpPaint op);
+    void paint(@NonNull OpPaint op);
 
 
     /**
@@ -77,16 +91,19 @@ public interface IPainter {
      * */
     void setRole(int role);
 
+
+
     /**
      * 画板状态变化监听器。
-     * NOTE: 若画师角色为临摹者{@link #ROLE_COPIER}则该监听器的回调不会被触发
      * */
     interface IOnBoardStateChangedListener{
 
         /**
          * 生成了绘制操作。（主动绘制）
          * @param op 绘制操作
-         * @param publishResultListener 发布结果监听器。（生成的绘制操作可发布给其他与会方）*/
+         * @param publishResultListener 发布结果监听器。（生成的绘制操作可发布给其他与会方）
+        //     * NOTE: 若画师角色为临摹者{@link #ROLE_COPIER}则该回调不会被触发 // TODO 设置Publisher，去掉setRole()
+         * */
         default void onPaintOpGenerated(String boardId, OpPaint op, IResultListener publishResultListener){}
 
         /**
@@ -116,7 +133,7 @@ public interface IPainter {
          * @param revocableOpsCount 可撤销操作数量
          * @param restorableOpsCount 可恢复操作数量
          * NOTE: 该接口和{@link #onRepealableStateChanged(String, int, int)}二选一，不要同时实现。
-         * 该接口的行为模仿了某些软件如PS的“保存历史记录条数X”功能，如使用{@link IPaintBoard#setWcRevocableOpsCountLimit(int)}
+         * 该接口的行为模仿了某些软件如PS的“保存历史记录条数X”功能，
          * 设置撤销步数上限为5，然后绘制10笔，撤销2笔，再画一笔，则revocableOpsCount=4, restorableOpsCount=0，作为对比
          * {@link #onRepealableStateChanged(String, int, int)}将返回repealedOpsCount=0, remnantOpsCount=9
          * */

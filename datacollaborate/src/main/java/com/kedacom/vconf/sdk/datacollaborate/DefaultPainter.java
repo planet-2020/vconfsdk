@@ -213,6 +213,13 @@ public class DefaultPainter implements IPainter {
         return paintBoards.size();
     }
 
+    @Override
+    public void setBoardConfig(IPaintBoard.Config config) {
+        for (DefaultPaintBoard board : paintBoards.values()){
+            board.setConfig(config);
+        }
+    }
+
 
     private Runnable refreshRunnable = this::refresh;
     @Override

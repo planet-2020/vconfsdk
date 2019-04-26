@@ -45,6 +45,8 @@ import java.util.Stack;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import static com.kedacom.vconf.sdk.datacollaborate.IPaintBoard.Config.Tool.*;
+
 public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     // 画板信息
@@ -81,21 +83,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     static int LAYER_ALL =  109;
     private int focusedLayer = LAYER_ALL;
 
-    // 工具
-    private int tool = TOOL_PENCIL;
-
-    // 画笔粗细。单位：pixel
-    private int paintStrokeWidth = 5;
-
-    // 画笔颜色
-    private long paintColor = 0xFFFFFFFFL;
-
-    // 橡皮擦尺寸。单位：pixel
-    private int eraserSize = 25;
-
-    // 放缩比例上下限
-    private float minZoomRate = 0.1f;
-    private float maxZoomRate = 10f;
+    // 画板配置
+    private Config config = new Config();
 
     // 画板状态监听器
     private IOnStateChangedListener onStateChangedListener;
@@ -242,46 +231,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return this;
     }
 
-
-    @Override
-    public void setTool(int style) {
-        this.tool = style;
-    }
-
-    @Override
-    public int getTool() {
-        return tool;
-    }
-
-    @Override
-    public void setPaintStrokeWidth(int width) {
-        this.paintStrokeWidth = width;
-    }
-
-    @Override
-    public int getPaintStrokeWidth() {
-        return paintStrokeWidth;
-    }
-
-    @Override
-    public void setPaintColor(long color) {
-        this.paintColor = color;
-    }
-
-    @Override
-    public long getPaintColor() {
-        return paintColor;
-    }
-
-    @Override
-    public void setEraserSize(int size) {
-        eraserSize = size;
-    }
-
-    @Override
-    public int getEraserSize() {
-        return eraserSize;
-    }
 
 
     /**
@@ -431,39 +380,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         return (int) Math.ceil(matrixValue[Matrix.MSCALE_X]*100);
     }
 
-    @Override
-    public void setMinZoomRate(int rate) {
-        minZoomRate = rate/100f;
-    }
-
-    @Override
-    public int getMinZoomRate() {
-        return (int) (minZoomRate*100);
-    }
-
-    @Override
-    public void setMaxZoomRate(int rate) {
-        maxZoomRate = rate/100f;
-    }
-
-    @Override
-    public int getMaxZoomRate() {
-        return (int) (maxZoomRate * 100);
-    }
-
-    /**
-     * 设置可撤销步数上限（为了对齐网呈的实现）
-     * @param limit 步数上限，不设置或者limit<=0则默认为5步
-     * */
-    @Override
-    public void setWcRevocableOpsCountLimit(int limit) {
-        wcRevocableOpsCountLimit = limit>0?limit:5;
-    }
-
-    @Override
-    public int getWcRevocableOpsCountLimit() {
-        return wcRevocableOpsCountLimit;
-    }
 
     /**
      * 画板是否是空。
@@ -483,6 +399,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     @Override
     public boolean isClear(){
         return null==adjustingShapeOp && tmpShapeOps.isEmpty() && opWrapper.isClear();
+    }
+
+    @Override
+    public void setConfig(Config config) {
+        this.config.set(config);
+    }
+
+    @Override
+    public Config getConfig() {
+        return config;
     }
 
     @Override
@@ -789,10 +715,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onScale(float factor, float focusX, float focusY) {
             float curZoomRate = MatrixHelper.getScale(tmpMatrix);
             float zoomRate = curZoomRate * factor;
-            if (zoomRate < minZoomRate) {
-                tmpMatrix.postScale(minZoomRate/curZoomRate, minZoomRate/curZoomRate, focusX, focusY);
-            }else if (zoomRate > maxZoomRate){
-                tmpMatrix.postScale(maxZoomRate/curZoomRate, maxZoomRate/curZoomRate, focusX, focusY);
+            if (zoomRate < config.minZoomRate) {
+                tmpMatrix.postScale(config.minZoomRate/curZoomRate, config.minZoomRate/curZoomRate, focusX, focusY);
+            }else if (zoomRate > config.maxZoomRate){
+                tmpMatrix.postScale(config.maxZoomRate/curZoomRate, config.maxZoomRate/curZoomRate, focusX, focusY);
             }else {
                 tmpMatrix.postScale(factor, factor, focusX, focusY);
             }
@@ -1105,36 +1031,36 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     private void startShapeOp(float x, float y){
-        switch (tool){
-            case TOOL_PENCIL:
+        switch (config.tool){
+            case PENCIL:
                 OpDrawPath opDrawPath = new OpDrawPath(new ArrayList<>());
                 opDrawPath.addPoint(new PointF(x, y));
                 adjustingShapeOp = opDrawPath;
                 break;
-            case TOOL_ERASER:
-                OpErase opErase = new OpErase(eraserSize, eraserSize, new ArrayList<>());
+            case ERASER:
+                OpErase opErase = new OpErase(config.eraserSize, config.eraserSize, new ArrayList<>());
                 opErase.addPoint(new PointF(x, y));
                 adjustingShapeOp = opErase;
                 break;
-            case TOOL_LINE:
+            case LINE:
                 OpDrawLine opDrawLine = new OpDrawLine();
                 opDrawLine.setStartX(x);
                 opDrawLine.setStartY(y);
                 adjustingShapeOp = opDrawLine;
                 break;
-            case TOOL_RECT:
+            case RECT:
                 OpDrawRect opDrawRect = new OpDrawRect();
                 opDrawRect.setLeft(x);
                 opDrawRect.setTop(y);
                 adjustingShapeOp = opDrawRect;
                 break;
-            case TOOL_OVAL:
+            case OVAL:
                 OpDrawOval opDrawOval = new OpDrawOval();
                 opDrawOval.setLeft(x);
                 opDrawOval.setTop(y);
                 adjustingShapeOp = opDrawOval;
                 break;
-            case TOOL_RECT_ERASER:
+            case RECT_ERASER:
                 // 矩形擦除先绘制一个虚线矩形框选择擦除区域
                 OpDrawRect opDrawRect1 = new OpDrawRect();
                 opDrawRect1.setLeft(x);
@@ -1142,7 +1068,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 adjustingShapeOp = opDrawRect1;
                 break;
             default:
-                KLog.p(KLog.ERROR, "unknown TOOL %s", tool);
+                KLog.p(KLog.ERROR, "unsupported tool %s", config.tool);
                 return;
         }
 
@@ -1150,44 +1076,44 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     private void adjustShapeOp(float x, float y){
-        switch (tool){
-            case TOOL_PENCIL:
+        switch (config.tool){
+            case PENCIL:
                 OpDrawPath opDrawPath = (OpDrawPath) adjustingShapeOp;
                 opDrawPath.addPoint(new PointF(x, y));
                 break;
-            case TOOL_ERASER:
+            case ERASER:
                 OpErase opErase = (OpErase) adjustingShapeOp;
                 opErase.addPoint(new PointF(x, y));
                 break;
-            case TOOL_LINE:
+            case LINE:
                 OpDrawLine opDrawLine = (OpDrawLine) adjustingShapeOp;
                 opDrawLine.setStopX(x);
                 opDrawLine.setStopY(y);
                 break;
-            case TOOL_RECT:
+            case RECT:
                 OpDrawRect opDrawRect = (OpDrawRect) adjustingShapeOp;
                 opDrawRect.setRight(x);
                 opDrawRect.setBottom(y);
                 break;
-            case TOOL_OVAL:
+            case OVAL:
                 OpDrawOval opDrawOval = (OpDrawOval) adjustingShapeOp;
                 opDrawOval.setRight(x);
                 opDrawOval.setBottom(y);
                 break;
-            case TOOL_RECT_ERASER:
+            case RECT_ERASER:
                 OpDrawRect opDrawRect1 = (OpDrawRect) adjustingShapeOp;
                 opDrawRect1.setRight(x);
                 opDrawRect1.setBottom(y);
                 break;
             default:
-                return;
+                break;
         }
 
     }
 
 
     private void finishShapeOp(){
-        if (TOOL_RECT_ERASER == tool){
+        if (RECT_ERASER == config.tool){
             OpDrawRect opDrawRect = (OpDrawRect) adjustingShapeOp;
             adjustingShapeOp = assignBasicInfo(new OpRectErase(opDrawRect.getLeft(), opDrawRect.getTop(), opDrawRect.getRight(), opDrawRect.getBottom()));
         }
@@ -1350,15 +1276,15 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private <T extends OpPaint> T assignBasicInfo(T op){
         if (op instanceof OpDraw){
             OpDraw opDraw = (OpDraw) op;
-            if (TOOL_ERASER == tool){
-                opDraw.setStrokeWidth(eraserSize);
-            }else if(TOOL_RECT_ERASER == tool){
+            if (ERASER == config.tool){
+                opDraw.setStrokeWidth(config.eraserSize);
+            }else if(RECT_ERASER == config.tool){
                 opDraw.setLineStyle(OpDraw.DASH);
                 opDraw.setStrokeWidth(2);
                 opDraw.setColor(0xFF08b1f2L);
             } else {
-                opDraw.setStrokeWidth(paintStrokeWidth);
-                opDraw.setColor(paintColor);
+                opDraw.setStrokeWidth(config.strokeWidth);
+                opDraw.setColor(config.paintColor);
             }
         }
         op.setConfE164(boardInfo.getConfE164());
@@ -1459,7 +1385,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (bRefresh) {
                 wcRestorableOpsCount = 0;
                 ++wcRevocableOpsCount;
-                wcRevocableOpsCount = wcRevocableOpsCount > wcRevocableOpsCountLimit ? wcRevocableOpsCountLimit : wcRevocableOpsCount;
+                wcRevocableOpsCount = wcRevocableOpsCount > config.wcRevocableOpsCountLimit ?
+                        config.wcRevocableOpsCountLimit : wcRevocableOpsCount;
             }
         }
 
@@ -1485,10 +1412,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    /**
-     * 对齐网呈的可撤销操作数上限
-     * */
-    private int wcRevocableOpsCountLimit = 5;
     /**
      * 对齐网呈的可撤销操作数
      * */
