@@ -47,6 +47,7 @@ import androidx.annotation.Nullable;
 
 import static com.kedacom.vconf.sdk.datacollaborate.IPaintBoard.Config.Tool.*;
 
+@SuppressWarnings("SingleStatementInBlock")
 public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     // 画板信息
@@ -86,8 +87,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     // 画板配置
     private final Config config = new Config();
 
-    // 画板状态监听器
     private IOnStateChangedListener onStateChangedListener;
+    private IOnPaintOpGeneratedListener onPaintOpGeneratedListener;
 
     private DefaultTouchListener boardViewTouchListener;
     private DefaultTouchListener shapeViewTouchListener;
@@ -171,7 +172,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             KLog.p("surface available");
             // 刷新
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+            if (null != onPaintOpGeneratedListener) onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true);
         }
 
         @Override
@@ -193,7 +194,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (null == onStateChangedListener){
+        if (null == onPaintOpGeneratedListener){
+            // 绘制生成监听器为null则不处理触屏事件
             return true;
         }
 
@@ -297,24 +299,27 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             KLog.p(KLog.ERROR,"no op to undo");
             return;
         }
-
-        if (null != onStateChangedListener) {
-            OpPaint opUndo = assignBasicInfo(new OpUndo());
-            onStateChangedListener.onPaintOpGenerated(getBoardId(), opUndo, new IResultListener() {
-                @Override
-                public void onSuccess(Object result) {
-                    if (dealControlOp((OpUndo) result)){
-                        onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null,
-                                true // 平台反馈撤销成功，此时刷新
-                        );
-                    }
-                }
-            },
-
-            false // 暂不刷新，等平台反馈结果再刷新
-
-            );
+        if (null == onPaintOpGeneratedListener) {
+            KLog.p(KLog.ERROR,"null == onPaintOpGeneratedListener");
+            return;
         }
+
+        OpPaint opUndo = assignBasicInfo(new OpUndo());
+        onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), opUndo, new IResultListener() {
+            @Override
+            public void onSuccess(Object result) {
+                if (dealControlOp((OpUndo) result)){
+                    if (null != onPaintOpGeneratedListener)
+                        onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null,
+                            true // 平台反馈撤销成功，此时刷新
+                        );
+                }
+            }
+        },
+
+        false // 暂不刷新，等平台反馈结果再刷新
+
+        );
     }
 
     @Override
@@ -323,22 +328,25 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             KLog.p(KLog.ERROR,"no op to repeal");
             return;
         }
-
-        if (null != onStateChangedListener) {
-            OpPaint opRedo = assignBasicInfo(new OpRedo());
-            onStateChangedListener.onPaintOpGenerated(getBoardId(), opRedo, new IResultListener() {
-                        @Override
-                        public void onSuccess(Object result) {
-                            if (dealControlOp((OpRedo) result)){
-                                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
-                            }
-                        }
-                    },
-
-                    false // 暂不刷新，等平台反馈结果再刷新
-
-            );
+        if (null == onPaintOpGeneratedListener) {
+            KLog.p(KLog.ERROR,"null == onPaintOpGeneratedListener");
+            return;
         }
+
+        OpPaint opRedo = assignBasicInfo(new OpRedo());
+        onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), opRedo, new IResultListener() {
+                    @Override
+                    public void onSuccess(Object result) {
+                        if (dealControlOp((OpRedo) result)){
+                            if (null != onPaintOpGeneratedListener)
+                                onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                        }
+                    }
+                },
+
+                false // 暂不刷新，等平台反馈结果再刷新
+
+        );
     }
 
     @Override
@@ -347,20 +355,24 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             KLog.p(KLog.ERROR, "already cleared");
             return;
         }
-        if (null != onStateChangedListener) {
-            OpPaint opCls = assignBasicInfo(new OpClearScreen());
-            onStateChangedListener.onPaintOpGenerated(getBoardId(), opCls, new IResultListener() {
-                        @Override
-                        public void onSuccess(Object result) {
-                            if (dealShapeOp((OpClearScreen) result)){
-                                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
-                            }
-                        }
-                    },
-
-                    false // 暂不刷新，等平台反馈结果再刷新
-            );
+        if (null == onPaintOpGeneratedListener) {
+            KLog.p(KLog.ERROR,"null == onPaintOpGeneratedListener");
+            return;
         }
+
+        OpPaint opCls = assignBasicInfo(new OpClearScreen());
+        onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), opCls, new IResultListener() {
+                    @Override
+                    public void onSuccess(Object result) {
+                        if (dealShapeOp((OpClearScreen) result)){
+                            if (null != onPaintOpGeneratedListener)
+                                onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                        }
+                    }
+                },
+
+                false // 暂不刷新，等平台反馈结果再刷新
+        );
     }
 
 // SEALED
@@ -424,8 +436,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public void insertPic(@NonNull String path) {
-        if (null == onStateChangedListener){
-            KLog.p(KLog.ERROR,"onStateChangedListener is null");
+        if (null == onPaintOpGeneratedListener){
+            KLog.p(KLog.ERROR,"onPaintOpGeneratedListener is null");
             return;
         }
 
@@ -640,6 +652,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         private long timestamp = System.currentTimeMillis();
         private boolean bDragging = false;
         private boolean bScaling = false;
+        private float minZoom = config.minZoomRate/100f;
+        private float maxZoom = config.maxZoomRate/100f;
         private Matrix tmpMatrix = new Matrix();
         private Matrix confirmedMatrix = new Matrix();
         private IResultListener publishAdjustingOpResultListener = new IResultListener() {
@@ -655,22 +669,23 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (System.currentTimeMillis()-timestamp > 70) {
                 timestamp = System.currentTimeMillis();
                 // 每70ms发布一次
-                onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, publishAdjustingOpResultListener, true);
+                onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), opMatrix, publishAdjustingOpResultListener, true);
             }else{
-                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true);
             }
         }
 
         private void publishConfirmedOp(OpMatrix opMatrix){
             opWrapper.addMatrixOp(opMatrix);
-            onStateChangedListener.onPaintOpGenerated(getBoardId(), opMatrix, new IResultListener() {
+            onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), opMatrix, new IResultListener() {
                 @Override
                 public void onArrive(boolean bSuccess) {
                     if (!bSuccess) {
                         KLog.p(KLog.ERROR,"failed to publish matrix op %s, rollback to %s", opMatrix, confirmedMatrix);
                         // 发布失败回退matrix
                         opWrapper.addMatrixOp(assignBasicInfo(new OpMatrix(confirmedMatrix)));
-                        onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true); // 立即刷新
+                        if (null != onPaintOpGeneratedListener)
+                            onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true); // 立即刷新
                     }
                 }
             }, true);
@@ -688,12 +703,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onMultiFingerDrag(float dx, float dy) {
             tmpMatrix.postTranslate(dx, dy);
-            if (null != onStateChangedListener) publishAdjustingOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
+            publishAdjustingOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
         }
 
         @Override
         public void onMultiFingerDragEnd() {
-            if (null != onStateChangedListener) publishConfirmedOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
+            publishConfirmedOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
             bDragging = false;
             if (!bScaling) bDoingMatrixOp = false;
         }
@@ -710,22 +725,22 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onScale(float factor, float focusX, float focusY) {
             float curZoomRate = MatrixHelper.getScale(tmpMatrix);
             float zoomRate = curZoomRate * factor;
-            if (zoomRate < config.minZoomRate) {
-                tmpMatrix.postScale(config.minZoomRate/curZoomRate, config.minZoomRate/curZoomRate, focusX, focusY);
-            }else if (zoomRate > config.maxZoomRate){
-                tmpMatrix.postScale(config.maxZoomRate/curZoomRate, config.maxZoomRate/curZoomRate, focusX, focusY);
+            if (zoomRate < minZoom) {
+                tmpMatrix.postScale(minZoom/curZoomRate, minZoom/curZoomRate, focusX, focusY);
+            }else if (zoomRate > maxZoom){
+                tmpMatrix.postScale(maxZoom/curZoomRate, maxZoom/curZoomRate, focusX, focusY);
             }else {
                 tmpMatrix.postScale(factor, factor, focusX, focusY);
             }
 
-            if (null != onStateChangedListener) publishAdjustingOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
+            publishAdjustingOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
 
             zoomRateChanged();
         }
 
         @Override
         public void onScaleEnd() {
-            if (null != onStateChangedListener) publishConfirmedOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
+            publishConfirmedOp(assignBasicInfo(new OpMatrix(tmpMatrix)));
             bScaling = false;
             if (!bDragging) bDoingMatrixOp = false;
         }
@@ -750,7 +765,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     opDrawPath.setUuid(adjustingShapeOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
                     publishIndex = points.size();
 
-                    onStateChangedListener.onPaintOpGenerated(getBoardId(), opDrawPath, new IResultListener() {
+                    onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), opDrawPath, new IResultListener() {
                         @Override
                         public void onSuccess(Object result) {
                             dealShapeOp(opDrawPath);
@@ -764,7 +779,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
             }
 
-            onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+            onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true);
         }
 
         @Override
@@ -779,7 +794,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (null == adjustingShapeOp) return; // 当前绘制被清掉了
             float[] pos = getRidOfMatrix(x, y);
             adjustShapeOp(pos[0], pos[1]);
-            if (null != onStateChangedListener) publish();  // 曲线绘制要求时序以落笔时为准（不同于其他绘制以抬笔时为准）
+            publish();  // 曲线绘制要求时序以落笔时为准（不同于其他绘制以抬笔时为准）
         }
 
         @Override
@@ -790,46 +805,45 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             synchronized (adjustingShapeOpLock) {
                 adjustingShapeOp = null;
             }
-            if (null != onStateChangedListener) {
-                tmpShapeOps.offerLast(tmpOp);
-                OpPaint finalTmpOp = tmpOp;
-                if (EOpType.DRAW_PATH == tmpOp.getType()){
-                    List<PointF> points = ((OpDrawPath) tmpOp).getPoints();
-                    int pointsSize = points.size();
-                    OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, pointsSize)));
-                    opDrawPath.setUuid(tmpOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
-                    opDrawPath.setFinished(true); // 增量绘制完成
-                    publishIndex = pointsSize;
 
-                    tmpOp = opDrawPath;
-                }
+            tmpShapeOps.offerLast(tmpOp);
+            OpPaint finalTmpOp = tmpOp;
+            if (EOpType.DRAW_PATH == tmpOp.getType()){
+                List<PointF> points = ((OpDrawPath) tmpOp).getPoints();
+                int pointsSize = points.size();
+                OpDrawPath opDrawPath = assignBasicInfo(new OpDrawPath(points.subList(publishIndex, pointsSize)));
+                opDrawPath.setUuid(tmpOp.getUuid()); // 设置相同的uuid，如此该绘制会被认为是一个增量的片段
+                opDrawPath.setFinished(true); // 增量绘制完成
+                publishIndex = pointsSize;
 
-                OpPaint publishOp = tmpOp;
-                onStateChangedListener.onPaintOpGenerated(getBoardId(), publishOp, new IResultListener() {
-
-                            @Override
-                            public void onArrive(boolean bSuccess) {
-                                tmpShapeOps.remove(finalTmpOp); // 不论成功/失败/超时临时操作均已不需要，若成功该操作将被添加到“正式”的操作集，若失败则该操作被丢弃。
-                                if (!bSuccess) {
-                                    KLog.p(KLog.ERROR, "failed to publish shape op %s", finalTmpOp);
-                                    // 立即刷新
-                                    if (null != onStateChangedListener)
-                                        onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
-                                }
-                            }
-
-                            @Override
-                            public void onSuccess(Object result) {
-                                dealShapeOp(publishOp);
-                            }
-
-                        },
-                        true /* 不同于undo/redo/clearscreen操作，绘制操作本端立即展示不等平台反馈结果以免展示效果出现迟滞。
-                                   若平台反馈结果成功则保持现有展示的绘制不变，若平台没有反馈结果或者反馈失败则再清除该绘制。*/
-                );
+                tmpOp = opDrawPath;
             }
 
+            OpPaint publishOp = tmpOp;
+            onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), publishOp, new IResultListener() {
+
+                        @Override
+                        public void onArrive(boolean bSuccess) {
+                            tmpShapeOps.remove(finalTmpOp); // 不论成功/失败/超时临时操作均已不需要，若成功该操作将被添加到“正式”的操作集，若失败则该操作被丢弃。
+                            if (!bSuccess) {
+                                KLog.p(KLog.ERROR, "failed to publish shape op %s", finalTmpOp);
+                                // 立即刷新
+                                if (null != onPaintOpGeneratedListener)
+                                    onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                            }
+                        }
+
+                        @Override
+                        public void onSuccess(Object result) {
+                            dealShapeOp(publishOp);
+                        }
+
+                    },
+                    true /* 不同于undo/redo/clearscreen操作，绘制操作本端立即展示不等平台反馈结果以免展示效果出现迟滞。
+                               若平台反馈结果成功则保持现有展示的绘制不变，若平台没有反馈结果或者反馈失败则再清除该绘制。*/
+            );
         }
+
 
     };
 
@@ -857,8 +871,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
             if (lastPic != picEditStuff.delIcon.getPic()) {
                 // 刷新
-                if (null != onStateChangedListener)
-                    onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true);
             }
         }
 
@@ -867,21 +880,22 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (System.currentTimeMillis()-timestamp > 70) {
                 timestamp = System.currentTimeMillis();
                 // 每70ms发布一次
-                onStateChangedListener.onPaintOpGenerated(getBoardId(), opDragPic, publishAdjustingOpResultListener, true);
+                onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), opDragPic, publishAdjustingOpResultListener, true);
             }else{
-                onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true);
             }
         }
 
         private void publishConfirmedOp(OpDragPic opDragPic){
-            onStateChangedListener.onPaintOpGenerated(getBoardId(), opDragPic, new IResultListener() {
+            onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), opDragPic, new IResultListener() {
                 @Override
                 public void onArrive(boolean bSuccess) {
                     if (!bSuccess) {
                         KLog.p(KLog.ERROR, "failed to publish pic matrix op %s, rollback to %s", opDragPic, confirmedMatrix);
                         // 发布失败则回退matrix
                         picEditStuff.matrix.set(confirmedMatrix);
-                        onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true); // 立即刷新
+                        if (null != onPaintOpGeneratedListener)
+                            onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true); // 立即刷新
                     }
                 }
             }, true);
@@ -945,8 +959,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (null != picEditStuff) {
                 if (picEditStuff.delIcon.getPic() != del_pic_icon) {
                     picEditStuff.delIcon.setPic(del_pic_icon);
-                    if (null != onStateChangedListener)
-                        onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+                    onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true);
                 }
             }
         }
@@ -986,14 +999,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 float[] pos = getRidOfMatrix(x, y);
                 picEditStuff.matrix.postTranslate(pos[0]-preDragX, pos[1]-preDragY);
                 preDragX = pos[0]; preDragY = pos[1];
-                if (null != onStateChangedListener) publishAdjustingOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
+                publishAdjustingOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
         }
 
         @Override
         public void onDragEnd() {
             if (null != picEditStuff) {
-                if (null != onStateChangedListener) publishConfirmedOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
+                publishConfirmedOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
         }
 
@@ -1010,14 +1023,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (null != picEditStuff){
                 float[] pos = getRidOfMatrix(focusX, focusY);
                 picEditStuff.matrix.postScale(factor, factor, pos[0], pos[1]);
-                if (null != onStateChangedListener) publishAdjustingOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
+                publishAdjustingOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
         }
 
         @Override
         public void onScaleEnd() {
             if (null != picEditStuff) {
-                if (null != onStateChangedListener) publishConfirmedOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
+                publishConfirmedOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
         }
 
@@ -1145,7 +1158,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         focusedLayer = LAYER_PIC;
 
-        if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null,true);
+        onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null,true);
 
     }
 
@@ -1163,10 +1176,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         if (bInsertingPic) {
             // 如果是正在插入中就删除就不用走发布，仅刷新本端界面
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), null, null,true);
+            onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null,true);
             bInsertingPic = false;
         }else{
-            if (null != onStateChangedListener) onStateChangedListener.onPaintOpGenerated(getBoardId(), createDelPicOp(editStuff.pics), null,true);
+            onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), createDelPicOp(editStuff.pics), null,true);
 
             picCountChanged();
         }
@@ -1198,22 +1211,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         // 发布
         if (bInsertingPic) {
             // 正在插入图片
-            if (null != onStateChangedListener) {
-                while (!pics.isEmpty()) {
-                    OpInsertPic opInsertPic = pics.pollFirst();
+            while (!pics.isEmpty()) {
+                OpInsertPic opInsertPic = pics.pollFirst();
 
-                    /*求取transMatrix
-                     * transMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
-                     * NOTE: 己端的策略插入图片时是把图片的缩放位移信息全部放入transMatrix中，插入点恒为(0,0)，宽高恒为原始宽高。
-                     * 所以mixMatrix为单位矩阵，所以 transMatrix = picMatrix * boardMatrix
-                     * */
-                    opInsertPic.setBoardMatrix(opWrapper.getLastMatrixOp().getMatrix());
-                    Matrix transMatrix = new Matrix(opInsertPic.getMatrix());
-                    transMatrix.postConcat(opInsertPic.getBoardMatrix());
-                    opInsertPic.setTransMatrix(transMatrix);
+                /*求取transMatrix
+                 * transMatrix = 1/mixMatrix * (picMatrix * boardMatrix)
+                 * NOTE: 己端的策略插入图片时是把图片的缩放位移信息全部放入transMatrix中，插入点恒为(0,0)，宽高恒为原始宽高。
+                 * 所以mixMatrix为单位矩阵，所以 transMatrix = picMatrix * boardMatrix
+                 * */
+                opInsertPic.setBoardMatrix(opWrapper.getLastMatrixOp().getMatrix());
+                Matrix transMatrix = new Matrix(opInsertPic.getMatrix());
+                transMatrix.postConcat(opInsertPic.getBoardMatrix());
+                opInsertPic.setTransMatrix(transMatrix);
 
-                    onStateChangedListener.onPaintOpGenerated(getBoardId(), opInsertPic, null, true);
-                }
+                onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), opInsertPic, null, true);
             }
 
             // 通知用户图片数量变化
@@ -1223,8 +1234,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         } else {
             // 正在拖动放缩图片
-            if (null != onStateChangedListener)
-                onStateChangedListener.onPaintOpGenerated(getBoardId(), createDragPicOp(pics), null, true);
+            onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), createDragPicOp(pics), null, true);
         }
 
         focusedLayer = LAYER_ALL;
@@ -1701,20 +1711,25 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         canvas.restore();
     }
 
-
-    interface IOnStateChangedListener{
+    /**
+     * 主动绘制生成监听器。
+     * */
+    interface IOnPaintOpGeneratedListener{
         /**
          * 生成了绘制操作。（主动绘制）
-         * @param Op 绘制操作
+         * @param op 绘制操作
          * @param publishResultListener 发布结果监听器。（生成的绘制操作可发布给其他与会方）
-         * @param bNeedRefresh 是否需要刷新
          * */
-        default void onPaintOpGenerated(String boardId, OpPaint Op, IResultListener publishResultListener, boolean bNeedRefresh){}
+        void onPaintOpGenerated(String boardId, OpPaint op, IResultListener publishResultListener, boolean bNeedRefresh);
+    }
+    void setOnPaintOpGenerated(IOnPaintOpGeneratedListener onPaintOpGeneratedListener){
+        this.onPaintOpGeneratedListener = onPaintOpGeneratedListener;
+    }
+
+    interface IOnStateChangedListener{
 
         /**
          * 画板状态发生了改变。
-         * 此回调是下面所有回调的先驱，方便用户做一些公共处理。
-         * 如：用户可根据该回调决定是否需要重新“快照”{@link #snapshot(int, int, int, ISnapshotResultListener)}。
          * */
         default void onChanged(String boardId){}
 

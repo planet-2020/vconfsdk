@@ -135,7 +135,8 @@ public class DefaultPainter implements IPainter {
             return false;
         }
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
-        defaultPaintBoard.setOnStateChangedListener(ROLE_AUTHOR==role ? onStateChangedListener : null);
+        defaultPaintBoard.setOnPaintOpGenerated(ROLE_AUTHOR==role ? onPaintOpGeneratedListener : null);
+        defaultPaintBoard.setOnStateChangedListener(onStateChangedListener);
         paintBoards.put(boardId, defaultPaintBoard);
         KLog.p(KLog.WARN,"board %s added", paintBoard.getBoardId());
 
@@ -151,6 +152,7 @@ public class DefaultPainter implements IPainter {
             if (board.getBoardId().equals(curBoardId)){
                 curBoardId = null;
             }
+            board.setOnPaintOpGenerated(null);
             board.setOnStateChangedListener(null);
         }
         return board;
@@ -160,6 +162,7 @@ public class DefaultPainter implements IPainter {
     public void deleteAllPaintBoards() {
         KLog.p(KLog.WARN,"delete all boards");
         for (DefaultPaintBoard board : paintBoards.values()){
+            board.setOnPaintOpGenerated(null);
             board.setOnStateChangedListener(null);
         }
         paintBoards.clear();
@@ -240,12 +243,28 @@ public class DefaultPainter implements IPainter {
         }
     }
 
+    private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener() {
+        @Override
+        public void onPaintOpGenerated(String boardId, OpPaint Op, IResultListener publishResultListener, boolean bNeedRefresh) {
+            if (boardId.equals(curBoardId) && bNeedRefresh) {
+                refresh();
+            }
 
+//            if (bNeedRefresh){
+//                if (null != onBoardStateChangedListener) onBoardStateChangedListener.onChanged(boardId);
+//            }
+
+            if (null != Op){
+                Op.setAuthorE164(painterInfo.getE164());
+                if (null != onBoardStateChangedListener) onBoardStateChangedListener.onPaintOpGenerated(boardId, Op, publishResultListener);
+            }
+        }
+    };
     @Override
     public void setRole(int role) {
         this.role = role;
         for (DefaultPaintBoard board : paintBoards.values()){
-            board.setOnStateChangedListener(ROLE_AUTHOR==role ? onStateChangedListener : null);
+            board.setOnPaintOpGenerated(ROLE_AUTHOR==role ? onPaintOpGeneratedListener : null);
         }
     }
 
@@ -258,17 +277,6 @@ public class DefaultPainter implements IPainter {
 
 
     private DefaultPaintBoard.IOnStateChangedListener onStateChangedListener = new DefaultPaintBoard.IOnStateChangedListener() {
-        @Override
-        public void onPaintOpGenerated(String boardId, OpPaint opPaint, IResultListener publishResultListener, boolean bNeedRefresh) {
-            if (boardId.equals(curBoardId) && bNeedRefresh) {
-                refresh();
-            }
-
-            if (null != opPaint){
-                opPaint.setAuthorE164(painterInfo.getE164());
-                if (null != onBoardStateChangedListener) onBoardStateChangedListener.onPaintOpGenerated(boardId, opPaint, publishResultListener);
-            }
-        }
 
         @Override
         public void onChanged(String boardId) {

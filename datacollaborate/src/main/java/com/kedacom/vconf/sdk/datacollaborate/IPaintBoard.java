@@ -185,8 +185,9 @@ public interface IPaintBoard {
         }
 
         Tool tool;
-        public void setTool(@NonNull Tool tool){
+        public Config setTool(@NonNull Tool tool){
             this.tool = tool;
+            return this;
         }
         public Tool getTool(){
             return tool;
@@ -196,8 +197,9 @@ public interface IPaintBoard {
          * 画笔粗细，单位：pixel
          * */
         int strokeWidth;
-        public void setPaintStrokeWidth(int width){
+        public Config setPaintStrokeWidth(int width){
             this.strokeWidth = width>0?width:5;
+            return this;
         }
         public int getPaintStrokeWidth(){
             return strokeWidth;
@@ -208,8 +210,9 @@ public interface IPaintBoard {
          * NOTE:必须为正整数，如果是字面值注意加后缀"L"，如0xFFFFFFFFL。
          * */
         long paintColor;
-        public void setPaintColor(long color){
+        public Config setPaintColor(long color){
             paintColor = color>0?color:0xFFFFFFFFL;
+            return this;
         }
         public long getPaintColor(){
             return paintColor;
@@ -219,8 +222,9 @@ public interface IPaintBoard {
          * 橡皮擦尺寸， 单位：pixel
          * */
         int eraserSize;
-        public void setEraserSize(int size){
+        public Config setEraserSize(int size){
             eraserSize = size>0?size:20;
+            return this;
         }
         public int getEraserSize(){
             return eraserSize;
@@ -230,8 +234,9 @@ public interface IPaintBoard {
          * 最小缩放率, 如50代表50%。
          * */
         int minZoomRate;
-        public void setMinZoomRate(int rate){
+        public Config setMinZoomRate(int rate){
             minZoomRate = rate>0?rate:50;
+            return this;
         }
         public int getMinZoomRate(){
             return minZoomRate;
@@ -241,8 +246,9 @@ public interface IPaintBoard {
          * 最大缩放率,如300代表300%。
          * */
         int maxZoomRate;
-        public void setMaxZoomRate(int rate){
+        public Config setMaxZoomRate(int rate){
             maxZoomRate = rate>100?rate:100;
+            return this;
         }
         public int getMaxZoomRate(){
             return maxZoomRate;
@@ -252,8 +258,9 @@ public interface IPaintBoard {
          * 可撤销步数上限（为了对齐网呈的实现）
          * */
         int wcRevocableOpsCountLimit;
-        public void setWcRevocableOpsCountLimit(int limit){
+        public Config setWcRevocableOpsCountLimit(int limit){
             wcRevocableOpsCountLimit = limit>0?limit:5;
+            return this;
         }
         public int getWcRevocableOpsCountLimit(){
             return wcRevocableOpsCountLimit;

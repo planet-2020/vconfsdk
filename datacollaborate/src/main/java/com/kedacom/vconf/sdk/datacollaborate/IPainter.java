@@ -97,7 +97,7 @@ public interface IPainter {
          * 生成了绘制操作。（主动绘制）
          * @param op 绘制操作
          * @param publishResultListener 发布结果监听器。（生成的绘制操作可发布给其他与会方）
-        //     * NOTE: 若画师角色为临摹者{@link #ROLE_COPIER}则该回调不会被触发 // TODO 设置Publisher，去掉setRole()
+         * NOTE: 若画师角色为临摹者{@link #ROLE_COPIER}则该回调不会被触发
          * */
         default void onPaintOpGenerated(String boardId, OpPaint op, IResultListener publishResultListener){}
 
