@@ -54,22 +54,6 @@ public interface IPainter {
      * */
     void setBoardConfig(@NonNull IPaintBoard.Config config);
 
-    /**开始绘制*/
-    void start();
-
-    /**暂停绘制*/
-    void pause();
-
-    /**继续绘制*/
-    void resume();
-
-    /**停止绘制*/
-    void stop();
-
-    /**绘制
-     * @param op 绘制操作*/
-    void paint(@NonNull OpPaint op);
-
 
     /**
      * 临摹者角色。
@@ -85,6 +69,23 @@ public interface IPainter {
      * 设置角色
      * */
     void setRole(int role);
+
+
+    /**开始绘制*/
+    void start();
+
+    /**暂停绘制*/
+    void pause();
+
+    /**继续绘制*/
+    void resume();
+
+    /**停止绘制*/
+    void stop();
+
+    /**绘制
+     * @param op 绘制操作*/
+    void paint(@NonNull OpPaint op);
 
 
 

@@ -406,7 +406,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     /**
      * 是否清屏状态。
      * 清屏状态不代表画板内容为空，目前清屏只针对图形操作，清屏状态只表示画板上所有图形操作已被清掉。
-     * @return 若画板没有图形操作或者最后一个图形操作是清屏则返回true，否则返回false。
+     * @return 当前是清屏状态则返回true，否则返回false。
      * */
     @Override
     public boolean isClear(){
