@@ -36,7 +36,6 @@ public class DefaultPainter implements IPainter {
     private Handler handler;
 
     private PainterInfo painterInfo;
-    private IPaintBoard.Config defaultBoardCfg;
 
     public DefaultPainter(@NonNull Context context, @NonNull PainterInfo painterInfo, LifecycleOwner lifecycleOwner) {
 
@@ -136,9 +135,6 @@ public class DefaultPainter implements IPainter {
             return false;
         }
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
-        if (null != defaultBoardCfg){
-            defaultPaintBoard.getConfig().set(defaultBoardCfg);
-        }
         defaultPaintBoard.setOnPaintOpGenerated(ROLE_AUTHOR==role ? onPaintOpGeneratedListener : null);
         defaultPaintBoard.setOnStateChangedListener(onStateChangedListener);
         paintBoards.put(boardId, defaultPaintBoard);
@@ -225,12 +221,9 @@ public class DefaultPainter implements IPainter {
      * NOTE: sdk不持有该传入参数，后续用户修改该对象不会影响配置。
      * */
     @Override
-    public void setBoardConfig(IPaintBoard.Config config) {
-        defaultBoardCfg = config;
-        if (null != config) {
-            for (DefaultPaintBoard board : paintBoards.values()) {
-                board.getConfig().set(config);
-            }
+    public void setBoardConfig(@NonNull IPaintBoard.Config config) {
+        for (DefaultPaintBoard board : paintBoards.values()) {
+            board.getConfig().set(config);
         }
     }
 

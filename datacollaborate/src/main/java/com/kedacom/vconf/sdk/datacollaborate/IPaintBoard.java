@@ -170,6 +170,9 @@ public interface IPaintBoard {
 
 
         public void set(@NonNull Config config){
+            if (config == this){
+                return;
+            }
             tool = config.tool;
             strokeWidth = config.strokeWidth;
             paintColor = config.paintColor;
