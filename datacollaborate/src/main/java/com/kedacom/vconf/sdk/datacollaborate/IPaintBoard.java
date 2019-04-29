@@ -103,6 +103,15 @@ public interface IPaintBoard {
     int getRepealedOpsCount();
 
     /**
+     * 获取可撤销操作数量（对齐网呈）
+     * */
+    int getWcRevocableOpsCount();
+    /**
+     * 获取可恢复操作数量（对齐网呈）
+     * */
+    int getWcRestorableOpsCount();
+
+    /**
      * 获取图形操作数量
      * 包括：
      * 诸如画线、画圆之类的操作；

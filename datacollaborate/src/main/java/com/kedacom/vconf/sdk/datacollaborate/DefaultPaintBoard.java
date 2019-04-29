@@ -424,6 +424,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     @Override
+    public int getWcRevocableOpsCount() {
+        return wcRevocableOpsCount;
+    }
+
+    @Override
+    public int getWcRestorableOpsCount() {
+        return wcRestorableOpsCount;
+    }
+
+    @Override
     public int getShapeOpsCount() {
         return opWrapper.getShapeOpsCount();
     }

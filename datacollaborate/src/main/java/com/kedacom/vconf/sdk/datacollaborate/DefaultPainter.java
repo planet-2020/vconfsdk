@@ -36,6 +36,7 @@ public class DefaultPainter implements IPainter {
     private Handler handler;
 
     private PainterInfo painterInfo;
+    private IPaintBoard.Config defaultBoardCfg;
 
     public DefaultPainter(@NonNull Context context, @NonNull PainterInfo painterInfo, LifecycleOwner lifecycleOwner) {
 
@@ -135,6 +136,9 @@ public class DefaultPainter implements IPainter {
             return false;
         }
         DefaultPaintBoard defaultPaintBoard = (DefaultPaintBoard) paintBoard;
+        if (null != defaultBoardCfg){
+            defaultPaintBoard.getConfig().set(defaultBoardCfg);
+        }
         defaultPaintBoard.setOnPaintOpGenerated(ROLE_AUTHOR==role ? onPaintOpGeneratedListener : null);
         defaultPaintBoard.setOnStateChangedListener(onStateChangedListener);
         paintBoards.put(boardId, defaultPaintBoard);
@@ -222,8 +226,11 @@ public class DefaultPainter implements IPainter {
      * */
     @Override
     public void setBoardConfig(IPaintBoard.Config config) {
-        for (DefaultPaintBoard board : paintBoards.values()){
-            board.getConfig().set(config);
+        defaultBoardCfg = config;
+        if (null != config) {
+            for (DefaultPaintBoard board : paintBoards.values()) {
+                board.getConfig().set(config);
+            }
         }
     }
 
