@@ -216,17 +216,6 @@ public class DefaultPainter implements IPainter {
         return paintBoards.size();
     }
 
-    /**
-     * @param config 针对所有下辖画板的配置
-     * NOTE: sdk不持有该传入参数，后续用户修改该对象不会影响配置。
-     * */
-    @Override
-    public void setBoardConfig(@NonNull IPaintBoard.Config config) {
-        for (DefaultPaintBoard board : paintBoards.values()) {
-            board.getConfig().set(config);
-        }
-    }
-
 
     private Runnable refreshRunnable = this::refresh;
     @Override

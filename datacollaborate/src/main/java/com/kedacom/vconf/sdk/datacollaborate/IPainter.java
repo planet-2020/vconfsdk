@@ -47,13 +47,6 @@ public interface IPainter {
     /**获取画板数量*/
     int getPaintBoardCount();
 
-    /**
-     * 设置下辖所有画板的画板配置。
-     * NOTE: 对某个特定画板而言此方法跟{@link IPaintBoard#getConfig()}.setXXX是竞争关系，后设置的生效。
-     * @param config 画板配置。
-     * */
-    void setBoardConfig(@NonNull IPaintBoard.Config config);
-
 
     /**
      * 临摹者角色。
