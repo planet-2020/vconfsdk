@@ -14,15 +14,15 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CrystalBall implements ICrystalBall {
     private static final String TAG = CrystalBall.class.getSimpleName();
     private static CrystalBall instance;
 
-    private final Map<String, Method> cachedMethods = new HashMap<>();
+    private final Map<String, Method> cachedMethods = new ConcurrentHashMap<>();
 
     private final List<PriorityListener> listeners = new ArrayList<>();
 
