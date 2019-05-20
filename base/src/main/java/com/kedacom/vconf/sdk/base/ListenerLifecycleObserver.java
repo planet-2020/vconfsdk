@@ -86,14 +86,12 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
         for (Map.Entry<LifecycleOwner, Set<Object>> owner : lifecycleOwnerBindListeners.entrySet()){
             LifecycleOwner key = owner.getKey();
             Set<Object> val = owner.getValue();
-//            if (key == listener){
-//                // NOTE: 对于listener自身即是key的情形，需等其下挂的所有listener（包括它自己）均解绑后方能解除监控。
-//                  换句话说，此种情形下调用该接口并未真正的解除监控。
-//            }
             if (val.contains(listener)){
                 val.remove(listener);
                 KLog.p(KLog.WARN,"unbind %s's lifecycle from %s", listener, key);
                 if (val.isEmpty()){
+                    // owner其下没有与之绑定的listener则取消对该owner的监控。
+                    key.getLifecycle().removeObserver(this);
                     lifecycleOwnerBindListeners.remove(key);
                     KLog.p(KLog.WARN, "unobserve %s's lifecycle", key);
                 }
@@ -240,8 +238,10 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
             notify(lifecycleOwnerBindListeners.get(owner), cb::onListenerDestroy);
         }
         Set<Object> listeners = lifecycleOwnerBindListeners.remove(owner);
-        for (Object listener : listeners){
-            KLog.p(KLog.WARN,"unbind %s's lifecycle from %s", listener, owner);
+        if (null != listeners) {
+            for (Object listener : listeners) {
+                KLog.p(KLog.WARN, "unbind %s's lifecycle from %s", listener, owner);
+            }
         }
         KLog.p(KLog.WARN, "unobserve %s's lifecycle", owner);
     }

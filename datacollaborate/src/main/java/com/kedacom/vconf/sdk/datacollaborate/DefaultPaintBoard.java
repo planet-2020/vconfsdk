@@ -154,8 +154,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         // 获取画板宽高
         this.post(() -> {
-            boardWidth = getWidth();
-            boardHeight = getHeight();
+            boardWidth = getWidth()>0 ? getWidth() : boardWidth;
+            boardHeight = getHeight()>0 ? getHeight() : boardHeight;
         });
 
         // 初始化matrix
