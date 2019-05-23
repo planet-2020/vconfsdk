@@ -53,11 +53,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     // 画板信息
     private BoardInfo boardInfo;
 
-    // 图形层。用于图形绘制如画线、画圈、擦除等等
-    private TextureView shapePaintView;
-
-    // 图片层。用于绘制图片。
-    private TextureView picPaintView;
+    // 画布
+    private TextureView paintView;
 
     // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private OpPaint adjustingShapeOp;
@@ -90,9 +87,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private IOnStateChangedListener onStateChangedListener;
     private IOnPaintOpGeneratedListener onPaintOpGeneratedListener;
 
-    private DefaultTouchListener boardViewTouchListener;
-    private DefaultTouchListener shapeViewTouchListener;
-    private DefaultTouchListener picViewTouchListener;
+    private DefaultTouchListener baseLayerTouchListener;
+    private DefaultTouchListener shapeLayerTouchListener;
+    private DefaultTouchListener picLayerTouchListener;
 
     // 是否正在执行matrix操作
     private boolean bDoingMatrixOp = false;
@@ -124,18 +121,36 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         relativeDensity = context.getResources().getDisplayMetrics().density/2;
 
         LayoutInflater layoutInflater = LayoutInflater.from(context);
-        View whiteBoard = layoutInflater.inflate(R.layout.default_whiteboard_layout, this);
-        picPaintView = whiteBoard.findViewById(R.id.pb_pic_paint_view);
-        picPaintView.setOpaque(false);
-        shapePaintView = whiteBoard.findViewById(R.id.pb_shape_paint_view);
-        shapePaintView.setOpaque(false);
+        View paintBoard = layoutInflater.inflate(R.layout.default_paintboard_layout, this);
+        paintView = paintBoard.findViewById(R.id.paint_view);
+        paintView.setOpaque(false);
+        paintView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+            @Override
+            public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+                KLog.p("surface available");
+                // 刷新
+                if (null != onPaintOpGeneratedListener) onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true);
+            }
 
-        shapePaintView.setSurfaceTextureListener(surfaceTextureListener);
-        picPaintView.setSurfaceTextureListener(surfaceTextureListener);
+            @Override
+            public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+                KLog.p("surface size changed");
+            }
 
-        shapeViewTouchListener = new DefaultTouchListener(context, shapeViewEventListener);
-        picViewTouchListener = new DefaultTouchListener(context, picViewEventListener);
-        boardViewTouchListener = new DefaultTouchListener(context, boardViewEventListener);
+            @Override
+            public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+                KLog.p("surface destroyed");
+                return false;
+            }
+
+            @Override
+            public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+            }
+        });
+
+        shapeLayerTouchListener = new DefaultTouchListener(context, shapeLayerEventListener);
+        picLayerTouchListener = new DefaultTouchListener(context, picLayerEventListener);
+        baseLayerTouchListener = new DefaultTouchListener(context, baseLayerEventListener);
 
         // 赋值图片删除图标
         try {
@@ -167,30 +182,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    private TextureView.SurfaceTextureListener surfaceTextureListener = new TextureView.SurfaceTextureListener() {
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            KLog.p("surface available");
-            // 刷新
-            if (null != onPaintOpGeneratedListener) onPaintOpGeneratedListener.onPaintOpGenerated(getBoardId(), null, null, true);
-        }
-
-        @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            KLog.p("surface size changed");
-        }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            KLog.p("surface destroyed");
-            return false;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-        }
-    };
-
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
@@ -200,14 +191,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
         if (LAYER_ALL == focusedLayer){
-            boardViewTouchListener.onTouch(this, ev);
-            boolean ret1 = picViewTouchListener.onTouch(picPaintView, ev);
-            boolean ret2 = shapeViewTouchListener.onTouch(shapePaintView, ev);
+            baseLayerTouchListener.onTouch(paintView, ev);
+            boolean ret1 = picLayerTouchListener.onTouch(paintView, ev);
+            boolean ret2 = shapeLayerTouchListener.onTouch(paintView, ev);
             return ret1||ret2;
         }else if (LAYER_PIC == focusedLayer){
-            return picViewTouchListener.onTouch(picPaintView, ev);
+            return picLayerTouchListener.onTouch(paintView, ev);
         }else if (LAYER_SHAPE == focusedLayer){
-            return shapeViewTouchListener.onTouch(shapePaintView, ev);
+            return shapeLayerTouchListener.onTouch(paintView, ev);
         }else if (LAYER_NONE == focusedLayer){
             return true;
         }
@@ -603,8 +594,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    private Bitmap shapeLayerSnapshot;
-    private Bitmap picLayerSnapshot;
+    private Bitmap snapshotWindow;
     /**
      * NOTE: 该方法需在API LEVEL >= 21时使用，21以下TextureView.getBitmap方法有bug，
      * @see <a href="https://github.com/mapbox/mapbox-gl-native/issues/4911">
@@ -612,24 +602,14 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      *     </a>
      * */
     private void snapshotWindow(Canvas canvas){
-        if (null == picLayerSnapshot) {
-            picLayerSnapshot = picPaintView.getBitmap();
+        if (null == snapshotWindow) {
+            snapshotWindow = paintView.getBitmap();
         } else {
-            picPaintView.getBitmap(picLayerSnapshot);
+            paintView.getBitmap(snapshotWindow);
         }
 
-        if (null == shapeLayerSnapshot) {
-            shapeLayerSnapshot = shapePaintView.getBitmap();
-        } else {
-            shapePaintView.getBitmap(shapeLayerSnapshot);
-        }
-
-        Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
-        if (null != picLayerSnapshot) {
-            canvas.drawBitmap(picLayerSnapshot, 0, 0, paint);
-        }
-        if (null != shapeLayerSnapshot) {
-            canvas.drawBitmap(shapeLayerSnapshot, 0, 0, paint);
+        if (null != snapshotWindow) {
+            canvas.drawBitmap(snapshotWindow, 0, 0, new Paint(Paint.FILTER_BITMAP_FLAG));
         }
 
     }
@@ -658,7 +638,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    DefaultTouchListener.IOnEventListener boardViewEventListener = new DefaultTouchListener.IOnEventListener(){
+    DefaultTouchListener.IOnEventListener baseLayerEventListener = new DefaultTouchListener.IOnEventListener(){
         private long timestamp = System.currentTimeMillis();
         private boolean bDragging = false;
         private boolean bScaling = false;
@@ -758,7 +738,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     };
 
 
-    DefaultTouchListener.IOnEventListener shapeViewEventListener = new DefaultTouchListener.IOnEventListener(){
+    DefaultTouchListener.IOnEventListener shapeLayerEventListener = new DefaultTouchListener.IOnEventListener(){
 
         private boolean bDrawSuccess = true;
         private long timestamp = System.currentTimeMillis();
@@ -858,7 +838,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     };
 
 
-    private DefaultTouchListener.IOnEventListener picViewEventListener = new DefaultTouchListener.IOnEventListener(){
+    private DefaultTouchListener.IOnEventListener picLayerEventListener = new DefaultTouchListener.IOnEventListener(){
         private float preDragX, preDragY;
 
         private long timestamp = System.currentTimeMillis();
@@ -1570,14 +1550,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         KLog.p("=> board=%s", getBoardId());
         Matrix matrix = getDensityRelativeBoardMatrix(paintBoardMatrix);
 
-        // 图形层绘制
-        Canvas shapePaintViewCanvas = shapePaintView.lockCanvas();
+        Canvas shapePaintViewCanvas = paintView.lockCanvas();
         if (null != shapePaintViewCanvas) {
             // 每次绘制前先清空画布以避免残留
             shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
             // 设置画布matrix
             shapePaintViewCanvas.setMatrix(matrix);
+
+            // 图片绘制
+            render(opWrapper.getInsertPicOps(), shapePaintViewCanvas);
 
             // 图形绘制
             render(opWrapper.getShapeOps(), shapePaintViewCanvas);
@@ -1596,24 +1578,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
         }
 
-        // 图片层绘制
-        Canvas picPaintViewCanvas = picPaintView.lockCanvas();
-        if (null != picPaintViewCanvas) {  // TODO 优化，尝试如果没有影响图片层的操作，如插入/删除/拖动/放缩图片，就不刷新图片层。
-            // 清空画布
-            picPaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
-
-            // 设置画布matrix
-            picPaintViewCanvas.setMatrix(matrix);
-
-            // 图片绘制
-            render(opWrapper.getInsertPicOps(), picPaintViewCanvas);
-
-        }
 
         // 提交绘制任务，执行绘制
 //                KLog.p("go render!");
-        if (null != shapePaintViewCanvas) shapePaintView.unlockCanvasAndPost(shapePaintViewCanvas);
-        if (null != picPaintViewCanvas) picPaintView.unlockCanvasAndPost(picPaintViewCanvas);
+        if (null != shapePaintViewCanvas) paintView.unlockCanvasAndPost(shapePaintViewCanvas);
 
         KLog.p("<=");
     }

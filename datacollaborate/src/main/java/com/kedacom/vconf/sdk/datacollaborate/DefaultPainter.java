@@ -64,7 +64,7 @@ public class DefaultPainter implements IPainter {
                 @Override
                 public void onDestroy(@NonNull LifecycleOwner owner) {
                     KLog.p("LifecycleOwner %s to be destroyed", owner);
-                    stop();
+                    destroy();
                 }
             });
         }
@@ -103,11 +103,9 @@ public class DefaultPainter implements IPainter {
         refresh();
     }
 
-    /**
-     * 调用该接口后painter释放了所有资源，已无用，不可再调用start恢复。
-     * */
+
     @Override
-    public void stop() {
+    public void destroy() {
         if (renderThread.isAlive()) {
             renderThread.interrupt();
         }

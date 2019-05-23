@@ -73,8 +73,8 @@ public interface IPainter {
     /**继续绘制*/
     void resume();
 
-    /**停止绘制*/
-    void stop();
+    /**结束绘制并销毁painter*/
+    void destroy();
 
     /**绘制
      * @param op 绘制操作*/
