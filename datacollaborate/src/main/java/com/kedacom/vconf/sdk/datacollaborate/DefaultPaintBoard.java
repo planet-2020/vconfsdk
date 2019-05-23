@@ -496,7 +496,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
 
         MyConcurrentLinkedDeque<OpInsertPic> picOps = opWrapper.getInsertPicOps();
-        MyConcurrentLinkedDeque<OpPaint> shapeOps = opWrapper.getShapeOpsAfterCls();
+        boolean[] hasEraseOp = new boolean[1];
+        MyConcurrentLinkedDeque<OpPaint> shapeOps = opWrapper.getShapeOpsAfterCls(hasEraseOp);
         ops.addAll(picOps);
         ops.addAll(shapeOps);
 
@@ -562,15 +563,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         // 绘制图片
         render(picOps, canvas);
 
-        boolean hasEraseOp =false;
-        for (OpPaint op : shapeOps) {
-            if (op instanceof OpErase || op instanceof OpRectErase) {
-                hasEraseOp = true;
-                break;
-            }
-        }
         // 绘制图形
-        if (hasEraseOp) {
+        if (hasEraseOp[0]) {
             // 保存已绘制的内容，避免被擦除
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
                 canvas.saveLayer(null, null);
@@ -1546,42 +1540,58 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     private Matrix paintBoardMatrix = new Matrix();
+    boolean[] hasEraseOp = new boolean[1];
     void paint(){
         KLog.p("=> board=%s", getBoardId());
         Matrix matrix = getDensityRelativeBoardMatrix(paintBoardMatrix);
 
-        Canvas shapePaintViewCanvas = paintView.lockCanvas();
-        if (null != shapePaintViewCanvas) {
+        Canvas canvas = paintView.lockCanvas();
+        if (null != canvas) {
             // 每次绘制前先清空画布以避免残留
-            shapePaintViewCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
             // 设置画布matrix
-            shapePaintViewCanvas.setMatrix(matrix);
+            canvas.setMatrix(matrix);
 
             // 图片绘制
-            render(opWrapper.getInsertPicOps(), shapePaintViewCanvas);
+            render(opWrapper.getInsertPicOps(), canvas);
 
-            // 图形绘制
-            render(opWrapper.getShapeOps(), shapePaintViewCanvas);
+            // 绘制图形
+            MyConcurrentLinkedDeque<OpPaint> shapeOps = opWrapper.getShapeOpsAfterCls(hasEraseOp);
+            if (hasEraseOp[0]) {
+                // 保存已绘制的内容，避免被擦除
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+                    canvas.saveLayer(null, null);  // TODO 使用xfermode替代该昂贵的方法？
+                }else {
+                    canvas.saveLayer(null, null, Canvas.ALL_SAVE_FLAG);
+                }
+
+                render(shapeOps, canvas);
+
+                canvas.restore();
+
+            }else{
+                render(shapeOps, canvas);
+            }
 
             // 临时图形绘制
-            render(tmpShapeOps, shapePaintViewCanvas);
+            render(tmpShapeOps, canvas);
 
             // 绘制正在调整中的操作
             synchronized (adjustingShapeOpLock) {
-                if (null != adjustingShapeOp) render(adjustingShapeOp, shapePaintViewCanvas);
+                if (null != adjustingShapeOp) render(adjustingShapeOp, canvas);
             }
 
             // 绘制正在编辑中的图片（编辑中的图片展示在图形上层）
             synchronized (picEditStuffLock) {
-                if (null != picEditStuff) render(picEditStuff, shapePaintViewCanvas);
+                if (null != picEditStuff) render(picEditStuff, canvas);
             }
         }
 
 
         // 提交绘制任务，执行绘制
 //                KLog.p("go render!");
-        if (null != shapePaintViewCanvas) paintView.unlockCanvasAndPost(shapePaintViewCanvas);
+        if (null != canvas) paintView.unlockCanvasAndPost(canvas);
 
         KLog.p("<=");
     }
@@ -1821,15 +1831,20 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         /**
          * 获取最后一次清屏操作之后的图形操作。（目前清屏仅针对图形）
+         * @param hasEraseOp 返回的操作集中是否包含擦除操作（传出参数）
          * */
-        MyConcurrentLinkedDeque<OpPaint> getShapeOpsAfterCls(){
+        MyConcurrentLinkedDeque<OpPaint> getShapeOpsAfterCls(boolean[] hasEraseOp){
             MyConcurrentLinkedDeque<OpPaint> allShapeOps = new MyConcurrentLinkedDeque<>();
             MyConcurrentLinkedDeque<OpPaint> shapeOpsAfterCls = new MyConcurrentLinkedDeque<>();
             allShapeOps.addAll(shapeOps);
+            hasEraseOp[0] = false;
             while (!allShapeOps.isEmpty()){
                 OpPaint op = allShapeOps.pollLast();
                 if (EOpType.CLEAR_SCREEN == op.getType()){
                     break;
+                }
+                if (op instanceof OpErase || op instanceof OpRectErase) {
+                    hasEraseOp[0] = true;
                 }
                 shapeOpsAfterCls.offerFirst(op);
             }
