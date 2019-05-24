@@ -233,7 +233,7 @@ public class DefaultPainter implements IPainter {
     private DefaultPaintBoard.IOnPaintOpGeneratedListener onPaintOpGeneratedListener = new DefaultPaintBoard.IOnPaintOpGeneratedListener() {
         @Override
         public void onPaintOpGenerated(String boardId, OpPaint Op, IResultListener publishResultListener, boolean bNeedRefresh) {
-            if (boardId.equals(curBoardId) && bNeedRefresh) {
+            if (bNeedRefresh && boardId.equals(curBoardId)) {
                 refresh();
             }
 

@@ -754,9 +754,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                         public void onSuccess(Object result) {
                             dealShapeOp(opDrawPath);
                         }
-                    }, true);
-
-                    return;
+                    }, false);
 
                 }else if (EOpType.ERASE == adjustingShapeOp.getType()){
                     // TODO 目前需求没要求但按理说这个和曲线绘制一样
