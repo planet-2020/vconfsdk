@@ -124,7 +124,7 @@ class DefaultTouchListener implements View.OnTouchListener {
         switch (event.getActionMasked()) {
 
             case MotionEvent.ACTION_DOWN:
-                KLog.p("state=%s, ACTION_DOWN{%s}", state, event);
+//                KLog.p("state=%s, ACTION_DOWN{%s}", state, event);
                 if (!onEventListener.onDown(event.getX(), event.getY())){
                     return false; // 放弃处理后续事件
                 }
@@ -133,7 +133,7 @@ class DefaultTouchListener implements View.OnTouchListener {
                 break;
 
             case MotionEvent.ACTION_POINTER_DOWN:
-                KLog.p("state=%s, ACTION_POINTER_DOWN{%s}", state, event);
+//                KLog.p("state=%s, ACTION_POINTER_DOWN{%s}", state, event);
                 if (2 == event.getPointerCount()) {
                     if (STATE_DRAGGING == state) {
                         onEventListener.onDragEnd();
@@ -147,7 +147,7 @@ class DefaultTouchListener implements View.OnTouchListener {
                 break;
 
             case MotionEvent.ACTION_POINTER_UP:
-                KLog.p("state=%s, ACTION_POINTER_UP{%s}", state, event);
+//                KLog.p("state=%s, ACTION_POINTER_UP{%s}", state, event);
                 if (2 == event.getPointerCount()){ // 二个手指其中一个抬起，只剩一个手指了
                     if (STATE_MULTIFINGERS_DRAGGING == state){
                         onEventListener.onMultiFingerDragEnd();
@@ -191,7 +191,7 @@ class DefaultTouchListener implements View.OnTouchListener {
                 break;
 
             case MotionEvent.ACTION_UP:
-                KLog.p("state=%s, ACTION_UP{%s}", state, event);
+//                KLog.p("state=%s, ACTION_UP{%s}", state, event);
                 if (STATE_DRAGGING == state) {
                     onEventListener.onDragEnd();
                 }
