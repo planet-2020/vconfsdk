@@ -1474,7 +1474,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             KLog.p(KLog.ERROR,"op %s is not for %s", op, getBoardId());
             return false;
         }
-        KLog.p("recv op %s", op);
+//        KLog.p("recv op %s", op);
 
         switch (op.getType()){
             case INSERT_PICTURE:
@@ -1540,7 +1540,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private Matrix paintBoardMatrix = new Matrix();
     boolean[] hasEraseOp = new boolean[1];
     void paint(){
-        KLog.p("=> board=%s", getBoardId());
         Matrix matrix = getDensityRelativeBoardMatrix(paintBoardMatrix);
 
         Canvas canvas = paintView.lockCanvas();
@@ -1591,7 +1590,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                KLog.p("go render!");
         if (null != canvas) paintView.unlockCanvasAndPost(canvas);
 
-        KLog.p("<=");
     }
 
 
