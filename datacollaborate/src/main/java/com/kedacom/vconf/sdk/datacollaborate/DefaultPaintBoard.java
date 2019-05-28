@@ -1380,7 +1380,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         if (null != onStateChangedListener){
             onStateChangedListener.onChanged(getBoardId());
             int revokedOpsCount = opWrapper.getRevokedOpsCount();
-            int revocableOpsCount = opWrapper.getRevocableOpsCount();
+            int revocableOpsCount = opWrapper.getRevocableOpsCount(); // FIXME 未完成的path不允许撤销却被计算在内
             if (lastRevokedOpsCount != revokedOpsCount
                     || lastRevocableOpsCount != revocableOpsCount) {
 //                KLog.p("revokedOpsCount=%s, revocableOpsCount=%s", revokedOpsCount, revocableOpsCount);
@@ -2127,24 +2127,27 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     && null != shapeOps.peekLast()){
                 bSuccess = true;
                 OpPaint shapeOp = shapeOps.pollLast(); // 撤销最近的操作（目前仅图形操作支持撤销）
-
+                OpPaint revokedOp = shapeOp;
                 if (EOpType.DRAW_PATH == shapeOp.getType() && !((OpDrawPath)shapeOp).isFinished()){
                     // 对于曲线绘制，需要考虑是否已完成，未完成的曲线绘制不能撤销（需求要求）
                     MyConcurrentLinkedDeque<OpPaint> tmpOps = new MyConcurrentLinkedDeque<>();
-                    tmpOps.offerLast(shapeOp);
-                    while (!shapeOps.isEmpty()){
+                    tmpOps.offerLast(shapeOp); // 缓存未完成的曲线绘制操作
+                    revokedOp = null;
+                    while (!shapeOps.isEmpty()){ // 继续向前查找可撤销操作
                         shapeOp = shapeOps.pollLast();
                         if (EOpType.DRAW_PATH == shapeOp.getType() && !((OpDrawPath)shapeOp).isFinished()){
                             tmpOps.offerLast(shapeOp);
                             continue;
                         }
+                        revokedOp = shapeOp; // 找到了可撤销操作
                         break;
                     }
                     shapeOps.addAll(tmpOps);
                 }
 
                 --shapeOpsCount;
-                revokedOps.push(shapeOp); // 缓存撤销的操作以供恢复
+                if (null != revokedOp) revokedOps.push(revokedOp); // 缓存撤销的操作以供恢复
+                bSuccess = (null != revokedOp);
 
             }else if (EOpType.REDO==op.getType() && !revokedOps.isEmpty()){
                 bSuccess = true;
