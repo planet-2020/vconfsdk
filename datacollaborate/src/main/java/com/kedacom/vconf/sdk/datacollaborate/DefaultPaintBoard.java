@@ -1798,6 +1798,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
          * */
         private MyConcurrentLinkedDeque<OpPaint> shapeOps = new MyConcurrentLinkedDeque<>();
         /**
+         * 最近一次清屏后的图形操作
+         * */
+        private MyConcurrentLinkedDeque<OpPaint> shapeOpsAfterLastCls = new MyConcurrentLinkedDeque<>();
+        /**
+         * 最近一次清屏后的操作中是否包含擦除操作。
+         * 因为擦除操作对绘制有特殊影响故特意标记。
+         * */
+        private boolean hasEraseOpAfterLastCls = false;
+        private final Object shapeOpsAfterLastClsLock = new Object();
+        /**
          * 插入图片操作
          * */
         private MyConcurrentLinkedDeque<OpInsertPic> insertPicOps = new MyConcurrentLinkedDeque<>();
@@ -1830,6 +1840,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
          * @param hasEraseOp 返回的操作集中是否包含擦除操作（传出参数）
          * */
         MyConcurrentLinkedDeque<OpPaint> getShapeOpsAfterCls(boolean[] hasEraseOp){
+            synchronized (shapeOpsAfterLastClsLock) {
+                if (null != shapeOpsAfterLastCls) {
+                    hasEraseOp[0] = hasEraseOpAfterLastCls;
+                    return shapeOpsAfterLastCls;
+                }
+            }
+
             MyConcurrentLinkedDeque<OpPaint> allShapeOps = new MyConcurrentLinkedDeque<>();
             MyConcurrentLinkedDeque<OpPaint> shapeOpsAfterCls = new MyConcurrentLinkedDeque<>();
             allShapeOps.addAll(shapeOps);
@@ -1844,6 +1861,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
                 shapeOpsAfterCls.offerFirst(op);
             }
+
+            synchronized (shapeOpsAfterLastClsLock) {
+                shapeOpsAfterLastCls = shapeOpsAfterCls;
+                hasEraseOpAfterLastCls = hasEraseOp[0];
+            }
+
             return shapeOpsAfterCls;
         }
 
@@ -1904,6 +1927,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
          * */
         boolean addShapeOp(OpPaint op){
 
+            boolean bNewOp = true;
+            boolean bSuccess = true;
+
             if (EOpType.DRAW_PATH==op.getType()){ // 曲线是增量同步的
                 OpDrawPath opDrawPath = (OpDrawPath) op;
                 OpDrawPath tmpOpDrawPath = null;
@@ -1918,28 +1944,27 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     }
                 }
 
-                if (null == tmpOpDrawPath) {
-                    ops.offerLast(opDrawPath);
-                    shapeOps.offerLast(opDrawPath);
-                    ++shapeOpsCount;
+                bNewOp = (null == tmpOpDrawPath);
+            }
+            else if (EOpType.CLEAR_SCREEN==op.getType() && isClear()){
+                KLog.p(KLog.WARN, "already cleared");
+                bNewOp = false;
+                bSuccess = false;
+            }
+
+            if (bNewOp) {
+                ops.offerLast(op);
+                shapeOps.offerLast(op);
+                ++shapeOpsCount;
+                if (op instanceof IRepealable) {
                     revokedOps.clear(); // 有新的可撤销操作加入时清空已撤销操作
                 }
-
-                return true;
+                synchronized (shapeOpsAfterLastClsLock) {
+                    shapeOpsAfterLastCls = null; // 需要重新计算
+                }
             }
 
-            ops.offerLast(op);
-
-            if (EOpType.CLEAR_SCREEN==op.getType() && isClear()){
-                KLog.p(KLog.ERROR, "already cleared");
-                return false;
-            }
-            shapeOps.offerLast(op);
-            ++shapeOpsCount;
-            if (op instanceof IRepealable) {
-                revokedOps.clear(); // 有新的可撤销操作加入时清空已撤销操作
-            }
-            return true;
+            return bSuccess;
         }
 
 
@@ -2095,14 +2120,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
          * 添加控制操作。包括撤销/恢复。
          * */
         boolean addControlOp(OpPaint op){
-            ops.offerLast(op);
 
-            if (EOpType.UNDO==op.getType()){
+            boolean bSuccess = false;
+
+            if (EOpType.UNDO==op.getType()
+                    && null != shapeOps.peekLast()){
+                bSuccess = true;
                 OpPaint shapeOp = shapeOps.pollLast(); // 撤销最近的操作（目前仅图形操作支持撤销）
-                if (null == shapeOp){
-                    KLog.p(KLog.ERROR, "no op to repeal");
-                    return false;
-                }
 
                 if (EOpType.DRAW_PATH == shapeOp.getType() && !((OpDrawPath)shapeOp).isFinished()){
                     // 对于曲线绘制，需要考虑是否已完成，未完成的曲线绘制不能撤销（需求要求）
@@ -2122,12 +2146,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 --shapeOpsCount;
                 revokedOps.push(shapeOp); // 缓存撤销的操作以供恢复
 
-            }else if (EOpType.REDO==op.getType()){
-                if (revokedOps.isEmpty()){
-                    KLog.p(KLog.ERROR, "no op to restore");
-                    return false;
-                }
-
+            }else if (EOpType.REDO==op.getType() && !revokedOps.isEmpty()){
+                bSuccess = true;
                 OpPaint repealedOp = revokedOps.pop();
 
                 // 判断当前最后一笔是否正在绘制中的曲线，若为绘制中的曲线则恢复的绘制要插入其前，对比撤销操作，如此才能保持一致。
@@ -2151,12 +2171,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                 ++shapeOpsCount;
 
-            }else{
-                KLog.p(KLog.ERROR, "unknown control op %s", op);
-                return false;
             }
 
-            return true;
+            if (bSuccess){
+                ops.offerLast(op);
+                synchronized (shapeOpsAfterLastClsLock) {
+                    shapeOpsAfterLastCls = null; // 需要重新计算
+                }
+            }
+
+            return bSuccess;
         }
 
         /**

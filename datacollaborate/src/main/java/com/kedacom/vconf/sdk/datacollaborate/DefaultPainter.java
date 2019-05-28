@@ -306,7 +306,7 @@ public class DefaultPainter implements IPainter {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
 
             while (true){
-                KLog.p("start loop run");
+                KLog.p(KLog.DEBUG, "start loop run");
                 if (isInterrupted()){
                     KLog.p(KLog.WARN, "quit renderThread");
                     return;
@@ -318,10 +318,10 @@ public class DefaultPainter implements IPainter {
                     try {
                         if (!bNeedRender) {
                             do{
-                                KLog.p("waiting...");
+                                KLog.p(KLog.DEBUG, "waiting...");
                                 renderLock.wait();
                                 bNeedRender = bDirty && !bPaused;
-                                KLog.p("awaken! bNeedRender=%s", bNeedRender);
+                                KLog.p(KLog.DEBUG, "awaken! bNeedRender=%s", bNeedRender);
                             }while (!bNeedRender);
                         }
                     } catch (InterruptedException e) {
