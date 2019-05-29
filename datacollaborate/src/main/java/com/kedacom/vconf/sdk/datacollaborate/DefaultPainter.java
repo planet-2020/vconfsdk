@@ -114,15 +114,32 @@ public class DefaultPainter implements IPainter {
         deleteAllPaintBoards();
     }
 
+
     /**
      * 刷新画板
      * */
     private void refresh(){
+        handler.removeCallbacks(refreshRunnable);
+        long timestamp = System.currentTimeMillis();
+        if (timestamp-refreshTimestamp>20){
+            refreshTimestamp = timestamp;
+            doRefresh();
+        }else{
+            handler.postDelayed(refreshRunnable, 20);
+        }
+    }
+    private long refreshTimestamp = System.currentTimeMillis();
+    private Runnable refreshRunnable = this::doRefresh;
+    /**
+     * 刷新画板
+     * */
+    private void doRefresh(){
         synchronized (renderLock){
             bDirty = true;
             renderLock.notify();
         }
     }
+
 
 
     @Override
@@ -184,7 +201,7 @@ public class DefaultPainter implements IPainter {
 
     @Nullable
     @Override
-    public IPaintBoard getPaintBoard(String boardId) {
+    public IPaintBoard getPaintBoard(@NonNull String boardId) {
         return paintBoards.get(boardId);
     }
 
@@ -194,9 +211,7 @@ public class DefaultPainter implements IPainter {
      * */
     @Override
     public List<IPaintBoard> getAllPaintBoards() {
-        List<IPaintBoard> boards = new ArrayList<>();
-        boards.addAll(paintBoards.values());
-        return  boards;
+        return new ArrayList<>(paintBoards.values());
     }
 
     @Nullable
@@ -215,7 +230,6 @@ public class DefaultPainter implements IPainter {
     }
 
 
-    private Runnable refreshRunnable = this::refresh;
     @Override
     public void paint(@NonNull OpPaint op) {
         String boardId = op.getBoardId();
@@ -224,10 +238,8 @@ public class DefaultPainter implements IPainter {
             KLog.p(KLog.ERROR,"no board %s for op %s", boardId, op);
             return;
         }
-        if (paintBoard.onPaintOp(op) && boardId.equals(curBoardId)){
-            handler.removeCallbacks(refreshRunnable);
-            handler.postDelayed(refreshRunnable, 50);
-        }
+
+        paintBoard.onPaintOp(op);
     }
 
 

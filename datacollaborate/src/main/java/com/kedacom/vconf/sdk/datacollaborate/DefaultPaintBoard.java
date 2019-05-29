@@ -238,14 +238,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      *             截取缩略图优先使用AREA_WINDOW，保存画板内容使用AREA_ALL。
      * @param outputWidth 生成的图片的宽，若大于画板宽或者小于等于0则取值画板的宽。
      * @param outputHeight 生成的图片的高，若大于画板高或者小于等于0则取值画板的高。
+     * @param resultListener 抓屏结果监听器。抓拍的图片由该监听器返回，不能为null。
      * */
     @Override
     public void snapshot(int area, int outputWidth, int outputHeight, @NonNull ISnapshotResultListener resultListener) {
-        KLog.p("=>");
-        if (null == resultListener){
-            KLog.p(KLog.ERROR, "null == resultListener");
-            return;
-        }
 
         boolean bLoaded = getWidth()>0 && getHeight()>0;
 
@@ -517,7 +513,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         curRelativeBoardMatrix.mapRect(bound);
         float boundW = bound.width();
         float boundH = bound.height();
-        float scale = 1;
+        float scale;
         if (boundW/boundH > boardW/boardH){
             scale = boardW/boundW;
         }else {
@@ -1460,15 +1456,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     /**
      * 接收绘制操作
-     * @return true 需要刷新，false不需要。
      * */
-    boolean onPaintOp(@NonNull OpPaint op){
+    void onPaintOp(@NonNull OpPaint op){
         String boardId = op.getBoardId();
         if(!boardId.equals(getBoardId())){
             KLog.p(KLog.ERROR,"op %s is not for %s", op, getBoardId());
-            return false;
+            return;
         }
 //        KLog.p("recv op %s", op);
+
+        boolean bSuccess;
 
         switch (op.getType()){
             case INSERT_PICTURE:
@@ -1495,10 +1492,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     opInsertPic.setMatrix(picMatrix);
                 }
 
-                return dealPicOp(opInsertPic);
+                bSuccess = dealPicOp(opInsertPic);
+                break;
 
             case DELETE_PICTURE:
-                boolean bSuccess = dealPicOp(op);
+                bSuccess = dealPicOp(op);
                 if (!bSuccess && null != picEditStuff){
                     for (String picId : ((OpDeletePic) op).getPicIds()) {
                         if (picEditStuff.delPic(picId)){
@@ -1511,21 +1509,29 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                         }
                     }
                 }
-                return bSuccess;
+                break;
 
             case DRAG_PICTURE:
             case UPDATE_PICTURE:
-                return dealPicOp(op);
+                bSuccess = dealPicOp(op);
+                break;
 
             case FULLSCREEN_MATRIX:
-                return dealMatrixOp((OpMatrix) op);
+                bSuccess = dealMatrixOp((OpMatrix) op);
+                break;
 
             case UNDO:
             case REDO:
-                return dealControlOp(op);
+                bSuccess = dealControlOp(op);
+                break;
 
             default:
-                return dealShapeOp(op);
+                bSuccess = dealShapeOp(op);
+                break;
+        }
+
+        if (bSuccess){
+            onStateChangedListener.onDirty(getBoardId());
         }
 
     }
@@ -1909,10 +1915,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
 
-        /********************************************************
-         * 以下addXXX系列接口为添加各种操作，没有相应的delXXX接口
-         * ****************************************************/
-
         /**
          * 添加图形操作。包括画线、画圆、擦除、清屏等。
          * */
@@ -2116,7 +2118,6 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
             if (EOpType.UNDO==op.getType()
                     && null != shapeOps.peekLast()){
-                bSuccess = true;
                 OpPaint shapeOp = shapeOps.pollLast(); // 撤销最近的操作（目前仅图形操作支持撤销）
                 OpPaint revokedOp = shapeOp;
                 if (EOpType.DRAW_PATH == shapeOp.getType() && !((OpDrawPath)shapeOp).isFinished()){
@@ -2141,7 +2142,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 bSuccess = (null != revokedOp);
 
             }else if (EOpType.REDO==op.getType() && !revokedOps.isEmpty()){
-                bSuccess = true;
+
                 OpPaint repealedOp = revokedOps.pop();
 
                 // 判断当前最后一笔是否正在绘制中的曲线，若为绘制中的曲线则恢复的绘制要插入其前，对比撤销操作，如此才能保持一致。
@@ -2164,7 +2165,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
 
                 ++shapeOpsCount;
-
+                bSuccess = true;
             }
 
             if (bSuccess){
