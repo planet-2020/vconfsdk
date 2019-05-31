@@ -27,7 +27,7 @@ public class OpDrawPath extends OpDraw {
     @Override
     public String toString() {
         return "OpDrawPath{" +
-                ", path=" + path +
+                "path=" + path +
                 ", left=" + left +
                 ", top=" + top +
                 ", right=" + right +
