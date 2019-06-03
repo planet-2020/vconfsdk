@@ -43,6 +43,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperator;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSRegInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSSrvState;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSSwitchReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfos;
@@ -58,8 +59,8 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbPitchPicOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbRectangleOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbReginEraseOperInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSWbTabPageIdInfo;
-import com.kedacom.vconf.sdk.base.bean.dc.TDcsCacheElementParseResult;
 
+import static com.kedacom.vconf.sdk.base.NativeMethodOwners.ConfigCtrl;
 import static com.kedacom.vconf.sdk.base.NativeMethodOwners.DcsCtrl;
 
 /**
@@ -97,6 +98,14 @@ public enum Msg {
 //            userParas = TDCSConfAddr.class, // 用户方法返回值
 //            type = Request.GET)
 //    DCGetServerAddr,
+
+    /**获取数据协作相关状态*/
+    @Request(method = "GetDCSServerStateRt",
+            owner = ConfigCtrl,
+            paras = StringBuffer.class, // native方法传出参数
+            userParas = TDCSSrvState.class, // 用户方法返回值
+            type = Request.GET)
+    DCGetState,
 
     /**
      * 登录数据协作建链响应

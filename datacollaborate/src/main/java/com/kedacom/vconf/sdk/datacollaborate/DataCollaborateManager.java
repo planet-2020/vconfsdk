@@ -20,12 +20,12 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsGetAllWhiteBoardRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetUserListRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetWhiteBoardRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsNewWhiteBoardRsp;
-import com.kedacom.vconf.sdk.base.bean.dc.DcsOperInsertPicNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsSwitchRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsConnectErrCode;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
+import com.kedacom.vconf.sdk.base.bean.dc.EmServerState;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfInfo;
@@ -41,6 +41,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSNewWhiteBoard;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperator;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSRegInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSSrvState;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSSwitchReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfos;
@@ -69,6 +70,7 @@ import java.util.UUID;
 import androidx.annotation.Nullable;
 
 
+@SuppressWarnings({"unused", "WeakerAccess"})
 public class DataCollaborateManager extends Caster {
 
     private static DataCollaborateManager instance;
@@ -285,6 +287,23 @@ public class DataCollaborateManager extends Caster {
         }
 
         return instance;
+    }
+
+
+    /**
+     * 是否已登录数据协作
+     * */
+    public boolean isLogined(){
+        TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
+        return null != srvState && EmServerState.emSrvLogin_Succ == srvState.emState;
+    }
+
+    /**
+     * 是否正在协作
+     * */
+    public boolean isCollaborating(){
+        TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
+        return null != srvState && srvState.bInConference;
     }
 
 
@@ -1608,11 +1627,11 @@ public class DataCollaborateManager extends Caster {
         void onBoardCreated(BoardInfo boardInfo);
         /**
          * 画板删除通知
-         * @param boardId 画板Id {@link BoardInfo#id}*/
+         * @param boardId 画板Id */
         void onBoardDeleted(String boardId);
         /**
          * 画板切换通知
-         * @param boardId 画板Id {@link BoardInfo#id}*/
+         * @param boardId 画板Id */
         void onBoardSwitched(String boardId);
         /**
          * 所有画板删除通知*/

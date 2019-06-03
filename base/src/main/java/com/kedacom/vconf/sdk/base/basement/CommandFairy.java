@@ -58,7 +58,7 @@ public final class CommandFairy implements IFairy.ICommandFairy{
         for (int i=0; i<methodParas.length; ++i){
             sb.append(methodParas[i]).append(", ");
         }
-        Log.d(TAG, String.format("-*-> %s \nparas={%s}", setName, sb));
+        Log.d(TAG, String.format("-*->| %s paras={%s}", setName, sb));
         crystalBall.spell(magicBook.getMethodOwner(setName), magicBook.getMethod(setName), methodParas, magicBook.getParaClasses(setName));
     }
 
@@ -98,10 +98,11 @@ public final class CommandFairy implements IFairy.ICommandFairy{
         for (int i=0; i<methodParas.length; ++i){
             sb.append(methodParas[i]).append(", ");
         }
-        Log.d(TAG, String.format("-*-> %s \nparas={%s}", getName, sb));
+        Log.d(TAG, String.format("-*-> %s paras={%s}", getName, sb));
         crystalBall.spell(magicBook.getMethodOwner(getName), magicBook.getMethod(getName), methodParas, magicBook.getParaClasses(getName));
+        Log.d(TAG, String.format("<-*- %s result=%s", getName, methodParas[methodParas.length-1]));
 
-        return jsonProcessor.fromJson(methodParas[methodParas.length-1].toString(), userParaTypes[userParaTypes.length-1]);
+        return jsonProcessor.fromJson(methodParas[methodParas.length-1].toString(), userParaTypes[userParaTypes.length-1]); // XXX NOTE: 最后一个参数为出参！下层必须遵守这个约定
     }
 
     @Override
