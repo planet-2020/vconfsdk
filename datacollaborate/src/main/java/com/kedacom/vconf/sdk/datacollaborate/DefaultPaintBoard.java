@@ -1544,42 +1544,53 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         Canvas canvas = paintView.lockCanvas();
         if (null != canvas) {
-            // 每次绘制前先清空画布以避免残留
+            // 先清空画布以避免残留
             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 
             // 设置画布matrix
             canvas.setMatrix(matrix);
 
-            // 图片绘制
+            // 渲染图片
             render(opWrapper.getInsertPicOps(), canvas);
 
-            // 绘制图形
+            // 判断是否存在擦除操作
             MyConcurrentLinkedDeque<OpPaint> shapeOps = opWrapper.getShapeOpsAfterCls(hasEraseOp);
+            if (!hasEraseOp[0]) {
+                if (!(hasEraseOp[0]=opWrapper.containsEraseOp(tmpShapeOps))) {
+                    synchronized (adjustingShapeOpLock) {
+                        if (null != adjustingShapeOp
+                                && (adjustingShapeOp instanceof OpErase || adjustingShapeOp instanceof OpRectErase)) {
+                            hasEraseOp[0] = true;
+                        }
+                    }
+                }
+            }
+            KLog.p("hasEraseOp=%s", hasEraseOp[0]);
             if (hasEraseOp[0]) {
-                // 保存已绘制的内容，避免被擦除
+                // 保存已绘制的内容（底图），避免被擦除
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
-                    canvas.saveLayer(null, null);  // TODO 使用xfermode替代该昂贵的方法？
+                    canvas.saveLayer(null, null);
                 }else {
                     canvas.saveLayer(null, null, Canvas.ALL_SAVE_FLAG);
                 }
-
-                render(shapeOps, canvas);
-
-                canvas.restore();
-
-            }else{
-                render(shapeOps, canvas);
             }
 
-            // 临时图形绘制
+            // 渲染已经确认过的图形（平台已经同步到各与会方）
+            render(shapeOps, canvas);
+
+            // 渲染己端已经完成绘制待确认的图形（本端绘制完成，正在同步到各个与会方）
             render(tmpShapeOps, canvas);
 
-            // 绘制正在调整中的操作
+            // 渲染正在绘制中的图形
             synchronized (adjustingShapeOpLock) {
                 if (null != adjustingShapeOp) render(adjustingShapeOp, canvas);
             }
 
-            // 绘制正在编辑中的图片（编辑中的图片展示在图形上层）
+            if (hasEraseOp[0]) {
+                canvas.restore();
+            }
+
+            // 渲染正在编辑中的图片（编辑中的图片展示在最上层）
             synchronized (picEditStuffLock) {
                 if (null != picEditStuff) render(picEditStuff, canvas);
             }
@@ -2237,6 +2248,17 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             return null;
         }
 
+        /**
+         * 是否包含擦除操作
+         * */
+        private boolean containsEraseOp(Collection<? extends OpPaint> ops){
+            for (OpPaint op : ops){
+                if (op instanceof OpErase || op instanceof OpRectErase){
+                    return true;
+                }
+            }
+            return false;
+        }
 
     }
 
