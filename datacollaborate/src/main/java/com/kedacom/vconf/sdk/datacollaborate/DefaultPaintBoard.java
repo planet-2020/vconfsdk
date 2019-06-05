@@ -58,11 +58,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     // 调整中的图形操作。比如画线时，从手指按下到手指拿起之间的绘制都是“调整中”的。
     private OpPaint adjustingShapeOp;
-    private final Object adjustingShapeOpLock = new Object();
 
     // 临时图形操作。手指拿起绘制完成，但并不表示此绘制已生效，需等到平台广播NTF后方能确认为生效的操作，在此之前的操作都作为临时操作保存在这里。
     // （因为时序有要求我们不能把临时操作直接插入正式的操作集，正式操作集中的操作时序均已平台反馈的为准而非己端的操作时序为准）
     private MyConcurrentLinkedDeque<OpPaint> tmpShapeOps = new MyConcurrentLinkedDeque<>();
+    
+    private final Object gatherRenderableShapeOpsLock = new Object();
 
     // 编辑中的图片
     private PicEditStuff picEditStuff;
@@ -771,13 +772,13 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onDragEnd() {
             if (null == adjustingShapeOp) return; // 当前绘制被清掉了
             finishShapeOp();
-            OpPaint tmpOp = adjustingShapeOp;
-            synchronized (adjustingShapeOpLock) {
+            OpPaint tmpOp  = adjustingShapeOp;
+            OpPaint finalTmpOp = adjustingShapeOp;
+            synchronized (gatherRenderableShapeOpsLock) {
+                tmpShapeOps.offerLast(adjustingShapeOp);
                 adjustingShapeOp = null;
             }
 
-            tmpShapeOps.offerLast(tmpOp);
-            OpPaint finalTmpOp = tmpOp;
             if (EOpType.DRAW_PATH == tmpOp.getType()){
                 List<PointF> points = ((OpDrawPath) tmpOp).getPoints();
                 int pointsSize = points.size();
@@ -794,16 +795,19 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                     @Override
                     public void onArrive(boolean bSuccess) {
-                        tmpShapeOps.remove(finalTmpOp); // 不论成功/失败/超时临时操作均已不需要，若成功该操作将被添加到“正式”的操作集，若失败则该操作被丢弃。
                         if (!bSuccess) {
                             KLog.p(KLog.ERROR, "failed to publish shape op %s", finalTmpOp);
+                            tmpShapeOps.remove(finalTmpOp);
                             if (null != onStateChangedListener)onStateChangedListener.onDirty(getBoardId()); // 失败重新刷新一下
                         }
                     }
 
                     @Override
                     public void onSuccess(Object result) {
-                        dealShapeOp(publishOp);
+                        synchronized (gatherRenderableShapeOpsLock) {
+                            dealShapeOp(publishOp);
+                            tmpShapeOps.remove(finalTmpOp);
+                        }
                     }
 
                 }
@@ -1340,10 +1344,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private boolean dealShapeOp(OpPaint shapeOp){
         if (EOpType.CLEAR_SCREEN==shapeOp.getType()){
-            synchronized (adjustingShapeOpLock) {
+            synchronized (gatherRenderableShapeOpsLock) {
+                tmpShapeOps.clear(); // 清空己端正在等待平台确认的操作
                 adjustingShapeOp = null; // 清空己端正在绘制中的操作
             }
-            tmpShapeOps.clear(); // 清空己端正在等待平台确认的操作
         }
 
         int lastWcRevocableOpsCount = wcRevocableOpsCount;
@@ -1537,6 +1541,19 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
+    private MyConcurrentLinkedDeque<OpPaint> shapeOpsToRender = new MyConcurrentLinkedDeque<>();
+    private MyConcurrentLinkedDeque<OpPaint> gatherRenderableShapeOps(boolean[] hasEraseOp){
+        shapeOpsToRender.clear();
+        synchronized (gatherRenderableShapeOpsLock) {
+            shapeOpsToRender.addAll(opWrapper.getShapeOpsAfterCls(hasEraseOp));
+            shapeOpsToRender.addAll(tmpShapeOps);
+            if (null != adjustingShapeOp) shapeOpsToRender.add(adjustingShapeOp);
+            hasEraseOp[0] = hasEraseOp[0] 
+                    || opWrapper.containsEraseOp(tmpShapeOps) 
+                    || null != adjustingShapeOp && (adjustingShapeOp instanceof OpErase || adjustingShapeOp instanceof OpRectErase);
+        }
+        return shapeOpsToRender;
+    }
     private Matrix paintBoardMatrix = new Matrix();
     boolean[] hasEraseOp = new boolean[1];
     void paint(){
@@ -1553,19 +1570,9 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             // 渲染图片
             render(opWrapper.getInsertPicOps(), canvas);
 
-            // 判断是否存在擦除操作
-            MyConcurrentLinkedDeque<OpPaint> shapeOps = opWrapper.getShapeOpsAfterCls(hasEraseOp);
-            if (!hasEraseOp[0]) {
-                if (!(hasEraseOp[0]=opWrapper.containsEraseOp(tmpShapeOps))) {
-                    synchronized (adjustingShapeOpLock) {
-                        if (null != adjustingShapeOp
-                                && (adjustingShapeOp instanceof OpErase || adjustingShapeOp instanceof OpRectErase)) {
-                            hasEraseOp[0] = true;
-                        }
-                    }
-                }
-            }
-            KLog.p("hasEraseOp=%s", hasEraseOp[0]);
+            // 搜集待渲染的图形
+            MyConcurrentLinkedDeque<OpPaint> shapeOps = gatherRenderableShapeOps(hasEraseOp);
+
             if (hasEraseOp[0]) {
                 // 保存已绘制的内容（底图），避免被擦除
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
@@ -1575,16 +1582,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
             }
 
-            // 渲染已经确认过的图形（平台已经同步到各与会方）
+            // 渲染图形
             render(shapeOps, canvas);
-
-            // 渲染己端已经完成绘制待确认的图形（本端绘制完成，正在同步到各个与会方）
-            render(tmpShapeOps, canvas);
-
-            // 渲染正在绘制中的图形
-            synchronized (adjustingShapeOpLock) {
-                if (null != adjustingShapeOp) render(adjustingShapeOp, canvas);
-            }
 
             if (hasEraseOp[0]) {
                 canvas.restore();
