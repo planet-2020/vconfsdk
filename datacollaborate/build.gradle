@@ -10,6 +10,8 @@ android {
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"
+        buildConfigField("String", "ARTIFACT_VERSION", "\"$version\"")
+        buildConfigField("String", "TIMESTAMP", "\""+new Date().format("yyyy-MM-dd HH:mm")+"\"")
     }
 
     buildTypes {

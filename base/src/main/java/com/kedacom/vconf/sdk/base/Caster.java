@@ -19,6 +19,13 @@ import java.util.Set;
 public abstract class Caster implements IFairy.ISessionFairy.IListener,
         IFairy.INotificationFairy.IListener{
 
+    static {
+        KLog.p("\n========================================" +
+                        "\n======== Caster version=%s, timestamp=%s" +
+                        "\n========================================",
+                BuildConfig.ARTIFACT_VERSION, BuildConfig.TIMESTAMP);
+    }
+
     private IFairy.ISessionFairy sessionFairy;
     private IFairy.INotificationFairy notificationFairy;
     private IFairy.ICommandFairy commandFairy;
