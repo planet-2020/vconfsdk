@@ -487,7 +487,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         MyConcurrentLinkedDeque<OpInsertPic> picOps = opWrapper.getInsertPicOps();
         boolean[] hasEraseOp = new boolean[1];
-        MyConcurrentLinkedDeque<OpPaint> shapeOps = opWrapper.getShapeOpsAfterCls(hasEraseOp);
+        MyConcurrentLinkedDeque<OpPaint> shapeOps = gatherRenderableShapeOps(hasEraseOp);
         ops.addAll(picOps);
         ops.addAll(shapeOps);
 

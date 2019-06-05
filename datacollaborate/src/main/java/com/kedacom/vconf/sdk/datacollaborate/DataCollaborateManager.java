@@ -325,7 +325,7 @@ public class DataCollaborateManager extends Caster {
      * （尽管本模块力图能独立于其他模块使用，但由于所依赖的下层模块对一些业务逻辑的先后顺序有强依赖关系，无法完全做到这点。
      *   本接口必须在登录APS成功后调用！本模块不包含登录APS的接口，那是其他的功能！
      *   从本接口“虽名为登录，却未提供用户名、密码、目标服务器地址等必要的输入参数”这点可见一斑——
-     *   下层模块在登录APS时会缓存用户名、密码，并在登录数据协作时使用它们，使得本接口不需要用户传入用户名密码。）
+     *   下层模块在登录APS成功后会缓存用户名、密码、服务器地址，并在登录数据协作时使用它们，使得本接口不需要用户传入用户名密码。）
      **/
     public void login(ETerminalType terminalType, IResultListener resultListener){
         TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
