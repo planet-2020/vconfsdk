@@ -302,7 +302,7 @@ public class DataCollaborateManager extends Caster {
 
 
     /**
-     * 是否正在协作
+     * 是否正在协作中
      * */
     public boolean isCollaborating(){
         TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
@@ -778,14 +778,12 @@ public class DataCollaborateManager extends Caster {
 
     private void onSessionNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         switch (ntfId){
-            case DCBuildLink4ConfRsp: // 己端为协作方，会管上面删除己端己端只收到该通知错误码为3
+            case DCBuildLink4ConfRsp:
                 TDCSConnectResult tdcsConnectResult = (TDCSConnectResult) ntfContent;
                 if (!tdcsConnectResult.bSuccess){
-                    if (EmDcsConnectErrCode.emConfDisconnect == tdcsConnectResult.dwErrorCode) {
-                        // 通知用户数据协作断链
-                        for (Object listener : listeners) {
-                            ((IOnSessionEventListener) listener).onDcException(ErrCode_Disconnect);
-                        }
+                    // 用户所属的数据协作链路状态异常，通知用户（对于他来说）数据协作已结束
+                    for (Object listener : listeners){
+                        ((IOnSessionEventListener)listener).onDcFinished();
                     }
                     curDcConfE164 = null;
                 }
@@ -814,15 +812,15 @@ public class DataCollaborateManager extends Caster {
 
                 break;
 
-            // 数据协作结束通知
+            // 数据协作本身已结束通知
             case DCReleaseConfNtf:
-                BaseTypeString result = (BaseTypeString) ntfContent;
-                if (result.basetype.equals(curDcConfE164)){
-                    for (Object listener : listeners){
-                        ((IOnSessionEventListener)listener).onDcReleased();
-                    }
-                    curDcConfE164 = null;
-                }
+//                BaseTypeString result = (BaseTypeString) ntfContent;
+//                if (result.basetype.equals(curDcConfE164)){
+//                    for (Object listener : listeners){
+//                        ((IOnSessionEventListener)listener).onDcFinished();
+//                    }
+//                    curDcConfE164 = null;
+//                } // 我们已经在收到DCBuildLink4ConfRsp时上报用户数据协作结束了，此处不再重复上报
                 break;
 
             case DCConfParaChanged:
@@ -1676,21 +1674,16 @@ public class DataCollaborateManager extends Caster {
          * */
         void onJoinDcFailed(int errCode);
         /**
-         * 数据协作结束
+         * （对己端而言）数据协作已结束。（协作本身可能仍存在也可能已不存在）
+         * 数据协作被结束，或者己端被管理员从协作中删除均会触发该回调。
          * */
-        void onDcReleased();
+        void onDcFinished();
 
         /**
          * 数据协作会议参数设置变更（如协作模式被修改）
          * @param dcConfInfo 数据协作会议信息
          * */
         void onDCConfParaChanged(DcConfInfo dcConfInfo);
-
-        /**
-         * 数据协作异常，如中途断链等。
-         * @param errCode 异常错误码
-         * */
-        void onDcException(int errCode);
 
     }
 
