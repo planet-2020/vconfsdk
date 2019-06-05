@@ -9,6 +9,8 @@ import android.os.Message;
 import android.os.Process;
 
 import com.google.common.io.Files;
+import com.google.common.net.InetAddresses;
+import com.google.common.primitives.Ints;
 import com.kedacom.vconf.sdk.base.Caster;
 import com.kedacom.vconf.sdk.base.ILifecycleOwner;
 import com.kedacom.vconf.sdk.base.IResultListener;
@@ -42,6 +44,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperator;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSRegInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSSrvState;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSSvrAddr;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSSwitchReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfos;
@@ -58,6 +61,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.ETerminalType;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -298,14 +302,6 @@ public class DataCollaborateManager extends Caster {
 
 
     /**
-     * 是否已登录数据协作
-     * */
-    public boolean isLogined(){
-        TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
-        return null != srvState && EmServerState.emSrvLogin_Succ == srvState.emState;
-    }
-
-    /**
      * 是否正在协作
      * */
     public boolean isCollaborating(){
@@ -315,8 +311,6 @@ public class DataCollaborateManager extends Caster {
 
 
     /**登录数据协作
-     * @param serverIp 数据协作服务器Ip
-     * @param port 数据协作服务器port
      * @param terminalType 己端终端类型
      * @param resultListener 登陆结果监听器。
      *                       成功返回结果null：
@@ -326,10 +320,32 @@ public class DataCollaborateManager extends Caster {
      *                       {@link #ErrCode_BuildLink4LoginFailed }
      *                       {@link #ErrCode_Failed}
      *                       resultListener.onFailed(errorCode);
+     *
+     * NOTE: 请务必在登录APS成功后登录数据协作！
+     * （尽管本模块力图能独立于其他模块使用，但由于所依赖的下层模块对一些业务逻辑的先后顺序有强依赖关系，无法完全做到这点。
+     *   本接口必须在登录APS成功后调用！本模块不包含登录APS的接口，那是其他的功能！
+     *   从本接口“虽名为登录，却未提供用户名、密码、目标服务器地址等必要的输入参数”这点可见一斑——
+     *   下层模块在登录APS时会缓存用户名、密码，并在登录数据协作时使用它们，使得本接口不需要用户传入用户名密码。）
      **/
-    public void login(String serverIp, int port, ETerminalType terminalType, IResultListener resultListener){
+    public void login(ETerminalType terminalType, IResultListener resultListener){
+        TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
+        if (null != srvState && EmServerState.emSrvLogin_Succ == srvState.emState){
+            KLog.p(KLog.WARN, "already logined!");
+            // 已登录状态则直接返回成功（若此状态下直接请求登录下层不会有任何响应 (─.─||| ）
+            if (null != resultListener) reportSuccess(null, resultListener);
+            return;
+        }
+        TDCSSvrAddr svrAddr = (TDCSSvrAddr) get(Msg.DCGetServerAddr);
         curTerminalType = ToDoConverter.toTransferObj(terminalType);
-        req(Msg.DCLogin, resultListener, new TDCSRegInfo(serverIp, port, curTerminalType));
+        String ip = null;
+        try {
+            // 将整型ip转为点分十进制（下层需要的参数形式，他们然后又内部转为整型，真是服了，返给我们整型，然后接口参数需要字符串，然后内部又自己转为整型，为什么不干脆接口参数定为整型！？）
+            ip = InetAddresses.fromLittleEndianByteArray(Ints.toByteArray((int) svrAddr.dwIp)).getHostAddress();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+
+        req(Msg.DCLogin, resultListener, new TDCSRegInfo(ip, svrAddr.dwPort, curTerminalType));
     }
 
     /**注销数据协作

@@ -28,7 +28,6 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsSwitchRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardResult;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfAddr;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConf;
@@ -44,6 +43,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperator;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSRegInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSSrvState;
+import com.kedacom.vconf.sdk.base.bean.dc.TDCSSvrAddr;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSSwitchReq;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfos;
@@ -91,13 +91,13 @@ public enum Msg {
 //            type = Request.SET)
 //    DCSetServerAddr,
 //
-//    /**获取数据协作服务器地址*/
-//    @Request(method = "DCGetServerAddr",
-//            owner = DcsCtrl,
-//            paras = StringBuffer.class, // native方法传出参数，注意对比DCSetServerAddr
-//            userParas = TDCSConfAddr.class, // 用户方法返回值
-//            type = Request.GET)
-//    DCGetServerAddr,
+    /**获取数据协作服务器地址*/
+    @Request(method = "GetDCSCfg",
+            owner = ConfigCtrl,
+            paras = StringBuffer.class, // native方法传出参数，注意对比DCSetServerAddr
+            userParas = TDCSSvrAddr.class, // 用户方法返回值
+            type = Request.GET)
+    DCGetServerAddr,
 
     /**获取数据协作相关状态*/
     @Request(method = "GetDCSServerStateRt",
