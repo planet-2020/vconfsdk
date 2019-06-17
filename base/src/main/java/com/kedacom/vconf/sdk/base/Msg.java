@@ -9,6 +9,7 @@ import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.bean.dc.BaseTypeString;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsDownloadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetAllWhiteBoardRsp;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsGetConfAddrRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetUserListRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetWhiteBoardRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsNewWhiteBoardRsp;
@@ -83,14 +84,7 @@ public enum Msg {
     //>>>>>>>>>>>>>>>>>>> 数据协作
 
     // 数据协作基础
-//    /**设置数据协作服务器地址*/
-//    @Request(method = "DCSetServerAddr",
-//            owner = DcsCtrl,
-//            paras = StringBuffer.class, // native方法传入参数，注意对比DCGetServerAddr
-//            userParas = TDCSConfAddr.class, // 用户传入参数，注意对比DCGetServerAddr
-//            type = Request.SET)
-//    DCSetServerAddr,
-//
+
     /**获取数据协作服务器地址*/
     @Request(method = "GetDCSCfg",
             owner = ConfigCtrl,
@@ -149,6 +143,22 @@ public enum Msg {
             id = "DcsLogout_Rsp")
     DCLogoutRsp,
 
+
+    /**查询数据协作地址*/
+    @Request(method = "DCSGetConfAddrReq",
+            owner = DcsCtrl,
+            paras = StringBuffer.class,
+            userParas = String.class, // 数据协作所在会议e164号
+            rspSeq = "DCQueryAddrRsp"
+    )
+    DCQueryAddr,
+
+    /**
+     * 查询数据协作地址响应
+     */
+    @Response(clz = DcsGetConfAddrRsp.class,
+            id = "DcsGetConfAddr_Rsp")
+    DCQueryAddrRsp,
 
     /**
      * 创建数据协作建链响应/通知

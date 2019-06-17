@@ -1,3 +1,19 @@
+/**
+ * 数据协作管理模块。
+ * 对底层业务逻辑的封装。
+ *
+ * 注意：数据协作目前并非完全独立的模块，因为它所依赖的底层模块在业务逻辑上跟其他模块强相关（如它依赖APS登录，并且和会议功能紧紧绑在一起），
+ * 这对接口的设计及使用造成了影响，并可能使用户产生困惑，比如：
+ *
+ * 您会看到数据协作登录接口并没有用户名/密码入参并且您必须在登录APS（另一个模块的功能不属于数据协作）成功后再登录数据协作，
+ * 这是因为底层模块在APS登录成功时会记录下用户名/密码并在登录数据协作时直接使用，底层模块不允许单独为登录数据协作指定用户名密码。
+ *
+ * 再如，您必须先是入会成功了才能创建数据协作，并在创建时将会议号码传入，因为数据协作目前是依附于会议的。
+ *
+ * */
+
+
+
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.app.Application;
@@ -19,6 +35,7 @@ import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.base.bean.dc.BaseTypeString;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsDownloadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetAllWhiteBoardRsp;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsGetConfAddrRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetUserListRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetWhiteBoardRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsNewWhiteBoardRsp;
@@ -220,6 +237,12 @@ public class DataCollaborateManager extends Caster {
             Msg.DCDragPic,
     };
 
+    @Override
+    protected Map<Msg, RspProcessor> rspProcessors() {
+        Map<Msg, RspProcessor> processorMap = new HashMap<>();
+        processorMap.put(Msg.DCQueryAddr, this::onRsp);
+        return processorMap;
+    }
 
     @Override
     protected Map<Msg[], RspProcessor> rspsProcessors() {
@@ -301,15 +324,6 @@ public class DataCollaborateManager extends Caster {
     }
 
 
-    /**
-     * 是否正在协作中
-     * */
-    public boolean isCollaborating(){
-        TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
-        return null != srvState && srvState.bInConference;
-    }
-
-
     /**登录数据协作
      * @param terminalType 己端终端类型
      * @param resultListener 登陆结果监听器。
@@ -321,11 +335,7 @@ public class DataCollaborateManager extends Caster {
      *                       {@link #ErrCode_Failed}
      *                       resultListener.onFailed(errorCode);
      *
-     * NOTE: 请务必在登录APS成功后登录数据协作！
-     * （尽管本模块力图能独立于其他模块使用，但由于所依赖的下层模块对一些业务逻辑的先后顺序有强依赖关系，无法完全做到这点。
-     *   本接口必须在登录APS成功后调用！本模块不包含登录APS的接口，那是其他的功能！
-     *   从本接口“虽名为登录，却未提供用户名、密码、目标服务器地址等必要的输入参数”这点可见一斑——
-     *   下层模块在登录APS成功后会缓存用户名、密码、服务器地址，并在登录数据协作时使用它们，使得本接口不需要用户传入用户名密码。）
+     * NOTE: 请务必在登录APS成功后登录数据协作！（登录APS的接口在其他模块）
      **/
     public void login(ETerminalType terminalType, IResultListener resultListener){
         TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
@@ -339,7 +349,7 @@ public class DataCollaborateManager extends Caster {
         curTerminalType = ToDoConverter.toTransferObj(terminalType);
         String ip = null;
         try {
-            // 将整型ip转为点分十进制（下层需要的参数形式，他们然后又内部转为整型，真是服了，返给我们整型，然后接口参数需要字符串，然后内部又自己转为整型，为什么不干脆接口参数定为整型！？）
+            // 将整型ip转为点分十进制
             ip = InetAddresses.fromLittleEndianByteArray(Ints.toByteArray((int) svrAddr.dwIp)).getHostAddress();
         } catch (UnknownHostException e) {
             e.printStackTrace();
@@ -362,8 +372,28 @@ public class DataCollaborateManager extends Caster {
     }
 
 
+    /**
+     * 查询会议中是否存在数据协作（数据协作目前依附于会议）
+     * @param confE164 会议号
+     * @param resultListener 登陆结果监听器。
+     *                       始终成功，返回结果boolean bExists，指示是否存在：
+     *                       resultListener.onSuccess(bExists);
+     * */
+    public void queryDcExistsOrNot(String confE164, IResultListener resultListener){
+        req(Msg.DCQueryAddr, resultListener, confE164);
+    }
+
+    /**
+     * 当前用户是否正在协作中。
+     * */
+    public boolean isCollaborating(){
+        TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
+        return null != srvState && srvState.bInConference;
+    }
+
+
     /**创建数据协作
-     * @param confE164 会议e164
+     * @param confE164 会议e164（数据协作目前依附于会议——只能在会议中开启数据协作）
      * @param confName 会议名称
      * @param dcMode 数据协作模式
      * @param confType 会议类型
@@ -1383,6 +1413,25 @@ public class DataCollaborateManager extends Caster {
         return true;
     }
 
+
+    private boolean onRsp(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
+        switch (rspId){
+            case DCQueryAddrRsp:
+                reportSuccess(((DcsGetConfAddrRsp) rspContent).MainParam.bSucces, listener);
+                break;
+
+            case Timeout:
+                if (Msg.DCQueryAddr == reqId){
+                    reportSuccess(false, listener);
+                    return true;
+                }
+                return false;
+
+            default:
+                return false;
+        }
+        return true;
+    }
 
 
     /**
