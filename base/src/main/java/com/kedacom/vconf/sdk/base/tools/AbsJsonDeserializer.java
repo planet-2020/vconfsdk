@@ -40,7 +40,6 @@ public abstract class AbsJsonDeserializer<T> implements JsonDeserializer<T> {
     public T deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         Type[] types = ((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments();
 
-        Log.i("AbsJsonDeserializer", "getClass()="+getClass());
         T instanceT = null;
         Class<T> classT = (Class<T>)types[0];
         try {
@@ -51,18 +50,14 @@ public abstract class AbsJsonDeserializer<T> implements JsonDeserializer<T> {
             e.printStackTrace();
         }
 
-        Log.i("AbsJsonDeserializer", "instanceT="+instanceT);
-
         JsonObject jsonObject = json.getAsJsonObject();
         Gson gson = JsonProcessor.instance().obtainGson();
         try {
             if (jsonObject.has(MANKEY)){ // json 由两部分组成： "MainParam" : {} "AssParam" : {}
                 Field fieldMain = classT.getDeclaredField(MANKEY);
-                Log.i("AbsJsonDeserializer", "fieldMain="+fieldMain);
                 fieldMain.setAccessible(true);
                 fieldMain.set(instanceT, gson.fromJson(jsonObject.getAsJsonObject(MANKEY), fieldMain.getType()));
                 Field fieldAss = classT.getDeclaredField(ASSKEY);
-                Log.i("AbsJsonDeserializer", "fieldAss="+fieldAss);
                 fieldAss.setAccessible(true);
                 fieldAss.set(instanceT, gson.fromJson(jsonObject.getAsJsonObject(ASSKEY), fieldAss.getType()));
             }else{ // json 只包含MainParam部分（没有"MainParam" key）：{}
