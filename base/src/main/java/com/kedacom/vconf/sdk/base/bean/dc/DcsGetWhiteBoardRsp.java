@@ -4,37 +4,13 @@
 
 package com.kedacom.vconf.sdk.base.bean.dc;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
 import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.base.basement.JsonProcessor;
+import com.kedacom.vconf.sdk.base.tools.AbsJsonDeserializer;
 
-import java.lang.reflect.Type;
-
-@JsonAdapter(DcsGetWhiteBoardRsp.class)
-public class DcsGetWhiteBoardRsp implements JsonDeserializer<DcsGetWhiteBoardRsp> {
+@JsonAdapter(DcsGetWhiteBoardRsp.Deserializer.class)
+public class DcsGetWhiteBoardRsp {
     public TDCSBoardResult MainParam;
     public TDCSBoardInfo AssParam;
-
-    @Override
-    public DcsGetWhiteBoardRsp deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-        DcsGetWhiteBoardRsp boardRsp = new DcsGetWhiteBoardRsp();
-        JsonObject jsonObject = json.getAsJsonObject();
-        Gson gson = JsonProcessor.instance().obtainGson();
-        if (jsonObject.has("MainParam")){
-            boardRsp.MainParam =  gson.fromJson(jsonObject.getAsJsonObject("MainParam"), TDCSBoardResult.class);
-            boardRsp.AssParam = gson.fromJson(jsonObject.getAsJsonObject("AssParam"), TDCSBoardInfo.class);
-        }else{
-            KLog.p(KLog.WARN,"no AssParam");
-            boardRsp.MainParam = gson.fromJson(json, TDCSBoardResult.class);
-        }
-        return boardRsp;
-    }
 
     @Override
     public String toString() {
@@ -43,4 +19,6 @@ public class DcsGetWhiteBoardRsp implements JsonDeserializer<DcsGetWhiteBoardRsp
                 ", AssParam=" + AssParam +
                 '}';
     }
+
+    static final class Deserializer extends AbsJsonDeserializer<DcsGetWhiteBoardRsp> { }
 }

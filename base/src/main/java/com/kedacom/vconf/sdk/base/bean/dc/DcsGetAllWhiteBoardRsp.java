@@ -5,42 +5,13 @@
 package com.kedacom.vconf.sdk.base.bean.dc;
 
 
-import com.google.gson.Gson;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
 import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.base.basement.JsonProcessor;
+import com.kedacom.vconf.sdk.base.tools.AbsJsonDeserializer;
 
-import java.lang.reflect.Type;
-
-@JsonAdapter(DcsGetAllWhiteBoardRsp.class)
-public class DcsGetAllWhiteBoardRsp implements JsonDeserializer<DcsGetAllWhiteBoardRsp> {
+@JsonAdapter(DcsGetAllWhiteBoardRsp.Deserializer.class)  // 指定json反序列化的解析器
+public class DcsGetAllWhiteBoardRsp{
     public TDCSResult MainParam;
     public TDCSGetAllBoard AssParam;
-
-    public DcsGetAllWhiteBoardRsp() {
-        MainParam = new TDCSResult();
-        AssParam = new TDCSGetAllBoard();
-    }
-
-    @Override
-    public DcsGetAllWhiteBoardRsp deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-        DcsGetAllWhiteBoardRsp boardRsp = new DcsGetAllWhiteBoardRsp();
-        JsonObject jsonObject = json.getAsJsonObject();
-        Gson gson = JsonProcessor.instance().obtainGson();
-        if (jsonObject.has("MainParam")){
-            boardRsp.MainParam =  gson.fromJson(jsonObject.getAsJsonObject("MainParam"), TDCSResult.class);
-            boardRsp.AssParam = gson.fromJson(jsonObject.getAsJsonObject("AssParam"), TDCSGetAllBoard.class);
-        }else{
-            KLog.p(KLog.WARN,"no AssParam");
-            boardRsp.MainParam = gson.fromJson(json, TDCSResult.class);
-        }
-        return boardRsp;
-    }
 
     @Override
     public String toString() {
@@ -49,4 +20,7 @@ public class DcsGetAllWhiteBoardRsp implements JsonDeserializer<DcsGetAllWhiteBo
                 ", AssParam=" + AssParam +
                 '}';
     }
+
+    static final class Deserializer extends AbsJsonDeserializer<DcsGetAllWhiteBoardRsp>{ }
+
 }

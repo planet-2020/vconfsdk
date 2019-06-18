@@ -8,4 +8,12 @@ public class DcsDownloadImageRsp {
 
     public TDCSResult MainParam;
     public TDCSImageUrl AssParam;
+
+    @Override
+    public String toString() {
+        return "DcsDownloadImageRsp{" +
+                "MainParam=" + MainParam +
+                ", AssParam=" + AssParam +
+                '}';
+    }
 }
