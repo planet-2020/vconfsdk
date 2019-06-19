@@ -83,6 +83,9 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
     /**取消监控生命周期。*/
     void unobserve(Object listener){
+        if (null == listener){
+            return;
+        }
         for (Map.Entry<LifecycleOwner, Set<Object>> owner : lifecycleOwnerBindListeners.entrySet()){
             LifecycleOwner key = owner.getKey();
             Set<Object> val = owner.getValue();

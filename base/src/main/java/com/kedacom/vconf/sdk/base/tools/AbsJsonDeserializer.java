@@ -17,8 +17,6 @@
 
 package com.kedacom.vconf.sdk.base.tools;
 
-import android.util.Log;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
