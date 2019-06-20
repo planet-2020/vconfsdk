@@ -1,14 +1,9 @@
 /**
  * 数据协作管理模块。
- * 对底层业务逻辑的封装。
+ * （对底层业务逻辑的封装）
  *
- * 注意：数据协作目前并非完全独立的模块，因为它所依赖的底层模块在业务逻辑上跟其他模块强相关（如它依赖APS登录，并且和会议功能紧紧绑在一起），
- * 这对接口的设计及使用造成了影响，并可能使用户产生困惑，比如：
- *
- * 您会看到数据协作登录接口并没有用户名/密码入参并且您必须在登录APS（另一个模块的功能不属于数据协作）成功后再登录数据协作，
- * 这是因为底层模块在APS登录成功时会记录下用户名/密码并在登录数据协作时直接使用，底层模块不允许单独为登录数据协作指定用户名密码。
- *
- * 再如，您必须先是入会成功了才能创建数据协作，并在创建时将会议号码传入，因为数据协作目前是依附于会议的。
+ * NOTE: 数据协作目前并非完全独立的模块——
+ * 您必须在登录APS成功后才能登录数据协作，并且您必须已经入会才能开始数据协作（目前数据协作是依附于会议的）。
  *
  * */
 
@@ -41,7 +36,6 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsGetWhiteBoardRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsNewWhiteBoardRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsSwitchRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
-import com.kedacom.vconf.sdk.base.bean.dc.EmDcsConnectErrCode;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
 import com.kedacom.vconf.sdk.base.bean.dc.EmServerState;
@@ -136,6 +130,14 @@ public class DataCollaborateManager extends Caster {
     private EmDcsType curTerminalType;
 
     private Handler assHandler;
+
+
+    // 通知监听器
+//    private IOnSynchronizeProgressListener onSynchronizeProgressListener;
+    private IOnSessionEventListener onSessionEventListener;
+    private IOnOperatorEventListener onOperatorEventListener;
+    private IOnBoardOpListener onBoardOpListener;
+    private IOnPaintOpListener onPaintOpListener;
 
     // 会话相关通知
     private static final Msg[] sessionNtfs = new Msg[]{
@@ -375,11 +377,11 @@ public class DataCollaborateManager extends Caster {
     /**
      * 查询会议中是否存在数据协作（数据协作目前依附于会议）
      * @param confE164 会议号
-     * @param resultListener 登陆结果监听器。
+     * @param resultListener 结果监听器。
      *                       始终成功，返回结果boolean bExists，指示是否存在：
      *                       resultListener.onSuccess(bExists);
      * */
-    public void queryDcExistsOrNot(String confE164, IResultListener resultListener){
+    public void queryCollaborateExistsOrNot(String confE164, IResultListener resultListener){
         req(Msg.DCQueryAddr, resultListener, confE164);
     }
 
@@ -392,7 +394,11 @@ public class DataCollaborateManager extends Caster {
     }
 
 
-    /**创建数据协作
+    /**开启数据协作
+     * 若数据协作已存在于会议中则直接加入，否则创建数据协作。
+     *
+     * 可通过{@link #queryCollaborateExistsOrNot(String, IResultListener)}查询会议中是否存在协作。
+     *
      * @param confE164 会议e164（数据协作目前依附于会议——只能在会议中开启数据协作）
      * @param confName 会议名称
      * @param dcMode 数据协作模式
@@ -400,19 +406,37 @@ public class DataCollaborateManager extends Caster {
      * @param adminE164 主席e164
      * @param members 与会成员
      * @param resultListener 结果监听器。
-     *                       成功返回创会信息{@link DcConfInfo}
+     *                       成功返回数据协作信息{@link DcConfInfo}
      *                       resultListener.onSuccess(DcConfInfo);
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
      *                       {@link #ErrCode_BuildLink4ConfFailed}
-     *                       resultListener.onFailed(errorCode);*/
-    public void createDcConf(String confE164, String confName, EDcMode dcMode, EConfType confType,
-                             String adminE164, List<DCMember> members, IResultListener resultListener){
+     *                       resultListener.onFailed(errorCode);
+//     * @param synchronizeProgressListener 同步进度监听器（开启协作成功后会同步协作中已有内容（画板、图元等））
+     * @param sessionEventListener 数据协作会话事件监听器
+     * @param operatorEventListener 协作权相关通知监听器
+     * @param boardOpListener 画板操作通知监听器
+     * @param paintOpListener 绘制操作通知监听器
+     * */
+    public void startCollaborate(String confE164, String confName, EDcMode dcMode, EConfType confType,String adminE164, List<DCMember> members,
+                                 IResultListener resultListener,
+//                                 IOnSynchronizeProgressListener synchronizeProgressListener,
+                                 IOnSessionEventListener sessionEventListener,
+                                 IOnOperatorEventListener operatorEventListener,
+                                 IOnBoardOpListener boardOpListener,
+                                 IOnPaintOpListener paintOpListener ){
+
+        unsubscribeNtfListeners();
+
         curDcConfE164 = null;
+
         req(Msg.DCCreateConf, resultListener,
                 new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
                         confE164, confName, ToDoConverter.toTransferObj(dcMode),
-                        ToDoConverter.toDcUserList(members), adminE164, curTerminalType));
+                        ToDoConverter.toDcUserList(members), adminE164, curTerminalType),
+                sessionEventListener, operatorEventListener, boardOpListener, paintOpListener // “开启数据协作”并不需要这组监听器作为请求参数，
+                                                                                              // 我们此处只是利用框架替我们缓存这组监听器，在“开启数据协作”结束后再获取它们以做处理。
+        );
     }
 
     /**结束数据协作
@@ -422,7 +446,8 @@ public class DataCollaborateManager extends Caster {
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
      *                       resultListener.onFailed(errorCode);*/
-    public void releaseDcConf(IResultListener resultListener){
+    public void finishCollaborate(IResultListener resultListener){
+        unsubscribeNtfListeners();
         req(Msg.DCReleaseConf, resultListener, curDcConfE164);
     }
 
@@ -435,7 +460,8 @@ public class DataCollaborateManager extends Caster {
      *                       失败返回错误码：
      *                       {@link #ErrCode_Failed}
      *                       resultListener.onFailed(errorCode);*/
-    public void quitDcConf(boolean bQuitConf, IResultListener resultListener){
+    public void quitCollaborate(boolean bQuitConf, IResultListener resultListener){
+        unsubscribeNtfListeners();
         req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
     }
 
@@ -672,7 +698,7 @@ public class DataCollaborateManager extends Caster {
                                     assHandler.post(() ->
                                             {
                                                 try {
-                                                    // 把图片拷贝到图片缓存目录，这样下次加入协作时图片能立马加载。
+                                                    // 插入图片成功后我们把图片拷贝到本地图片缓存目录，这样下次加入协作时能直接从本地加载图片。
                                                     Files.copy(new File(insertPic.getPicPath()), new File(getPicSavePath(insertPic.getPicId())) );
                                                 } catch (IOException e) {
                                                     e.printStackTrace();
@@ -760,7 +786,7 @@ public class DataCollaborateManager extends Caster {
             case DCBuildLink4ConfRsp:
                 result = (TDCSConnectResult) rspContent;
                 if (Msg.DCCreateConf == reqId) {
-                    if (!result.bSuccess) { // 链路建立失败
+                    if (!result.bSuccess) { // 开启数据协作失败（链路建立失败）
                         cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
                         reportFailed(ErrCode_BuildLink4ConfFailed, listener);
                     }
@@ -778,10 +804,20 @@ public class DataCollaborateManager extends Caster {
                 break;
             case DCConfCreated:
                 TDCSCreateConfResult createConfResult = (TDCSCreateConfResult) rspContent;
-                if (createConfResult.bSuccess) {
+                if (createConfResult.bSuccess) { // 开启数据协作成功
                     curDcConfE164 = createConfResult.achConfE164;
                     reportSuccess(ToDoConverter.fromTransferObj(createConfResult), listener);
+
+                    // 注册通知监听器
+                    onSessionEventListener = (IOnSessionEventListener) reqParas[1];
+                    onOperatorEventListener = (IOnOperatorEventListener) reqParas[2];
+                    onBoardOpListener = (IOnBoardOpListener) reqParas[3];
+                    onPaintOpListener = (IOnPaintOpListener) reqParas[4];
+                    subscribeNtfListeners();
+
+                    // 同步协作中已有内容
                     synchronizeCachedStuff(createConfResult);
+
                 }else{
                     reportFailed(ErrCode_Failed, listener);
                 }
@@ -807,58 +843,34 @@ public class DataCollaborateManager extends Caster {
     }
 
     private void onSessionNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
+        if (null == onSessionEventListener){
+            KLog.p(KLog.ERROR, "null == onSessionEventListener");
+            return;
+        }
         switch (ntfId){
             case DCBuildLink4ConfRsp:
                 TDCSConnectResult tdcsConnectResult = (TDCSConnectResult) ntfContent;
-                if (!tdcsConnectResult.bSuccess){
-                    // 用户所属的数据协作链路状态异常，通知用户（对于他来说）数据协作已结束
-                    for (Object listener : listeners){
-                        ((IOnSessionEventListener)listener).onDcFinished();
-                    }
+                if (!tdcsConnectResult.bSuccess){ // 用户所属的数据协作链路状态异常
+                    onSessionEventListener.onDcFinished(); // 通知用户（对于他来说）数据协作已结束
                     curDcConfE164 = null;
+                    unsubscribeNtfListeners();
                 }
                 break;
 
-            // 入会结果通知
+            // 入数据协作结果通知（下层拉我们加入）
             case DCConfCreated:
-                TDCSCreateConfResult dcConfinfo = (TDCSCreateConfResult) ntfContent;
-                if (!dcConfinfo.bSuccess){
-                    // 入会失败
-                    curDcConfE164 = null;
-                    KLog.p(KLog.ERROR,"join data collaborate conf{%s, %s} failed", dcConfinfo.achConfName, dcConfinfo.achConfE164);
-                    for (Object listener : listeners){
-                        ((IOnSessionEventListener)listener).onJoinDcFailed(ErrCode_Failed);
-                    }
-                    return;
-                }
-
-                curDcConfE164 = dcConfinfo.achConfE164;
-                DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj(dcConfinfo);
-                for (Object listener : listeners){
-                    ((IOnSessionEventListener)listener).onJoinDcSuccess(dcConfInfo);
-                }
-
-                synchronizeCachedStuff(dcConfinfo);
-
+                // 此处不做处理，我们始终以主动方式加入数据协作
                 break;
 
             // 数据协作本身已结束通知
             case DCReleaseConfNtf:
-//                BaseTypeString result = (BaseTypeString) ntfContent;
-//                if (result.basetype.equals(curDcConfE164)){
-//                    for (Object listener : listeners){
-//                        ((IOnSessionEventListener)listener).onDcFinished();
-//                    }
-//                    curDcConfE164 = null;
-//                } // 我们已经在收到DCBuildLink4ConfRsp时上报用户数据协作结束了，此处不再重复上报
+                // 我们已经在收到DCBuildLink4ConfRsp时上报用户数据协作结束了，此处不再做处理
                 break;
 
             case DCConfParaChanged:
-                dcConfInfo = ToDoConverter.fromTransferObj((TDCSConfInfo)ntfContent);
+                DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj((TDCSConfInfo)ntfContent);
                 if (dcConfInfo.getConfE164().equals(curDcConfE164)){
-                    for (Object listener : listeners){
-                        ((IOnSessionEventListener)listener).onDCConfParaChanged(dcConfInfo);
-                    }
+                    onSessionEventListener.onDCConfParaChanged(dcConfInfo);
                 }
                 break;
 
@@ -877,7 +889,7 @@ public class DataCollaborateManager extends Caster {
     }
 
     // 同步数据协作中已有内容
-    void synchronizeCachedStuff(TDCSCreateConfResult dcConfInfo){
+    private void synchronizeCachedStuff(TDCSCreateConfResult dcConfInfo){
 
         // 入会成功后准备同步会议中已有的图元。
         bPreparingSync = true;
@@ -912,26 +924,17 @@ public class DataCollaborateManager extends Caster {
                             }
                         }
 
-                        // 上报用户所有已创建的画板
-                        Set<Object> boardCreatedListeners = getNtfListeners(Msg.DCBoardCreatedNtf);
-                        if (null != boardCreatedListeners && !boardCreatedListeners.isEmpty()){
+                        if (null != onBoardOpListener) {
+                            // 上报用户协作中所有画板
                             for (TDCSBoardInfo board : dcBoards) {
-                                BoardInfo boardInfo = ToDoConverter.fromTransferObj(board);
-                                for (Object listener : boardCreatedListeners) {
-                                    ((IOnBoardOpListener) listener).onBoardCreated(boardInfo);
-                                }
+                                onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board));
                             }
-                        }
 
-                        // 上报用户切换画板
-                        if (null != curBoardId){ // “当前画板”通知已早于此到达，彼时还无法通知用户“切换画板”，因为彼时尚未上报用户画板已创建，所以此时我们补上通知“切换画板”。
-                            Set<Object> boardSwitchedListeners = getNtfListeners(Msg.DCBoardSwitchedNtf);
-                            if (null != boardSwitchedListeners && !boardSwitchedListeners.isEmpty()) {
-                                for (Object listener : boardSwitchedListeners) {
-                                    ((IOnBoardOpListener) listener).onBoardSwitched(curBoardId);
-                                }
+                            if (null != curBoardId){ // “当前画板”通知已早于此到达，彼时还无法通知用户“切换画板”，因为彼时尚未上报用户画板已创建，所以此时我们补上通知“切换画板”。
+                                // 上报用户切换到当前画板
+                                onBoardOpListener.onBoardSwitched(curBoardId);
+                                curBoardId = null;
                             }
-                            curBoardId = null;
                         }
 
                         // 开始同步所有画板的已有图元
@@ -953,7 +956,7 @@ public class DataCollaborateManager extends Caster {
                                             msg.what = MsgID_CheckSynchronizing;
                                             msg.obj = boardId;
                                             handler.sendMessageDelayed(msg, 2000);
-                                            KLog.p("synchronizing ops for board %s", boardId);
+                                            KLog.p("start synchronizing ops for board %s", boardId);
                                             syncTimestamps.put(boardId, System.currentTimeMillis());
                                         }
 
@@ -1097,26 +1100,22 @@ public class DataCollaborateManager extends Caster {
     }
 
     private void onOperatorNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
+        if (null == onOperatorEventListener){
+            KLog.p(KLog.ERROR, "null == onOperatorEventListener");
+            return;
+        }
         switch (ntfId){
             case DCUserJoinedNtf:
-                for (Object listener : listeners){
-                    ((IOnOperatorEventListener)listener).onUserJoinedNtf(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
-                }
+                onOperatorEventListener.onUserJoined(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
                 break;
             case DCOperatorAddedNtf:
-                for (Object listener : listeners){
-                    ((IOnOperatorEventListener)listener).onOperatorAdded(ToDoConverter.fromDcUserList(((TDCSUserInfos)ntfContent).atUserInfoList));
-                }
+                onOperatorEventListener.onOperatorAdded(ToDoConverter.fromDcUserList(((TDCSUserInfos)ntfContent).atUserInfoList));
                 break;
             case DCOperatorDeletedNtf:
-                for (Object listener : listeners){
-                    ((IOnOperatorEventListener)listener).onOperatorDeleted(ToDoConverter.fromDcUserList(((TDCSUserInfos)ntfContent).atUserInfoList));
-                }
+                onOperatorEventListener.onOperatorDeleted(ToDoConverter.fromDcUserList(((TDCSUserInfos)ntfContent).atUserInfoList));
                 break;
             case DCApplyOperatorNtf:
-                for (Object listener : listeners){
-                    ((IOnOperatorEventListener)listener).onApplyOperator(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
-                }
+                onOperatorEventListener.onApplyOperator(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
                 break;
         }
     }
@@ -1252,30 +1251,24 @@ public class DataCollaborateManager extends Caster {
      * （其他与会者）画板操作通知处理。
      * */
     private void onBoardNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
+        if (null == onBoardOpListener){
+            KLog.p(KLog.ERROR, "null == onBoardOpListener");
+            return;
+        }
         if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
-            for (Object listener : listeners) {
-                ((IOnBoardOpListener) listener).onBoardCreated(ToDoConverter.fromTransferObj((TDCSBoardInfo) ntfContent));
-            }
+            onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj((TDCSBoardInfo) ntfContent));
         } else if (Msg.DCBoardSwitchedNtf.equals(ntfId)) {
-            for (Object listener : listeners) {
-                ((IOnBoardOpListener) listener).onBoardSwitched(((TDCSBoardInfo) ntfContent).achTabId);
-            }
+            onBoardOpListener.onBoardSwitched(((TDCSBoardInfo) ntfContent).achTabId);
         } else if (Msg.DCBoardDeletedNtf.equals(ntfId)) {
-            for (Object listener : listeners) {
-                ((IOnBoardOpListener) listener).onBoardDeleted(((TDCSDelWhiteBoardInfo) ntfContent).strIndex);
-            }
+            onBoardOpListener.onBoardDeleted(((TDCSDelWhiteBoardInfo) ntfContent).strIndex);
         } else if (Msg.DCCurrentBoardNtf.equals(ntfId)) { //NOTE: 该通知仅在刚入会时会收到
             curBoardId = ((TDCSBoardInfo) ntfContent).achTabId;
             if (bGotAllBoard){ // 已获取当前会议中所有画板则我们可以上报用户“切换画板”。
-                for (Object listener : listeners) {
-                    ((IOnBoardOpListener) listener).onBoardSwitched(curBoardId);
-                }
+                onBoardOpListener.onBoardSwitched(curBoardId);
                 bGotAllBoard = false;
             }
         } else if (Msg.DCAllBoardDeletedNtf.equals(ntfId)) {
-            for (Object listener : listeners) {
-                ((IOnBoardOpListener) listener).onAllBoardDeleted();
-            }
+            onBoardOpListener.onAllBoardDeleted();
         }
 
     }
@@ -1356,37 +1349,39 @@ public class DataCollaborateManager extends Caster {
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case MsgID_CheckSynchronizing:
-                    long timestamp = syncTimestamps.get(msg.obj);
+                    String boardId = (String) msg.obj;
+                    long timestamp = syncTimestamps.get(boardId);
                     if (System.currentTimeMillis()-timestamp > 2000){ // 同步阶段若2s未收到后续绘制操作则认为同步结束
-                        syncTimestamps.remove(msg.obj);
-                        PriorityQueue<OpPaint> ops = cachedPaintOps.remove(msg.obj);
+                        syncTimestamps.remove(boardId);
+                        PriorityQueue<OpPaint> ops = cachedPaintOps.remove(boardId);
                         if (null == ops){
-                            KLog.p(KLog.ERROR, "unexpected MsgID_CheckSynchronizing, no such synchronizing board(%s) exists", msg.obj);
+                            KLog.p(KLog.ERROR, "unexpected MsgID_CheckSynchronizing, no such synchronizing board(%s) exists", boardId);
                             return;
                         }
-                        KLog.p("finish synchronizing ops for board %s", msg.obj);
-                        Set<Object> listeners = getNtfListeners(Msg.DCPathDrawnNtf);
-                        if (null == listeners || listeners.isEmpty()){// 判断监听者是否还在，因为监听者（如activity）可能已经销毁了
-                            KLog.p(KLog.ERROR, "listeners for paint op ntf not exists");
-                            return;
-                        }
-                        /* 同步结束，上报用户该画板已同步的绘制操作。
-                        NOTE：之所以同步结束时才上报而不是边收边上报，是因为同步过程中操作到达时序可能跟操作实际时序不一致，
-                        所以需要收齐后排好序再上报给用户才能保证用户接收到的操作时序是正确的，进而正确绘制。
-                        比如实际的操作时序是“画线、清屏、画圆”最终效果是一个圆，但同步过来的时序可能是“画圆、清屏、画线”，
-                        若不做处理直接上报用户，用户界面展示的效果将是一条线。
-                        此种时序错乱的情形只在同步过程中有，实时广播的操作没有这个问题。*/
-                        List<OpPaint> toReportOps = new ArrayList<>();
-                        while (!ops.isEmpty()) {
-                            toReportOps.add(ops.poll()); // 排序
-                        }
-                        for (OpPaint op : toReportOps) {
-                            for (Object listener : listeners) {
-                                ((IOnPaintOpListener) listener).onPaint(op); // 上报
+                        KLog.p("finish synchronizing ops for board %s", boardId);
+
+//                        if (null != onSynchronizeProgressListener){// 判断监听者是否还在，因为监听者（如activity）可能在同步过程中已经销毁了
+//                            onSynchronizeProgressListener.onProgress(boardId, 100); // 该画板同步结束
+//                        }
+
+                        if (null != onPaintOpListener){
+                            /* 同步结束，上报用户该画板已同步的绘制操作。
+                            NOTE：之所以同步结束时才上报而不是边收边上报，是因为同步过程中操作到达时序可能跟操作实际时序不一致，
+                            所以需要收齐后排好序再上报给用户才能保证用户接收到的操作时序是正确的，进而正确绘制。
+                            比如实际的操作时序是“画线、清屏、画圆”最终效果是一个圆，但同步过来的时序可能是“画圆、清屏、画线”，
+                            若不做处理直接上报用户，用户界面展示的效果将是一条线。
+                            此种时序错乱的情形只在同步过程中有，实时广播的操作没有这个问题。*/
+                            List<OpPaint> toReportOps = new ArrayList<>();
+                            while (!ops.isEmpty()) {
+                                toReportOps.add(ops.poll()); // 排序
+                            }
+                            for (OpPaint op : toReportOps) {
+                                onPaintOpListener.onPaint(op);
                             }
                         }
+
                     }else{
-                        KLog.p("synchronizing ops for board %s", msg.obj);
+                        KLog.p("synchronizing ops for board %s", boardId);
                         handler.sendMessageDelayed(Message.obtain(msg), 1000); // 同步正在进行中，稍后再做检查是否已结束
                     }
 
@@ -1438,6 +1433,10 @@ public class DataCollaborateManager extends Caster {
      * 收到绘制操作通知处理
      * */
     private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
+        if (null == onPaintOpListener){
+            KLog.p(KLog.ERROR, "null == onPaintOpListener");
+            return;
+        }
 
         OpPaint opPaint = ToDoConverter.fromPaintTransferObj(ntfContent);
         if (null == opPaint){
@@ -1480,7 +1479,7 @@ public class DataCollaborateManager extends Caster {
                                         public void onSuccess(Object result) {
                                             // 图片下载成功，更新“插入图片”操作
                                             TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
-                                            updateInsertPicOp(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName, listeners);
+                                            updateInsertPicOp(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName);
                                         }
 
                                         @Override
@@ -1515,13 +1514,13 @@ public class DataCollaborateManager extends Caster {
 
                 }
 
-                cacheOrReportPaintOp(opInsertPic, listeners);
+                cacheOrReportPaintOp(opInsertPic);
 
                 break;
 
             default:
 
-                cacheOrReportPaintOp(opPaint, listeners);
+                cacheOrReportPaintOp(opPaint);
 
                 break;
         }
@@ -1529,7 +1528,7 @@ public class DataCollaborateManager extends Caster {
     }
 
 
-    private void cacheOrReportPaintOp(OpPaint op, Set<Object> listeners){
+    private void cacheOrReportPaintOp(OpPaint op){
         PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(op.getBoardId());
         if (null != cachedOps){ // 当前正在同步该画板的图元则缓存图元
             syncTimestamps.put(op.getBoardId(), System.currentTimeMillis()); // 更新时间戳
@@ -1550,14 +1549,14 @@ public class DataCollaborateManager extends Caster {
             }else {
 //                KLog.p("report op %s", op);
                 // 过了同步阶段，直接上报用户图元操作
-                for (Object listener : listeners) {
-                    ((IOnPaintOpListener) listener).onPaint(op);
+                if (null != onPaintOpListener){
+                    onPaintOpListener.onPaint(op);
                 }
             }
         }
     }
 
-    private void updateInsertPicOp(String boardId, String picId, String picPath, Set<Object> listeners){
+    private void updateInsertPicOp(String boardId, String picId, String picPath){
         PriorityQueue<OpPaint> cachedOps = cachedPaintOps.get(boardId);
         if (null != cachedOps){ // 当前正在同步中，插入图片的操作被缓存尚未上报给用户，故我们直接更新“插入图片”的操作
             boolean bUpdated = false;
@@ -1579,19 +1578,12 @@ public class DataCollaborateManager extends Caster {
             }
 
         }else{ // 同步已结束则上报用户“更新图片”
-            if (null == listeners || listeners.isEmpty()){
-                KLog.p(KLog.ERROR,"no listener for DCPicInsertedNtf");
-                return;
+            if (null != onPaintOpListener){
+                OpUpdatePic opUpdatePic = new OpUpdatePic(boardId, picId, picPath);
+                KLog.p("report user opUpdatePic %s", opUpdatePic);
+                onPaintOpListener.onPaint(opUpdatePic);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，通知用户更新图片。
             }
-            OpUpdatePic opUpdatePic = new OpUpdatePic(boardId, picId, picPath);
-            KLog.p("report user opUpdatePic %s", opUpdatePic);
-            for (Object onPaintOpListener : listeners) {
-                if (!containsNtfListener(onPaintOpListener)) { // 在下载过程中可能listener被销毁了删除了
-                    KLog.p(KLog.ERROR,"listener %s for DCPicInsertedNtf has been destroyed", onPaintOpListener);
-                    continue;
-                }
-                ((IOnPaintOpListener) onPaintOpListener).onPaint(opUpdatePic);  // 前面我们插入图片的操作并无实际效果，因为图片是“置空”的，此时图片已下载完成，通知用户更新图片。
-            }
+
         }
     }
 
@@ -1618,7 +1610,7 @@ public class DataCollaborateManager extends Caster {
                             @Override
                             public void onSuccess(Object result) {
                                 TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
-                                updateInsertPicOp(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName, getNtfListeners(Msg.DCPicInsertedNtf));
+                                updateInsertPicOp(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName);
                             }
 
                             @Override
@@ -1643,37 +1635,32 @@ public class DataCollaborateManager extends Caster {
 
 
 
-    /**
-     * 注册数据协作会话监听器
-     * @param onSessionEventListener 数据协作会话监听器。{@link IOnSessionEventListener}
-     * */
-    public void addSessionEventListener(IOnSessionEventListener onSessionEventListener){
+    private void subscribeNtfListeners(){
         subscribe(sessionNtfs, onSessionEventListener);
-    }
-    /**
-     * 注册协作权相关通知监听器
-     * @param onOperatorEventListener 协作权相关通知监听器
-     * */
-    public void addOperatorEventListener(IOnOperatorEventListener onOperatorEventListener){
         subscribe(operatorNtfs, onOperatorEventListener);
-    }
-
-    /**
-     * 注册画板操作监听器
-     * @param onBoardOpListener 画板操作通知监听器。{@link IOnBoardOpListener}
-     * */
-    public void addBoardOpListener(IOnBoardOpListener onBoardOpListener){
         subscribe(boardOpNtfs, onBoardOpListener);
-    }
-
-    /**
-     * 注册绘制操作监听器
-     * @param onPaintOpListener 绘制操作通知监听器
-     * */
-    public void addPaintOpListener(IOnPaintOpListener onPaintOpListener){
         subscribe(paintOpNtfs, onPaintOpListener);
     }
 
+    private void unsubscribeNtfListeners(){
+        unsubscribe(sessionNtfs, onSessionEventListener);
+        unsubscribe(operatorNtfs, onOperatorEventListener);
+        unsubscribe(boardOpNtfs, onBoardOpListener);
+        unsubscribe(paintOpNtfs, onPaintOpListener);
+    }
+
+
+    /**
+     * 同步进度监听器
+     * */
+    public interface IOnSynchronizeProgressListener extends ILifecycleOwner{
+        /**
+         * 同步进度。
+         * @param boardId 画板ID
+         * @param percentage 画板中的同步百分比。0-100，0代表0%，100代表100%。
+         * */
+        void onProgress(String boardId, int percentage);
+    }
 
     /**
      * 绘制操作通知监听器。
@@ -1709,19 +1696,10 @@ public class DataCollaborateManager extends Caster {
     }
 
     /**
-     * 数据协作会话监听器
+     * 数据协作会话监听器。
      * */
     public interface IOnSessionEventListener extends ILifecycleOwner{
-        /**
-         * 加入数据协作成功
-         * @param dcConfInfo 数据协作会议信息。{@link DcConfInfo}
-         * */
-        void onJoinDcSuccess(DcConfInfo dcConfInfo);
-        /**
-         * 加入数据协作失败
-         * @param errCode 失败原因 {@link #ErrCode_Failed}
-         * */
-        void onJoinDcFailed(int errCode);
+
         /**
          * （对己端而言）数据协作已结束。（协作本身可能仍存在也可能已不存在）
          * 数据协作被结束，或者己端被管理员从协作中删除均会触发该回调。
@@ -1744,7 +1722,7 @@ public class DataCollaborateManager extends Caster {
          * （所有与会方收到）成员加入数据协作会议通知
          * @param member 成员信息
          * */
-        default void onUserJoinedNtf(DCMember member){}
+        default void onUserJoined(DCMember member){}
         /**
          * （管理方收到）成员申请协作权通知
          * @param member 申请者信息

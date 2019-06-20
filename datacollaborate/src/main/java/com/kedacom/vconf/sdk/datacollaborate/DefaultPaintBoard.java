@@ -1557,6 +1557,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private Matrix paintBoardMatrix = new Matrix();
     boolean[] hasEraseOp = new boolean[1];
     void paint(){
+        KLog.p("start paint");
         Matrix matrix = getDensityRelativeBoardMatrix(paintBoardMatrix);
 
         Canvas canvas = paintView.lockCanvas();
@@ -1600,6 +1601,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 //                KLog.p("go render!");
         if (null != canvas) paintView.unlockCanvasAndPost(canvas);
 
+        KLog.p("finish paint");
     }
 
 
@@ -1649,7 +1651,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     private RectF rect = new RectF();
     private void render(OpPaint op, Canvas canvas){
-//        KLog.p("to render %s", op);
+        KLog.p("to render %s", op);
         switch (op.getType()) {
             case DRAW_LINE:
                 OpDrawLine lineOp = (OpDrawLine) op;
