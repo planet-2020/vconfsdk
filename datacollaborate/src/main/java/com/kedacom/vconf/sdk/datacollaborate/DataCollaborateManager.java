@@ -133,7 +133,7 @@ public class DataCollaborateManager extends Caster {
 
 
     // 通知监听器
-//    private IOnSynchronizeProgressListener onSynchronizeProgressListener;
+    private IOnSynchronizeProgressListener onSynchronizeProgressListener;
     private IOnSessionEventListener onSessionEventListener;
     private IOnOperatorEventListener onOperatorEventListener;
     private IOnBoardOpListener onBoardOpListener;
@@ -412,7 +412,7 @@ public class DataCollaborateManager extends Caster {
      *                       {@link #ErrCode_Failed}
      *                       {@link #ErrCode_BuildLink4ConfFailed}
      *                       resultListener.onFailed(errorCode);
-//     * @param synchronizeProgressListener 同步进度监听器（开启协作成功后会同步协作中已有内容（画板、图元等））
+     * @param synchronizeProgressListener 同步进度监听器（开启协作成功后会同步协作中已有内容）
      * @param sessionEventListener 数据协作会话事件监听器
      * @param operatorEventListener 协作权相关通知监听器
      * @param boardOpListener 画板操作通知监听器
@@ -420,7 +420,7 @@ public class DataCollaborateManager extends Caster {
      * */
     public void startCollaborate(String confE164, String confName, EDcMode dcMode, EConfType confType,String adminE164, List<DCMember> members,
                                  IResultListener resultListener,
-//                                 IOnSynchronizeProgressListener synchronizeProgressListener,
+                                 IOnSynchronizeProgressListener synchronizeProgressListener,
                                  IOnSessionEventListener sessionEventListener,
                                  IOnOperatorEventListener operatorEventListener,
                                  IOnBoardOpListener boardOpListener,
@@ -434,7 +434,7 @@ public class DataCollaborateManager extends Caster {
                 new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
                         confE164, confName, ToDoConverter.toTransferObj(dcMode),
                         ToDoConverter.toDcUserList(members), adminE164, curTerminalType),
-                sessionEventListener, operatorEventListener, boardOpListener, paintOpListener // “开启数据协作”并不需要这组监听器作为请求参数，
+                synchronizeProgressListener, sessionEventListener, operatorEventListener, boardOpListener, paintOpListener // “开启数据协作”并不需要这组监听器作为请求参数，
                                                                                               // 我们此处只是利用框架替我们缓存这组监听器，在“开启数据协作”结束后再获取它们以做处理。
         );
     }
@@ -809,10 +809,11 @@ public class DataCollaborateManager extends Caster {
                     reportSuccess(ToDoConverter.fromTransferObj(createConfResult), listener);
 
                     // 注册通知监听器
-                    onSessionEventListener = (IOnSessionEventListener) reqParas[1];
-                    onOperatorEventListener = (IOnOperatorEventListener) reqParas[2];
-                    onBoardOpListener = (IOnBoardOpListener) reqParas[3];
-                    onPaintOpListener = (IOnPaintOpListener) reqParas[4];
+                    onSynchronizeProgressListener = (IOnSynchronizeProgressListener) reqParas[1];
+                    onSessionEventListener = (IOnSessionEventListener) reqParas[2];
+                    onOperatorEventListener = (IOnOperatorEventListener) reqParas[3];
+                    onBoardOpListener = (IOnBoardOpListener) reqParas[4];
+                    onPaintOpListener = (IOnPaintOpListener) reqParas[5];
                     subscribeNtfListeners();
 
                     // 同步协作中已有内容
@@ -977,6 +978,8 @@ public class DataCollaborateManager extends Caster {
 
         // “逐个”画板同步（下层不支持一次性同步，会有问题）
         TDCSBoardInfo board = dcBoards.remove(0);
+        if (null != onSynchronizeProgressListener)
+            onSynchronizeProgressListener.onProgress(board.achTabId, 0, false);
         req(Msg.DCDownload, new IResultListener() {
                     @Override
                     public void onArrive(boolean bSuccess) {
@@ -985,6 +988,10 @@ public class DataCollaborateManager extends Caster {
 
                     @Override
                     public void onSuccess(Object result) {
+
+                        if (null != onSynchronizeProgressListener)
+                            onSynchronizeProgressListener.onProgress(board.achTabId, 20, false);
+
                         PriorityQueue<OpPaint> ops = cachedPaintOps.get(board.achTabId);
                         if (null == ops) { // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
                             ops = new PriorityQueue<>();
@@ -1004,11 +1011,13 @@ public class DataCollaborateManager extends Caster {
                     @Override
                     public void onFailed(int errorCode) {
                         KLog.p(KLog.ERROR, "download paint element for board %s failed, errorCode=%s", board.achTabId, errorCode);
+                        if (null != onSynchronizeProgressListener) onSynchronizeProgressListener.onProgress(board.achTabId, 0, true);
                     }
 
                     @Override
                     public void onTimeout() {
                         KLog.p(KLog.ERROR, "download paint element for board %s timeout!", board.achTabId);
+                        if (null != onSynchronizeProgressListener) onSynchronizeProgressListener.onProgress(board.achTabId, 0, true);
                     }
                 },
 
@@ -1384,9 +1393,8 @@ public class DataCollaborateManager extends Caster {
                         }
                         KLog.p("finish synchronizing ops for board %s", boardId);
 
-//                        if (null != onSynchronizeProgressListener){// 判断监听者是否还在，因为监听者（如activity）可能在同步过程中已经销毁了
-//                            onSynchronizeProgressListener.onProgress(boardId, 100); // 该画板同步结束
-//                        }
+                        if (null != onSynchronizeProgressListener)
+                            onSynchronizeProgressListener.onProgress(boardId, 100, true);
 
                         if (null != onPaintOpListener){
                             /* 同步结束，上报用户该画板已同步的绘制操作。
@@ -1671,6 +1679,11 @@ public class DataCollaborateManager extends Caster {
         unsubscribe(operatorNtfs, onOperatorEventListener);
         unsubscribe(boardOpNtfs, onBoardOpListener);
         unsubscribe(paintOpNtfs, onPaintOpListener);
+        onSessionEventListener = null;
+        onOperatorEventListener = null;
+        onBoardOpListener = null;
+        onPaintOpListener = null;
+        onSynchronizeProgressListener = null;
     }
 
 
@@ -1682,8 +1695,12 @@ public class DataCollaborateManager extends Caster {
          * 同步进度。
          * @param boardId 画板ID
          * @param percentage 画板中的同步百分比。0-100，0代表0%，100代表100%。
+         * @param bFinished 同步是否结束。
+         *                  NOTE: 同步结束不代表同步成功。
+         *                  正常情况应是(percentage<100 && !bFinished) || (percentage==100 && bFinished)，
+         *                  若同步失败则percentage<100 && bFinished
          * */
-        void onProgress(String boardId, int percentage);
+        void onProgress(String boardId, int percentage, boolean bFinished);
     }
 
     /**
