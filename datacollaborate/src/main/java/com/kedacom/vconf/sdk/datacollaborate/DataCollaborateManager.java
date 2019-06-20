@@ -890,6 +890,10 @@ public class DataCollaborateManager extends Caster {
 
     // 同步数据协作中已有内容
     private void synchronizeCachedStuff(TDCSCreateConfResult dcConfInfo){
+        if (null == onBoardOpListener) {
+            KLog.p(KLog.ERROR, "null == onBoardOpListener");
+            return;
+        }
 
         // 入会成功后准备同步会议中已有的图元。
         bPreparingSync = true;
@@ -905,78 +909,50 @@ public class DataCollaborateManager extends Caster {
 
                     @Override
                     public void onSuccess(Object result) {
-
+                        if (null == onBoardOpListener) {
+                            KLog.p(KLog.WARN, "null == onBoardOpListener");
+                            return;
+                        }
                         bGotAllBoard = true;
                         List<TDCSBoardInfo> dcBoards = (List<TDCSBoardInfo>) result;
                         // 检查准备阶段缓存的图元所在画板是否仍存在，若不存在则删除之。
                         Iterator it = cachedPaintOps.keySet().iterator();
-                        while (it.hasNext()){
+                        while (it.hasNext()) {
                             boolean bMatched = false;
                             String tmpId = (String) it.next();
-                            for (TDCSBoardInfo board : dcBoards){
-                                if (tmpId.equals(board.achTabId)){
+                            for (TDCSBoardInfo board : dcBoards) {
+                                if (tmpId.equals(board.achTabId)) {
                                     bMatched = true;
                                     break;
                                 }
                             }
-                            if (!bMatched){
+                            if (!bMatched) {
                                 it.remove();
                             }
                         }
 
-                        if (null != onBoardOpListener) {
-                            // 上报用户协作中所有画板
+                        // 上报用户协作中所有画板
+                        for (TDCSBoardInfo board : dcBoards) {
+                            onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board));
+                        }
+
+                        if (null != curBoardId) { // “当前画板”通知已早于此到达，彼时还无法通知用户“切换画板”，因为彼时尚未上报用户画板已创建，所以此时我们补上通知“切换画板”。
                             for (TDCSBoardInfo board : dcBoards) {
-                                onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board));
-                            }
+                                if (board.achTabId.equals(curBoardId)) {
+                                    // 上报用户切换到当前画板
+                                    onBoardOpListener.onBoardSwitched(curBoardId);
 
-                            if (null != curBoardId){ // “当前画板”通知已早于此到达，彼时还无法通知用户“切换画板”，因为彼时尚未上报用户画板已创建，所以此时我们补上通知“切换画板”。
-                                // 上报用户切换到当前画板
-                                onBoardOpListener.onBoardSwitched(curBoardId);
-                                curBoardId = null;
+                                    // 将当前画板放置在列表首位以优先同步
+                                    dcBoards.remove(board);
+                                    dcBoards.add(0, board);
+                                    break;
+                                }
                             }
+                            curBoardId = null;
                         }
 
-                        // 开始同步所有画板的已有图元
-                        for (TDCSBoardInfo board : dcBoards){
-
-                            // 下载每个画板的已有图元
-                            req(Msg.DCDownload, new IResultListener() {
-                                        @Override
-                                        public void onSuccess(Object result) {
-                                            PriorityQueue<OpPaint> ops = cachedPaintOps.get(board.achTabId);
-                                            if (null == ops){ // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
-                                                ops = new PriorityQueue<>();
-                                                cachedPaintOps.put(board.achTabId, ops);
-                                            }
-                                            /* 后续会收到画板缓存的图元。
-                                            * 由于下层的begin-final消息不可靠，我们定时检查当前是否仍在同步图元，若同步结束则上报用户*/
-                                            String boardId = getCachedOpsBoardId(board.achTabId);
-                                            Message msg = Message.obtain();
-                                            msg.what = MsgID_CheckSynchronizing;
-                                            msg.obj = boardId;
-                                            handler.sendMessageDelayed(msg, 2000);
-                                            KLog.p("start synchronizing ops for board %s", boardId);
-                                            syncTimestamps.put(boardId, System.currentTimeMillis());
-                                        }
-
-                                        @Override
-                                        public void onFailed(int errorCode) {
-                                            KLog.p(KLog.ERROR, "download paint element for board %s failed, errorCode=%s", board.achTabId, errorCode);
-                                        }
-
-                                        @Override
-                                        public void onTimeout() {
-                                            KLog.p(KLog.ERROR, "download paint element for board %s timeout!", board.achTabId);
-                                        }
-                                    },
-
-                                    new BaseTypeString(board.achElementUrl),
-                                    new TDCSFileInfo(null, null, board.achTabId, true, 0)
-                            );
-
-                        }
-
+                        // 同步画板中已有内容
+                        synchronizeBoards(dcBoards);
                     }
 
                     @Override
@@ -992,6 +968,54 @@ public class DataCollaborateManager extends Caster {
 
                 dcConfInfo.achConfE164
         );
+    }
+
+    private void synchronizeBoards(List<TDCSBoardInfo> dcBoards){
+        if (dcBoards.isEmpty()){
+            return;
+        }
+
+        // “逐个”画板同步（下层不支持一次性同步，会有问题）
+        TDCSBoardInfo board = dcBoards.remove(0);
+        req(Msg.DCDownload, new IResultListener() {
+                    @Override
+                    public void onArrive(boolean bSuccess) {
+                        synchronizeBoards(dcBoards); // 同步下一个画板
+                    }
+
+                    @Override
+                    public void onSuccess(Object result) {
+                        PriorityQueue<OpPaint> ops = cachedPaintOps.get(board.achTabId);
+                        if (null == ops) { // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
+                            ops = new PriorityQueue<>();
+                            cachedPaintOps.put(board.achTabId, ops);
+                        }
+                        /* 后续会收到画板缓存的图元。
+                         * 由于下层的begin-final消息不可靠，我们定时检查当前是否仍在同步图元，若同步结束则上报用户*/
+                        String boardId = getCachedOpsBoardId(board.achTabId);
+                        Message msg = Message.obtain();
+                        msg.what = MsgID_CheckSynchronizing;
+                        msg.obj = boardId;
+                        handler.sendMessageDelayed(msg, 2000);
+                        KLog.p("start synchronizing ops for board %s", boardId);
+                        syncTimestamps.put(boardId, System.currentTimeMillis());
+                    }
+
+                    @Override
+                    public void onFailed(int errorCode) {
+                        KLog.p(KLog.ERROR, "download paint element for board %s failed, errorCode=%s", board.achTabId, errorCode);
+                    }
+
+                    @Override
+                    public void onTimeout() {
+                        KLog.p(KLog.ERROR, "download paint element for board %s timeout!", board.achTabId);
+                    }
+                },
+
+                new BaseTypeString(board.achElementUrl),
+                new TDCSFileInfo(null, null, board.achTabId, true, 0)
+        );
+
     }
 
 
@@ -1351,7 +1375,7 @@ public class DataCollaborateManager extends Caster {
                 case MsgID_CheckSynchronizing:
                     String boardId = (String) msg.obj;
                     long timestamp = syncTimestamps.get(boardId);
-                    if (System.currentTimeMillis()-timestamp > 2000){ // 同步阶段若2s未收到后续绘制操作则认为同步结束
+                    if (System.currentTimeMillis()-timestamp > 1000){ // 同步阶段若1s未收到后续绘制操作则认为同步结束
                         syncTimestamps.remove(boardId);
                         PriorityQueue<OpPaint> ops = cachedPaintOps.remove(boardId);
                         if (null == ops){
@@ -1382,7 +1406,7 @@ public class DataCollaborateManager extends Caster {
 
                     }else{
                         KLog.p("synchronizing ops for board %s", boardId);
-                        handler.sendMessageDelayed(Message.obtain(msg), 1000); // 同步正在进行中，稍后再做检查是否已结束
+                        handler.sendMessageDelayed(Message.obtain(msg), 500); // 同步正在进行中，稍后再做检查是否已结束
                     }
 
                     break;
