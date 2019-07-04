@@ -34,6 +34,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsGetConfAddrRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetUserListRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsGetWhiteBoardRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsNewWhiteBoardRsp;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsSetConfInfoRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsSwitchRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
@@ -191,6 +192,8 @@ public class DataCollaborateManager extends Caster {
             Msg.DCCreateConf,
             Msg.DCQuitConf,
             Msg.DCReleaseConf,
+            Msg.DCModifyConfig,
+            Msg.DCQueryConfig,
     };
 
     private static final Msg[] boardReqs = new Msg[]{
@@ -465,6 +468,35 @@ public class DataCollaborateManager extends Caster {
         req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
     }
 
+    /** 修改协作模式
+     * @param mode 协作模式
+     * @param resultListener 结果监听器。
+     *                       成功返回DcConfInfo
+     *                       resultListener.onSuccess(DcConfInfo);
+     *                       失败返回错误码：
+     *                       {@link #ErrCode_Failed}
+     *                       resultListener.onFailed(errorCode);*/
+    public void modifyCollaborateMode(EDcMode mode, IResultListener resultListener){
+        // 获取已有的配置
+        req(Msg.DCQueryConfig, new IResultListener() {
+            @Override
+            public void onSuccess(Object result) {
+                DcConfInfo confInfo = (DcConfInfo) result;
+                confInfo.setConfMode(mode); // 修改协作模式
+                req(Msg.DCModifyConfig, resultListener, ToDoConverter.toTransferObj(confInfo)); // 下设配置
+            }
+
+            @Override
+            public void onFailed(int errorCode) {
+                if (null != resultListener) reportFailed(errorCode, resultListener);
+            }
+
+            @Override
+            public void onTimeout() {
+                if (null != resultListener) reportTimeout(resultListener);
+            }
+        });
+    }
 
 
 
@@ -831,6 +863,24 @@ public class DataCollaborateManager extends Caster {
                 TDCSResult quitRes = (TDCSResult) rspContent;
                 if (!quitRes.bSucces){
                     cancelReq(Msg.DCQuitConf, listener);
+                    reportFailed(ErrCode_Failed, listener);
+                }
+                break;
+
+            case DCQueryConfigRsp:
+                TDCSCreateConfResult dcConfig = (TDCSCreateConfResult) rspContent;
+                if (dcConfig.bSuccess) { // 开启数据协作成功
+                    reportSuccess(ToDoConverter.fromTransferObj(dcConfig), listener);
+                }else{
+                    reportFailed(ErrCode_Failed, listener);
+                }
+                break;
+
+            case DCModifyConfigRsp:
+                DcsSetConfInfoRsp setConfInfoRsp = (DcsSetConfInfoRsp) rspContent;
+                if (setConfInfoRsp.bSuccess) { // 开启数据协作成功
+                    reportSuccess(ToDoConverter.fromTransferObj(setConfInfoRsp), listener);
+                }else{
                     reportFailed(ErrCode_Failed, listener);
                 }
                 break;

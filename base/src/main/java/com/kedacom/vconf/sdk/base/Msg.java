@@ -25,6 +25,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRectangleOperInfoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRedoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperReginEraseNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperUndoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsSetConfInfoRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsSwitchRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
@@ -88,18 +89,19 @@ public enum Msg {
     /**获取数据协作服务器地址*/
     @Request(method = "GetDCSCfg",
             owner = ConfigCtrl,
-            paras = StringBuffer.class, // native方法传出参数，注意对比DCSetServerAddr
-            userParas = TDCSSvrAddr.class, // 用户方法返回值
+            paras = StringBuffer.class,
+            userParas = TDCSSvrAddr.class,
             type = Request.GET)
     DCGetServerAddr,
 
     /**获取数据协作相关状态*/
     @Request(method = "GetDCSServerStateRt",
             owner = ConfigCtrl,
-            paras = StringBuffer.class, // native方法传出参数
-            userParas = TDCSSrvState.class, // 用户方法返回值
+            paras = StringBuffer.class,
+            userParas = TDCSSrvState.class,
             type = Request.GET)
     DCGetState,
+
 
     /**
      * 登录数据协作建链响应
@@ -237,6 +239,30 @@ public enum Msg {
     @Response(clz = BaseTypeString.class,
             id = "DcsReleaseConf_Ntf")
     DCReleaseConfNtf,
+
+    /**修改数据协作配置*/
+    @Request(method = "DCSSetConfInfoReq",
+            owner = DcsCtrl,
+            paras = StringBuffer.class,
+            userParas = TDCSConfInfo.class,
+            rspSeq = "DCModifyConfigRsp")
+    DCModifyConfig,
+
+    /** 修改数据协作配置响应*/
+    @Response(clz = DcsSetConfInfoRsp.class,
+            id = "DcsSetConfInfo_Rsp")
+    DCModifyConfigRsp,
+
+    /** 获取数据协作配置*/
+    @Request(method = "DCSGetConfInfoReq",
+            owner = DcsCtrl,
+            rspSeq = "DCQueryConfigRsp")
+    DCQueryConfig,
+
+    /** 获取数据协作配置响应*/
+    @Response(clz = TDCSCreateConfResult.class,
+            id = "DcsGetConfInfo_Rsp")
+    DCQueryConfigRsp,
 
 
     /**

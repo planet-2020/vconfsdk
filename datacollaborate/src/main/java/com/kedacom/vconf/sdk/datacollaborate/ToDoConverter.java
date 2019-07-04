@@ -17,6 +17,7 @@ import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRectangleOperInfoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperRedoNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperReginEraseNtf;
 import com.kedacom.vconf.sdk.base.bean.dc.DcsOperUndoNtf;
+import com.kedacom.vconf.sdk.base.bean.dc.DcsSetConfInfoRsp;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsConfMode;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsConfType;
 import com.kedacom.vconf.sdk.base.bean.dc.EmDcsOper;
@@ -558,6 +559,14 @@ final class ToDoConverter {
     }
 
     public static DcConfInfo fromTransferObj(TDCSConfInfo to) {
+        return new DcConfInfo(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType), false);
+    }
+
+    public static TDCSConfInfo toTransferObj(DcConfInfo confInfo){
+        return new TDCSConfInfo(confInfo.getConfE164(), confInfo.getConfName(), toTransferObj(confInfo.getConfMode()), toTransferObj(confInfo.getConfType()));
+    }
+
+    public static DcConfInfo fromTransferObj(DcsSetConfInfoRsp to) {
         return new DcConfInfo(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType), false);
     }
 
