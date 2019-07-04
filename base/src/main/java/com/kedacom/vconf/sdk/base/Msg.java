@@ -240,19 +240,6 @@ public enum Msg {
             id = "DcsReleaseConf_Ntf")
     DCReleaseConfNtf,
 
-    /**修改数据协作配置*/
-    @Request(method = "DCSSetConfInfoReq",
-            owner = DcsCtrl,
-            paras = StringBuffer.class,
-            userParas = TDCSConfInfo.class,
-            rspSeq = "DCModifyConfigRsp")
-    DCModifyConfig,
-
-    /** 修改数据协作配置响应*/
-    @Response(clz = DcsSetConfInfoRsp.class,
-            id = "DcsSetConfInfo_Rsp")
-    DCModifyConfigRsp,
-
     /** 获取数据协作配置*/
     @Request(method = "DCSGetConfInfoReq",
             owner = DcsCtrl,
@@ -264,13 +251,25 @@ public enum Msg {
             id = "DcsGetConfInfo_Rsp")
     DCQueryConfigRsp,
 
+    /**修改数据协作配置*/
+    @Request(method = "DCSSetConfInfoReq",
+            owner = DcsCtrl,
+            paras = StringBuffer.class,
+            userParas = TDCSConfInfo.class,
+            rspSeq = {"DCModifyConfigRsp", "DCConfigModified"})
+    DCModifyConfig,
+
+    /** 修改数据协作配置响应*/
+    @Response(clz = DcsSetConfInfoRsp.class,
+            id = "DcsSetConfInfo_Rsp")
+    DCModifyConfigRsp,
 
     /**
      * 数据协作相关参数设置变更，如协作模式被修改。
      * */
     @Response(clz = TDCSConfInfo.class,
             id = "DcsUpdateConfInfo_Ntf")
-    DCConfParaChanged,
+    DCConfigModified,
 
 
     // 数据协作权限控制相关
