@@ -130,9 +130,6 @@ public class DataCollaborateManager extends Caster {
 
     // 当前会议e164号
     private String curDcConfE164;
-    String getCurDcConfE164(){
-        return curDcConfE164;
-    }
 
     // 当前终端类型
     private EmDcsType curTerminalType;
@@ -994,7 +991,7 @@ public class DataCollaborateManager extends Caster {
 
                         // 上报用户协作中所有画板
                         for (TDCSBoardInfo board : dcBoards) {
-                            onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board));
+                            onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board, curDcConfE164));
                         }
 
                         if (null != curBoardId) { // “当前画板”通知已早于此到达，彼时还无法通知用户“切换画板”，因为彼时尚未上报用户画板已创建，所以此时我们补上通知“切换画板”。
@@ -1220,7 +1217,7 @@ public class DataCollaborateManager extends Caster {
             case DCQueryBoardRsp:
                 DcsGetWhiteBoardRsp queryBoardsResult = (DcsGetWhiteBoardRsp) rspContent;
                 if (queryBoardsResult.MainParam.bSuccess){
-                    reportSuccess(ToDoConverter.fromTransferObj(queryBoardsResult.AssParam), listener);
+                    reportSuccess(ToDoConverter.fromTransferObj(queryBoardsResult.AssParam, curDcConfE164), listener);
                 }else{
                     KLog.p(KLog.ERROR, "DCQueryBoard failed, errorCode=%s", queryBoardsResult.MainParam.dwErrorCode);
                     reportFailed(convertErrorCode(queryBoardsResult.MainParam.dwErrorCode), listener);
@@ -1249,7 +1246,7 @@ public class DataCollaborateManager extends Caster {
                     } else {
                         List<BoardInfo> boardInfos = new ArrayList<>();
                         for (TDCSBoardInfo tdcsBoardInfo : tdcsBoardInfos) {
-                            boardInfos.add(ToDoConverter.fromTransferObj(tdcsBoardInfo));
+                            boardInfos.add(ToDoConverter.fromTransferObj(tdcsBoardInfo, curDcConfE164));
                         }
                         result = boardInfos;
                     }
@@ -1270,7 +1267,7 @@ public class DataCollaborateManager extends Caster {
                 TDCSBoardInfo tdcsBoardInfo = (TDCSBoardInfo) rspContent;
                 TDCSNewWhiteBoard newWhiteBoard = (TDCSNewWhiteBoard) reqParas[0];
                 if (newWhiteBoard.tBoardinfo.achWbCreatorE164.equals(tdcsBoardInfo.achWbCreatorE164)) {
-                    reportSuccess(ToDoConverter.fromTransferObj(tdcsBoardInfo), listener);
+                    reportSuccess(ToDoConverter.fromTransferObj(tdcsBoardInfo, curDcConfE164), listener);
                 }else{
                     return false; // 返回false表示未消费该条消息
                 }
@@ -1344,7 +1341,7 @@ public class DataCollaborateManager extends Caster {
             return;
         }
         if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
-            onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj((TDCSBoardInfo) ntfContent));
+            onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj((TDCSBoardInfo) ntfContent, curDcConfE164));
         } else if (Msg.DCBoardSwitchedNtf.equals(ntfId)) {
             onBoardOpListener.onBoardSwitched(((TDCSBoardInfo) ntfContent).achTabId);
         } else if (Msg.DCBoardDeletedNtf.equals(ntfId)) {

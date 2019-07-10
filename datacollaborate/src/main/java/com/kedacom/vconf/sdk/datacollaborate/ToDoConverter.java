@@ -79,11 +79,15 @@ import java.util.Map;
 
 @SuppressWarnings("WeakerAccess")
 final class ToDoConverter {
-    private static DataCollaborateManager dcMan = DataCollaborateManager.getInstance(null);
     private static final String INVALID_UUID = "";
 
 
     public static OpPaint fromPaintTransferObj(Object transferObj) {
+        if (null == transferObj){
+            KLog.p(KLog.ERROR, "null == transferObj");
+            return null;
+        }
+
         if (transferObj instanceof DcsOperLineOperInfoNtf){ // TODO 用枚举做判断，因为一个结构体可能被多种操作使用
             return fromTransferObj((DcsOperLineOperInfoNtf)transferObj);
         }else if (transferObj instanceof DcsOperRectangleOperInfoNtf){
@@ -551,8 +555,8 @@ final class ToDoConverter {
         }
     }
 
-    public static BoardInfo fromTransferObj(TDCSBoardInfo dcBoard) {
-        return new BoardInfo(dcBoard.achTabId, dcBoard.achWbName, dcMan.getCurDcConfE164(), dcBoard.achWbCreatorE164, dcBoard.dwWbCreateTime,
+    public static BoardInfo fromTransferObj(TDCSBoardInfo dcBoard, String confE164) {
+        return new BoardInfo(dcBoard.achTabId, dcBoard.achWbName, confE164, dcBoard.achWbCreatorE164, dcBoard.dwWbCreateTime,
                 fromTransferObj(dcBoard.emWbMode), dcBoard.dwWbPageNum, dcBoard.dwPageId, dcBoard.dwWbAnonyId);
     }
 
@@ -582,23 +586,21 @@ final class ToDoConverter {
     }
 
     public static List<DCMember> fromDcUserList(List<TDCSConfUserInfo> userInfos){
-        if (null == userInfos){
-            return null;
-        }
         List<DCMember> members = new ArrayList<>();
-        for(TDCSConfUserInfo userInfo : userInfos){
-            members.add(fromTransferObj(userInfo));
+        if (null != userInfos) {
+            for (TDCSConfUserInfo userInfo : userInfos) {
+                members.add(fromTransferObj(userInfo));
+            }
         }
         return members;
     }
 
     public static List<TDCSConfUserInfo> toDcUserList(List<DCMember> members){
-        if (null == members){
-            return null;
-        }
         List<TDCSConfUserInfo> userInfos = new ArrayList<>();
-        for(DCMember member : members){
-            userInfos.add(toTransferObj(member));
+        if (null != members) {
+            for (DCMember member : members) {
+                userInfos.add(toTransferObj(member));
+            }
         }
         return userInfos;
     }
