@@ -201,8 +201,10 @@ final class ToDoConverter {
 
     public static List<PointF> fromTransferObj(TDCSWbPoint[] tdcsWbPoints) {
         List<PointF> pointFS = new ArrayList<>();
-        for (int i=0; i<tdcsWbPoints.length; ++i){
-            pointFS.add( new PointF(tdcsWbPoints[i].nPosx, tdcsWbPoints[i].nPosy));
+        if (null != tdcsWbPoints) {
+            for (int i = 0; i < tdcsWbPoints.length; ++i) {
+                pointFS.add(new PointF(tdcsWbPoints[i].nPosx, tdcsWbPoints[i].nPosy));
+            }
         }
         return pointFS;
     }
