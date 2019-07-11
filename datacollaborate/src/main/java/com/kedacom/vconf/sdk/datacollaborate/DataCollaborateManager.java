@@ -138,6 +138,7 @@ public class DataCollaborateManager extends Caster {
 
 
     // 通知监听器
+    private IOnDcCreatedListener onDcCreatedListener;
     private IOnSynchronizeProgressListener onSynchronizeProgressListener;
     private IOnSessionEventListener onSessionEventListener;
     private IOnOperatorEventListener onOperatorEventListener;
@@ -436,15 +437,32 @@ public class DataCollaborateManager extends Caster {
 
         unsubscribeNtfListeners();
 
-        curDcConfE164 = null;
+        TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
+        if (null != srvState  && srvState.bInConference) curDcConfE164 = srvState.achConfE164;
+        if (null != curDcConfE164) {
+            // 正在协作中，先退出协作（不然组件那边会紊乱报24001错误码）
+            req(Msg.DCQuitConf, new IResultListener() {
+                @Override
+                public void onArrive(boolean bSuccess) {
+                    curDcConfE164 = null;
+                    req(Msg.DCCreateConf, resultListener,
+                            new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
+                                    confE164, confName, ToDoConverter.toTransferObj(dcMode),
+                                    ToDoConverter.toDcUserList(members), adminE164, curTerminalType),
+                            synchronizeProgressListener, sessionEventListener, operatorEventListener, boardOpListener, paintOpListener
+                    );
+                }
+            }, curDcConfE164, 1);
+        }else{
+            req(Msg.DCCreateConf, resultListener,
+                    new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
+                            confE164, confName, ToDoConverter.toTransferObj(dcMode),
+                            ToDoConverter.toDcUserList(members), adminE164, curTerminalType),
+                    synchronizeProgressListener, sessionEventListener, operatorEventListener, boardOpListener, paintOpListener // “开启数据协作”并不需要这组监听器作为请求参数，
+                    // 我们此处只是利用框架替我们缓存这组监听器，在“开启数据协作”结束后再获取它们以做处理。
+            );
+        }
 
-        req(Msg.DCCreateConf, resultListener,
-                new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
-                        confE164, confName, ToDoConverter.toTransferObj(dcMode),
-                        ToDoConverter.toDcUserList(members), adminE164, curTerminalType),
-                synchronizeProgressListener, sessionEventListener, operatorEventListener, boardOpListener, paintOpListener // “开启数据协作”并不需要这组监听器作为请求参数，
-                                                                                              // 我们此处只是利用框架替我们缓存这组监听器，在“开启数据协作”结束后再获取它们以做处理。
-        );
     }
 
     /**结束数据协作
@@ -831,6 +849,7 @@ public class DataCollaborateManager extends Caster {
                     if (!result.bSuccess) { // 开启数据协作失败（链路建立失败）
                         cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
                         reportFailed(ErrCode_BuildLink4ConfFailed, listener);
+                        curDcConfE164 = null;
                     }
                 }else if (Msg.DCQuitConf == reqId
                         || Msg.DCReleaseConf == reqId){
@@ -911,24 +930,29 @@ public class DataCollaborateManager extends Caster {
     }
 
     private void onSessionNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
-        if (null == onSessionEventListener){
-            KLog.p(KLog.ERROR, "null == onSessionEventListener");
-            return;
-        }
         switch (ntfId){
             case DCBuildLink4ConfRsp:
                 TDCSConnectResult tdcsConnectResult = (TDCSConnectResult) ntfContent;
                 if (!tdcsConnectResult.bSuccess){ // 用户所属的数据协作链路状态异常
-                    onSessionEventListener.onDcFinished(); // 通知用户（对于他来说）数据协作已结束
+                    if (null != onSessionEventListener) onSessionEventListener.onDcFinished(); // 通知用户（对于他来说）数据协作已结束
                     curDcConfE164 = null;
                     unsubscribeNtfListeners();
+                }
+                break;
+
+            case DCConfCreated:
+                TDCSCreateConfResult tdcsCreateConfResult = (TDCSCreateConfResult) ntfContent;
+                if (tdcsCreateConfResult.bSuccess && null == curDcConfE164) {
+                    curDcConfE164 = tdcsCreateConfResult.achConfE164;
+                    if (null != onDcCreatedListener)
+                        onDcCreatedListener.onDcCreated(ToDoConverter.fromTransferObj(tdcsCreateConfResult));
                 }
                 break;
 
             case DCConfigModified:
                 DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj((TDCSConfInfo)ntfContent);
                 if (dcConfInfo.getConfE164().equals(curDcConfE164)){
-                    onSessionEventListener.onDCConfParaChanged(dcConfInfo);
+                    if (null != onSessionEventListener) onSessionEventListener.onDCConfParaChanged(dcConfInfo);
                 }
                 break;
 
@@ -1753,6 +1777,44 @@ public class DataCollaborateManager extends Caster {
         }
     }
 
+
+    /**
+     * 数据协作会话事件监听器。
+     * */
+    public interface IOnSessionEventListener extends ILifecycleOwner{
+
+        /**
+         * （对己端而言）数据协作已结束。（协作本身可能仍存在也可能已不存在）
+         * 数据协作被结束，或者己端被管理员从协作中删除均会触发该回调。
+         * */
+        void onDcFinished();
+
+        /**
+         * 数据协作会议参数设置变更（如协作模式被修改）
+         * @param dcConfInfo 数据协作会议信息
+         * */
+        void onDCConfParaChanged(DcConfInfo dcConfInfo);
+
+    }
+
+    /**
+     * 数据协作已创建通知监听器
+     * */
+    public interface IOnDcCreatedListener extends ILifecycleOwner{
+        /**
+         * 数据协作已创建
+         * @param dcConfInfo 数据协作信息
+         * */
+        void onDcCreated(DcConfInfo dcConfInfo);
+    }
+    /**
+     * 设置数据协作已创建通知监听器
+     * */
+    public void setOnDcCreatedListener(IOnDcCreatedListener onDcCreatedListener){
+        this.onDcCreatedListener = onDcCreatedListener;
+    }
+
+
     /**
      * 同步进度监听器
      * */
@@ -1771,7 +1833,6 @@ public class DataCollaborateManager extends Caster {
 
     /**
      * 绘制操作通知监听器。
-     * 绘制操作包括所有影响画板内容展示的操作，如画线画圆、插图片、擦除、撤销等等。
      * */
     public interface IOnPaintOpListener extends ILifecycleOwner {
         /**绘制通知
@@ -1781,9 +1842,6 @@ public class DataCollaborateManager extends Caster {
 
     /**
      * 画板操作通知监听器。
-     * NOTE：其他方进行画板操作才会触发该监听器，
-     * 己端进行画板操作结果是通过请求方法中的{@link IResultListener}反馈的，如：
-     * {@link #newBoard(String, IResultListener)}创建画板的结果是直接通过传入的结果监听器反馈给用户的。
      * */
     public interface IOnBoardOpListener extends ILifecycleOwner{
         /**画板创建通知
@@ -1802,24 +1860,6 @@ public class DataCollaborateManager extends Caster {
         void onAllBoardDeleted();
     }
 
-    /**
-     * 数据协作会话监听器。
-     * */
-    public interface IOnSessionEventListener extends ILifecycleOwner{
-
-        /**
-         * （对己端而言）数据协作已结束。（协作本身可能仍存在也可能已不存在）
-         * 数据协作被结束，或者己端被管理员从协作中删除均会触发该回调。
-         * */
-        void onDcFinished();
-
-        /**
-         * 数据协作会议参数设置变更（如协作模式被修改）
-         * @param dcConfInfo 数据协作会议信息
-         * */
-        void onDCConfParaChanged(DcConfInfo dcConfInfo);
-
-    }
 
     /**
      * 协作权相关通知监听器
