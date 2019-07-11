@@ -12,7 +12,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-class ListenerLifecycleObserver implements DefaultLifecycleObserver {
+public class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
     private Callback cb;
 
@@ -22,7 +22,7 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
      * */
     private Map<LifecycleOwner, Set<Object>> lifecycleOwnerBindListeners;
 
-    ListenerLifecycleObserver(Callback cb){
+    public ListenerLifecycleObserver(Callback cb){
         this.cb = cb;
         lifecycleOwnerBindListeners = new HashMap<>();
     }
@@ -36,7 +36,7 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
      * @param listener 监听器
      * @return 监听结果。true表示成功监听，后续监听器将感知生命周期对象的生命周期变化事件并通过Callback回调。
      * */
-    boolean tryObserve(Object listener){
+    public boolean tryObserve(Object listener){
         if (null == listener){
             return false;
         }
@@ -82,7 +82,7 @@ class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
 
     /**取消监控生命周期。*/
-    void unobserve(Object listener){
+    public void unobserve(Object listener){
         if (null == listener){
             return;
         }

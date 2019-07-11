@@ -25,6 +25,7 @@ import com.google.common.primitives.Ints;
 import com.kedacom.vconf.sdk.base.Caster;
 import com.kedacom.vconf.sdk.base.ILifecycleOwner;
 import com.kedacom.vconf.sdk.base.IResultListener;
+import com.kedacom.vconf.sdk.base.ListenerLifecycleObserver;
 import com.kedacom.vconf.sdk.base.Msg;
 import com.kedacom.vconf.sdk.base.KLog;
 import com.kedacom.vconf.sdk.base.bean.dc.BaseTypeString;
@@ -144,6 +145,27 @@ public class DataCollaborateManager extends Caster {
     private IOnOperatorEventListener onOperatorEventListener;
     private IOnBoardOpListener onBoardOpListener;
     private IOnPaintOpListener onPaintOpListener;
+
+    private ListenerLifecycleObserver listenerLifecycleObserver = new ListenerLifecycleObserver(
+            new ListenerLifecycleObserver.Callback(){
+                @Override
+                public void onListenerDestroy(Object listener) {
+                    if (listener == onDcCreatedListener){
+                        onDcCreatedListener = null;
+                    }else if (listener == onSynchronizeProgressListener){
+                        onSynchronizeProgressListener = null;
+                    }else if (listener == onSessionEventListener){
+                        onSessionEventListener = null;
+                    }else if (listener == onOperatorEventListener){
+                        onOperatorEventListener = null;
+                    }else if (listener == onBoardOpListener){
+                        onBoardOpListener = null;
+                    }else if (listener == onPaintOpListener){
+                        onPaintOpListener = null;
+                    }
+                }
+            }
+            );
 
     // 会话相关通知
     private static final Msg[] sessionNtfs = new Msg[]{
@@ -1753,14 +1775,24 @@ public class DataCollaborateManager extends Caster {
         this.onOperatorEventListener = onOperatorEventListener;
         this.onBoardOpListener = onBoardOpListener;
         this.onPaintOpListener = onPaintOpListener;
+        listenerLifecycleObserver.tryObserve(onSynchronizeProgressListener);
+        listenerLifecycleObserver.tryObserve(onSessionEventListener);
+        listenerLifecycleObserver.tryObserve(onOperatorEventListener);
+        listenerLifecycleObserver.tryObserve(onBoardOpListener);
+        listenerLifecycleObserver.tryObserve(onPaintOpListener);
     }
 
     private void unsubscribeNtfListeners(){
+        listenerLifecycleObserver.unobserve(onSynchronizeProgressListener);
+        listenerLifecycleObserver.unobserve(onSessionEventListener);
+        listenerLifecycleObserver.unobserve(onOperatorEventListener);
+        listenerLifecycleObserver.unobserve(onBoardOpListener);
+        listenerLifecycleObserver.unobserve(onPaintOpListener);
+        onSynchronizeProgressListener = null;
         onSessionEventListener = null;
         onOperatorEventListener = null;
         onBoardOpListener = null;
         onPaintOpListener = null;
-        onSynchronizeProgressListener = null;
     }
 
     private int convertErrorCode(int remoteErrorCode){
@@ -1812,7 +1844,9 @@ public class DataCollaborateManager extends Caster {
      * 设置数据协作已创建通知监听器
      * */
     public void setOnDcCreatedListener(IOnDcCreatedListener onDcCreatedListener){
+        if (null != this.onDcCreatedListener) listenerLifecycleObserver.unobserve(this.onDcCreatedListener);
         this.onDcCreatedListener = onDcCreatedListener;
+        if (null != this.onDcCreatedListener) listenerLifecycleObserver.tryObserve(this.onDcCreatedListener);
     }
 
 
