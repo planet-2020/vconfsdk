@@ -870,12 +870,11 @@ public class DataCollaborateManager extends Caster {
                     reportSuccess(ToDoConverter.fromTransferObj(createConfResult), listener);
 
                     // 注册通知监听器
-                    onSynchronizeProgressListener = (IOnSynchronizeProgressListener) reqParas[1];
-                    onSessionEventListener = (IOnSessionEventListener) reqParas[2];
-                    onOperatorEventListener = (IOnOperatorEventListener) reqParas[3];
-                    onBoardOpListener = (IOnBoardOpListener) reqParas[4];
-                    onPaintOpListener = (IOnPaintOpListener) reqParas[5];
-                    subscribeNtfListeners();
+                    subscribeNtfListeners((IOnSynchronizeProgressListener) reqParas[1],
+                                            (IOnSessionEventListener) reqParas[2],
+                                            (IOnOperatorEventListener) reqParas[3],
+                                            (IOnBoardOpListener) reqParas[4],
+                                            (IOnPaintOpListener) reqParas[5]);
 
                     // 同步协作中已有内容
                     synchronizeCachedStuff(createConfResult);
@@ -1743,18 +1742,20 @@ public class DataCollaborateManager extends Caster {
 
 
 
-    private void subscribeNtfListeners(){
-        subscribe(sessionNtfs, onSessionEventListener);
-        subscribe(operatorNtfs, onOperatorEventListener);
-        subscribe(boardOpNtfs, onBoardOpListener);
-        subscribe(paintOpNtfs, onPaintOpListener);
+    private void subscribeNtfListeners(
+            IOnSynchronizeProgressListener onSynchronizeProgressListener,
+            IOnSessionEventListener onSessionEventListener,
+            IOnOperatorEventListener onOperatorEventListener,
+            IOnBoardOpListener onBoardOpListener,
+            IOnPaintOpListener onPaintOpListener ){
+        this.onSynchronizeProgressListener = onSynchronizeProgressListener;
+        this.onSessionEventListener = onSessionEventListener;
+        this.onOperatorEventListener = onOperatorEventListener;
+        this.onBoardOpListener = onBoardOpListener;
+        this.onPaintOpListener = onPaintOpListener;
     }
 
     private void unsubscribeNtfListeners(){
-        unsubscribe(sessionNtfs, onSessionEventListener);
-        unsubscribe(operatorNtfs, onOperatorEventListener);
-        unsubscribe(boardOpNtfs, onBoardOpListener);
-        unsubscribe(paintOpNtfs, onPaintOpListener);
         onSessionEventListener = null;
         onOperatorEventListener = null;
         onBoardOpListener = null;
