@@ -5,9 +5,9 @@
 package com.kedacom.vconf.sdk.base.bean.dc;
 
 import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.base.tools.AbsJsonDeserializer;
+import com.kedacom.vconf.sdk.base.tools.MainAssParaJsonAdapter;
 
-@JsonAdapter(DcsSwitchRsp.Deserializer.class)
+@JsonAdapter(DcsSwitchRsp.Adapter.class)
 public class DcsSwitchRsp {
     public TDCSBoardResult MainParam;
     public TDCSBoardInfo AssParam;
@@ -21,5 +21,5 @@ public class DcsSwitchRsp {
     }
 
 
-    static final class Deserializer extends AbsJsonDeserializer<DcsSwitchRsp> { }
+    static final class Adapter extends MainAssParaJsonAdapter<DcsSwitchRsp> { }
 }

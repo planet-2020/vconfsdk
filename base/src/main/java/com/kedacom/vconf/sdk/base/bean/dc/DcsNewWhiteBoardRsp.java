@@ -5,10 +5,10 @@
 package com.kedacom.vconf.sdk.base.bean.dc;
 
 import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.base.tools.AbsJsonDeserializer;
+import com.kedacom.vconf.sdk.base.tools.MainAssParaJsonAdapter;
 
 
-@JsonAdapter(DcsNewWhiteBoardRsp.Deserializer.class)
+@JsonAdapter(DcsNewWhiteBoardRsp.Adapter.class)
 public class DcsNewWhiteBoardRsp {
     public TDCSBoardResult MainParam;
     public TDCSBoardInfo AssParam;
@@ -21,5 +21,5 @@ public class DcsNewWhiteBoardRsp {
                 '}';
     }
 
-    static final class Deserializer extends AbsJsonDeserializer<DcsNewWhiteBoardRsp> { }
+    static final class Adapter extends MainAssParaJsonAdapter<DcsNewWhiteBoardRsp> { }
 }

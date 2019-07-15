@@ -29,7 +29,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
-public abstract class AbsJsonDeserializer<T> implements JsonDeserializer<T> {
+public abstract class MainAssParaJsonAdapter<T> implements JsonDeserializer<T> {
 
     private static final String MANKEY = "MainParam";
     private static final String ASSKEY = "AssParam";

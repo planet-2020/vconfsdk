@@ -1,9 +1,9 @@
 package com.kedacom.vconf.sdk.base.bean.dc;
 
 import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.base.tools.AbsJsonDeserializer;
+import com.kedacom.vconf.sdk.base.tools.MainAssParaJsonAdapter;
 
-@JsonAdapter(DcsGetConfAddrRsp.Deserializer.class)
+@JsonAdapter(DcsGetConfAddrRsp.Adapter.class)
 public class DcsGetConfAddrRsp {
     public TDCSResult MainParam;
     public TDCSConfAddr AssParam;
@@ -16,5 +16,5 @@ public class DcsGetConfAddrRsp {
                 '}';
     }
 
-    static final class Deserializer extends AbsJsonDeserializer<DcsGetConfAddrRsp> { }
+    static final class Adapter extends MainAssParaJsonAdapter<DcsGetConfAddrRsp> { }
 }
