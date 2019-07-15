@@ -177,7 +177,8 @@ public enum Msg {
             paras = StringBuffer.class,
             userParas = TDCSCreateConf.class,
             rspSeq = {"DCBuildLink4ConfRsp",  // NOTE: 若该响应bSuccess字段为false则不会收到DCConfCreated。
-                    "DCConfCreated"})
+                    "DCConfCreated"},
+            rspSeq2 = "DCConfCreated")
     DCCreateConf,
 
     /**
