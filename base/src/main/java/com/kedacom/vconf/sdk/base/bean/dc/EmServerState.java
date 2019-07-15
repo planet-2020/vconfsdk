@@ -1,11 +1,12 @@
 package com.kedacom.vconf.sdk.base.bean.dc;
 
-import com.kedacom.vconf.sdk.annotation.SerializeEnumAsInt;
+import com.google.gson.annotations.JsonAdapter;
+import com.kedacom.vconf.sdk.base.tools.Enum2IntJsonAdapter;
 
 /**
  * 服务器连接状态
  */
-@SerializeEnumAsInt
+@JsonAdapter(Enum2IntJsonAdapter.class)
 public enum EmServerState {
 	emSrvIdle, // 空闲
 	emSrvDnsQuerying, // 正在解析IP

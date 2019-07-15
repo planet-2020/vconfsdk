@@ -22,11 +22,11 @@ public final class JsonProcessor {
     private JsonProcessor() {
         gsonBuilder = new GsonBuilder();
 
-        Set<Class<? extends Enum<?>>> serializeEnumAsIntSet = SerializeEnumAsInt$$Generated.serializeEnumAsIntSet;
-
-        for (Class<? extends Enum<?>> c : serializeEnumAsIntSet) {
-            regEnumType(c);
-        }
+//        Set<Class<? extends Enum<?>>> serializeEnumAsIntSet = SerializeEnumAsInt$$Generated.serializeEnumAsIntSet;
+//
+//        for (Class<? extends Enum<?>> c : serializeEnumAsIntSet) {
+//            regEnumType(c);
+//        }
 
         gson = gsonBuilder.create();
     }
