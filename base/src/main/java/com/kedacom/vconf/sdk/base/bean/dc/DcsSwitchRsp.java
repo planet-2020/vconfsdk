@@ -21,5 +21,5 @@ public class DcsSwitchRsp {
     }
 
 
-    static final class Adapter extends LameJsonAdapter<DcsSwitchRsp> { }
+    static final class Adapter extends LameJsonAdapter<DcsSwitchRsp, TDCSBoardResult, TDCSBoardInfo> { }
 }

@@ -16,5 +16,5 @@ public class DcsGetConfAddrRsp {
                 '}';
     }
 
-    static final class Adapter extends LameJsonAdapter<DcsGetConfAddrRsp> { }
+    static final class Adapter extends LameJsonAdapter<DcsGetConfAddrRsp, TDCSResult, TDCSConfAddr> { }
 }

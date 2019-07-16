@@ -20,5 +20,5 @@ public class DcsGetWhiteBoardRsp {
                 '}';
     }
 
-    static final class Adapter extends LameJsonAdapter<DcsGetWhiteBoardRsp> { }
+    static final class Adapter extends LameJsonAdapter<DcsGetWhiteBoardRsp, TDCSBoardResult, TDCSBoardInfo> { }
 }

@@ -21,5 +21,5 @@ public class DcsGetUserListRsp{
                 '}';
     }
 
-    static final class Adapter extends LameJsonAdapter<DcsGetUserListRsp> { }
+    static final class Adapter extends LameJsonAdapter<DcsGetUserListRsp, TDCSResult, TDCSGetUserList> { }
 }
