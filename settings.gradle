@@ -1,1 +1,1 @@
-include  ':processor', ':annotation', ':base', ':datacollaborate'
+include  ':processor', ':annotation', ':base', ':datacollaborate', ':utils'

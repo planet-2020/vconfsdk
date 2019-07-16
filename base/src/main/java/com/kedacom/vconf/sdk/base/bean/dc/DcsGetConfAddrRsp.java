@@ -1,7 +1,7 @@
 package com.kedacom.vconf.sdk.base.bean.dc;
 
 import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.base.tools.MainAssParaJsonAdapter;
+import com.kedacom.vconf.sdk.base.tools.LameJsonAdapter;
 
 @JsonAdapter(DcsGetConfAddrRsp.Adapter.class)
 public class DcsGetConfAddrRsp {
@@ -16,5 +16,5 @@ public class DcsGetConfAddrRsp {
                 '}';
     }
 
-    static final class Adapter extends MainAssParaJsonAdapter<DcsGetConfAddrRsp> { }
+    static final class Adapter extends LameJsonAdapter<DcsGetConfAddrRsp> { }
 }

@@ -6,7 +6,7 @@ package com.kedacom.vconf.sdk.base.bean.dc;
 
 
 import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.base.tools.MainAssParaJsonAdapter;
+import com.kedacom.vconf.sdk.base.tools.LameJsonAdapter;
 
 @JsonAdapter(DcsGetAllWhiteBoardRsp.Adapter.class)  // 指定json反序列化的解析器
 public class DcsGetAllWhiteBoardRsp{
@@ -21,6 +21,6 @@ public class DcsGetAllWhiteBoardRsp{
                 '}';
     }
 
-    static final class Adapter extends MainAssParaJsonAdapter<DcsGetAllWhiteBoardRsp> { }
+    static final class Adapter extends LameJsonAdapter<DcsGetAllWhiteBoardRsp> { }
 
 }

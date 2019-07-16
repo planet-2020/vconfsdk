@@ -5,7 +5,7 @@
 package com.kedacom.vconf.sdk.base.bean.dc;
 
 import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.base.tools.MainAssParaJsonAdapter;
+import com.kedacom.vconf.sdk.base.tools.LameJsonAdapter;
 
 @JsonAdapter(DcsGetWhiteBoardRsp.Adapter.class)
 public class DcsGetWhiteBoardRsp {
@@ -20,5 +20,5 @@ public class DcsGetWhiteBoardRsp {
                 '}';
     }
 
-    static final class Adapter extends MainAssParaJsonAdapter<DcsGetWhiteBoardRsp> { }
+    static final class Adapter extends LameJsonAdapter<DcsGetWhiteBoardRsp> { }
 }
