@@ -11,12 +11,14 @@ import com.kedacom.vconf.sdk.base.basement.MagicBook;
 import com.kedacom.vconf.sdk.base.basement.NotificationFairy;
 import com.kedacom.vconf.sdk.base.basement.SessionFairy;
 
+import java.lang.reflect.Array;
+import java.lang.reflect.ParameterizedType;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-public abstract class Caster implements IFairy.ISessionFairy.IListener,
+public abstract class Caster<T extends Enum<T>> implements IFairy.ISessionFairy.IListener,
         IFairy.INotificationFairy.IListener{
 
     static {
@@ -43,8 +45,8 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     private final Map<Integer, ReqBundle> rspListeners = new LinkedHashMap<>();
     private final Map<String, LinkedHashSet<Object>> ntfListeners = new LinkedHashMap<>();
 
-    private Map<Msg, RspProcessor> rspProcessorMap = new LinkedHashMap<>();
-    private Map<Msg, NtfProcessor> ntfProcessorMap = new LinkedHashMap<>();
+    private Map<T, RspProcessor<T>> rspProcessorMap = new LinkedHashMap<>();
+    private Map<T, NtfProcessor<T>> ntfProcessorMap = new LinkedHashMap<>();
 
     private ListenerLifecycleObserver listenerLifecycleObserver;
     private ListenerLifecycleObserver.Callback listenerLifecycleCallback = new ListenerLifecycleObserver.Callback(){
@@ -72,15 +74,18 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         }
     };
 
+    private Class<T> enumT;
 
     @SuppressWarnings("ConstantConditions")
     protected Caster(){
-        ++count;
+        enumT = (Class<T>)((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+
         sessionFairy = SessionFairy.instance();
         notificationFairy = NotificationFairy.instance();
         commandFairy = CommandFairy.instance();
         crystalBall = CrystalBall.instance();
 
+        ++count;
         crystalBall.addListener(sessionFairy, SESSION_FAIRY_BASE_PRIORITY+count);
         crystalBall.addListener(notificationFairy, NOTIFICATION_FAIRY_BASE_PRIORITY+count);
 
@@ -90,24 +95,24 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
 
         listenerLifecycleObserver = new ListenerLifecycleObserver(listenerLifecycleCallback);
 
-        Map<Msg, RspProcessor> rspProcessorMap = rspProcessors();
+        Map<T, RspProcessor<T>> rspProcessorMap = rspProcessors();
         if (null != rspProcessorMap) {
             this.rspProcessorMap.putAll(rspProcessorMap);
         }
 
-        Map<Msg[], RspProcessor> rspsProcessorMap = rspsProcessors();
+        Map<T[], RspProcessor<T>> rspsProcessorMap = rspsProcessors();
         if (null != rspsProcessorMap){
-            for (Msg[] reqs : rspsProcessorMap.keySet()){
+            for (T[] reqs : rspsProcessorMap.keySet()){
                 RspProcessor rspProcessor = rspsProcessorMap.get(reqs);
-                for (Msg req : reqs) {
+                for (T req : reqs) {
                     this.rspProcessorMap.put(req, rspProcessor);
                 }
             }
         }
 
-        Map<Msg, NtfProcessor> ntfProcessorMap = ntfProcessors();
+        Map<T, NtfProcessor<T>> ntfProcessorMap = ntfProcessors();
         if (null != ntfProcessorMap){
-            for (Msg ntf : ntfProcessorMap.keySet()){
+            for (T ntf : ntfProcessorMap.keySet()){
                 String ntfName = ntf.name();
                 if(notificationFairy.subscribe(this, ntfName)){
                     ntfListeners.put(ntfName, new LinkedHashSet<>());
@@ -116,11 +121,11 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
             }
         }
 
-        Map<Msg[], NtfProcessor> ntfsProcessorMap = ntfsProcessors();
+        Map<T[], NtfProcessor<T>> ntfsProcessorMap = ntfsProcessors();
         if (null != ntfsProcessorMap){
-            for (Msg[] ntfs : ntfsProcessorMap.keySet()){
+            for (T[] ntfs : ntfsProcessorMap.keySet()){
                 NtfProcessor ntfProcessor = ntfsProcessorMap.get(ntfs);
-                for (Msg ntf : ntfs){
+                for (T ntf : ntfs){
                     String ntfName = ntf.name();
                     if (notificationFairy.subscribe(this, ntfName)) {
                         ntfListeners.put(ntfName, new LinkedHashSet<>());
@@ -135,40 +140,40 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
 
     /**注册请求对应的响应处理器
      * NOTE @return 返回的Map中的Msg为Request*/
-    protected Map<Msg, RspProcessor> rspProcessors(){return null;}
+    protected Map<T, RspProcessor<T>> rspProcessors(){return null;}
 
     /**批量注册请求对应的响应处理器*/
-    protected Map<Msg[], RspProcessor> rspsProcessors(){return null;}
+    protected Map<T[], RspProcessor<T>> rspsProcessors(){return null;}
 
     /**注册通知处理器*/
-    protected Map<Msg, NtfProcessor> ntfProcessors(){return null;}
+    protected Map<T, NtfProcessor<T>> ntfProcessors(){return null;}
 
     /**批量注册通知处理器*/
-    protected Map<Msg[], NtfProcessor> ntfsProcessors(){return null;}
+    protected Map<T[], NtfProcessor<T>> ntfsProcessors(){return null;}
 
     /**响应处理器*/
-    protected interface RspProcessor{
-        /**
-         * @param rsp 响应ID
-         * @param rspContent 响应内容，具体类型由响应ID决定，参考{@link Response#clz()}。
-         * @param listener 响应监听器，由{@link #req(Msg, IResultListener, Object...)}传入。
-         *                 NOTE：可能在会话过程中监听器被销毁，如调用了{@link #delListener(Object)}或者监听器绑定的生命周期对象已销毁，
-         *                 则此参数为null，（当然也可能调用{@link #req(Msg, IResultListener, Object...)}时传入的就是null）
-         *                 所以使用者需对该参数做非null判断。
-         * @param req 请求ID，由{@link #req(Msg, IResultListener, Object...)}传入。
-         * @param reqParas 请求参数列表，由{@link #req(Msg, IResultListener, Object...)}传入，顺序同传入时的
-         * @return true，若该响应已被处理；否则false。
-         * */
-        boolean process(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas);
+    protected interface RspProcessor<T>{
+//        /**
+//         * @param rsp 响应ID
+//         * @param rspContent 响应内容，具体类型由响应ID决定，参考{@link Response#clz()}。
+//         * @param listener 响应监听器，由{@link #req(T, IResultListener, Object...)}传入。
+//         *                 NOTE：可能在会话过程中监听器被销毁，如调用了{@link #delListener(Object)}或者监听器绑定的生命周期对象已销毁，
+//         *                 则此参数为null，（当然也可能调用{@link #req(T, IResultListener, Object...)}时传入的就是null）
+//         *                 所以使用者需对该参数做非null判断。
+//         * @param req 请求ID，由{@link #req(T, IResultListener, Object...)}传入。
+//         * @param reqParas 请求参数列表，由{@link #req(T, IResultListener, Object...)}传入，顺序同传入时的
+//         * @return true，若该响应已被处理；否则false。
+//         * */
+        boolean process(T rsp, Object rspContent, IResultListener listener, T req, Object[] reqParas);
     }
 
     /**通知处理器*/
-    protected interface NtfProcessor{
-        /**
-         * @param ntf 通知ID
-         * @param ntfContent 通知内容，具体类型由通知ID决定，参考{@link Response#clz()}。
-         * @param listeners 通知监听器，由{@link #subscribe(Msg, Object)}和{@link #subscribe(Msg[], Object)}传入。  */
-        void process(Msg ntf, Object ntfContent, Set<Object> listeners);
+    protected interface NtfProcessor<T>{
+//        /**
+//         * @param ntf 通知ID
+//         * @param ntfContent 通知内容，具体类型由通知ID决定，参考{@link Response#clz()}。
+//         * @param listeners 通知监听器，由{@link #subscribe(T, Object)}和{@link #subscribe(T[], Object)}传入。  */
+        void process(T ntf, Object ntfContent, Set<Object> listeners);
     }
 
 
@@ -183,7 +188,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
      * */
     public void enableSimulator(boolean bEnable){
         if (!SimulatorOnOff.on){
-            KLog.p(KLog.ERROR, "forbidden operation!!");
+            KLog.p(KLog.ERROR, "forbidden operation");
             return;
         }
         crystalBall.delListener(sessionFairy);
@@ -209,10 +214,10 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     /**
      * 会话请求。
      * 该接口是异步的，请求结果会在适当的时机通过{@link #req#rspListener}反馈。
-     * @param req 请求消息 参考{@link Msg} and {@link com.kedacom.vconf.sdk.annotation.Request}
+     * @param req 请求消息 参考{@link T} and {@link com.kedacom.vconf.sdk.annotation.Request}
      * @param rspListener 响应监听者。可以为null表示请求者不关注请求结果
      * @param reqPara 请求参数列表，可以没有。  */
-    protected synchronized void req(Msg req, IResultListener rspListener, Object... reqPara){
+    protected synchronized void req(T req, IResultListener rspListener, Object... reqPara){
 
         if (!rspProcessorMap.keySet().contains(req)){
             KLog.p(KLog.ERROR, "%s is not in 'cared-req-list'", req);
@@ -237,7 +242,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
      * @param req 请求消息
      * @param rspListener 监听者，可能为null（对应的req时传入的是null）
      * 若同样的请求id同样的响应监听者请求了多次，则取消的是最早的请求。*/
-    protected synchronized void cancelReq(Msg req, IResultListener rspListener){
+    protected synchronized void cancelReq(T req, IResultListener rspListener){
         if (null == req){
             return;
         }
@@ -264,7 +269,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     /**
      * 订阅通知
      * */
-    protected synchronized void subscribe(Msg ntfId, Object ntfListener){
+    protected synchronized void subscribe(T ntfId, Object ntfListener){
 //        Log.i(TAG, String.format("ntfListener=%s, ntfId=%s", ntfListener, ntfId));
         if (null==ntfId || null == ntfListener){
             return;
@@ -283,12 +288,12 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     /**
      * 批量订阅通知
      * */
-    protected synchronized void subscribe(Msg[] ntfIds, Object ntfListener){
+    protected synchronized void subscribe(T[] ntfIds, Object ntfListener){
         if (null == ntfIds || null == ntfListener){
             return;
         }
         boolean bSuccess = false;
-        for (Msg ntfId : ntfIds){
+        for (T ntfId : ntfIds){
             if (!ntfProcessorMap.keySet().contains(ntfId)){
                 KLog.p(KLog.ERROR, "%s is not in 'cared-ntf-list'", ntfId);
                 continue;
@@ -305,12 +310,13 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     /**
      * 取消订阅通知
      * */
-    protected synchronized void unsubscribe(Msg ntfId, Object ntfListener){
+    protected synchronized void unsubscribe(T ntfId, Object ntfListener){
         if (null == ntfListener){
             return;
         }
-
-        if (delNtfListener(new Msg[]{ntfId}, ntfListener)){
+        T[] ntfIds = (T[]) Array.newInstance(enumT, 1);
+        ntfIds[0] = ntfId;
+        if (delNtfListener(ntfIds, ntfListener)){
             listenerLifecycleObserver.unobserve(ntfListener);
         }
     }
@@ -318,7 +324,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     /**
      * 批量取消订阅通知
      * */
-    protected synchronized void unsubscribe(Msg[] ntfIds, Object ntfListener){
+    protected synchronized void unsubscribe(T[] ntfIds, Object ntfListener){
         if (null==ntfIds || null == ntfListener){
             return;
         }
@@ -344,32 +350,32 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
      * 设置请求。
      * 用于设置配置，或者其它需要同步执行native方法的场景。
      * 该接口是同步的，若下层natiev方法实现耗时则调用者被阻塞，设置结果在方法返回时即生效。
-     * @param set 请求消息。参考{@link Msg} and {@link Request#SET}
+     * @param set 请求消息。参考{@link T} and {@link Request#SET}
      * @param paras 参数。
      * */
-    protected void set(Msg set, Object... paras){
+    protected void set(T set, Object... paras){
         commandFairy.set(set.name(), paras);
     }
 
     /**
      * 获取（配置）请求
      * 该接口是同步的，若下层natiev方法实现耗时则调用者被阻塞，请求结果通过返回值反馈给调用者。
-     * @param get 请求消息。参考{@link Msg} and {@link Request#GET}
+     * @param get 请求消息。参考{@link T} and {@link Request#GET}
      * @param paras 参数。可以为空。
      * @return 请求结果。
      * */
-    protected Object get(Msg get, Object... paras){
+    protected Object get(T get, Object... paras){
         return commandFairy.get(get.name(), paras);
     }
 
 
 
 
-    protected Set<Object> getNtfListeners(Msg ntfId){
+    protected Set<Object> getNtfListeners(T ntfId){
         return ntfListeners.get(ntfId.name());
     }
 
-    protected boolean containsNtfListener(Object ntfListener){ // TODO 改为containsNtfListener(Msg ntf, Object ntfListener)
+    protected boolean containsNtfListener(Object ntfListener){ // TODO 改为containsNtfListener(T ntf, Object ntfListener)
         if (null == ntfListener){
             return false;
         }
@@ -382,7 +388,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         return false;
     }
 
-    protected boolean containsRspListener(Object rspListener){ // TODO 改为containsNtfListener(Msg rsp, Object rspListener)
+    protected boolean containsRspListener(Object rspListener){ // TODO 改为containsNtfListener(T rsp, Object rspListener)
         if (null == rspListener){
             return false;
         }
@@ -397,7 +403,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     /**
      * （驱使下层）发射响应/通知。仅用于模拟模式。
      * */
-    public synchronized void eject(Msg msg){
+    public synchronized void eject(T msg){
         String msgId = MagicBook.instance().getMsgId(msg.name());
         crystalBall.emit(msgId);
     }
@@ -405,7 +411,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
     /**
      * （驱使下层）发射响应/通知。仅用于模拟模式。
      * */
-    public synchronized void eject(Msg[] msgs){
+    public synchronized void eject(T[] msgs){
         String[] msgIds = new String[msgs.length];
         for (int i=0; i<msgIds.length; ++i) {
             msgIds[i] = MagicBook.instance().getMsgId(msgs[i].name());
@@ -443,10 +449,10 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         return bSuccess;
     }
 
-    private synchronized boolean delNtfListener(Msg[] ntfIds, Object ntfListener){
+    private synchronized boolean delNtfListener(T[] ntfIds, Object ntfListener){
         boolean bSuccess = false;
         if (null != ntfIds) {
-            for (Msg ntfId : ntfIds) {
+            for (T ntfId : ntfIds) {
                 Set<Object> listeners = ntfListeners.get(ntfId.name());
                 if (null != listeners) bSuccess = listeners.remove(ntfListener);
             }
@@ -462,8 +468,8 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
 
     @Override
     public boolean onRsp(boolean bLast, String rspName, Object rspContent, String reqName, int reqSn, Object[] reqParas) {
-        Msg req = Msg.valueOf(reqName);
-        Msg rsp = Msg.valueOf(rspName);
+        T req = T.valueOf(enumT, reqName);
+        T rsp = T.valueOf(enumT, rspName);
         IResultListener resultListener = rspListeners.get(reqSn).listener;
         StringBuffer sb = new StringBuffer();
         for (Object para : reqParas){
@@ -484,15 +490,15 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
 
     @Override
     public void onTimeout(String reqName, int reqSn, Object[] reqParas) {
-        Msg req = Msg.valueOf(reqName);
+        T req = T.valueOf(enumT, reqName);
         IResultListener resultListener = rspListeners.remove(reqSn).listener;
         listenerLifecycleObserver.unobserve(resultListener);
         StringBuffer sb = new StringBuffer();
         for (Object para : reqParas){
             sb.append(para).append("; ");
         }
-        KLog.p("rsp=%s, resultListener=%s, \nreq=%s, reqSn=%s, reqParas=%s", Msg.Timeout, resultListener, reqName, reqSn, sb);
-        boolean bConsumed = rspProcessorMap.get(req).process(Msg.Timeout, "", resultListener, req, reqParas);
+        KLog.p("TIMEOUT, req=%s, resultListener=%s, reqSn=%s, reqParas=%s", reqName, resultListener, reqSn, sb);
+        boolean bConsumed = onTimeout(req, resultListener, reqParas);
         if (!bConsumed){
             // 超时未被消费则此处通知用户超时
             reportTimeout(resultListener);
@@ -512,10 +518,15 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         for (Object listener : listeners){
             sb.append(listener).append("; ");
         }
-        Msg ntf = Msg.valueOf(ntfName);
+        T ntf = T.valueOf(enumT, ntfName);
         KLog.p("ntfId=%s, ntfContent=%s, listeners=%s", ntf, ntfContent, sb);
         ntfProcessorMap.get(ntf).process(ntf, ntfContent, listeners);
     }
+
+    /**
+     * 请求超时
+     * */
+    protected boolean onTimeout(T req, IResultListener rspListener, Object[] reqPara){return false;}
 
     /**
      * 上报用户请求成功结果
@@ -547,11 +558,11 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
         }
     }
 
-    private static class ReqBundle{
-        private Msg req;
+    private class ReqBundle{
+        private T req;
         private IResultListener listener;
 
-        public ReqBundle(Msg req, IResultListener listener) {
+        public ReqBundle(T req, IResultListener listener) {
             this.req = req;
             this.listener = listener;
         }

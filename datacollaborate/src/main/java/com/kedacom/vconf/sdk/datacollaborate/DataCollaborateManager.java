@@ -88,7 +88,7 @@ import androidx.annotation.Nullable;
 
 
 @SuppressWarnings({"unused", "WeakerAccess"})
-public class DataCollaborateManager extends Caster {
+public class DataCollaborateManager extends Caster<Msg> {
 
     static {
         KLog.p("\n========================================" +
@@ -269,15 +269,15 @@ public class DataCollaborateManager extends Caster {
     };
 
     @Override
-    protected Map<Msg, RspProcessor> rspProcessors() {
-        Map<Msg, RspProcessor> processorMap = new HashMap<>();
+    protected Map<Msg, RspProcessor<Msg>> rspProcessors() {
+        Map<Msg, RspProcessor<Msg>> processorMap = new HashMap<>();
         processorMap.put(Msg.DCQueryAddr, this::onRsp);
         return processorMap;
     }
 
     @Override
-    protected Map<Msg[], RspProcessor> rspsProcessors() {
-        Map<Msg[], RspProcessor> processorMap = new HashMap<>();
+    protected Map<Msg[], RspProcessor<Msg>> rspsProcessors() {
+        Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
 
         processorMap.put(sessionReqs, this::onSessionRsps);
         processorMap.put(boardReqs, this::onBoardOpRsps);
@@ -289,15 +289,15 @@ public class DataCollaborateManager extends Caster {
     }
 
     @Override
-    protected Map<Msg, NtfProcessor> ntfProcessors() {
-        Map<Msg, NtfProcessor> processorMap = new HashMap<>();
+    protected Map<Msg, NtfProcessor<Msg>> ntfProcessors() {
+        Map<Msg, NtfProcessor<Msg>> processorMap = new HashMap<>();
         processorMap.put(Msg.DCPicDownloadableNtf, this::onNtfs);
         return processorMap;
     }
 
     @Override
-    protected Map<Msg[], NtfProcessor> ntfsProcessors() {
-        Map<Msg[], NtfProcessor> processorMap = new HashMap<>();
+    protected Map<Msg[], NtfProcessor<Msg>> ntfsProcessors() {
+        Map<Msg[], NtfProcessor<Msg>> processorMap = new HashMap<>();
         processorMap.put(sessionNtfs, this::onSessionNtfs);
         processorMap.put(operatorNtfs, this::onOperatorNtfs);
         processorMap.put(boardOpNtfs, this::onBoardNtfs);
@@ -1536,9 +1536,6 @@ public class DataCollaborateManager extends Caster {
 
 
     private boolean onPublishPaintOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
-        if (Msg.Timeout == rspId){
-            return false;
-        }
 
         OpPaint opPaint = ToDoConverter.fromPaintTransferObj(rspContent);
         String authorE164 = (String) reqParas[reqParas.length-1];
@@ -1557,13 +1554,6 @@ public class DataCollaborateManager extends Caster {
             case DCQueryAddrRsp:
                 reportSuccess(((DcsGetConfAddrRsp) rspContent).MainParam.bSucces, listener);
                 break;
-
-            case Timeout:
-                if (Msg.DCQueryAddr == reqId){
-                    reportSuccess(false, listener);
-                    return true;
-                }
-                return false;
 
             default:
                 return false;
@@ -1777,6 +1767,16 @@ public class DataCollaborateManager extends Caster {
     }
 
 
+    @Override
+    protected boolean onTimeout(Msg req, IResultListener rspListener, Object[] reqPara) {
+        switch (req){
+            case DCQueryAddr:
+                reportSuccess(false, rspListener);
+                return true;
+            default:
+                return false;
+        }
+    }
 
     private void subscribeNtfListeners(
             IOnSynchronizeProgressListener onSynchronizeProgressListener,

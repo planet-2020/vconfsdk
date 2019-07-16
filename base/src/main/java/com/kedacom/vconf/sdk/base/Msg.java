@@ -78,9 +78,9 @@ import static com.kedacom.vconf.sdk.base.NativeMethodOwners.DcsCtrl;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @Message
 public enum Msg {
-    @Response(id = "Timeout",
-            clz = Void.class)
-    Timeout,
+//    @Response(id = "Timeout",
+//            clz = Void.class)
+//    Timeout,
 
     //>>>>>>>>>>>>>>>>>>> 数据协作
 
