@@ -1,4 +1,4 @@
-package com.sissi.utils.lifecycle;
+package com.kedacom.vconf.sdk.utils.lifecycle;
 
 import androidx.lifecycle.LifecycleOwner;
 

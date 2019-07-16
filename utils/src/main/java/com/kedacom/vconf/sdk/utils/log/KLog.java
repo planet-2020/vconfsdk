@@ -1,4 +1,4 @@
-package com.sissi.utils.log;
+package com.kedacom.vconf.sdk.utils.log;
 
 import android.os.Environment;
 import android.util.Log;

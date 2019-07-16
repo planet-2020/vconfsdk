@@ -1,4 +1,4 @@
-package com.sissi.utils.json;
+package com.kedacom.vconf.sdk.utils.json;
 
 import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;

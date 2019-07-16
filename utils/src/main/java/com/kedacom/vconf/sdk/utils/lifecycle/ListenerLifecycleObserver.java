@@ -1,11 +1,11 @@
-package com.sissi.utils.lifecycle;
+package com.kedacom.vconf.sdk.utils.lifecycle;
 
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 
-import com.sissi.utils.log.KLog;
+import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
