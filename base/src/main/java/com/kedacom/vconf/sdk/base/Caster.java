@@ -183,7 +183,7 @@ public abstract class Caster implements IFairy.ISessionFairy.IListener,
      * */
     public void enableSimulator(boolean bEnable){
         if (!SimulatorOnOff.on){
-            KLog.p(KLog.ERROR, "forbidden operation");
+            KLog.p(KLog.ERROR, "forbidden operation!!");
             return;
         }
         crystalBall.delListener(sessionFairy);
