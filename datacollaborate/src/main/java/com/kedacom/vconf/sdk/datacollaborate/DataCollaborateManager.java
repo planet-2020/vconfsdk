@@ -463,10 +463,8 @@ public class DataCollaborateManager extends Caster {
                 new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
                         confE164, confName, ToDoConverter.toTransferObj(dcMode),
                         ToDoConverter.toDcUserList(members), adminE164, curTerminalType),
-                synchronizeProgressListener, sessionEventListener, operatorEventListener, boardOpListener, paintOpListener // “开启数据协作”并不需要这组监听器作为请求参数，
-                // 我们此处只是利用框架替我们缓存这组监听器，在“开启数据协作”结束后再获取它们以做处理。
+                synchronizeProgressListener, sessionEventListener, operatorEventListener, boardOpListener, paintOpListener
         );
-
     }
 
     /**结束数据协作
@@ -874,6 +872,9 @@ public class DataCollaborateManager extends Caster {
                     reportSuccess(ToDoConverter.fromTransferObj(createConfResult), listener);
 
                     handler.postDelayed(() -> {
+
+                        unsubscribeNtfListeners();
+
                         // 注册通知监听器
                         subscribeNtfListeners((IOnSynchronizeProgressListener) reqParas[1],
                                 (IOnSessionEventListener) reqParas[2],
@@ -1066,29 +1067,35 @@ public class DataCollaborateManager extends Caster {
         }, curConfE164);
 
 
-        // 同步人员列表
-        req(Msg.DCQueryAllMembers, new IResultListener() {
-            @Override
-            public void onSuccess(Object result) {
-                if (null == onOperatorEventListener){
-                    KLog.p(KLog.WARN,"null == onOperatorEventListener");
-                    return;
-                }
-                List<DCMember> members = (List<DCMember>) result;
-                List<DCMember> operators = new ArrayList<>();
-                for (DCMember member : members){
-                    onOperatorEventListener.onUserJoined(member);
-                    if (member.isbOperator()){
-                        operators.add(member);
+        if (null != onOperatorEventListener) {
+            // 同步人员列表
+            req(Msg.DCQueryAllMembers, new IResultListener() {
+                @Override
+                public void onSuccess(Object result) {
+                    if (null == onOperatorEventListener) {
+                        KLog.p(KLog.WARN, "null == onOperatorEventListener");
+                        return;
                     }
+                    List<DCMember> members = (List<DCMember>) result;
+                    List<DCMember> operators = new ArrayList<>();
+                    for (DCMember member : members) {
+                        onOperatorEventListener.onUserJoined(member);
+                        if (member.isbOperator()) {
+                            operators.add(member);
+                        }
+                    }
+                    onOperatorEventListener.onOperatorAdded(operators);
                 }
-                onOperatorEventListener.onOperatorAdded(operators);
-            }
-        }, curConfE164);
+            }, curConfE164);
+        }
 
     }
 
     private void synchronizeBoards(List<TDCSBoardInfo> dcBoards){
+        if (null == onPaintOpListener){
+            KLog.p(KLog.WARN, "null == onPaintOpListener");
+            return;
+        }
         if (dcBoards.isEmpty()){
             return;
         }
