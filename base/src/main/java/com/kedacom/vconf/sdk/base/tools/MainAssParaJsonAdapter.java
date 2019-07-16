@@ -1,17 +1,17 @@
 /**
  * 定制的Json反序列化适配器。
  *
- * 对于Class A{
+ * 对于Class X{
  *     MainParam;
  *     AssParam;
  * }
- * 正常情况下下层返回的json字符串应是如下形式：
+ * 对于大多数X下层返回的json字符串是如下形式：
  * {MainParam: val1, AssParam: val2}
  * 如此可直接使用gson.fromJson解析得到A对象。
- * 但有些情况下(如请求失败)下层返回的json字符串可能如下：
+ * 但是对于有些X下层返回的json字符串除了上面那种形式外还有如下形式：
  * {val1}
  *
- * 此定制的适配器专门用于此类场景。
+ * 此定制的适配器专门用于后一种X。
  *
  * */
 
@@ -33,13 +33,15 @@ public abstract class MainAssParaJsonAdapter<T> implements JsonDeserializer<T> {
 
     private static final String MANKEY = "MainParam";
     private static final String ASSKEY = "AssParam";
+    private Class<T> classT;
 
     @Override
     public T deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-        Type[] types = ((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments();
+        if (null == classT) {
+            classT = (Class<T>)((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+        }
 
         T instanceT = null;
-        Class<T> classT = (Class<T>)types[0];
         try {
             instanceT = classT.newInstance();
         } catch (IllegalAccessException e) {
@@ -61,7 +63,7 @@ public abstract class MainAssParaJsonAdapter<T> implements JsonDeserializer<T> {
             }else{ // json 只包含MainParam部分（没有"MainParam" key）：{}
                 Field fieldMain = classT.getDeclaredField(MANKEY);
                 fieldMain.setAccessible(true);
-                fieldMain.set(instanceT, gson.fromJson(jsonObject.getAsJsonObject(MANKEY), fieldMain.getType()));
+                fieldMain.set(instanceT, gson.fromJson(jsonObject, fieldMain.getType()));
             }
         } catch (NoSuchFieldException e) {
             e.printStackTrace();
