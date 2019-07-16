@@ -19,6 +19,7 @@ import java.io.IOException;
  * public enum COLOR { RED, GREEN, BLUE, }
  * }
  * */
+@SuppressWarnings("unchecked")
 public class Enum2IntJsonAdapter implements TypeAdapterFactory {
 
     @Override

@@ -29,7 +29,19 @@ import java.lang.reflect.Type;
  * 此定制的适配器专门用于后一种X。
  *
  * 泛型参数T对应X（反序列化的目标类），U对应A（json中必有的部分），V对应B（json中可能没有的部分）
+ *
+ * 使用示例：
+ * {@code
+ * @JsonAdapter(X.Adapter.class)
+ * Class X{
+ *     A MainParam;
+ *     B AssParam;
+ *
+ *     static final class Adapter extends LameJsonAdapter<X, A, B> { }
+ * }
  * */
+
+@SuppressWarnings("unchecked")
 public abstract class LameJsonAdapter<T, U, V> implements JsonDeserializer<T> {
 
     private static Gson gson = new GsonBuilder().create();
