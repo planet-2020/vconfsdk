@@ -2,6 +2,8 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.PointF;
 
+import androidx.annotation.NonNull;
+
 import java.util.List;
 
 public class OpErase extends OpDrawPath {
@@ -17,6 +19,7 @@ public class OpErase extends OpDrawPath {
         type = EOpType.ERASE;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "OpErase{" +

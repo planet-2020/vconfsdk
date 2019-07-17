@@ -74,13 +74,15 @@ public class CompatibleConcurrentLinkedDeque<E> implements Iterable<E>, Collecti
         return deque.iterator();
     }
 
+    @NonNull
     @Override
     public Object[] toArray() {
         return deque.toArray();
     }
 
+    @NonNull
     @Override
-    public <T> T[] toArray(T[] a) {
+    public <T> T[] toArray(@NonNull T[] a) {
         return deque.toArray(a);
     }
 
@@ -95,22 +97,22 @@ public class CompatibleConcurrentLinkedDeque<E> implements Iterable<E>, Collecti
     }
 
     @Override
-    public boolean containsAll(Collection<?> c) {
+    public boolean containsAll(@NonNull Collection<?> c) {
         return deque.containsAll(c);
     }
 
     @Override
-    public boolean addAll(Collection<? extends E> c) {
+    public boolean addAll(@NonNull Collection<? extends E> c) {
         return deque.addAll(c);
     }
 
     @Override
-    public boolean removeAll(Collection<?> c) {
+    public boolean removeAll(@NonNull Collection<?> c) {
         return deque.removeAll(c);
     }
 
     @Override
-    public boolean retainAll(Collection<?> c) {
+    public boolean retainAll(@NonNull Collection<?> c) {
         return deque.retainAll(c);
     }
 

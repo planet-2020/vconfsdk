@@ -1,5 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
+import androidx.annotation.NonNull;
+
 import java.util.UUID;
 
 
@@ -15,7 +17,7 @@ public abstract class OpPaint implements Comparable<OpPaint>{
     protected int      sn;         // 操作序号，用来表示操作的先后顺序，越小越靠前。由平台填写。
 
     @Override
-    public int compareTo(OpPaint o) {
+    public int compareTo(@NonNull OpPaint o) {
         if (sn<o.sn){
             return -1;
         }else if (sn == o.sn){
@@ -25,6 +27,7 @@ public abstract class OpPaint implements Comparable<OpPaint>{
         }
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "OpPaint{" +

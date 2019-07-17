@@ -6,6 +6,8 @@ import android.graphics.Matrix;
 import android.graphics.PointF;
 import android.graphics.RectF;
 
+import androidx.annotation.NonNull;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -136,6 +138,7 @@ public class OpInsertPic extends OpPaint implements IBoundary{
         type = EOpType.INSERT_PICTURE;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "OpInsertPic{" +

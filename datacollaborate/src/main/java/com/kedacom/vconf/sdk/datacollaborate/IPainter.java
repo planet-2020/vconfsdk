@@ -1,20 +1,15 @@
-/**
- * created by gaofan_kd7331 2018-11-14
- *
- * 画者
- *
- * */
-
 package com.kedacom.vconf.sdk.datacollaborate;
 
-import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+import com.kedacom.vconf.sdk.utils.lifecycle.IResultListener;
 
 import java.util.List;
 
 import androidx.annotation.NonNull;
 
 /**
+ * created by gaofan_kd7331 2018-11-14
+ *
  * 画师。
  * 负责管理画板以及在画板上绘制。
  * */

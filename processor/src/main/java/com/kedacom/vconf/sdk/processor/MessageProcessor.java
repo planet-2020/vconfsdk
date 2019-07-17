@@ -108,10 +108,14 @@ public class MessageProcessor extends AbstractProcessor {
         }
 
         for (Element element : msgSet) {
+            if (null == packageName){
+                PackageElement packageElement = (PackageElement) element.getEnclosingElement(); // 生成类的包名跟被Message注解的类的包名保持一致
+                packageName = packageElement.getQualifiedName().toString();
+            }
             parseMessage((TypeElement) element);
         }
 
-        parsePackageName(roundEnvironment);
+        className = "Message$$Generated";
 
         return true;
     }
@@ -320,10 +324,6 @@ public class MessageProcessor extends AbstractProcessor {
 
     }
 
-    private void parsePackageName2(RoundEnvironment roundEnvironment){
-
-    }
-
     private void generateFile(){
         String fieldNameIdMap = "nameIdMap";
         String fieldReqMap = "reqMap";
@@ -389,15 +389,16 @@ public class MessageProcessor extends AbstractProcessor {
 
         // 构建Class
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
+                .addModifiers(Modifier.PUBLIC)
                 .addModifiers(Modifier.FINAL)
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(BiMap.class, String.class, String.class),
-                        fieldNameIdMap, Modifier.STATIC)
+                        fieldNameIdMap, Modifier.PUBLIC, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Table.class, String.class, String.class, Object.class),
-                        fieldReqMap, Modifier.STATIC)
+                        fieldReqMap, Modifier.PUBLIC, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Table.class, String.class, String.class, Object.class),
-                        fieldRspMap, Modifier.STATIC)
+                        fieldRspMap, Modifier.PUBLIC, Modifier.STATIC)
                         .build())
                 .addStaticBlock(codeBlockBuilder.build())
                 .addMethod(constructor.build())

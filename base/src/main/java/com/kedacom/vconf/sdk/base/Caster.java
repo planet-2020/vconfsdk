@@ -1,23 +1,20 @@
 package com.kedacom.vconf.sdk.base;
 
-import com.kedacom.vconf.sdk.annotation.Request;
-import com.kedacom.vconf.sdk.annotation.Response;
-import com.kedacom.vconf.sdk.base.basement.CommandFairy;
-import com.kedacom.vconf.sdk.base.basement.CrystalBall;
-import com.kedacom.vconf.sdk.base.basement.FakeCrystalBall;
-import com.kedacom.vconf.sdk.base.basement.ICrystalBall;
-import com.kedacom.vconf.sdk.base.basement.IFairy;
-import com.kedacom.vconf.sdk.base.basement.MagicBook;
-import com.kedacom.vconf.sdk.base.basement.NotificationFairy;
-import com.kedacom.vconf.sdk.base.basement.SessionFairy;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.Table;
+import com.kedacom.vconf.sdk.utils.lifecycle.IResultListener;
+import com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver;
+import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+@SuppressWarnings({"unchecked", "WeakerAccess"})
 public abstract class Caster<T extends Enum<T>> implements IFairy.ISessionFairy.IListener,
         IFairy.INotificationFairy.IListener{
 
@@ -49,36 +46,33 @@ public abstract class Caster<T extends Enum<T>> implements IFairy.ISessionFairy.
     private Map<T, NtfProcessor<T>> ntfProcessorMap = new LinkedHashMap<>();
 
     private ListenerLifecycleObserver listenerLifecycleObserver;
-    private ListenerLifecycleObserver.Callback listenerLifecycleCallback = new ListenerLifecycleObserver.Callback(){
-        @Override
-        public void onListenerResumed(Object listener) { // 该事件是粘滞的，即便activity已经resume很久了然后才注册生命周期观察者也会收到该事件。
-//            KLog.p(""+ listener);
-        }
-
-        @Override
-        public void onListenerPause(Object listener) {
-//            KLog.p(""+ listener);
-//            delListener(listener);
-        }
-
-        @Override
-        public void onListenerStop(Object listener) {
-
-        }
-
-        @Override
-        public void onListenerDestroy(Object listener) {
-            KLog.p(""+ listener);
-            delRspListener(listener);
-            delNtfListener(null, listener);
-        }
-    };
 
     private Class<T> enumT;
 
     @SuppressWarnings("ConstantConditions")
     protected Caster(){
         enumT = (Class<T>)((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+        Class<?> msgGenClz = null;
+        try {
+            msgGenClz = Class.forName(enumT.getPackage().getName()+".Message$$Generated");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        if (null != msgGenClz){
+            try {
+                Field field = msgGenClz.getField("nameIdMap");
+                MagicBook magicBook = MagicBook.instance();
+                magicBook.addNameIdMap((BiMap<String, String>) field.get(null));
+                field = msgGenClz.getField("reqMap");
+                magicBook.addReqMap((Table<String, String, Object>) field.get(null));
+                field = msgGenClz.getField("rspMap");
+                magicBook.addRspMap((Table<String, String, Object>) field.get(null));
+            } catch (NoSuchFieldException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
 
         sessionFairy = SessionFairy.instance();
         notificationFairy = NotificationFairy.instance();
@@ -93,7 +87,31 @@ public abstract class Caster<T extends Enum<T>> implements IFairy.ISessionFairy.
         notificationFairy.setCrystalBall(crystalBall);
         commandFairy.setCrystalBall(crystalBall);
 
-        listenerLifecycleObserver = new ListenerLifecycleObserver(listenerLifecycleCallback);
+        listenerLifecycleObserver = new ListenerLifecycleObserver(new ListenerLifecycleObserver.Callback(){
+            @Override
+            public void onListenerResumed(Object listener) {
+                // 该事件是粘滞的，即便activity已经resume很久了然后才注册生命周期观察者也会收到该事件。
+//            KLog.p(""+ listener);
+            }
+
+            @Override
+            public void onListenerPause(Object listener) {
+//            KLog.p(""+ listener);
+//            delListener(listener);
+            }
+
+            @Override
+            public void onListenerStop(Object listener) {
+
+            }
+
+            @Override
+            public void onListenerDestroy(Object listener) {
+                KLog.p(""+ listener);
+                delRspListener(listener);
+                delNtfListener(null, listener);
+            }
+        });
 
         Map<T, RspProcessor<T>> rspProcessorMap = rspProcessors();
         if (null != rspProcessorMap) {
@@ -153,26 +171,26 @@ public abstract class Caster<T extends Enum<T>> implements IFairy.ISessionFairy.
 
     /**响应处理器*/
     protected interface RspProcessor<T>{
-//        /**
-//         * @param rsp 响应ID
-//         * @param rspContent 响应内容，具体类型由响应ID决定，参考{@link Response#clz()}。
-//         * @param listener 响应监听器，由{@link #req(T, IResultListener, Object...)}传入。
-//         *                 NOTE：可能在会话过程中监听器被销毁，如调用了{@link #delListener(Object)}或者监听器绑定的生命周期对象已销毁，
-//         *                 则此参数为null，（当然也可能调用{@link #req(T, IResultListener, Object...)}时传入的就是null）
-//         *                 所以使用者需对该参数做非null判断。
-//         * @param req 请求ID，由{@link #req(T, IResultListener, Object...)}传入。
-//         * @param reqParas 请求参数列表，由{@link #req(T, IResultListener, Object...)}传入，顺序同传入时的
-//         * @return true，若该响应已被处理；否则false。
-//         * */
+        /**
+         * @param rsp 响应ID
+         * @param rspContent 响应内容，具体类型由响应ID决定。
+         * @param listener 响应监听器，由{@link #req(Enum, IResultListener, Object...)}传入。
+         *                 NOTE：可能在会话过程中监听器被销毁，如调用了{@link #delListener(Object)}或者监听器绑定的生命周期对象已销毁，
+         *                 则此参数为null，（当然也可能调用{@link #req(Enum, IResultListener, Object...)}时传入的就是null）
+         *                 所以使用者需对该参数做非null判断。
+         * @param req 请求ID，由{@link #req(Enum, IResultListener, Object...)}传入。
+         * @param reqParas 请求参数列表，由{@link #req(Enum, IResultListener, Object...)}传入，顺序同传入时的
+         * @return true，若该响应已被处理；否则false。
+         * */
         boolean process(T rsp, Object rspContent, IResultListener listener, T req, Object[] reqParas);
     }
 
     /**通知处理器*/
     protected interface NtfProcessor<T>{
-//        /**
-//         * @param ntf 通知ID
-//         * @param ntfContent 通知内容，具体类型由通知ID决定，参考{@link Response#clz()}。
-//         * @param listeners 通知监听器，由{@link #subscribe(T, Object)}和{@link #subscribe(T[], Object)}传入。  */
+        /**
+         * @param ntf 通知ID
+         * @param ntfContent 通知内容，具体类型由通知ID决定
+         * @param listeners 通知监听器，由{@link #subscribe(Enum, Object)}和{@link #subscribe(Enum[], Object)}传入。*/
         void process(T ntf, Object ntfContent, Set<Object> listeners);
     }
 
@@ -187,10 +205,6 @@ public abstract class Caster<T extends Enum<T>> implements IFairy.ISessionFairy.
      * @param bEnable true：启用，false：停用。
      * */
     public void enableSimulator(boolean bEnable){
-        if (!SimulatorOnOff.on){
-            KLog.p(KLog.ERROR, "forbidden operation");
-            return;
-        }
         crystalBall.delListener(sessionFairy);
         crystalBall.delListener(notificationFairy);
         if (bEnable){
@@ -213,8 +227,8 @@ public abstract class Caster<T extends Enum<T>> implements IFairy.ISessionFairy.
 
     /**
      * 会话请求。
-     * 该接口是异步的，请求结果会在适当的时机通过{@link #req#rspListener}反馈。
-     * @param req 请求消息 参考{@link T} and {@link com.kedacom.vconf.sdk.annotation.Request}
+     * 该接口是异步的，请求结果会通过rspListener反馈。
+     * @param req 请求消息
      * @param rspListener 响应监听者。可以为null表示请求者不关注请求结果
      * @param reqPara 请求参数列表，可以没有。  */
     protected synchronized void req(T req, IResultListener rspListener, Object... reqPara){
@@ -350,7 +364,7 @@ public abstract class Caster<T extends Enum<T>> implements IFairy.ISessionFairy.
      * 设置请求。
      * 用于设置配置，或者其它需要同步执行native方法的场景。
      * 该接口是同步的，若下层natiev方法实现耗时则调用者被阻塞，设置结果在方法返回时即生效。
-     * @param set 请求消息。参考{@link T} and {@link Request#SET}
+     * @param set 请求消息。
      * @param paras 参数。
      * */
     protected void set(T set, Object... paras){
@@ -360,7 +374,7 @@ public abstract class Caster<T extends Enum<T>> implements IFairy.ISessionFairy.
     /**
      * 获取（配置）请求
      * 该接口是同步的，若下层natiev方法实现耗时则调用者被阻塞，请求结果通过返回值反馈给调用者。
-     * @param get 请求消息。参考{@link T} and {@link Request#GET}
+     * @param get 请求消息。
      * @param paras 参数。可以为空。
      * @return 请求结果。
      * */

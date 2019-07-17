@@ -28,9 +28,31 @@ import android.view.View;
 import android.widget.FrameLayout;
 
 import com.google.common.collect.Sets;
-import com.kedacom.vconf.sdk.base.IResultListener;
-import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.datacollaborate.bean.*;
+import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.IBoundary;
+import com.kedacom.vconf.sdk.datacollaborate.bean.IRepealable;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
+import com.kedacom.vconf.sdk.utils.collection.CompatibleConcurrentLinkedDeque;
+import com.kedacom.vconf.sdk.utils.lifecycle.IResultListener;
+import com.kedacom.vconf.sdk.utils.log.KLog;
+import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
+import com.kedacom.vconf.sdk.utils.view.DefaultTouchListener;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -61,7 +83,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     // 临时图形操作。手指拿起绘制完成，但并不表示此绘制已生效，需等到平台广播NTF后方能确认为生效的操作，在此之前的操作都作为临时操作保存在这里。
     // （因为时序有要求我们不能把临时操作直接插入正式的操作集，正式操作集中的操作时序均已平台反馈的为准而非己端的操作时序为准）
-    private MyConcurrentLinkedDeque<OpPaint> tmpShapeOps = new MyConcurrentLinkedDeque<>();
+    private CompatibleConcurrentLinkedDeque<OpPaint> tmpShapeOps = new CompatibleConcurrentLinkedDeque<>();
     
     private final Object gatherRenderableShapeOpsLock = new Object();
 
@@ -483,11 +505,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     private void snapshotAll(Canvas canvas){
-        MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
+        CompatibleConcurrentLinkedDeque<OpPaint> ops = new CompatibleConcurrentLinkedDeque<>();
 
-        MyConcurrentLinkedDeque<OpInsertPic> picOps = opWrapper.getInsertPicOps();
+        CompatibleConcurrentLinkedDeque<OpInsertPic> picOps = opWrapper.getInsertPicOps();
         boolean[] hasEraseOp = new boolean[1];
-        MyConcurrentLinkedDeque<OpPaint> shapeOps = gatherRenderableShapeOps(hasEraseOp);
+        CompatibleConcurrentLinkedDeque<OpPaint> shapeOps = gatherRenderableShapeOps(hasEraseOp);
         ops.addAll(picOps);
         ops.addAll(shapeOps);
 
@@ -1124,7 +1146,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         matrix.postScale(1/MatrixHelper.getScaleX(boardMatrix), 1/MatrixHelper.getScaleY(boardMatrix), dashRect.centerX(), dashRect.bottom); // 使图标以正常尺寸展示，不至于因画板缩小/放大而过小/过大
         delPicIcon.setMatrix(matrix);
 
-        MyConcurrentLinkedDeque<OpInsertPic> editPics = new MyConcurrentLinkedDeque<>();
+        CompatibleConcurrentLinkedDeque<OpInsertPic> editPics = new CompatibleConcurrentLinkedDeque<>();
         for (OpInsertPic opInsertPic : opInsertPics) {
 //            KLog.p("edit pic %s", opInsertPic);
             editPics.offerLast(opInsertPic);
@@ -1174,7 +1196,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         synchronized (picEditStuffLock) {
             picEditStuff = null;
         }
-        MyConcurrentLinkedDeque<OpInsertPic> pics = new MyConcurrentLinkedDeque<>();
+        CompatibleConcurrentLinkedDeque<OpInsertPic> pics = new CompatibleConcurrentLinkedDeque<>();
         while(!editStuff.pics.isEmpty()) {
             OpInsertPic opInsertPic = editStuff.pics.pollFirst();
             opInsertPic.getMatrix().postConcat(editStuff.matrix);
@@ -1280,12 +1302,12 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     static int editedPicCount=0;
     private class PicEditStuff{
         int id;
-        MyConcurrentLinkedDeque<OpInsertPic> pics;
+        CompatibleConcurrentLinkedDeque<OpInsertPic> pics;
         OpInsertPic delIcon;
         OpDrawRect dashedRect;
         Matrix matrix;
 
-        PicEditStuff(MyConcurrentLinkedDeque<OpInsertPic> pics, OpInsertPic delIcon, OpDrawRect dashedRect) {
+        PicEditStuff(CompatibleConcurrentLinkedDeque<OpInsertPic> pics, OpInsertPic delIcon, OpDrawRect dashedRect) {
             id = editedPicCount++;
             this.pics = pics;
             this.delIcon = delIcon;
@@ -1541,8 +1563,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
 
-    private MyConcurrentLinkedDeque<OpPaint> shapeOpsToRender = new MyConcurrentLinkedDeque<>();
-    private MyConcurrentLinkedDeque<OpPaint> gatherRenderableShapeOps(boolean[] hasEraseOp){
+    private CompatibleConcurrentLinkedDeque<OpPaint> shapeOpsToRender = new CompatibleConcurrentLinkedDeque<>();
+    private CompatibleConcurrentLinkedDeque<OpPaint> gatherRenderableShapeOps(boolean[] hasEraseOp){
         shapeOpsToRender.clear();
         synchronized (gatherRenderableShapeOpsLock) {
             shapeOpsToRender.addAll(opWrapper.getShapeOpsAfterCls(hasEraseOp));
@@ -1572,7 +1594,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             render(opWrapper.getInsertPicOps(), canvas);
 
             // 搜集待渲染的图形
-            MyConcurrentLinkedDeque<OpPaint> shapeOps = gatherRenderableShapeOps(hasEraseOp);
+            CompatibleConcurrentLinkedDeque<OpPaint> shapeOps = gatherRenderableShapeOps(hasEraseOp);
 
             if (hasEraseOp[0]) {
                 // 保存已绘制的内容（底图），避免被擦除
@@ -1800,16 +1822,16 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
          * 所有操作（忠实于现场，致力于保存所有细节，可用于“录制/回放”）。
          * NOTE: 所有保存于此的操作均是经平台确认过生效的操作，不包括临时操作，如本端正在进行的图形绘制，正在进行的图片编辑。
          * */
-        private MyConcurrentLinkedDeque<OpPaint> ops = new MyConcurrentLinkedDeque<>();
+        private CompatibleConcurrentLinkedDeque<OpPaint> ops = new CompatibleConcurrentLinkedDeque<>();
 
         /**
          * 图形操作
          * */
-        private MyConcurrentLinkedDeque<OpPaint> shapeOps = new MyConcurrentLinkedDeque<>();
+        private CompatibleConcurrentLinkedDeque<OpPaint> shapeOps = new CompatibleConcurrentLinkedDeque<>();
         /**
          * 最近一次清屏后的图形操作
          * */
-        private MyConcurrentLinkedDeque<OpPaint> shapeOpsAfterLastCls = new MyConcurrentLinkedDeque<>();
+        private CompatibleConcurrentLinkedDeque<OpPaint> shapeOpsAfterLastCls = new CompatibleConcurrentLinkedDeque<>();
         /**
          * 最近一次清屏后的操作中是否包含擦除操作。
          * 因为擦除操作对绘制有特殊影响故特意标记。
@@ -1819,11 +1841,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         /**
          * 插入图片操作
          * */
-        private MyConcurrentLinkedDeque<OpInsertPic> insertPicOps = new MyConcurrentLinkedDeque<>();
+        private CompatibleConcurrentLinkedDeque<OpInsertPic> insertPicOps = new CompatibleConcurrentLinkedDeque<>();
         /**
          * matrix操作
          * */
-        private MyConcurrentLinkedDeque<OpMatrix> matrixOps = new MyConcurrentLinkedDeque<>();
+        private CompatibleConcurrentLinkedDeque<OpMatrix> matrixOps = new CompatibleConcurrentLinkedDeque<>();
         /**
          * 已撤销操作
          * */
@@ -1840,7 +1862,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
          * NOTE: 以下getXXX系列方法返回的集合被设计为仅用于读操作，请勿对返回的对象执行修改操作。
          * ************************************************************************************/
 
-        MyConcurrentLinkedDeque<OpPaint> getShapeOps(){
+        CompatibleConcurrentLinkedDeque<OpPaint> getShapeOps(){
             return shapeOps;
         }
 
@@ -1848,7 +1870,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
          * 获取最后一次清屏操作之后的图形操作。（目前清屏仅针对图形）
          * @param hasEraseOp 返回的操作集中是否包含擦除操作（传出参数）
          * */
-        MyConcurrentLinkedDeque<OpPaint> getShapeOpsAfterCls(boolean[] hasEraseOp){
+        CompatibleConcurrentLinkedDeque<OpPaint> getShapeOpsAfterCls(boolean[] hasEraseOp){
             synchronized (shapeOpsAfterLastClsLock) {
                 if (null != shapeOpsAfterLastCls) {
                     hasEraseOp[0] = hasEraseOpAfterLastCls;
@@ -1856,8 +1878,8 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 }
             }
 
-            MyConcurrentLinkedDeque<OpPaint> allShapeOps = new MyConcurrentLinkedDeque<>();
-            MyConcurrentLinkedDeque<OpPaint> shapeOpsAfterCls = new MyConcurrentLinkedDeque<>();
+            CompatibleConcurrentLinkedDeque<OpPaint> allShapeOps = new CompatibleConcurrentLinkedDeque<>();
+            CompatibleConcurrentLinkedDeque<OpPaint> shapeOpsAfterCls = new CompatibleConcurrentLinkedDeque<>();
             allShapeOps.addAll(shapeOps);
             hasEraseOp[0] = false;
             while (!allShapeOps.isEmpty()){
@@ -1879,11 +1901,11 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             return shapeOpsAfterCls;
         }
 
-        MyConcurrentLinkedDeque<OpInsertPic> getInsertPicOps(){
+        CompatibleConcurrentLinkedDeque<OpInsertPic> getInsertPicOps(){
             return insertPicOps;
         }
 
-        MyConcurrentLinkedDeque<OpMatrix> getMatrixOps(){
+        CompatibleConcurrentLinkedDeque<OpMatrix> getMatrixOps(){
             return matrixOps;
         }
 
@@ -1891,7 +1913,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             return matrixOps.peekLast();
         }
 
-        MyConcurrentLinkedDeque<OpPaint> getAllOps(){
+        CompatibleConcurrentLinkedDeque<OpPaint> getAllOps(){
             return ops;
         }
 
@@ -2031,7 +2053,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
                 boolean bEffective = false;
                 OpDragPic opDragPic = (OpDragPic) op;
-                MyConcurrentLinkedDeque<OpInsertPic> draggedPics = new MyConcurrentLinkedDeque<>();
+                CompatibleConcurrentLinkedDeque<OpInsertPic> draggedPics = new CompatibleConcurrentLinkedDeque<>();
                 Iterator<OpInsertPic> it = insertPicOps.iterator();
                 while (it.hasNext()){
                     OpInsertPic opInsertPic = it.next();
@@ -2134,7 +2156,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 OpPaint revokedOp = shapeOp;
                 if (EOpType.DRAW_PATH == shapeOp.getType() && !((OpDrawPath)shapeOp).isFinished()){
                     // 对于曲线绘制，需要考虑是否已完成，未完成的曲线绘制不能撤销（需求要求）
-                    MyConcurrentLinkedDeque<OpPaint> tmpOps = new MyConcurrentLinkedDeque<>();
+                    CompatibleConcurrentLinkedDeque<OpPaint> tmpOps = new CompatibleConcurrentLinkedDeque<>();
                     tmpOps.offerLast(shapeOp); // 缓存未完成的曲线绘制操作
                     revokedOp = null;
                     while (!shapeOps.isEmpty()){ // 继续向前查找可撤销操作
@@ -2160,7 +2182,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 // 判断当前最后一笔是否正在绘制中的曲线，若为绘制中的曲线则恢复的绘制要插入其前，对比撤销操作，如此才能保持一致。
                 OpPaint shapeOp = shapeOps.peekLast();
                 if (null!=shapeOp && EOpType.DRAW_PATH == shapeOp.getType() && !((OpDrawPath)shapeOp).isFinished()){
-                    MyConcurrentLinkedDeque<OpPaint> tmpOps = new MyConcurrentLinkedDeque<>();
+                    CompatibleConcurrentLinkedDeque<OpPaint> tmpOps = new CompatibleConcurrentLinkedDeque<>();
                     while (!shapeOps.isEmpty()){
                         shapeOp = shapeOps.pollLast();
                         tmpOps.offerLast(shapeOp);

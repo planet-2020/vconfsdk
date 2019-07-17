@@ -30,8 +30,10 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    compileOnly project(':annotation')
-    annotationProcessor project(':processor')
+    implementation 'com.kedacom.vconf.sdk:utils:1.0.0-SNAPSHOT'
+
+//    compileOnly project(':annotation')
+//    annotationProcessor project(':processor')
 
     api "androidx.lifecycle:lifecycle-runtime:2.0.0"
     implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"

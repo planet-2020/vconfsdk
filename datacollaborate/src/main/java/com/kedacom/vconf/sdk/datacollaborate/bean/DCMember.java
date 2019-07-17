@@ -1,8 +1,6 @@
-/**
- * 数据协作成员信息
- * */
-
 package com.kedacom.vconf.sdk.datacollaborate.bean;
+
+import androidx.annotation.NonNull;
 
 public class DCMember {
     private String e164;
@@ -21,6 +19,7 @@ public class DCMember {
         this.bOnline = bOnline;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "DCMember{" +

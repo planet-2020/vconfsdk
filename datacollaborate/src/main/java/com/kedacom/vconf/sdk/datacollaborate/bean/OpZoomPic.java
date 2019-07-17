@@ -2,6 +2,8 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.Matrix;
 
+import androidx.annotation.NonNull;
+
 import java.util.Map;
 
 public class OpZoomPic extends OpPaint {
@@ -17,6 +19,7 @@ public class OpZoomPic extends OpPaint {
         type = EOpType.ZOOM_PICTURE;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "OpZoomPic{" +

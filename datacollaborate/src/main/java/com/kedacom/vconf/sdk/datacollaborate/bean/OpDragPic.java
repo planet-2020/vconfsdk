@@ -2,6 +2,8 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.Matrix;
 
+import androidx.annotation.NonNull;
+
 import java.util.Map;
 
 public class OpDragPic extends OpPaint {
@@ -9,7 +11,7 @@ public class OpDragPic extends OpPaint {
     /**
      * 拖动图片传过来的matrix，记为dragMatrix，
      * 图片最终位置=mixMatrix*dragMatrix
-     * mixMatrix在插入图片时计算得到，参见{@link OpInsertPic#mixMatrix}
+     * mixMatrix在插入图片时计算得到，参见{@link OpInsertPic#getMixMatrix()}
      * */
     private Map<String, Matrix> picMatrices;
 
@@ -22,6 +24,7 @@ public class OpDragPic extends OpPaint {
         type = EOpType.DRAG_PICTURE;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "OpDragPic{" +

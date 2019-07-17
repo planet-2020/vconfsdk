@@ -12,7 +12,7 @@ import android.view.View;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 
-class DefaultTouchListener implements View.OnTouchListener {
+public class DefaultTouchListener implements View.OnTouchListener {
     private static final int STATE_IDLE = 0;
     private static final int STATE_SHAKING = 1;
     private static final int STATE_DRAGGING = 2;
@@ -231,7 +231,7 @@ class DefaultTouchListener implements View.OnTouchListener {
 
 
 
-    interface IOnEventListener {
+    public interface IOnEventListener {
         /**第一个手指落下
          * @return true——想要继续处理后续事件；false——放弃处理后续事件
          * */
@@ -274,7 +274,7 @@ class DefaultTouchListener implements View.OnTouchListener {
         default void onLongPress(float x, float y){}
     }
 
-    void setOnEventListener(IOnEventListener onEventListener){
+    public void setOnEventListener(IOnEventListener onEventListener){
         this.onEventListener = onEventListener;
     }
 

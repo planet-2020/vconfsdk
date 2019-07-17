@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import androidx.annotation.NonNull;
+
 import java.util.Arrays;
 
 public class OpDeletePic extends OpPaint {
@@ -15,6 +17,7 @@ public class OpDeletePic extends OpPaint {
         type = EOpType.DELETE_PICTURE;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "OpDeletePic{" +

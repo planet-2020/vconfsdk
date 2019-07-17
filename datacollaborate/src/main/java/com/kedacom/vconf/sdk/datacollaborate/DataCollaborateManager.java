@@ -1,14 +1,3 @@
-/**
- * 数据协作管理模块。
- * （对底层业务逻辑的封装）
- *
- * NOTE: 数据协作目前并非完全独立的模块——
- * 您必须在登录APS成功后才能登录数据协作，并且您必须已经入会才能开始数据协作（目前数据协作是依附于会议的）。
- *
- * */
-
-
-
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.app.Application;
@@ -23,54 +12,21 @@ import com.google.common.io.Files;
 import com.google.common.net.InetAddresses;
 import com.google.common.primitives.Ints;
 import com.kedacom.vconf.sdk.base.Caster;
-import com.kedacom.vconf.sdk.base.ILifecycleOwner;
-import com.kedacom.vconf.sdk.base.IResultListener;
-import com.kedacom.vconf.sdk.base.ListenerLifecycleObserver;
-import com.kedacom.vconf.sdk.base.Msg;
-import com.kedacom.vconf.sdk.base.KLog;
-import com.kedacom.vconf.sdk.base.bean.dc.BaseTypeString;
-import com.kedacom.vconf.sdk.base.bean.dc.DcsDownloadImageRsp;
-import com.kedacom.vconf.sdk.base.bean.dc.DcsGetAllWhiteBoardRsp;
-import com.kedacom.vconf.sdk.base.bean.dc.DcsGetConfAddrRsp;
-import com.kedacom.vconf.sdk.base.bean.dc.DcsGetUserListRsp;
-import com.kedacom.vconf.sdk.base.bean.dc.DcsGetWhiteBoardRsp;
-import com.kedacom.vconf.sdk.base.bean.dc.DcsNewWhiteBoardRsp;
-import com.kedacom.vconf.sdk.base.bean.dc.DcsSetConfInfoRsp;
-import com.kedacom.vconf.sdk.base.bean.dc.DcsSwitchRsp;
-import com.kedacom.vconf.sdk.base.bean.dc.DcsUploadImageRsp;
-import com.kedacom.vconf.sdk.base.bean.dc.EmDcsType;
-import com.kedacom.vconf.sdk.base.bean.dc.EmDcsWbMode;
-import com.kedacom.vconf.sdk.base.bean.dc.EmServerState;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardInfo;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSBoardResult;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfInfo;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSConfUserInfo;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSConnectResult;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConf;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSCreateConfResult;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSDelWhiteBoardInfo;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSFileInfo;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSFileLoadResult;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSImageUrl;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSNewWhiteBoard;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSOperator;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSRegInfo;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSResult;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSSrvState;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSSvrAddr;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSSwitchReq;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfo;
-import com.kedacom.vconf.sdk.base.bean.dc.TDCSUserInfos;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DcConfInfo;
-import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
-import com.kedacom.vconf.sdk.datacollaborate.bean.EDcMode;
-import com.kedacom.vconf.sdk.datacollaborate.bean.EConfType;
-import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
-import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DcConfInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EConfType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EDcMode;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
 import com.kedacom.vconf.sdk.datacollaborate.bean.ETerminalType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
+import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
+import com.kedacom.vconf.sdk.utils.lifecycle.IResultListener;
+import com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver;
+import com.kedacom.vconf.sdk.utils.log.KLog;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -86,8 +42,16 @@ import java.util.UUID;
 
 import androidx.annotation.Nullable;
 
+/**
+ * 数据协作管理模块。
+ * （对底层业务逻辑的封装）
+ *
+ * NOTE: 数据协作目前并非完全独立的模块——
+ * 您必须在登录APS成功后才能登录数据协作，并且您必须已经入会才能开始数据协作（目前数据协作是依附于会议的）。
+ *
+ * */
 
-@SuppressWarnings({"unused", "WeakerAccess"})
+@SuppressWarnings({"unused", "WeakerAccess", "unchecked"})
 public class DataCollaborateManager extends Caster<Msg> {
 
     static {
@@ -307,22 +271,9 @@ public class DataCollaborateManager extends Caster<Msg> {
 
 
     private static String PIC_SAVE_DIR;
-    private static Context context;
+    private Context context;
 
-    private DataCollaborateManager(){
-        HandlerThread handlerThread = new HandlerThread("DcAss", Process.THREAD_PRIORITY_BACKGROUND);
-        handlerThread.start();
-        assHandler = new Handler(handlerThread.getLooper()){
-            @Override
-            public void handleMessage(Message msg) {
-            }
-        };
-    }
-    /**
-     * 获取数据协作管理类实例
-     * @param ctx 应用上下文
-     * */
-    public static DataCollaborateManager getInstance(Application ctx) {
+    private DataCollaborateManager(Context ctx){
         if (null == context
                 && null != ctx){
             context = ctx;
@@ -347,8 +298,21 @@ public class DataCollaborateManager extends Caster<Msg> {
             }
         }
 
+        HandlerThread handlerThread = new HandlerThread("DcAss", Process.THREAD_PRIORITY_BACKGROUND);
+        handlerThread.start();
+        assHandler = new Handler(handlerThread.getLooper()){
+            @Override
+            public void handleMessage(Message msg) {
+            }
+        };
+    }
+    /**
+     * 获取数据协作管理类实例
+     * @param ctx 应用上下文
+     * */
+    public static DataCollaborateManager getInstance(Application ctx) {
         if (null == instance) {
-            instance = new DataCollaborateManager();
+            instance = new DataCollaborateManager(ctx);
         }
 
         return instance;
@@ -448,7 +412,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      * @param boardOpListener 画板操作通知监听器
      * @param paintOpListener 绘制操作通知监听器
      * */
-    public void startCollaborate(String confE164, String confName, EDcMode dcMode, EConfType confType,String adminE164, List<DCMember> members,
+    public void startCollaborate(String confE164, String confName, EDcMode dcMode, EConfType confType, String adminE164, List<DCMember> members,
                                  IResultListener resultListener,
                                  IOnSynchronizeProgressListener synchronizeProgressListener,
                                  IOnSessionEventListener sessionEventListener,

@@ -1,6 +1,3 @@
-/**
- * 画板信息
- * */
 
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
@@ -39,7 +36,7 @@ public class BoardInfo {
     @Override
     public String toString() {
         return "{"+String.format("id=%s, name=%s, creatorE164=%s, createTime=%s, " +
-                "mode=%s, pageNum=%s, pageId=%s, anonyId",
+                "mode=%s, pageNum=%s, pageId=%s, anonyId=%s",
                 id, name, creatorE164, createTime,
                 mode, pageNum, pageId, anonyId)+"}";
     }

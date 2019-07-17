@@ -3,6 +3,8 @@ package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.RectF;
 
+import androidx.annotation.NonNull;
+
 public class OpDrawLine extends OpDraw {
     private float startX;
     private float startY;
@@ -25,6 +27,7 @@ public class OpDrawLine extends OpDraw {
         type = EOpType.DRAW_LINE;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "OpDrawLine{" +

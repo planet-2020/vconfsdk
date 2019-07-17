@@ -322,7 +322,7 @@ public class KLog {
 		if (-1 == lastSlashIndx) {
 			className = classFullName;
 		} else {
-			className = classFullName.substring(lastSlashIndx + 1, classFullName.length());
+			className = classFullName.substring(lastSlashIndx + 1);
 		}
 		return className;
 	}

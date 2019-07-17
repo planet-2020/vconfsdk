@@ -4,6 +4,8 @@ import android.graphics.Path;
 import android.graphics.PointF;
 import android.graphics.RectF;
 
+import androidx.annotation.NonNull;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +26,7 @@ public class OpDrawPath extends OpDraw {
         type = EOpType.DRAW_PATH;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "OpDrawPath{" +

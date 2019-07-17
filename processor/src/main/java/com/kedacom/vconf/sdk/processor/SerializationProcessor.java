@@ -39,7 +39,7 @@ import javax.tools.Diagnostic;
  */
 
 @SupportedAnnotationTypes({
-        "com.kedacom.vconf.sdk.annotation.SerializeEnumAsInt",
+//        "com.kedacom.vconf.sdk.annotation.SerializeEnumAsInt",
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 @AutoService(Processor.class)

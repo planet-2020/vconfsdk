@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 
+import androidx.annotation.NonNull;
+
 public abstract class OpDraw extends OpPaint implements IRepealable, IBoundary{
     private int strokeWidth;     // 线宽
     private long color;           // 颜色值
@@ -33,6 +35,7 @@ public abstract class OpDraw extends OpPaint implements IRepealable, IBoundary{
         this.lineStyle = lineStyle;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "OpDraw{" +
