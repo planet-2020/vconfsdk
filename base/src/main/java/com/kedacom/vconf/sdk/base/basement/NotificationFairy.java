@@ -89,7 +89,7 @@ public final class NotificationFairy implements IFairy.INotificationFairy{
             return false;
         }
 
-        Log.d(TAG, String.format("<-~- %s\n%s", msgName, msgContent));
+        Log.d(TAG, String.format("<-~- %s(%s)\n%s", msgName, msgId, msgContent));
 
         Object ntfContent = jsonProcessor.fromJson(msgContent, magicBook.getRspClazz(msgName));
 

@@ -189,12 +189,12 @@ public final class SessionFairy implements IFairy.ISessionFairy{
             if (bConsumed){
                 s.candidates = candidates; // 更新候选序列
                 if (gotLast){
-                    Log.d(TAG, String.format("<-=- %s (session %d FINISHED. req=%s) \n%s", msgName, s.id, s.reqName, msgContent));
+                    Log.d(TAG, String.format("<-=- %s(%s) (session %d FINISHED. req=%s) \n%s", msgName, msgId, s.id, s.reqName, msgContent));
                     handler.removeMessages(MSG_ID_TIMEOUT, s); // 移除定时器
                     s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                     sessions.remove(s);
                 }else{
-                    Log.d(TAG, String.format("<-=- %s (session %d RECVING. req=%s) \n%s", msgName, s.id, s.reqName, msgContent));
+                    Log.d(TAG, String.format("<-=- %s(%s) (session %d RECVING. req=%s) \n%s", msgName, msgId, s.id, s.reqName, msgContent));
                     s.state = Session.RECVING; // 已收到响应，继续接收后续响应
                 }
             }
@@ -217,10 +217,11 @@ public final class SessionFairy implements IFairy.ISessionFairy{
         for (int i=0; i<paras.length; ++i){
             sb.append(paras[i]).append(", ");
         }
-        Log.d(TAG, String.format("-=-> %s (session %d START) \nparas={%s}", s.reqName, s.id, sb));
+        String methodName = magicBook.getMethod(s.reqName);
+        Log.d(TAG, String.format("-=-> %s(%s) (session %d START) \nparas={%s}", s.reqName, methodName, s.id, sb));
 
         crystalBall.spell(magicBook.getMethodOwner(s.reqName),
-                magicBook.getMethod(s.reqName),
+                methodName,
                 paras,
                 magicBook.getParaClasses(s.reqName));
 

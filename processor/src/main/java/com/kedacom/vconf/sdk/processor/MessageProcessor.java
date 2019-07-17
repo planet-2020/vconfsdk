@@ -320,6 +320,10 @@ public class MessageProcessor extends AbstractProcessor {
 
     }
 
+    private void parsePackageName2(RoundEnvironment roundEnvironment){
+
+    }
+
     private void generateFile(){
         String fieldNameIdMap = "nameIdMap";
         String fieldReqMap = "reqMap";
