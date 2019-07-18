@@ -133,109 +133,109 @@ public class DataCollaborateManager extends Caster<Msg> {
 
     // 会话相关通知
     private static final Msg[] sessionNtfs = new Msg[]{
-            Msg.DCBuildLink4ConfRsp,
-            Msg.DCConfCreated,
-            Msg.DCReleaseConfNtf,
-            Msg.DCConfigModified,
+            Msg.LinkStateChanged,
+            Msg.CollaborateStarted,
+            Msg.CollaborateFinished,
+            Msg.ConfigModified,
     };
 
     // 协作权相关通知
     private static final Msg[] operatorNtfs = new Msg[]{
-            Msg.DCUserJoinedNtf,
-            Msg.DCOperatorAddedNtf,
-            Msg.DCOperatorDeletedNtf,
-            Msg.DCApplyOperatorNtf,
-            Msg.DCApplyOperatorRejectedNtf,
+            Msg.UserJoined,
+            Msg.OperatorAdded,
+            Msg.OperatorDeleted,
+            Msg.ApplyOperatorNtf,
+            Msg.ApplyOperatorRejected,
     };
 
     // 画板相关通知
     private static final Msg[] boardOpNtfs = new Msg[]{
-            Msg.DCBoardCreatedNtf,
-            Msg.DCBoardSwitchedNtf,
-            Msg.DCBoardDeletedNtf,
-            Msg.DCAllBoardDeletedNtf,
+            Msg.BoardCreated,
+            Msg.BoardSwitched,
+            Msg.BoardDeleted,
+            Msg.AllBoardDeleted,
     };
 
     // 绘制相关通知
     private static final Msg[] paintOpNtfs = new Msg[]{
 //            Msg.DCElementBeginNtf,
-            Msg.DCLineDrawnNtf,
-            Msg.DCOvalDrawnNtf,
-            Msg.DCRectDrawnNtf,
-            Msg.DCPathDrawnNtf,
-            Msg.DCPicInsertedNtf,
-            Msg.DCPicDraggedNtf,
-            Msg.DCPicDeletedNtf,
-            Msg.DCErasedNtf,
-            Msg.DCRectErasedNtf,
-            Msg.DCFullScreenMatrixOpNtf,
-            Msg.DCUndoneNtf,
-            Msg.DCRedoneNtf,
-            Msg.DCScreenClearedNtf,
+            Msg.LineDrawn,
+            Msg.OvalDrawn,
+            Msg.RectDrawn,
+            Msg.PathDrawn,
+            Msg.PicInserted,
+            Msg.PicDragged,
+            Msg.PicDeleted,
+            Msg.Erased,
+            Msg.RectErased,
+            Msg.Matrixed,
+            Msg.Undone,
+            Msg.Redone,
+            Msg.ScreenCleared,
 //            Msg.DCElementEndNtf,
     };
 
 
     private static final Msg[] sessionReqs = new Msg[]{
-            Msg.DCLogin,
-            Msg.DCLogout,
-            Msg.DCCreateConf,
-            Msg.DCQuitConf,
-            Msg.DCReleaseConf,
-            Msg.DCModifyConfig,
-            Msg.DCQueryConfig,
+            Msg.Login,
+            Msg.Logout,
+            Msg.StartCollaborate,
+            Msg.QuitCollaborate,
+            Msg.FinishCollaborate,
+            Msg.ModifyConfig,
+            Msg.QueryConfig,
     };
 
     private static final Msg[] boardReqs = new Msg[]{
-            Msg.DCQueryCurBoard,
-            Msg.DCQueryBoard,
-            Msg.DCQueryAllBoards,
-            Msg.DCNewBoard,
-            Msg.DCDelBoard,
-            Msg.DCDelAllBoard,
-            Msg.DCSwitchBoard,
+            Msg.QueryCurBoard,
+            Msg.QueryBoard,
+            Msg.QueryAllBoards,
+            Msg.NewBoard,
+            Msg.DelBoard,
+            Msg.DelAllBoards,
+            Msg.SwitchBoard,
     };
 
     private static final Msg[] operatorReqs = new Msg[]{
-            Msg.DCAddOperator,
-            Msg.DCDelOperator,
-            Msg.DCRejectApplyOperator,
-            Msg.DCApplyOperator,
-            Msg.DCCancelOperator,
-            Msg.DCQueryAllMembers,
+            Msg.AddOperator,
+            Msg.DelOperator,
+            Msg.RejectApplyOperator,
+            Msg.ApplyOperator,
+            Msg.CancelOperator,
+            Msg.QueryAllMembers,
     };
 
     private static final Msg[] downUploadReqs = new Msg[]{
-            Msg.DCQueryPicUrl,
-            Msg.DCDownload,
-            Msg.DCQueryPicUploadUrl,
-            Msg.DCUpload,
+            Msg.QueryPicUrl,
+            Msg.Download,
+            Msg.QueryPicUploadUrl,
+            Msg.Upload,
     };
 
     private static final Msg[] paintReqs = new Msg[]{
-            Msg.DCDrawLine,
-            Msg.DCDrawOval,
-            Msg.DCDrawRect,
-            Msg.DCDrawPath,
-            Msg.DCUndo,
-            Msg.DCRedo,
-            Msg.DCClearScreen,
-            Msg.DCErase,
-            Msg.DCRectErase,
+            Msg.DrawLine,
+            Msg.DrawOval,
+            Msg.DrawRect,
+            Msg.DrawPath,
+            Msg.Undo,
+            Msg.Redo,
+            Msg.ClearScreen,
+            Msg.Erase,
+            Msg.RectErase,
 //        Msg.DCZoom,
-//        Msg.DCRotateLeft,
-//        Msg.DCRotateRight,
+//        Msg.RotateLeft,
+//        Msg.RotateRight,
 //        Msg.DCScrollScreen,
-            Msg.DCMatrix,
-            Msg.DCInsertPic,
-            Msg.DCDeletePic,
-            Msg.DCDragPic,
+            Msg.Matrix,
+            Msg.InsertPic,
+            Msg.DelPic,
+            Msg.DragPic,
     };
 
     @Override
     protected Map<Msg, RspProcessor<Msg>> rspProcessors() {
         Map<Msg, RspProcessor<Msg>> processorMap = new HashMap<>();
-        processorMap.put(Msg.DCQueryAddr, this::onRsp);
+        processorMap.put(Msg.QueryAddr, this::onRsp);
         return processorMap;
     }
 
@@ -255,7 +255,7 @@ public class DataCollaborateManager extends Caster<Msg> {
     @Override
     protected Map<Msg, NtfProcessor<Msg>> ntfProcessors() {
         Map<Msg, NtfProcessor<Msg>> processorMap = new HashMap<>();
-        processorMap.put(Msg.DCPicDownloadableNtf, this::onNtfs);
+        processorMap.put(Msg.PicDownloadable, this::onNtfs);
         return processorMap;
     }
 
@@ -333,14 +333,14 @@ public class DataCollaborateManager extends Caster<Msg> {
      * NOTE: 请务必在登录APS成功后登录数据协作！（登录APS的接口在其他模块）
      **/
     public void login(ETerminalType terminalType, IResultListener resultListener){
-        TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
+        TDCSSrvState srvState = (TDCSSrvState) get(Msg.GetState);
         if (null != srvState && EmServerState.emSrvLogin_Succ == srvState.emState){
             KLog.p(KLog.WARN, "already logined!");
             // 已登录状态则直接返回成功（若此状态下直接请求登录下层不会有任何响应 (─.─||| ）
             if (null != resultListener) reportSuccess(null, resultListener);
             return;
         }
-        TDCSSvrAddr svrAddr = (TDCSSvrAddr) get(Msg.DCGetServerAddr);
+        TDCSSvrAddr svrAddr = (TDCSSvrAddr) get(Msg.GetServerAddr);
         curTerminalType = ToDoConverter.toTransferObj(terminalType);
         String ip = null;
         try {
@@ -350,7 +350,7 @@ public class DataCollaborateManager extends Caster<Msg> {
             e.printStackTrace();
         }
 
-        req(Msg.DCLogin, resultListener, new TDCSRegInfo(ip, svrAddr.dwPort, curTerminalType));
+        req(Msg.Login, resultListener, new TDCSRegInfo(ip, svrAddr.dwPort, curTerminalType));
     }
 
     /**注销数据协作
@@ -363,7 +363,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                        resultListener.onFailed(errorCode);
      * */
     public void logout(@Nullable IResultListener resultListener){
-        req(Msg.DCLogout, resultListener);
+        req(Msg.Logout, resultListener);
     }
 
 
@@ -375,14 +375,14 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                       resultListener.onSuccess(bExists);
      * */
     public void queryCollaborateExistsOrNot(String confE164, IResultListener resultListener){
-        req(Msg.DCQueryAddr, resultListener, confE164);
+        req(Msg.QueryAddr, resultListener, confE164);
     }
 
     /**
      * 当前用户是否正在协作中。
      * */
     public boolean isCollaborating(){
-        TDCSSrvState srvState = (TDCSSrvState) get(Msg.DCGetState);
+        TDCSSrvState srvState = (TDCSSrvState) get(Msg.GetState);
         return null != srvState && srvState.bInConference;
     }
 
@@ -423,7 +423,7 @@ public class DataCollaborateManager extends Caster<Msg> {
         unsubscribeNtfListeners();
 
         curDcConfE164 = null;
-        req(Msg.DCCreateConf, resultListener,
+        req(Msg.StartCollaborate, resultListener,
                 new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
                         confE164, confName, ToDoConverter.toTransferObj(dcMode),
                         ToDoConverter.toDcUserList(members), adminE164, curTerminalType),
@@ -440,7 +440,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                       resultListener.onFailed(errorCode);*/
     public void finishCollaborate(IResultListener resultListener){
         unsubscribeNtfListeners();
-        req(Msg.DCReleaseConf, resultListener, curDcConfE164);
+        req(Msg.FinishCollaborate, resultListener, curDcConfE164);
     }
 
     /**退出数据协作。
@@ -454,7 +454,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                       resultListener.onFailed(errorCode);*/
     public void quitCollaborate(boolean bQuitConf, IResultListener resultListener){
         unsubscribeNtfListeners();
-        req(Msg.DCQuitConf, resultListener, curDcConfE164, bQuitConf?0:1);
+        req(Msg.QuitCollaborate, resultListener, curDcConfE164, bQuitConf?0:1);
     }
 
     /** 修改协作模式
@@ -467,12 +467,12 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                       resultListener.onFailed(errorCode);*/
     public void modifyCollaborateMode(EDcMode mode, IResultListener resultListener){
         // 获取已有的配置
-        req(Msg.DCQueryConfig, new IResultListener() {
+        req(Msg.QueryConfig, new IResultListener() {
             @Override
             public void onSuccess(Object result) {
                 DcConfInfo confInfo = (DcConfInfo) result;
                 confInfo.setConfMode(mode); // 修改协作模式
-                req(Msg.DCModifyConfig, resultListener, ToDoConverter.toTransferObj(confInfo)); // 下设配置
+                req(Msg.ModifyConfig, resultListener, ToDoConverter.toTransferObj(confInfo)); // 下设配置
             }
 
             @Override
@@ -502,7 +502,7 @@ public class DataCollaborateManager extends Caster<Msg> {
     public void addOperator(String memberE164, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
         tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, true, false));
-        req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+        req(Msg.AddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
     /**（管理方）批量添加协作方
      * @param memberE164List 待添加对象e164列表
@@ -519,7 +519,7 @@ public class DataCollaborateManager extends Caster<Msg> {
         for (String e164 : memberE164List){
             tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", curTerminalType, true, true, false));
         }
-        req(Msg.DCAddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+        req(Msg.AddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
 
     /**（管理方）删除协作方
@@ -533,7 +533,7 @@ public class DataCollaborateManager extends Caster<Msg> {
     public void delOperator(String memberE164, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
         tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, true, false));
-        req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+        req(Msg.DelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
 
     /**（管理方）批量删除协作方
@@ -549,7 +549,7 @@ public class DataCollaborateManager extends Caster<Msg> {
         for (String e164 : memberE164List){
             tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", curTerminalType, true, true, false));
         }
-        req(Msg.DCDelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+        req(Msg.DelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
     /**
      * （管理方）拒绝协作权申请
@@ -558,7 +558,7 @@ public class DataCollaborateManager extends Caster<Msg> {
     public void rejectApplyOperator(String memberE164){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
         tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, false, false));
-        req(Msg.DCRejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+        req(Msg.RejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
     /**
      * （管理方）批量拒绝协作权申请
@@ -569,7 +569,7 @@ public class DataCollaborateManager extends Caster<Msg> {
         for (String memberE164 : memberE164List) {
             tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, false, false));
         }
-        req(Msg.DCRejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
+        req(Msg.RejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
     }
 
 
@@ -588,7 +588,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                       至于超时后管理方拒绝的情形无需处理。
      *                       */
     public void applyForOperator(String e164, IResultListener resultListener){
-        req(Msg.DCApplyOperator, resultListener, e164);
+        req(Msg.ApplyOperator, resultListener, e164);
     }
     /**（协作方）释放协作权
      * @param e164 申请者e164
@@ -599,7 +599,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                       {@link #ErrCode_Failed}
      *                       resultListener.onFailed(errorCode);*/
     public void cancelOperator(String e164, IResultListener resultListener){
-        req(Msg.DCCancelOperator, resultListener, e164);
+        req(Msg.CancelOperator, resultListener, e164);
     }
 
     /**获取所有成员
@@ -610,7 +610,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                       {@link #ErrCode_Failed}
      *                       resultListener.onFailed(errorCode);*/
     public void queryAllMembers(IResultListener resultListener){
-        req(Msg.DCQueryAllMembers, resultListener, curDcConfE164);
+        req(Msg.QueryAllMembers, resultListener, curDcConfE164);
     }
 
 
@@ -627,7 +627,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                  resultListener.onFailed(errorCode);
      * */
     public void newBoard(String creatorE164, IResultListener listener){
-        req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164, new TDCSBoardInfo(UUID.randomUUID().toString(), creatorE164)));
+        req(Msg.NewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164, new TDCSBoardInfo(UUID.randomUUID().toString(), creatorE164)));
     }
 
     /**
@@ -644,7 +644,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                  resultListener.onFailed(errorCode);
      * */
     public void newDocBoard(String boardName, int pageCount, int curPageIndex, String creatorE164, IResultListener listener){
-        req(Msg.DCNewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164,
+        req(Msg.NewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164,
                 new TDCSBoardInfo(EmDcsWbMode.emWBModeDOC, boardName, pageCount, UUID.randomUUID().toString(), curPageIndex, creatorE164)));
     }
 
@@ -659,7 +659,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                  resultListener.onFailed(errorCode);
      * */
     public void delBoard(String boardId, IResultListener listener){
-        req(Msg.DCDelBoard, listener, curDcConfE164, boardId);
+        req(Msg.DelBoard, listener, curDcConfE164, boardId);
     }
 
 
@@ -673,7 +673,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                  resultListener.onFailed(errorCode);
      * */
     public void delAllBoard(IResultListener listener){
-        req(Msg.DCDelAllBoard, listener, curDcConfE164);
+        req(Msg.DelAllBoards, listener, curDcConfE164);
     }
 
     /**
@@ -687,7 +687,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      *                  resultListener.onFailed(errorCode);
      * */
     public void switchBoard(String boardId, IResultListener listener){
-        req(Msg.DCSwitchBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
+        req(Msg.SwitchBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
     }
 
 
@@ -713,11 +713,11 @@ public class DataCollaborateManager extends Caster<Msg> {
 
         // 对于图片插入操作还需上传图片。
         if (EOpType.INSERT_PICTURE == op.getType()){
-            req(Msg.DCQueryPicUploadUrl, new IResultListener() {
+            req(Msg.QueryPicUploadUrl, new IResultListener() {
                 @Override
                 public void onSuccess(Object result) {
                     TDCSImageUrl picUploadUrl = (TDCSImageUrl) result;
-                    req(Msg.DCUpload, new IResultListener() {
+                    req(Msg.Upload, new IResultListener() {
                                 @Override
                                 public void onSuccess(Object result) {
                                     OpInsertPic insertPic = (OpInsertPic) op;
@@ -772,14 +772,14 @@ public class DataCollaborateManager extends Caster<Msg> {
      * */
     private boolean onSessionRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
-            case DCBuildLink4LoginRsp:
+            case LoginLinkStateChanged:
                 TDCSConnectResult result = (TDCSConnectResult) rspContent;
-                if (Msg.DCLogin == reqId) {
+                if (Msg.Login == reqId) {
                     if (!result.bSuccess) { // 链路建立失败
-                        cancelReq(Msg.DCLogin, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
+                        cancelReq(Msg.Login, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
                         reportFailed(ErrCode_BuildLink4LoginFailed, listener);
                     }
-                }else if (Msg.DCLogout == reqId){
+                }else if (Msg.Logout == reqId){
                     if (!result.bSuccess) { // 链路已断开
                         reportSuccess(null, listener);
                     }else{
@@ -791,7 +791,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCLoginRsp:
+            case LoginRsp:
                 TDCSResult loginRes = (TDCSResult) rspContent;
                 if (loginRes.bSucces) {
                     reportSuccess(null, listener);
@@ -800,25 +800,25 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCLogoutRsp:
+            case LogoutRsp:
                 TDCSResult logoutRes = (TDCSResult) rspContent;
                 if (!logoutRes.bSucces){
-                    cancelReq(Msg.DCLogout, listener);  // 后续不会有DCBuildLink4LoginRsp上来，取消该请求以防等待超时。
+                    cancelReq(Msg.Logout, listener);  // 后续不会有DCBuildLink4LoginRsp上来，取消该请求以防等待超时。
                     reportFailed(convertErrorCode(logoutRes.dwErrorCode), listener);
                 }
                 break;
 
 
-            case DCBuildLink4ConfRsp:
+            case LinkStateChanged:
                 result = (TDCSConnectResult) rspContent;
-                if (Msg.DCCreateConf == reqId) {
+                if (Msg.StartCollaborate == reqId) {
                     if (!result.bSuccess) { // 开启数据协作失败（链路建立失败）
-                        cancelReq(Msg.DCCreateConf, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
+                        cancelReq(Msg.StartCollaborate, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
                         reportFailed(ErrCode_BuildLink4ConfFailed, listener);
                         curDcConfE164 = null;
                     }
-                }else if (Msg.DCQuitConf == reqId
-                        || Msg.DCReleaseConf == reqId){
+                }else if (Msg.QuitCollaborate == reqId
+                        || Msg.FinishCollaborate == reqId){
                     if (!result.bSuccess) { // 链路已断开，退出/结束协作成功
                         reportSuccess(null, listener);
                         curDcConfE164 = null;
@@ -829,7 +829,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                     return false;
                 }
                 break;
-            case DCConfCreated:
+            case CollaborateStarted:
                 TDCSCreateConfResult createConfResult = (TDCSCreateConfResult) rspContent;
                 if (createConfResult.bSuccess) { // 开启数据协作成功
                     curDcConfE164 = createConfResult.achConfE164;
@@ -856,18 +856,18 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCReleaseConfRsp:
-            case DCReleaseConfNtf:
+            case FinishCollaborateRsp:
+            case CollaborateFinished:
                 break;
-            case DCQuitConfRsp:
+            case QuitCollaborateRsp:
                 TDCSResult quitRes = (TDCSResult) rspContent;
                 if (!quitRes.bSucces){
-                    cancelReq(Msg.DCQuitConf, listener);
+                    cancelReq(Msg.QuitCollaborate, listener);
                     reportFailed(convertErrorCode(quitRes.dwErrorCode), listener);
                 }
                 break;
 
-            case DCQueryConfigRsp:
+            case QueryConfigRsp:
                 TDCSCreateConfResult dcConfig = (TDCSCreateConfResult) rspContent;
                 if (dcConfig.bSuccess) {
                     reportSuccess(ToDoConverter.fromTransferObj(dcConfig), listener);
@@ -876,15 +876,15 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCModifyConfigRsp:
+            case ModifyConfigRsp:
                 DcsSetConfInfoRsp setConfInfoRsp = (DcsSetConfInfoRsp) rspContent;
                 if (!setConfInfoRsp.bSuccess) {
-                    cancelReq(Msg.DCModifyConfig, listener);
+                    cancelReq(Msg.ModifyConfig, listener);
                     reportFailed(convertErrorCode(setConfInfoRsp.dwErrorCode), listener);
                 }
                 break;
 
-            case DCConfigModified:
+            case ConfigModified:
                 if (((TDCSConfInfo)rspContent).achConfE164.equals(curDcConfE164)){
                     reportSuccess(ToDoConverter.fromTransferObj((TDCSConfInfo)rspContent), listener);
                 }else {
@@ -902,7 +902,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
     private void onSessionNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
         switch (ntfId){
-            case DCBuildLink4ConfRsp:
+            case LinkStateChanged:
                 TDCSConnectResult tdcsConnectResult = (TDCSConnectResult) ntfContent;
                 if (!tdcsConnectResult.bSuccess){ // 用户所属的数据协作链路状态异常
                     if (null != onSessionEventListener) onSessionEventListener.onDcFinished(); // 通知用户（对于他来说）数据协作已结束
@@ -911,7 +911,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCConfCreated:
+            case CollaborateStarted:
                 TDCSCreateConfResult tdcsCreateConfResult = (TDCSCreateConfResult) ntfContent;
                 if (tdcsCreateConfResult.bSuccess && null == curDcConfE164) {
                     curDcConfE164 = tdcsCreateConfResult.achConfE164;
@@ -920,7 +920,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCConfigModified:
+            case ConfigModified:
                 DcConfInfo dcConfInfo = ToDoConverter.fromTransferObj((TDCSConfInfo)ntfContent);
                 if (dcConfInfo.getConfE164().equals(curDcConfE164)){
                     if (null != onSessionEventListener) onSessionEventListener.onDCConfParaChanged(dcConfInfo);
@@ -950,7 +950,7 @@ public class DataCollaborateManager extends Caster<Msg> {
         String curConfE164 = curDcConfE164;
 
         // 查询当前画板
-        req(Msg.DCQueryCurBoard, new IResultListener() {
+        req(Msg.QueryCurBoard, new IResultListener() {
             @Override
             public void onSuccess(Object result) {
                 final String curBoardId = ((BoardInfo) result).getId();
@@ -960,7 +960,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 cachedPaintOps.clear();
 
                 // 同步所有画板内容
-                req(Msg.DCQueryAllBoards, new QueryAllBoardsInnerListener() {
+                req(Msg.QueryAllBoards, new QueryAllBoardsInnerListener() {
                             @Override
                             public void onArrive(boolean bSuccess) {
                                 /* 获取所有画板结束，准备阶段结束*/
@@ -1015,12 +1015,12 @@ public class DataCollaborateManager extends Caster<Msg> {
 
                             @Override
                             public void onFailed(int errorCode) {
-                                KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s failed, errorCode=%s", dcConfInfo.achConfE164, errorCode);
+                                KLog.p(KLog.ERROR, "QueryAllBoards for conf %s failed, errorCode=%s", dcConfInfo.achConfE164, errorCode);
                             }
 
                             @Override
                             public void onTimeout() {
-                                KLog.p(KLog.ERROR, "DCQueryAllBoards for conf %s timeout!", dcConfInfo.achConfE164);
+                                KLog.p(KLog.ERROR, "QueryAllBoards for conf %s timeout!", dcConfInfo.achConfE164);
                             }
                         },
 
@@ -1033,7 +1033,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
         if (null != onOperatorEventListener) {
             // 同步人员列表
-            req(Msg.DCQueryAllMembers, new IResultListener() {
+            req(Msg.QueryAllMembers, new IResultListener() {
                 @Override
                 public void onSuccess(Object result) {
                     if (null == onOperatorEventListener) {
@@ -1068,7 +1068,7 @@ public class DataCollaborateManager extends Caster<Msg> {
         TDCSBoardInfo board = dcBoards.remove(0);
         if (null != onSynchronizeProgressListener)
             onSynchronizeProgressListener.onProgress(board.achTabId, 0, false);
-        req(Msg.DCDownload, new IResultListener() {
+        req(Msg.Download, new IResultListener() {
                     @Override
                     public void onArrive(boolean bSuccess) {
                         synchronizeBoards(dcBoards); // 同步下一个画板
@@ -1121,7 +1121,7 @@ public class DataCollaborateManager extends Caster<Msg> {
      * */
     private boolean onOperatorRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
-            case DCAddOperatorRsp:
+            case AddOperatorRsp:
                 TDCSResult result = (TDCSResult) rspContent;
                 if (!result.bSucces){
                     KLog.p(KLog.ERROR, "add operator failed, errorCode=%s", result.dwErrorCode);
@@ -1129,16 +1129,16 @@ public class DataCollaborateManager extends Caster<Msg> {
                     reportFailed(convertErrorCode(result.dwErrorCode), listener);
                 }
                 break;
-            case DCOperatorAddedNtf:
+            case OperatorAdded:
                 List<TDCSConfUserInfo> userInfos = ((TDCSUserInfos) rspContent).atUserInfoList;
-                if (Msg.DCAddOperator == reqId) {
+                if (Msg.AddOperator == reqId) {
                     TDCSOperator para = (TDCSOperator) reqParas[0];
                     if (para.atOperList.equals(userInfos)) {
                         reportSuccess(null, listener);
                     } else {
                         return false;
                     }
-                }else if (Msg.DCApplyOperator == reqId){
+                }else if (Msg.ApplyOperator == reqId){
                     String e164 = (String) reqParas[0];
                     if (e164.equals(userInfos.get(0).achE164)){
                         reportSuccess(null, listener);
@@ -1150,7 +1150,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCDelOperatorRsp:
+            case DelOperatorRsp:
                 result = (TDCSResult) rspContent;
                 if (!result.bSucces){
                     KLog.p(KLog.ERROR, "del operator failed, errorCode=%s", result.dwErrorCode);
@@ -1158,7 +1158,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                     reportFailed(convertErrorCode(result.dwErrorCode), listener);
                 }
                 break;
-            case DCOperatorDeletedNtf:
+            case OperatorDeleted:
                 userInfos = ((TDCSUserInfos)rspContent).atUserInfoList;
                 TDCSOperator para = (TDCSOperator) reqParas[0];
                 if (para.atOperList.equals(userInfos)){
@@ -1168,7 +1168,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCApplyOperatorRsp:
+            case ApplyOperatorRsp:
                 result = (TDCSResult) rspContent;
                 if (!result.bSucces){
                     KLog.p(KLog.ERROR, "applying operator failed, errorCode=%s", result.dwErrorCode);
@@ -1176,7 +1176,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                     reportFailed(convertErrorCode(result.dwErrorCode), listener);
                 }
                 break;
-            case DCApplyOperatorRejectedNtf:
+            case ApplyOperatorRejected:
                 TDCSUserInfo userInfo = (TDCSUserInfo)rspContent;
                 String e164 = (String) reqParas[0];
                 if (e164.equals(userInfo.tUserInfo.achE164)){
@@ -1186,7 +1186,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCCancelOperatorRsp:
+            case CancelOperatorRsp:
                 result = (TDCSResult) rspContent;
                 if (result.bSucces){
                     reportSuccess(null, listener);
@@ -1195,7 +1195,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCQueryAllMembersRsp:
+            case QueryAllMembersRsp:
                 DcsGetUserListRsp userListRsp = (DcsGetUserListRsp) rspContent;
                 if (userListRsp.MainParam.bSucces){
                     List<DCMember> dcMembers = new ArrayList<>();
@@ -1222,16 +1222,16 @@ public class DataCollaborateManager extends Caster<Msg> {
             return;
         }
         switch (ntfId){
-            case DCUserJoinedNtf:
+            case UserJoined:
                 onOperatorEventListener.onUserJoined(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
                 break;
-            case DCOperatorAddedNtf:
+            case OperatorAdded:
                 onOperatorEventListener.onOperatorAdded(ToDoConverter.fromDcUserList(((TDCSUserInfos)ntfContent).atUserInfoList));
                 break;
-            case DCOperatorDeletedNtf:
+            case OperatorDeleted:
                 onOperatorEventListener.onOperatorDeleted(ToDoConverter.fromDcUserList(((TDCSUserInfos)ntfContent).atUserInfoList));
                 break;
-            case DCApplyOperatorNtf:
+            case ApplyOperatorNtf:
                 onOperatorEventListener.onApplyOperator(ToDoConverter.fromTransferObj(((TDCSUserInfo)ntfContent).tUserInfo));
                 break;
         }
@@ -1244,21 +1244,21 @@ public class DataCollaborateManager extends Caster<Msg> {
      * */
     private boolean onBoardOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
-            case DCQueryCurBoardRsp:
-            case DCQueryBoardRsp:
+            case QueryCurBoardRsp:
+            case QueryBoardRsp:
                 DcsGetWhiteBoardRsp queryBoardsResult = (DcsGetWhiteBoardRsp) rspContent;
                 if (queryBoardsResult.MainParam.bSuccess){
                     reportSuccess(ToDoConverter.fromTransferObj(queryBoardsResult.AssParam, curDcConfE164), listener);
                 }else{
-                    KLog.p(KLog.ERROR, "DCQueryBoard failed, errorCode=%s", queryBoardsResult.MainParam.dwErrorCode);
+                    KLog.p(KLog.ERROR, "QueryBoard failed, errorCode=%s", queryBoardsResult.MainParam.dwErrorCode);
                     reportFailed(convertErrorCode(queryBoardsResult.MainParam.dwErrorCode), listener);
                 }
                 break;
 
-            case DCQueryAllBoardsRsp:
+            case QueryAllBoardsRsp:
                 DcsGetAllWhiteBoardRsp queryAllBoardsResult = (DcsGetAllWhiteBoardRsp) rspContent;
                 if (!queryAllBoardsResult.MainParam.bSucces){
-                    KLog.p(KLog.ERROR, "DCQueryAllBoards failed, errorCode=%s", queryAllBoardsResult.MainParam.dwErrorCode);
+                    KLog.p(KLog.ERROR, "QueryAllBoards failed, errorCode=%s", queryAllBoardsResult.MainParam.dwErrorCode);
                     reportFailed(convertErrorCode(queryAllBoardsResult.MainParam.dwErrorCode), listener);
                     return true;
                 }
@@ -1287,14 +1287,14 @@ public class DataCollaborateManager extends Caster<Msg> {
 
                 break;
 
-            case DCNewBoardRsp:
+            case NewBoardRsp:
                 DcsNewWhiteBoardRsp newWhiteBoardRsp = (DcsNewWhiteBoardRsp) rspContent;
                 if (!newWhiteBoardRsp.MainParam.bSuccess) {
                     cancelReq(reqId, listener); // 后续不会有DCBoardCreatedNtf，取消以防等待超时
                     reportFailed(convertErrorCode(newWhiteBoardRsp.MainParam.dwErrorCode), listener);
                 }
                 break;
-            case DCBoardCreatedNtf:
+            case BoardCreated:
                 TDCSBoardInfo tdcsBoardInfo = (TDCSBoardInfo) rspContent;
                 TDCSNewWhiteBoard newWhiteBoard = (TDCSNewWhiteBoard) reqParas[0];
                 if (newWhiteBoard.tBoardinfo.achWbCreatorE164.equals(tdcsBoardInfo.achWbCreatorE164)) {
@@ -1304,7 +1304,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCDelBoardRsp:
+            case DelBoardRsp:
                 TDCSBoardResult boardResult = (TDCSBoardResult) rspContent;
                 if (!boardResult.bSuccess){
                     KLog.p(KLog.ERROR, "del board failed, errorCode=%s", boardResult.dwErrorCode);
@@ -1312,7 +1312,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                     reportFailed(convertErrorCode(boardResult.dwErrorCode), listener);
                 }
                 break;
-            case DCBoardDeletedNtf:
+            case BoardDeleted:
                 TDCSDelWhiteBoardInfo boardInfo = (TDCSDelWhiteBoardInfo) rspContent;
                 String boardId = (String) reqParas[1];
                 if (boardId.equals(boardInfo.strIndex)){
@@ -1322,7 +1322,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCDelAllBoardRsp:
+            case DelAllBoardsRsp:
                 TDCSBoardResult allBoardRes = (TDCSBoardResult) rspContent;
                 if (!allBoardRes.bSuccess){
                     KLog.p(KLog.ERROR, "del all board failed, errorCode=%s", allBoardRes.dwErrorCode);
@@ -1330,12 +1330,12 @@ public class DataCollaborateManager extends Caster<Msg> {
                     reportFailed(convertErrorCode(allBoardRes.dwErrorCode), listener);
                 }
                 break;
-            case DCAllBoardDeletedNtf:
+            case AllBoardDeleted:
                 TDCSDelWhiteBoardInfo delWhiteBoardInfo = (TDCSDelWhiteBoardInfo) rspContent;
                 reportSuccess(delWhiteBoardInfo.strConfE164, listener);
                 break;
 
-            case DCSwitchBoardRsp:
+            case SwitchBoardRsp:
                 DcsSwitchRsp switchRsp = (DcsSwitchRsp) rspContent;
                 if (!switchRsp.MainParam.bSuccess){
                     KLog.p(KLog.ERROR, "switch board failed, errorCode=%s", switchRsp.MainParam.dwErrorCode);
@@ -1343,7 +1343,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                     reportFailed(convertErrorCode(switchRsp.MainParam.dwErrorCode), listener);
                 }
                 break;
-            case DCBoardSwitchedNtf:
+            case BoardSwitched:
                 TDCSBoardInfo boardInfo1 = (TDCSBoardInfo) rspContent;
                 TDCSSwitchReq para = (TDCSSwitchReq) reqParas[0];
                 if (para.achTabId.equals(boardInfo1.achTabId)){
@@ -1369,13 +1369,13 @@ public class DataCollaborateManager extends Caster<Msg> {
             KLog.p(KLog.ERROR, "null == onBoardOpListener");
             return;
         }
-        if (Msg.DCBoardCreatedNtf.equals(ntfId)) {
+        if (Msg.BoardCreated.equals(ntfId)) {
             onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj((TDCSBoardInfo) ntfContent, curDcConfE164));
-        } else if (Msg.DCBoardSwitchedNtf.equals(ntfId)) {
+        } else if (Msg.BoardSwitched.equals(ntfId)) {
             onBoardOpListener.onBoardSwitched(((TDCSBoardInfo) ntfContent).achTabId);
-        } else if (Msg.DCBoardDeletedNtf.equals(ntfId)) {
+        } else if (Msg.BoardDeleted.equals(ntfId)) {
             onBoardOpListener.onBoardDeleted(((TDCSDelWhiteBoardInfo) ntfContent).strIndex);
-        } else if (Msg.DCAllBoardDeletedNtf.equals(ntfId)) {
+        } else if (Msg.AllBoardDeleted.equals(ntfId)) {
             onBoardOpListener.onAllBoardDeleted();
         }
 
@@ -1384,7 +1384,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
     private boolean onDownUpLoadRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
-            case DCQueryPicUrlRsp:
+            case QueryPicUrlRsp:
                 DcsDownloadImageRsp queryPicUrlResult = (DcsDownloadImageRsp) rspContent;
                 TDCSImageUrl para0 = (TDCSImageUrl) reqParas[0];
                 if (!para0.achWbPicentityId.equals(queryPicUrlResult.AssParam.achWbPicentityId)) {
@@ -1397,7 +1397,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCDownloadRsp:
+            case DownloadRsp:
                 TDCSFileLoadResult result = (TDCSFileLoadResult) rspContent;
                 TDCSFileInfo para1 = (TDCSFileInfo) reqParas[1];
                 if (null != para1.achWbPicentityId && !para1.achWbPicentityId.equals(result.achWbPicentityId)) {
@@ -1410,7 +1410,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCQueryPicUploadUrlRsp:
+            case QueryPicUploadUrlRsp:
                 DcsUploadImageRsp queryPicUploadUrlResult = (DcsUploadImageRsp) rspContent;
                 if (queryPicUploadUrlResult.MainParam.bSucces){
                     reportSuccess(queryPicUploadUrlResult.AssParam, listener);
@@ -1419,7 +1419,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
                 break;
 
-            case DCUploadNtf:
+            case UploadRsp:
                 result = (TDCSFileLoadResult) rspContent;
                 if (!result.bSuccess){
                     KLog.p(KLog.ERROR, "upload file %s failed!", result.achWbPicentityId);
@@ -1427,7 +1427,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                     reportFailed(ErrCode_Failed, listener);
                 }
                 break;
-            case DCPicDownloadableNtf:
+            case PicDownloadable:
                 TDCSFileInfo uploadFileInfo = (TDCSFileInfo) reqParas[1];
                 TDCSImageUrl downloadableFileInfo = (TDCSImageUrl) rspContent;
                 if (uploadFileInfo.achWbPicentityId.equals(downloadableFileInfo.achWbPicentityId)) {
@@ -1515,7 +1515,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
     private boolean onRsp(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
-            case DCQueryAddrRsp:
+            case QueryAddrRsp:
                 reportSuccess(((DcsGetConfAddrRsp) rspContent).MainParam.bSucces, listener);
                 break;
 
@@ -1547,7 +1547,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 //                break;
 
             // 插入图片通知。 NOTE:插入图片比较特殊，通知中只有插入图片操作的基本信息，图片本身可能还需进一步下载
-            case DCPicInsertedNtf:
+            case PicInserted:
                 OpInsertPic opInsertPic = (OpInsertPic) opPaint;
                 String confE164 = opInsertPic.getConfE164();
                 String boardId = opInsertPic.getBoardId();
@@ -1564,13 +1564,13 @@ public class DataCollaborateManager extends Caster<Msg> {
                     * NOTE: 仅在同步图元阶段需要如下这样操作——获取图片的url，然后下载。其他情形均在收到“图片可下载”通知后开始下载图片。
                      之所以要分情形而无法统一处理是因为：一方面刚入会同步过程中不会收到“图片可下载”通知所以需要主动获取下载url然后下载；
                      另一方面除了刚入会同步的场景其它场景下主动获取图片下载url均可能失败，因为图片可能尚未上传到服务器，所以需要等到“图片可下载通知”方可下载*/
-                    req(Msg.DCQueryPicUrl,
+                    req(Msg.QueryPicUrl,
                         new IResultListener() {
                             @Override
                             public void onSuccess(Object result) {
                                 TDCSImageUrl picUrl = (TDCSImageUrl) result;
                                 // 下载图片
-                                req(Msg.DCDownload,
+                                req(Msg.Download,
                                     new IResultListener() {
                                         @Override
                                         public void onSuccess(Object result) {
@@ -1698,11 +1698,11 @@ public class DataCollaborateManager extends Caster<Msg> {
             己端下载图片完成后结合此前收到的“插入图片”通知内的信息方可展示该图片。
             NOTE：有例外。己端刚加入数据协作时，平台不会给己端发送该通知，己端需要先拉取协作中已有的图元操作
             并针对其中的“插入图片”操作主动查询图片下载地址再根据下载地址下载图片。*/
-            case DCPicDownloadableNtf:
+            case PicDownloadable:
                 TDCSImageUrl dcPicUrl = (TDCSImageUrl) ntfContent;
                 if (!new File(getPicSavePath(dcPicUrl.achWbPicentityId)).exists()){ // 图片尚未下载到本地
                     // 下载图片
-                    req(Msg.DCDownload,
+                    req(Msg.Download,
                         new IResultListener() {
                             @Override
                             public void onSuccess(Object result) {
@@ -1734,7 +1734,7 @@ public class DataCollaborateManager extends Caster<Msg> {
     @Override
     protected boolean onTimeout(Msg req, IResultListener rspListener, Object[] reqPara) {
         switch (req){
-            case DCQueryAddr:
+            case QueryAddr:
                 reportSuccess(false, rspListener);
                 return true;
             default:
@@ -1903,14 +1903,4 @@ public class DataCollaborateManager extends Caster<Msg> {
     private class QueryAllBoardsInnerListener implements IResultListener{
     }
 
-    // FORDEBUG
-//    public void setDcServerAddr(){
-//        set(Msg.DCSetServerAddr, new TDCSConfAddr("127.0.0.1", "localhost", 12345));
-//    }
-//
-//    public Object getDcServerAddr(){
-//        TDCSConfAddr result = (TDCSConfAddr) get(Msg.DCGetServerAddr);
-//        KLog.p("result="+result);
-//        return result;
-//    }
 }

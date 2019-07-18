@@ -54,11 +54,8 @@ import javax.tools.Diagnostic;
 public class MessageProcessor extends AbstractProcessor {
     private boolean bDone = false;
 
-    /*
-    * 消息枚举名称和消息ID的映射
-    * */
+    private String module;
     private BiMap<String, String> nameIdMap = HashBiMap.create();
-
     private Table<String, String, Object> reqMap = HashBasedTable.create();
     private Table<String, String, Object> rspMap = HashBasedTable.create();
 
@@ -120,7 +117,7 @@ public class MessageProcessor extends AbstractProcessor {
 
     // 获取“请求-响应”相关信息
     private void parseMessage(TypeElement msgDefClass){
-        String module = msgDefClass.getAnnotation(Message.class).module();
+        module = msgDefClass.getAnnotation(Message.class).module();
         List<? extends Element> msgElements = msgDefClass.getEnclosedElements();
         Request request;
         Response response;
@@ -159,15 +156,23 @@ public class MessageProcessor extends AbstractProcessor {
                 reqMap.put(name, COL_TYPE, request.type());
 
                 // 获取响应序列
-                if (0 == request.rspSeq().length){
-                    reqMap.put(name, COL_RSPSEQ, new String[][]{});
-                }else if (0 == request.rspSeq2().length){
-                    reqMap.put(name, COL_RSPSEQ, new String[][]{request.rspSeq()});
-                }else if (0 == request.rspSeq3().length){
-                    reqMap.put(name, COL_RSPSEQ, new String[][]{request.rspSeq(), request.rspSeq2()});
-                }else{
-                    reqMap.put(name, COL_RSPSEQ, new String[][]{request.rspSeq(), request.rspSeq2(), request.rspSeq3()});
+                String[] rspSeq1 = request.rspSeq();
+                for (int i=0; i<rspSeq1.length; ++i){
+                    rspSeq1[i] = module+"_"+rspSeq1[i];
                 }
+                String[] rspSeq2 = request.rspSeq2();
+                for (int i=0; i<rspSeq2.length; ++i){
+                    rspSeq2[i] = module+"_"+rspSeq2[i];
+                }
+                String[] rspSeq3 = request.rspSeq3();
+                for (int i=0; i<rspSeq3.length; ++i){
+                    rspSeq3[i] = module+"_"+rspSeq3[i];
+                }
+                List<String[]> rspSeqList = new ArrayList<>();
+                if (rspSeq1.length>0) rspSeqList.add(rspSeq1);
+                if (rspSeq2.length>0) rspSeqList.add(rspSeq2);
+                if (rspSeq3.length>0) rspSeqList.add(rspSeq3);
+                reqMap.put(name, COL_RSPSEQ, rspSeqList.toArray(new String[][]{}));
 
                 // 获取超时时长
                 reqMap.put(name, COL_TIMEOUT, request.timeout());
@@ -250,6 +255,7 @@ public class MessageProcessor extends AbstractProcessor {
 
 
     private void generateFile(){
+        String fieldModule = "module";
         String fieldNameIdMap = "nameIdMap";
         String fieldReqMap = "reqMap";
         String fieldRspMap = "rspMap";
@@ -259,6 +265,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         // 构建代码块
         CodeBlock.Builder codeBlockBuilder = CodeBlock.builder()
+                .addStatement("$L = $S", fieldModule, module)
                 .addStatement("$L = $T.create()", fieldNameIdMap, HashBiMap.class)
                 .addStatement("$L = $T.create()", fieldReqMap, HashBasedTable.class)
                 .addStatement("$L = $T.create()", fieldRspMap, HashBasedTable.class)
@@ -316,6 +323,9 @@ public class MessageProcessor extends AbstractProcessor {
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.PUBLIC)
                 .addModifiers(Modifier.FINAL)
+                .addField(FieldSpec.builder(String.class,
+                        fieldModule, Modifier.PUBLIC, Modifier.STATIC)
+                        .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(BiMap.class, String.class, String.class),
                         fieldNameIdMap, Modifier.PUBLIC, Modifier.STATIC)
                         .build())

@@ -11,6 +11,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.*;
 
 /**
  * Created by Sissi on 2018/9/3.
+ * 数据协作消息定义。
  */
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
@@ -26,7 +27,7 @@ public enum Msg {
             paras = StringBuffer.class,
             userParas = TDCSSvrAddr.class,
             type = Request.GET)
-    DCGetServerAddr,
+    GetServerAddr,
 
     /**获取数据协作相关状态*/
     @Request(method = "GetDCSServerStateRt",
@@ -34,15 +35,14 @@ public enum Msg {
             paras = StringBuffer.class,
             userParas = TDCSSrvState.class,
             type = Request.GET)
-    DCGetState,
-
+    GetState,
 
     /**
-     * 登录数据协作建链响应
+     * 登录链路状态变化
      */
     @Response(clz = TDCSConnectResult.class,
             id = "DcsLoginResult_Ntf")
-    DCBuildLink4LoginRsp,
+    LoginLinkStateChanged,
 
     /**
      * 登录数据协作服务器
@@ -51,33 +51,33 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSRegInfo.class,
-            rspSeq = {"DCBuildLink4LoginRsp",  // NOTE: 若该响应bSuccess字段为false则不会收到DCLoginRsp。
-                    "DCLoginRsp"})
-    DCLogin,
+            rspSeq = {"LoginLinkStateChanged",
+                    "LoginRsp"})
+    Login,
 
     /**
      * 登录数据协作服务器响应
      */
     @Response(clz = TDCSResult.class,
             id = "DcsLoginSrv_Rsp")
-    DCLoginRsp,
+    LoginRsp,
 
     /**
      * 注销数据协作服务器
      */
     @Request(method = "DCSLogoutReq",
             owner = MethodOwner.DcsCtrl,
-            rspSeq = {"DCLogoutRsp", // NOTE: 若该响应bSuccess字段为false则不会收到DCBuildLink4LoginRsp
-                    "DCBuildLink4LoginRsp"
+            rspSeq = {"LogoutRsp",
+                    "LoginLinkStateChanged"
     })
-    DCLogout,
+    Logout,
 
     /**
      * 注销数据协作服务器响应
      */
     @Response(clz = TDCSResult.class,
             id = "DcsLogout_Rsp")
-    DCLogoutRsp,
+    LogoutRsp,
 
 
     /**查询数据协作地址*/
@@ -85,47 +85,42 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 数据协作所在会议e164号
-            rspSeq = "DCQueryAddrRsp"
+            rspSeq = "QueryAddrRsp"
     )
-    DCQueryAddr,
+    QueryAddr,
 
     /**
      * 查询数据协作地址响应
      */
     @Response(clz = DcsGetConfAddrRsp.class,
             id = "DcsGetConfAddr_Rsp")
-    DCQueryAddrRsp,
+    QueryAddrRsp,
 
     /**
-     * 创建数据协作建链响应/通知
+     * 数据协作链路状态变化
      */
     @Response(clz = TDCSConnectResult.class,
             id = "DcsConfResult_Ntf")
-    DCBuildLink4ConfRsp,
+    LinkStateChanged,
 
     /**
-     * 创建数据协作
+     * 开启数据协作
      */
     @Request(method = "DCSCreateConfReq",
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSCreateConf.class,
-            rspSeq = {"DCBuildLink4ConfRsp",  // NOTE: 若该响应bSuccess字段为false则不会收到DCConfCreated。
-                    "DCConfCreated"},
-            rspSeq2 = "DCConfCreated")
-    DCCreateConf,
+            rspSeq = {"LinkStateChanged",  // NOTE: 若该响应bSuccess字段为false则不会收到DCConfCreated。
+                    "CollaborateStarted"},
+            rspSeq2 = "CollaborateStarted")
+    StartCollaborate,
 
     /**
-     * 己端创建数据协作时的响应；
-     * 其他终端创建数据协作时的通知；
-     * <p>
-     * 当会议中有人创建数据协作时，平台会发送一个邀请通知给各个与会方，
-     * 下层（组件层）收到邀请会主动加入该数据协作，然后再上报该条消息给界面，
-     * 所以该消息既是响应也是通知。
+     * 数据协作已开启
      */
     @Response(clz = TDCSCreateConfResult.class,
             id = "DcsCreateConf_Rsp")
-    DCConfCreated,
+    CollaborateStarted,
 
 
     /**
@@ -138,16 +133,16 @@ public enum Msg {
             userParas = {String.class, // 会议e164
                     Integer.class // 是否同时退出会议。0表示退出协作的同时退出会议，1表示仅退出协作。
             },
-            rspSeq = {"DCQuitConfRsp",
-                    "DCBuildLink4ConfRsp"})
-    DCQuitConf,
+            rspSeq = {"QuitCollaborateRsp",
+                    "LinkStateChanged"})
+    QuitCollaborate,
 
     /**
      * 退出数据协作响应
      */
     @Response(clz = TDCSResult.class,
             id = "DcsQuitConf_Rsp")
-    DCQuitConfRsp,
+    QuitCollaborateRsp,
 
     /**
      * 结束数据协作
@@ -156,55 +151,54 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 会议e164
-            rspSeq = {"DCReleaseConfRsp","DCBuildLink4ConfRsp"},
-            rspSeq2 = {"DCReleaseConfRsp","DCReleaseConfNtf","DCBuildLink4ConfRsp"})
-    DCReleaseConf,
+            rspSeq = {"FinishCollaborateRsp","LinkStateChanged"},
+            rspSeq2 = {"FinishCollaborateRsp","CollaborateFinished","LinkStateChanged"})
+    FinishCollaborate,
 
     /**
      * 结束数据协作响应
      */
     @Response(clz = TDCSResult.class,
             id = "DcsReleaseConf_Rsp")
-    DCReleaseConfRsp,
+    FinishCollaborateRsp,
 
     /**
-     * 结束数据协作响应。
-     * 注：该响应也会作为通知广播给其他与会者。
+     * 数据协作已结束
      */
     @Response(clz = BaseTypeString.class,
             id = "DcsReleaseConf_Ntf")
-    DCReleaseConfNtf,
+    CollaborateFinished,
 
-    /** 获取数据协作配置*/
+    /** 查询数据协作配置*/
     @Request(method = "DCSGetConfInfoReq",
             owner = MethodOwner.DcsCtrl,
-            rspSeq = "DCQueryConfigRsp")
-    DCQueryConfig,
+            rspSeq = "QueryConfigRsp")
+    QueryConfig,
 
-    /** 获取数据协作配置响应*/
+    /** 查询数据协作配置响应*/
     @Response(clz = TDCSCreateConfResult.class,
             id = "DcsGetConfInfo_Rsp")
-    DCQueryConfigRsp,
+    QueryConfigRsp,
 
     /**修改数据协作配置*/
     @Request(method = "DCSSetConfInfoReq",
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSConfInfo.class,
-            rspSeq = {"DCModifyConfigRsp", "DCConfigModified"})
-    DCModifyConfig,
+            rspSeq = {"ModifyConfigRsp", "ConfigModified"})
+    ModifyConfig,
 
     /** 修改数据协作配置响应*/
     @Response(clz = DcsSetConfInfoRsp.class,
             id = "DcsSetConfInfo_Rsp")
-    DCModifyConfigRsp,
+    ModifyConfigRsp,
 
     /**
-     * 数据协作相关参数设置变更，如协作模式被修改。
+     * 数据协作配置已变更，如协作模式被修改。
      * */
     @Response(clz = TDCSConfInfo.class,
             id = "DcsUpdateConfInfo_Ntf")
-    DCConfigModified,
+    ConfigModified,
 
 
     // 数据协作权限控制相关
@@ -216,16 +210,16 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSOperator.class,
-            rspSeq = {"DCAddOperatorRsp",
-                    "DCOperatorAddedNtf"})
-    DCAddOperator,
+            rspSeq = {"AddOperatorRsp",
+                    "OperatorAdded"})
+    AddOperator,
 
     /**
      * 添加协作方响应
      */
     @Response(clz = TDCSResult.class,
             id = "DcsAddOperator_Rsp")
-    DCAddOperatorRsp,
+    AddOperatorRsp,
 
     /**
      * （主席）删除协作方
@@ -234,16 +228,16 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSOperator.class,
-            rspSeq = {"DCDelOperatorRsp",
-                    "DCOperatorDeletedNtf"})
-    DCDelOperator,
+            rspSeq = {"DelOperatorRsp",
+                    "OperatorDeleted"})
+    DelOperator,
 
     /**
      * 删除协作方响应
      */
     @Response(clz = TDCSResult.class,
             id = "DcsDelOperator_Rsp")
-    DCDelOperatorRsp,
+    DelOperatorRsp,
 
     /**
      * （自己）申请作为协作方
@@ -252,17 +246,17 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 申请者的e164
-            rspSeq = {"DCApplyOperatorRsp", "DCApplyOperatorRejectedNtf"},
-            rspSeq2 = {"DCApplyOperatorRsp", "DCOperatorAddedNtf"},
+            rspSeq = {"ApplyOperatorRsp", "ApplyOperatorRejected"},
+            rspSeq2 = {"ApplyOperatorRsp", "OperatorAdded"},
             timeout = 30)
-    DCApplyOperator,
+    ApplyOperator,
 
     /**
-     * 申请作为协作方响应
+     * 申请协作方响应
      */
     @Response(clz = TDCSResult.class,
             id = "DcsApplyOper_Rsp")
-    DCApplyOperatorRsp,
+    ApplyOperatorRsp,
 
     /**
      * （自己）取消作为协作方
@@ -271,15 +265,15 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 申请者的e164
-            rspSeq = {"DCCancelOperatorRsp"})
-    DCCancelOperator, // TODO 待调
+            rspSeq = {"CancelOperatorRsp"})
+    CancelOperator, // TODO 待调
 
     /**
      * 取消作为协作方响应
      */
     @Response(clz = TDCSResult.class,
             id = "DcsCancelOper_Rsp")
-    DCCancelOperatorRsp,
+    CancelOperatorRsp,
 
     /**
      * （主席）拒绝成员申请作为协作方的请求
@@ -288,40 +282,40 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSOperator.class)
-    DCRejectApplyOperator,
+    RejectApplyOperator,
 
     /**
      * 用户加入数据协作通知
      */
     @Response(clz = TDCSUserInfo.class,
             id = "DcsUserJoinConf_Ntf")
-    DCUserJoinedNtf,
+    UserJoined,
 
     /**
      * 成员（向主席）申请协作权通知
      */
     @Response(clz = TDCSUserInfo.class,
             id = "DcsUserApplyOper_Ntf")
-    DCApplyOperatorNtf,
+    ApplyOperatorNtf,
 
     /**
      * 协作方被添加通知
      */
     @Response(clz = TDCSUserInfos.class,
             id = "DcsAddOperator_Ntf")
-    DCOperatorAddedNtf,
+    OperatorAdded,
     /**
      * 协作方被删除通知
      */
     @Response(clz = TDCSUserInfos.class,
             id = "DcsDelOperator_Ntf")
-    DCOperatorDeletedNtf,
+    OperatorDeleted,
     /**
      * 申请协作权被拒绝通知
      */
     @Response(clz = TDCSUserInfo.class,
             id = "DcsRejectOper_Ntf")
-    DCApplyOperatorRejectedNtf,
+    ApplyOperatorRejected,
 
 
     /**
@@ -331,15 +325,15 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 会议e164
-            rspSeq = {"DCQueryAllMembersRsp"})
-    DCQueryAllMembers,
+            rspSeq = {"QueryAllMembersRsp"})
+    QueryAllMembers,
 
     /**
      * 获取数据协作会议中的所有成员响应
      */
     @Response(clz = DcsGetUserListRsp.class,
-            id = "DcsGetUserList_Rsp")  // 需单独定义的响应结构体名加Result后缀，需单独定义的参数名加para后缀
-            DCQueryAllMembersRsp,
+            id = "DcsGetUserList_Rsp")
+    QueryAllMembersRsp,
 
 
     // 数据协作画板相关
@@ -351,16 +345,16 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSNewWhiteBoard.class,
-            rspSeq = {"DCNewBoardRsp",
-                    "DCBoardCreatedNtf"})
-    DCNewBoard,
+            rspSeq = {"NewBoardRsp",
+                    "BoardCreated"})
+    NewBoard,
 
     /**
      * 新建画板响应
      */
     @Response(clz = DcsNewWhiteBoardRsp.class,
             id = "DcsNewWhiteBoard_Rsp")
-    DCNewBoardRsp,
+    NewBoardRsp,
 
     /**
      * 删除画板
@@ -370,16 +364,16 @@ public enum Msg {
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {String.class, // 当前会议e164
                     String.class}, // 画板Id
-            rspSeq = {"DCDelBoardRsp",
-                    "DCBoardDeletedNtf"})
-    DCDelBoard,
+            rspSeq = {"DelBoardRsp",
+                    "BoardDeleted"})
+    DelBoard,
 
     /**
      * 删除画板响应
      */
     @Response(clz = TDCSBoardResult.class,
             id = "DcsDelWhiteBoard_Rsp")
-    DCDelBoardRsp,
+    DelBoardRsp,
 
     /**
      * 删除所有画板
@@ -388,16 +382,16 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 当前会议e164
-            rspSeq = {"DCDelAllBoardRsp",
-                    "DCAllBoardDeletedNtf"})
-    DCDelAllBoard,
+            rspSeq = {"DelAllBoardsRsp",
+                    "AllBoardDeleted"})
+    DelAllBoards,
 
     /**
      * 删除所有画板响应
      */
     @Response(clz = TDCSBoardResult.class,
             id = "DcsDelAllWhiteBoard_Rsp")
-    DCDelAllBoardRsp,
+    DelAllBoardsRsp,
 
     /**
      * 切换画板
@@ -406,16 +400,16 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSSwitchReq.class,
-            rspSeq = {"DCSwitchBoardRsp",
-                    "DCBoardSwitchedNtf"})
-    DCSwitchBoard,
+            rspSeq = {"SwitchBoardRsp",
+                    "BoardSwitched"})
+    SwitchBoard,
 
     /**
      * 切换画板响应
      */
     @Response(clz = DcsSwitchRsp.class,
             id = "DcsSwitch_Rsp")
-    DCSwitchBoardRsp,
+    SwitchBoardRsp,
 
     /**
      * 查询当前画板
@@ -424,15 +418,15 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 会议e164
-            rspSeq = {"DCQueryCurBoardRsp"})
-    DCQueryCurBoard,
+            rspSeq = {"QueryCurBoardRsp"})
+    QueryCurBoard,
 
     /**
      * 查询当前画板响应
      */
     @Response(clz = DcsGetWhiteBoardRsp.class,
             id = "DcsGetCurWhiteBoard_Rsp")
-    DCQueryCurBoardRsp,
+    QueryCurBoardRsp,
 
 
     /**
@@ -443,15 +437,15 @@ public enum Msg {
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {String.class, // 会议e164
                     String.class}, // 画板id
-            rspSeq = {"DCQueryBoardRsp"})
-    DCQueryBoard,
+            rspSeq = {"QueryBoardRsp"})
+    QueryBoard,
 
     /**
      * 查询画板响应
      */
     @Response(clz = DcsGetWhiteBoardRsp.class,
             id = "DcsGetWhiteBoard_Rsp")
-    DCQueryBoardRsp,
+    QueryBoardRsp,
 
     /**
      * 查询所有画板
@@ -460,15 +454,15 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = String.class,
-            rspSeq = {"DCQueryAllBoardsRsp"})
-    DCQueryAllBoards,
+            rspSeq = {"QueryAllBoardsRsp"})
+    QueryAllBoards,
 
     /**
      * 查询所有白板响应
      */
     @Response(clz = DcsGetAllWhiteBoardRsp.class,
             id = "DcsGetAllWhiteBoard_Rsp")
-    DCQueryAllBoardsRsp,
+    QueryAllBoardsRsp,
 
     /**
      * 添加子页
@@ -477,41 +471,40 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbAddSubPageInfo.class})
-    DCAddSubPage, // TODO 待调
+    AddSubPage, // TODO 待调
 
 
     /**
      * 当前画板通知。
      * 该通知仅用于加入数据协作时通知入会方当前画板信息，其他场景下不会上报。
-     * 收到该通知后会从服务器拉取当前画板已有图元。
      */
     @Response(clz = TDCSBoardInfo.class,
             id = "DcsCurrentWhiteBoard_Ntf")
-    DCCurrentBoardNtf,
+    CurrentBoardNtf,
 
     /**
-     * 新建画板通知
+     * 画板已创建
      */
     @Response(id = "DcsNewWhiteBoard_Ntf", clz = TDCSBoardInfo.class)
-    DCBoardCreatedNtf,
+    BoardCreated,
 
     /**
-     * 切换画板通知
+     * 画板已切换
      */
     @Response(id = "DcsSwitch_Ntf", clz = TDCSBoardInfo.class)
-    DCBoardSwitchedNtf,
+    BoardSwitched,
 
     /**
-     * 删除画板通知
+     * 画板已删除
      */
     @Response(id = "DcsDelWhiteBoard_Ntf", clz = TDCSDelWhiteBoardInfo.class)
-    DCBoardDeletedNtf,
+    BoardDeleted,
 
     /**
-     * 删除所有画板通知
+     * 所有画板已删除
      */
     @Response(id = "DcsDelAllWhiteBoard_Ntf", clz = TDCSDelWhiteBoardInfo.class)
-    DCAllBoardDeletedNtf,
+    AllBoardDeleted,
 
 
     // 数据协作图元操作
@@ -523,8 +516,8 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbLineOperInfo.class},
-            rspSeq = "DCLineDrawnNtf")
-    DCDrawLine,
+            rspSeq = "LineDrawn")
+    DrawLine,
 
     /**
      * 画圆/椭圆
@@ -533,8 +526,8 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbCircleOperInfo.class},
-            rspSeq = "DCOvalDrawnNtf")
-    DCDrawOval,
+            rspSeq = "OvalDrawn")
+    DrawOval,
 
     /**
      * 画矩形
@@ -543,18 +536,18 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbRectangleOperInfo.class},
-            rspSeq = "DCRectDrawnNtf")
-    DCDrawRect,
+            rspSeq = "RectDrawn")
+    DrawRect,
 
     /**
-     * 画路径（铅笔操作）
+     * 画路径
      */
     @Request(method = "DCSOperPencilOperInfoCmd",
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbPencilOperInfo.class},
-            rspSeq = "DCPathDrawnNtf")
-    DCDrawPath,
+            rspSeq = "PathDrawn")
+    DrawPath,
 
     /**
      * 插入图片
@@ -563,8 +556,8 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbInsertPicOperInfo.class},
-            rspSeq = "DCPicInsertedNtf")
-    DCInsertPic,
+            rspSeq = "PicInserted")
+    InsertPic,
     /**
      * 删除图片
      * */
@@ -572,8 +565,8 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbDelPicOperInfo.class},
-            rspSeq = "DCPicDeletedNtf")
-    DCDeletePic,
+            rspSeq = "PicDeleted")
+    DelPic,
     /**
      * 拖动/放缩图片
      * */
@@ -581,8 +574,8 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbPitchPicOperInfo.class},
-            rspSeq = "DCPicDraggedNtf")
-    DCDragPic,
+            rspSeq = "PicDragged")
+    DragPic,
 //    @Request(method = "DCSOperPitchPicZoomCmd",
 //            owner = MethodOwner.DcsCtrl,
 //            paras = {StringBuffer.class, StringBuffer.class},
@@ -596,8 +589,8 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbReginEraseOperInfo.class},
-            rspSeq = "DCErasedNtf")
-    DCErase,
+            rspSeq = "Erased")
+    Erase,
 
     /**
      * 矩形擦除
@@ -606,8 +599,8 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbEraseOperInfo.class},
-            rspSeq = "DCRectErasedNtf")
-    DCRectErase,
+            rspSeq = "RectErased")
+    RectErase,
 
     /**
      * 清屏
@@ -616,8 +609,8 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSOperReq.class,
-            rspSeq = "DCScreenClearedNtf")
-    DCClearScreen,
+            rspSeq = "ScreenCleared")
+    ClearScreen,
 
 
     // 数据协作矩阵操作
@@ -628,8 +621,8 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbDisPlayInfo.class},
-            rspSeq = "DCFullScreenMatrixOpNtf")
-    DCMatrix,
+            rspSeq = "Matrixed")
+    Matrix,
 
     /**
      * 左旋转
@@ -638,7 +631,7 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSOperReq.class)
-    DCRotateLeft, // TODO 待调
+    RotateLeft, // TODO 待调
 
     /**
      * 右旋转
@@ -647,7 +640,7 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSOperReq.class)
-    DCRotateRight, // TODO 待调
+    RotateRight, // TODO 待调
 
 
     // 数据协作图元控制操作
@@ -659,8 +652,8 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbTabPageIdInfo.class},
-            rspSeq = "DCUndoneNtf")
-    DCUndo,
+            rspSeq = "Undone")
+    Undo,
 
     /**
      * 恢复（恢复被撤销的操作）
@@ -669,8 +662,8 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {TDCSOperReq.class, TDCSWbTabPageIdInfo.class},
-            rspSeq = "DCRedoneNtf")
-    DCRedo,
+            rspSeq = "Redone")
+    Redo,
 
 
     // 数据协作文件操作
@@ -683,17 +676,17 @@ public enum Msg {
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {BaseTypeString.class, // 下载url。NOTE: 下层规定先将url包装到该类里面转成json然后传下，下层将json解析出来进而萃取出url。
                     TDCSFileInfo.class},
-            rspSeq = {"DCUploadNtf", "DCPicDownloadableNtf"},
-            rspSeq2 = "DCPicDownloadableNtf",
+            rspSeq = {"UploadRsp", "PicDownloadable"},
+            rspSeq2 = "PicDownloadable",
             timeout = 15)
-    DCUpload,
+    Upload,
 
     /**
      * 上传文件响应
      */
     @Response(clz = TDCSFileLoadResult.class,
             id = "DcsUploadFile_Ntf")
-    DCUploadNtf,
+    UploadRsp,
 
 
     /**
@@ -703,15 +696,15 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSImageUrl.class,
-            rspSeq = {"DCQueryPicUploadUrlRsp"})
-    DCQueryPicUploadUrl,
+            rspSeq = {"QueryPicUploadUrlRsp"})
+    QueryPicUploadUrl,
 
     /**
      * 获取图片上传地址响应
      */
     @Response(clz = DcsUploadImageRsp.class,
             id = "DcsUploadImage_Rsp")
-    DCQueryPicUploadUrlRsp,
+    QueryPicUploadUrlRsp,
 
 
     /**
@@ -722,16 +715,16 @@ public enum Msg {
             paras = {StringBuffer.class, StringBuffer.class},
             userParas = {BaseTypeString.class,
                     TDCSFileInfo.class},
-            rspSeq = {"DCDownloadRsp"},
+            rspSeq = {"DownloadRsp"},
             timeout = 15)
-    DCDownload,
+    Download,
 
     /**
      * 下载响应
      */
     @Response(clz = TDCSFileLoadResult.class,
             id = "DcsDownloadFile_Rsp")
-    DCDownloadRsp,
+    DownloadRsp,
 
     /**
      * 获取图片下载地址
@@ -740,22 +733,22 @@ public enum Msg {
             owner = MethodOwner.DcsCtrl,
             paras = StringBuffer.class,
             userParas = TDCSImageUrl.class,
-            rspSeq = {"DCQueryPicUrlRsp"})
-    DCQueryPicUrl,
+            rspSeq = {"QueryPicUrlRsp"})
+    QueryPicUrl,
 
     /**
      * 获取下载图片地址响应
      */
     @Response(clz = DcsDownloadImageRsp.class,
             id = "DcsDownloadImage_Rsp")
-    DCQueryPicUrlRsp,
+    QueryPicUrlRsp,
 
     /**
      * 图片可下载通知
      */
     @Response(clz = TDCSImageUrl.class,
             id = "DcsDownloadImage_Ntf")
-    DCPicDownloadableNtf,
+    PicDownloadable,
 
 
     // 数据协作图元操作通知
@@ -768,100 +761,96 @@ public enum Msg {
 //    DCElementBeginNtf,
 
     /**
-     * 画直线通知
+     * 直线已绘制
      */
     @Response(clz = DcsOperLineOperInfoNtf.class,
             id = "DcsOperLineOperInfo_Ntf")
-    DCLineDrawnNtf,
+    LineDrawn,
 
     /**
-     * 画圆/椭圆通知
+     * 圆/椭圆已绘制
      */
     @Response(clz = DcsOperCircleOperInfoNtf.class,
             id = "DcsOperCircleOperInfo_Ntf")
-    DCOvalDrawnNtf,
+    OvalDrawn,
 
     /**
-     * 画矩形通知
+     * 矩形已绘制
      */
     @Response(clz = DcsOperRectangleOperInfoNtf.class,
             id = "DcsOperRectangleOperInfo_Ntf")
-    DCRectDrawnNtf,
+    RectDrawn,
 
     /**
-     * 画路径（铅笔操作）通知
+     * 路径已绘制
      */
     @Response(clz = DcsOperPencilOperInfoNtf.class,
             id = "DcsOperPencilOperInfo_Ntf")
-    DCPathDrawnNtf,
+    PathDrawn,
 
-//    /**彩笔操作通知*/
-//    @Deprecated
-//    @Response(clz = MsgBeans.DcsOperColorPenOperInfo_Ntf.class)
-//    DcsOperColorPenOperInfo_Ntf,
 
     /**
      * 图片插入通知
      */
     @Response(clz = DcsOperInsertPicNtf.class,
             id = "DcsOperInsertPic_Ntf")
-    DCPicInsertedNtf,
+    PicInserted,
 
     /**
      * 图片拖动通知
      */
     @Response(clz = DcsOperPitchPicDragNtf.class,
             id = "DcsOperPitchPicDrag_Ntf")
-    DCPicDraggedNtf,
+    PicDragged,
 
     /**
      * 图片删除通知
      */
     @Response(clz = DcsOperPitchPicDelNtf.class,
             id = "DcsOperPitchPicDel_Ntf")
-    DCPicDeletedNtf,
+    PicDeleted,
 
     /**
      * 黑板擦擦除通知
      */
     @Response(clz = DcsOperReginEraseNtf.class,
             id = "DcsOperReginErase_Ntf")
-    DCErasedNtf,
+    Erased,
 
     /**
      * 矩形擦除通知
      */
     @Response(clz = DcsOperEraseOperInfoNtf.class,
             id = "DcsOperEraseOperInfo_Ntf")
-    DCRectErasedNtf,
+    RectErased,
 
     /**
      * 全屏matrix操作通知（缩放、移动、旋转）
      */
     @Response(clz = DcsOperFullScreenNtf.class,
             id = "DcsOperFullScreen_Ntf")
-    DCFullScreenMatrixOpNtf,
+    Matrixed,
 
     /**
      * 撤销操作通知
      */
     @Response(clz = DcsOperUndoNtf.class,
             id = "DcsOperUndo_Ntf")
-    DCUndoneNtf,
+    Undone,
 
     /**
      * 恢复（恢复被撤销的操作）通知
      */
     @Response(clz = DcsOperRedoNtf.class,
             id = "DcsOperRedo_Ntf")
-    DCRedoneNtf,
+    Redone,
 
     /**
      * 清屏通知
      */
     @Response(clz = TDCSOperContent.class,
             id = "DcsOperClearScreen_Ntf")
-    DCScreenClearedNtf;
+    ScreenCleared;
 
 //    /**
 //     * 图元序列结束通知

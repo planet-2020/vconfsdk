@@ -132,31 +132,31 @@ final class ToDoConverter {
     public static Msg opTypeToReqMsg(EOpType type){
         switch (type){
             case DRAW_LINE:
-                return Msg.DCDrawLine;
+                return Msg.DrawLine;
             case DRAW_RECT:
-                return Msg.DCDrawRect;
+                return Msg.DrawRect;
             case DRAW_OVAL:
-                return Msg.DCDrawOval;
+                return Msg.DrawOval;
             case DRAW_PATH:
-                return Msg.DCDrawPath;
+                return Msg.DrawPath;
             case UNDO:
-                return Msg.DCUndo;
+                return Msg.Undo;
             case REDO:
-                return Msg.DCRedo;
+                return Msg.Redo;
             case CLEAR_SCREEN:
-                return Msg.DCClearScreen;
+                return Msg.ClearScreen;
             case ERASE:
-                return Msg.DCErase;
+                return Msg.Erase;
             case RECT_ERASE:
-                return Msg.DCRectErase;
+                return Msg.RectErase;
             case FULLSCREEN_MATRIX:
-                return Msg.DCMatrix;
+                return Msg.Matrix;
             case INSERT_PICTURE:
-                return Msg.DCInsertPic;
+                return Msg.InsertPic;
             case DELETE_PICTURE:
-                return Msg.DCDeletePic;
+                return Msg.DelPic;
             case DRAG_PICTURE:
-                return Msg.DCDragPic;
+                return Msg.DragPic;
             default:
                 return null;
         }

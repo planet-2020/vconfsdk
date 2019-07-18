@@ -47,12 +47,20 @@ public abstract class Caster<T extends Enum<T>> implements
 
     private Class<T> enumT;
 
+    private String msgPrefix="";
+
     @SuppressWarnings("ConstantConditions")
     protected Caster(){
         enumT = (Class<T>)((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments()[0];
         try {
-            MagicBook.instance().addChapter(Class.forName(enumT.getPackage().getName()+".Message$$Generated"));
+            Class<?> msgGenClz = Class.forName(enumT.getPackage().getName()+".Message$$Generated");
+            msgPrefix = msgGenClz.getField("module").get(null)+"_";
+            MagicBook.instance().addChapter(msgGenClz);
         } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
 
@@ -114,7 +122,7 @@ public abstract class Caster<T extends Enum<T>> implements
         if (null != ntfProcessorMap){
             for (T ntf : ntfProcessorMap.keySet()){
                 String ntfName = ntf.name();
-                if(notificationFairy.subscribe(this, ntfName)){
+                if(notificationFairy.subscribe(this, msgPrefix+ntfName)){
                     ntfListeners.put(ntfName, new LinkedHashSet<>());
                     this.ntfProcessorMap.put(ntf, ntfProcessorMap.get(ntf));
                 }
@@ -127,7 +135,7 @@ public abstract class Caster<T extends Enum<T>> implements
                 NtfProcessor ntfProcessor = ntfsProcessorMap.get(ntfs);
                 for (T ntf : ntfs){
                     String ntfName = ntf.name();
-                    if (notificationFairy.subscribe(this, ntfName)) {
+                    if (notificationFairy.subscribe(this, msgPrefix+ntfName)) {
                         ntfListeners.put(ntfName, new LinkedHashSet<>());
                         this.ntfProcessorMap.put(ntf, ntfProcessor);
                     }
@@ -220,12 +228,12 @@ public abstract class Caster<T extends Enum<T>> implements
             return;
         }
 
-        if (!sessionFairy.req(this, req.name(), ++reqSn, reqPara)){
+        if (!sessionFairy.req(this, msgPrefix+req.name(), ++reqSn, reqPara)){
             KLog.p(KLog.ERROR, "req failed");
             return;
         }
 
-        KLog.p("req=%s, reqSn=%s, listener=%s", req, reqSn, rspListener);
+        KLog.p(KLog.DEBUG,"req=%s, reqSn=%s, listener=%s", req, reqSn, rspListener);
 
         listenerLifecycleObserver.tryObserve(rspListener);
 
@@ -252,7 +260,7 @@ public abstract class Caster<T extends Enum<T>> implements
             ReqBundle value = entry.getValue();
             if (req == value.req
                     && rspListener==value.listener){
-                KLog.p("cancel reqSn=%s, req=%s, listener=%s", reqSn, value.req, value.listener);
+                KLog.p(KLog.DEBUG,"cancel reqSn=%s, req=%s, listener=%s", reqSn, value.req, value.listener);
                 sessionFairy.cancelReq(reqSn);
                 rspListeners.remove(reqSn);
                 listenerLifecycleObserver.unobserve(rspListener);
@@ -350,7 +358,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * @param paras 参数。
      * */
     protected void set(T set, Object... paras){
-        commandFairy.set(set.name(), paras);
+        commandFairy.set(msgPrefix+set.name(), paras);
     }
 
     /**
@@ -361,7 +369,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * @return 请求结果。
      * */
     protected Object get(T get, Object... paras){
-        return commandFairy.get(get.name(), paras);
+        return commandFairy.get(msgPrefix+get.name(), paras);
     }
 
 
@@ -400,7 +408,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * （驱使下层）发射响应/通知。仅用于模拟模式。
      * */
     public synchronized void eject(T msg){
-        String msgId = MagicBook.instance().getMsgId(msg.name());
+        String msgId = MagicBook.instance().getMsgId(msgPrefix+msg.name());
         crystalBall.emit(msgId);
     }
 
@@ -410,7 +418,7 @@ public abstract class Caster<T extends Enum<T>> implements
     public synchronized void eject(T[] msgs){
         String[] msgIds = new String[msgs.length];
         for (int i=0; i<msgIds.length; ++i) {
-            msgIds[i] = MagicBook.instance().getMsgId(msgs[i].name());
+            msgIds[i] = MagicBook.instance().getMsgId(msgPrefix+msgs[i].name());
         }
         crystalBall.emit(msgIds);
     }
@@ -464,6 +472,8 @@ public abstract class Caster<T extends Enum<T>> implements
 
     @Override
     public boolean onRsp(boolean bLast, String rspName, Object rspContent, String reqName, int reqSn, Object[] reqParas) {
+        rspName = rspName.substring(msgPrefix.length());
+        reqName = reqName.substring(msgPrefix.length());
         T req = T.valueOf(enumT, reqName);
         T rsp = T.valueOf(enumT, rspName);
         IResultListener resultListener = rspListeners.get(reqSn).listener;
@@ -471,7 +481,7 @@ public abstract class Caster<T extends Enum<T>> implements
         for (Object para : reqParas){
             sb.append(para).append("; ");
         }
-        KLog.p("rsp=%s, rspContent=%s, resultListener=%s, req=%s, reqSn=%s, \nreqParas=%s", rsp, rspContent, resultListener, reqName, reqSn, sb);
+        KLog.p(KLog.DEBUG,"rsp=%s, rspContent=%s, resultListener=%s, req=%s, reqSn=%s, \nreqParas=%s", rsp, rspContent, resultListener, reqName, reqSn, sb);
         boolean bConsumed = rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
         if (bConsumed){
             if (bLast){
@@ -486,6 +496,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     @Override
     public void onTimeout(String reqName, int reqSn, Object[] reqParas) {
+        reqName = reqName.substring(msgPrefix.length());
         T req = T.valueOf(enumT, reqName);
         IResultListener resultListener = rspListeners.remove(reqSn).listener;
         listenerLifecycleObserver.unobserve(resultListener);
@@ -493,7 +504,7 @@ public abstract class Caster<T extends Enum<T>> implements
         for (Object para : reqParas){
             sb.append(para).append("; ");
         }
-        KLog.p("TIMEOUT, req=%s, resultListener=%s, reqSn=%s, reqParas=%s", reqName, resultListener, reqSn, sb);
+        KLog.p(KLog.DEBUG,"TIMEOUT, req=%s, resultListener=%s, reqSn=%s, reqParas=%s", reqName, resultListener, reqSn, sb);
         boolean bConsumed = onTimeout(req, resultListener, reqParas);
         if (!bConsumed){
             // 超时未被消费则此处通知用户超时
@@ -509,13 +520,14 @@ public abstract class Caster<T extends Enum<T>> implements
 
     @Override
     public void onNtf(String ntfName, Object ntfContent) {
+        ntfName = ntfName.substring(msgPrefix.length());
         Set<Object> listeners = ntfListeners.get(ntfName);
         StringBuffer sb = new StringBuffer();
         for (Object listener : listeners){
             sb.append(listener).append("; ");
         }
         T ntf = T.valueOf(enumT, ntfName);
-        KLog.p("ntfId=%s, ntfContent=%s, listeners=%s", ntf, ntfContent, sb);
+        KLog.p(KLog.DEBUG,"ntfId=%s, ntfContent=%s, listeners=%s", ntf, ntfContent, sb);
         ntfProcessorMap.get(ntf).process(ntf, ntfContent, listeners);
     }
 
