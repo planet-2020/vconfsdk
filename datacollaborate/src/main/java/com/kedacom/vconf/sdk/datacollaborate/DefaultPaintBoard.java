@@ -1339,6 +1339,7 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             RectF bound = new RectF();
             bound.union(delIcon.boundary());
             bound.union(dashedRect.boundary());
+            matrix.mapRect(bound);
             return bound;
         }
 
