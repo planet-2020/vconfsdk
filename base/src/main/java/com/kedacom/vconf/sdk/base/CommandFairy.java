@@ -61,7 +61,7 @@ final class CommandFairy implements IFairy.ICommandFairy{
             sb.append(methodParas[i]).append(", ");
         }
         String methodName = magicBook.getMethod(setName);
-        Log.d(TAG, String.format("-*->| %s(%s) paras={%s}", setName, methodName, sb));
+        Log.d(TAG, String.format("-=->| %s(%s) paras={%s}", setName, methodName, sb));
         crystalBall.spell(magicBook.getMethodOwner(setName), methodName, methodParas, magicBook.getParaClasses(setName));
     }
 
@@ -102,9 +102,9 @@ final class CommandFairy implements IFairy.ICommandFairy{
             sb.append(methodParas[i]).append(", ");
         }
         String methodName = magicBook.getMethod(getName);
-        Log.d(TAG, String.format("-*-> %s(%s) paras={%s}", getName, methodName, sb));
+        Log.d(TAG, String.format("-=-> %s(%s) paras={%s}", getName, methodName, sb));
         crystalBall.spell(magicBook.getMethodOwner(getName), methodName, methodParas, magicBook.getParaClasses(getName));
-        Log.d(TAG, String.format("<-*- %s result=%s", getName, methodParas[methodParas.length-1]));
+        Log.d(TAG, String.format("<-=- %s result=%s", getName, methodParas[methodParas.length-1]));
 
         return gson.fromJson(methodParas[methodParas.length-1].toString(), userParaTypes[userParaTypes.length-1]); // XXX NOTE: 最后一个参数为出参！下层必须遵守这个约定
     }
