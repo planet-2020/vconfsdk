@@ -120,6 +120,7 @@ public class MessageProcessor extends AbstractProcessor {
 
     // 获取“请求-响应”相关信息
     private void parseMessage(TypeElement msgDefClass){
+        String module = msgDefClass.getAnnotation(Message.class).module();
         List<? extends Element> msgElements = msgDefClass.getEnclosedElements();
         Request request;
         Response response;
@@ -130,7 +131,7 @@ public class MessageProcessor extends AbstractProcessor {
             }
 
             if (null != (request = element.getAnnotation(Request.class))){
-                name = element.getSimpleName().toString();
+                name = module+"_"+element.getSimpleName().toString();
                 String method = request.method();
                 method = !method.isEmpty() ? method : name;
                 nameIdMap.put(name, method);
@@ -178,7 +179,7 @@ public class MessageProcessor extends AbstractProcessor {
 
             }
             else if (null != (response = element.getAnnotation(Response.class))){
-                name = element.getSimpleName().toString();
+                name = module+"_"+element.getSimpleName().toString();
                 String id = response.id();
                 id = !id.isEmpty() ? id : element.getSimpleName().toString();
                 nameIdMap.put(name, id);

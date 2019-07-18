@@ -14,7 +14,9 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.*;
  */
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-@Message
+@Message(
+        module = "DC" // abbreviation for DataCollaborate
+)
 public enum Msg {
     // 数据协作基础
 

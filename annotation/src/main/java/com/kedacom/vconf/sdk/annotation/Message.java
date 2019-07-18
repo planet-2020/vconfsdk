@@ -15,4 +15,10 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.CLASS)
 public @interface Message {
+    /**
+     * 消息所属模块。
+     * 将作为前缀添加到该模块每一条消息名称前。
+     * 建议使用模块缩写名且各模块间不要重复，如针对DataCollaborate模块可取值"DC"。
+     * */
+    String module();
 }
