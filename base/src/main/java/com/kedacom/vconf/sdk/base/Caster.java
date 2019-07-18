@@ -1,13 +1,10 @@
 package com.kedacom.vconf.sdk.base;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.Table;
 import com.kedacom.vconf.sdk.utils.lifecycle.IResultListener;
 import com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -15,7 +12,8 @@ import java.util.Map;
 import java.util.Set;
 
 @SuppressWarnings({"unchecked", "WeakerAccess"})
-public abstract class Caster<T extends Enum<T>> implements IFairy.ISessionFairy.IListener,
+public abstract class Caster<T extends Enum<T>> implements
+        IFairy.ISessionFairy.IListener,
         IFairy.INotificationFairy.IListener{
 
     static {
@@ -52,26 +50,10 @@ public abstract class Caster<T extends Enum<T>> implements IFairy.ISessionFairy.
     @SuppressWarnings("ConstantConditions")
     protected Caster(){
         enumT = (Class<T>)((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments()[0];
-        Class<?> msgGenClz = null;
         try {
-            msgGenClz = Class.forName(enumT.getPackage().getName()+".Message$$Generated");
+            MagicBook.instance().addChapter(Class.forName(enumT.getPackage().getName()+".Message$$Generated"));
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
-        }
-        if (null != msgGenClz){
-            try {
-                Field field = msgGenClz.getField("nameIdMap");
-                MagicBook magicBook = MagicBook.instance();
-                magicBook.addNameIdMap((BiMap<String, String>) field.get(null));
-                field = msgGenClz.getField("reqMap");
-                magicBook.addReqMap((Table<String, String, Object>) field.get(null));
-                field = msgGenClz.getField("rspMap");
-                magicBook.addRspMap((Table<String, String, Object>) field.get(null));
-            } catch (NoSuchFieldException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            }
         }
 
         sessionFairy = SessionFairy.instance();

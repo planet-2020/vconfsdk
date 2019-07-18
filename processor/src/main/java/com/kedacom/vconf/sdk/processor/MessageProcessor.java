@@ -5,7 +5,6 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Table;
-import com.kedacom.vconf.sdk.annotation.Consumer;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
@@ -50,7 +49,6 @@ import javax.tools.Diagnostic;
         "com.kedacom.vconf.sdk.annotation.Message",
         "com.kedacom.vconf.sdk.annotation.Request",
         "com.kedacom.vconf.sdk.annotation.Response",
-        "com.kedacom.vconf.sdk.annotation.Consumer",
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class MessageProcessor extends AbstractProcessor {
@@ -101,42 +99,20 @@ public class MessageProcessor extends AbstractProcessor {
 
     private boolean collectInfo(RoundEnvironment roundEnvironment) {
         Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Message.class);
-
-        if (!check(msgSet)){
-            messager.printMessage(Diagnostic.Kind.ERROR, "check failed!");
+        Element msg = null;
+        for (Element element : msgSet) {
+            msg = element; // 针对一个模块只处理一个被Message注解的类，多余的忽略。
+            break;
+        }
+        if (null == msg){
+            messager.printMessage(Diagnostic.Kind.ERROR, "No Elements Annotated With @Message!");
             return false;
         }
-
-        for (Element element : msgSet) {
-            if (null == packageName){
-                PackageElement packageElement = (PackageElement) element.getEnclosingElement(); // 生成类的包名跟被Message注解的类的包名保持一致
-                packageName = packageElement.getQualifiedName().toString();
-            }
-            parseMessage((TypeElement) element);
-        }
+        PackageElement packageElement = (PackageElement) msg.getEnclosingElement(); // 生成类的包名跟被Message注解的类的包名保持一致
+        packageName = packageElement.getQualifiedName().toString();
+        parseMessage((TypeElement) msg);
 
         className = "Message$$Generated";
-
-        return true;
-    }
-
-    private boolean check(Set<? extends Element> msgAnnotatedElements) {
-        if (null==msgAnnotatedElements || msgAnnotatedElements.isEmpty()){
-            return false;
-        }
-
-//        Message message;
-//        Set<String> values = new HashSet<>();
-//        String value;
-//        for (Element element : msgAnnotatedElements){
-//            message = element.getAnnotation(Message.class);
-//            value = message.value();
-//            if (values.contains(value)){ // XXX 注解处理器不能跨模块，这里达不到预期效果。该功能兹事体大，它能使代码组织结构得到很大的优化，期待解决方案。
-//                messager.printMessage(Diagnostic.Kind.ERROR, "Duplicated message value: "+value);
-//                return false; // Message的value必须全局唯一
-//            }
-//            values.add(value);
-//        }
 
         return true;
     }
@@ -271,58 +247,6 @@ public class MessageProcessor extends AbstractProcessor {
         return paraClzNames.toArray(new String[]{});
     }
 
-
-    // 获取待生成文件的包名
-    private void parsePackageName(RoundEnvironment roundEnvironment){
-        Set<? extends Element> consumerSet = roundEnvironment.getElementsAnnotatedWith(Consumer.class);
-        Consumer consumer;
-        Class[] clzs;
-        boolean found = false;
-        for (Element element:consumerSet){
-            if (found){
-                break;
-            }
-            consumer = element.getAnnotation(Consumer.class);
-            try {
-                clzs = consumer.value();
-                for (Class cls : clzs){
-//                    messager.printMessage(Diagnostic.Kind.NOTE, "Message.class.getCanonicalName(): "+Message.class.getCanonicalName()
-//                            + "\n clz name="+clz.getCanonicalName());
-                    if (Message.class.getCanonicalName().equals(cls.getCanonicalName())){
-                        PackageElement packageElement = (PackageElement) element.getEnclosingElement();
-                        packageName = packageElement.getQualifiedName().toString();
-                        messager.printMessage(Diagnostic.Kind.NOTE, "packageName: "+packageName);
-                        found = true;
-                        break;
-                    }
-                }
-            }catch (MirroredTypesException mte) {
-                List<? extends TypeMirror> classTypeMirrors = mte.getTypeMirrors();
-                DeclaredType declaredType;
-                for (TypeMirror classTypeMirror : classTypeMirrors) {
-                    declaredType = (DeclaredType) classTypeMirror;
-                    TypeElement classTypeElement = (TypeElement) declaredType.asElement();
-//                    messager.printMessage(Diagnostic.Kind.NOTE, "Message.class: " + Message.class.getCanonicalName()
-//                            + "\nclz name=" + classTypeElement.getQualifiedName().toString());
-                    if (Message.class.getCanonicalName().equals(classTypeElement.getQualifiedName().toString())){
-                        PackageElement packageElement = (PackageElement) element.getEnclosingElement();
-                        packageName = packageElement.getQualifiedName().toString();
-                        found = true;
-                        break;
-                    }
-                }
-
-            }
-        }
-
-        // 获取待生成文件的类名
-        className = Message.class.getSimpleName()+"$$Generated";
-
-        messager.printMessage(Diagnostic.Kind.NOTE,
-                "\ngen packageName="+packageName
-                + "\ngen className="+className);
-
-    }
 
     private void generateFile(){
         String fieldNameIdMap = "nameIdMap";

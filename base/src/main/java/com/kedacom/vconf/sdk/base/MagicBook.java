@@ -7,8 +7,10 @@ import com.google.common.collect.Table;
 import com.google.gson.Gson;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
+import java.lang.reflect.Field;
 
-@SuppressWarnings({"BooleanMethodIsAlwaysInverted", "FieldCanBeLocal"})
+
+@SuppressWarnings({"BooleanMethodIsAlwaysInverted", "FieldCanBeLocal", "unchecked"})
 final class MagicBook {
     private static MagicBook instance;
 
@@ -44,14 +46,30 @@ final class MagicBook {
         return instance;
     }
 
-    void addNameIdMap(BiMap<String, String> nameIdMap){
-        this.nameIdMap.putAll(nameIdMap);  // FIXME TODO 冲突检测
-    }
-    void addReqMap(Table<String, String, Object> reqMap){
-        this.reqMap.putAll(reqMap);  // FIXME TODO 冲突检测
-    }
-    void addRspMap(Table<String, String, Object> rspMap){
-        this.rspMap.putAll(rspMap);  // FIXME TODO 冲突检测
+    void addChapter(Class<?> chapter){
+        if (null == chapter) {
+            KLog.p(KLog.WARN,"null == chapter");
+            return;
+        }
+        try {
+            Field field = chapter.getField("nameIdMap");
+            BiMap<String, String> nameIdMap = (BiMap<String, String>) field.get(null);
+            for (String e : this.nameIdMap.keySet()){
+                if (nameIdMap.keySet().contains(e)){
+                    throw new IllegalArgumentException("duplicated msg "+e);
+                }
+            }
+            this.nameIdMap.putAll(nameIdMap);
+            field = chapter.getField("reqMap");
+            reqMap.putAll((Table<String, String, Object>) field.get(null));
+            field = chapter.getField("rspMap");
+            rspMap.putAll((Table<String, String, Object>) field.get(null));
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+
     }
 
     String getMsgName(String msgId){
