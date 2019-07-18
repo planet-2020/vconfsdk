@@ -1187,6 +1187,10 @@ public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     private void finishEditPic(){
+        if (null == onStateChangedListener){
+            KLog.p(KLog.WARN,"null == onStateChangedListener");
+            return;
+        }
         if (null == picEditStuff){
             KLog.p(KLog.ERROR,"null == picEditStuff");
             return;
