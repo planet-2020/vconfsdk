@@ -1,7 +1,7 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
-import com.kedacom.vconf.sdk.utils.lifecycle.IResultListener;
 
 import java.util.List;
 

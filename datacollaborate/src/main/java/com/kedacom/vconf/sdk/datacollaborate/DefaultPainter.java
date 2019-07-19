@@ -5,7 +5,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
 
-import com.kedacom.vconf.sdk.utils.lifecycle.IResultListener;
+import com.kedacom.vconf.sdk.base.IResultListener;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
 import com.kedacom.vconf.sdk.datacollaborate.bean.PainterInfo;

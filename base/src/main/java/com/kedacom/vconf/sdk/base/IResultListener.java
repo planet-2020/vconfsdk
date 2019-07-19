@@ -1,9 +1,11 @@
-package com.kedacom.vconf.sdk.utils.lifecycle;
+package com.kedacom.vconf.sdk.base;
+
+import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
 
 /**
  * 请求结果监听器。
  * */
-public interface IResultListener extends ILifecycleOwner{
+public interface IResultListener extends ILifecycleOwner {
     /**结果已抵达。
      * 该接口返回后根据情况立即回调onSuccess/onFailed/onTimeout
      * 该接口主要用于做一些公共处理，比如不论成功失败均需消隐进度条，不论failed还是timeout均需做一些善后处理。

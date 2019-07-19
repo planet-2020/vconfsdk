@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.base;
 
-import com.kedacom.vconf.sdk.utils.lifecycle.IResultListener;
 import com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
