@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.base;
+package com.kedacom.vconf.sdk.amulet;
 
 import android.os.Handler;
 import android.os.HandlerThread;

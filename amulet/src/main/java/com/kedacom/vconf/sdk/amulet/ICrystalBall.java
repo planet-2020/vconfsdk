@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.base;
+package com.kedacom.vconf.sdk.amulet;
 
 /**
  * Created by gaofan_kd7331, 2018-10-25

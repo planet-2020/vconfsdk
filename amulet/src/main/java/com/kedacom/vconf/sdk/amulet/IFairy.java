@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.base;
+package com.kedacom.vconf.sdk.amulet;
 
 
 public interface IFairy {

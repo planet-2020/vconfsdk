@@ -28,7 +28,7 @@ import android.view.View;
 import android.widget.FrameLayout;
 
 import com.google.common.collect.Sets;
-import com.kedacom.vconf.sdk.base.IResultListener;
+import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.datacollaborate.bean.*;
 import com.kedacom.vconf.sdk.utils.collection.CompatibleConcurrentLinkedDeque;
 import com.kedacom.vconf.sdk.utils.log.KLog;

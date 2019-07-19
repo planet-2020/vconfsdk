@@ -39,7 +39,7 @@ dependencies {
 //    implementation project(':base')
 //    implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"
 //    implementation 'com.kedacom.vconf.sdk:base:1.0.0'
-    implementation 'com.kedacom.vconf.sdk:base:2.0.0-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:amulet:2.0.0-SNAPSHOT'
 //    implementation ('com.kedacom.vconf.sdk:base:0.4.13-SNAPSHOT@aar'){
 //        transitive = true
 //    }
