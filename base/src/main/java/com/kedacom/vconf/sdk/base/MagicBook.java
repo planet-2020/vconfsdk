@@ -46,7 +46,7 @@ final class MagicBook {
         return instance;
     }
 
-    void addChapter(Class<?> chapter){
+    synchronized void addChapter(Class<?> chapter){
         if (null == chapter) {
             KLog.p(KLog.WARN,"null == chapter");
             return;

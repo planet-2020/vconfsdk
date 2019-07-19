@@ -10,29 +10,17 @@ import java.util.Map;
 
 
 final class NotificationFairy implements IFairy.INotificationFairy{
-
     private static final String TAG = NotificationFairy.class.getSimpleName();
 
-    private static NotificationFairy instance;
+    private static MagicBook magicBook = MagicBook.instance();
 
-    private MagicBook magicBook = MagicBook.instance();
-
-    private Gson gson = new Gson();
+    private static Gson gson = new Gson();
 
     private Map<String, LinkedHashSet<IListener>> subscribers = new LinkedHashMap<>();
 
     private ICrystalBall crystalBall;
 
-    private NotificationFairy(){}
-
-    synchronized static NotificationFairy instance() {
-        if (null == instance) {
-            instance = new NotificationFairy();
-        }
-
-        return instance;
-    }
-
+    NotificationFairy(){}
 
     @Override
     public boolean subscribe(IListener subscriber, String ntfName) {
@@ -106,7 +94,7 @@ final class NotificationFairy implements IFairy.INotificationFairy{
 
     @Override
     public void setCrystalBall(ICrystalBall crystalBall) {
-        this.crystalBall = crystalBall;
+//        this.crystalBall = crystalBall;
     }
 
 }

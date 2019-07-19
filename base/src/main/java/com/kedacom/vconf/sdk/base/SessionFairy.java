@@ -14,66 +14,58 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 
-//@SuppressWarnings("UnusedReturnValue")
 final class SessionFairy implements IFairy.ISessionFairy{
-
     private static final String TAG = SessionFairy.class.getSimpleName();
 
-    private static SessionFairy instance;
-
-    private Set<Session> sessions = new LinkedHashSet<>();
-
-    private Handler reqHandler;
+    private static Handler handler;
+    private static Handler reqHandler;
     private static final int MSG_ID_START_SESSION = 100;
     private static final int MSG_ID_FIN_DUE_TO_NO_RSP = 102;
     private static final int MSG_ID_TIMEOUT = 999;
 
-    private MagicBook magicBook = MagicBook.instance();
+    private static MagicBook magicBook = MagicBook.instance();
 
-    private Gson gson = new Gson();
+    private static Gson gson = new Gson();
 
     private ICrystalBall crystalBall;
 
-
-    private Handler handler = new Handler(Looper.getMainLooper()){
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what){
-                case MSG_ID_TIMEOUT:
-                    timeout((Session) msg.obj);
-                    break;
-                case MSG_ID_FIN_DUE_TO_NO_RSP:
-                    Session s = (Session) msg.obj;
-                    s.listener.onFinDueToNoRsp(s.reqName, s.reqSn, s.reqPara);
-                    break;
-            }
-        }
-    };
+    private Set<Session> sessions = new LinkedHashSet<>();
 
 
-    private SessionFairy(){
-        HandlerThread handlerThread = new HandlerThread("reqThr", Process.THREAD_PRIORITY_BACKGROUND);
-        handlerThread.start();
-        reqHandler = new Handler(handlerThread.getLooper()){
-            @Override
-            public void handleMessage(Message msg) {
-                switch (msg.what) {
-                    case MSG_ID_START_SESSION:
-                        startSession((Session) msg.obj);
-                        break;
+    SessionFairy(){
+        if (null == handler){
+            handler = new Handler(Looper.getMainLooper()){
+                @Override
+                public void handleMessage(Message msg) {
+                    switch (msg.what){
+                        case MSG_ID_TIMEOUT:
+                            timeout((Session) msg.obj);
+                            break;
+                        case MSG_ID_FIN_DUE_TO_NO_RSP:
+                            Session s = (Session) msg.obj;
+                            s.listener.onFinDueToNoRsp(s.reqName, s.reqSn, s.reqPara);
+                            break;
+                    }
                 }
-            }
-        };
-    }
-
-    synchronized static SessionFairy instance() {
-        if (null == instance) {
-            instance = new SessionFairy();
+            };
         }
 
-        return instance;
-    }
+        if (null == reqHandler) {
+            HandlerThread handlerThread = new HandlerThread("reqThr", Process.THREAD_PRIORITY_BACKGROUND);
+            handlerThread.start();
+            reqHandler = new Handler(handlerThread.getLooper()) {
+                @Override
+                public void handleMessage(Message msg) {
+                    switch (msg.what) {
+                        case MSG_ID_START_SESSION:
+                            startSession((Session) msg.obj);
+                            break;
+                    }
+                }
+            };
+        }
 
+    }
 
 
     @Override

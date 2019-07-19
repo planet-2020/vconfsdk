@@ -63,17 +63,14 @@ public abstract class Caster<T extends Enum<T>> implements
             e.printStackTrace();
         }
 
-        sessionFairy = SessionFairy.instance();
-        notificationFairy = NotificationFairy.instance();
-        commandFairy = CommandFairy.instance();
+        sessionFairy = new SessionFairy();
+        notificationFairy = new NotificationFairy();
+        commandFairy = new CommandFairy();
         crystalBall = CrystalBall.instance();
-
         ++count;
         crystalBall.addListener(sessionFairy, SESSION_FAIRY_BASE_PRIORITY+count);
         crystalBall.addListener(notificationFairy, NOTIFICATION_FAIRY_BASE_PRIORITY+count);
-
         sessionFairy.setCrystalBall(crystalBall);
-        notificationFairy.setCrystalBall(crystalBall);
         commandFairy.setCrystalBall(crystalBall);
 
         listenerLifecycleObserver = new ListenerLifecycleObserver(new ListenerLifecycleObserver.Callback(){
@@ -186,28 +183,24 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 启用/停用模拟器。
-     * 若启用则模拟器将替代底层组件并反馈模拟的响应/通知；
-     * 若停用则恢复正常模式，即请求通过底层组件发给平台平台反馈消息组件再上抛消息。
-     * NOTE: 仅用于本地调试。
-     * TODO, XXX: Fairy不要使用单例模式，这样可同时存在不同的Fairy*CrystalBall组合方式，
-     * 进而可针对单独的模块启用模拟模式而其他模块使用正常模式。
+     * 若启用则本模块的请求都交由模拟器处理，模拟器会反馈用户模拟的响应/通知；
+     * 若停用则恢复正常模式，正常模式下请求通过底层组件发给平台平台反馈消息。
+     * NOTE: 仅用于本地调试，正式产品中请停用模拟器。
      * @param bEnable true：启用，false：停用。
      * */
     public void enableSimulator(boolean bEnable){
         crystalBall.delListener(sessionFairy);
         crystalBall.delListener(notificationFairy);
         if (bEnable){
-            KLog.p(KLog.WARN, "switch to FakeCrystalBall");
             crystalBall = FakeCrystalBall.instance();
         }else{
             crystalBall = CrystalBall.instance();
         }
 
-        crystalBall.addListener(notificationFairy, NOTIFICATION_FAIRY_BASE_PRIORITY+count);
         crystalBall.addListener(sessionFairy, SESSION_FAIRY_BASE_PRIORITY+count);
+        crystalBall.addListener(notificationFairy, NOTIFICATION_FAIRY_BASE_PRIORITY+count);
 
         sessionFairy.setCrystalBall(crystalBall);
-        notificationFairy.setCrystalBall(crystalBall);
         commandFairy.setCrystalBall(crystalBall);
     }
 

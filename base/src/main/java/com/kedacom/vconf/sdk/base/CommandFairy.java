@@ -9,24 +9,13 @@ final class CommandFairy implements IFairy.ICommandFairy{
 
     private static final String TAG = CommandFairy.class.getSimpleName();
 
-    private static CommandFairy instance;
+    private static MagicBook magicBook = MagicBook.instance();
 
-    private Gson gson = new Gson();
-
-    private MagicBook magicBook = MagicBook.instance();
+    private static Gson gson = new Gson();
 
     private ICrystalBall crystalBall;
 
-    private CommandFairy(){
-    }
-
-    synchronized static CommandFairy instance() {
-        if (null == instance) {
-            instance = new CommandFairy();
-        }
-
-        return instance;
-    }
+    CommandFairy(){ }
 
 
     @Override
