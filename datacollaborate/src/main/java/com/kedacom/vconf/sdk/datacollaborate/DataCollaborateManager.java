@@ -784,7 +784,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
             case LoginRsp:
                 TDCSResult loginRes = (TDCSResult) rspContent;
-                if (loginRes.bSucces) {
+                if (loginRes.bSuccess) {
                     reportSuccess(null, listener);
                 }else{
                     reportFailed(convertErrorCode(loginRes.dwErrorCode), listener);
@@ -793,7 +793,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
             case LogoutRsp:
                 TDCSResult logoutRes = (TDCSResult) rspContent;
-                if (!logoutRes.bSucces){
+                if (!logoutRes.bSuccess){
                     cancelReq(Msg.Logout, listener);  // 后续不会有DCBuildLink4LoginRsp上来，取消该请求以防等待超时。
                     reportFailed(convertErrorCode(logoutRes.dwErrorCode), listener);
                 }
@@ -852,7 +852,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 break;
             case QuitCollaborateRsp:
                 TDCSResult quitRes = (TDCSResult) rspContent;
-                if (!quitRes.bSucces){
+                if (!quitRes.bSuccess){
                     cancelReq(Msg.QuitCollaborate, listener);
                     reportFailed(convertErrorCode(quitRes.dwErrorCode), listener);
                 }
@@ -1114,7 +1114,7 @@ public class DataCollaborateManager extends Caster<Msg> {
         switch (rspId){
             case AddOperatorRsp:
                 TDCSResult result = (TDCSResult) rspContent;
-                if (!result.bSucces){
+                if (!result.bSuccess){
                     KLog.p(KLog.ERROR, "add operator failed, errorCode=%s", result.dwErrorCode);
                     cancelReq(reqId, listener);
                     reportFailed(convertErrorCode(result.dwErrorCode), listener);
@@ -1143,7 +1143,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
             case DelOperatorRsp:
                 result = (TDCSResult) rspContent;
-                if (!result.bSucces){
+                if (!result.bSuccess){
                     KLog.p(KLog.ERROR, "del operator failed, errorCode=%s", result.dwErrorCode);
                     cancelReq(reqId, listener);
                     reportFailed(convertErrorCode(result.dwErrorCode), listener);
@@ -1161,7 +1161,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
             case ApplyOperatorRsp:
                 result = (TDCSResult) rspContent;
-                if (!result.bSucces){
+                if (!result.bSuccess){
                     KLog.p(KLog.ERROR, "applying operator failed, errorCode=%s", result.dwErrorCode);
                     cancelReq(reqId, listener);
                     reportFailed(convertErrorCode(result.dwErrorCode), listener);
@@ -1179,7 +1179,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
             case CancelOperatorRsp:
                 result = (TDCSResult) rspContent;
-                if (result.bSucces){
+                if (result.bSuccess){
                     reportSuccess(null, listener);
                 }else{
                     reportFailed(convertErrorCode(result.dwErrorCode), listener);
@@ -1188,7 +1188,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
             case QueryAllMembersRsp:
                 DcsGetUserListRsp userListRsp = (DcsGetUserListRsp) rspContent;
-                if (userListRsp.MainParam.bSucces){
+                if (userListRsp.MainParam.bSuccess){
                     List<DCMember> dcMembers = new ArrayList<>();
                     for (TDCSConfUserInfo user : userListRsp.AssParam.atUserList){
                         dcMembers.add(ToDoConverter.fromTransferObj(user));
@@ -1248,7 +1248,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
             case QueryAllBoardsRsp:
                 DcsGetAllWhiteBoardRsp queryAllBoardsResult = (DcsGetAllWhiteBoardRsp) rspContent;
-                if (!queryAllBoardsResult.MainParam.bSucces){
+                if (!queryAllBoardsResult.MainParam.bSuccess){
                     KLog.p(KLog.ERROR, "QueryAllBoards failed, errorCode=%s", queryAllBoardsResult.MainParam.dwErrorCode);
                     reportFailed(convertErrorCode(queryAllBoardsResult.MainParam.dwErrorCode), listener);
                     return true;
@@ -1381,7 +1381,7 @@ public class DataCollaborateManager extends Caster<Msg> {
                 if (!para0.achWbPicentityId.equals(queryPicUrlResult.AssParam.achWbPicentityId)) {
                     return false; // 不是我请求的图片的结果。（下层消息不可靠，可能乱序、重复，故需做这样的过滤）
                 }
-                if (queryPicUrlResult.MainParam.bSucces){
+                if (queryPicUrlResult.MainParam.bSuccess){
                     reportSuccess(queryPicUrlResult.AssParam, listener);
                 }else{
                     reportFailed(convertErrorCode(queryPicUrlResult.MainParam.dwErrorCode), listener);
@@ -1403,7 +1403,7 @@ public class DataCollaborateManager extends Caster<Msg> {
 
             case QueryPicUploadUrlRsp:
                 DcsUploadImageRsp queryPicUploadUrlResult = (DcsUploadImageRsp) rspContent;
-                if (queryPicUploadUrlResult.MainParam.bSucces){
+                if (queryPicUploadUrlResult.MainParam.bSuccess){
                     reportSuccess(queryPicUploadUrlResult.AssParam, listener);
                 }else{
                     reportFailed(convertErrorCode(queryPicUploadUrlResult.MainParam.dwErrorCode), listener);
@@ -1507,7 +1507,7 @@ public class DataCollaborateManager extends Caster<Msg> {
     private boolean onRsp(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
             case QueryAddrRsp:
-                reportSuccess(((DcsGetConfAddrRsp) rspContent).MainParam.bSucces, listener);
+                reportSuccess(((DcsGetConfAddrRsp) rspContent).MainParam.bSuccess, listener);
                 break;
 
             default:

@@ -7,7 +7,7 @@ package com.kedacom.vconf.sdk.datacollaborate.bean.transfer;
 import androidx.annotation.NonNull;
 
 public class TDCSResult {
-    public boolean bSucces;
+    public boolean bSuccess;
     public int dwErrorCode;
     public String achConfE164;
 
@@ -16,7 +16,7 @@ public class TDCSResult {
     @Override
     public String toString() {
         return "TDCSResult{" +
-                "bSucces=" + bSucces +
+                "bSuccess=" + bSuccess +
                 ", dwErrorCode=" + dwErrorCode +
                 ", achConfE164='" + achConfE164 + '\'' +
                 '}';
