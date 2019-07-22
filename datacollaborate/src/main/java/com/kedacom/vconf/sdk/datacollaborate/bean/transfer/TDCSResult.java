@@ -11,9 +11,6 @@ public class TDCSResult {
     public int dwErrorCode;
     public String achConfE164;
 
-    public TDCSResult() {
-        bSucces = true;
-    }
 
     @NonNull
     @Override

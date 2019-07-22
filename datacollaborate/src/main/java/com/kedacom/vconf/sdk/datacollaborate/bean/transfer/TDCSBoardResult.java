@@ -13,10 +13,6 @@ public class TDCSBoardResult {
     public String achTabId;
     public int dwPageId;
 
-    public TDCSBoardResult() {
-        bSuccess = true;
-    }
-
     @NonNull
     @Override
     public String toString() {

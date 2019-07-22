@@ -22,13 +22,6 @@ public class TDCSBoardInfo implements Comparable<TDCSBoardInfo>{
     public String achUploadUrl;     // 图片上传Url（限文档）
     public int dwWbAnonyId;         // 平台成功响应后，平台填写（限白板）
 
-    public TDCSBoardInfo() {
-        achWbName = "board";
-        emWbMode = EmDcsWbMode.emWbModeWB;
-        achTabId = "board";
-        achWbCreatorE164 = "e164";
-    }
-
     public TDCSBoardInfo(String achTabId, String achWbCreatorE164) {
         this.emWbMode = EmDcsWbMode.emWbModeWB;
         this.dwWbPageNum = 1;

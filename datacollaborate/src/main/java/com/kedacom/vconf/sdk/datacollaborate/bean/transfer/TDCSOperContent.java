@@ -14,8 +14,4 @@ public class TDCSOperContent {
     public String achFromE164;      // 谁画的
     public boolean bCacheElement;   // 是否是服务器缓存的图元
 
-    public TDCSOperContent() {
-        achTabId = "board";
-        emOper = EmDcsOper.emWbClearScreen;
-    }
 }

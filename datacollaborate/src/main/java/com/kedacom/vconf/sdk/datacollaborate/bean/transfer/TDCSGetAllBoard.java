@@ -15,10 +15,6 @@ public class TDCSGetAllBoard{
     public int dwBoardNum;
     public List<TDCSBoardInfo> atBoardInfo;
 
-    public TDCSGetAllBoard() {
-        atBoardInfo = new ArrayList<>();
-        atBoardInfo.add(new TDCSBoardInfo());
-    }
 
     @NonNull
     @Override
