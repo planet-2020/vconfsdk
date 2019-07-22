@@ -38,7 +38,6 @@ import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.MirroredTypesException;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
-import javax.tools.Diagnostic;
 
 /**
  * Created by Sissi on 2018/9/3.
@@ -86,7 +85,12 @@ public class MessageProcessor extends AbstractProcessor {
 
         messager = processingEnv.getMessager();
 
-        if (collectInfo(roundEnvironment)) {
+        Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Message.class);
+        for (Element element : msgSet) {
+            if (ElementKind.ENUM != element.getKind()){
+                continue;
+            }
+            parseMessage((TypeElement) element);
             generateFile();
         }
 
@@ -94,30 +98,14 @@ public class MessageProcessor extends AbstractProcessor {
     }
 
 
-    private boolean collectInfo(RoundEnvironment roundEnvironment) {
-        Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Message.class);
-        Element msg = null;
-        for (Element element : msgSet) {
-            msg = element; // 针对一个模块只处理一个被Message注解的类，多余的忽略。
-            break;
-        }
-        if (null == msg){
-            messager.printMessage(Diagnostic.Kind.ERROR, "No Elements Annotated With @Message!");
-            return false;
-        }
-        PackageElement packageElement = (PackageElement) msg.getEnclosingElement(); // 生成类的包名跟被Message注解的类的包名保持一致
-        packageName = packageElement.getQualifiedName().toString();
-        parseMessage((TypeElement) msg);
 
-        className = "Message$$Generated";
-
-        return true;
-    }
-
-
-    // 获取“请求-响应”相关信息
     private void parseMessage(TypeElement msgDefClass){
+        packageName = ((PackageElement) msgDefClass.getEnclosingElement()).getQualifiedName().toString();
+        className = "Message$$Generated";
         module = msgDefClass.getAnnotation(Message.class).module();
+        nameIdMap.clear();
+        reqMap.clear();
+        rspMap.clear();
         List<? extends Element> msgElements = msgDefClass.getEnclosedElements();
         Request request;
         Response response;
