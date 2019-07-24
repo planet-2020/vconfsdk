@@ -9,7 +9,7 @@ import android.util.Log;
 import android.util.SparseIntArray;
 
 import com.google.gson.Gson;
-import com.kedacom.vconf.sdk.utils.lang.PrimitiveTypeHelper;
+import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -96,25 +96,8 @@ final class SessionFairy implements IFairy.ISessionFairy{
             return false;
         }
 
-        // 检查参数合法性
-        Class[] classes = magicBook.getUserParaClasses(reqName);
-        if (0 == classes.length){
-            classes = magicBook.getParaClasses(reqName);// 如果没有指定用户参数，则用户参数同native方法参数
-        }
-        if (reqPara.length < classes.length){ // 传入的请求参数个数不得少于期望的（但可以多于）。
-            Log.e(TAG, String.format("invalid para nums for %s, expect #%s but got #%s", reqName, classes.length, reqPara.length));
-            return false;
-        }
-        for(int i=0; i<classes.length; ++i){
-            if (null == reqPara[i]){
-                continue;
-            }
-            Class reqParaClz = reqPara[i].getClass();
-            if (reqParaClz==classes[i]
-                    || classes[i].isPrimitive() && reqParaClz==PrimitiveTypeHelper.getWrapperClass(classes[i])){
-                continue;
-            }
-            Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", reqName, classes[i], reqPara[i].getClass()));
+        if (!magicBook.checkUserPara(reqName, reqPara)){
+            KLog.p("checkUserPara not pass");
             return false;
         }
 

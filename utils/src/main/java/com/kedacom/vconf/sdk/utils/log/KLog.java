@@ -24,7 +24,7 @@ public class KLog {
     public static final int WARN = 4;
     public static final int ERROR = 5;
     public static final int FATAL = 6;
-    private static int level = INFO;
+    private static int level = DEBUG;
 
     private static boolean isFileTraceInited = false;
     private static boolean isFileTraceEnabled = false;

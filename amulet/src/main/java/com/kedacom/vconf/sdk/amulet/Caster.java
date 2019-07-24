@@ -221,7 +221,7 @@ public abstract class Caster<T extends Enum<T>> implements
         }
 
         if (!sessionFairy.req(this, msgPrefix+req.name(), ++reqSn, reqPara)){
-            KLog.p(KLog.ERROR, "req failed");
+            KLog.p(KLog.ERROR, "%s failed", req);
             return;
         }
 

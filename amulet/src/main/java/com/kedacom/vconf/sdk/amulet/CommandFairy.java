@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.amulet;
 import android.util.Log;
 
 import com.google.gson.Gson;
+import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.util.Arrays;
 
@@ -32,18 +33,9 @@ final class CommandFairy implements IFairy.ICommandFairy{
             return;
         }
 
-        // 检查参数合法性
-        Class[] userParaTypes = magicBook.getUserParaClasses(setName);
-        if (userParaTypes.length != paras.length){
-            Log.e(TAG, String.format("invalid para nums for %s, expect #%s but got #%s", setName, userParaTypes.length, paras.length));
+        if (!magicBook.checkUserPara(setName, paras)){
+            KLog.p("checkUserPara not pass");
             return;
-        }
-        for(int i=0; i<userParaTypes.length; ++i){
-            if (null != paras[i]
-                    && userParaTypes[i] != paras[i].getClass()){
-                Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", setName, userParaTypes[i], paras[i].getClass()));
-                return;
-            }
         }
 
         Object[] methodParas = magicBook.userPara2MethodPara(paras, magicBook.getParaClasses(setName));
@@ -69,24 +61,19 @@ final class CommandFairy implements IFairy.ICommandFairy{
             return null;
         }
 
-        // 检查参数合法性
-        Class<?>[] userParaTypes = magicBook.getUserParaClasses(getName);
-        if (userParaTypes.length-1 != paras.length){ // NOTE: 约定native方法的最后一个参数为出参不校验。为了方便使用用户无需传入出参以获得结果而是通过返回值获取结果。所以用户参数个数比底层方法所需参数个数少1（少了最后一个出参）
-            Log.e(TAG, String.format("invalid para nums for %s, expect #%s but got #%s", getName, userParaTypes.length-1, paras.length));
+        if (!magicBook.checkUserPara(getName, paras)){
+            KLog.p("checkUserPara not pass");
             return null;
         }
-        for(int i=0; i<userParaTypes.length-1; ++i){
-            if (null != paras[i]
-                    && userParaTypes[i] != paras[i].getClass()){
-                Log.e(TAG, String.format("invalid para type for %s, expect %s but got %s", getName, userParaTypes[i], paras[i].getClass()));
-                return null;
-            }
-        }
+
+        // 填充用户参数
+        // （用户传入的参数个数比注册的少1个，因为注册的包含传出参数用来接收请求结果，
+        // 而用户是通过返回值获取结果而非传出参数，所以少了1个传出参数，但是此处内部处理时需要参数对齐，个数要一致）
         paras = Arrays.copyOf(paras, paras.length+1); // 对于get方法最后一个参数为出参，用户未传入，此处我们补全。
-        paras[paras.length-1] = new StringBuffer(); // 出参默认类型为StringBuffer
+        paras[paras.length-1] = new StringBuffer();
         Object[] methodParas = magicBook.userPara2MethodPara(paras, magicBook.getParaClasses(getName));
         StringBuffer sb = new StringBuffer();
-        for (int i=0; i<methodParas.length; ++i){
+        for (int i=0; i<methodParas.length; ++i){ // TODO 使用KLog的打印数组功能直接打印
             sb.append(methodParas[i]).append(", ");
         }
         String methodName = magicBook.getMethod(getName);
@@ -94,7 +81,8 @@ final class CommandFairy implements IFairy.ICommandFairy{
         crystalBall.spell(magicBook.getMethodOwner(getName), methodName, methodParas, magicBook.getParaClasses(getName));
         Log.d(TAG, String.format("<-=- %s result=%s", getName, methodParas[methodParas.length-1]));
 
-        return gson.fromJson(methodParas[methodParas.length-1].toString(), userParaTypes[userParaTypes.length-1]); // XXX NOTE: 最后一个参数为出参！下层必须遵守这个约定
+        Class<?>[] userParaTypes = magicBook.getUserParaClasses(getName);
+        return gson.fromJson(methodParas[methodParas.length-1].toString(), userParaTypes[userParaTypes.length-1]); // XXX NOTE: 最后一个参数为出参！下层通过该参数反馈用户结果，必须遵守这个约定
     }
 
     @Override

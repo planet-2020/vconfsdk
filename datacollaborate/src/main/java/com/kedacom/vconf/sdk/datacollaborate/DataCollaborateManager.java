@@ -332,6 +332,11 @@ public class DataCollaborateManager extends Caster<Msg> {
             return;
         }
         TDCSSvrAddr svrAddr = (TDCSSvrAddr) get(Msg.GetServerAddr);
+        if (null == svrAddr){
+            KLog.p(KLog.ERROR, "can not fetch DCS server address, have you logined APS yet? ");
+            if (null != resultListener) reportFailed(ErrCode_Failed, resultListener);
+            return;
+        }
         curTerminalType = ToDoConverter.toTransferObj(terminalType);
         String ip = null;
         try {

@@ -148,6 +148,44 @@ final class MagicBook {
         return (int) rspMap.row(rspName).get(COL_DELAY);
     }
 
+    boolean checkUserPara(String reqName, Object[] userParas){
+        Class[] classes = getUserParaClasses(reqName);
+        if (null==classes || 0 == classes.length){
+            classes = getParaClasses(reqName);// 如果没有指定用户参数类型，则用户参数类型同native方法参数类型
+        }
+        if (null==classes){
+            KLog.p(KLog.ERROR, "reqName=%s, null==classes", reqName);
+            return false;
+        }
+
+        boolean invalidParasNum =
+                isSession(reqName) && userParas.length<classes.length // 对于Session请求，参数个数不得少于注册的
+                || isSet(reqName) && userParas.length<classes.length  // 对于Set请求，参数个数需注册的
+                || isGet(reqName) && userParas.length != classes.length-1; // 对于Get请求，参数个数需比注册的少1（少一个传出参数，用户通过返回值获取结果而非传出参数）
+
+        if (invalidParasNum) {
+            KLog.p(KLog.ERROR, "invalid para nums for %s, expect #%s but got #%s", reqName, classes.length, userParas.length);
+            return false;
+        }
+
+        int userParasNum = isGet(reqName) ? classes.length-1 : classes.length;
+
+        for(int i=0; i<userParasNum; ++i){
+            if (null == userParas[i]){
+                continue;
+            }
+            Class reqParaClz = userParas[i].getClass();
+            if (reqParaClz==classes[i]
+                    || classes[i].isPrimitive() && reqParaClz==PrimitiveTypeHelper.getWrapperClass(classes[i])){
+                continue;
+            }
+            KLog.p(KLog.ERROR, "invalid para type for %s, expect %s but got %s", reqName, classes[i], reqParaClz);
+            return false;
+        }
+
+        return true;
+
+    }
 
     Object[] userPara2MethodPara(Object[] userParas, Class<?>[] methodParaTypes){
         if (null == methodParaTypes || userParas.length < methodParaTypes.length){
