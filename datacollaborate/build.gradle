@@ -32,6 +32,7 @@ dependencies {
 
     compileOnly project(':annotation')
     annotationProcessor project(':processor')
+
     implementation 'com.kedacom.vconf.sdk:utils:1.0.0-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:amulet:1.0.0-SNAPSHOT'
 

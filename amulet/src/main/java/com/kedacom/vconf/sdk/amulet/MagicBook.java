@@ -5,6 +5,8 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Table;
 import com.google.gson.Gson;
+import com.kedacom.vconf.sdk.utils.lang.PrimitiveTypeHelper;
+import com.kedacom.vconf.sdk.utils.lang.StringHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Field;
@@ -153,38 +155,32 @@ final class MagicBook {
             return userParas;
         }
         Object[] methodParas = new Object[methodParaTypes.length];
-        Object userPara;
-        Class<?> methodParaType;
         for (int i=0; i<methodParaTypes.length; ++i){
-            userPara = userParas[i];
-            methodParaType = methodParaTypes[i];
+            Object userPara = userParas[i];
+            Class<?> methodParaType = methodParaTypes[i];
             KLog.p(KLog.DEBUG,"userPara[%s].class=%s, methodPara[%s].class=%s", i, null==userPara? null : userPara.getClass(), i, methodParaType);
-            if (methodParaType.isPrimitive()) {
-                if ((userPara instanceof Byte && Byte.TYPE == methodParaType)
-                        || (userPara instanceof Character && Character.TYPE == methodParaType)
-                        || (userPara instanceof Short && Short.TYPE == methodParaType)
-                        || (userPara instanceof Integer && Integer.TYPE == methodParaType)
-                        || (userPara instanceof Long && Long.TYPE == methodParaType)
-                        || (userPara instanceof Float && Float.TYPE == methodParaType)
-                        || (userPara instanceof Double && Double.TYPE == methodParaType)
-                        || (userPara instanceof Boolean && Boolean.TYPE == methodParaType)) {
-                    methodParas[i] = userPara;
+            if (null == userPara){
+                methodParas[i] = methodParaType.isPrimitive() ? PrimitiveTypeHelper.getDefaultValue(methodParaType) : null;
+            }else if (userPara.getClass() == methodParaType){
+                methodParas[i] = userPara;
+            }else {
+                if (StringHelper.isStringCompatible(methodParaType)) {
+                    if (StringHelper.isStringCompatible(userPara.getClass())) {
+                        methodParas[i] = StringHelper.convert2CompatibleType(methodParaType, userPara);
+                    }else {
+                        methodParas[i] = StringHelper.convert2CompatibleType(methodParaType, gson.toJson(userPara));
+                    }
+                } else if (methodParaType.isPrimitive()) {
+                    if (userPara.getClass() == PrimitiveTypeHelper.getWrapperClass(methodParaType)){
+                        methodParas[i] = userPara;
+                    }else{
+                        throw new ClassCastException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+methodParaType);
+                    }
                 } else {
-                    KLog.p(KLog.ERROR, "try convert userPara %s to methodPara %s failed", null==userPara? null : userPara.getClass(), methodParaTypes[i]);
-                    methodParas[i] = userPara;
-                }
-            }else if (userPara instanceof String && StringBuffer.class == methodParaType){
-                methodParas[i] = new StringBuffer((String) userPara);
-            } else{
-                if (String.class == methodParaType){
-                    methodParas[i] = gson.toJson(userPara);
-                }else if (StringBuffer.class == methodParaType){
-                    methodParas[i] = new StringBuffer(gson.toJson(userPara));
-                }else {
-                    KLog.p(KLog.DEBUG,"directly assign userPara %s to methodPara %s", userPara.getClass(), methodParaTypes[i]);
-                    methodParas[i] = userPara;
+                    throw new IllegalArgumentException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+methodParaType);
                 }
             }
+
         }
 
         return methodParas;

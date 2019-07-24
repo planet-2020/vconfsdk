@@ -4,6 +4,8 @@ import android.util.Log;
 
 import com.google.gson.Gson;
 
+import java.util.Arrays;
+
 
 final class CommandFairy implements IFairy.ICommandFairy{
 
@@ -80,11 +82,8 @@ final class CommandFairy implements IFairy.ICommandFairy{
                 return null;
             }
         }
-        Object[] paddedParas = new Object[paras.length+1];
-        for (int i=0; i<paras.length; ++i){
-            paddedParas[i] = paras[i];
-        }
-        paras = paddedParas;
+        paras = Arrays.copyOf(paras, paras.length+1); // 对于get方法最后一个参数为出参，用户未传入，此处我们补全。
+        paras[paras.length-1] = new StringBuffer(); // 出参默认类型为StringBuffer
         Object[] methodParas = magicBook.userPara2MethodPara(paras, magicBook.getParaClasses(getName));
         StringBuffer sb = new StringBuffer();
         for (int i=0; i<methodParas.length; ++i){
