@@ -99,28 +99,12 @@ public abstract class Caster<T extends Enum<T>> implements
             }
         });
 
-        Map<T, RspProcessor<T>> rspProcessorMap = rspProcessors();
-        if (null != rspProcessorMap) {
-            this.rspProcessorMap.putAll(rspProcessorMap);
-        }
-
         Map<T[], RspProcessor<T>> rspsProcessorMap = rspsProcessors();
         if (null != rspsProcessorMap){
             for (T[] reqs : rspsProcessorMap.keySet()){
                 RspProcessor rspProcessor = rspsProcessorMap.get(reqs);
                 for (T req : reqs) {
                     this.rspProcessorMap.put(req, rspProcessor);
-                }
-            }
-        }
-
-        Map<T, NtfProcessor<T>> ntfProcessorMap = ntfProcessors();
-        if (null != ntfProcessorMap){
-            for (T ntf : ntfProcessorMap.keySet()){
-                String ntfName = ntf.name();
-                if(notificationFairy.subscribe(this, msgPrefix+ntfName)){
-                    ntfListeners.put(ntfName, new LinkedHashSet<>());
-                    this.ntfProcessorMap.put(ntf, ntfProcessorMap.get(ntf));
                 }
             }
         }
@@ -142,18 +126,12 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
 
-    /**注册请求对应的响应处理器
-     * NOTE @return 返回的Map中的Msg为Request*/
-    protected Map<T, RspProcessor<T>> rspProcessors(){return null;}
 
-    /**批量注册请求对应的响应处理器*/
-    protected Map<T[], RspProcessor<T>> rspsProcessors(){return null;}
+    /**注册请求对应的响应处理器*/
+    protected abstract Map<T[], RspProcessor<T>> rspsProcessors();
 
     /**注册通知处理器*/
-    protected Map<T, NtfProcessor<T>> ntfProcessors(){return null;}
-
-    /**批量注册通知处理器*/
-    protected Map<T[], NtfProcessor<T>> ntfsProcessors(){return null;}
+    protected abstract Map<T[], NtfProcessor<T>> ntfsProcessors();
 
     /**响应处理器*/
     protected interface RspProcessor<T>{

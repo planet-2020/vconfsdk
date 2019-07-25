@@ -122,141 +122,113 @@ public class DataCollaborateManager extends Caster<Msg> {
             }
             );
 
-    // 会话相关通知
-    private static final Msg[] sessionNtfs = new Msg[]{
-            Msg.LinkStateChanged,
-            Msg.CollaborateStarted,
-            Msg.CollaborateFinished,
-            Msg.ConfigModified,
-    };
 
-    // 协作权相关通知
-    private static final Msg[] operatorNtfs = new Msg[]{
-            Msg.UserJoined,
-            Msg.OperatorAdded,
-            Msg.OperatorDeleted,
-            Msg.ApplyOperatorNtf,
-            Msg.ApplyOperatorRejected,
-    };
-
-    // 画板相关通知
-    private static final Msg[] boardOpNtfs = new Msg[]{
-            Msg.BoardCreated,
-            Msg.BoardSwitched,
-            Msg.BoardDeleted,
-            Msg.AllBoardDeleted,
-    };
-
-    // 绘制相关通知
-    private static final Msg[] paintOpNtfs = new Msg[]{
-//            Msg.DCElementBeginNtf,
-            Msg.LineDrawn,
-            Msg.OvalDrawn,
-            Msg.RectDrawn,
-            Msg.PathDrawn,
-            Msg.PicInserted,
-            Msg.PicDragged,
-            Msg.PicDeleted,
-            Msg.Erased,
-            Msg.RectErased,
-            Msg.Matrixed,
-            Msg.Undone,
-            Msg.Redone,
-            Msg.ScreenCleared,
-//            Msg.DCElementEndNtf,
-    };
-
-
-    private static final Msg[] sessionReqs = new Msg[]{
-            Msg.Login,
-            Msg.Logout,
-            Msg.StartCollaborate,
-            Msg.QuitCollaborate,
-            Msg.FinishCollaborate,
-            Msg.ModifyConfig,
-            Msg.QueryConfig,
-    };
-
-    private static final Msg[] boardReqs = new Msg[]{
-            Msg.QueryCurBoard,
-            Msg.QueryBoard,
-            Msg.QueryAllBoards,
-            Msg.NewBoard,
-            Msg.DelBoard,
-            Msg.DelAllBoards,
-            Msg.SwitchBoard,
-    };
-
-    private static final Msg[] operatorReqs = new Msg[]{
-            Msg.AddOperator,
-            Msg.DelOperator,
-            Msg.RejectApplyOperator,
-            Msg.ApplyOperator,
-            Msg.CancelOperator,
-            Msg.QueryAllMembers,
-    };
-
-    private static final Msg[] downUploadReqs = new Msg[]{
-            Msg.QueryPicUrl,
-            Msg.Download,
-            Msg.QueryPicUploadUrl,
-            Msg.Upload,
-    };
-
-    private static final Msg[] paintReqs = new Msg[]{
-            Msg.DrawLine,
-            Msg.DrawOval,
-            Msg.DrawRect,
-            Msg.DrawPath,
-            Msg.Undo,
-            Msg.Redo,
-            Msg.ClearScreen,
-            Msg.Erase,
-            Msg.RectErase,
-//        Msg.DCZoom,
-//        Msg.RotateLeft,
-//        Msg.RotateRight,
-//        Msg.DCScrollScreen,
-            Msg.Matrix,
-            Msg.InsertPic,
-            Msg.DelPic,
-            Msg.DragPic,
-    };
-
-    @Override
-    protected Map<Msg, RspProcessor<Msg>> rspProcessors() {
-        Map<Msg, RspProcessor<Msg>> processorMap = new HashMap<>();
-        processorMap.put(Msg.QueryAddr, this::onRsp);
-        return processorMap;
-    }
 
     @Override
     protected Map<Msg[], RspProcessor<Msg>> rspsProcessors() {
         Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
 
-        processorMap.put(sessionReqs, this::onSessionRsps);
-        processorMap.put(boardReqs, this::onBoardOpRsps);
-        processorMap.put(operatorReqs, this::onOperatorRsps);
-        processorMap.put(downUploadReqs, this::onDownUpLoadRsps);
-        processorMap.put(paintReqs, this::onPublishPaintOpRsps);
+        processorMap.put(new Msg[]{
+                Msg.QueryAddr
+        }, this::onRsp);
+        processorMap.put(new Msg[]{
+                Msg.Login,
+                Msg.Logout,
+                Msg.StartCollaborate,
+                Msg.QuitCollaborate,
+                Msg.FinishCollaborate,
+                Msg.ModifyConfig,
+                Msg.QueryConfig,
+        }, this::onSessionRsps);
+        processorMap.put(new Msg[]{
+                Msg.QueryCurBoard,
+                Msg.QueryBoard,
+                Msg.QueryAllBoards,
+                Msg.NewBoard,
+                Msg.DelBoard,
+                Msg.DelAllBoards,
+                Msg.SwitchBoard,
+        }, this::onBoardOpRsps);
+        processorMap.put(new Msg[]{
+                Msg.AddOperator,
+                Msg.DelOperator,
+                Msg.RejectApplyOperator,
+                Msg.ApplyOperator,
+                Msg.CancelOperator,
+                Msg.QueryAllMembers,
+        }, this::onOperatorRsps);
+        processorMap.put(new Msg[]{
+                Msg.QueryPicUrl,
+                Msg.Download,
+                Msg.QueryPicUploadUrl,
+                Msg.Upload,
+        }, this::onDownUpLoadRsps);
+        processorMap.put(new Msg[]{
+                Msg.DrawLine,
+                Msg.DrawOval,
+                Msg.DrawRect,
+                Msg.DrawPath,
+                Msg.Undo,
+                Msg.Redo,
+                Msg.ClearScreen,
+                Msg.Erase,
+                Msg.RectErase,
+//        Msg.DCZoom,
+//        Msg.RotateLeft,
+//        Msg.RotateRight,
+//        Msg.DCScrollScreen,
+                Msg.Matrix,
+                Msg.InsertPic,
+                Msg.DelPic,
+                Msg.DragPic,
+        }, this::onPublishPaintOpRsps);
 
-        return processorMap;
-    }
-
-    @Override
-    protected Map<Msg, NtfProcessor<Msg>> ntfProcessors() {
-        Map<Msg, NtfProcessor<Msg>> processorMap = new HashMap<>();
-        processorMap.put(Msg.PicDownloadable, this::onNtfs);
         return processorMap;
     }
 
     @Override
     protected Map<Msg[], NtfProcessor<Msg>> ntfsProcessors() {
         Map<Msg[], NtfProcessor<Msg>> processorMap = new HashMap<>();
-        processorMap.put(sessionNtfs, this::onSessionNtfs);
-        processorMap.put(operatorNtfs, this::onOperatorNtfs);
-        processorMap.put(boardOpNtfs, this::onBoardNtfs);
-        processorMap.put(paintOpNtfs, this::onPaintNtfs);
+        processorMap.put(new Msg[]{
+                Msg.PicDownloadable
+        }, this::onNtfs);
+        processorMap.put(new Msg[]{
+                Msg.LinkStateChanged,
+                Msg.CollaborateStarted,
+                Msg.CollaborateFinished,
+                Msg.ConfigModified,
+        }, this::onSessionNtfs);
+        processorMap.put(new Msg[]{
+                Msg.UserJoined,
+                Msg.OperatorAdded,
+                Msg.OperatorDeleted,
+                Msg.ApplyOperatorNtf,
+                Msg.ApplyOperatorRejected,
+        }, this::onOperatorNtfs);
+        processorMap.put(new Msg[]{
+                Msg.BoardCreated,
+                Msg.BoardSwitched,
+                Msg.BoardDeleted,
+                Msg.AllBoardDeleted,
+        }, this::onBoardNtfs);
+        processorMap.put(new Msg[]{
+//            Msg.DCElementBeginNtf,
+                Msg.LineDrawn,
+                Msg.OvalDrawn,
+                Msg.RectDrawn,
+                Msg.PathDrawn,
+                Msg.PicInserted,
+                Msg.PicDragged,
+                Msg.PicDeleted,
+                Msg.Erased,
+                Msg.RectErased,
+                Msg.Matrixed,
+                Msg.Undone,
+                Msg.Redone,
+                Msg.ScreenCleared,
+//            Msg.DCElementEndNtf,
+        }, this::onPaintNtfs);
+
         return processorMap;
     }
 

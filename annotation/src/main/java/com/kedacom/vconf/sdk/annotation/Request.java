@@ -42,7 +42,8 @@ public @interface Request {
     Class[] paras() default {};
 
     /** 用户参数类型。
-     userParas不同于paras，paras为native方法的形参列表，目前大部分情形下是StringBuffer类型的json字符串，而userParas是面向用户（框架使用者）的参数列表。
+     * 若为空则认为跟paras的类型一致。
+     userParas含义不同于paras，paras为native方法的形参列表，目前大部分情形下是StringBuffer类型的json字符串，而userParas是面向用户（框架使用者）的参数列表。
      例如native方法定义如下：
      public static native void login(StringBuffer jsonLoginPara1, StringBuffer jsonLoginPara2);
      而为了用户使用方便，面向用户的接口可能定义如下：
