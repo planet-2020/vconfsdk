@@ -425,6 +425,17 @@ public class DataCollaborateManager extends Caster<Msg> {
         req(Msg.QuitCollaborate, resultListener, curDcConfE164, bQuitConf?0:1);
     }
 
+    /**
+     * 查询协作会议信息
+     * @param resultListener 结果监听器。
+     *                       成功返回DcConfInfo
+     *                       resultListener.onSuccess(DcConfInfo);
+     *                       失败返回错误码
+     * */
+    public void queryDcConfInfo(IResultListener resultListener){
+        req(Msg.QueryConfig, resultListener);
+    }
+
     /** 修改协作模式
      * @param mode 协作模式
      * @param resultListener 结果监听器。
