@@ -6,6 +6,7 @@ import androidx.annotation.RestrictTo;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
+import com.kedacom.vconf.sdk.common.type.BaseTypeString;
 import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.*;
 
 
