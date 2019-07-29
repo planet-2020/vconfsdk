@@ -64,23 +64,28 @@ publishing {
             artifact("$buildDir/outputs/aar/${project.name}-release.aar")
 //            artifact("$buildDir/outputs/aar/${project.name}-debug.aar")  // NOTE: 注意下面依赖assemble要同步修改
 
-            // 生成依赖。（maven-publish插件针对android支持似乎有缺陷，不能将依赖自动写入pom文件中，故需要我们手动生成依赖信息写入pom）
+            /** 生成依赖。（maven-publish插件针对android不能将依赖自动写入pom文件中，故需要我们手动生成依赖信息写入pom）
+             * Publishing a custom primary artifact (no component):
+             * https://docs.gradle.org/current/userguide/publishing_overview.html
+             * */
             pom.withXml {
                 def dependenciesNode = asNode().getAt('dependencies')[0]
                 if (dependenciesNode == null) {
                     dependenciesNode = asNode().appendNode('dependencies') // 创建pom文件的dependencies节点
                 }
+                logger.quiet("=========dependencies:")
                 configurations.implementation.allDependencies.each {
-                    logger.quiet("name=$it.name")
-                    if ("unspecified"==it.name){
+                    logger.quiet("groupId=$it.group, artifactId=$it.name, version=$it.version")
+                    if ("unspecified"==it.version){
                         return
                     }
                     def dependencyNode = dependenciesNode.appendNode('dependency') // 创建dependency节点
                     dependencyNode.appendNode('groupId', it.group)
                     dependencyNode.appendNode('artifactId', it.name)
                     dependencyNode.appendNode('version', it.version)
-//                    dependencyNode.appendNode('scope', "compile")
+                    dependencyNode.appendNode('scope', "compile")
                 }
+
             }
         }
 
@@ -89,6 +94,7 @@ publishing {
 
     repositories {
         maven {
+            name = 'keda'
 //            def releasesRepoUrl = "$buildDir/repos/releases"  // 调试用可直接发布到本地
 //            def snapshotsRepoUrl = "$buildDir/repos/snapshots"
             def releasesRepoUrl = "http://172.16.6.154:9081/repository/releases/"
