@@ -103,6 +103,9 @@ public class MessageProcessor extends AbstractProcessor {
         packageName = ((PackageElement) msgDefClass.getEnclosingElement()).getQualifiedName().toString();
         className = "Message$$Generated";
         module = msgDefClass.getAnnotation(Message.class).module();
+        if (module.trim().isEmpty()){
+            throw new IllegalArgumentException(msgDefClass+": module name can not be empty!");
+        }
         nameIdMap.clear();
         reqMap.clear();
         rspMap.clear();
