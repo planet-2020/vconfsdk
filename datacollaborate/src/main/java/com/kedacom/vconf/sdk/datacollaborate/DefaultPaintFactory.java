@@ -9,7 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LifecycleOwner;
 
-public class DefaultPaintFactory implements IPaintFactory {
+public final class DefaultPaintFactory implements IPaintFactory {
 
     private Context context;
     private LifecycleOwner lifecycleOwner;

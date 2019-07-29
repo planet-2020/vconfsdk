@@ -1,8 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 
-import androidx.annotation.RestrictTo;
-
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
@@ -15,11 +13,10 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.*;
  * 数据协作消息定义。
  */
 
-@RestrictTo(RestrictTo.Scope.LIBRARY)
 @Message(
         module = "DC" // abbreviation for DataCollaborate
 )
-public enum Msg {
+enum Msg {
     // 数据协作基础
 
     /**获取数据协作服务器地址*/

@@ -20,7 +20,7 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 
-public class DefaultPainter implements IPainter {
+class DefaultPainter implements IPainter {
 
     private int role = ROLE_COPIER;
 

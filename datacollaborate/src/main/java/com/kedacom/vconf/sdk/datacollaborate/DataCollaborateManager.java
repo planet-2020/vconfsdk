@@ -44,7 +44,7 @@ import androidx.annotation.Nullable;
  * */
 
 @SuppressWarnings({"unused", "WeakerAccess", "unchecked"})
-public class DataCollaborateManager extends Caster<Msg> {
+public final class DataCollaborateManager extends Caster<Msg> {
 
     static {
         KLog.p("\n========================================" +
@@ -122,6 +122,56 @@ public class DataCollaborateManager extends Caster<Msg> {
                 }
             }
             );
+
+
+
+    private static String PIC_SAVE_DIR;
+    private Context context;
+
+    private DataCollaborateManager(Context ctx){
+        if (null == context
+                && null != ctx){
+            context = ctx;
+            File dir = new File(ctx.getFilesDir(), "dc_pic");
+            if (!dir.exists()){
+                dir.mkdir();
+            }
+            PIC_SAVE_DIR = dir.getAbsolutePath();
+
+            // 检查图片缓存文件夹是否已超出大小上限，若超出则清空
+            long size = 0;
+            for (File file : dir.listFiles()) {
+                size += file.length();
+            }
+            long LIMIT = 50*1024*1024;
+            KLog.p("pic cache dir=%s, size=%s, limit=%s", PIC_SAVE_DIR, size, LIMIT);
+            if (size > LIMIT){
+                KLog.p(KLog.WARN, "clean cached pics");
+                for (File file : dir.listFiles()) {
+                    file.delete();
+                }
+            }
+        }
+
+        HandlerThread handlerThread = new HandlerThread("DcAss", Process.THREAD_PRIORITY_BACKGROUND);
+        handlerThread.start();
+        assHandler = new Handler(handlerThread.getLooper()){
+            @Override
+            public void handleMessage(Message msg) {
+            }
+        };
+    }
+    /**
+     * 获取数据协作管理类实例
+     * @param ctx 应用上下文
+     * */
+    public static DataCollaborateManager getInstance(Application ctx) {
+        if (null == instance) {
+            instance = new DataCollaborateManager(ctx);
+        }
+
+        return instance;
+    }
 
 
 
@@ -233,54 +283,6 @@ public class DataCollaborateManager extends Caster<Msg> {
         return processorMap;
     }
 
-
-    private static String PIC_SAVE_DIR;
-    private Context context;
-
-    private DataCollaborateManager(Context ctx){
-        if (null == context
-                && null != ctx){
-            context = ctx;
-            File dir = new File(ctx.getFilesDir(), "dc_pic");
-            if (!dir.exists()){
-                dir.mkdir();
-            }
-            PIC_SAVE_DIR = dir.getAbsolutePath();
-
-            // 检查图片缓存文件夹是否已超出大小上限，若超出则清空
-            long size = 0;
-            for (File file : dir.listFiles()) {
-                size += file.length();
-            }
-            long LIMIT = 50*1024*1024;
-            KLog.p("pic cache dir=%s, size=%s, limit=%s", PIC_SAVE_DIR, size, LIMIT);
-            if (size > LIMIT){
-                KLog.p(KLog.WARN, "clean cached pics");
-                for (File file : dir.listFiles()) {
-                    file.delete();
-                }
-            }
-        }
-
-        HandlerThread handlerThread = new HandlerThread("DcAss", Process.THREAD_PRIORITY_BACKGROUND);
-        handlerThread.start();
-        assHandler = new Handler(handlerThread.getLooper()){
-            @Override
-            public void handleMessage(Message msg) {
-            }
-        };
-    }
-    /**
-     * 获取数据协作管理类实例
-     * @param ctx 应用上下文
-     * */
-    public static DataCollaborateManager getInstance(Application ctx) {
-        if (null == instance) {
-            instance = new DataCollaborateManager(ctx);
-        }
-
-        return instance;
-    }
 
 
     /**登录数据协作

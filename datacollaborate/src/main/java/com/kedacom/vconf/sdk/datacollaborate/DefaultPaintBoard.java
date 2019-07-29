@@ -51,7 +51,7 @@ import androidx.annotation.Nullable;
 import static com.kedacom.vconf.sdk.datacollaborate.IPaintBoard.Config.Tool.*;
 
 @SuppressWarnings("SingleStatementInBlock")
-public class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
+class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     // 画板信息
     private BoardInfo boardInfo;
