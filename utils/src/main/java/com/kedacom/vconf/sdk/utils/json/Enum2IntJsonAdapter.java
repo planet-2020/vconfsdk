@@ -11,13 +11,21 @@ import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 
 /**
- * “枚举——整型”Json适配器。枚举序列化为整型，整型反序列化为枚举。
+ * “枚举——枚举ordinal”Json适配器。枚举序列化为整型(按ordinal)，整型(按ordinal)反序列化为枚举。
  *
  * 使用示例：
  * {@code
  * @JsonAdapter(Enum2IntJsonAdapter.class)
  * public enum COLOR { RED, GREEN, BLUE, }
  * }
+ *
+ * 这样，对于
+ * class Cup{
+ *      ....
+ *      COLOR color = COLOR.RED;
+ * }
+ * gson.toJson(new Cup());将输出{..., "color": 1}，而非默认的{..., "color": RED}；
+ * 反之gson.fromJson("{..., \"color\": 1}")将得到Cup对象其成员color为COLOR.RED。
  * */
 @SuppressWarnings("unchecked")
 public class Enum2IntJsonAdapter implements TypeAdapterFactory {

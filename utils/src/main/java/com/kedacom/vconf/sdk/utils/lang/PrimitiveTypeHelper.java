@@ -9,19 +9,22 @@ import java.util.Map;
 /**
  * Created by Sissi on 2019/7/23
  */
-public class PrimitiveTypeHelper {
-    private static BiMap<Class<?>, Class<?>> primitiveWrapperMap = HashBiMap.create(9);
-    private static Map<Class<?>, Object> primitiveDefaultValueMap = new HashMap<>(8);
+public final class PrimitiveTypeHelper {
+    private final static BiMap<Class<?>, Class<?>> primitiveWrapperMap = HashBiMap.create(9);
+    private final static BiMap<Class<?>, Class<?>> numericPrimitiveWrapperMap = HashBiMap.create(6);
+    private final static Map<Class<?>, Object> primitiveDefaultValueMap = new HashMap<>(8);
 
     static {
-        primitiveWrapperMap.put(byte.class, Byte.class);
+        numericPrimitiveWrapperMap.put(byte.class, Byte.class);
+        numericPrimitiveWrapperMap.put(int.class, Integer.class);
+        numericPrimitiveWrapperMap.put(short.class, Short.class);
+        numericPrimitiveWrapperMap.put(long.class, Long.class);
+        numericPrimitiveWrapperMap.put(float.class, Float.class);
+        numericPrimitiveWrapperMap.put(double.class, Double.class);
+
+        primitiveWrapperMap.putAll(numericPrimitiveWrapperMap);
         primitiveWrapperMap.put(char.class, Character.class);
         primitiveWrapperMap.put(boolean.class, Boolean.class);
-        primitiveWrapperMap.put(int.class, Integer.class);
-        primitiveWrapperMap.put(short.class, Short.class);
-        primitiveWrapperMap.put(long.class, Long.class);
-        primitiveWrapperMap.put(float.class, Float.class);
-        primitiveWrapperMap.put(double.class, Double.class);
         primitiveWrapperMap.put(void.class, Void.class);
 
         primitiveDefaultValueMap.put(byte.class, 0);
@@ -33,6 +36,22 @@ public class PrimitiveTypeHelper {
         primitiveDefaultValueMap.put(float.class, 0);
         primitiveDefaultValueMap.put(double.class, 0);
 
+    }
+
+    public static boolean isPrimitiveType(Class<?> clz){
+        return primitiveWrapperMap.containsKey(clz);
+    }
+
+    public static boolean isPrimitiveWrapperType(Class<?> clz){
+        return primitiveWrapperMap.containsValue(clz);
+    }
+
+    public static boolean isNumericPrimitiveType(Class<?> clz){
+        return numericPrimitiveWrapperMap.containsKey(clz);
+    }
+
+    public static boolean isNumericPrimitiveWrapperType(Class<?> clz){
+        return numericPrimitiveWrapperMap.containsValue(clz);
     }
 
     public static Class<?> getWrapperClass(Class<?> primitiveClass){
