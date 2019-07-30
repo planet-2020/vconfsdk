@@ -8,7 +8,6 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import com.kedacom.vconf.sdk.utils.lang.PrimitiveTypeHelper;
-import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -65,7 +64,6 @@ public class Enum2CustomValueJsonAdapter implements TypeAdapterFactory {
             e.printStackTrace();
             return null;
         }
-        KLog.p("returnType=%s", returnType);
         if (!PrimitiveTypeHelper.isPrimitiveType(returnType)
                 && returnType != String.class){
             throw new RuntimeException("Enum2CustomValueJsonAdapter: unsupported type " + returnType);
