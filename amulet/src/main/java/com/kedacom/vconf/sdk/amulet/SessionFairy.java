@@ -8,7 +8,7 @@ import android.os.Process;
 import android.util.Log;
 import android.util.SparseIntArray;
 
-import com.google.gson.Gson;
+import com.kedacom.vconf.sdk.utils.json.Kson;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.util.LinkedHashSet;
@@ -25,8 +25,6 @@ final class SessionFairy implements IFairy.ISessionFairy{
     private static final int MSG_ID_TIMEOUT = 999;
 
     private static MagicBook magicBook = MagicBook.instance();
-
-    private static Gson gson = new Gson();
 
     private ICrystalBall crystalBall;
 
@@ -170,7 +168,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
             }
 
             boolean bConsumed = s.listener.onRsp(gotLast, msgName,
-                    gson.fromJson(msgContent, magicBook.getRspClazz(msgName)),
+                    Kson.fromJson(msgContent, magicBook.getRspClazz(msgName)),
                     s.reqName, s.reqSn, s.reqPara);
 
             if (bConsumed){

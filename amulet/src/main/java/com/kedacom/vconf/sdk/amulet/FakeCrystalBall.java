@@ -6,7 +6,7 @@ import android.os.HandlerThread;
 import android.os.Process;
 import android.util.Log;
 
-import com.google.gson.Gson;
+import com.kedacom.vconf.sdk.utils.json.Kson;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -24,8 +24,6 @@ class FakeCrystalBall extends CrystalBall {
     private static FakeCrystalBall instance;
 
     private final Map<Class<?>, Object> cfgCache = new HashMap<>();
-
-    private Gson gson = new Gson();
 
     private MagicBook magicBook = MagicBook.instance();
 
@@ -91,7 +89,7 @@ class FakeCrystalBall extends CrystalBall {
 
                 rspBody = createInstanceFromClass(magicBook.getRspClazz(rspName));
 
-                String jsonRspBody = gson.toJson(rspBody);
+                String jsonRspBody = Kson.toJson(rspBody);
                 // 上报响应
                 nativeHandler.postDelayed(() -> {
                     Log.d(TAG, String.format("send RSP %s, rspContent=%s", rspName, jsonRspBody));
@@ -123,7 +121,7 @@ class FakeCrystalBall extends CrystalBall {
         }
 
         Object rspBody = createInstanceFromClass(magicBook.getRspClazz(msgName));
-        String jsonRspBody = gson.toJson(rspBody);
+        String jsonRspBody = Kson.toJson(rspBody);
         int delay = magicBook.getRspDelay(msgName);
 
         // 上报响应
@@ -145,7 +143,7 @@ class FakeCrystalBall extends CrystalBall {
             }
 
             Object rspBody = createInstanceFromClass(magicBook.getRspClazz(msgName));
-            String jsonRspBody = gson.toJson(rspBody);
+            String jsonRspBody = Kson.toJson(rspBody);
             delay += magicBook.getRspDelay(msgName);
 
             // 上报响应

@@ -2,7 +2,7 @@ package com.kedacom.vconf.sdk.amulet;
 
 import android.util.Log;
 
-import com.google.gson.Gson;
+import com.kedacom.vconf.sdk.utils.json.Kson;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.util.Arrays;
@@ -13,8 +13,6 @@ final class CommandFairy implements IFairy.ICommandFairy{
     private static final String TAG = CommandFairy.class.getSimpleName();
 
     private static MagicBook magicBook = MagicBook.instance();
-
-    private static Gson gson = new Gson();
 
     private ICrystalBall crystalBall;
 
@@ -82,7 +80,7 @@ final class CommandFairy implements IFairy.ICommandFairy{
         Log.d(TAG, String.format("<-=- %s result=%s", getName, methodParas[methodParas.length-1]));
 
         Class<?>[] userParaTypes = magicBook.getUserParaClasses(getName);
-        return gson.fromJson(methodParas[methodParas.length-1].toString(), userParaTypes[userParaTypes.length-1]); // XXX NOTE: 最后一个参数为出参！下层通过该参数反馈用户结果，必须遵守这个约定
+        return Kson.fromJson(methodParas[methodParas.length-1].toString(), userParaTypes[userParaTypes.length-1]); // XXX NOTE: 最后一个参数为出参！下层通过该参数反馈用户结果，必须遵守这个约定
     }
 
     @Override

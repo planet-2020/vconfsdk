@@ -4,7 +4,7 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Table;
-import com.google.gson.Gson;
+import com.kedacom.vconf.sdk.utils.json.Kson;
 import com.kedacom.vconf.sdk.utils.lang.PrimitiveTypeHelper;
 import com.kedacom.vconf.sdk.utils.lang.StringHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
@@ -37,8 +37,6 @@ final class MagicBook {
     private static String COL_TIMEOUT = "timeout";
     private static String COL_CLZ = "clz";
     private static String COL_DELAY = "delay";
-
-    private Gson gson = new Gson();
 
     private MagicBook(){
     }
@@ -215,7 +213,7 @@ final class MagicBook {
                     if (StringHelper.isStringCompatible(userPara.getClass())) {
                         methodParas[i] = StringHelper.convert2CompatibleType(methodParaType, userPara);
                     }else {
-                        methodParas[i] = StringHelper.convert2CompatibleType(methodParaType, gson.toJson(userPara));
+                        methodParas[i] = StringHelper.convert2CompatibleType(methodParaType, Kson.toJson(userPara));
                     }
                 } else if (methodParaType.isPrimitive()) {
                     if (userPara.getClass() == PrimitiveTypeHelper.getWrapperClass(methodParaType)){

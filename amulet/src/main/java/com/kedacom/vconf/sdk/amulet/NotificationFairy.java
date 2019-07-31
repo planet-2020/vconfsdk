@@ -2,7 +2,7 @@ package com.kedacom.vconf.sdk.amulet;
 
 import android.util.Log;
 
-import com.google.gson.Gson;
+import com.kedacom.vconf.sdk.utils.json.Kson;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -13,8 +13,6 @@ final class NotificationFairy implements IFairy.INotificationFairy{
     private static final String TAG = NotificationFairy.class.getSimpleName();
 
     private static MagicBook magicBook = MagicBook.instance();
-
-    private static Gson gson = new Gson();
 
     private Map<String, LinkedHashSet<IListener>> subscribers = new LinkedHashMap<>();
 
@@ -82,7 +80,7 @@ final class NotificationFairy implements IFairy.INotificationFairy{
 
         Log.d(TAG, String.format("<-~- %s(%s)\n%s", msgName, msgId, msgContent));
 
-        Object ntfContent = gson.fromJson(msgContent, magicBook.getRspClazz(msgName));
+        Object ntfContent = Kson.fromJson(msgContent, magicBook.getRspClazz(msgName));
 
         for (IListener sub : subs){
             sub.onNtf(msgName, ntfContent);
