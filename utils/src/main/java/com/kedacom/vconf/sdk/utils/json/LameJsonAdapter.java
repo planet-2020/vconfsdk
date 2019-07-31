@@ -7,7 +7,6 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -56,7 +55,6 @@ public abstract class LameJsonAdapter<T, U, V> implements JsonDeserializer<T> {
     public T deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         if (null == classT) {
             Type[] typeArgs = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments();
-            KLog.p("arg1=%s, arg2=%s, arg3=%s", typeArgs[0], typeArgs[1], typeArgs[2]);
             classT = (Class<T>)typeArgs[0];
             Class<U> classU = (Class<U>)typeArgs[1];
             Class<V> classV = (Class<V>)typeArgs[2];
@@ -72,8 +70,6 @@ public abstract class LameJsonAdapter<T, U, V> implements JsonDeserializer<T> {
                     assKey = field.getName();
                 }
             }
-            KLog.p("classT=%s, mainField=%s, assField=%s, mainKey=%s, assKey=%s",
-                    classT, mainField, assField, mainKey, assKey);
         }
 
         T instanceT = null;

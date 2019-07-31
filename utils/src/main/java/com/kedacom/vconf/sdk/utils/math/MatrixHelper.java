@@ -3,7 +3,7 @@ package com.kedacom.vconf.sdk.utils.math;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 
-public class MatrixHelper {
+public final class MatrixHelper {
 
     private static float[] matrixVals = new float[9];
 

@@ -28,7 +28,7 @@ import java.io.IOException;
  * 反之gson.fromJson("{..., \"color\": 1}")将得到Cup对象其成员color为COLOR.RED。
  * */
 @SuppressWarnings("unchecked")
-public class Enum2IntJsonAdapter implements TypeAdapterFactory {
+public final class Enum2IntJsonAdapter implements TypeAdapterFactory {
 
     @Override
     public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {

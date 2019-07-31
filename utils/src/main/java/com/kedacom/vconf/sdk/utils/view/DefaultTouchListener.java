@@ -12,7 +12,7 @@ import android.view.View;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 
-public class DefaultTouchListener implements View.OnTouchListener {
+public final class DefaultTouchListener implements View.OnTouchListener {
     private static final int STATE_IDLE = 0;
     private static final int STATE_SHAKING = 1;
     private static final int STATE_DRAGGING = 2;

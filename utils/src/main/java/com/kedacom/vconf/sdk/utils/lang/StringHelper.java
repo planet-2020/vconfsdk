@@ -3,7 +3,7 @@ package com.kedacom.vconf.sdk.utils.lang;
 /**
  * Created by Sissi on 2019/7/23
  */
-public class StringHelper {
+public final class StringHelper {
 
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public static boolean isStringCompatible(Class<?> clz){

@@ -13,7 +13,7 @@ import java.util.Date;
 import java.util.HashMap;
 
 @SuppressWarnings({"WeakerAccess", "unused"})
-public class KLog {
+public final class KLog {
 
     private static boolean isEnabled = true;
     

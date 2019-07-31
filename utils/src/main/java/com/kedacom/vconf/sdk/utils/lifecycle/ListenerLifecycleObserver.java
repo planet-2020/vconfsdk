@@ -13,7 +13,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class ListenerLifecycleObserver implements DefaultLifecycleObserver {
+public final class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
     private Callback cb;
 

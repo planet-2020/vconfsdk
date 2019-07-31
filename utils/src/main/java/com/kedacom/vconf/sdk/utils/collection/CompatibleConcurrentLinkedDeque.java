@@ -13,7 +13,7 @@ import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
-public class CompatibleConcurrentLinkedDeque<E> implements Iterable<E>, Collection<E> {
+public final class CompatibleConcurrentLinkedDeque<E> implements Iterable<E>, Collection<E> {
 
     private Deque<E> deque;
 
