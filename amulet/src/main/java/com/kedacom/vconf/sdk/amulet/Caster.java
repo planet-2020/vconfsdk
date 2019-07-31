@@ -4,6 +4,7 @@ import com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -46,21 +47,26 @@ public abstract class Caster<T extends Enum<T>> implements
 
     private Class<T> enumT;
 
-    private String msgPrefix="";
+    private String msgPrefix;
 
     @SuppressWarnings("ConstantConditions")
     protected Caster(){
         enumT = (Class<T>)((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments()[0];
         try {
             Class<?> msgGenClz = Class.forName(enumT.getPackage().getName()+".Message$$Generated");
-            msgPrefix = msgGenClz.getField("module").get(null)+"_";
             MagicBook.instance().addChapter(msgGenClz);
+            Field field = msgGenClz.getDeclaredField("module");
+            field.setAccessible(true);
+            msgPrefix = field.get(null)+"_";
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } catch (NoSuchFieldException e) {
             e.printStackTrace();
         } catch (IllegalAccessException e) {
             e.printStackTrace();
+        }
+        if (null == msgPrefix){
+            throw new RuntimeException("null == msgPrefix");
         }
 
         sessionFairy = new SessionFairy();

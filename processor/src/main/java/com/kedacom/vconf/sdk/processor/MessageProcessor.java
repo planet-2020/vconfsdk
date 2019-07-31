@@ -310,24 +310,26 @@ public class MessageProcessor extends AbstractProcessor {
         }
 
 
-        // 构建Class
+        /*构建Class
+        * 对于生成的类，我们不希望能通过常规手段访问，只允许通过反射访问（只让框架知道访问方式），
+        * 所以我们将类及其成员的访问权限限制到最小。
+        * */
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
-                .addModifiers(Modifier.PUBLIC)
                 .addModifiers(Modifier.FINAL)
                 .addField(FieldSpec.builder(String.class,
-                        fieldModule, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldModule, Modifier.PRIVATE, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(BiMap.class, String.class, String.class),
-                        fieldNameIdMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldNameIdMap, Modifier.PRIVATE, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Table.class, String.class, String.class, Object.class),
-                        fieldReqMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldReqMap, Modifier.PRIVATE, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Table.class, String.class, String.class, Object.class),
-                        fieldRspMap, Modifier.PUBLIC, Modifier.STATIC)
+                        fieldRspMap, Modifier.PRIVATE, Modifier.STATIC)
                         .build())
-                .addStaticBlock(codeBlockBuilder.build())
                 .addMethod(constructor.build())
+                .addStaticBlock(codeBlockBuilder.build())
 //                .addType(TypeSpec.classBuilder("InnerClassTest").build())
                 .build();
 

@@ -58,18 +58,22 @@ final class MagicBook {
         }
 
         try {
-            Field field = chapter.getField("module");
+            Field field = chapter.getDeclaredField("module");
+            field.setAccessible(true);
             String module = (String) field.get(null);
             if (modules.contains(module)){
                 throw new IllegalArgumentException("duplicated chapter "+module);
             }
             modules.add(module);
             
-            field = chapter.getField("nameIdMap");
+            field = chapter.getDeclaredField("nameIdMap");
+            field.setAccessible(true);
             this.nameIdMap.putAll((BiMap<String, String>) field.get(null));
-            field = chapter.getField("reqMap");
+            field = chapter.getDeclaredField("reqMap");
+            field.setAccessible(true);
             reqMap.putAll((Table<String, String, Object>) field.get(null));
-            field = chapter.getField("rspMap");
+            field = chapter.getDeclaredField("rspMap");
+            field.setAccessible(true);
             rspMap.putAll((Table<String, String, Object>) field.get(null));
         } catch (NoSuchFieldException e) {
             e.printStackTrace();
