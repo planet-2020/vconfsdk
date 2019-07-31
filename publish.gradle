@@ -76,7 +76,7 @@ publishing {
                 logger.quiet("=========dependencies:")
                 configurations.implementation.allDependencies.each {
                     logger.quiet("groupId=$it.group, artifactId=$it.name, version=$it.version")
-                    if ("unspecified"==it.version){
+                    if ("unspecified"==it.name || "unspecified"==it.version){
                         return
                     }
                     def dependencyNode = dependenciesNode.appendNode('dependency') // 创建dependency节点
