@@ -166,8 +166,8 @@ final class MagicBook {
         }
 
         boolean invalidParasNum =
-                isSession(reqName) && userParas.length<classes.length // 对于Session请求，参数个数不得少于注册的
-                || isSet(reqName) && userParas.length<classes.length  // 对于Set请求，参数个数需注册的
+                isSession(reqName) && userParas.length<classes.length   // 对于Session请求，参数个数不得少于注册的（可以多于）
+                || isSet(reqName) && userParas.length != classes.length  // 对于Set请求，参数个数需等于注册的
                 || isGet(reqName) && userParas.length != classes.length-1; // 对于Get请求，参数个数需比注册的少1（少一个传出参数，用户通过返回值获取结果而非传出参数）
 
         if (invalidParasNum) {

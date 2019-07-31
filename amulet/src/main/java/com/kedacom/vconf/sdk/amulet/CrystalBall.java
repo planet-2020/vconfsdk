@@ -58,6 +58,7 @@ public class CrystalBall implements ICrystalBall {
         try {
             Class<?> clz = Class.forName(methodOwner);
             method = clz.getDeclaredMethod(methodName, paraType);
+            method.setAccessible(true);
             method.invoke(null, para);
             cachedMethods.put(methodName, method);
         } catch (NoSuchMethodException e) {
