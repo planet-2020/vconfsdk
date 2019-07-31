@@ -10,12 +10,15 @@ import com.kedacom.vconf.sdk.utils.lang.StringHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Field;
+import java.util.HashSet;
+import java.util.Set;
 
 
 @SuppressWarnings({"BooleanMethodIsAlwaysInverted", "FieldCanBeLocal", "unchecked"})
 final class MagicBook {
     private static MagicBook instance;
 
+    private Set<String> modules = new HashSet<>();
     private BiMap<String, String> nameIdMap = HashBiMap.create();
     private Table<String, String, Object> reqMap = HashBasedTable.create();
     private Table<String, String, Object> rspMap = HashBasedTable.create();
@@ -53,15 +56,17 @@ final class MagicBook {
             KLog.p(KLog.WARN,"null == chapter");
             return;
         }
+
         try {
-            Field field = chapter.getField("nameIdMap");
-            BiMap<String, String> nameIdMap = (BiMap<String, String>) field.get(null);
-            for (String e : this.nameIdMap.keySet()){
-                if (nameIdMap.keySet().contains(e)){
-                    throw new IllegalArgumentException("duplicated msg "+e);
-                }
+            Field field = chapter.getField("module");
+            String module = (String) field.get(null);
+            if (modules.contains(module)){
+                throw new IllegalArgumentException("duplicated chapter "+module);
             }
-            this.nameIdMap.putAll(nameIdMap);
+            modules.add(module);
+            
+            field = chapter.getField("nameIdMap");
+            this.nameIdMap.putAll((BiMap<String, String>) field.get(null));
             field = chapter.getField("reqMap");
             reqMap.putAll((Table<String, String, Object>) field.get(null));
             field = chapter.getField("rspMap");
