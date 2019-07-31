@@ -22,17 +22,17 @@ final class CommandFairy implements IFairy.ICommandFairy{
     @Override
     public void set(String setName, Object... paras) {
         if (null == crystalBall){
-            Log.e(TAG, "no crystalBall ");
+            KLog.p(KLog.ERROR, "no crystalBall ");
             return;
         }
 
         if (!magicBook.isSet(setName)){
-            Log.e(TAG, "Unknown set command"+setName);
+            KLog.p(KLog.ERROR, "Unknown set command %s", setName);
             return;
         }
 
         if (!magicBook.checkUserPara(setName, paras)){
-            KLog.p("checkUserPara not pass");
+            KLog.p(KLog.ERROR,"checkUserPara not pass");
             return;
         }
 
@@ -50,17 +50,17 @@ final class CommandFairy implements IFairy.ICommandFairy{
     public Object get(String getName, Object... paras) {
 
         if (null == crystalBall){
-            Log.e(TAG, "no crystalBall");
+            KLog.p(KLog.ERROR, "no crystalBall ");
             return null;
         }
 
         if (!magicBook.isGet(getName)){
-            Log.e(TAG, "Unknown get command "+getName);
+            KLog.p(KLog.ERROR, "Unknown get command %s", getName);
             return null;
         }
 
         if (!magicBook.checkUserPara(getName, paras)){
-            KLog.p("checkUserPara not pass");
+            KLog.p(KLog.ERROR,"checkUserPara not pass");
             return null;
         }
 

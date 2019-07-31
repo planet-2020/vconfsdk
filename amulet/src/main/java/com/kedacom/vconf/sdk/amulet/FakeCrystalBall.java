@@ -4,9 +4,9 @@ package com.kedacom.vconf.sdk.amulet;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
-import android.util.Log;
 
 import com.kedacom.vconf.sdk.utils.json.Kson;
+import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -43,7 +43,6 @@ class FakeCrystalBall extends CrystalBall {
     }
 
     private Object createInstanceFromClass(Class<?> clz){
-        Log.d(TAG, "clz="+clz);
         Object instance;
         try {
             if (clz.isArray()){
@@ -74,7 +73,7 @@ class FakeCrystalBall extends CrystalBall {
 
     @Override
     public int spell(String methodOwner, String methodName, Object[] para, Class[] paraType) {
-        Log.d(TAG, String.format("receive REQ %s", methodName));
+        KLog.p("receive REQ %s", methodName);
         String msgName = magicBook.getMsgName(methodName);
         if (magicBook.isSession(msgName)){
             String[][] rspSeqs = magicBook.getRspSeqs(msgName);
@@ -92,7 +91,7 @@ class FakeCrystalBall extends CrystalBall {
                 String jsonRspBody = Kson.toJson(rspBody);
                 // 上报响应
                 nativeHandler.postDelayed(() -> {
-                    Log.d(TAG, String.format("send RSP %s, rspContent=%s", rspName, jsonRspBody));
+                    KLog.p("send RSP %s, rspContent=%s", rspName, jsonRspBody);
                     onAppear(magicBook.getMsgId(rspName), jsonRspBody);
                 }, delay);
 
@@ -116,7 +115,7 @@ class FakeCrystalBall extends CrystalBall {
         String msgName = magicBook.getMsgName(msgId);
         if (!magicBook.isResponse(msgName)
                 && !magicBook.isNotification(msgName)){
-            Log.e(TAG, String.format("emit msg failed, %s is not a rsp or ntf", msgName));
+            KLog.p("emit msg failed, %s is not a rsp or ntf", msgName);
             return;
         }
 
@@ -126,7 +125,7 @@ class FakeCrystalBall extends CrystalBall {
 
         // 上报响应
         nativeHandler.postDelayed(() -> {
-            Log.d(TAG, String.format("send RSP %s, rspContent=%s", msgName, jsonRspBody));
+            KLog.p("send RSP %s, rspContent=%s", msgName, jsonRspBody);
             onAppear(msgId, jsonRspBody);
         }, delay);
     }
@@ -138,7 +137,7 @@ class FakeCrystalBall extends CrystalBall {
             String msgName = magicBook.getMsgName(msgId);
             if (!magicBook.isResponse(msgName)
                     && !magicBook.isNotification(msgName)){
-                Log.e(TAG, String.format("emit msg failed, %s is not a rsp or ntf", msgName));
+                KLog.p("emit msg failed, %s is not a rsp or ntf", msgName);
                 continue;
             }
 
@@ -148,7 +147,7 @@ class FakeCrystalBall extends CrystalBall {
 
             // 上报响应
             nativeHandler.postDelayed(() -> {
-                Log.d(TAG, String.format("send RSP %s, rspContent=%s", msgName, jsonRspBody));
+                KLog.p("send RSP %s, rspContent=%s", msgName, jsonRspBody);
                 onAppear(msgId, jsonRspBody);
             }, delay);
         }

@@ -77,25 +77,25 @@ final class SessionFairy implements IFairy.ISessionFairy{
     public boolean req(IListener listener, String reqName, int reqSn, Object... reqPara) {
 
         if (null == crystalBall){
-            Log.e(TAG, "no crystalBall");
+            KLog.p(KLog.ERROR, "no crystalBall");
             return false;
         }
         if (null == listener){
-            Log.e(TAG, "listener is null");
+            KLog.p(KLog.ERROR, "listener is null");
             return false;
         }
         if (null == reqPara){
-            Log.e(TAG, "reqPara is null");
+            KLog.p(KLog.ERROR, "reqPara is null");
             return false;
         }
 
         if (!magicBook.isSession(reqName)){
-            Log.e(TAG, "no such session request: "+reqName);
+            KLog.p(KLog.ERROR, "no such session request: %s", reqName);
             return false;
         }
 
         if (!magicBook.checkUserPara(reqName, reqPara)){
-            KLog.p("checkUserPara not pass");
+            KLog.p(KLog.ERROR,"checkUserPara not pass");
             return false;
         }
 
@@ -133,7 +133,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
         String msgName = magicBook.getMsgName(msgId);
 
         if (!magicBook.isResponse(msgName)){
-            Log.w(TAG, "Unknown response "+ msgName);
+            KLog.p(KLog.ERROR, "Unknown response %s", msgName);
             return false;
         }
 

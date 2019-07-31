@@ -3,9 +3,10 @@ package com.kedacom.vconf.sdk.amulet;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
+
+import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -78,7 +79,7 @@ public class CrystalBall implements ICrystalBall {
     @Override
     public void onAppear(String msgId, String msgContent) {
         if (null == msgId || msgId.isEmpty()){
-            Log.w(TAG, "invalid msgId");
+            KLog.p(KLog.ERROR, "invalid msgId");
             return;
         }
         Message msg = Message.obtain();

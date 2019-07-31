@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.amulet;
 import android.util.Log;
 
 import com.kedacom.vconf.sdk.utils.json.Kson;
+import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -23,12 +24,12 @@ final class NotificationFairy implements IFairy.INotificationFairy{
     @Override
     public boolean subscribe(IListener subscriber, String ntfName) {
         if (null == subscriber){
-            Log.e(TAG, "null subscriber ");
+            KLog.p(KLog.ERROR, "null subscriber ");
             return false;
         }
 
         if (!magicBook.isNotification(ntfName)){
-            Log.e(TAG, "Unknown notification "+ntfName);
+            KLog.p(KLog.ERROR, "Unknown notification %s", ntfName);
             return false;
         }
 
@@ -46,12 +47,12 @@ final class NotificationFairy implements IFairy.INotificationFairy{
     @Override
     public void unsubscribe(IListener subscriber, String ntfName) {
         if (null == subscriber){
-            Log.e(TAG, "null subscriber ");
+            KLog.p(KLog.ERROR, "null subscriber ");
             return;
         }
 
         if (!magicBook.isNotification(ntfName)){
-            Log.e(TAG, "Unknown notification "+ntfName);
+            KLog.p(KLog.ERROR, "Unknown notification %s", ntfName);
             return;
         }
 
@@ -69,12 +70,12 @@ final class NotificationFairy implements IFairy.INotificationFairy{
     public boolean onMsg(String msgId, String msgContent) {
         String msgName = magicBook.getMsgName(msgId);
         if (!magicBook.isNotification(msgName)){
-            Log.w(TAG, "Unknown notification "+ msgName);
+            KLog.p(KLog.ERROR, "Unknown notification %s", msgName);
             return false;
         }
         LinkedHashSet<IListener> subs = subscribers.get(msgName);
         if (null == subs || 0==subs.size()){
-            Log.w(TAG, "no subscriber for "+ msgName);
+            KLog.p(KLog.ERROR, "no subscriber for %s", msgName);
             return false;
         }
 
