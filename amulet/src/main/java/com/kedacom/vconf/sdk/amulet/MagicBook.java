@@ -3,14 +3,16 @@ package com.kedacom.vconf.sdk.amulet;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashBiMap;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
+import com.google.common.collect.Tables;
 import com.kedacom.vconf.sdk.utils.json.Kson;
 import com.kedacom.vconf.sdk.utils.lang.PrimitiveTypeHelper;
 import com.kedacom.vconf.sdk.utils.lang.StringHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Field;
-import java.util.HashSet;
 import java.util.Set;
 
 
@@ -18,10 +20,10 @@ import java.util.Set;
 final class MagicBook {
     private static MagicBook instance;
 
-    private Set<String> modules = new HashSet<>();
-    private BiMap<String, String> nameIdMap = HashBiMap.create();
-    private Table<String, String, Object> reqMap = HashBasedTable.create();
-    private Table<String, String, Object> rspMap = HashBasedTable.create();
+    private Set<String> modules = Sets.newConcurrentHashSet();
+    private BiMap<String, String> nameIdMap = Maps.synchronizedBiMap(HashBiMap.create());
+    private Table<String, String, Object> reqMap = Tables.synchronizedTable(HashBasedTable.create());
+    private Table<String, String, Object> rspMap = Tables.synchronizedTable(HashBasedTable.create());
 
     private static int REQ_TYPE_SESSION = 0; // “请求——响应”，异步。
     private static int REQ_TYPE_GET = 1; // 如获取配置。
@@ -90,11 +92,11 @@ final class MagicBook {
     }
 
     boolean isRequest(String msgName){
-        return reqMap.rowKeySet().contains(msgName);
+        return reqMap.containsRow(msgName);
     }
 
     boolean isResponse(String msgName){
-        return rspMap.rowKeySet().contains(msgName);
+        return rspMap.containsRow(msgName);
     }
 
     boolean isNotification(String msgName){
