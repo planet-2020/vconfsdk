@@ -380,24 +380,24 @@ public abstract class Caster<T extends Enum<T>> implements
         return false;
     }
 
-    /**
-     * （驱使下层）发射响应/通知。仅用于模拟模式。
-     * */
-    public synchronized void eject(T msg){
-        String msgId = MagicBook.instance().getMsgId(msgPrefix+msg.name());
-        crystalBall.emit(msgId);
-    }
-
-    /**
-     * （驱使下层）发射响应/通知。仅用于模拟模式。
-     * */
-    public synchronized void eject(T[] msgs){
-        String[] msgIds = new String[msgs.length];
-        for (int i=0; i<msgIds.length; ++i) {
-            msgIds[i] = MagicBook.instance().getMsgId(msgPrefix+msgs[i].name());
-        }
-        crystalBall.emit(msgIds);
-    }
+//    /**
+//     * （驱使下层）发射响应/通知。仅用于模拟模式。
+//     * */
+//    public synchronized void eject(T msg){
+//        String msgId = MagicBook.instance().getMsgId(msgPrefix+msg.name());
+//        crystalBall.emit(msgId);
+//    }
+//
+//    /**
+//     * （驱使下层）发射响应/通知。仅用于模拟模式。
+//     * */
+//    public synchronized void eject(T[] msgs){
+//        String[] msgIds = new String[msgs.length];
+//        for (int i=0; i<msgIds.length; ++i) {
+//            msgIds[i] = MagicBook.instance().getMsgId(msgPrefix+msgs[i].name());
+//        }
+//        crystalBall.emit(msgIds);
+//    }
 
 
     /**

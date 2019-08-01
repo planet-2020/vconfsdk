@@ -110,47 +110,47 @@ class FakeCrystalBall extends CrystalBall {
         return 0;
     }
 
-    @Override
-    public void emit(String msgId) {
-        String msgName = magicBook.getMsgName(msgId);
-        if (!magicBook.isResponse(msgName)
-                && !magicBook.isNotification(msgName)){
-            KLog.p("emit msg failed, %s is not a rsp or ntf", msgName);
-            return;
-        }
-
-        Object rspBody = createInstanceFromClass(magicBook.getRspClazz(msgName));
-        String jsonRspBody = Kson.toJson(rspBody);
-        int delay = magicBook.getRspDelay(msgName);
-
-        // 上报响应
-        nativeHandler.postDelayed(() -> {
-            KLog.p("send RSP %s, rspContent=%s", msgName, jsonRspBody);
-            onAppear(msgId, jsonRspBody);
-        }, delay);
-    }
-
-    @Override
-    public void emit(String[] msgIds) {
-        int delay = 0;
-        for (String msgId : msgIds){
-            String msgName = magicBook.getMsgName(msgId);
-            if (!magicBook.isResponse(msgName)
-                    && !magicBook.isNotification(msgName)){
-                KLog.p("emit msg failed, %s is not a rsp or ntf", msgName);
-                continue;
-            }
-
-            Object rspBody = createInstanceFromClass(magicBook.getRspClazz(msgName));
-            String jsonRspBody = Kson.toJson(rspBody);
-            delay += magicBook.getRspDelay(msgName);
-
-            // 上报响应
-            nativeHandler.postDelayed(() -> {
-                KLog.p("send RSP %s, rspContent=%s", msgName, jsonRspBody);
-                onAppear(msgId, jsonRspBody);
-            }, delay);
-        }
-    }
+//    @Override
+//    public void emit(String msgId) {
+//        String msgName = magicBook.getMsgName(msgId);
+//        if (!magicBook.isResponse(msgName)
+//                && !magicBook.isNotification(msgName)){
+//            KLog.p("emit msg failed, %s is not a rsp or ntf", msgName);
+//            return;
+//        }
+//
+//        Object rspBody = createInstanceFromClass(magicBook.getRspClazz(msgName));
+//        String jsonRspBody = Kson.toJson(rspBody);
+//        int delay = magicBook.getRspDelay(msgName);
+//
+//        // 上报响应
+//        nativeHandler.postDelayed(() -> {
+//            KLog.p("send RSP %s, rspContent=%s", msgName, jsonRspBody);
+//            onAppear(msgId, jsonRspBody);
+//        }, delay);
+//    }
+//
+//    @Override
+//    public void emit(String[] msgIds) {
+//        int delay = 0;
+//        for (String msgId : msgIds){
+//            String msgName = magicBook.getMsgName(msgId);
+//            if (!magicBook.isResponse(msgName)
+//                    && !magicBook.isNotification(msgName)){
+//                KLog.p("emit msg failed, %s is not a rsp or ntf", msgName);
+//                continue;
+//            }
+//
+//            Object rspBody = createInstanceFromClass(magicBook.getRspClazz(msgName));
+//            String jsonRspBody = Kson.toJson(rspBody);
+//            delay += magicBook.getRspDelay(msgName);
+//
+//            // 上报响应
+//            nativeHandler.postDelayed(() -> {
+//                KLog.p("send RSP %s, rspContent=%s", msgName, jsonRspBody);
+//                onAppear(msgId, jsonRspBody);
+//            }, delay);
+//        }
+//    }
 
 }
