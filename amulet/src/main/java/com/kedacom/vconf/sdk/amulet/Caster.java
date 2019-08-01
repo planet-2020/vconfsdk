@@ -69,9 +69,9 @@ public abstract class Caster<T extends Enum<T>> implements
             throw new RuntimeException("null == msgPrefix");
         }
 
-        sessionFairy = new SessionFairy();
-        notificationFairy = new NotificationFairy();
-        commandFairy = new CommandFairy();
+        sessionFairy = SessionFairy.getInstance();
+        notificationFairy = NotificationFairy.getInstance();
+        commandFairy = CommandFairy.getInstance();
         crystalBall = CrystalBall.instance();
         ++count;
         crystalBall.addListener(sessionFairy, SESSION_FAIRY_BASE_PRIORITY+count);

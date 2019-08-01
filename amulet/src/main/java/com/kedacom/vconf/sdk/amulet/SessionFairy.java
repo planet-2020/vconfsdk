@@ -18,20 +18,22 @@ import java.util.Set;
 final class SessionFairy implements IFairy.ISessionFairy{
     private static final String TAG = SessionFairy.class.getSimpleName();
 
-    private static Handler handler;
-    private static Handler reqHandler;
+    private Handler handler;
+    private Handler reqHandler;
     private static final int MSG_ID_START_SESSION = 100;
     private static final int MSG_ID_FIN_DUE_TO_NO_RSP = 102;
     private static final int MSG_ID_TIMEOUT = 999;
 
-    private static MagicBook magicBook = MagicBook.instance();
+    private MagicBook magicBook = MagicBook.instance();
 
     private ICrystalBall crystalBall;
 
     private Set<Session> sessions = new LinkedHashSet<>();
 
 
-    SessionFairy(){
+    private static SessionFairy instance = null;
+
+    private SessionFairy(){
         if (null == handler){
             handler = new Handler(Looper.getMainLooper()){
                 @Override
@@ -66,6 +68,16 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
     }
 
+    public static SessionFairy getInstance() {
+        if (instance == null) {
+            synchronized (SessionFairy.class) {
+                if (instance == null) {
+                    instance = new SessionFairy();
+                }
+            }
+        }
+        return instance;
+    }
 
     @Override
     public void setCrystalBall(ICrystalBall crystalBall) {
@@ -74,7 +86,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
 
     @Override
-    public boolean req(IListener listener, String reqName, int reqSn, Object... reqPara) {
+    public synchronized boolean req(IListener listener, String reqName, int reqSn, Object... reqPara) {
 
         if (null == crystalBall){
             KLog.p(KLog.ERROR, "no crystalBall");

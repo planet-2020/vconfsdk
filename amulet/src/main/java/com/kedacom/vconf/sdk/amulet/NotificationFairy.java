@@ -13,13 +13,26 @@ import java.util.Map;
 final class NotificationFairy implements IFairy.INotificationFairy{
     private static final String TAG = NotificationFairy.class.getSimpleName();
 
-    private static MagicBook magicBook = MagicBook.instance();
+    private MagicBook magicBook = MagicBook.instance();
 
     private Map<String, LinkedHashSet<IListener>> subscribers = new LinkedHashMap<>();
 
     private ICrystalBall crystalBall;
 
-    NotificationFairy(){}
+    private static NotificationFairy instance = null;
+
+    private NotificationFairy() {}
+
+    public static NotificationFairy getInstance() {
+        if (instance == null) {
+            synchronized (NotificationFairy.class) {
+                if (instance == null) {
+                    instance = new NotificationFairy();
+                }
+            }
+        }
+        return instance;
+    }
 
     @Override
     public boolean subscribe(IListener subscriber, String ntfName) {

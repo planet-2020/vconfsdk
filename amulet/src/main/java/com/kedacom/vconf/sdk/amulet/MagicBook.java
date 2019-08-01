@@ -224,7 +224,7 @@ final class MagicBook {
                         throw new ClassCastException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+methodParaType);
                     }
                 } else {
-                    throw new IllegalArgumentException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+methodParaType);
+                    throw new ClassCastException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+methodParaType);
                 }
             }
 
