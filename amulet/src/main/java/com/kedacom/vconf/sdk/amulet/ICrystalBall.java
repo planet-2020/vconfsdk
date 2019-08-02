@@ -38,7 +38,7 @@ public interface ICrystalBall {
     }
     /**
      * 添加消息监听器
-     * @param priority 优先级，越小越高。高优先级的监听器优先消费消息，{@link IListener#onMsg(String, String)}
+     * @param priority 优先级（>=0），越小越高。高优先级的监听器优先消费消息，{@link IListener#onMsg(String, String)}
      * */
     void addListener(IListener listener, int priority);
     /**
@@ -50,4 +50,9 @@ public interface ICrystalBall {
      * */
     void clearListeners();
 
+    /**
+     * 获取监听器的优先级
+     * @return 优先级。-1表示该监听器尚未注册。
+     * */
+    int getPriority(IListener listener);
 }

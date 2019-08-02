@@ -18,22 +18,20 @@ import java.util.Set;
 final class SessionFairy implements IFairy.ISessionFairy{
     private static final String TAG = SessionFairy.class.getSimpleName();
 
-    private Handler handler;
-    private Handler reqHandler;
+    private static Handler handler;
+    private static Handler reqHandler;
     private static final int MSG_ID_START_SESSION = 100;
     private static final int MSG_ID_FIN_DUE_TO_NO_RSP = 102;
     private static final int MSG_ID_TIMEOUT = 999;
 
-    private MagicBook magicBook = MagicBook.instance();
+    private static MagicBook magicBook = MagicBook.instance();
 
     private ICrystalBall crystalBall;
 
     private Set<Session> sessions = new LinkedHashSet<>();
 
 
-    private static SessionFairy instance = null;
-
-    private SessionFairy(){
+    SessionFairy(){
         if (null == handler){
             handler = new Handler(Looper.getMainLooper()){
                 @Override
@@ -66,17 +64,6 @@ final class SessionFairy implements IFairy.ISessionFairy{
             };
         }
 
-    }
-
-    public static SessionFairy getInstance() {
-        if (instance == null) {
-            synchronized (SessionFairy.class) {
-                if (instance == null) {
-                    instance = new SessionFairy();
-                }
-            }
-        }
-        return instance;
     }
 
     @Override
@@ -207,6 +194,10 @@ final class SessionFairy implements IFairy.ISessionFairy{
      * 启动会话
      * */
     private synchronized void startSession(Session s){
+        if (null == crystalBall){
+            KLog.p(KLog.ERROR, "no crystalBall");
+            return;
+        }
 
         // 用户参数转换为底层方法需要的参数
         Object[] paras = magicBook.userPara2MethodPara(s.reqPara, magicBook.getParaClasses(s.reqName));

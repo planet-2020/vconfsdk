@@ -91,6 +91,10 @@ public class CrystalBall implements ICrystalBall {
 
     @Override
     public void addListener(IListener listener, int priority) {
+        if (priority<0){
+            KLog.p(KLog.ERROR, "priority can not be <0, but got %s", priority);
+            return;
+        }
         for (PriorityListener priorityListener : listeners){
             if (listener == priorityListener.listener){
                 priorityListener.priority = priority;
@@ -116,6 +120,16 @@ public class CrystalBall implements ICrystalBall {
     @Override
     public void clearListeners() {
         listeners.clear();
+    }
+
+    @Override
+    public int getPriority(IListener listener) {
+        for (PriorityListener priorityListener : listeners){
+            if (listener == priorityListener.listener){
+                return priorityListener.priority;
+            }
+        }
+        return -1;
     }
 
 

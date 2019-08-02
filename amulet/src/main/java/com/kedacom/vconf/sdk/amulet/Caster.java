@@ -11,7 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-@SuppressWarnings({"unchecked", "WeakerAccess"})
+@SuppressWarnings({"unchecked", "WeakerAccess", "unused"})
 public abstract class Caster<T extends Enum<T>> implements
         IFairy.ISessionFairy.IListener,
         IFairy.INotificationFairy.IListener{
@@ -23,17 +23,17 @@ public abstract class Caster<T extends Enum<T>> implements
                 BuildConfig.ARTIFACT_VERSION, BuildConfig.TIMESTAMP);
     }
 
-    private IFairy.ISessionFairy sessionFairy;
-    private IFairy.INotificationFairy notificationFairy;
-    private IFairy.ICommandFairy commandFairy;
-    private ICrystalBall crystalBall;
+    private IFairy.ISessionFairy sessionFairy = new SessionFairy();
+    private IFairy.INotificationFairy notificationFairy = new NotificationFairy();
+    private IFairy.ICommandFairy commandFairy = new CommandFairy();
+    private ICrystalBall crystalBall = CrystalBall.instance();
 
     /**
      * 会话和通知处理的优先级定义，越小优先级越高。
      * 保证会话先于通知处理。
      * */
     private static int count = 0;
-    private static final int SESSION_FAIRY_BASE_PRIORITY = -10000;
+    private static final int SESSION_FAIRY_BASE_PRIORITY = 0;
     private static final int NOTIFICATION_FAIRY_BASE_PRIORITY = SESSION_FAIRY_BASE_PRIORITY+10000;
 
     private int reqSn = 0; // 请求序列号，递增。
@@ -69,15 +69,11 @@ public abstract class Caster<T extends Enum<T>> implements
             throw new RuntimeException("null == msgPrefix");
         }
 
-        sessionFairy = SessionFairy.getInstance();
-        notificationFairy = NotificationFairy.getInstance();
-        commandFairy = CommandFairy.getInstance();
-        crystalBall = CrystalBall.instance();
-        ++count;
         crystalBall.addListener(sessionFairy, SESSION_FAIRY_BASE_PRIORITY+count);
         crystalBall.addListener(notificationFairy, NOTIFICATION_FAIRY_BASE_PRIORITY+count);
         sessionFairy.setCrystalBall(crystalBall);
         commandFairy.setCrystalBall(crystalBall);
+        ++count;
 
         listenerLifecycleObserver = new ListenerLifecycleObserver(new ListenerLifecycleObserver.Callback(){
             @Override
@@ -144,12 +140,12 @@ public abstract class Caster<T extends Enum<T>> implements
         /**
          * @param rsp 响应ID
          * @param rspContent 响应内容，具体类型由响应ID决定。
-         * @param listener 响应监听器，由{@link #req(Enum, IResultListener, Object...)}传入。
+         * @param listener 响应监听器,req()传入。
          *                 NOTE：可能在会话过程中监听器被销毁，如调用了{@link #delListener(Object)}或者监听器绑定的生命周期对象已销毁，
-         *                 则此参数为null，（当然也可能调用{@link #req(Enum, IResultListener, Object...)}时传入的就是null）
+         *                 则此参数为null，（当然也可能调用req()时传入的就是null）
          *                 所以使用者需对该参数做非null判断。
-         * @param req 请求ID，由{@link #req(Enum, IResultListener, Object...)}传入。
-         * @param reqParas 请求参数列表，由{@link #req(Enum, IResultListener, Object...)}传入，顺序同传入时的
+         * @param req 请求ID，req()传入。
+         * @param reqParas 请求参数列表，req()传入，顺序同传入时的
          * @return true，若该响应已被处理；否则false。
          * */
         boolean process(T rsp, Object rspContent, IResultListener listener, T req, Object[] reqParas);
@@ -173,17 +169,22 @@ public abstract class Caster<T extends Enum<T>> implements
      * @param bEnable true：启用，false：停用。
      * */
     public void enableSimulator(boolean bEnable){
+        int sessionFairyPriority = crystalBall.getPriority(sessionFairy);
+        int notificationFairyPriority = crystalBall.getPriority(notificationFairy);
+
         crystalBall.delListener(sessionFairy);
         crystalBall.delListener(notificationFairy);
+        sessionFairy.setCrystalBall(null);
+        commandFairy.setCrystalBall(null);
+
         if (bEnable){
             crystalBall = FakeCrystalBall.instance();
         }else{
             crystalBall = CrystalBall.instance();
         }
 
-        crystalBall.addListener(sessionFairy, SESSION_FAIRY_BASE_PRIORITY+count);
-        crystalBall.addListener(notificationFairy, NOTIFICATION_FAIRY_BASE_PRIORITY+count);
-
+        crystalBall.addListener(sessionFairy, sessionFairyPriority);
+        crystalBall.addListener(notificationFairy, notificationFairyPriority);
         sessionFairy.setCrystalBall(crystalBall);
         commandFairy.setCrystalBall(crystalBall);
     }

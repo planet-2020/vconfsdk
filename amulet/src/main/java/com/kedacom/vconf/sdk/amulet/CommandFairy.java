@@ -12,25 +12,11 @@ final class CommandFairy implements IFairy.ICommandFairy{
 
     private static final String TAG = CommandFairy.class.getSimpleName();
 
-    private MagicBook magicBook = MagicBook.instance();
+    private static MagicBook magicBook = MagicBook.instance();
 
     private ICrystalBall crystalBall;
 
-    private static CommandFairy instance = null;
-
-    private CommandFairy() {}
-
-    public static CommandFairy getInstance() {
-        if (instance == null) {
-            synchronized (CommandFairy.class) {
-                if (instance == null) {
-                    instance = new CommandFairy();
-                }
-            }
-        }
-        return instance;
-    }
-
+    CommandFairy() {}
 
     @Override
     public void set(String setName, Object... paras) {
