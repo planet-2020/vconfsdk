@@ -64,27 +64,6 @@ public final class DataCollaborateManager extends Caster<Msg> {
     我们也需像同步图元一样先缓存起来而不是直接上报给用户。*/
     private boolean bPreparingSync = false;
 
-    // 错误码
-    // 失败
-    public static final int ErrCode_Failed = -1;
-    // 登录数据协作建链失败
-    public static final int ErrCode_BuildLink4LoginFailed = -2;
-    // 加入数据协作建链失败
-    public static final int ErrCode_BuildLink4ConfFailed = -3;
-    // 会议服务器中途断链
-    public static final int ErrCode_Disconnect = -4;
-    // 协作方数量已达上限
-    public static final int ErrCode_Operator_Amount_Reach_Limit = -5;
-    // 申请协作权被拒
-    public static final int ErrCode_Apply_Operator_Rejected = -6;
-    // 没有权限执行该操作
-    public static final int ErrCode_No_Permission = -7;
-    // 数据协作个数达上限
-    public static final int ErrCode_DcAmount_Reach_Limit = -8;
-    // 白板数量达上限
-    public static final int ErrCode_BoardAmount_Reach_Limit = -9;
-
-
     // 当前会议e164号
     private String curDcConfE164;
 
@@ -288,13 +267,11 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**登录数据协作
      * @param terminalType 己端终端类型
      * @param resultListener 登陆结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
+     *                       成功： resultListener.onSuccess(null); // 成功走onSuccess回调，失败走onFailed。
      *
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_BuildLink4LoginFailed }
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);
+     *                       失败： resultListener.onFailed(int errorCode);
+     *                              {@link DcErrorCode#BuildLink4LoginFailed}
+     *                              {@link DcErrorCode#Failed}
      *
      * NOTE: 请务必在登录APS成功后登录数据协作！（登录APS的接口在其他模块）
      **/
@@ -309,7 +286,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
         TDCSSvrAddr svrAddr = (TDCSSvrAddr) get(Msg.GetServerAddr);
         if (null == svrAddr){
             KLog.p(KLog.ERROR, "can not fetch DCS server address, have you logined APS yet? ");
-            if (null != resultListener) reportFailed(ErrCode_Failed, resultListener);
+            if (null != resultListener) reportFailed(DcErrorCode.GetServerAddrFailed, resultListener);
             return;
         }
         curTerminalType = ToDoConverter.toTransferObj(terminalType);
@@ -325,13 +302,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
     }
 
     /**注销数据协作
-     * @param resultListener 注销结果监听器。可以为null，若为null表示不关注注销结果。
-     *                        成功返回结果null：
-     *                        resultListener.onSuccess(null);
-     *
-     *                        失败返回错误码：
-     *                        {@link #ErrCode_Failed}
-     *                        resultListener.onFailed(errorCode);
+     * @param resultListener 注销结果监听器。可以为null，若为null表示不关注注销结果（所有的结果监听器均可为null表示不关注请求结果）。
+     *                        成功：null;
+     *                        失败：{@link DcErrorCode#Failed}
      * */
     public void logout(@Nullable IResultListener resultListener){
         req(Msg.Logout, resultListener);
@@ -342,8 +315,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
      * 查询会议中是否存在数据协作（数据协作目前依附于会议）
      * @param confE164 会议号
      * @param resultListener 结果监听器。
-     *                       始终成功，返回结果boolean bExists，指示是否存在：
-     *                       resultListener.onSuccess(bExists);
+     *                       始终成功：boolean bExists，true表示存在。
      * */
     public void queryCollaborateExistsOrNot(String confE164, IResultListener resultListener){
         req(Msg.QueryAddr, resultListener, confE164);
@@ -370,13 +342,11 @@ public final class DataCollaborateManager extends Caster<Msg> {
      * @param adminE164 主席e164
      * @param members 与会成员
      * @param resultListener 结果监听器。
-     *                       成功返回数据协作信息{@link DcConfInfo}
-     *                       resultListener.onSuccess(DcConfInfo);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       {@link #ErrCode_BuildLink4ConfFailed}
-     *                       {@link #ErrCode_DcAmount_Reach_Limit}
-     *                       resultListener.onFailed(errorCode);
+     *                       成功: {@link DcConfInfo};
+     *                       失败：{@link DcErrorCode#Failed}
+     *                             {@link DcErrorCode#BuildLink4ConfFailed}
+     *                             {@link DcErrorCode#DcAmountReachLimit}
+     *
      * @param synchronizeProgressListener 同步进度监听器（开启协作成功后会同步协作中已有内容）
      * @param sessionEventListener 数据协作会话事件监听器
      * @param operatorEventListener 协作权相关通知监听器
@@ -404,11 +374,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
 
     /**结束数据协作
      * @param resultListener 结果监听器。
-     *                       成功返回null
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     **/
     public void finishCollaborate(IResultListener resultListener){
         unsubscribeNtfListeners();
         req(Msg.FinishCollaborate, resultListener, curDcConfE164);
@@ -418,11 +386,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
      * 注：仅自己退出，协作仍存在，不影响其他人继续
      * @param bQuitConf 是否同时退出会议
      * @param resultListener 结果监听器。
-     *                       成功返回null
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     **/
     public void quitCollaborate(boolean bQuitConf, IResultListener resultListener){
         unsubscribeNtfListeners();
         req(Msg.QuitCollaborate, resultListener, curDcConfE164, bQuitConf?0:1);
@@ -431,9 +397,8 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**
      * 查询协作会议信息
      * @param resultListener 结果监听器。
-     *                       成功返回DcConfInfo
-     *                       resultListener.onSuccess(DcConfInfo);
-     *                       失败返回错误码
+     *                       成功：{@link DcConfInfo}
+     *                       失败：{@link DcErrorCode#Failed}
      * */
     public void queryDcConfInfo(IResultListener resultListener){
         req(Msg.QueryConfig, resultListener);
@@ -442,11 +407,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /** 修改协作模式
      * @param mode 协作模式
      * @param resultListener 结果监听器。
-     *                       成功返回DcConfInfo
-     *                       resultListener.onSuccess(DcConfInfo);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
+     *                       成功：DcConfInfo
+     *                       失败：{@link DcErrorCode#Failed}
+     **/
     public void modifyCollaborateMode(EDcMode mode, IResultListener resultListener){
         // 获取已有的配置
         req(Msg.QueryConfig, new IResultListener() {
@@ -474,12 +437,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**（管理方）添加协作方
      * @param memberE164 待添加对象e164
      * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       {@link #ErrCode_Operator_Amount_Reach_Limit}
-     *                       resultListener.onFailed(errorCode);
+     *                       成功：null：
+     *                       失败： {@link DcErrorCode#Failed}
+     *                              {@link DcErrorCode#OperatorAmountReachLimit}
      */
     public void addOperator(String memberE164, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
@@ -489,12 +449,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**（管理方）批量添加协作方
      * @param memberE164List 待添加对象e164列表
      * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       {@link #ErrCode_Operator_Amount_Reach_Limit}
-     *                       resultListener.onFailed(errorCode);
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     *                             {@link DcErrorCode#OperatorAmountReachLimit}
      **/
     public void addOperator(List<String> memberE164List, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
@@ -507,11 +464,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**（管理方）删除协作方
      * @param memberE164 待删除对象e164
      * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     */
     public void delOperator(String memberE164, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
         tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, true, false));
@@ -521,11 +476,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**（管理方）批量删除协作方
      * @param memberE164List 待删除对象e164列表
      * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     */
     public void delOperator(List<String> memberE164List, IResultListener resultListener){
         List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
         for (String e164 : memberE164List){
@@ -558,39 +511,31 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**（普通方）申请协作权
      * @param e164 申请者e164
      * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       {@link #ErrCode_Apply_Operator_Rejected}
-     *                       resultListener.onFailed(errorCode);
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     *                             {@link DcErrorCode#ApplyOperatorRejected}
      *
-     *                       注意：申请协作权需等管理方审批，很可能出现等待超时然后管理方才审批的场景。
-     *                       此场景下该监听器会回onTimeout，然后待管理方审批通过后上报通知{@link IOnOperatorEventListener#onOperatorAdded(List)}。
-     *                       至于超时后管理方拒绝的情形无需处理。
-     *                       */
+     *                       NOTE：申请协作权需等管理方审批，很可能出现等待超时然后管理方才审批的场景。
+     *                       此场景下该监听器会回onTimeout，然后待管理方审批通过后会上报通知{@link IOnOperatorEventListener#onOperatorAdded(List)}。
+     */
     public void applyForOperator(String e164, IResultListener resultListener){
         req(Msg.ApplyOperator, resultListener, e164);
     }
     /**（协作方）释放协作权
      * @param e164 申请者e164
      * @param resultListener 结果监听器。
-     *                       成功返回结果null：
-     *                       resultListener.onSuccess(null);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     */
     public void cancelOperator(String e164, IResultListener resultListener){
         req(Msg.CancelOperator, resultListener, e164);
     }
 
     /**获取所有成员
      * @param resultListener 结果监听器。
-     *                       成功返回结果List<{@link DCMember}>：
-     *                       resultListener.onSuccess(List<DCMember>);
-     *                       失败返回错误码：
-     *                       {@link #ErrCode_Failed}
-     *                       resultListener.onFailed(errorCode);*/
+     *                       成功：List<{@link DCMember}>
+     *                       失败：{@link DcErrorCode#Failed}
+     */
     public void queryAllMembers(IResultListener resultListener){
         req(Msg.QueryAllMembers, resultListener, curDcConfE164);
     }
@@ -601,12 +546,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
      * 新建普通画板
      * @param creatorE164 创建者E164
      * @param listener 新建画板结果监听器
-     *                  成功返回{@link BoardInfo}：
-     *                  resultListener.onSuccess(boardInfo);
-     *                  失败返回错误码：
-     *                  {@link #ErrCode_Failed}
-     *                  {@link #ErrCode_BoardAmount_Reach_Limit}
-     *                  resultListener.onFailed(errorCode);
+     *                  成功：{@link BoardInfo}
+     *                  失败：{@link DcErrorCode#Failed}
+     *                        {@link DcErrorCode#BoardAmountReachLimit}
      * */
     public void newBoard(String creatorE164, IResultListener listener){
         req(Msg.NewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164, new TDCSBoardInfo(UUID.randomUUID().toString(), creatorE164)));
@@ -619,11 +561,8 @@ public final class DataCollaborateManager extends Caster<Msg> {
      * @param curPageIndex 当前文档页
      * @param creatorE164 创建者E164
      * @param listener 新建画板结果监听器
-     *                  成功返回{@link BoardInfo}：
-     *                  resultListener.onSuccess(boardInfo);
-     *                  失败返回错误码：
-     *                  {@link #ErrCode_Failed}
-     *                  resultListener.onFailed(errorCode);
+     *                  成功：{@link BoardInfo}
+     *                  失败：{@link DcErrorCode#Failed}
      * */
     public void newDocBoard(String boardName, int pageCount, int curPageIndex, String creatorE164, IResultListener listener){
         req(Msg.NewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164,
@@ -634,11 +573,8 @@ public final class DataCollaborateManager extends Caster<Msg> {
      * 删除画板
      * @param boardId 待删除画板Id
      * @param listener 删除画板结果监听器
-     *                  成功返回boardId：
-     *                  resultListener.onSuccess(boardId);
-     *                  失败返回错误码：
-     *                  {@link #ErrCode_Failed}
-     *                  resultListener.onFailed(errorCode);
+     *                  成功： string boardId（画板id）
+     *                  失败：{@link DcErrorCode#Failed}
      * */
     public void delBoard(String boardId, IResultListener listener){
         req(Msg.DelBoard, listener, curDcConfE164, boardId);
@@ -648,11 +584,8 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**
      * 删除所有画板
      * @param listener 结果监听器
-     *                  成功返回会议e164：
-     *                  resultListener.onSuccess(confE164);
-     *                  失败返回错误码：
-     *                  {@link #ErrCode_Failed}
-     *                  resultListener.onFailed(errorCode);
+     *                  成功：String e164（会议e164号）
+     *                  失败：{@link DcErrorCode#Failed}
      * */
     public void delAllBoard(IResultListener listener){
         req(Msg.DelAllBoards, listener, curDcConfE164);
@@ -662,11 +595,8 @@ public final class DataCollaborateManager extends Caster<Msg> {
      * 切换画板
      * @param boardId 目标画板Id
      * @param listener 切换画板结果监听器
-     *                  成功返回boardId：
-     *                  resultListener.onSuccess(boardId);
-     *                  失败返回错误码：
-     *                  {@link #ErrCode_Failed}
-     *                  resultListener.onFailed(errorCode);
+     *                  成功：string boardId，画板Id
+     *                  失败：{@link DcErrorCode#Failed}
      * */
     public void switchBoard(String boardId, IResultListener listener){
         req(Msg.SwitchBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
@@ -677,7 +607,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**发布绘制操作
      * @param op 绘制操作
      * @param resultListener 结果监听器
-     *                       成功返回平台广播的发布成功的OpPaint，否则返回超时
+     *                       成功返回发布成功的op，否则返回超时
      * */
     public void publishPaintOp(OpPaint op, IResultListener resultListener){
         Object to = ToDoConverter.toPaintTransferObj(op);
@@ -759,7 +689,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (Msg.Login == reqId) {
                     if (!result.bSuccess) { // 链路建立失败
                         cancelReq(Msg.Login, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
-                        reportFailed(ErrCode_BuildLink4LoginFailed, listener);
+                        reportFailed(DcErrorCode.BuildLink4LoginFailed, listener);
                     }
                 }else if (Msg.Logout == reqId){
                     if (!result.bSuccess) { // 链路已断开
@@ -778,7 +708,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (loginRes.bSuccess) {
                     reportSuccess(null, listener);
                 }else{
-                    reportFailed(convertErrorCode(loginRes.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(loginRes.dwErrorCode), listener);
                 }
                 break;
 
@@ -786,7 +716,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 TDCSResult logoutRes = (TDCSResult) rspContent;
                 if (!logoutRes.bSuccess){
                     cancelReq(Msg.Logout, listener);  // 后续不会有DCBuildLink4LoginRsp上来，取消该请求以防等待超时。
-                    reportFailed(convertErrorCode(logoutRes.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(logoutRes.dwErrorCode), listener);
                 }
                 break;
 
@@ -796,7 +726,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (Msg.StartCollaborate == reqId) {
                     if (!result.bSuccess) { // 开启数据协作失败（链路建立失败）
                         cancelReq(Msg.StartCollaborate, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
-                        reportFailed(ErrCode_BuildLink4ConfFailed, listener);
+                        reportFailed(DcErrorCode.BuildLink4ConfFailed, listener);
                         curDcConfE164 = null;
                     }
                 }else if (Msg.QuitCollaborate == reqId
@@ -834,7 +764,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                     }, 500);
 
                 }else{
-                    reportFailed(convertErrorCode(createConfResult.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(createConfResult.dwErrorCode), listener);
                 }
                 break;
 
@@ -845,7 +775,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 TDCSResult quitRes = (TDCSResult) rspContent;
                 if (!quitRes.bSuccess){
                     cancelReq(Msg.QuitCollaborate, listener);
-                    reportFailed(convertErrorCode(quitRes.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(quitRes.dwErrorCode), listener);
                 }
                 break;
 
@@ -854,7 +784,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (dcConfig.bSuccess) {
                     reportSuccess(ToDoConverter.fromTransferObj(dcConfig), listener);
                 }else{
-                    reportFailed(convertErrorCode(dcConfig.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(dcConfig.dwErrorCode), listener);
                 }
                 break;
 
@@ -862,7 +792,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 DcsSetConfInfoRsp setConfInfoRsp = (DcsSetConfInfoRsp) rspContent;
                 if (!setConfInfoRsp.bSuccess) {
                     cancelReq(Msg.ModifyConfig, listener);
-                    reportFailed(convertErrorCode(setConfInfoRsp.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(setConfInfoRsp.dwErrorCode), listener);
                 }
                 break;
 
@@ -1108,7 +1038,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (!result.bSuccess){
                     KLog.p(KLog.ERROR, "add operator failed, errorCode=%s", result.dwErrorCode);
                     cancelReq(reqId, listener);
-                    reportFailed(convertErrorCode(result.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(result.dwErrorCode), listener);
                 }
                 break;
             case OperatorAdded:
@@ -1137,7 +1067,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (!result.bSuccess){
                     KLog.p(KLog.ERROR, "del operator failed, errorCode=%s", result.dwErrorCode);
                     cancelReq(reqId, listener);
-                    reportFailed(convertErrorCode(result.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(result.dwErrorCode), listener);
                 }
                 break;
             case OperatorDeleted:
@@ -1155,14 +1085,14 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (!result.bSuccess){
                     KLog.p(KLog.ERROR, "applying operator failed, errorCode=%s", result.dwErrorCode);
                     cancelReq(reqId, listener);
-                    reportFailed(convertErrorCode(result.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(result.dwErrorCode), listener);
                 }
                 break;
             case ApplyOperatorRejected:
                 TDCSUserInfo userInfo = (TDCSUserInfo)rspContent;
                 String e164 = (String) reqParas[0];
                 if (e164.equals(userInfo.tUserInfo.achE164)){
-                    reportFailed(ErrCode_Apply_Operator_Rejected, listener);
+                    reportFailed(DcErrorCode.ApplyOperatorRejected, listener);
                 }else {
                     return false;
                 }
@@ -1173,7 +1103,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (result.bSuccess){
                     reportSuccess(null, listener);
                 }else{
-                    reportFailed(convertErrorCode(result.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(result.dwErrorCode), listener);
                 }
                 break;
 
@@ -1186,7 +1116,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                     }
                     reportSuccess(dcMembers, listener);
                 }else{
-                    reportFailed(convertErrorCode(userListRsp.MainParam.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(userListRsp.MainParam.dwErrorCode), listener);
                 }
                 break;
 
@@ -1233,7 +1163,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                     reportSuccess(ToDoConverter.fromTransferObj(queryBoardsResult.AssParam, curDcConfE164), listener);
                 }else{
                     KLog.p(KLog.ERROR, "QueryBoard failed, errorCode=%s", queryBoardsResult.MainParam.dwErrorCode);
-                    reportFailed(convertErrorCode(queryBoardsResult.MainParam.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(queryBoardsResult.MainParam.dwErrorCode), listener);
                 }
                 break;
 
@@ -1241,7 +1171,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 DcsGetAllWhiteBoardRsp queryAllBoardsResult = (DcsGetAllWhiteBoardRsp) rspContent;
                 if (!queryAllBoardsResult.MainParam.bSuccess){
                     KLog.p(KLog.ERROR, "QueryAllBoards failed, errorCode=%s", queryAllBoardsResult.MainParam.dwErrorCode);
-                    reportFailed(convertErrorCode(queryAllBoardsResult.MainParam.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(queryAllBoardsResult.MainParam.dwErrorCode), listener);
                     return true;
                 }
 
@@ -1273,7 +1203,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 DcsNewWhiteBoardRsp newWhiteBoardRsp = (DcsNewWhiteBoardRsp) rspContent;
                 if (!newWhiteBoardRsp.MainParam.bSuccess) {
                     cancelReq(reqId, listener); // 后续不会有DCBoardCreatedNtf，取消以防等待超时
-                    reportFailed(convertErrorCode(newWhiteBoardRsp.MainParam.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(newWhiteBoardRsp.MainParam.dwErrorCode), listener);
                 }
                 break;
             case BoardCreated:
@@ -1291,7 +1221,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (!boardResult.bSuccess){
                     KLog.p(KLog.ERROR, "del board failed, errorCode=%s", boardResult.dwErrorCode);
                     cancelReq(reqId, listener);
-                    reportFailed(convertErrorCode(boardResult.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(boardResult.dwErrorCode), listener);
                 }
                 break;
             case BoardDeleted:
@@ -1309,7 +1239,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (!allBoardRes.bSuccess){
                     KLog.p(KLog.ERROR, "del all board failed, errorCode=%s", allBoardRes.dwErrorCode);
                     cancelReq(reqId, listener);
-                    reportFailed(convertErrorCode(allBoardRes.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(allBoardRes.dwErrorCode), listener);
                 }
                 break;
             case AllBoardDeleted:
@@ -1322,7 +1252,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (!switchRsp.MainParam.bSuccess){
                     KLog.p(KLog.ERROR, "switch board failed, errorCode=%s", switchRsp.MainParam.dwErrorCode);
                     cancelReq(reqId, listener);
-                    reportFailed(convertErrorCode(switchRsp.MainParam.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(switchRsp.MainParam.dwErrorCode), listener);
                 }
                 break;
             case BoardSwitched:
@@ -1375,7 +1305,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (queryPicUrlResult.MainParam.bSuccess){
                     reportSuccess(queryPicUrlResult.AssParam, listener);
                 }else{
-                    reportFailed(convertErrorCode(queryPicUrlResult.MainParam.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(queryPicUrlResult.MainParam.dwErrorCode), listener);
                 }
                 break;
 
@@ -1388,7 +1318,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (result.bSuccess){
                     reportSuccess(result, listener);
                 }else{
-                    reportFailed(ErrCode_Failed, listener);
+                    reportFailed(DcErrorCode.Failed, listener);
                 }
                 break;
 
@@ -1397,7 +1327,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (queryPicUploadUrlResult.MainParam.bSuccess){
                     reportSuccess(queryPicUploadUrlResult.AssParam, listener);
                 }else{
-                    reportFailed(convertErrorCode(queryPicUploadUrlResult.MainParam.dwErrorCode), listener);
+                    reportFailed(DcErrorCode.fromTransfer(queryPicUploadUrlResult.MainParam.dwErrorCode), listener);
                 }
                 break;
 
@@ -1406,7 +1336,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (!result.bSuccess){
                     KLog.p(KLog.ERROR, "upload file %s failed!", result.achWbPicentityId);
                     cancelReq(reqId, listener);
-                    reportFailed(ErrCode_Failed, listener);
+                    reportFailed(DcErrorCode.Failed, listener);
                 }
                 break;
             case PicDownloadable:
@@ -1753,21 +1683,6 @@ public final class DataCollaborateManager extends Caster<Msg> {
         onOperatorEventListener = null;
         onBoardOpListener = null;
         onPaintOpListener = null;
-    }
-
-    private int convertErrorCode(int remoteErrorCode){
-        switch (remoteErrorCode){
-            case 25603:
-                return ErrCode_DcAmount_Reach_Limit;
-            case 25606:
-                return ErrCode_No_Permission;
-            case 25607:
-                return ErrCode_Operator_Amount_Reach_Limit;
-            case 25701:
-                return ErrCode_BoardAmount_Reach_Limit;
-            default:
-                return ErrCode_Failed;
-        }
     }
 
 

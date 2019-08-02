@@ -22,7 +22,7 @@ final class SimulatedDataGenerator {
                 TDCSConnectResult connectResult = new TDCSConnectResult(true);
                 TDCSResult result;
                 if (src instanceof SimulatedError){
-                    result = new TDCSResult(false, ((SimulatedError)src).errorCode, "");
+                    result = new TDCSResult(false, DcErrorCode.toTransfer(((SimulatedError)src).errorCode), "");
                 }else if (src instanceof SimulatedTimeout){
                     result = null;
                 }else{
@@ -32,7 +32,7 @@ final class SimulatedDataGenerator {
 
             case "logout":
                 if (src instanceof SimulatedError){
-                    result = new TDCSResult(false, ((SimulatedError)src).errorCode, "");
+                    result = new TDCSResult(false, DcErrorCode.toTransfer(((SimulatedError)src).errorCode), "");
                     return new Object[]{result};
                 }else if (src instanceof SimulatedTimeout){
                     return null;
@@ -46,7 +46,7 @@ final class SimulatedDataGenerator {
                 connectResult = new TDCSConnectResult(true);
                 TDCSCreateConfResult createConfResult;
                 if (src instanceof SimulatedError){
-                    createConfResult = new TDCSCreateConfResult(false, ((SimulatedError)src).errorCode);
+                    createConfResult = new TDCSCreateConfResult(false, DcErrorCode.toTransfer(((SimulatedError)src).errorCode));
                     return new Object[]{connectResult, createConfResult};
                 }else if (src instanceof SimulatedTimeout){
                     return null;
