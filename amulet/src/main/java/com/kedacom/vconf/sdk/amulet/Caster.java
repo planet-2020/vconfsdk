@@ -161,35 +161,6 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
 
-    /**
-     * 启用/停用模拟器。
-     * 若启用则本模块的请求都交由模拟器处理，模拟器会反馈用户模拟的响应/通知；
-     * 若停用则恢复正常模式，正常模式下请求通过底层组件发给平台平台反馈消息。
-     * NOTE: 仅用于本地调试，正式产品中请停用模拟器。
-     * @param bEnable true：启用，false：停用。
-     * */
-    public void enableSimulator(boolean bEnable){
-        int sessionFairyPriority = crystalBall.getPriority(sessionFairy);
-        int notificationFairyPriority = crystalBall.getPriority(notificationFairy);
-
-        crystalBall.delListener(sessionFairy);
-        crystalBall.delListener(notificationFairy);
-        sessionFairy.setCrystalBall(null);
-        commandFairy.setCrystalBall(null);
-
-        if (bEnable){
-            crystalBall = FakeCrystalBall.instance();
-        }else{
-            crystalBall = CrystalBall.instance();
-        }
-
-        crystalBall.addListener(sessionFairy, sessionFairyPriority);
-        crystalBall.addListener(notificationFairy, notificationFairyPriority);
-        sessionFairy.setCrystalBall(crystalBall);
-        commandFairy.setCrystalBall(crystalBall);
-    }
-
-
 
 
     /**
@@ -552,5 +523,64 @@ public abstract class Caster<T extends Enum<T>> implements
             this.listener = listener;
         }
     }
+
+
+
+    /**
+     * 启用/停用模拟器。
+     * 若启用则本模块的请求都交由模拟器处理，模拟器会反馈用户模拟的响应/通知；
+     * 若停用则恢复正常模式，正常模式下请求通过底层组件发给平台平台反馈消息。
+     * NOTE: 仅用于本地调试，正式产品中请勿启用。
+     * @param bEnable true：启用，false：停用。
+     * */
+    public void enableSimulator(boolean bEnable){
+        int sessionFairyPriority = crystalBall.getPriority(sessionFairy);
+        int notificationFairyPriority = crystalBall.getPriority(notificationFairy);
+
+        crystalBall.delListener(sessionFairy);
+        crystalBall.delListener(notificationFairy);
+        sessionFairy.setCrystalBall(null);
+        commandFairy.setCrystalBall(null);
+
+        if (bEnable){
+            crystalBall = FakeCrystalBall.instance();
+        }else{
+            crystalBall = CrystalBall.instance();
+        }
+
+        crystalBall.addListener(sessionFairy, sessionFairyPriority);
+        crystalBall.addListener(notificationFairy, notificationFairyPriority);
+        sessionFairy.setCrystalBall(crystalBall);
+        commandFairy.setCrystalBall(crystalBall);
+    }
+
+
+    /**
+     * 填充模拟数据
+     * @param key 数据对应的键，一般为方法名。
+     * @param data 用户期望的数据。
+     * */
+    public void feedSimulatedData(String key, Object data){
+        if (!(crystalBall instanceof FakeCrystalBall)){
+            KLog.p(KLog.ERROR, "simulator not enable yet!");
+            return;
+        }
+        Object[] datas = genSimulatedData(key, data);
+        if (null == datas) {
+            KLog.p(KLog.ERROR, "genSimulatedData for (%s, %s) failed", key, data);
+            return;
+        }
+        for (Object o : datas) {
+            if (null != o) SimulatedDataRepository.put(o);
+        }
+    }
+
+    /**
+     * 生成模拟数据
+     * @param key 数据对应的键，一般为方法名。
+     * @param data 用户期望的数据。
+     * @return 底层消息对应的数据。
+     * */
+    protected Object[] genSimulatedData(String key, Object data){return null;}
 
 }

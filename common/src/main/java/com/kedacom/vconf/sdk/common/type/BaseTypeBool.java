@@ -1,5 +1,5 @@
 package com.kedacom.vconf.sdk.common.type;
 
-public class BaseTypeBool {
+public final class BaseTypeBool {
     public boolean basetype;
 }

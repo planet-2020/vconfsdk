@@ -11,6 +11,11 @@ public class TDCSResult {
     public int dwErrorCode;
     public String achConfE164;
 
+    public TDCSResult(boolean bSuccess, int dwErrorCode, String achConfE164) {
+        this.bSuccess = bSuccess;
+        this.dwErrorCode = dwErrorCode;
+        this.achConfE164 = achConfE164;
+    }
 
     @NonNull
     @Override

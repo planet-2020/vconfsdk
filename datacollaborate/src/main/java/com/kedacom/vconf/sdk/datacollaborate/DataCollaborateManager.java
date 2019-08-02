@@ -1861,28 +1861,34 @@ public final class DataCollaborateManager extends Caster<Msg> {
      * */
     public interface IOnOperatorEventListener extends ILifecycleOwner{
         /**
-         * （所有与会方收到）成员加入数据协作会议通知
+         * 成员加入数据协作会议通知
          * @param member 成员信息
          * */
-        default void onUserJoined(DCMember member){}
+        void onUserJoined(DCMember member);
         /**
-         * （管理方收到）成员申请协作权通知
+         * 成员申请协作权通知
          * @param member 申请者信息
          * */
-        default void onApplyOperator(DCMember member){}
+        void onApplyOperator(DCMember member);
         /**
-         * （所有与会方收到）协作方被添加通知。
+         * 协作方被添加通知。
          * @param members 被添加的协作方信息
          * */
-        default void onOperatorAdded(List<DCMember> members){}
+        void onOperatorAdded(List<DCMember> members);
         /**
-         * （所有与会方收到）协作方被删除通知
+         * 协作方被删除通知
          * @param members 被删除的协作方信息
          * */
-        default void onOperatorDeleted(List<DCMember> members){}
+        void onOperatorDeleted(List<DCMember> members);
     }
 
     private class QueryAllBoardsInnerListener implements IResultListener{
+    }
+
+
+    @Override
+    protected Object[] genSimulatedData(String key, Object data) {
+        return SimulatedDataGenerator.generate(key, data);
     }
 
 }

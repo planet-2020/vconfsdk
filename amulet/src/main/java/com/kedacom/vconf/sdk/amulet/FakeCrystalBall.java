@@ -78,6 +78,7 @@ class FakeCrystalBall extends CrystalBall {
         if (magicBook.isSession(msgName)){
             String[][] rspSeqs = magicBook.getRspSeqs(msgName);
             if (null == rspSeqs || 0==rspSeqs.length){
+                KLog.p(KLog.WARN, "%s has no rsp", msgName);
                 return 0;
             }
             String[] rspSeq = rspSeqs[0]; //NOTE: 仅返回第一路响应序列
@@ -86,25 +87,30 @@ class FakeCrystalBall extends CrystalBall {
             for (String rspName : rspSeq) {
                 delay += magicBook.getRspDelay(rspName);
 
-                rspBody = createInstanceFromClass(magicBook.getRspClazz(rspName));
+//                rspBody = createInstanceFromClass(magicBook.getRspClazz(rspName));
 
-                String jsonRspBody = Kson.toJson(rspBody);
-                // 上报响应
-                nativeHandler.postDelayed(() -> {
-                    KLog.p("send RSP %s, rspContent=%s", rspName, jsonRspBody);
-                    onAppear(magicBook.getMsgId(rspName), jsonRspBody);
-                }, delay);
+                rspBody = SimulatedDataRepository.get(magicBook.getRspClazz(rspName));
+
+                if (null != rspBody) { // 若为null则不上报用户让用户等待超时。此特性可被用户利用以模拟超时场景——用户不提供模拟数据即会等待超时。
+                    String jsonRspBody = Kson.toJson(rspBody);
+                    // 上报响应
+                    nativeHandler.postDelayed(() -> {
+                        KLog.p("send RSP %s, rspContent=%s", rspName, jsonRspBody);
+                        onAppear(magicBook.getMsgId(rspName), jsonRspBody);
+                    }, delay);
+                }
 
             }
         }else if (magicBook.isSet(msgName)){
-            Class<?>[] classes = magicBook.getUserParaClasses(msgName);
-            Class<?> type = classes[classes.length-1]; // 最后一个为设置参数
-            cfgCache.put(type, para[para.length-1]);
+//            Class<?>[] classes = magicBook.getUserParaClasses(msgName);
+//            Class<?> type = classes[classes.length-1]; // 最后一个为设置参数
+//            cfgCache.put(type, para[para.length-1]);
         }else if (magicBook.isGet(msgName)){
             Class<?>[] classes = magicBook.getUserParaClasses(msgName);
             Class<?> type = classes[classes.length-1];
-            Object cfg = cfgCache.get(type);
-            para[para.length-1] = cfg; // 最后一个参数为传出参数
+//            Object cfg = cfgCache.get(type);
+            Object cfg = SimulatedDataRepository.get(type);
+            para[para.length-1] = Kson.toJson(cfg); // 最后一个参数为传出参数
         }
 
         return 0;

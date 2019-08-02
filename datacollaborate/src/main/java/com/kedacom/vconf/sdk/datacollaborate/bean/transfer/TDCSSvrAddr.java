@@ -7,4 +7,9 @@ public class TDCSSvrAddr {
     public String achCustomDomain;  // 用户自定义域名
     public long dwCustomIp;         // 用户自定义ip
     public int dwPort;
+
+    public TDCSSvrAddr(long dwIp, int dwPort) {
+        this.dwIp = dwIp;
+        this.dwPort = dwPort;
+    }
 }
