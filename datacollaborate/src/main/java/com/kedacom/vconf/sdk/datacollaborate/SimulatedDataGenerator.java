@@ -9,6 +9,8 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.*;
  * Created by Sissi on 2019/8/2
  *
  * 模拟数据生成器，仅用于模拟模式。
+ *
+ * NOTE: 该类跟Manager的方法名及请求流程强相关，若有变化需联动。
  */
 final class SimulatedDataGenerator {
 
@@ -38,6 +40,19 @@ final class SimulatedDataGenerator {
                     result = new TDCSResult(true, 0, "");
                     connectResult = new TDCSConnectResult(false);
                     return new Object[]{result, connectResult};
+                }
+
+            case "startCollaborate":
+                connectResult = new TDCSConnectResult(true);
+                TDCSCreateConfResult createConfResult;
+                if (src instanceof SimulatedError){
+                    createConfResult = new TDCSCreateConfResult(false, ((SimulatedError)src).errorCode);
+                    return new Object[]{connectResult, createConfResult};
+                }else if (src instanceof SimulatedTimeout){
+                    return null;
+                }else{
+                    createConfResult = ToDoConverter.toTDCSCreateConfResult((DcConfInfo)src);
+                    return new Object[]{connectResult, createConfResult};
                 }
 
             default:

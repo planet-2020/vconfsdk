@@ -8,4 +8,8 @@ package com.kedacom.vconf.sdk.common.type;
  */
 public final class SimulatedError {
     public int errorCode;
+
+    public SimulatedError(int errorCode) {
+        this.errorCode = errorCode;
+    }
 }

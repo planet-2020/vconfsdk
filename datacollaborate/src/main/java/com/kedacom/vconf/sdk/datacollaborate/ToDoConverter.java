@@ -500,6 +500,11 @@ final class ToDoConverter {
         return new DcConfInfo(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType), to.bCreator);
     }
 
+    public static TDCSCreateConfResult toTDCSCreateConfResult(DcConfInfo confInfo) {
+        return new TDCSCreateConfResult(confInfo.getConfE164(), confInfo.getConfName(),true, 0,
+                toTransferObj(confInfo.getConfMode()), toTransferObj(confInfo.getConfType()), true);
+    }
+
     public static DcConfInfo fromTransferObj(TDCSConfInfo to) {
         return new DcConfInfo(to.achConfE164, to.achConfName, fromTransferObj(to.emConfMode), fromTransferObj(to.emConfType), false);
     }
