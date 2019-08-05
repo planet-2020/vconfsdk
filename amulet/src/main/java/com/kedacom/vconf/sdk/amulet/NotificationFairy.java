@@ -1,5 +1,7 @@
 package com.kedacom.vconf.sdk.amulet;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.kedacom.vconf.sdk.utils.json.Kson;
@@ -96,5 +98,16 @@ final class NotificationFairy implements IFairy.INotificationFairy{
     public void setCrystalBall(ICrystalBall crystalBall) {
 //        this.crystalBall = crystalBall;
     }
+
+
+    @Override
+    public void emit(String ntfName, Object ntfContent) {
+        String ntfId = magicBook.getMsgId(ntfName);
+        String ntfCont = Kson.toJson(ntfContent);
+        int delay = magicBook.getRspDelay(ntfName);
+        handler.postDelayed(() -> onMsg(ntfId, ntfCont), delay);
+    }
+
+    private static Handler handler = new Handler(Looper.getMainLooper());
 
 }

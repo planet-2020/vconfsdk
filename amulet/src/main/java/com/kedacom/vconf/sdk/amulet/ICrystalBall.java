@@ -16,17 +16,6 @@ public interface ICrystalBall {
      * */
     void onAppear(String msgId, String msgContent);
 
-//    /**
-//     * 主动触发消息。
-//     * FORDEBUG 仅用于模拟模式
-//     * */
-//    default void emit(String msgId){}
-//    /**
-//     * 主动触发消息。
-//     * FORDEBUG 仅用于模拟模式
-//     * */
-//    default void emit(String[] msgIds){}
-
     /**
      * 消息监听器
      * */

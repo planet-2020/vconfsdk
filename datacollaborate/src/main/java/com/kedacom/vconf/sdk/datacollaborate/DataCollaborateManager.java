@@ -1802,7 +1802,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
 
 
     @Override
-    protected Object[] genSimulatedData(String key, Object data) {
+    protected Object[] genSimulatedData(String[] key, Object data) {
         return SimulatedDataGenerator.generate(key, data);
     }
 

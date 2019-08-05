@@ -352,25 +352,6 @@ public abstract class Caster<T extends Enum<T>> implements
         return false;
     }
 
-//    /**
-//     * （驱使下层）发射响应/通知。仅用于模拟模式。
-//     * */
-//    public synchronized void eject(T msg){
-//        String msgId = MagicBook.instance().getMsgId(msgPrefix+msg.name());
-//        crystalBall.emit(msgId);
-//    }
-//
-//    /**
-//     * （驱使下层）发射响应/通知。仅用于模拟模式。
-//     * */
-//    public synchronized void eject(T[] msgs){
-//        String[] msgIds = new String[msgs.length];
-//        for (int i=0; i<msgIds.length; ++i) {
-//            msgIds[i] = MagicBook.instance().getMsgId(msgPrefix+msgs[i].name());
-//        }
-//        crystalBall.emit(msgIds);
-//    }
-
 
     /**
      * 删除监听者。
@@ -526,6 +507,8 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
 
+    //========= 以下为模拟模式相关接口，仅用于本地调试，正式产品中请勿使用=========
+
     /**
      * 启用/停用模拟器。
      * 若启用则本模块的请求都交由模拟器处理，模拟器会反馈用户模拟的响应/通知；
@@ -556,8 +539,8 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
     /**
-     * 填充模拟数据
-     * @param key 数据对应的键，一般为方法名。
+     * 填充模拟数据。仅用于模拟模式
+     * @param key 数据对应的键，约定为方法名。
      * @param data 用户期望的数据。
      * */
     public void feedSimulatedData(String key, Object data){
@@ -565,7 +548,7 @@ public abstract class Caster<T extends Enum<T>> implements
             KLog.p(KLog.ERROR, "simulator not enable yet!");
             return;
         }
-        Object[] datas = genSimulatedData(key, data);
+        Object[] datas = genSimulatedData(new String[]{key}, data);
         if (null == datas) {
             KLog.p(KLog.ERROR, "genSimulatedData for (%s, %s) failed", key, data);
             return;
@@ -576,11 +559,32 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
     /**
+     * （驱使下层）发射通知。仅用于模拟模式。
+     * */
+    public void eject(String key, Object data){
+        if (!(crystalBall instanceof FakeCrystalBall)){
+            KLog.p(KLog.ERROR, "simulator not enable yet!");
+            return;
+        }
+        String[] keys = new String[]{key};
+        Object[] simulatedData = genSimulatedData(keys, data);
+        notificationFairy.emit(keys[0], simulatedData[0]);
+    }
+
+    public void eject(String[] keys, Object[] datas){
+        for (int i=0; i<keys.length; ++i){
+            eject(keys[i], datas[i]);
+        }
+    }
+
+
+    /**
      * 生成模拟数据
-     * @param key 数据对应的键，一般为方法名。
+     * @param key 数据对应的键（约定为方法名），定义为数组因为可能为出参。
      * @param data 用户期望的数据。
      * @return 底层消息对应的数据。
      * */
-    protected Object[] genSimulatedData(String key, Object data){return null;}
+    protected Object[] genSimulatedData(String[] key, Object data){return null;}
+
 
 }

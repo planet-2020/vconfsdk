@@ -52,6 +52,12 @@ public interface IFairy {
         boolean subscribe(IListener subscriber, String ntfName);
         void unsubscribe(IListener subscriber, String ntfName);
 
+       /**
+        * 主动触发通知。
+        * FORDEBUG 仅用于模拟模式
+        * */
+       default void emit(String ntfName, Object ntfContent){}
+
         /**
          * 通知监听器。
          * NOTE: 不要在该监听器中做耗时操作

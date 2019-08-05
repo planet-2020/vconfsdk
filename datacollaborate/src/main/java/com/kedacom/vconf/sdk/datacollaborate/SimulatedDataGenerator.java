@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
+import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.common.type.SimulatedError;
 import com.kedacom.vconf.sdk.common.type.SimulatedTimeout;
 import com.kedacom.vconf.sdk.datacollaborate.bean.*;
@@ -14,8 +15,17 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.*;
  */
 final class SimulatedDataGenerator {
 
-    static Object[]  generate(String key, Object src){
-        switch (key){
+    /**
+     * 模块名{@link Msg}&{@link Message#module()}
+     * */
+    private static String MODULE_NAME="DC";
+    /**
+     * 消息前缀
+     * */
+    private static String PREFIX=MODULE_NAME+"_";
+
+    static Object[]  generate(String[] key, Object src){
+        switch (key[0]){
             case "login":
                 TDCSSrvState srvState = new TDCSSrvState(EmServerState.emSrvIdle, false, "");
                 TDCSSvrAddr svrAddr = new TDCSSvrAddr(10000, 5000);
@@ -54,6 +64,10 @@ final class SimulatedDataGenerator {
                     createConfResult = ToDoConverter.toTDCSCreateConfResult((DcConfInfo)src);
                     return new Object[]{connectResult, createConfResult};
                 }
+
+            case "IOnDcCreatedListener.onDcCreated":
+                key[0] = PREFIX + Msg.CollaborateStarted.name();
+                return new Object[]{ToDoConverter.toTDCSCreateConfResult((DcConfInfo)src)};
 
             default:
                 return null;
