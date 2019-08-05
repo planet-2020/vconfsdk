@@ -17,7 +17,7 @@ import java.util.Map;
 /**
  * Created by gaofan_kd7331, 2018-10-25
  */
-class FakeCrystalBall extends CrystalBall {
+final class FakeCrystalBall extends CrystalBall {
 
     private static final String TAG = FakeCrystalBall.class.getSimpleName();
 
