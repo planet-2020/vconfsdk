@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
+import android.net.DhcpInfo;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.Network;
@@ -30,7 +31,6 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.List;
 
 import javax.annotation.Nonnull;
 
@@ -67,11 +67,7 @@ public final class NetworkHelper {
             connMan.registerNetworkCallback(new NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR).build(),  new MyNetworkCallback());
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                Network network = connMan.getActiveNetwork(); //TODO 测试下断网情况下还能不能获取到，因为对比NetworkInfo此处未判断是否connected
-                if (null != network){
-                    netInfo.state = STATE_CONNECTED;
-                    updateNetInfo(network);
-                }
+                updateNetInfo(connMan.getActiveNetwork());
             }
 
         }else{
@@ -80,19 +76,11 @@ public final class NetworkHelper {
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     KLog.p("onReceive: intent=%s", intent);
-                    NetworkInfo networkInfo = connMan.getActiveNetworkInfo();
-                    if (null != networkInfo){
-                        updateNetInfo(networkInfo);
-                    }else{
-                        netInfo.clear();
-                    }
+                    updateNetInfo(connMan.getActiveNetworkInfo());
                 }
             }, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
 
-            NetworkInfo networkInfo = connMan.getActiveNetworkInfo();
-            if (null != networkInfo){
-                updateNetInfo(networkInfo);
-            }
+            updateNetInfo(connMan.getActiveNetworkInfo());
         }
 
     }
@@ -156,6 +144,10 @@ public final class NetworkHelper {
         return null!=netInfo ? netInfo.gateway : null;
     }
 
+    public static String getMask(){
+        return null!=netInfo ? netInfo.mask : null;
+    }
+
 
     public static final int STATE_CONNECTED = 10;
     public static final int STATE_DISCONNECTED = 11;
@@ -165,6 +157,7 @@ public final class NetworkHelper {
         String addr="";
         String dns="";
         String gateway="";
+        String mask="";
 
         void clear(){
             state = STATE_DISCONNECTED;
@@ -172,6 +165,7 @@ public final class NetworkHelper {
             addr = "";
             dns = "";
             gateway = "";
+            mask = "";
         }
 
         @Override
@@ -182,6 +176,7 @@ public final class NetworkHelper {
                     ", addr='" + addr + '\'' +
                     ", dns='" + dns + '\'' +
                     ", gateway='" + gateway + '\'' +
+                    ", mask=" + mask +
                     '}';
         }
     }
@@ -189,6 +184,11 @@ public final class NetworkHelper {
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private static void updateNetInfo(Network network){
+        if (null == network) {
+            netInfo.clear();
+            return;
+        }
+        netInfo.state = STATE_CONNECTED;
         updateNetInfo(connMan.getNetworkCapabilities(network));
         updateNetInfo(connMan.getLinkProperties(network));
     }
@@ -197,20 +197,24 @@ public final class NetworkHelper {
     private static void updateNetInfo(LinkProperties linkProperties){
         for (LinkAddress linkAddress : linkProperties.getLinkAddresses()){
             InetAddress inetAddress = linkAddress.getAddress();
-            if (inetAddress instanceof Inet4Address){
+            if (inetAddress instanceof Inet4Address
+                    && NetAddrHelper.isValidHost(inetAddress.getHostAddress())){
                 netInfo.addr = inetAddress.getHostAddress();
+                netInfo.mask = NetAddrHelper.maskLen2Ip(linkAddress.getPrefixLength());
                 break;
             }
         }
         for (InetAddress dns : linkProperties.getDnsServers()){
-            if (dns instanceof Inet4Address) {
+            if (dns instanceof Inet4Address
+                    && NetAddrHelper.isValidHost(dns.getHostAddress())) {
                 netInfo.dns = dns.getHostAddress();
                 break;
             }
         }
         for (RouteInfo routeInfo : linkProperties.getRoutes()){
             InetAddress inetAddress = routeInfo.getGateway();
-            if (inetAddress instanceof Inet4Address) {
+            if (inetAddress instanceof Inet4Address
+                    && NetAddrHelper.isValidHost(inetAddress.getHostAddress())) {
                 netInfo.gateway = inetAddress.getHostAddress();
                 break;
             }
@@ -231,9 +235,13 @@ public final class NetworkHelper {
         }
     }
 
+    /**
+     * 更新网络信息。
+     * NOTE: 若API level>=21，建议使用{@link #updateNetInfo}。
+     * */
     private static void updateNetInfo(NetworkInfo networkInfo){
-        if (!networkInfo.isConnected()){
-            netInfo.state = STATE_DISCONNECTED;
+        if (null== networkInfo || !networkInfo.isConnected()){
+            netInfo.clear();
             return;
         }
         netInfo.state = STATE_CONNECTED;
@@ -248,18 +256,26 @@ public final class NetworkHelper {
         }
 
         if (TRANS_WIFI == netInfo.transType){
-            netInfo.addr = getWifiIpAddr();
+            WifiInfo wifiInfo = wifiMan.getConnectionInfo();
+            int ip = wifiInfo.getIpAddress();
+            netInfo.addr = NetAddrHelper.ipInt2Str(ip);
+            DhcpInfo dhcpInfo = wifiMan.getDhcpInfo();
+            String dns1 = NetAddrHelper.ipInt2Str(dhcpInfo.dns1);
+            netInfo.dns = NetAddrHelper.isValidHost(dns1) ? dns1 : NetAddrHelper.ipInt2Str(dhcpInfo.dns2);
+            netInfo.gateway = NetAddrHelper.ipInt2Str(dhcpInfo.gateway);
+            netInfo.mask = NetAddrHelper.ipInt2Str(dhcpInfo.netmask);
         }else{
             netInfo.addr = getIpAddress();
+            netInfo.dns = getDnsFromSystemProperties();
+            //TODO gateway, mask
         }
 
-        netInfo.dns = getDnsFromSystemProperties();
     }
 
 
     /**
      * 获取ip地址。
-     * API level >=21 可以不用此法而通过{@link LinkProperties}获取。
+     * API level >=21 建议不用此法而通过{@link LinkProperties}获取。
      * */
     private static String getIpAddress() {
         try {
@@ -279,19 +295,10 @@ public final class NetworkHelper {
         return "";
     }
 
-    /**
-     * 获取wifi连接状态下的ip。
-     * 有些机型上{@link #getIpAddress()}拿不到正确结果，所以wifi连接状态下使用该方法获取ip。
-     * */
-    private static String getWifiIpAddr(){
-        WifiInfo wifiInfo = wifiMan.getConnectionInfo();
-        int ip = wifiInfo.getIpAddress();
-        return "WifiIpAddr"; // TODO
-    }
 
     /**
      * 获取DNS。
-     * 仅适用于 API level < 26
+     * 仅适用于 API level < 26；wifi连接下建议不用此法而用WifiManager获取
      * */
     @SuppressWarnings("unchecked")
     private static String getDnsFromSystemProperties() {
