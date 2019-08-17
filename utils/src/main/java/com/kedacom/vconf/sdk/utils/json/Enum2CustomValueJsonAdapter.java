@@ -45,6 +45,7 @@ import java.util.Map;
  * 反之gson.fromJson("{..., \"color\": 2}")将得到Cup对象其成员color为COLOR.RED。
  *
  */
+@SuppressWarnings("unchecked")
 public final class Enum2CustomValueJsonAdapter implements TypeAdapterFactory {
 
     @Override
