@@ -747,7 +747,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                     curDcConfE164 = createConfResult.achConfE164;
                     reportSuccess(ToDoConverter.fromTransferObj(createConfResult), listener);
 
-                    handler.postDelayed(() -> {
+                    handler.postDelayed(() -> {  // FIXME 此时上层newboard会导致该board在同步的过程中重复上报给用户（newboard的result listener中已经上报了），注解同步完成后方可newboard？目前同步进度是单个画板，带上总进度。
 
                         unsubscribeNtfListeners();
 
@@ -979,7 +979,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
         // “逐个”画板同步（下层不支持一次性同步，会有问题）
         TDCSBoardInfo board = dcBoards.remove(0);
         if (null != onSynchronizeProgressListener)
-            onSynchronizeProgressListener.onProgress(board.achTabId, 0, false);
+            onSynchronizeProgressListener.onProgress(board.achTabId, 0, false); // TODO IResultListener添加onProgress替换此处的onProgress，去掉onArrive
         req(Msg.Download, new IResultListener() {
                     @Override
                     public void onArrive(boolean bSuccess) {

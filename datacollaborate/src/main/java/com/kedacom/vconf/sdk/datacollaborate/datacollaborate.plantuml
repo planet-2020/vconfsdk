@@ -1,0 +1,255 @@
+@startuml
+
+title __DATACOLLABORATE's Class Diagram__\n
+
+
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    class com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager {
+
+        + addOperator()
+        + addOperator()
+        + applyForOperator()
+        + cancelOperator()
+        + delAllBoard()
+        + delBoard()
+        + delOperator()
+        + delOperator()
+        + finishCollaborate()
+        {static} + getInstance()
+        + isCollaborating()
+        + login()
+        + logout()
+        + modifyCollaborateMode()
+        + newBoard()
+        + newDocBoard()
+        + publishPaintOp()
+        + queryAllMembers()
+        + queryCollaborateExistsOrNot()
+        + queryDcConfInfo()
+        + quitCollaborate()
+        + rejectApplyOperator()
+        + rejectApplyOperator()
+        + setOnDcCreatedListener()
+        + startCollaborate()
+        + switchBoard()
+    }
+  }
+    namespace com.kedacom.vconf.sdk.datacollaborate {
+      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnBoardOpListener {
+          {abstract} + onAllBoardDeleted()
+          {abstract} + onBoardCreated()
+          {abstract} + onBoardDeleted()
+          {abstract} + onBoardSwitched()
+      }
+    }
+
+
+    namespace com.kedacom.vconf.sdk.datacollaborate {
+      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnDcCreatedListener {
+          {abstract} + onDcCreated()
+      }
+    }
+
+
+    namespace com.kedacom.vconf.sdk.datacollaborate {
+      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnOperatorEventListener {
+          {abstract} + onApplyOperator()
+          {abstract} + onOperatorAdded()
+          {abstract} + onOperatorDeleted()
+          {abstract} + onUserJoined()
+      }
+    }
+
+
+    namespace com.kedacom.vconf.sdk.datacollaborate {
+      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnPaintOpListener {
+          {abstract} + onPaint()
+      }
+    }
+
+
+    namespace com.kedacom.vconf.sdk.datacollaborate {
+      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSessionEventListener {
+          {abstract} + onDCConfParaChanged()
+          {abstract} + onDcFinished()
+      }
+    }
+
+
+    namespace com.kedacom.vconf.sdk.datacollaborate {
+      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSynchronizeProgressListener {
+          {abstract} + onProgress()
+      }
+    }
+
+
+
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    interface com.kedacom.vconf.sdk.datacollaborate.IPaintFactory {
+        {abstract} + createPaintBoard()
+        {abstract} + createPainter()
+    }
+  }
+
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    interface com.kedacom.vconf.sdk.datacollaborate.IPaintBoard {
+        {static} + AREA_ALL : int
+        {static} + AREA_WINDOW : int
+        {abstract} + clearScreen()
+        {abstract} + getBoardId()
+        {abstract} + getBoardInfo()
+        {abstract} + getBoardView()
+        {abstract} + getConfig()
+        {abstract} + getPicCount()
+        {abstract} + getRepealedOpsCount()
+        {abstract} + getShapeOpsCount()
+        {abstract} + getWcRestorableOpsCount()
+        {abstract} + getWcRevocableOpsCount()
+        {abstract} + getZoom()
+        {abstract} + insertPic()
+        {abstract} + isClear()
+        {abstract} + isEmpty()
+        {abstract} + redo()
+        {abstract} + snapshot()
+        {abstract} + undo()
+    }
+  }
+
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    interface com.kedacom.vconf.sdk.datacollaborate.IPainter {
+        {static} + ROLE_AUTHOR : int
+        {static} + ROLE_COPIER : int
+        {abstract} + addPaintBoard()
+        {abstract} + deleteAllPaintBoards()
+        {abstract} + deletePaintBoard()
+        {abstract} + destroy()
+        {abstract} + getAllPaintBoards()
+        {abstract} + getCurrentPaintBoard()
+        {abstract} + getPaintBoard()
+        {abstract} + getPaintBoardCount()
+        {abstract} + paint()
+        {abstract} + pause()
+        {abstract} + resume()
+        {abstract} + setOnBoardStateChangedListener()
+        {abstract} + setRole()
+        {abstract} + start()
+        {abstract} + switchPaintBoard()
+    }
+  }
+
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    interface com.kedacom.vconf.sdk.datacollaborate.IPainter.IOnBoardStateChangedListener {
+        + onChanged()
+        + onEmptyStateChanged()
+        + onPaintOpGenerated()
+        + onPictureCountChanged()
+        + onRepealableStateChanged()
+        + onWcRevocableStateChanged()
+        + onZoomRateChanged()
+    }
+  }
+
+
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    class com.kedacom.vconf.sdk.datacollaborate.DefaultPaintFactory {
+        + DefaultPaintFactory()
+        + createPaintBoard()
+        + createPainter()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    class com.kedacom.vconf.sdk.datacollaborate.DefaultPaintBoard {
+
+        + DefaultPaintBoard()
+        + DefaultPaintBoard()
+        + clearScreen()
+        + dispatchTouchEvent()
+        + getBoardId()
+        + getBoardInfo()
+        + getBoardView()
+        + getConfig()
+        + getPicCount()
+        + getRepealedOpsCount()
+        + getShapeOpsCount()
+        + getWcRestorableOpsCount()
+        + getWcRevocableOpsCount()
+        + getZoom()
+        + insertPic()
+        + isClear()
+        + isEmpty()
+        + redo()
+        + snapshot()
+        + undo()
+
+    }
+  }
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    class com.kedacom.vconf.sdk.datacollaborate.DefaultPainter {
+        + DefaultPainter()
+        + addPaintBoard()
+        + deleteAllPaintBoards()
+        + deletePaintBoard()
+        + destroy()
+        + getAllPaintBoards()
+        + getCurrentPaintBoard()
+        + getPaintBoard()
+        + getPaintBoardCount()
+        + paint()
+        + pause()
+        + resume()
+        + setOnBoardStateChangedListener()
+        + setRole()
+        + start()
+        + switchPaintBoard()
+    }
+  }
+
+
+'  together {
+'interface com.kedacom.vconf.sdk.datacollaborate.IPaintFactory
+'interface com.kedacom.vconf.sdk.datacollaborate.IPainter
+'interface com.kedacom.vconf.sdk.datacollaborate.IPaintBoard
+'
+'class com.kedacom.vconf.sdk.datacollaborate.DefaultPaintFactory
+'class com.kedacom.vconf.sdk.datacollaborate.DefaultPainter
+'class com.kedacom.vconf.sdk.datacollaborate.DefaultPaintBoard
+'
+'  }
+
+
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager -up-|> com.kedacom.vconf.sdk.amulet.Caster
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnBoardOpListener : onBoardOpListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnDcCreatedListener : onDcCreatedListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnOperatorEventListener : onOperatorEventListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnPaintOpListener : onPaintOpListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSessionEventListener : onSessionEventListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSynchronizeProgressListener : onSynchronizeProgressListener
+'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnBoardOpListener
+'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnDcCreatedListener
+'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnOperatorEventListener
+'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnPaintOpListener
+'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSessionEventListener
+'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSynchronizeProgressListener
+  com.kedacom.vconf.sdk.datacollaborate.DefaultPaintBoard .up.|> com.kedacom.vconf.sdk.datacollaborate.IPaintBoard
+  com.kedacom.vconf.sdk.datacollaborate.DefaultPaintBoard -up-|> android.widget.FrameLayout
+  com.kedacom.vconf.sdk.datacollaborate.DefaultPaintFactory .up.|> com.kedacom.vconf.sdk.datacollaborate.IPaintFactory
+  com.kedacom.vconf.sdk.datacollaborate.DefaultPainter .up.|> com.kedacom.vconf.sdk.datacollaborate.IPainter
+  com.kedacom.vconf.sdk.datacollaborate.DefaultPainter o-- com.kedacom.vconf.sdk.datacollaborate.IPainter.IOnBoardStateChangedListener : onBoardStateChangedListener
+'  com.kedacom.vconf.sdk.datacollaborate.IPainter +-down- com.kedacom.vconf.sdk.datacollaborate.IPainter.IOnBoardStateChangedListener
+
+
+footer
+
+created by gaofan_kd7331, 2019-10-9
+end footer
+
+@enduml
