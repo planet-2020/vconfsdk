@@ -9,10 +9,22 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.kedacom.kdv.mt.ospconnector.Connector;
 import com.kedacom.mt.netmanage.protobuf.BasePB;
 import com.kedacom.osp.EmMtOspMsgSys;
 import com.kedacom.osp.MtMsg;
+import com.kedacom.vconf.sdk.amulet.Caster;
+import com.kedacom.vconf.sdk.amulet.IResultListener;
+import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
+import com.kedacom.vconf.webrtc.been.StreamInfo;
+import com.kedacom.vconf.webrtc.been.trans.TLoginResult;
+import com.kedacom.vconf.webrtc.been.trans.TMtRtcSvrAddr;
+import com.kedacom.vconf.webrtc.been.trans.TRtcPlayItem;
+import com.kedacom.vconf.webrtc.been.trans.TRtcPlayParam;
+import com.kedacom.vconf.webrtc.been.trans.TRtcStreamInfo;
+import com.kedacom.vconf.webrtc.been.trans.TRtcStreamInfoList;
 
 import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
@@ -29,10 +41,13 @@ import org.webrtc.VideoCapturer;
 import org.webrtc.VideoFrame;
 import org.webrtc.VideoSink;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-public class WebRtcClient {
+public class WebRtcClient extends Caster<Msg>{
 
     private static String TAG = "WebRtcClient";
 
@@ -105,7 +120,7 @@ public class WebRtcClient {
 //        remoteVideoSinks.put(RenderChannel.REMOTE1, new ProxyVideoSink("remoteVideoSink1"));
     }
 
-    public void destroy(){
+    public void destroy(){  // FIXME 该类承担过多任务，有一部分应该是单例。比如在aps中登录的部分也需要new一个对象，然后又没释放。
 
         // destroy rtcclient
         if (null != rtcConnector){
@@ -166,11 +181,130 @@ public class WebRtcClient {
 
     }
 
-//    public enum RenderChannel {
-//        LOCAL,
-//        REMOTE1,
-//        REMOTE2,
-//    }
+    @Override
+    protected Map<Msg[], RspProcessor<Msg>> rspsProcessors() {
+        Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
+        processorMap.put(new Msg[]{
+                Msg.Login,
+        }, this::onRsp);
+        return processorMap;
+    }
+
+    @Override
+    protected Map<Msg[], NtfProcessor<Msg>> ntfsProcessors() {
+        Map<Msg[], NtfProcessor<Msg>> processorMap = new HashMap<>();
+        processorMap.put(new Msg[]{
+                Msg.StreamListReady,
+                Msg.StreamJoined,
+                Msg.StreamLeft,
+        }, this::onNtfs);
+
+        return processorMap;
+    }
+
+
+    /**
+     * 登录rtc
+     * 注意，需先登录aps成功。
+     * */
+    public void login(IResultListener resultListener){
+        TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) get(Msg.GetSvrAddr);
+//        if (null == rtcSvrAddr){
+//            KLog.p(KLog.ERROR, "null == rtcSvrAddr");
+//            reportFailed(-1, resultListener);
+//            return;
+//        }
+        if (null == rtcSvrAddr){
+            KLog.p(KLog.ERROR, "null == rtcSvrAddr");
+            try {
+                int ip = NetAddrHelper.ipStr2Int("172.16.179.114"); //FIXME 写死方便调试
+                rtcSvrAddr = new TMtRtcSvrAddr(ip, 7961,"0512110000004");
+            } catch (NetAddrHelper.InvalidIpv4Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        req(Msg.Login, resultListener, rtcSvrAddr);
+    }
+
+
+    private boolean onRsp(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas) {
+        switch (rsp){
+            case LoginRsp:
+                TLoginResult loginResult = (TLoginResult) rspContent;
+                if (100 == loginResult.AssParam.basetype){
+                    reportSuccess(null, listener);
+                }else{
+                    reportFailed(-1, listener);
+                }
+                break;
+            default:
+                return false;
+        }
+
+        return true;
+    }
+
+
+    private List<TRtcStreamInfo> streamInfos;
+
+    private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
+        switch (ntfId){
+            case StreamListReady:
+                List<TRtcPlayItem> rtcPlayItems = new ArrayList<>();
+                TRtcStreamInfoList streamInfoList = (TRtcStreamInfoList) ntfContent;
+                streamInfos = streamInfoList.atStramInfoList;
+                for (TRtcStreamInfo streamInfo : streamInfoList.atStramInfoList){
+                    if (streamInfo.bAudio){
+                        continue;
+                    }
+                    TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
+                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便
+                    rtcPlayItem.achStreamId = streamInfo.achStreamId;
+                    rtcPlayItem.bLocal = false;
+                    rtcPlayItem.bAss = streamInfo.bAss;
+                    rtcPlayItems.add(rtcPlayItem);
+                }
+                set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
+                break;
+            case StreamJoined:  //TODO  这里是增量过来的，
+                rtcPlayItems = new ArrayList<>();
+                streamInfoList = (TRtcStreamInfoList) ntfContent;
+                streamInfos = streamInfoList.atStramInfoList;
+                for (TRtcStreamInfo streamInfo : streamInfoList.atStramInfoList){
+                    if (streamInfo.bAudio){
+                        continue;
+                    }
+                    TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
+                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便
+                    rtcPlayItem.achStreamId = streamInfo.achStreamId;
+                    rtcPlayItem.bLocal = false;
+                    rtcPlayItem.bAss = streamInfo.bAss;
+                    rtcPlayItems.add(rtcPlayItem);
+                }
+                set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems)); // 这里设置是增量的，还是覆盖的？如果是覆盖的，我需要本地记录下原本的列表？
+                break;
+            case StreamLeft:
+                rtcPlayItems = new ArrayList<>();
+                streamInfoList = (TRtcStreamInfoList) ntfContent; // FIXME 这里过来的是增量，set的是全量
+                streamInfos = streamInfoList.atStramInfoList;
+                for (TRtcStreamInfo streamInfo : streamInfoList.atStramInfoList){
+                    if (streamInfo.bAudio){
+                        continue;
+                    }
+                    TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
+                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便
+                    rtcPlayItem.achStreamId = streamInfo.achStreamId;
+                    rtcPlayItem.bLocal = false;
+                    rtcPlayItem.bAss = streamInfo.bAss;
+                    rtcPlayItems.add(rtcPlayItem);
+                }
+                set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
+                break;
+        }
+    }
+
+
     public class RtcRender {
         private SurfaceViewRenderer surfaceViewRenderer;
         public RtcRender() {
@@ -261,7 +395,7 @@ public class WebRtcClient {
         return true;
     }
 
-    private Map<String, String> midStreamIdMap = new HashMap<>();
+    private BiMap<String, String> midStreamIdMap = HashBiMap.create();
 
     private RtcConnector.SignalingEvents signalingEvents = new RtcConnector.SignalingEvents() {
         @Override
@@ -431,11 +565,27 @@ public class WebRtcClient {
         @Override
         public void onLocalVideoTrack(String trackId) {
             handler.post(() -> {
-                ProxyVideoSink videoSink = new ProxyVideoSink(trackId);
+                ProxyVideoSink videoSink = new ProxyVideoSink(trackId);  // FIXME 应该是StreamId，组件给的是mid和streamId的对应关系
                 videoSinks.put(trackId, videoSink);
                 getPeerConnectionClient(connType).bindLocalSink(trackId, videoSink);
                 if (null != eventListner) {
-                    eventListner.onLocalVideoTrack(trackId);
+                    String streamId = midStreamIdMap.get(trackId);
+                    if (null == streamId){
+                        KLog.p(KLog.ERROR, "not register stream %s in signaling progress", trackId);
+                        return;
+                    }
+                    TRtcStreamInfo rtcStreamInfo = null;
+                    for (TRtcStreamInfo streamInfo : streamInfos){
+                        if (streamId.equals(streamInfo.achStreamId)){
+                            rtcStreamInfo = streamInfo;
+                            break;
+                        }
+                    }
+                    if (null == rtcStreamInfo){
+                        KLog.p(KLog.ERROR, "no such stream %s in stream list", trackId);
+                        return;
+                    }
+                    eventListner.onLocalStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId));
                 }
             });
         }
@@ -444,12 +594,30 @@ public class WebRtcClient {
         public void onRemoteVideoTrack(String trackId) {
             KLog.p("trackId=%s", trackId);
             handler.post(() -> {
-                ProxyVideoSink videoSink = new ProxyVideoSink(trackId);
+
+                ProxyVideoSink videoSink = new ProxyVideoSink(trackId);  // FIXME 应该是StreamId，组件给的是mid和streamId的对应关系
                 videoSinks.put(trackId, videoSink);
                 getPeerConnectionClient(connType).bindRemoteSink(trackId, videoSink);
                 if (null != eventListner) {
-                    eventListner.onRemoteVideoTrack(trackId);
+                    String streamId = midStreamIdMap.get(trackId);
+                    if (null == streamId){
+                        KLog.p(KLog.ERROR, "not register stream %s in signaling progress", trackId);
+                        return;
+                    }
+                    TRtcStreamInfo rtcStreamInfo = null;
+                    for (TRtcStreamInfo streamInfo : streamInfos){
+                        if (streamId.equals(streamInfo.achStreamId)){
+                            rtcStreamInfo = streamInfo;
+                            break;
+                        }
+                    }
+                    if (null == rtcStreamInfo){
+                        KLog.p(KLog.ERROR, "no such stream %s in stream list", trackId);
+                        return;
+                    }
+                    eventListner.onRemoteStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId));
                 }
+
             });
         }
 
@@ -457,7 +625,7 @@ public class WebRtcClient {
         public void onRemoteVideoTrackRemoved(String trackId) {
             if (null != eventListner){
                 // TODO
-                handler.post(() -> eventListner.onRemoteVideoTrackRemoved(trackId));
+//                handler.post(() -> eventListner.onRemoteStreamRemoved(trackId));
             }
         }
     }
@@ -665,18 +833,9 @@ public class WebRtcClient {
 //    }
 
     public interface EventListner{
-        /**
-         * 本地视频轨道准备好
-         * */
-        void onLocalVideoTrack(String trackId);
-        /**
-         * 远端视频轨道添加
-         * */
-        void onRemoteVideoTrack(String trackId);
-        /**
-         * 远端视频轨道删除
-         * */
-        void onRemoteVideoTrackRemoved(String trackId);
+        void onLocalStream(StreamInfo stream);
+        void onRemoteStream(StreamInfo stream);
+        void onRemoteStreamRemoved(StreamInfo stream);
     }
     private EventListner eventListner;
     public void setEventListner(EventListner eventListner){

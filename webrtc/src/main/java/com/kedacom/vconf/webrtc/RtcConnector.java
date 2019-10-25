@@ -25,13 +25,15 @@ class RtcConnector implements IRcvMsgCallback{
 
 	public static final String TAG = "RtcConnector";
 	public static final String WEBRTC_NAME = "WEBRTC_NAME";
-	public static final short WEBRTC_ID = 132;
+	public static final short WEBRTC_ID = 143;
 	public static final short MTDISPATCH_ID = 107;
 	public static boolean stopHanldeJni = false;
 	private final Map<String, ICbMsgHandler> cbMsgHandlerMap = new HashMap<>();
 
 	private final long myId =Connector.MAKEIID(WEBRTC_ID, (short)1 );
     private final long myNode = 0;
+    private final long dispatchId = Connector.MAKEIID(MTDISPATCH_ID, (short)1 );
+	private final long dispatchNode = 0;
     private long rtcServiceId;
     private long rtcServiceNode;
 
@@ -463,8 +465,10 @@ class RtcConnector implements IRcvMsgCallback{
 				.build()
 		);
 		byte[] abyContent = msg.Encode();
+//		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+//                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
+				dispatchId, dispatchNode, myId, myNode, 5000 );
 		if (0 != ret){
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
@@ -479,8 +483,10 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
 		msg.addMsg(BasePB.TString.newBuilder().setValue(sdp.description).build());
 		byte[] abyContent = msg.Encode();
+//		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+//                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
+				dispatchId, dispatchNode, myId, myNode, 5000 );
         KLog.p("=> send answer, rtcServiceId=%s, rtcServiceNode=%s, sdp=%s, %s", rtcServiceId, rtcServiceNode, sdp.type, sdp.description);
         if (0 != ret){
             KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
@@ -498,8 +504,10 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(candidate.sdpMLineIndex).build());
 		msg.addMsg(BasePB.TString.newBuilder().setValue(candidate.sdp).build());
 		byte[] abyContent = msg.Encode();
+//		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+//                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
+				dispatchId, dispatchNode, myId, myNode, 5000 );
 		if (0 != ret){
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
