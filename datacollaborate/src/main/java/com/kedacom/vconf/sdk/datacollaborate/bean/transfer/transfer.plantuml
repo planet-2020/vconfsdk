@@ -1,0 +1,1303 @@
+@startuml
+
+title __TRANSFER's Class Diagram__\n
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsDownloadImageRsp {
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetAllWhiteBoardRsp {
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetAllWhiteBoardRsp.Adapter {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetConfAddrRsp {
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetConfAddrRsp.Adapter {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetUserListRsp {
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetUserListRsp.Adapter {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetWhiteBoardRsp {
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetWhiteBoardRsp.Adapter {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsNewWhiteBoardRsp {
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsNewWhiteBoardRsp.Adapter {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperCircleOperInfoNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperEraseOperInfoNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperFullScreenNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperInsertPicNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperLineOperInfoNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperPencilOperInfoNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperPitchPicDelNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperPitchPicDragNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperRectangleOperInfoNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperRedoNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperReginEraseNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperUndoNtf {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSetConfInfoRsp {
+            + achConfE164 : String
+            + achConfName : String
+            + bSuccess : boolean
+            + dwErrorCode : int
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSwitchRsp {
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSwitchRsp.Adapter {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsUploadImageRsp {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        enum EmDcsConfMode {
+          emConfModeAuto
+          emConfModeManage
+          emConfModeStop
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        enum EmDcsConfType {
+          emConfTypeMCC
+          emConfTypeP2P
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        enum EmDcsConnectErrCode {
+          emConfDisconnect
+          emConfFailed
+          emConfSuccess
+          emLoginDisconnect
+          emLoginFailed
+          emLoginSuccess
+          emUnknown
+          value
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        enum EmDcsOper {
+          emWb100ProportionScreen
+          emWbAddSubPageInfo
+          emWbCircleOperInfo
+          emWbClearScreen
+          emWbColorPenOperInfo
+          emWbEraseOperInfo
+          emWbFullScreen
+          emWbImageOperInfo
+          emWbInsertPic
+          emWbLineOperInfo
+          emWbPencilOperInfo
+          emWbPitchPicDel
+          emWbPitchPicDrag
+          emWbPitchPicRotate
+          emWbPitchPicZoom
+          emWbRectangleOperInfo
+          emWbRedo
+          emWbReginErase
+          emWbRotateLeft
+          emWbRotateRight
+          emWbScrollScreen
+          emWbUndo
+          emWbZoomInfo
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        enum EmDcsType {
+          emTypeButt
+          emTypeIMIX
+          emTypeThirdPartyTer
+          emTypeTrueLink
+          emTypeTrueSens
+          emTypeTrueTouchPadAndroid
+          emTypeTrueTouchPadIOS
+          emTypeTrueTouchPhoneAndroid
+          emTypeTrueTouchPhoneIOS
+          emTypeUnknown
+          value
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        enum EmDcsWbImageState {
+          emImageStateConvertFail
+          emImageStateDownLoadFail
+          emImageStateDownLoadOk
+          emImageStateDownloading
+          emImageStateInit
+          emImageStateOwnerAlreadyLeave
+          emImageStateSelfAlreadyLeave
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        enum EmDcsWbMode {
+          emWBModeDOC
+          emWbModeWB
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        enum EmServerState {
+          emSrvDisconnected
+          emSrvDnsQuerying
+          emSrvIdle
+          emSrvLogging_In
+          emSrvLogging_Out
+          emSrvLogin_Err
+          emSrvLogin_Succ
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardInfo {
+            + achDownloadUrl : String
+            + achElementUrl : String
+            + achTabId : String
+            + achUploadUrl : String
+            + achWbCreatorE164 : String
+            + achWbName : String
+            + dwPageId : int
+            + dwWbAnonyId : int
+            + dwWbCreateTime : int
+            + dwWbHeight : int
+            + dwWbPageNum : int
+            + dwWbSerialNumber : int
+            + dwWbWidth : int
+            + TDCSBoardInfo()
+            + TDCSBoardInfo()
+            + compareTo()
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardResult {
+            + achConfE164 : String
+            + achTabId : String
+            + bSuccess : boolean
+            + dwErrorCode : int
+            + dwPageId : int
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConfAddr {
+            + achDomain : String
+            + achIp : String
+            + dwPort : int
+            + TDCSConfAddr()
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConfInfo {
+            + achConfE164 : String
+            + achConfName : String
+            + TDCSConfInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConfUserInfo {
+            + achE164 : String
+            + achName : String
+            + bIsConfAdmin : boolean
+            + bIsOper : boolean
+            + bOnline : boolean
+            + TDCSConfUserInfo()
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConnectResult {
+            + bSuccess : boolean
+            + TDCSConnectResult()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSCreateConf {
+            + achConfAdminE164 : String
+            + achConfE164 : String
+            + achConfName : String
+            + atUserList : List<TDCSConfUserInfo>
+            + dwListNum : int
+            + TDCSCreateConf()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSCreateConfResult {
+            + achConfE164 : String
+            + achConfName : String
+            + bCreator : boolean
+            + bSuccess : boolean
+            + dwErrorCode : int
+            + TDCSCreateConfResult()
+            + TDCSCreateConfResult()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSDelWhiteBoardInfo {
+            + strConfE164 : String
+            + strFromE164 : String
+            + strIndex : String
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSFileInfo {
+            + achFilePathName : String
+            + achTabid : String
+            + achWbPicentityId : String
+            + bElementCacheFile : boolean
+            + dwFileSize : int
+            + TDCSFileInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSFileLoadResult {
+            + achFilePathName : String
+            + achTabid : String
+            + achWbPicentityId : String
+            + bElementFile : boolean
+            + bSuccess : boolean
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSGetAllBoard {
+            + achConfE164 : String
+            + atBoardInfo : List<TDCSBoardInfo>
+            + dwBoardNum : int
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSGetUserList {
+            + atUserList : List<TDCSConfUserInfo>
+            + dwListNum : int
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSImageUrl {
+            + achConfE164 : String
+            + achPicUrl : String
+            + achTabId : String
+            + achWbPicentityId : String
+            + dwPageId : int
+            + TDCSImageUrl()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSMemberInfo {
+            + achConfE164 : String
+            + atUserList : List<TDCSConfUserInfo>
+            + dwListNum : int
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSNewWhiteBoard {
+            + achConfE164 : String
+            + TDCSNewWhiteBoard()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent {
+            + achConfE164 : String
+            + achFromE164 : String
+            + achTabId : String
+            + bCacheElement : boolean
+            + dwMsgId : int
+            + dwMsgSequence : int
+            + dwWbPageId : int
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperReq {
+            + achConfE164 : String
+            + achTabId : String
+            + dwWbPageid : int
+            + TDCSOperReq()
+            + TDCSOperReq()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperator {
+            + achConfE164 : String
+            + atOperList : List<TDCSConfUserInfo>
+            + dwListNum : int
+            + TDCSOperator()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSRegInfo {
+            + achIp : String
+            + dwPort : int
+            + TDCSRegInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSResult {
+            + achConfE164 : String
+            + bSuccess : boolean
+            + dwErrorCode : int
+            + TDCSResult()
+            + toString()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSScrollScreenInfo {
+            + achTabId : String
+            + dwSubPageId : int
+            + TDCSScrollScreenInfo()
+            + TDCSScrollScreenInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSetConfInfoResult {
+            + achConfE164 : String
+            + achConfName : String
+            + bSucces : boolean
+            + dwErrorCode : int
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSrvState {
+            + achConfE164 : String
+            + bInConference : boolean
+            + TDCSSrvState()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSvrAddr {
+            + achCustomDomain : String
+            + achDomain : String
+            + bUseDefAddr : boolean
+            + dwCustomIp : long
+            + dwIp : long
+            + dwPort : int
+            + TDCSSvrAddr()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSwitchReq {
+            + achConfE164 : String
+            + achTabId : String
+            + dwWbPageId : int
+            + TDCSSwitchReq()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSUserInfo {
+            + achConfE164 : String
+            + achConfName : String
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSUserInfos {
+            + achConfE164 : String
+            + achConfName : String
+            + atUserInfoList : List<TDCSConfUserInfo>
+            + dwListNum : int
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbAddSubPageInfo {
+            + achTabId : String
+            + dwSubPageCount : int
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbCircle {
+            + dwLineWidth : int
+            + dwRgb : long
+            + TDCSWbCircle()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbCircleOperInfo {
+            + achTabId : String
+            + dwSubPageId : int
+            + TDCSWbCircleOperInfo()
+            + TDCSWbCircleOperInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbColorPen {
+            + atCPList : TDCSWbPoint[]
+            + dwColorPenNum : int
+            + dwLineWidth : int
+            + dwRgb : long
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbColorPenOperInfo {
+            + achTabId : String
+            + dwSubPageId : int
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbDelPicOperInfo {
+            + achGraphsId : String[]
+            + achTabId : String
+            + dwGraphsCount : int
+            + dwSubPageId : int
+            + TDCSWbDelPicOperInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbDisPlayInfo {
+            + aachMatrixValue : String[]
+            + achTabId : String
+            + dwSubPageId : int
+            + TDCSWbDisPlayInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbEntity {
+            + achEntityId : String
+            + bLock : boolean
+            + TDCSWbEntity()
+            + TDCSWbEntity()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbEraseOperInfo {
+            + achTabId : String
+            + bNexVision : boolean
+            + dwSubPageId : int
+            + TDCSWbEraseOperInfo()
+            + TDCSWbEraseOperInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbGraphsInfo {
+            + aachMatrixValue : String[]
+            + achGraphsId : String
+            + TDCSWbGraphsInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbImage {
+            + achFileName : String
+            + bBkImg : boolean
+            + dwHeight : int
+            + dwWidth : int
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbImageOperInfo {
+            + achTabId : String
+            + dwSubPageId : int
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbInsertPicOperInfo {
+            + aachMatrixValue : String[]
+            + achImgId : String
+            + achPicName : String
+            + achTabId : String
+            + dwImgHeight : int
+            + dwImgWidth : int
+            + dwSubPageId : int
+            + TDCSWbInsertPicOperInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbLine {
+            + dwLineWidth : int
+            + dwRgb : long
+            + TDCSWbLine()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbLineOperInfo {
+            + achTabId : String
+            + dwSubPageId : int
+            + TDCSWbLineOperInfo()
+            + TDCSWbLineOperInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPencil {
+            + atPList : TDCSWbPoint[]
+            + dwLineWidth : int
+            + dwPointNum : int
+            + dwRgb : long
+            + TDCSWbPencil()
+            + TDCSWbPencil()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPencilOperInfo {
+            + achTabId : String
+            + bFinished : boolean
+            + dwSubPageId : int
+            + TDCSWbPencilOperInfo()
+            + TDCSWbPencilOperInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPitchPicOperInfo {
+            + achTabId : String
+            + atGraphsInfo : TDCSWbGraphsInfo[]
+            + dwGraphsCount : int
+            + dwSubPageId : int
+            + TDCSWbPitchPicOperInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint {
+            + nPosx : int
+            + nPosy : int
+            + TDCSWbPoint()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbRectangle {
+            + dwLineWidth : int
+            + dwRgb : long
+            + TDCSWbRectangle()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbRectangleOperInfo {
+            + achTabId : String
+            + dwSubPageId : int
+            + TDCSWbRectangleOperInfo()
+            + TDCSWbRectangleOperInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbReginEraseOperInfo {
+            + achGraphsId : String
+            + achTabId : String
+            + atPoint : TDCSWbPoint[]
+            + dwEraseHeight : int
+            + dwEraseWidth : int
+            + dwPointCount : int
+            + dwSubPageId : int
+            + TDCSWbReginEraseOperInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbTabPageIdInfo {
+            + achTabId : String
+            + dwSubPageId : int
+            + TDCSWbTabPageIdInfo()
+            + TDCSWbTabPageIdInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbZoomInfo {
+            + achTabId : String
+            + dwZoom : int
+            + TDCSWbZoomInfo()
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      namespace transfer {
+        class com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDcsCacheElementParseResult {
+            + achTabId : String
+            + bParseSuccess : boolean
+            + dwMsgSequence : long
+        }
+      }
+    }
+  }
+  
+
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsDownloadImageRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSImageUrl : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsDownloadImageRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSResult : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetAllWhiteBoardRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSGetAllBoard : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetAllWhiteBoardRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSResult : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetAllWhiteBoardRsp +-down- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetAllWhiteBoardRsp.Adapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetAllWhiteBoardRsp.Adapter -up-|> com.kedacom.vconf.sdk.utils.json.LameJsonAdapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetConfAddrRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConfAddr : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetConfAddrRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSResult : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetConfAddrRsp +-down- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetConfAddrRsp.Adapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetConfAddrRsp.Adapter -up-|> com.kedacom.vconf.sdk.utils.json.LameJsonAdapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetUserListRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSGetUserList : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetUserListRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSResult : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetUserListRsp +-down- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetUserListRsp.Adapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetUserListRsp.Adapter -up-|> com.kedacom.vconf.sdk.utils.json.LameJsonAdapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetWhiteBoardRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetWhiteBoardRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardResult : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetWhiteBoardRsp +-down- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetWhiteBoardRsp.Adapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetWhiteBoardRsp.Adapter -up-|> com.kedacom.vconf.sdk.utils.json.LameJsonAdapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsNewWhiteBoardRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsNewWhiteBoardRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardResult : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsNewWhiteBoardRsp +-down- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsNewWhiteBoardRsp.Adapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsNewWhiteBoardRsp.Adapter -up-|> com.kedacom.vconf.sdk.utils.json.LameJsonAdapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperCircleOperInfoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbCircleOperInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperCircleOperInfoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperEraseOperInfoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbEraseOperInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperEraseOperInfoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperFullScreenNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbDisPlayInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperFullScreenNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperInsertPicNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbInsertPicOperInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperInsertPicNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperLineOperInfoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbLineOperInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperLineOperInfoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperPencilOperInfoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPencilOperInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperPencilOperInfoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperPitchPicDelNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbDelPicOperInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperPitchPicDelNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperPitchPicDragNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPitchPicOperInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperPitchPicDragNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperRectangleOperInfoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbRectangleOperInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperRectangleOperInfoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperRedoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbTabPageIdInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperRedoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperReginEraseNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbReginEraseOperInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperReginEraseNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperUndoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbTabPageIdInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsOperUndoNtf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSetConfInfoRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsConfMode : emConfMode
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSetConfInfoRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsConfType : emConfType
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSwitchRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardInfo : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSwitchRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardResult : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSwitchRsp +-down- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSwitchRsp.Adapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSwitchRsp.Adapter -up-|> com.kedacom.vconf.sdk.utils.json.LameJsonAdapter
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsUploadImageRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSImageUrl : AssParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsUploadImageRsp o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSResult : MainParam
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardInfo .up.|> java.lang.Comparable
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsWbMode : emWbMode
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConfInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsConfMode : emConfMode
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConfInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsConfType : emConfType
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConfUserInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsType : emMttype
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConnectResult o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsConnectErrCode : dwErrorCode
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSCreateConf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsType : emAdminMtType
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSCreateConf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsConfMode : emConfMode
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSCreateConf o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsConfType : emConfType
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSCreateConfResult o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsConfMode : emConfMode
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSCreateConfResult o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsConfType : emConfType
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSCreateConfResult o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConfAddr : tConfAddr
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSNewWhiteBoard o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardInfo : tBoardinfo
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperContent o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsOper : emOper
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSRegInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsType : emMtType
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSScrollScreenInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint : tPoint
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSetConfInfoResult o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsConfMode : emConfMode
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSetConfInfoResult o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsConfType : emConfType
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSrvState o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmServerState : emState
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSUserInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConfUserInfo : tUserInfo
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbCircle o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint : tBeginPt
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbCircle o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint : tEndPt
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbCircle o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbEntity : tEntity
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbCircleOperInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbCircle : tCircle
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbColorPen o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbEntity : tEntity
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbColorPenOperInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbColorPen : tColoePen
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbEraseOperInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint : tBeginPt
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbEraseOperInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint : tEndPt
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbImage o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsWbImageState : emNetworkstate
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbImage o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint : tBoardPt
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbImage o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbEntity : tEntity
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbImageOperInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbImage : tImage
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbInsertPicOperInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint : tPoint
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbLine o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint : tBeginPt
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbLine o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint : tEndPt
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbLine o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbEntity : tEntity
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbLineOperInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbLine : tLine
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPencil o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbEntity : tEntity
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPencilOperInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPencil : tPencil
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbRectangle o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint : tBeginPt
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbRectangle o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbPoint : tEndPt
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbRectangle o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbEntity : tEntity
+  com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbRectangleOperInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSWbRectangle : tRectangle
+
+
+right footer
+
+
+PlantUML diagram generated by SketchIt! (https://bitbucket.org/pmesmeur/sketch.it)
+For more information about this tool, please contact philippe.mesmeur@gmail.com
+endfooter
+
+@enduml

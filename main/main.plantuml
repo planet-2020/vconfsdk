@@ -1,0 +1,322 @@
+@startuml
+
+title __MAIN's Class Diagram__\n
+
+  namespace com.kedacom.vconf.sdk.main {
+    class com.kedacom.vconf.sdk.main.BuildConfig {
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    class com.kedacom.vconf.sdk.main.BuildConfig {
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace conf {
+      class com.kedacom.vconf.sdk.main.conf.ConfManager {
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace conf {
+      class com.kedacom.vconf.sdk.main.conf.Message$$Generated {
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace conf {
+      enum Msg {
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace conf {
+      namespace bean {
+        enum EmConfLoginResultCode {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace conf {
+      namespace bean {
+        enum EmConfProtocol {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace conf {
+      namespace bean {
+        class com.kedacom.vconf.sdk.main.conf.bean.TGkSvrAddr {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace conf {
+      namespace bean {
+        class com.kedacom.vconf.sdk.main.conf.bean.TLoginGkPara {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace conf {
+      namespace bean {
+        class com.kedacom.vconf.sdk.main.conf.bean.TLoginGkResult {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace conf {
+      namespace bean {
+        class com.kedacom.vconf.sdk.main.conf.bean.TSipSvrAddr {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace im {
+      class com.kedacom.vconf.sdk.main.im.ImManager {
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace im {
+      class com.kedacom.vconf.sdk.main.im.Message$$Generated {
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace im {
+      enum Msg {
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace im {
+      namespace bean {
+        class com.kedacom.vconf.sdk.main.im.bean.TIMSvrAddr {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace im {
+      namespace bean {
+        class com.kedacom.vconf.sdk.main.im.bean.TImLoginResult {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace im {
+      namespace bean {
+        class com.kedacom.vconf.sdk.main.im.bean.TImUserLogin {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      class com.kedacom.vconf.sdk.main.startup.Message$$Generated {
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      enum Msg {
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      class com.kedacom.vconf.sdk.main.startup.StartupManager {
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      class com.kedacom.vconf.sdk.main.startup.ToDoConverter {
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      namespace bean {
+        enum ETerminalType {
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      namespace bean {
+        namespace transfer {
+          enum EmMtModel {
+          }
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      namespace bean {
+        namespace transfer {
+          enum EmNetTransportType {
+          }
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      namespace bean {
+        namespace transfer {
+          enum EmResourceType {
+          }
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      namespace bean {
+        namespace transfer {
+          class com.kedacom.vconf.sdk.main.startup.bean.transfer.MTCLoginResult {
+          }
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      namespace bean {
+        namespace transfer {
+          class com.kedacom.vconf.sdk.main.startup.bean.transfer.TApsLoginResult {
+          }
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      namespace bean {
+        namespace transfer {
+          class com.kedacom.vconf.sdk.main.startup.bean.transfer.TMTApsLoginParam {
+          }
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      namespace bean {
+        namespace transfer {
+          class com.kedacom.vconf.sdk.main.startup.bean.transfer.TNetWorkInfo {
+          }
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      namespace bean {
+        namespace transfer {
+          class com.kedacom.vconf.sdk.main.startup.bean.transfer.TSrvKeepLiveInfo {
+          }
+        }
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.main {
+    namespace startup {
+      namespace bean {
+        namespace transfer {
+          class com.kedacom.vconf.sdk.main.startup.bean.transfer.TSrvStartResult {
+          }
+        }
+      }
+    }
+  }
+  
+
+  com.kedacom.vconf.sdk.main.conf.ConfManager -up-|> com.kedacom.vconf.sdk.amulet.Caster
+  com.kedacom.vconf.sdk.main.conf.bean.TLoginGkResult o-- com.kedacom.vconf.sdk.main.conf.bean.EmConfLoginResultCode : AssParam
+  com.kedacom.vconf.sdk.main.conf.bean.TLoginGkResult o-- com.kedacom.vconf.sdk.main.conf.bean.EmConfProtocol : MainParam
+  com.kedacom.vconf.sdk.main.im.ImManager -up-|> com.kedacom.vconf.sdk.amulet.Caster
+  com.kedacom.vconf.sdk.main.startup.StartupManager -up-|> com.kedacom.vconf.sdk.amulet.Caster
+  com.kedacom.vconf.sdk.main.startup.bean.transfer.TApsLoginResult o-- com.kedacom.vconf.sdk.main.startup.bean.transfer.EmResourceType : emResourceType
+  com.kedacom.vconf.sdk.main.startup.bean.transfer.TNetWorkInfo o-- com.kedacom.vconf.sdk.main.startup.bean.transfer.EmNetTransportType : emUsedType
+  com.kedacom.vconf.sdk.main.startup.bean.transfer.TSrvStartResult o-- com.kedacom.vconf.sdk.main.startup.bean.transfer.TSrvKeepLiveInfo : AssParam
+
+
+right footer
+
+
+PlantUML diagram generated by SketchIt! (https://bitbucket.org/pmesmeur/sketch.it)
+For more information about this tool, please contact philippe.mesmeur@gmail.com
+endfooter
+
+@enduml

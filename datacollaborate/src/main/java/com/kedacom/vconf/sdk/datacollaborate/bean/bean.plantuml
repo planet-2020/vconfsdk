@@ -1,0 +1,579 @@
+@startuml
+
+title __BEAN's Class Diagram__\n
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo {
+          - anonyId : int
+          - confE164 : String
+          - createTime : int
+          - creatorE164 : String
+          - id : String
+          - name : String
+          - pageId : int
+          - pageNum : int
+          + BoardInfo()
+          + BoardInfo()
+          + getAnonyId()
+          + getConfE164()
+          + getCreateTime()
+          + getCreatorE164()
+          + getId()
+          + getMode()
+          + getName()
+          + getPageId()
+          + getPageNum()
+          + setAnonyId()
+          + setConfE164()
+          + setCreateTime()
+          + setCreatorE164()
+          + setId()
+          + setMode()
+          + setName()
+          + setPageId()
+          + setPageNum()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.DCMember {
+          - bChairman : boolean
+          - bOnline : boolean
+          - bOperator : boolean
+          - e164 : String
+          - name : String
+          + DCMember()
+          + getE164()
+          + getName()
+          + getType()
+          + isbChairman()
+          + isbOnline()
+          + isbOperator()
+          + setE164()
+          + setName()
+          + setType()
+          + setbChairman()
+          + setbOnline()
+          + setbOperator()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.DcConfInfo {
+          - bCreator : boolean
+          - confE164 : String
+          - confName : String
+          + DcConfInfo()
+          + getConfE164()
+          + getConfMode()
+          + getConfName()
+          + getConfType()
+          + isCreator()
+          + setConfE164()
+          + setConfMode()
+          + setConfName()
+          + setConfType()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      enum EBoardMode {
+        Doc
+        Normal
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      enum EConfType {
+        MCC
+        P2P
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      enum EDcMode {
+        Auto
+        Manage
+        Stop
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      enum EOpType {
+        CLEAR_SCREEN
+        DELETE_PICTURE
+        DRAG_PICTURE
+        DRAW_LINE
+        DRAW_OVAL
+        DRAW_PATH
+        DRAW_RECT
+        ERASE
+        FULLSCREEN_MATRIX
+        INSERT_PICTURE
+        RECT_ERASE
+        REDO
+        UNDO
+        UPDATE_PICTURE
+        ZOOM_PICTURE
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      enum ETerminalType {
+        Imix
+        ThirdParty
+        TrueLinkAndroidPad
+        TrueLinkAndroidPhone
+        TrueLinkIosPad
+        TrueLinkIosPhone
+        TrueLinkWindows
+        TrueSens
+        Unknown
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      interface com.kedacom.vconf.sdk.datacollaborate.bean.IBoundary {
+          {abstract} + boundary()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      interface com.kedacom.vconf.sdk.datacollaborate.bean.IRepealable {
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen {
+          + OpClearScreen()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic {
+          - picIds : String[]
+          + OpDeletePic()
+          + OpDeletePic()
+          + getPicIds()
+          + setPicIds()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic {
+          - picMatrices : Map<String, Matrix>
+          + OpDragPic()
+          + OpDragPic()
+          + getPicMatrices()
+          + setPicMatrices()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      abstract class com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw {
+          {static} + DASH : int
+          {static} + SOLID : int
+          - color : long
+          - lineStyle : int
+          - strokeWidth : int
+          + getColor()
+          + getLineStyle()
+          + getStrokeWidth()
+          + setColor()
+          + setLineStyle()
+          + setStrokeWidth()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine {
+          - bound : RectF
+          - startX : float
+          - startY : float
+          - stopX : float
+          - stopY : float
+          + OpDrawLine()
+          + OpDrawLine()
+          + boundary()
+          + getStartX()
+          + getStartY()
+          + getStopX()
+          + getStopY()
+          + setStartX()
+          + setStartY()
+          + setStopX()
+          + setStopY()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval {
+          - bottom : float
+          - bound : RectF
+          - left : float
+          - right : float
+          - top : float
+          + OpDrawOval()
+          + OpDrawOval()
+          + boundary()
+          + getBottom()
+          + getLeft()
+          + getRight()
+          + getTop()
+          + setBottom()
+          + setLeft()
+          + setRight()
+          + setTop()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath {
+          - bottom : float
+          - bound : RectF
+          - finished : boolean
+          - lastPointCount : int
+          - left : float
+          - path : Path
+          - points : List<PointF>
+          - right : float
+          - top : float
+          + OpDrawPath()
+          + addPoint()
+          + addPoints()
+          + boundary()
+          + getPath()
+          + getPoints()
+          + isFinished()
+          + setFinished()
+          + toString()
+          - calcBoundary()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect {
+          - bottom : float
+          - bound : RectF
+          - left : float
+          - right : float
+          - top : float
+          + OpDrawRect()
+          + OpDrawRect()
+          + boundary()
+          + getBottom()
+          + getLeft()
+          + getRight()
+          + getTop()
+          + setBottom()
+          + setLeft()
+          + setRight()
+          + setTop()
+          + setValues()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpErase {
+          - height : int
+          - width : int
+          + OpErase()
+          + getHeight()
+          + getWidth()
+          + setHeight()
+          + setWidth()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic {
+          - boardMatrix : Matrix
+          - bound : RectF
+          - dragMatrix : Matrix
+          - insertPos : PointF
+          - matrix : Matrix
+          - mixMatrix : Matrix
+          - notes : List<OpPaint>
+          - pic : Bitmap
+          - picHeight : int
+          - picId : String
+          - picName : String
+          - picPath : String
+          - picWidth : int
+          - transMatrix : Matrix
+          + OpInsertPic()
+          + OpInsertPic()
+          + OpInsertPic()
+          + boundary()
+          + getBoardMatrix()
+          + getDragMatrix()
+          + getInsertPos()
+          + getMatrix()
+          + getMixMatrix()
+          + getNotes()
+          + getPic()
+          + getPicHeight()
+          + getPicId()
+          + getPicName()
+          + getPicPath()
+          + getPicWidth()
+          + getTransMatrix()
+          + setBoardMatrix()
+          + setDragMatrix()
+          + setInsertPos()
+          + setMatrix()
+          + setMixMatrix()
+          + setNotes()
+          + setPic()
+          + setPicHeight()
+          + setPicId()
+          + setPicName()
+          + setPicPath()
+          + setPicWidth()
+          + setTransMatrix()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix {
+          - matrix : Matrix
+          - matrixValue : float[]
+          + OpMatrix()
+          + OpMatrix()
+          + OpMatrix()
+          + getMatrix()
+          + getMatrixValue()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      abstract class com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint {
+          # authorE164 : String
+          # boardId : String
+          # confE164 : String
+          # pageId : int
+          # sn : int
+          # uuid : String
+          + compareTo()
+          + getAuthorE164()
+          + getBoardId()
+          + getConfE164()
+          + getPageId()
+          + getSn()
+          + getType()
+          + getUuid()
+          + isDuplicate()
+          + setAuthorE164()
+          + setBoardId()
+          + setConfE164()
+          + setPageId()
+          + setSn()
+          + setType()
+          + setUuid()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase {
+          - bottom : float
+          - bound : RectF
+          - left : float
+          - right : float
+          - top : float
+          + OpRectErase()
+          + boundary()
+          + getBottom()
+          + getLeft()
+          + getRight()
+          + getTop()
+          + setBottom()
+          + setLeft()
+          + setRight()
+          + setTop()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo {
+          + OpRedo()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo {
+          + OpUndo()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic {
+          - picId : String
+          - picSavePath : String
+          + OpUpdatePic()
+          + getPicId()
+          + getPicSavePath()
+          + setPicId()
+          + setPicSavePath()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.OpZoomPic {
+          - picMatrices : Map<String, Matrix>
+          + OpZoomPic()
+          + OpZoomPic()
+          + getPicMatrices()
+          + setPicMatrices()
+          + toString()
+      }
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.datacollaborate {
+    namespace bean {
+      class com.kedacom.vconf.sdk.datacollaborate.bean.PainterInfo {
+          - e164 : String
+          + PainterInfo()
+          + getE164()
+          + setE164()
+      }
+    }
+  }
+  
+
+  com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.EBoardMode : mode
+  com.kedacom.vconf.sdk.datacollaborate.bean.DCMember o-- com.kedacom.vconf.sdk.datacollaborate.bean.ETerminalType : type
+  com.kedacom.vconf.sdk.datacollaborate.bean.DcConfInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.EDcMode : confMode
+  com.kedacom.vconf.sdk.datacollaborate.bean.DcConfInfo o-- com.kedacom.vconf.sdk.datacollaborate.bean.EConfType : confType
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen .up.|> com.kedacom.vconf.sdk.datacollaborate.bean.IRepealable
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw .up.|> com.kedacom.vconf.sdk.datacollaborate.bean.IBoundary
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw .up.|> com.kedacom.vconf.sdk.datacollaborate.bean.IRepealable
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpErase -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic .up.|> com.kedacom.vconf.sdk.datacollaborate.bean.IBoundary
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint .up.|> java.lang.Comparable
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint o-- com.kedacom.vconf.sdk.datacollaborate.bean.EOpType : type
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase .up.|> com.kedacom.vconf.sdk.datacollaborate.bean.IBoundary
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase .up.|> com.kedacom.vconf.sdk.datacollaborate.bean.IRepealable
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint
+  com.kedacom.vconf.sdk.datacollaborate.bean.OpZoomPic -up-|> com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint
+
+
+right footer
+
+
+PlantUML diagram generated by SketchIt! (https://bitbucket.org/pmesmeur/sketch.it)
+For more information about this tool, please contact philippe.mesmeur@gmail.com
+endfooter
+
+@enduml

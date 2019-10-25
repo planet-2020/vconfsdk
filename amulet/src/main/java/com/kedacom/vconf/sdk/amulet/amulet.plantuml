@@ -1,0 +1,368 @@
+@startuml
+
+title __AMULET's Class Diagram__\n
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    abstract class com.kedacom.vconf.sdk.amulet.Caster {
+        {static} - NOTIFICATION_FAIRY_BASE_PRIORITY : int
+        {static} - SESSION_FAIRY_BASE_PRIORITY : int
+        {static} - count : int
+        - enumT : Class<T>
+        - listenerLifecycleObserver : ListenerLifecycleObserver
+        - msgPrefix : String
+        - ntfListeners : Map<String, LinkedHashSet<Object>>
+        - ntfProcessorMap : Map<T, NtfProcessor<T>>
+        - reqSn : int
+        - rspListeners : Map<Integer, ReqBundle>
+        - rspProcessorMap : Map<T, RspProcessor<T>>
+        + delListener()
+        + eject()
+        + eject()
+        + enableSimulator()
+        + feedSimulatedData()
+        + onFinDueToNoRsp()
+        + onNtf()
+        + onRsp()
+        + onTimeout()
+        # Caster()
+        # cancelReq()
+        # containsNtfListener()
+        # containsRspListener()
+        # delRspListener()
+        # genSimulatedData()
+        # get()
+        # getNtfListeners()
+        {abstract} # ntfsProcessors()
+        # onTimeout()
+        # reportFailed()
+        # reportSuccess()
+        # reportTimeout()
+        # req()
+        {abstract} # rspsProcessors()
+        # set()
+        # subscribe()
+        # subscribe()
+        # unsubscribe()
+        # unsubscribe()
+        # unsubscribe()
+        - delNtfListener()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    interface com.kedacom.vconf.sdk.amulet.Caster.NtfProcessor {
+        {abstract} + process()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    class com.kedacom.vconf.sdk.amulet.Caster.ReqBundle {
+        + ReqBundle()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    interface com.kedacom.vconf.sdk.amulet.Caster.RspProcessor {
+        {abstract} + process()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    class com.kedacom.vconf.sdk.amulet.CommandFairy {
+        {static} - TAG : String
+        {static} - magicBook : MagicBook
+        + get()
+        + set()
+        + setCrystalBall()
+        ~ CommandFairy()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    class com.kedacom.vconf.sdk.amulet.CrystalBall {
+        {static} - TAG : String
+        - cachedMethods : Map<String, Method>
+        - handler : Handler
+        {static} - instance : CrystalBall
+        - listeners : List<PriorityListener>
+        + addListener()
+        + clearListeners()
+        + delListener()
+        + getPriority()
+        {static} + instance()
+        + onAppear()
+        + spell()
+        # CrystalBall()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    class com.kedacom.vconf.sdk.amulet.CrystalBall.MsgWrapper {
+        ~ msgBody : String
+        ~ msgName : String
+        ~ MsgWrapper()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    class com.kedacom.vconf.sdk.amulet.CrystalBall.PriorityListener {
+        ~ priority : int
+        + compareTo()
+        ~ PriorityListener()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    class com.kedacom.vconf.sdk.amulet.FakeCrystalBall {
+        {static} - TAG : String
+        - cfgCache : Map<Class<?>, Object>
+        {static} - instance : FakeCrystalBall
+        - nativeHandler : Handler
+        {static} + instance()
+        + spell()
+        - FakeCrystalBall()
+        - createInstanceFromClass()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    interface com.kedacom.vconf.sdk.amulet.ICrystalBall {
+        {abstract} + addListener()
+        {abstract} + clearListeners()
+        {abstract} + delListener()
+        {abstract} + getPriority()
+        {abstract} + onAppear()
+        {abstract} + spell()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    interface com.kedacom.vconf.sdk.amulet.ICrystalBall.IListener {
+        {abstract} + onMsg()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    interface com.kedacom.vconf.sdk.amulet.IFairy {
+        {abstract} + setCrystalBall()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    interface com.kedacom.vconf.sdk.amulet.IFairy.ICommandFairy {
+        {abstract} + get()
+        {abstract} + set()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    interface com.kedacom.vconf.sdk.amulet.IFairy.INotificationFairy {
+        + emit()
+        {abstract} + subscribe()
+        {abstract} + unsubscribe()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    interface com.kedacom.vconf.sdk.amulet.IFairy.INotificationFairy.IListener {
+        {abstract} + onNtf()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    interface com.kedacom.vconf.sdk.amulet.IFairy.ISessionFairy {
+        {abstract} + cancelReq()
+        {abstract} + req()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    interface com.kedacom.vconf.sdk.amulet.IFairy.ISessionFairy.IListener {
+        {abstract} + onFinDueToNoRsp()
+        {abstract} + onRsp()
+        {abstract} + onTimeout()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    interface com.kedacom.vconf.sdk.amulet.IResultListener {
+        + onArrive()
+        + onFailed()
+        + onSuccess()
+        + onTimeout()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    class com.kedacom.vconf.sdk.amulet.MagicBook {
+        {static} - COL_CLZ : String
+        {static} - COL_DELAY : String
+        {static} - COL_ID : String
+        {static} - COL_METHOD : String
+        {static} - COL_OWNER : String
+        {static} - COL_PARAS : String
+        {static} - COL_RSPSEQ : String
+        {static} - COL_TIMEOUT : String
+        {static} - COL_TYPE : String
+        {static} - COL_USERPARAS : String
+        {static} - REQ_TYPE_GET : int
+        {static} - REQ_TYPE_SESSION : int
+        {static} - REQ_TYPE_SET : int
+        {static} - instance : MagicBook
+        - modules : Set<String>
+        - nameIdMap : BiMap<String, String>
+        - reqMap : Table<String, String, Object>
+        - rspMap : Table<String, String, Object>
+        ~ addChapter()
+        ~ checkUserPara()
+        ~ getMethod()
+        ~ getMethodOwner()
+        ~ getMsgId()
+        ~ getMsgName()
+        ~ getParaClasses()
+        ~ getRspClazz()
+        ~ getRspDelay()
+        ~ getRspSeqs()
+        ~ getTimeout()
+        ~ getUserParaClasses()
+        {static} ~ instance()
+        ~ isGet()
+        ~ isNotification()
+        ~ isRequest()
+        ~ isResponse()
+        ~ isSession()
+        ~ isSet()
+        ~ userPara2MethodPara()
+        - MagicBook()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    class com.kedacom.vconf.sdk.amulet.NotificationFairy {
+        {static} - TAG : String
+        {static} - handler : Handler
+        {static} - magicBook : MagicBook
+        - subscribers : Map<String, LinkedHashSet<IListener>>
+        + emit()
+        + onMsg()
+        + setCrystalBall()
+        + subscribe()
+        + unsubscribe()
+        ~ NotificationFairy()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    class com.kedacom.vconf.sdk.amulet.SessionFairy {
+        {static} - MSG_ID_FIN_DUE_TO_NO_RSP : int
+        {static} - MSG_ID_START_SESSION : int
+        {static} - MSG_ID_TIMEOUT : int
+        {static} - TAG : String
+        {static} - handler : Handler
+        {static} - magicBook : MagicBook
+        {static} - reqHandler : Handler
+        - sessions : Set<Session>
+        + cancelReq()
+        + onMsg()
+        + req()
+        + setCrystalBall()
+        ~ SessionFairy()
+        - startSession()
+        - timeout()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    class com.kedacom.vconf.sdk.amulet.SessionFairy.Session {
+        {static} - BLOCKING : int
+        {static} - END : int
+        {static} - IDLE : int
+        {static} - READY : int
+        {static} - RECVING : int
+        {static} - WAITING : int
+        - candidates : SparseIntArray
+        {static} - count : int
+        - id : int
+        - reqName : String
+        - reqPara : Object[]
+        - reqSn : int
+        - rspSeqs : String[][]
+        - state : int
+        - timeoutVal : int
+        - Session()
+    }
+  }
+  
+
+  namespace com.kedacom.vconf.sdk.amulet {
+    class com.kedacom.vconf.sdk.amulet.SimulatedDataRepository {
+        {static} - datas : Map<Class<?>, CompatibleConcurrentLinkedDeque<Object>>
+        {static} ~ get()
+        {static} ~ put()
+    }
+  }
+  
+
+  com.kedacom.vconf.sdk.amulet.Caster .up.|> com.kedacom.vconf.sdk.amulet.IFairy.INotificationFairy.IListener
+  com.kedacom.vconf.sdk.amulet.Caster .up.|> com.kedacom.vconf.sdk.amulet.IFairy.ISessionFairy.IListener
+  com.kedacom.vconf.sdk.amulet.Caster o-- com.kedacom.vconf.sdk.amulet.IFairy.ICommandFairy : commandFairy
+  com.kedacom.vconf.sdk.amulet.Caster o-- com.kedacom.vconf.sdk.amulet.ICrystalBall : crystalBall
+  com.kedacom.vconf.sdk.amulet.Caster o-- com.kedacom.vconf.sdk.amulet.IFairy.INotificationFairy : notificationFairy
+  com.kedacom.vconf.sdk.amulet.Caster o-- com.kedacom.vconf.sdk.amulet.IFairy.ISessionFairy : sessionFairy
+  com.kedacom.vconf.sdk.amulet.Caster +-down- com.kedacom.vconf.sdk.amulet.Caster.NtfProcessor
+  com.kedacom.vconf.sdk.amulet.Caster +-down- com.kedacom.vconf.sdk.amulet.Caster.ReqBundle
+  com.kedacom.vconf.sdk.amulet.Caster +-down- com.kedacom.vconf.sdk.amulet.Caster.RspProcessor
+  com.kedacom.vconf.sdk.amulet.Caster.ReqBundle o-- com.kedacom.vconf.sdk.amulet.IResultListener : listener
+  com.kedacom.vconf.sdk.amulet.Caster.ReqBundle o-- T : req
+  com.kedacom.vconf.sdk.amulet.CommandFairy .up.|> com.kedacom.vconf.sdk.amulet.IFairy.ICommandFairy
+  com.kedacom.vconf.sdk.amulet.CommandFairy o-- com.kedacom.vconf.sdk.amulet.ICrystalBall : crystalBall
+  com.kedacom.vconf.sdk.amulet.CrystalBall .up.|> com.kedacom.vconf.sdk.amulet.ICrystalBall
+  com.kedacom.vconf.sdk.amulet.CrystalBall +-down- com.kedacom.vconf.sdk.amulet.CrystalBall.MsgWrapper
+  com.kedacom.vconf.sdk.amulet.CrystalBall +-down- com.kedacom.vconf.sdk.amulet.CrystalBall.PriorityListener
+  com.kedacom.vconf.sdk.amulet.CrystalBall.PriorityListener .up.|> java.lang.Comparable
+  com.kedacom.vconf.sdk.amulet.CrystalBall.PriorityListener o-- com.kedacom.vconf.sdk.amulet.ICrystalBall.IListener : listener
+  com.kedacom.vconf.sdk.amulet.FakeCrystalBall -up-|> com.kedacom.vconf.sdk.amulet.CrystalBall
+  com.kedacom.vconf.sdk.amulet.FakeCrystalBall o-- com.kedacom.vconf.sdk.amulet.MagicBook : magicBook
+  com.kedacom.vconf.sdk.amulet.ICrystalBall +-down- com.kedacom.vconf.sdk.amulet.ICrystalBall.IListener
+  com.kedacom.vconf.sdk.amulet.IFairy +-down- com.kedacom.vconf.sdk.amulet.IFairy.ICommandFairy
+  com.kedacom.vconf.sdk.amulet.IFairy +-down- com.kedacom.vconf.sdk.amulet.IFairy.INotificationFairy
+  com.kedacom.vconf.sdk.amulet.IFairy +-down- com.kedacom.vconf.sdk.amulet.IFairy.ISessionFairy
+  com.kedacom.vconf.sdk.amulet.IFairy.INotificationFairy +-down- com.kedacom.vconf.sdk.amulet.IFairy.INotificationFairy.IListener
+  com.kedacom.vconf.sdk.amulet.IFairy.ISessionFairy +-down- com.kedacom.vconf.sdk.amulet.IFairy.ISessionFairy.IListener
+  com.kedacom.vconf.sdk.amulet.NotificationFairy .up.|> com.kedacom.vconf.sdk.amulet.IFairy.INotificationFairy
+  com.kedacom.vconf.sdk.amulet.NotificationFairy o-- com.kedacom.vconf.sdk.amulet.ICrystalBall : crystalBall
+  com.kedacom.vconf.sdk.amulet.SessionFairy .up.|> com.kedacom.vconf.sdk.amulet.IFairy.ISessionFairy
+  com.kedacom.vconf.sdk.amulet.SessionFairy o-- com.kedacom.vconf.sdk.amulet.ICrystalBall : crystalBall
+  com.kedacom.vconf.sdk.amulet.SessionFairy +-down- com.kedacom.vconf.sdk.amulet.SessionFairy.Session
+  com.kedacom.vconf.sdk.amulet.SessionFairy.Session o-- com.kedacom.vconf.sdk.amulet.IFairy.ISessionFairy.IListener : listener
+
+
+right footer
+
+
+PlantUML diagram generated by SketchIt! (https://bitbucket.org/pmesmeur/sketch.it)
+For more information about this tool, please contact philippe.mesmeur@gmail.com
+endfooter
+
+@enduml
