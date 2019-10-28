@@ -38,6 +38,7 @@ import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.MirroredTypesException;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
+import javax.tools.Diagnostic;
 
 /**
  * Created by Sissi on 2018/9/3.
@@ -84,6 +85,8 @@ public class MessageProcessor extends AbstractProcessor {
         bDone = true;
 
         messager = processingEnv.getMessager();
+
+        messager.printMessage(Diagnostic.Kind.NOTE, "START to generate msg file ... ");
 
         Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Message.class);
         for (Element element : msgSet) {
@@ -342,6 +345,8 @@ public class MessageProcessor extends AbstractProcessor {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        messager.printMessage(Diagnostic.Kind.NOTE, "SUCCESS! generate file : "+ packageName+"."+className+".java");
     }
 
 }
