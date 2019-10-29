@@ -49,9 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class WebRtcClient extends Caster<Msg>{
-
-    private static String TAG = "WebRtcClient";
+public class WebRtcManager extends Caster<Msg>{
 
     private RtcConnector rtcConnector;
     private PeerConnectionClient pubConnClient;
@@ -68,16 +66,16 @@ public class WebRtcClient extends Caster<Msg>{
 
     private Handler handler = new Handler(Looper.getMainLooper());
 
-    private static WebRtcClient instance;
+    private static WebRtcManager instance;
 
-    private WebRtcClient(){
+    private WebRtcManager(){
         rtcConnector = new RtcConnector();
         rtcConnector.setSignalingEventsCallback(signalingEvents);
     }
 
-    public synchronized static WebRtcClient getInstance(){
+    public synchronized static WebRtcManager getInstance(){
         if (null == instance){
-            return new WebRtcClient();
+            return new WebRtcManager();
         }
         return instance;
     }
@@ -355,10 +353,14 @@ public class WebRtcClient extends Caster<Msg>{
             long curts = System.currentTimeMillis();
             if (curts - timestamp > 5000){
                 timestamp = curts;
-                Logging.d(TAG, name+" onFrame, "+"target="+target);
+                KLog.p("%s onFrame, target %s", name, target);
+                if (target == null) {
+                    KLog.p("Dropping frame in proxy because target is null.");
+                    return;
+                }
             }
+
             if (target == null) {
-                Logging.d(TAG, "Dropping frame in proxy because target is null.");
                 return;
             }
 
@@ -367,7 +369,6 @@ public class WebRtcClient extends Caster<Msg>{
 
         synchronized void setTarget(VideoSink target) {
             this.target = target;
-            Logging.d(TAG, name+" target="+target);
         }
 
     }
@@ -654,7 +655,6 @@ public class WebRtcClient extends Caster<Msg>{
     VideoCapturer createVideoCapturer() {
         final VideoCapturer videoCapturer;
 
-        Logging.d(TAG, "Creating capturer using camera2 API.");
         videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
 
         if (videoCapturer == null) {
@@ -668,10 +668,8 @@ public class WebRtcClient extends Caster<Msg>{
         final String[] deviceNames = enumerator.getDeviceNames();
 
         // First, try to find front facing camera
-        Logging.d(TAG, "Looking for front facing cameras.");
         for (String deviceName : deviceNames) {
             if (enumerator.isFrontFacing(deviceName)) {
-                Logging.d(TAG, "Creating front facing camera capturer.");
                 VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
 
                 if (videoCapturer != null) {
@@ -681,10 +679,8 @@ public class WebRtcClient extends Caster<Msg>{
         }
 
         // Front facing camera not found, try something else
-        Logging.d(TAG, "Looking for other cameras.");
         for (String deviceName : deviceNames) {
             if (!enumerator.isFrontFacing(deviceName)) {
-                Logging.d(TAG, "Creating other camera capturer.");
                 VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
 
                 if (videoCapturer != null) {
@@ -692,6 +688,8 @@ public class WebRtcClient extends Caster<Msg>{
                 }
             }
         }
+
+        KLog.p(KLog.ERROR, "failed to createCameraCapturer");
 
         return null;
     }
@@ -715,7 +713,7 @@ public class WebRtcClient extends Caster<Msg>{
 
     private Toast logToast;
     private void logAndToast(String msg) {
-        Log.d(TAG, msg);
+        KLog.p(msg);
         if (logToast != null) {
             logToast.cancel();
         }
