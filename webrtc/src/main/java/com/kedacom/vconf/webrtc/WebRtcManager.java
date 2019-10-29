@@ -3,7 +3,6 @@ package com.kedacom.vconf.webrtc;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
@@ -32,7 +31,6 @@ import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
 import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
-import org.webrtc.Logging;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.RendererCommon;
 import org.webrtc.RtpTransceiver;
@@ -59,9 +57,6 @@ public class WebRtcManager extends Caster<Msg>{
 
     private Context context;
     private EglBase eglBase;
-    private PeerConnectionClient.PeerConnectionParameters peerConnectionParameters;
-//    private ProxyVideoSink localVideoSink = new ProxyVideoSink("localVideoSink");
-//    private Map<RenderChannel, ProxyVideoSink> remoteVideoSinks = new HashMap<>();
     private Map<String, ProxyVideoSink> videoSinks = new HashMap<>();
 
     private Handler handler = new Handler(Looper.getMainLooper());
@@ -75,7 +70,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     public synchronized static WebRtcManager getInstance(){
         if (null == instance){
-            return new WebRtcManager();
+            return instance = new WebRtcManager();
         }
         return instance;
     }
@@ -265,7 +260,7 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    public synchronized void stopSession(){
+    public synchronized void stopSession(){  // TODO check 资源释放
         if (!bSessionStarted){
             KLog.p(KLog.ERROR, "session has stopped already!");
             return;
@@ -304,13 +299,13 @@ public class WebRtcManager extends Caster<Msg>{
 //            }
 //            localVideoSink.setTarget(null);
 //        }
-//        for (ProxyVideoSink videoSink : remoteVideoSinks.values()){
+//        for (ProxyVideoSink videoSink : videoSinks.values()){
 //            if (null != videoSink.target){
 //                ((SurfaceViewRenderer)videoSink.target).release();
 //            }
 //            videoSink.setTarget(null);
 //        }
-//        remoteVideoSinks.clear();
+//        videoSinks.clear();
 
         for (ProxyVideoSink videoSink : videoSinks.values()){
             if (null != videoSink.target){
@@ -412,11 +407,11 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 if (null != rtcMedia){
                     KLog.p("rtcMedia.mid=%s, rtcMedia.streamid=%s", rtcMedia.mid, rtcMedia.streamid);
-                    midStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);  // TODO streamId和流信息绑定起来，在上层只知道streamId（通过Ntf通知），bindRender时传下streamId
+                    midStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
                 }
                 pcClient.createPeerConnection(
                         videoCapturer,
-                        params, rtcMedia);
+                        params, rtcMedia); // TODO 收到的rtcMedia是否要设置到己端sdp？
                 if (params.initiator) {
                     // Create offer. Offer SDP will be sent to answering client in
                     // PeerConnectionEvents.onLocalDescription event.
@@ -569,13 +564,13 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onLocalVideoTrack(String trackId) {
             handler.post(() -> {
-                ProxyVideoSink videoSink = new ProxyVideoSink(trackId);  // FIXME 应该是StreamId，组件给的是mid和streamId的对应关系
-                videoSinks.put(trackId, videoSink);
-                getPeerConnectionClient(connType).bindLocalSink(trackId, videoSink);
+                ProxyVideoSink localVideoSink = new ProxyVideoSink(trackId);
+                videoSinks.put(trackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
+                getPeerConnectionClient(connType).bindLocalSink(trackId, localVideoSink);
 
                 if (null != sessionEventListener) {
 //                    String streamId = midStreamIdMap.get(trackId);
-//                    KLog.p("trackId=%s, streamId=%s", trackId, streamId);
+                    KLog.p("local trackId=%s", trackId);
 //                    if (null == streamId){
 //                        KLog.p(KLog.ERROR, "not register stream %s in signaling progress", trackId);
 //                        return;
@@ -596,29 +591,30 @@ public class WebRtcManager extends Caster<Msg>{
                     surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
                     surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
                     surfaceViewRenderer.setEnableHardwareScaler(true);
-                    videoSink.setTarget(surfaceViewRenderer);
-//                    sessionEventListener.onLocalStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId), surfaceViewRenderer);
-
-                    sessionEventListener.onLocalStream(new StreamInfo(0, 0, "null"), surfaceViewRenderer);
+                    localVideoSink.setTarget(surfaceViewRenderer);
+                    sessionEventListener.onLocalStream(trackId, surfaceViewRenderer);
+//                    sessionEventListener.onLocalStream(new StreamInfo(0, 0, "null"), surfaceViewRenderer);
                 }
             });
         }
 
         @Override
-        public void onRemoteVideoTrack(String trackId) {
-            KLog.p("trackId=%s", trackId);
+        public void onRemoteVideoTrack(String mid, String trackId) {
+            KLog.p("trackId=%s", mid);
             handler.post(() -> {
 
-                ProxyVideoSink videoSink = new ProxyVideoSink(trackId);  // FIXME 应该是StreamId，组件给的是mid和streamId的对应关系
-                videoSinks.put(trackId, videoSink);
+                ProxyVideoSink videoSink = new ProxyVideoSink(mid);
+                videoSinks.put(mid, videoSink);
                 getPeerConnectionClient(connType).bindRemoteSink(trackId, videoSink);
                 if (null != sessionEventListener) {
-//                    String streamId = midStreamIdMap.get(trackId);
-//                    KLog.p("trackId=%s, streamId=%s", trackId, streamId);
-//                    if (null == streamId){
-//                        KLog.p(KLog.ERROR, "not register stream %s in signaling progress", trackId);
-//                        return;
-//                    }
+                    String streamId = midStreamIdMap.get(mid);
+                    KLog.p("mid=%s, streamId=%s", mid, streamId);
+                    if (null == streamId){
+                        KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress", mid);
+                        return;
+                    }
+
+                    // SEALED TODO 暂时无法联调
 //                    TRtcStreamInfo rtcStreamInfo = null;
 //                    for (TRtcStreamInfo streamInfo : streamInfos){
 //                        if (streamId.equals(streamInfo.achStreamId)){
@@ -627,16 +623,17 @@ public class WebRtcManager extends Caster<Msg>{
 //                        }
 //                    }
 //                    if (null == rtcStreamInfo){
-//                        KLog.p(KLog.ERROR, "no such stream %s in stream list", trackId);
+//                        KLog.p(KLog.ERROR, "no such stream %s in stream list", streamId);
 //                        return;
 //                    }
+
                     SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
                     surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
                     surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
                     surfaceViewRenderer.setEnableHardwareScaler(true);
                     videoSink.setTarget(surfaceViewRenderer);
 //                    sessionEventListener.onRemoteStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId), surfaceViewRenderer);
-                    sessionEventListener.onRemoteStream(new StreamInfo(0, 0, "null"), surfaceViewRenderer);
+                    sessionEventListener.onRemoteStream(new StreamInfo(0, 0, streamId), surfaceViewRenderer);
                 }
 
             });
@@ -754,10 +751,9 @@ public class WebRtcManager extends Caster<Msg>{
     public interface SessionEventListener {
         /**
          * 本地流到达
-         * @param stream 流信息
-         * @param display 流默认的渲染目标
-         * */
-        void onLocalStream(StreamInfo stream, View display);
+         * @param streamId 本地流Id。
+         * @param display 流默认的渲染目标 */
+        void onLocalStream(String streamId, View display);
         /**
          * 远端流到达
          * @param stream 流信息
