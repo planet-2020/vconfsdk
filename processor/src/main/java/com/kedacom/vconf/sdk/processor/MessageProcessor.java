@@ -86,7 +86,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         messager = processingEnv.getMessager();
 
-        messager.printMessage(Diagnostic.Kind.NOTE, "START to generate msg file ... ");
+//        messager.printMessage(Diagnostic.Kind.NOTE, "START to generate msg file ... ");
 
         Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Message.class);
         for (Element element : msgSet) {
@@ -346,7 +346,7 @@ public class MessageProcessor extends AbstractProcessor {
             e.printStackTrace();
         }
 
-        messager.printMessage(Diagnostic.Kind.NOTE, "SUCCESS! generate file : "+ packageName+"."+className+".java");
+//        messager.printMessage(Diagnostic.Kind.NOTE, "SUCCESS! generate file : "+ packageName+"."+className+".java");
     }
 
 }
