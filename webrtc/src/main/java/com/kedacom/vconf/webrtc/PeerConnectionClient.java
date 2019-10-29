@@ -468,7 +468,11 @@ class PeerConnectionClient {
     });
   }
 
-  /**
+    EglBase getEglBase() {
+        return rootEglBase;
+    }
+
+    /**
    * This function should only be called once.
    */
   public void createPeerConnectionFactory(PeerConnectionFactory.Options options) {
@@ -487,15 +491,12 @@ class PeerConnectionClient {
 //        localRender, Collections.singletonList(remoteSink), videoCapturer, signalingParameters);
 //  }
 
-  public void createPeerConnection(/*final VideoSink localRender, final List<VideoSink> remoteSinks,*/
-      final VideoCapturer videoCapturer, final SignalingParameters signalingParameters, TRtcMedia rtcMedia) {
+  public void createPeerConnection(final VideoCapturer videoCapturer, final SignalingParameters signalingParameters, TRtcMedia rtcMedia) {
 //      KLog.p("############## localRender=%s, videoCapturer=%s", localRender, videoCapturer);
     if (peerConnectionParameters == null) {
       Log.e(TAG, "Creating peer connection without initializing factory.");
       return;
     }
-//    this.localRender = localRender;
-//    this.remoteSinks = remoteSinks;
     this.videoCapturer = videoCapturer;
     this.signalingParameters = signalingParameters;
     this.rtcMedia = rtcMedia;

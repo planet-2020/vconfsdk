@@ -43,6 +43,7 @@ import org.webrtc.VideoSink;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -141,20 +142,21 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private List<TRtcStreamInfo> streamInfos;
+    private List<TRtcStreamInfo> streamInfos = new ArrayList<>();
 
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
         switch (ntfId){
             case StreamListReady:
                 List<TRtcPlayItem> rtcPlayItems = new ArrayList<>();
                 TRtcStreamInfoList streamInfoList = (TRtcStreamInfoList) ntfContent;
-                streamInfos = streamInfoList.atStramInfoList;
-                for (TRtcStreamInfo streamInfo : streamInfoList.atStramInfoList){
+                streamInfos.clear();
+                streamInfos.addAll(streamInfoList.atStramInfoList);
+                for (TRtcStreamInfo streamInfo : streamInfos){
                     if (streamInfo.bAudio){
                         continue;
                     }
                     TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
-                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便
+                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便，实际要以需求为准
                     rtcPlayItem.achStreamId = streamInfo.achStreamId;
                     rtcPlayItem.bLocal = false;
                     rtcPlayItem.bAss = streamInfo.bAss;
@@ -162,16 +164,16 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
                 break;
-            case StreamJoined:  //TODO  这里是增量过来的，
+            case StreamJoined:  //NOTE: 这里是增量过来的
                 rtcPlayItems = new ArrayList<>();
                 streamInfoList = (TRtcStreamInfoList) ntfContent;
-                streamInfos = streamInfoList.atStramInfoList;
-                for (TRtcStreamInfo streamInfo : streamInfoList.atStramInfoList){
+                streamInfos.addAll(streamInfoList.atStramInfoList);
+                for (TRtcStreamInfo streamInfo : streamInfos){
                     if (streamInfo.bAudio){
                         continue;
                     }
                     TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
-                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便
+                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便，实际要以需求为准
                     rtcPlayItem.achStreamId = streamInfo.achStreamId;
                     rtcPlayItem.bLocal = false;
                     rtcPlayItem.bAss = streamInfo.bAss;
@@ -179,16 +181,27 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems)); // 这里设置是增量的，还是覆盖的？如果是覆盖的，我需要本地记录下原本的列表？
                 break;
-            case StreamLeft:
+            case StreamLeft: //NOTE: 这里是增量过来的
                 rtcPlayItems = new ArrayList<>();
-                streamInfoList = (TRtcStreamInfoList) ntfContent; // FIXME 这里过来的是增量，set的是全量
-                streamInfos = streamInfoList.atStramInfoList;
+                streamInfoList = (TRtcStreamInfoList) ntfContent;
+
                 for (TRtcStreamInfo streamInfo : streamInfoList.atStramInfoList){
+                    Iterator<TRtcStreamInfo> iterator = streamInfos.iterator();
+                    while (iterator.hasNext()) {
+                        TRtcStreamInfo localStreamInfo = iterator.next();
+                        if (localStreamInfo.achStreamId.equals(streamInfo.achStreamId)){
+                            iterator.remove();
+                            break;
+                        }
+                    }
+                }
+
+                for (TRtcStreamInfo streamInfo : streamInfos){
                     if (streamInfo.bAudio){
                         continue;
                     }
                     TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
-                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便
+                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便，实际要以需求为准
                     rtcPlayItem.achStreamId = streamInfo.achStreamId;
                     rtcPlayItem.bLocal = false;
                     rtcPlayItem.bAss = streamInfo.bAss;
@@ -267,6 +280,8 @@ public class WebRtcManager extends Caster<Msg>{
 
         bSessionStarted = false;
 
+        sessionEventListener = null;
+
         // destroy rtcclient
         if (null != rtcConnector){
             rtcConnector.destroy();
@@ -292,20 +307,6 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         // destroy video sink
-//        if (null != localVideoSink){
-//            if (null != localVideoSink.target){
-//                ((SurfaceViewRenderer)localVideoSink.target).release();
-//            }
-//            localVideoSink.setTarget(null);
-//        }
-//        for (ProxyVideoSink videoSink : videoSinks.values()){
-//            if (null != videoSink.target){
-//                ((SurfaceViewRenderer)videoSink.target).release();
-//            }
-//            videoSink.setTarget(null);
-//        }
-//        videoSinks.clear();
-
         for (ProxyVideoSink videoSink : videoSinks.values()){
             if (null != videoSink.target){
                 ((SurfaceViewRenderer)videoSink.target).release();
@@ -317,6 +318,9 @@ public class WebRtcManager extends Caster<Msg>{
             eglBase.release();
             eglBase = null;
         }
+
+        midStreamIdMap.clear();
+        streamInfos.clear();
 
         // destroy audiomanager
 //        if (audioManager != null) {
