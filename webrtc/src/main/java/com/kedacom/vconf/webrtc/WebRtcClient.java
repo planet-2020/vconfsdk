@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.google.common.collect.BiMap;
@@ -48,7 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class WebRtcClient extends Caster<Msg>{ // ??? 单例
+public class WebRtcClient extends Caster<Msg>{
 
     private static String TAG = "WebRtcClient";
 
@@ -67,118 +68,20 @@ public class WebRtcClient extends Caster<Msg>{ // ??? 单例
 
     private Handler handler = new Handler(Looper.getMainLooper());
 
-    public WebRtcClient(Context ctx){
-        if (null == ctx){
-            throw new IllegalArgumentException("null == ctx");
-        }
+    private static WebRtcClient instance;
 
-        context = ctx;
-        int videoWidth = context.getResources().getDisplayMetrics().widthPixels;
-        int videoHeight = context.getResources().getDisplayMetrics().heightPixels;
-        PeerConnectionClient.PeerConnectionParameters parameters =
-                new PeerConnectionClient.PeerConnectionParameters(
-                        RtpTransceiver.RtpTransceiverDirection.SEND_RECV,
-                        true,
-                        true,
-                        videoWidth,
-                        videoHeight,
-                        20,
-                        1700,
-                        "VP8",
-                        true,
-                        true,
-                        32,
-                        "OPUS"
-                        );
-
-        PeerConnectionClient.PeerConnectionParameters parameters1 = new PeerConnectionClient.PeerConnectionParameters(parameters);
-        PeerConnectionClient.PeerConnectionParameters parameters2 = new PeerConnectionClient.PeerConnectionParameters(parameters);
-        parameters2.setTransDirection(RtpTransceiver.RtpTransceiverDirection.SEND_ONLY);
-        PeerConnectionClient.PeerConnectionParameters parameters3 = new PeerConnectionClient.PeerConnectionParameters(parameters);
-        parameters3.setTransDirection(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY);
-        /**
-         * 创建peerconnectclient。
-         * NOTE：一个peerconnect可以处理多路码流，收发均可。
-         * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
-         * */
-        eglBase = EglBase.create();
-        pubConnClient = new PeerConnectionClient(ctx, eglBase, parameters2, new PCEvents(CommonDef.CONN_TYPE_PUBLISHER));
-        pubConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
-//        eglBase = EglBase.create();
-        subConnClient = new PeerConnectionClient(ctx, eglBase, parameters3, new PCEvents(CommonDef.CONN_TYPE_SUBSCRIBER));
-        subConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
-//        eglBase = EglBase.create();
-        assPubConnClient = new PeerConnectionClient(ctx, eglBase, new PeerConnectionClient.PeerConnectionParameters(parameters), new PCEvents(CommonDef.CONN_TYPE_ASS_PUBLISHER));
-        assPubConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
-//        eglBase = EglBase.create();
-        assSubConnClient = new PeerConnectionClient(ctx, eglBase, new PeerConnectionClient.PeerConnectionParameters(parameters), new PCEvents(CommonDef.CONN_TYPE_ASS_SUBSCRIBER));
-        assSubConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
-
+    private WebRtcClient(){
         rtcConnector = new RtcConnector();
         rtcConnector.setSignalingEventsCallback(signalingEvents);
-
     }
 
-    public void destroy(){  // FIXME 该类承担过多任务，有一部分应该是单例。比如在aps中登录的部分也需要new一个对象，然后又没释放。
-
-        // destroy rtcclient
-        if (null != rtcConnector){
-            rtcConnector.destroy();
-            rtcConnector = null;
+    public synchronized static WebRtcClient getInstance(){
+        if (null == instance){
+            return new WebRtcClient();
         }
-
-        // destroy peerconnection
-        if (pubConnClient != null) {
-            pubConnClient.close();
-            pubConnClient = null;
-        }
-        if (subConnClient != null) {
-            subConnClient.close();
-            subConnClient = null;
-        }
-        if (assPubConnClient != null) {
-            assPubConnClient.close();
-            assPubConnClient = null;
-        }
-        if (assSubConnClient != null) {
-            assSubConnClient.close();
-            assSubConnClient = null;
-        }
-
-        // destroy video sink
-//        if (null != localVideoSink){
-//            if (null != localVideoSink.target){
-//                ((SurfaceViewRenderer)localVideoSink.target).release();
-//            }
-//            localVideoSink.setTarget(null);
-//        }
-//        for (ProxyVideoSink videoSink : remoteVideoSinks.values()){
-//            if (null != videoSink.target){
-//                ((SurfaceViewRenderer)videoSink.target).release();
-//            }
-//            videoSink.setTarget(null);
-//        }
-//        remoteVideoSinks.clear();
-
-        for (ProxyVideoSink videoSink : videoSinks.values()){
-            if (null != videoSink.target){
-                ((SurfaceViewRenderer)videoSink.target).release();
-            }
-        }
-        videoSinks.clear();
-
-        if (null != eglBase) {
-            eglBase.release();
-            eglBase = null;
-        }
-
-        // destroy audiomanager
-//        if (audioManager != null) {
-//            audioManager.stop();
-//            audioManager = null;
-//        }
-
+        return instance;
     }
+
 
     @Override
     protected Map<Msg[], RspProcessor<Msg>> rspsProcessors() {
@@ -304,29 +207,135 @@ public class WebRtcClient extends Caster<Msg>{ // ??? 单例
     }
 
 
-    public class RtcRender {
-        private SurfaceViewRenderer surfaceViewRenderer;
-        public RtcRender() {
-            surfaceViewRenderer = new SurfaceViewRenderer(context);
-            surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
-            surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
-            surfaceViewRenderer.setEnableHardwareScaler(true);
+
+
+    private boolean bSessionStarted;
+    public synchronized boolean startSession(@NonNull Context ctx, @NonNull SessionEventListener listener){
+        if (bSessionStarted){
+            KLog.p(KLog.ERROR, "session has started already!");
+            return false;
         }
 
-        public void destroy(){
-            surfaceViewRenderer.release();
-            surfaceViewRenderer = null;
+        bSessionStarted = true;
+
+        context = ctx;
+        sessionEventListener = listener;
+
+
+        int videoWidth = context.getResources().getDisplayMetrics().widthPixels;
+        int videoHeight = context.getResources().getDisplayMetrics().heightPixels;
+        PeerConnectionClient.PeerConnectionParameters parameters =
+                new PeerConnectionClient.PeerConnectionParameters(
+                        RtpTransceiver.RtpTransceiverDirection.SEND_RECV,
+                        true,
+                        true,
+                        videoWidth,
+                        videoHeight,
+                        20,
+                        1700,
+                        "VP8",
+                        true,
+                        true,
+                        32,
+                        "OPUS"
+                );
+
+        PeerConnectionClient.PeerConnectionParameters parameters1 = new PeerConnectionClient.PeerConnectionParameters(parameters);
+        PeerConnectionClient.PeerConnectionParameters parameters2 = new PeerConnectionClient.PeerConnectionParameters(parameters);
+        parameters2.setTransDirection(RtpTransceiver.RtpTransceiverDirection.SEND_ONLY);
+        PeerConnectionClient.PeerConnectionParameters parameters3 = new PeerConnectionClient.PeerConnectionParameters(parameters);
+        parameters3.setTransDirection(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY);
+        /**
+         * 创建peerconnectclient。
+         * NOTE：一个peerconnect可以处理多路码流，收发均可。
+         * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
+         * */
+        eglBase = EglBase.create();
+        pubConnClient = new PeerConnectionClient(ctx, eglBase, parameters2, new PCEvents(CommonDef.CONN_TYPE_PUBLISHER));
+        pubConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
+//        eglBase = EglBase.create();
+        subConnClient = new PeerConnectionClient(ctx, eglBase, parameters3, new PCEvents(CommonDef.CONN_TYPE_SUBSCRIBER));
+        subConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
+//        eglBase = EglBase.create();
+        assPubConnClient = new PeerConnectionClient(ctx, eglBase, new PeerConnectionClient.PeerConnectionParameters(parameters), new PCEvents(CommonDef.CONN_TYPE_ASS_PUBLISHER));
+        assPubConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
+//        eglBase = EglBase.create();
+        assSubConnClient = new PeerConnectionClient(ctx, eglBase, new PeerConnectionClient.PeerConnectionParameters(parameters), new PCEvents(CommonDef.CONN_TYPE_ASS_SUBSCRIBER));
+        assSubConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
+
+        return true;
+    }
+
+
+    public synchronized void stopSession(){
+        if (!bSessionStarted){
+            KLog.p(KLog.ERROR, "session has stopped already!");
+            return;
         }
 
-        public View getView(){
-            return surfaceViewRenderer;
+        bSessionStarted = false;
+
+        // destroy rtcclient
+        if (null != rtcConnector){
+            rtcConnector.destroy();
+            rtcConnector = null;
         }
 
-        public void setOnTop(boolean bOnTop){
-            surfaceViewRenderer.setZOrderMediaOverlay(bOnTop);
+        // destroy peerconnection
+        if (pubConnClient != null) {
+            pubConnClient.close();
+            pubConnClient = null;
         }
+        if (subConnClient != null) {
+            subConnClient.close();
+            subConnClient = null;
+        }
+        if (assPubConnClient != null) {
+            assPubConnClient.close();
+            assPubConnClient = null;
+        }
+        if (assSubConnClient != null) {
+            assSubConnClient.close();
+            assSubConnClient = null;
+        }
+
+        // destroy video sink
+//        if (null != localVideoSink){
+//            if (null != localVideoSink.target){
+//                ((SurfaceViewRenderer)localVideoSink.target).release();
+//            }
+//            localVideoSink.setTarget(null);
+//        }
+//        for (ProxyVideoSink videoSink : remoteVideoSinks.values()){
+//            if (null != videoSink.target){
+//                ((SurfaceViewRenderer)videoSink.target).release();
+//            }
+//            videoSink.setTarget(null);
+//        }
+//        remoteVideoSinks.clear();
+
+        for (ProxyVideoSink videoSink : videoSinks.values()){
+            if (null != videoSink.target){
+                ((SurfaceViewRenderer)videoSink.target).release();
+            }
+        }
+        videoSinks.clear();
+
+        if (null != eglBase) {
+            eglBase.release();
+            eglBase = null;
+        }
+
+        // destroy audiomanager
+//        if (audioManager != null) {
+//            audioManager.stop();
+//            audioManager = null;
+//        }
 
     }
+
+
+
     private static class ProxyVideoSink implements VideoSink {
         private String name;
         private VideoSink target;
@@ -563,7 +572,7 @@ public class WebRtcClient extends Caster<Msg>{ // ??? 单例
                 videoSinks.put(trackId, videoSink);
                 getPeerConnectionClient(connType).bindLocalSink(trackId, videoSink);
 
-                if (null != eventListner) {
+                if (null != sessionEventListener) {
 //                    String streamId = midStreamIdMap.get(trackId);
 //                    KLog.p("trackId=%s, streamId=%s", trackId, streamId);
 //                    if (null == streamId){
@@ -587,9 +596,9 @@ public class WebRtcClient extends Caster<Msg>{ // ??? 单例
                     surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
                     surfaceViewRenderer.setEnableHardwareScaler(true);
                     videoSink.setTarget(surfaceViewRenderer);
-//                    eventListner.onLocalStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId), surfaceViewRenderer);
+//                    sessionEventListener.onLocalStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId), surfaceViewRenderer);
 
-                    eventListner.onLocalStream(new StreamInfo(0, 0, "null"), surfaceViewRenderer);
+                    sessionEventListener.onLocalStream(new StreamInfo(0, 0, "null"), surfaceViewRenderer);
                 }
             });
         }
@@ -602,7 +611,7 @@ public class WebRtcClient extends Caster<Msg>{ // ??? 单例
                 ProxyVideoSink videoSink = new ProxyVideoSink(trackId);  // FIXME 应该是StreamId，组件给的是mid和streamId的对应关系
                 videoSinks.put(trackId, videoSink);
                 getPeerConnectionClient(connType).bindRemoteSink(trackId, videoSink);
-                if (null != eventListner) {
+                if (null != sessionEventListener) {
 //                    String streamId = midStreamIdMap.get(trackId);
 //                    KLog.p("trackId=%s, streamId=%s", trackId, streamId);
 //                    if (null == streamId){
@@ -625,8 +634,8 @@ public class WebRtcClient extends Caster<Msg>{ // ??? 单例
                     surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
                     surfaceViewRenderer.setEnableHardwareScaler(true);
                     videoSink.setTarget(surfaceViewRenderer);
-//                    eventListner.onRemoteStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId), surfaceViewRenderer);
-                    eventListner.onRemoteStream(new StreamInfo(0, 0, "null"), surfaceViewRenderer);
+//                    sessionEventListener.onRemoteStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId), surfaceViewRenderer);
+                    sessionEventListener.onRemoteStream(new StreamInfo(0, 0, "null"), surfaceViewRenderer);
                 }
 
             });
@@ -634,9 +643,9 @@ public class WebRtcClient extends Caster<Msg>{ // ??? 单例
 
         @Override
         public void onRemoteVideoTrackRemoved(String trackId) {
-            if (null != eventListner){
+            if (null != sessionEventListener){
                 // TODO
-//                handler.post(() -> eventListner.onRemoteStreamRemoved(trackId));
+//                handler.post(() -> sessionEventListener.onRemoteStreamRemoved(trackId));
             }
         }
     }
@@ -744,7 +753,7 @@ public class WebRtcClient extends Caster<Msg>{ // ??? 单例
     /**
      * 事件监听器
      * */
-    public interface EventListner{
+    public interface SessionEventListener {
         /**
          * 本地流到达
          * @param stream 流信息
@@ -759,9 +768,6 @@ public class WebRtcClient extends Caster<Msg>{ // ??? 单例
         void onRemoteStream(StreamInfo stream, View display);
         void onRemoteStreamRemoved(StreamInfo stream);
     }
-    private EventListner eventListner;
-    public void setEventListner(EventListner eventListner){
-        this.eventListner = eventListner;
-    }
+    private SessionEventListener sessionEventListener;
 
 }
