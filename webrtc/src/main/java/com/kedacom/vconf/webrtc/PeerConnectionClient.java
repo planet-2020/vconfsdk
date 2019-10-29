@@ -447,9 +447,8 @@ class PeerConnectionClient {
    * Create a PeerConnectionClient with the specified parameters. PeerConnectionClient takes
    * ownership of |eglBase|.
    */
-  public PeerConnectionClient(Context appContext, EglBase eglBase,
-                              PeerConnectionParameters peerConnectionParameters, PeerConnectionEvents events) {
-    this.rootEglBase = eglBase;
+  public PeerConnectionClient(Context appContext, PeerConnectionParameters peerConnectionParameters, PeerConnectionEvents events) {
+    this.rootEglBase = EglBase.create();
     this.appContext = appContext;
     this.events = events;
     this.peerConnectionParameters = peerConnectionParameters;

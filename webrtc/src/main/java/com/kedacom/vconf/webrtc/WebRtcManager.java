@@ -57,7 +57,6 @@ public class WebRtcManager extends Caster<Msg>{
     private PeerConnectionClient assSubConnClient;
 
     private Context context;
-    private EglBase eglBase;
     private Map<String, ProxyVideoSink> videoSinks = new HashMap<>();
 
     private Handler handler = new Handler(Looper.getMainLooper());
@@ -255,17 +254,13 @@ public class WebRtcManager extends Caster<Msg>{
          * NOTE：一个peerconnect可以处理多路码流，收发均可。
          * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
          * */
-        eglBase = EglBase.create();
-        pubConnClient = new PeerConnectionClient(ctx, eglBase, parameters2, new PCEvents(CommonDef.CONN_TYPE_PUBLISHER));
+        pubConnClient = new PeerConnectionClient(ctx, parameters2, new PCEvents(CommonDef.CONN_TYPE_PUBLISHER));
         pubConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
-//        eglBase = EglBase.create();
-        subConnClient = new PeerConnectionClient(ctx, eglBase, parameters3, new PCEvents(CommonDef.CONN_TYPE_SUBSCRIBER));
+        subConnClient = new PeerConnectionClient(ctx, parameters3, new PCEvents(CommonDef.CONN_TYPE_SUBSCRIBER));
         subConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
-//        eglBase = EglBase.create();
-        assPubConnClient = new PeerConnectionClient(ctx, eglBase, new PeerConnectionClient.PeerConnectionParameters(parameters), new PCEvents(CommonDef.CONN_TYPE_ASS_PUBLISHER));
+        assPubConnClient = new PeerConnectionClient(ctx, parameters1, new PCEvents(CommonDef.CONN_TYPE_ASS_PUBLISHER));
         assPubConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
-//        eglBase = EglBase.create();
-        assSubConnClient = new PeerConnectionClient(ctx, eglBase, new PeerConnectionClient.PeerConnectionParameters(parameters), new PCEvents(CommonDef.CONN_TYPE_ASS_SUBSCRIBER));
+        assSubConnClient = new PeerConnectionClient(ctx, parameters1, new PCEvents(CommonDef.CONN_TYPE_ASS_SUBSCRIBER));
         assSubConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
 
         return true;
@@ -313,11 +308,6 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
         videoSinks.clear();
-
-        if (null != eglBase) {
-            eglBase.release();
-            eglBase = null;
-        }
 
         midStreamIdMap.clear();
         streamInfos.clear();
@@ -574,7 +564,7 @@ public class WebRtcManager extends Caster<Msg>{
                 if (null != sessionEventListener) {
                     KLog.p("local trackId=%s", trackId);
                     SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
-                    surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
+                    surfaceViewRenderer.init(getPeerConnectionClient(connType).getEglBase().getEglBaseContext(), null);
                     surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
                     surfaceViewRenderer.setEnableHardwareScaler(true);
                     localVideoSink.setTarget(surfaceViewRenderer);
@@ -613,7 +603,7 @@ public class WebRtcManager extends Caster<Msg>{
 //                    }
 
                     SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
-                    surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
+                    surfaceViewRenderer.init(getPeerConnectionClient(connType).getEglBase().getEglBaseContext(), null);
                     surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
                     surfaceViewRenderer.setEnableHardwareScaler(true);
                     videoSink.setTarget(surfaceViewRenderer);
