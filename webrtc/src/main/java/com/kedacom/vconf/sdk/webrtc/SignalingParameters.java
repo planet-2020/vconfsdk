@@ -1,4 +1,4 @@
-package com.kedacom.vconf.webrtc;
+package com.kedacom.vconf.sdk.webrtc;
 
 import org.webrtc.IceCandidate;
 import org.webrtc.PeerConnection;

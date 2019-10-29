@@ -1,9 +1,9 @@
-package com.kedacom.vconf.webrtc;
+package com.kedacom.vconf.sdk.webrtc;
 
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
-import com.kedacom.vconf.webrtc.been.trans.*;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
 
 /**
  * Created by Sissi on 2019/10/24

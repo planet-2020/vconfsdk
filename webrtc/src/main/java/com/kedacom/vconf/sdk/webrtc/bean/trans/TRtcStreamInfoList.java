@@ -1,4 +1,4 @@
-package com.kedacom.vconf.webrtc.been.trans;
+package com.kedacom.vconf.sdk.webrtc.bean.trans;
 
 import java.util.List;
 

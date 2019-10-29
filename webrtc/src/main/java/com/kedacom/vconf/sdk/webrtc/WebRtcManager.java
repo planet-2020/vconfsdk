@@ -1,4 +1,4 @@
-package com.kedacom.vconf.webrtc;
+package com.kedacom.vconf.sdk.webrtc;
 
 import android.content.Context;
 import android.os.Handler;
@@ -19,17 +19,16 @@ import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
-import com.kedacom.vconf.webrtc.been.StreamInfo;
-import com.kedacom.vconf.webrtc.been.trans.TLoginResult;
-import com.kedacom.vconf.webrtc.been.trans.TMtRtcSvrAddr;
-import com.kedacom.vconf.webrtc.been.trans.TRtcPlayItem;
-import com.kedacom.vconf.webrtc.been.trans.TRtcPlayParam;
-import com.kedacom.vconf.webrtc.been.trans.TRtcStreamInfo;
-import com.kedacom.vconf.webrtc.been.trans.TRtcStreamInfoList;
+import com.kedacom.vconf.sdk.webrtc.bean.StreamInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TLoginResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayItem;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
 
 import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
-import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.RendererCommon;

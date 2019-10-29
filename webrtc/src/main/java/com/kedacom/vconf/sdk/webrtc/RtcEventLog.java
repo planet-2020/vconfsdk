@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-package com.kedacom.vconf.webrtc;
+package com.kedacom.vconf.sdk.webrtc;
 
 import android.os.ParcelFileDescriptor;
 import android.util.Log;

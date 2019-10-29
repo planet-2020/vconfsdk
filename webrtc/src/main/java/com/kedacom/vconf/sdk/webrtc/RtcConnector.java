@@ -1,5 +1,5 @@
 
-package com.kedacom.vconf.webrtc;
+package com.kedacom.vconf.sdk.webrtc;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.kedacom.kdv.mt.ospconnector.Connector;

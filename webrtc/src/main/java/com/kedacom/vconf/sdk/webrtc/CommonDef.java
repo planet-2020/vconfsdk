@@ -1,4 +1,4 @@
-package com.kedacom.vconf.webrtc;
+package com.kedacom.vconf.sdk.webrtc;
 
 /**
  * Created by Sissi on 2019/10/17
