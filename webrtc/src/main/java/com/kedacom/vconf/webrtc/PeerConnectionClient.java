@@ -11,6 +11,7 @@
 package com.kedacom.vconf.webrtc;
 
 import android.content.Context;
+import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
@@ -19,6 +20,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
@@ -866,7 +868,15 @@ class PeerConnectionClient {
       encodings.add((RtpParameters.Encoding) ctor.newInstance("h", true, 1.0));
       encodings.add((RtpParameters.Encoding) ctor.newInstance("m", true, 0.5));
       encodings.add((RtpParameters.Encoding) ctor.newInstance("l", true, 0.25));
-    } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    } catch (InstantiationException e) {
+      e.printStackTrace();
+    } catch (InvocationTargetException e) {
+      e.printStackTrace();
+    } catch (NoSuchMethodException e) {
+      e.printStackTrace();
+    } catch (IllegalAccessException e) {
       e.printStackTrace();
     }
     encodingList = encodings;
@@ -880,7 +890,15 @@ class PeerConnectionClient {
       Constructor<?> ctor = clz.getDeclaredConstructor(String.class, boolean.class, Double.class);
       ctor.setAccessible(true);
       encoding = (RtpParameters.Encoding) ctor.newInstance(rid, true, scaleDwon);
-    } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    } catch (InstantiationException e) {
+      e.printStackTrace();
+    } catch (InvocationTargetException e) {
+      e.printStackTrace();
+    } catch (NoSuchMethodException e) {
+      e.printStackTrace();
+    } catch (IllegalAccessException e) {
       e.printStackTrace();
     }
     return encoding;
@@ -1570,18 +1588,22 @@ class PeerConnectionClient {
 //          }
 //        }
 
-      MediaStreamTrack track = receiver.track();
-      KLog.p("track=%s, trackid=%s, tracktype=%s", track, track.id(), track.kind());
-      if (track instanceof VideoTrack) {
-        VideoTrack videoTrack = (VideoTrack) track;
-        remoteVideoTracks.add(videoTrack);
-        videoTrack.setEnabled(renderVideo);
-        events.onRemoteVideoTrack(videoTrack.id());
-//        for (VideoSink remoteSink : remoteSinks) {
-//          videoTrack.addSink(remoteSink);
-//        }
 
-      }
+//      MediaStreamTrack track = receiver.track();
+//      KLog.p("track=%s, trackid=%s, tracktype=%s", track, track.id(), track.kind());
+//      if (track instanceof VideoTrack) {
+//        VideoTrack videoTrack = (VideoTrack) track;
+//        remoteVideoTracks.add(videoTrack);
+//        videoTrack.setEnabled(renderVideo);
+//        events.onRemoteVideoTrack(videoTrack.id());
+////        for (VideoSink remoteSink : remoteSinks) {
+////          videoTrack.addSink(remoteSink);
+////        }
+//
+//      }
+
+
+
 //      List<RtpReceiver> recvers = peerConnection.getReceivers();
 //      for (RtpReceiver recver : recvers){
 //        KLog.p("in=%s, recver=%s, track=%s, type=%s", receiver, recver, recver.track(), recver.track().kind());
@@ -1725,6 +1747,7 @@ class PeerConnectionClient {
         if (track.id().equals(trackId)){
           track.addSink(videoSink);
           gotIt = true;
+          break;
         }
       }
       if (!gotIt){

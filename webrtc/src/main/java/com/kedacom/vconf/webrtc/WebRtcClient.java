@@ -48,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class WebRtcClient extends Caster<Msg>{
+public class WebRtcClient extends Caster<Msg>{ // ??? 单例
 
     private static String TAG = "WebRtcClient";
 
@@ -117,8 +117,6 @@ public class WebRtcClient extends Caster<Msg>{
         rtcConnector = new RtcConnector();
         rtcConnector.setSignalingEventsCallback(signalingEvents);
 
-//        //XXX FORDEBUG
-//        remoteVideoSinks.put(RenderChannel.REMOTE1, new ProxyVideoSink("remoteVideoSink1"));
     }
 
     public void destroy(){  // FIXME 该类承担过多任务，有一部分应该是单例。比如在aps中登录的部分也需要new一个对象，然后又没释放。
@@ -366,20 +364,14 @@ public class WebRtcClient extends Caster<Msg>{
     }
 
 
-    public boolean bindRender(String trackId, RtcRender renderer){
-        SurfaceViewRenderer surfaceViewRenderer = null==renderer ? null : renderer.surfaceViewRenderer;
-        ProxyVideoSink videoSink = videoSinks.get(trackId);
-        if (null == videoSink){
-            KLog.p(KLog.ERROR, "null == videoSink");
-            return false;
-        }
-        videoSink.setTarget(surfaceViewRenderer);
-        return true;
-    }
-
-    public boolean swapTrack(String srcTrackId, String dstTrackId){
-        ProxyVideoSink srcSink = videoSinks.get(srcTrackId);
-        ProxyVideoSink dstSink = videoSinks.get(dstTrackId);
+    /**
+     * 交换流。
+     * 若原本stream1展示在view1上，stream2展示在view2上，
+     * 交换后stream1展示在view2上，stream2展示在view1上。
+     * */
+    public boolean swapStream(String streamId1, String streamId2){
+        ProxyVideoSink srcSink = videoSinks.get(streamId1);
+        ProxyVideoSink dstSink = videoSinks.get(streamId2);
         if (null == srcSink){
             KLog.p(KLog.ERROR, "null == srcSink");
             return false;
@@ -409,6 +401,7 @@ public class WebRtcClient extends Caster<Msg>{
                     videoCapturer = createVideoCapturer();
                 }
                 if (null != rtcMedia){
+                    KLog.p("rtcMedia.mid=%s, rtcMedia.streamid=%s", rtcMedia.mid, rtcMedia.streamid);
                     midStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);  // TODO streamId和流信息绑定起来，在上层只知道streamId（通过Ntf通知），bindRender时传下streamId
                 }
                 pcClient.createPeerConnection(
@@ -569,24 +562,34 @@ public class WebRtcClient extends Caster<Msg>{
                 ProxyVideoSink videoSink = new ProxyVideoSink(trackId);  // FIXME 应该是StreamId，组件给的是mid和streamId的对应关系
                 videoSinks.put(trackId, videoSink);
                 getPeerConnectionClient(connType).bindLocalSink(trackId, videoSink);
+
                 if (null != eventListner) {
-                    String streamId = midStreamIdMap.get(trackId);
-                    if (null == streamId){
-                        KLog.p(KLog.ERROR, "not register stream %s in signaling progress", trackId);
-                        return;
-                    }
-                    TRtcStreamInfo rtcStreamInfo = null;
-                    for (TRtcStreamInfo streamInfo : streamInfos){
-                        if (streamId.equals(streamInfo.achStreamId)){
-                            rtcStreamInfo = streamInfo;
-                            break;
-                        }
-                    }
-                    if (null == rtcStreamInfo){
-                        KLog.p(KLog.ERROR, "no such stream %s in stream list", trackId);
-                        return;
-                    }
-                    eventListner.onLocalStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId));
+//                    String streamId = midStreamIdMap.get(trackId);
+//                    KLog.p("trackId=%s, streamId=%s", trackId, streamId);
+//                    if (null == streamId){
+//                        KLog.p(KLog.ERROR, "not register stream %s in signaling progress", trackId);
+//                        return;
+//                    }
+//                    TRtcStreamInfo rtcStreamInfo = null;
+//                    for (TRtcStreamInfo streamInfo : streamInfos){
+//                        if (streamId.equals(streamInfo.achStreamId)){
+//                            rtcStreamInfo = streamInfo;
+//                            break;
+//                        }
+//                    }
+//                    if (null == rtcStreamInfo){
+//                        KLog.p(KLog.ERROR, "no such stream %s in stream list", trackId);
+//                        return;
+//                    }
+
+                    SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
+                    surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
+                    surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
+                    surfaceViewRenderer.setEnableHardwareScaler(true);
+                    videoSink.setTarget(surfaceViewRenderer);
+//                    eventListner.onLocalStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId), surfaceViewRenderer);
+
+                    eventListner.onLocalStream(new StreamInfo(0, 0, "null"), surfaceViewRenderer);
                 }
             });
         }
@@ -600,23 +603,30 @@ public class WebRtcClient extends Caster<Msg>{
                 videoSinks.put(trackId, videoSink);
                 getPeerConnectionClient(connType).bindRemoteSink(trackId, videoSink);
                 if (null != eventListner) {
-                    String streamId = midStreamIdMap.get(trackId);
-                    if (null == streamId){
-                        KLog.p(KLog.ERROR, "not register stream %s in signaling progress", trackId);
-                        return;
-                    }
-                    TRtcStreamInfo rtcStreamInfo = null;
-                    for (TRtcStreamInfo streamInfo : streamInfos){
-                        if (streamId.equals(streamInfo.achStreamId)){
-                            rtcStreamInfo = streamInfo;
-                            break;
-                        }
-                    }
-                    if (null == rtcStreamInfo){
-                        KLog.p(KLog.ERROR, "no such stream %s in stream list", trackId);
-                        return;
-                    }
-                    eventListner.onRemoteStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId));
+//                    String streamId = midStreamIdMap.get(trackId);
+//                    KLog.p("trackId=%s, streamId=%s", trackId, streamId);
+//                    if (null == streamId){
+//                        KLog.p(KLog.ERROR, "not register stream %s in signaling progress", trackId);
+//                        return;
+//                    }
+//                    TRtcStreamInfo rtcStreamInfo = null;
+//                    for (TRtcStreamInfo streamInfo : streamInfos){
+//                        if (streamId.equals(streamInfo.achStreamId)){
+//                            rtcStreamInfo = streamInfo;
+//                            break;
+//                        }
+//                    }
+//                    if (null == rtcStreamInfo){
+//                        KLog.p(KLog.ERROR, "no such stream %s in stream list", trackId);
+//                        return;
+//                    }
+                    SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
+                    surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
+                    surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
+                    surfaceViewRenderer.setEnableHardwareScaler(true);
+                    videoSink.setTarget(surfaceViewRenderer);
+//                    eventListner.onRemoteStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId), surfaceViewRenderer);
+                    eventListner.onRemoteStream(new StreamInfo(0, 0, "null"), surfaceViewRenderer);
                 }
 
             });
@@ -679,6 +689,7 @@ public class WebRtcClient extends Caster<Msg>{
 
 
     PeerConnectionClient getPeerConnectionClient(int type){
+        KLog.p("type=%s", type);
         if (CommonDef.CONN_TYPE_PUBLISHER == type){
             return pubConnClient;
         }else if (CommonDef.CONN_TYPE_SUBSCRIBER == type){
@@ -691,38 +702,6 @@ public class WebRtcClient extends Caster<Msg>{
             return pubConnClient;
         }
     }
-
-    // List of mandatory application permissions.
-//    private static final String[] MANDATORY_PERMISSIONS = {"android.permission.MODIFY_AUDIO_SETTINGS",
-//            "android.permission.RECORD_AUDIO", "android.permission.INTERNET"};
-
-
-
-//    @Override
-//    protected void onCreate(Bundle savedInstanceState) {
-//
-//
-//        // Check for mandatory permissions.
-//        for (String permission : MANDATORY_PERMISSIONS) {
-//            if (ctx.checkCallingOrSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
-//                logAndToast("Permission " + permission + " is not granted");
-//                return;
-//            }
-//        }
-//
-//        requestPermissions();
-//
-//    }
-
-//    boolean isSwappedFeeds;
-//    private void setSwappedFeeds(boolean isSwappedFeeds) {
-//        Logging.d(TAG, "setSwappedFeeds: " + isSwappedFeeds);
-//        this.isSwappedFeeds = isSwappedFeeds;
-//        localProxyVideoSink.setTarget(isSwappedFeeds ? fullscreenRenderer : pipRenderer);
-//        remoteProxyRenderer.setTarget(isSwappedFeeds ? pipRenderer : fullscreenRenderer);
-//        fullscreenRenderer.setMirror(isSwappedFeeds);
-//        pipRenderer.setMirror(!isSwappedFeeds);
-//    }
 
 
     private Toast logToast;
@@ -742,13 +721,13 @@ public class WebRtcClient extends Caster<Msg>{
     {
         MtMsg msg = new MtMsg();
         msg.SetMsgId("Ev_MT_GetOffer_Cmd");
-        msg.addMsg(BasePB.TU32.newBuilder().setValue(0).build());
-        msg.addMsg(BasePB.TU32.newBuilder().setValue(2).build());
+        msg.addMsg(BasePB.TU32.newBuilder().setValue(CommonDef.CONN_TYPE_PUBLISHER).build());
+        msg.addMsg(BasePB.TU32.newBuilder().setValue(CommonDef.MEDIA_TYPE_AV).build());
 
         long nSrcID = Connector.MAKEIID(RtcConnector.WEBRTC_ID, (short)1 );
-        long nDstID = nSrcID;
         long nSrcNodeId=0;
-        long nDstNodeId=0;
+        long nDstID = nSrcID;
+        long nDstNodeId=nSrcNodeId;
 
         byte[] abyContent = msg.Encode();
         int nRet = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
@@ -762,80 +741,22 @@ public class WebRtcClient extends Caster<Msg>{
     }
 
 
-//    private static final int PERMISSION_REQUEST = 2;
-//    @TargetApi(Build.VERSION_CODES.M)
-//    private void requestPermissions() {
-//        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-//            // Dynamic permissions are not required before Android M.
-//            return;
-//        }
-//
-//        String[] missingPermissions = getMissingPermissions();
-//        if (missingPermissions.length != 0) {
-//            context.requestPermissions(missingPermissions, PERMISSION_REQUEST);
-//        }
-//    }
-
-
-//    @TargetApi(Build.VERSION_CODES.M)
-//    private String[] getMissingPermissions() {
-//        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-//            return new String[0];
-//        }
-//
-//        PackageInfo info;
-//        try {
-//            info = getPackageManager().getPackageInfo(getPackageName(), PackageManager.GET_PERMISSIONS);
-//        } catch (PackageManager.NameNotFoundException e) {
-//            Log.w(TAG, "Failed to retrieve permissions.");
-//            return new String[0];
-//        }
-//
-//        if (info.requestedPermissions == null) {
-//            Log.w(TAG, "No requested permissions.");
-//            return new String[0];
-//        }
-//
-//        ArrayList<String> missingPermissions = new ArrayList<>();
-//        for (int i = 0; i < info.requestedPermissions.length; i++) {
-//            if ((info.requestedPermissionsFlags[i] & PackageInfo.REQUESTED_PERMISSION_GRANTED) == 0) {
-//                missingPermissions.add(info.requestedPermissions[i]);
-//            }
-//        }
-//        Log.d(TAG, "Missing permissions: " + missingPermissions);
-//
-//        return missingPermissions.toArray(new String[missingPermissions.size()]);
-//    }
-
-
-//    @Override
-//    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-//        if (requestCode == PERMISSION_REQUEST) {
-//            String[] missingPermissions = getMissingPermissions();
-//            if (missingPermissions.length != 0) {
-//                // User didn't grant all the permissions. Warn that the application might not work
-//                // correctly.
-//                new AlertDialog.Builder(this)
-//                        .setMessage("The application is missing permissions. It might not work correctly. Do you want to try again?")
-//                        .setPositiveButton("yes",
-//                                (dialog, id) -> {
-//                                    // User wants to try giving the permissions again.
-//                                    dialog.cancel();
-//                                    requestPermissions();
-//                                })
-//                        .setNegativeButton("no",
-//                                (dialog, id) -> {
-//                                    // User doesn't want to give the permissions.
-//                                    dialog.cancel();
-//                                })
-//                        .show();
-//            }
-//        }
-//    }
-
+    /**
+     * 事件监听器
+     * */
     public interface EventListner{
-        void onLocalStream(StreamInfo stream);
-        void onRemoteStream(StreamInfo stream);
+        /**
+         * 本地流到达
+         * @param stream 流信息
+         * @param display 流默认的渲染目标
+         * */
+        void onLocalStream(StreamInfo stream, View display);
+        /**
+         * 远端流到达
+         * @param stream 流信息
+         * @param display 流默认的渲染目标
+         * */
+        void onRemoteStream(StreamInfo stream, View display);
         void onRemoteStreamRemoved(StreamInfo stream);
     }
     private EventListner eventListner;
