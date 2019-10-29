@@ -267,7 +267,7 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    public synchronized void stopSession(){  // TODO check 资源释放
+    public synchronized void stopSession(){
         if (!bSessionStarted){
             KLog.p(KLog.ERROR, "session has stopped already!");
             return;

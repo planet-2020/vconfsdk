@@ -222,7 +222,6 @@ public class MtMsg {
 		try {
 			message = MessagePB.TMessage.parseFrom( byContent );
 		} catch (InvalidProtocolBufferException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
