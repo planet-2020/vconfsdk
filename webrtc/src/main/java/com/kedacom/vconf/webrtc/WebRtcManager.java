@@ -214,7 +214,6 @@ public class WebRtcManager extends Caster<Msg>{
         context = ctx;
         sessionEventListener = listener;
 
-
         int videoWidth = context.getResources().getDisplayMetrics().widthPixels;
         int videoHeight = context.getResources().getDisplayMetrics().heightPixels;
         PeerConnectionClient.PeerConnectionParameters parameters =
@@ -569,31 +568,13 @@ public class WebRtcManager extends Caster<Msg>{
                 getPeerConnectionClient(connType).bindLocalSink(trackId, localVideoSink);
 
                 if (null != sessionEventListener) {
-//                    String streamId = midStreamIdMap.get(trackId);
                     KLog.p("local trackId=%s", trackId);
-//                    if (null == streamId){
-//                        KLog.p(KLog.ERROR, "not register stream %s in signaling progress", trackId);
-//                        return;
-//                    }
-//                    TRtcStreamInfo rtcStreamInfo = null;
-//                    for (TRtcStreamInfo streamInfo : streamInfos){
-//                        if (streamId.equals(streamInfo.achStreamId)){
-//                            rtcStreamInfo = streamInfo;
-//                            break;
-//                        }
-//                    }
-//                    if (null == rtcStreamInfo){
-//                        KLog.p(KLog.ERROR, "no such stream %s in stream list", trackId);
-//                        return;
-//                    }
-
                     SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
                     surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
                     surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
                     surfaceViewRenderer.setEnableHardwareScaler(true);
                     localVideoSink.setTarget(surfaceViewRenderer);
                     sessionEventListener.onLocalStream(trackId, surfaceViewRenderer);
-//                    sessionEventListener.onLocalStream(new StreamInfo(0, 0, "null"), surfaceViewRenderer);
                 }
             });
         }
@@ -632,7 +613,9 @@ public class WebRtcManager extends Caster<Msg>{
                     surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
                     surfaceViewRenderer.setEnableHardwareScaler(true);
                     videoSink.setTarget(surfaceViewRenderer);
+
 //                    sessionEventListener.onRemoteStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId), surfaceViewRenderer);
+                    // XXX 仅调试，用上面行
                     sessionEventListener.onRemoteStream(new StreamInfo(0, 0, streamId), surfaceViewRenderer);
                 }
 

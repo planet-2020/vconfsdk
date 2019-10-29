@@ -12,8 +12,6 @@ package com.kedacom.vconf.webrtc;
 
 import android.content.Context;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 
@@ -739,17 +737,7 @@ class PeerConnectionClient {
     List<String> mediaStreamLabels = Collections.singletonList(STREAM_ID/*"ARDAMS"*/);
     if (isVideoCallEnabled()) {
       peerConnection.addTrack(createVideoTrack(videoCapturer), mediaStreamLabels);
-      // We can add the renderers right away because we don't need to wait for an
-      // answer to get the remote track.
-//      remoteVideoTrack = getRemoteVideoTrack();
-//        if (null != remoteVideoTrack) {
-//            remoteVideoTrack.setEnabled(renderVideo);
-//            for (VideoSink remoteSink : remoteSinks) {
-//                remoteVideoTrack.addSink(remoteSink);
-//            }
-//        }
       events.onLocalVideoTrack(VIDEO_TRACK_ID);
-
     }
     if (isAudioCallEnabled()) {
       peerConnection.addTrack(createAudioTrack(), mediaStreamLabels);
@@ -1464,6 +1452,11 @@ class PeerConnectionClient {
     }
 
     @Override
+    public void onAddStream(MediaStream mediaStream) {
+
+    }
+
+    @Override
     public void onSignalingChange(PeerConnection.SignalingState newState) {
       Log.d(TAG, "SignalingState: " + newState);
     }
@@ -1506,25 +1499,6 @@ class PeerConnectionClient {
       Log.d(TAG, "IceConnectionReceiving changed to " + receiving);
     }
 
-    @Override
-    public void onAddStream(
-            final MediaStream stream // the stream s are simply a way to group tracks
-    ) {
-//        KLog.p("stream=%s", stream);
-//        for (AudioTrack track : stream.audioTracks){
-//          KLog.p("audio track=%s", track);
-//        }
-//      for (VideoTrack track : stream.videoTracks){
-//        KLog.p("video track=%s", track);
-//      }
-
-//        for (VideoTrack track : stream.videoTracks){
-//            KLog.p("track=%s, trackid=%s, tracktype=%s", track, track.id(), track.kind());
-//            remoteVideoTracks.add(track);
-//            track.setEnabled(renderVideo);
-//            events.onRemoteVideoTrack(track.id());
-//        }
-    }
 
     @Override
     public void onRemoveStream(final MediaStream stream) {
@@ -1571,55 +1545,26 @@ class PeerConnectionClient {
     }
 
     @Override
-    public void onAddTrack(final RtpReceiver receiver, final MediaStream[] mediaStreams) {
-//        KLog.p("receiver=%s, track=%s, Streams.count=%s", receiver, receiver.track(), mediaStreams.length);
-//        for (MediaStream stream : mediaStreams){
-//          KLog.p("stream=%s", stream);
-//          for (AudioTrack track : stream.audioTracks){
-//            KLog.p("audio track=%s", track);
-//          }
-//          for (VideoTrack track : stream.videoTracks){
-//            KLog.p("video track=%s", track);
-//          }
-//        }
+    public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
 
-
-//      MediaStreamTrack track = receiver.track();
-//      KLog.p("track=%s, trackid=%s, tracktype=%s", track, track.id(), track.kind());
-//      if (track instanceof VideoTrack) {
-//        VideoTrack videoTrack = (VideoTrack) track;
-//        remoteVideoTracks.add(videoTrack);
-//        videoTrack.setEnabled(renderVideo);
-//        events.onRemoteVideoTrack(videoTrack.id());
-////        for (VideoSink remoteSink : remoteSinks) {
-////          videoTrack.addSink(remoteSink);
-////        }
-//
-//      }
-
-
-
-//      List<RtpReceiver> recvers = peerConnection.getReceivers();
-//      for (RtpReceiver recver : recvers){
-//        KLog.p("in=%s, recver=%s, track=%s, type=%s", receiver, recver, recver.track(), recver.track().kind());
-//      }
     }
+
 
     @Override
     public void onTrack(RtpTransceiver transceiver) {
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-          KLog.p("transceiver=%s, transceiver.mid=%s, transceiver.getReceiver=%s",
-                  transceiver, transceiver.getMid(),transceiver.getReceiver() );
-          List<RtpTransceiver> transceivers = peerConnection.getTransceivers();
-          for (RtpTransceiver rtpTransceiver : transceivers){
-            KLog.p("my Transceiver=%s, recver=%s, track=%s",
-                    rtpTransceiver, rtpTransceiver.getReceiver(), rtpTransceiver.getReceiver().track());
-          }
-        }, 10000);
+//        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+//          KLog.p("transceiver=%s, transceiver.mid=%s, transceiver.getReceiver=%s",
+//                  transceiver, transceiver.getMid(),transceiver.getReceiver() );
+//          List<RtpTransceiver> transceivers = peerConnection.getTransceivers();
+//          for (RtpTransceiver rtpTransceiver : transceivers){
+//            KLog.p("my Transceiver=%s, recver=%s, track=%s",
+//                    rtpTransceiver, rtpTransceiver.getReceiver(), rtpTransceiver.getReceiver().track());
+//          }
+//        }, 10000);
 
       MediaStreamTrack track = transceiver.getReceiver().track();
         if (track instanceof VideoTrack){
-            KLog.p("track=%s, trackid=%s, tracktype=%s", track, track.id(), track.kind());
+            KLog.p("trackid=%s, tracktype=%s", track.id(), track.kind());
             remoteVideoTracks.add((VideoTrack) track);
             track.setEnabled(renderVideo);
             events.onRemoteVideoTrack(transceiver.getMid(), track.id());
