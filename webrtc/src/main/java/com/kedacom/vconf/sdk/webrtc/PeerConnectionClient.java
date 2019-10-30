@@ -678,19 +678,19 @@ class PeerConnectionClient {
     }
     // Create SDP constraints.
     sdpMediaConstraints = new MediaConstraints();
-    sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
-            "OfferToReceiveAudio", /*A legacy Boolean option which used to control whether or not to offer to the remote peer the opportunity
-            to try to send audio. If this value is false, the remote peer will not be offered to send audio data,
-            even if the local side will be sending audio data. If this value is true, the remote peer will be offered
-            to send audio data, even if the local side will not be sending audio data. The default behavior is to offer
-            to receive audio only if the local side is sending audio, not otherwise.
-            Note: You shouldn't use this legacy property. Instead, use RTCRtpTransceiver to control whether or not to accept incoming audio.
-            https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/createOffer
-            */
-            "true"));
-    sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
-            "OfferToReceiveVideo", // similar to OfferToReceiveAudio
-            Boolean.toString(isVideoCallEnabled())));
+//    sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
+//            "OfferToReceiveAudio", /*A legacy Boolean option which used to control whether or not to offer to the remote peer the opportunity
+//            to try to send audio. If this value is false, the remote peer will not be offered to send audio data,
+//            even if the local side will be sending audio data. If this value is true, the remote peer will be offered
+//            to send audio data, even if the local side will not be sending audio data. The default behavior is to offer
+//            to receive audio only if the local side is sending audio, not otherwise.
+//            Note: You shouldn't use this legacy property. Instead, use RTCRtpTransceiver to control whether or not to accept incoming audio.
+//            https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/createOffer
+//            */
+//            "true"));
+//    sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
+//            "OfferToReceiveVideo", // similar to OfferToReceiveAudio
+//            Boolean.toString(isVideoCallEnabled())));
   }
 
   private void createPeerConnectionInternal() {
