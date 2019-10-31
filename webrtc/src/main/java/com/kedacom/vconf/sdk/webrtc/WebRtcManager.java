@@ -258,6 +258,7 @@ public class WebRtcManager extends Caster<Msg>{
          * NOTE：一个peerconnect可以处理多路码流，收发均可。
          * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
          * */
+        // XXX 是4个PeerConnection而非PeerConnectionClient
         pubConnClient = new PeerConnectionClient(ctx, parameters2, new PCEvents(CommonDef.CONN_TYPE_PUBLISHER));
         pubConnClient.createPeerConnectionFactory(new PeerConnectionFactory.Options());
         subConnClient = new PeerConnectionClient(ctx, parameters3, new PCEvents(CommonDef.CONN_TYPE_SUBSCRIBER));
@@ -406,7 +407,7 @@ public class WebRtcManager extends Caster<Msg>{
                     KLog.p("rtcMedia.mid=%s, rtcMedia.streamid=%s", rtcMedia.mid, rtcMedia.streamid);
                     midStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
                 }
-                pcClient.createPeerConnection(
+                pcClient.createPeerConnection( // XXX 是4个PeerConnection而非PeerConnectionClient
                         videoCapturer,
                         params, rtcMedia);
                 if (params.initiator) {
