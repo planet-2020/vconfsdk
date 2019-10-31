@@ -1175,7 +1175,6 @@ class PeerConnectionClient {
     capturer.startCapture(videoWidth, videoHeight, videoFps);
     localVideoTrack = factory.createVideoTrack(VIDEO_TRACK_ID, videoSource);
     localVideoTrack.setEnabled(renderVideo);
-//    localVideoTrack.addSink(localRender); // TODO 通知上层让上层绑定sink
     return localVideoTrack;
   }
 

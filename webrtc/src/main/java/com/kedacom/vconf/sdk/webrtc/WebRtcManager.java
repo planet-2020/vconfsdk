@@ -1,6 +1,9 @@
 package com.kedacom.vconf.sdk.webrtc;
 
 import android.content.Context;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -8,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
@@ -33,6 +37,7 @@ import org.webrtc.IceCandidate;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.RendererCommon;
 import org.webrtc.RtpTransceiver;
+import org.webrtc.ScreenCapturerAndroid;
 import org.webrtc.SessionDescription;
 import org.webrtc.StatsReport;
 import org.webrtc.SurfaceViewRenderer;
@@ -403,7 +408,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 pcClient.createPeerConnection(
                         videoCapturer,
-                        params, rtcMedia); // TODO 收到的rtcMedia是否要设置到己端sdp？
+                        params, rtcMedia);
                 if (params.initiator) {
                     // Create offer. Offer SDP will be sent to answering client in
                     // PeerConnectionEvents.onLocalDescription event.
@@ -666,6 +671,22 @@ public class WebRtcManager extends Caster<Msg>{
 
         return null;
     }
+
+//    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+//    private VideoCapturer createScreenCapturer() {
+//        final VideoCapturer videoCapturer;
+//
+//        MediaProjectionManager mMediaProjectionManager = (MediaProjectionManager) context.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+//        context.startActivityForResult(mMediaProjectionManager.createScreenCaptureIntent(), CAPTURE_PERMISSION_REQUEST_CODE);
+//
+//        videoCapturer = new ScreenCapturerAndroid(permissionData, new MediaProjection.Callback() {
+//            @Override
+//            public void onStop() {
+//                KLog.p("user has revoked permissions");
+//            }
+//        });
+//        return videoCapturer;
+//    }
 
 
     PeerConnectionClient getPeerConnectionClient(int type){
