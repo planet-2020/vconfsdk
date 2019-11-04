@@ -1,6 +1,9 @@
 
 package com.kedacom.vconf.sdk.webrtc;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.kedacom.kdv.mt.ospconnector.Connector;
 import com.kedacom.kdv.mt.ospconnector.IRcvMsgCallback;
@@ -12,9 +15,7 @@ import com.kedacom.osp.EmMtOspMsgSys;
 import com.kedacom.osp.MtMsg;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
-import org.webrtc.IceCandidate;
 import org.webrtc.RtpParameters;
-import org.webrtc.SessionDescription;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,6 +38,8 @@ class RtcConnector implements IRcvMsgCallback{
 	private final long dispatchNode = 0;
     private long rtcServiceId;
     private long rtcServiceNode;
+
+	private Handler handler = new Handler(Looper.getMainLooper());
 
 
 	private SignalingEvents signalingEvents;
@@ -142,8 +145,6 @@ class RtcConnector implements IRcvMsgCallback{
 		void onMsg(MtMsg mtMsg, long nSrcId, long nSrcNode);
 	}
 
-	private enum ConnectionState { NEW, CONNECTED, CLOSED, ERROR }
-	private ConnectionState roomState;
 
 	/**
 	 * 收到平台“发起signaling”的指示，主动发起signaling流程
@@ -165,21 +166,8 @@ class RtcConnector implements IRcvMsgCallback{
 
 		KLog.p("rtcServiceId=%s, rtcServiceNode=%s, peerType=%s, mediaType=%s", rtcServiceId, rtcServiceNode, connType, mediaType);
 
-		roomState = ConnectionState.CONNECTED;
+		handler.post(() -> signalingEvents.onGetOfferCmd(connType, mediaType));
 
-		SignalingParameters parameters = new SignalingParameters(
-				// Ice servers are not needed for direct connections.
-				new ArrayList<>(),
-				true, // Server side acts as the initiator on direct connections.
-				null, // clientId
-				null, // wssUrl
-				null, // wwsPostUrl
-				null, // offerSdp
-				null, // iceCandidates
-                connType,
-				mediaType
-		);
-		signalingEvents.onConnectedToRoom(connType, parameters, null);
 	}
 
 
@@ -257,24 +245,8 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<= recv offer");
-
 		KLog.p("rtcServiceId=%s, rtcServiceNode=%s,  peerType=%s, offer=%s, rtcMedialist=%s", rtcServiceId, rtcServiceNode, connType, offer, rtcMedialist);
-		SessionDescription sdp = new SessionDescription(SessionDescription.Type.OFFER, offer);
-		SignalingParameters parameters = new SignalingParameters(
-				// Ice servers are not needed for direct connections.
-				new ArrayList<>(),
-				false, // This code will only be run on the client side. So, we are not the initiator.
-				null, // clientId
-				null, // wssUrl
-				null, // wssPostUrl
-				sdp, // offerSdp
-				null, // iceCandidates
-                connType,
-                CommonDef.MEDIA_TYPE_UNKNOWN
-		);
-		roomState = ConnectionState.CONNECTED;
-		signalingEvents.onConnectedToRoom(connType, parameters, rtcMediaFromPB(rtcMedialist.getMedia(0)));
+		handler.post(() -> signalingEvents.onSetOfferCmd(connType, offer, rtcMediaFromPB(rtcMedialist.getMedia(0))) );
 
 	}
 
@@ -329,11 +301,8 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<= recv answer");
-
 		KLog.p("peerType=%s, answer=%s", connType, answer);
-		SessionDescription sdp = new SessionDescription(SessionDescription.Type.ANSWER, answer);
-		signalingEvents.onRemoteDescription(connType, sdp);
+		handler.post(() -> signalingEvents.onSetAnswerCmd(connType, answer) );
 
 	}
 
@@ -402,8 +371,7 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		KLog.p("peerType=%s, mid=%s, index=%s, candidate", connType, mid, index, candidate);
-		IceCandidate candidate1 = new IceCandidate(mid, index, candidate);
-		signalingEvents.onRemoteIceCandidate(connType, candidate1);
+		handler.post(() -> signalingEvents.onSetIceCandidateCmd(connType, mid, index, candidate) );
 	}
 
 
@@ -421,18 +389,18 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 	}
 
-	private PeerConnectionClient.TRtcMedia rtcMediaFromPB(StructConfPB.TRtcMedia pbRtcMedia){
+	private TRtcMedia rtcMediaFromPB(StructConfPB.TRtcMedia pbRtcMedia){
 		List<RtpParameters.Encoding> encodings = new ArrayList<>();
 		for (StructConfPB.TRtcRid tRtcRid : pbRtcMedia.getRidlistList()){
 			String rid = tRtcRid.getRid();
-			encodings.add(PeerConnectionClient.createEncoding(rid,
-					1 // FIXME 这里暂时写死为了联调
-			));
+//			encodings.add(PeerConnectionClient.createEncoding(rid,
+//					1 // FIXME 这里暂时写死为了联调
+//			));
 		}
-		return new PeerConnectionClient.TRtcMedia(pbRtcMedia.getStreamid(), pbRtcMedia.getMid(), encodings);
+		return new TRtcMedia(pbRtcMedia.getStreamid(), pbRtcMedia.getMid(), encodings);
 	}
 
-	private StructConfPB.TRtcMedia rtcMediaToPB(PeerConnectionClient.TRtcMedia rtcMedia){
+	private StructConfPB.TRtcMedia rtcMediaToPB(TRtcMedia rtcMedia){
 		StructConfPB.TRtcMedia.Builder rtcMediaBuilder = StructConfPB.TRtcMedia.newBuilder();
 		for (RtpParameters.Encoding encoding : rtcMedia.encodings){
 			StructConfPB.TRtcRid.Builder ridBuider = StructConfPB.TRtcRid.newBuilder();
@@ -445,7 +413,7 @@ class RtcConnector implements IRcvMsgCallback{
 		return rtcMediaBuilder.build();
 	}
 
-	public void sendOfferSdp(int connType, SessionDescription sdp, PeerConnectionClient.TRtcMedia rtcMedia) {
+	public void sendOfferSdp(int connType, String offerSdp, TRtcMedia rtcMedia) {
 		// 发送offer
 		StructConfPB.TRtcMedia.Builder rtcMediaBuilder = StructConfPB.TRtcMedia.newBuilder();
 		for (RtpParameters.Encoding encoding : rtcMedia.encodings){
@@ -460,7 +428,7 @@ class RtcConnector implements IRcvMsgCallback{
 		MtMsg msg = new MtMsg();
 		msg.SetMsgId("Ev_MT_GetOffer_Ntf");
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
-		msg.addMsg(BasePB.TString.newBuilder().setValue(sdp.description).build());
+		msg.addMsg(BasePB.TString.newBuilder().setValue(offerSdp).build());
 		msg.addMsg(StructConfPB.TRtcMedialist.newBuilder()
 				.addMedia(rtcMediaToPB(rtcMedia))
 				.build()
@@ -474,21 +442,21 @@ class RtcConnector implements IRcvMsgCallback{
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
 
-		KLog.p("=> send offer: rtcServiceId=%s, rtcServiceNode=%s, sdp=%s, %s", rtcServiceId, rtcServiceNode, sdp.type, sdp.description);
+		KLog.p("=> send offer: rtcServiceId=%s, rtcServiceNode=%s, sdp=%s", rtcServiceId, rtcServiceNode, offerSdp);
 	}
 
-	public void sendAnswerSdp(int connType, final SessionDescription sdp) {
+	public void sendAnswerSdp(int connType, final String answerSdp) {
 		// 发送answer给对端
 		MtMsg msg = new MtMsg();
 		msg.SetMsgId("Ev_MT_GetAnswer_Ntf");
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
-		msg.addMsg(BasePB.TString.newBuilder().setValue(sdp.description).build());
+		msg.addMsg(BasePB.TString.newBuilder().setValue(answerSdp).build());
 		byte[] abyContent = msg.Encode();
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
                 rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 //		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
 //				dispatchId, dispatchNode, myId, myNode, 5000 );
-        KLog.p("=> send answer, rtcServiceId=%s, rtcServiceNode=%s, sdp=%s, %s", rtcServiceId, rtcServiceNode, sdp.type, sdp.description);
+        KLog.p("=> send answer, rtcServiceId=%s, rtcServiceNode=%s, sdp=%s", rtcServiceId, rtcServiceNode, answerSdp);
         if (0 != ret){
             KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
         }
@@ -497,13 +465,13 @@ class RtcConnector implements IRcvMsgCallback{
 
 
 	// 发送IceCandidate给对端
-	public void sendIceCandidate(int connType, IceCandidate candidate) {
+	public void sendIceCandidate(int connType, String sdpMid, int sdpMLineIndex, String sdp) {
 		MtMsg msg = new MtMsg();
 		msg.SetMsgId("Ev_MT_IceCandidate_Ntf");
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
-		msg.addMsg(BasePB.TString.newBuilder().setValue(candidate.sdpMid).build());
-		msg.addMsg(BasePB.TU32.newBuilder().setValue(candidate.sdpMLineIndex).build());
-		msg.addMsg(BasePB.TString.newBuilder().setValue(candidate.sdp).build());
+		msg.addMsg(BasePB.TString.newBuilder().setValue(sdpMid).build());
+		msg.addMsg(BasePB.TU32.newBuilder().setValue(sdpMLineIndex).build());
+		msg.addMsg(BasePB.TString.newBuilder().setValue(sdp).build());
 		byte[] abyContent = msg.Encode();
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
                 rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
@@ -513,40 +481,33 @@ class RtcConnector implements IRcvMsgCallback{
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
 
-		KLog.p("=> send candidate sdpmid=%s, sdpline=%s, candidate=%s", candidate.sdpMid, candidate.sdpMLineIndex, candidate.sdp);
+		KLog.p("=> send candidate sdpmid=%s, sdpline=%s, candidate=%s", sdpMid, sdpMLineIndex, sdp);
 	}
 
+	static class TRtcMedia {
+		String streamid;
+		String mid;
+		List<RtpParameters.Encoding> encodings;
+
+		TRtcMedia(String streamid, String mid, List<RtpParameters.Encoding> encodings) {
+			this.streamid = streamid;
+			this.mid = mid;
+			this.encodings = encodings;
+		}
+	}
+
+	/**
+	 * 所有回调均从主线程
+	 * */
 	interface SignalingEvents {
-		/**
-		 * Callback fired once the room's signaling parameters
-		 * SignalingParameters are extracted.
-		 */
-		void onConnectedToRoom(int connType, final SignalingParameters params, PeerConnectionClient.TRtcMedia rtcMedia);
 
-		/**
-		 * Callback fired once remote SDP is received.
-		 */
-		void onRemoteDescription(int connType, final SessionDescription sdp);
+		void onGetOfferCmd(int connType, int mediaType);
 
-		/**
-		 * Callback fired once remote Ice candidate is received.
-		 */
-		void onRemoteIceCandidate(int connType, final IceCandidate candidate);
+		void onSetOfferCmd(int connType, String offerSdp, TRtcMedia rtcMedia);
 
-		/**
-		 * Callback fired once remote Ice candidate removals are received.
-		 */
-		void onRemoteIceCandidatesRemoved(int connType, final IceCandidate[] candidates);
+		void onSetAnswerCmd(int connType, String answerSdp);
 
-		/**
-		 * Callback fired once channel is closed.
-		 */
-		void onChannelClose(int connType);
-
-		/**
-		 * Callback fired once channel error happened.
-		 */
-		void onChannelError(int connType, final String description);
+		void onSetIceCandidateCmd(int connType, String sdpMid, int sdpMLineIndex, String sdp);
 	}
 
 
