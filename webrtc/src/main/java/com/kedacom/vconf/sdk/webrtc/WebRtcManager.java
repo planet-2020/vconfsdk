@@ -73,6 +73,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@SuppressWarnings("SwitchStatementWithTooFewBranches")
 public class WebRtcManager extends Caster<Msg>{
 
     private RtcConnector rtcConnector;
@@ -270,11 +271,7 @@ public class WebRtcManager extends Caster<Msg>{
                         "OPUS"
                 );
 
-        /**
-         * 创建peerconnectclient。
-         * NOTE：一个peerconnect可以处理多路码流，收发均可。
-         * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
-         * */
+
         eglBase = EglBase.create();
         executor.execute(() -> {
 
@@ -284,6 +281,10 @@ public class WebRtcManager extends Caster<Msg>{
                     new PeerConnectionFactoryConfig(Arrays.asList("VP8", "H264 High"),true)
             );
 
+            /* 创建peerconnectclient。
+             * NOTE：一个peerconnect可以处理多路码流，收发均可。
+             * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
+             * */
             pubConnWrapper = createPeerConnectionWrapper(CommonDef.CONN_TYPE_PUBLISHER, pubConnConfig);
             subConnWrapper = createPeerConnectionWrapper(CommonDef.CONN_TYPE_SUBSCRIBER, new PeerConnectionConfig(pubConnConfig));
 //            createPeerConnectionWrapper(null);
@@ -299,15 +300,14 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
 
+        context = null;
         sessionEventListener = null;
 
-        // destroy rtcclient
         if (null != rtcConnector){
             rtcConnector.destroy();
             rtcConnector = null;
         }
 
-        // destroy peerconnection
         if (pubConnWrapper != null) {
             pubConnWrapper.close();
             pubConnWrapper = null;
@@ -324,6 +324,7 @@ public class WebRtcManager extends Caster<Msg>{
             assSubConnWrapper.close();
             assSubConnWrapper = null;
         }
+
         if (factory != null) {
             factory.dispose();
             factory = null;
@@ -334,7 +335,6 @@ public class WebRtcManager extends Caster<Msg>{
             eglBase = null;
         }
 
-        // destroy video sink
         for (ProxyVideoSink videoSink : videoSinks.values()){
             if (null != videoSink.target){
                 ((SurfaceViewRenderer)videoSink.target).release();
@@ -397,8 +397,7 @@ public class WebRtcManager extends Caster<Msg>{
             throw new RuntimeException("Factory not exists!");
         }
 
-        PeerConnection.RTCConfiguration rtcConfig =
-                new PeerConnection.RTCConfiguration(new ArrayList<>());
+        PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(new ArrayList<>());
         // TCP candidates are only useful when connecting to a server that supports
         // ICE-TCP.
         rtcConfig.tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.DISABLED;
@@ -472,16 +471,16 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private static class ProxyVideoSink implements VideoSink {
+    private class ProxyVideoSink implements VideoSink {
         private String name;
         private VideoSink target;
         private long timestamp = System.currentTimeMillis();
 
-        public ProxyVideoSink(String name) {
+        ProxyVideoSink(String name) {
             this.name = name;
         }
 
-        public ProxyVideoSink(String name, VideoSink target) {
+        ProxyVideoSink(String name, VideoSink target) {
             this.name = name;
             this.target = target;
         }
@@ -584,7 +583,7 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    PeerConnectionWrapper getPeerConnectionWrapper(int type){
+    private PeerConnectionWrapper getPeerConnectionWrapper(int type){
         KLog.p("type=%s", type);
         if (CommonDef.CONN_TYPE_PUBLISHER == type){
             return pubConnWrapper;
@@ -686,7 +685,7 @@ public class WebRtcManager extends Caster<Msg>{
             this.audioCodec = audioCodec;
         }
 
-        public PeerConnectionConfig(PeerConnectionConfig config) {
+        PeerConnectionConfig(PeerConnectionConfig config) {
             this.videoEnabled = config.videoEnabled;
             this.audioEnabled = config.audioEnabled;
             this.videoWidth = config.videoWidth;
@@ -755,18 +754,14 @@ public class WebRtcManager extends Caster<Msg>{
             PeerConnection pc = pcWrapper.pc;
             PeerConnectionConfig config = pcWrapper.config;
             SDPObserver observer = pcWrapper.sdpObserver;
-            executor.execute(()-> {
-                pc.setRemoteDescription(observer, new SessionDescription(SessionDescription.Type.ANSWER, answerSdp));
-            });
+            executor.execute(()-> pc.setRemoteDescription(observer, new SessionDescription(SessionDescription.Type.ANSWER, answerSdp)));
         }
 
         @Override
         public void onSetIceCandidateCmd(int connType, String sdpMid, int sdpMLineIndex, String sdp) {
             KLog.p("connType=%s, sdpMid=%s, sdpMLineIndex=%s, sdp=%s", connType, sdpMid, sdpMLineIndex, sdp);
             PeerConnectionWrapper pcWrapper = getPeerConnectionWrapper(connType);
-            executor.execute(()-> {
-                pcWrapper.addCandidate(new IceCandidate(sdpMid, sdpMLineIndex, sdp));
-            });
+            executor.execute(()-> pcWrapper.addCandidate(new IceCandidate(sdpMid, sdpMLineIndex, sdp)));
         }
 
     };
@@ -789,9 +784,7 @@ public class WebRtcManager extends Caster<Msg>{
         public void onCreateSuccess(final SessionDescription origSdp) {
             KLog.p("create local sdp success: %s", origSdp);
             PeerConnectionWrapper peerConnectionWrapper = getPeerConnectionWrapper(connType);
-            executor.execute(() -> {
-                peerConnectionWrapper.pc.setLocalDescription(this, origSdp);
-            });
+            executor.execute(() -> peerConnectionWrapper.pc.setLocalDescription(this, origSdp));
         }
 
         @Override
@@ -837,10 +830,10 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
-    class PCObserver implements PeerConnection.Observer{
+    private class PCObserver implements PeerConnection.Observer{
         private int connType;
 
-        public PCObserver(int connType) {
+        PCObserver(int connType) {
             this.connType = connType;
         }
 
@@ -1107,17 +1100,17 @@ public class WebRtcManager extends Caster<Msg>{
     private String getMid(String sdpDescription){
         final String[] lines = sdpDescription.split("\r\n");
         boolean isVideoSeg = false;
-        for (int i = 0; i < lines.length; ++i) {
-            if (lines[i].startsWith("m=video")) {
+        for (String line : lines) {
+            if (line.startsWith("m=video")) {
                 isVideoSeg = true;
                 continue;
-            }else if (lines[i].startsWith("m=audio")){
+            } else if (line.startsWith("m=audio")) {
                 isVideoSeg = false;
                 continue;
             }
 
-            if (lines[i].startsWith("a=mid:") && isVideoSeg){
-                return lines[i].substring("a=mid:".length());
+            if (line.startsWith("a=mid:") && isVideoSeg) {
+                return line.substring("a=mid:".length());
             }
         }
 
