@@ -180,6 +180,34 @@ public final class NetAddrHelper {
 
 
     /**
+     * 点分十进制ip字符串转长整型
+     * */
+    public static long ipStr2Long(String ip) throws InvalidIpv4Exception {
+        if (!isValidIp(ip)){
+            throw new InvalidIpv4Exception(ip);
+        }
+        String[] fields = ip.split("\\.");
+        return (Long.parseLong(fields[0]) << 24)
+                | (Long.parseLong(fields[1]) << 16)
+                | (Long.parseLong(fields[2]) << 8)
+                | Long.parseLong(fields[3]);
+    }
+
+    /**
+     * 长整型ip转点分十进制ip字符串
+     * */
+    public static String ipLong2Str(long ip){
+        final StringBuilder sb = new StringBuilder();
+        sb.append(ip>>>24).append(".")
+                .append(ip>>>16 & 0xff).append(".")
+                .append((ip>>>8 & 0xff)).append(".")
+                .append(ip & 0xff);
+        return sb.toString();
+    }
+
+
+
+    /**
      * Ip格式掩码转位长形式掩码。
      * 如ip格式掩码255.255.255.0，转为位长形式后为24位。
      * @return 掩码长度，或者-1若掩码非法。
