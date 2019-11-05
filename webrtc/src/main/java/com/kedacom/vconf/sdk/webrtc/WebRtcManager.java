@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.webrtc;
 
 import android.content.Context;
+import android.content.Intent;
+import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -44,6 +46,7 @@ import org.webrtc.RendererCommon;
 import org.webrtc.RtpParameters;
 import org.webrtc.RtpReceiver;
 import org.webrtc.RtpTransceiver;
+import org.webrtc.ScreenCapturerAndroid;
 import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
 import org.webrtc.SoftwareVideoDecoderFactory;
@@ -287,8 +290,8 @@ public class WebRtcManager extends Caster<Msg>{
              * */
             pubConnWrapper = createPeerConnectionWrapper(CommonDef.CONN_TYPE_PUBLISHER, pubConnConfig);
             subConnWrapper = createPeerConnectionWrapper(CommonDef.CONN_TYPE_SUBSCRIBER, new PeerConnectionConfig(pubConnConfig));
-//            createPeerConnectionWrapper(null);
-//            createPeerConnectionWrapper(null);
+            assPubConnWrapper = createPeerConnectionWrapper(CommonDef.CONN_TYPE_ASS_PUBLISHER, new PeerConnectionConfig(pubConnConfig));
+            assSubConnWrapper = createPeerConnectionWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER, new PeerConnectionConfig(pubConnConfig));
         });
 
         KLog.p("session started ");
@@ -347,6 +350,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         midStreamIdMap.clear();
         streamInfos.clear();
+        screenCapturePermissionData = null;
 
         // destroy audiomanager
 //        if (audioManager != null) {
@@ -573,18 +577,30 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     private VideoCapturer createScreenCapturer() {
-        final VideoCapturer videoCapturer = null;
-//
-//        MediaProjectionManager mMediaProjectionManager = (MediaProjectionManager) context.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-//        context.startActivityForResult(mMediaProjectionManager.createScreenCaptureIntent(), CAPTURE_PERMISSION_REQUEST_CODE);
-//
-//        videoCapturer = new ScreenCapturerAndroid(permissionData, new MediaProjection.Callback() {
-//            @Override
-//            public void onStop() {
-//                KLog.p("user has revoked permissions");
-//            }
-//        });
+        if (null == screenCapturePermissionData){
+            KLog.p(KLog.ERROR, "null == screenCapturePermissionData");
+            return null;
+        }
+        VideoCapturer videoCapturer = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            videoCapturer = new ScreenCapturerAndroid(screenCapturePermissionData, new MediaProjection.Callback() {
+                @Override
+                public void onStop() {
+                    KLog.p("user has revoked permissions");
+                }
+            });
+        }else{
+            KLog.p(KLog.ERROR, "API level < LOLLIPOP(21)");
+        }
         return videoCapturer;
+    }
+
+    private Intent screenCapturePermissionData;
+    /**
+     * 设置截屏权限数据。（发送辅流需要截屏）
+     * */
+    public void setScreenCapturePermissionData(Intent permissionData){
+        screenCapturePermissionData = permissionData;
     }
 
 
@@ -610,7 +626,7 @@ public class WebRtcManager extends Caster<Msg>{
     {
         MtMsg msg = new MtMsg();
         msg.SetMsgId("Ev_MT_GetOffer_Cmd");
-        msg.addMsg(BasePB.TU32.newBuilder().setValue(CommonDef.CONN_TYPE_PUBLISHER).build());
+        msg.addMsg(BasePB.TU32.newBuilder().setValue(CommonDef.CONN_TYPE_ASS_PUBLISHER).build());
         msg.addMsg(BasePB.TU32.newBuilder().setValue(CommonDef.MEDIA_TYPE_AV).build());
 
         long nSrcID = Connector.MAKEIID(RtcConnector.WEBRTC_ID, (short)1 );
@@ -714,7 +730,8 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p("connType=%s, mediaType=%s", connType, mediaType);
             PeerConnectionWrapper pcWrapper = getPeerConnectionWrapper(connType);
             VideoCapturer videoCapturer = null;
-            if (CommonDef.MEDIA_TYPE_VIDEO == mediaType || CommonDef.MEDIA_TYPE_AV == mediaType){
+            if ((CommonDef.MEDIA_TYPE_VIDEO == mediaType || CommonDef.MEDIA_TYPE_AV == mediaType)
+                    && pcWrapper.config.videoEnabled){
                 if (CommonDef.CONN_TYPE_PUBLISHER == connType) {
                     videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
                 }else if (CommonDef.CONN_TYPE_ASS_PUBLISHER == connType) {
