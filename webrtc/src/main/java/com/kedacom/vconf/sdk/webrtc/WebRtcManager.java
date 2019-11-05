@@ -139,15 +139,15 @@ public class WebRtcManager extends Caster<Msg>{
 //            reportFailed(-1, resultListener);
 //            return;
 //        }
-        if (null == rtcSvrAddr){
+//        if (null == rtcSvrAddr){
             KLog.p(KLog.ERROR, "null == rtcSvrAddr");
             try {
-                int ip = NetAddrHelper.ipStr2Int("172.16.179.114"); //FIXME 写死方便调试
-                rtcSvrAddr = new TMtRtcSvrAddr(ip, 7961,"0512110000004");
+                long ip = NetAddrHelper.ipStr2Long("172.16.179.114"); //FIXME 写死方便调试
+                rtcSvrAddr = new TMtRtcSvrAddr(Integer.reverse((int) ip), 7961,"0512110000004");
             } catch (NetAddrHelper.InvalidIpv4Exception e) {
                 e.printStackTrace();
             }
-        }
+//        }
 
         req(Msg.Login, resultListener, rtcSvrAddr);
     }
@@ -290,6 +290,9 @@ public class WebRtcManager extends Caster<Msg>{
 //            createPeerConnectionWrapper(null);
 //            createPeerConnectionWrapper(null);
         });
+
+        KLog.p("session started ");
+
         return true;
     }
 
@@ -350,6 +353,8 @@ public class WebRtcManager extends Caster<Msg>{
 //            audioManager.stop();
 //            audioManager = null;
 //        }
+
+        KLog.p("session stopped ");
 
     }
 

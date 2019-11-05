@@ -6,7 +6,7 @@ package com.kedacom.vconf.sdk.webrtc.bean.trans;
 public final class TMtRtcSvrAddr {
     public boolean bUsedRtc;                             ///< 是否使用Rtc
     public String  achDomain; ///< Rtc域名
-    public int dwIp;                                    ///< RtcIp (网络序)
+    public long dwIp;                                    ///< RtcIp (网络序)
     public int dwPort;                                  ///< Rtc端口， 如果不填，标准是1720， 非标的是用平台返回的值
     public String achNumber;  ///< 注册时使用的号码
     public String achPassword;    ///< 密码
@@ -14,10 +14,16 @@ public final class TMtRtcSvrAddr {
     public String  achAuthName; ///< 认证名称, 填写密码后会用到认证名称
     public String  achIpv6;            //Rtc ipv6
 
-    public TMtRtcSvrAddr(int dwIp, int dwPort, String achNumber) {
+    public TMtRtcSvrAddr(long dwIp, int dwPort, String achNumber) {
         bUsedRtc = true;
         this.dwIp = dwIp;
         this.dwPort = dwPort;
         this.achNumber = achNumber;
+        this.achDomain = "";
+        this.achPassword = "";
+        this.dwTimeToLive = 60;
+        this.achAuthName = "";
+        this.achIpv6 = "";
     }
+
 }
