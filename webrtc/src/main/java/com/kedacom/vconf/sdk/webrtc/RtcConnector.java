@@ -27,7 +27,7 @@ class RtcConnector implements IRcvMsgCallback{
 
 	public static final String TAG = "RtcConnector";
 	public static final String WEBRTC_NAME = "WEBRTC_NAME";
-	public static final short WEBRTC_ID = 143;
+	public static final short WEBRTC_ID = 142;
 	public static final short MTDISPATCH_ID = 107;
 	public static boolean stopHanldeJni = false;
 	private final Map<String, ICbMsgHandler> cbMsgHandlerMap = new HashMap<>();

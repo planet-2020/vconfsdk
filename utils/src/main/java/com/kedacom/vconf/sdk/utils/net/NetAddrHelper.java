@@ -208,6 +208,35 @@ public final class NetAddrHelper {
 
 
     /**
+     * 点分十进制ip字符串转整型（小端模式）
+     * */
+    public static int ipStr2IntLittleEndian(String ip) throws InvalidIpv4Exception {
+        if (!isValidIp(ip)){
+            throw new InvalidIpv4Exception(ip);
+        }
+        String[] fields = ip.split("\\.");
+        return (Integer.parseInt(fields[3]) << 24)
+                | (Integer.parseInt(fields[2]) << 16)
+                | (Integer.parseInt(fields[1]) << 8)
+                | Integer.parseInt(fields[0]);
+    }
+
+
+    /**
+     * 点分十进制ip字符串转长整型（小端模式）
+     * */
+    public static long ipStr2LongLittleEndian(String ip) throws InvalidIpv4Exception {
+        if (!isValidIp(ip)){
+            throw new InvalidIpv4Exception(ip);
+        }
+        String[] fields = ip.split("\\.");
+        return (Long.parseLong(fields[3]) << 24)
+                | (Long.parseLong(fields[2]) << 16)
+                | (Long.parseLong(fields[1]) << 8)
+                | Long.parseLong(fields[0]);
+    }
+
+    /**
      * Ip格式掩码转位长形式掩码。
      * 如ip格式掩码255.255.255.0，转为位长形式后为24位。
      * @return 掩码长度，或者-1若掩码非法。

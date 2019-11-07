@@ -145,8 +145,8 @@ public class WebRtcManager extends Caster<Msg>{
 //        if (null == rtcSvrAddr){
             KLog.p(KLog.ERROR, "null == rtcSvrAddr");
             try {
-                long ip = NetAddrHelper.ipStr2Long("172.16.179.114"); //FIXME 写死方便调试
-                rtcSvrAddr = new TMtRtcSvrAddr(Integer.reverse((int) ip), 7961,"0512110000004");
+                long ip = NetAddrHelper.ipStr2LongLittleEndian("172.16.179.114"); //FIXME 写死方便调试
+                rtcSvrAddr = new TMtRtcSvrAddr(ip, 7961,"0512110000004");
             } catch (NetAddrHelper.InvalidIpv4Exception e) {
                 e.printStackTrace();
             }
@@ -597,9 +597,9 @@ public class WebRtcManager extends Caster<Msg>{
 
     private Intent screenCapturePermissionData;
     /**
-     * 设置截屏权限数据。（发送辅流需要截屏）
+     * 设置截屏权限。（发送辅流需要截屏）
      * */
-    public void setScreenCapturePermissionData(Intent permissionData){
+    public void setScreenCapturePermission(Intent permissionData){
         screenCapturePermissionData = permissionData;
     }
 
