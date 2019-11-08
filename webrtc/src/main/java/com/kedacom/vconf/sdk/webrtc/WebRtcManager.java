@@ -137,11 +137,12 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public void login(IResultListener resultListener){
         TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) get(Msg.GetSvrAddr);
-//        if (null == rtcSvrAddr){
-//            KLog.p(KLog.ERROR, "null == rtcSvrAddr");
+//        if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0){
+//            KLog.p(KLog.ERROR, "invalid rtcSvrAddr, have you logined APS");
 //            reportFailed(-1, resultListener);
 //            return;
 //        }
+
 //        if (null == rtcSvrAddr){
             KLog.p(KLog.ERROR, "null == rtcSvrAddr");
             try {
