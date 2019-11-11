@@ -85,13 +85,19 @@ public @interface Request {
     String[] rspSeq() default {};
     /**
      * 请求对应的另一路可能的响应序列。
-     * NOTE: 可以使用java8新增的元注解@Repeatable替代这种方案，尤其如果响应序列无限多。
      * */
     String[] rspSeq2() default {};
     /**
      * 请求对应的另一路可能的响应序列。
      * */
     String[] rspSeq3() default {};
+    /**
+     * 请求对应的另一路可能的响应序列。
+     * */
+    String[] rspSeq4() default {};
+    // 添加更多路响应序列很容易（只需在注解处理器中相应增加一行），
+    // 但是一个请求有太多可能的响应序列这并不合理，
+    // 往往暗示着设计有缺陷，需审视。
 
     /**
      * 请求对应的超时时长。单位：秒

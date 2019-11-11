@@ -150,22 +150,13 @@ public class MessageProcessor extends AbstractProcessor {
                 reqMap.put(name, COL_TYPE, request.type());
 
                 // 获取响应序列
-                String[] rspSeq1 = request.rspSeq();
-                for (int i=0; i<rspSeq1.length; ++i){
-                    rspSeq1[i] = module+"_"+rspSeq1[i];
-                }
-                String[] rspSeq2 = request.rspSeq2();
-                for (int i=0; i<rspSeq2.length; ++i){
-                    rspSeq2[i] = module+"_"+rspSeq2[i];
-                }
-                String[] rspSeq3 = request.rspSeq3();
-                for (int i=0; i<rspSeq3.length; ++i){
-                    rspSeq3[i] = module+"_"+rspSeq3[i];
-                }
                 List<String[]> rspSeqList = new ArrayList<>();
-                if (rspSeq1.length>0) rspSeqList.add(rspSeq1);
-                if (rspSeq2.length>0) rspSeqList.add(rspSeq2);
-                if (rspSeq3.length>0) rspSeqList.add(rspSeq3);
+                processRspSeqs(rspSeqList,
+                        request.rspSeq(),
+                        request.rspSeq2(),
+                        request.rspSeq3(),
+                        request.rspSeq4()
+                );
                 reqMap.put(name, COL_RSPSEQ, rspSeqList.toArray(new String[][]{}));
 
                 // 获取超时时长
@@ -200,6 +191,18 @@ public class MessageProcessor extends AbstractProcessor {
 
                 rspMap.put(name, COL_DELAY, response.delay());
 
+            }
+        }
+    }
+
+
+    private void processRspSeqs(List<String[]> rspSeqList, String[]... rspSeqs){
+        for (String[] rspSeq : rspSeqs){
+            for (int i=0; i<rspSeq.length; ++i){
+                rspSeq[i] = module+"_"+rspSeq[i];
+            }
+            if (rspSeq.length>0){
+                rspSeqList.add(rspSeq);
             }
         }
     }

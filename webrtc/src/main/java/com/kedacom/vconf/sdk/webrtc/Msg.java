@@ -52,9 +52,9 @@ enum Msg {
                     int.class   // 协议类型
             },
             rspSeq = {"Calling", "P2pConfStarted"},
-            rspSeq2 = {"Calling", "P2pConfEnded"}
-//            rspSeq3 = {"Calling", "MultipartyConfStarted"},
-//            rspSeq2 = {"Calling", "MultipartyConfEnded"}
+            rspSeq2 = {"Calling", "P2pConfEnded"},
+            rspSeq3 = {"Calling", "MultipartyConfStarted"},
+            rspSeq4 = {"Calling", "MultipartyConfEnded"}
             )
     Call,
 
