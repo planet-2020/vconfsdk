@@ -194,21 +194,25 @@ public class WebRtcManager extends Caster<Msg>{
             case P2pConfStarted:
                 callLinkSate = (TMtCallLinkSate) rspContent;
                 KLog.p("P2pConfStarted: %s", callLinkSate);
+                reportSuccess(null, listener);
                 break;
 
             case P2pConfEnded:
                 BaseTypeInt reason = (BaseTypeInt) rspContent;
                 KLog.p("P2pConfEnded: %s", reason.basetype);
+                reportFailed(-1, listener);
                 break;
 
             case MultipartyConfStarted:
                 callLinkSate = (TMtCallLinkSate) rspContent;
                 KLog.p("MultipartyConfStarted: %s", callLinkSate);
+                reportSuccess(null, listener);
                 break;
 
             case MultipartyConfEnded:
                 reason = (BaseTypeInt) rspContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
+                reportFailed(-1, listener);
                 break;
 
             default:
