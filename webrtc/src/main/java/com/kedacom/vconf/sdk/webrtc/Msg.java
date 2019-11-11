@@ -3,6 +3,8 @@ package com.kedacom.vconf.sdk.webrtc;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
+import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
 
 /**
@@ -36,6 +38,67 @@ enum Msg {
     @Response(clz = TLoginResult.class,
             id = "RegResultNtf")
     LoginRsp,
+
+
+    /**
+     * 呼出
+     * */
+    @Request(method = "ConfMakeCallCmd",
+            owner = MethodOwner.ConfCtrl,
+            paras = {StringBuffer.class, int.class, int.class},
+            userParas = {
+                    String.class, // 对端e164（点对点）/ 会议号（多点）
+                    int.class,  // 呼叫码率
+                    int.class   // 协议类型
+            },
+            rspSeq = {"Calling", "P2pConfStarted"},
+            rspSeq2 = {"Calling", "P2pConfEnded"}
+//            rspSeq3 = {"Calling", "MultipartyConfStarted"},
+//            rspSeq2 = {"Calling", "MultipartyConfEnded"}
+            )
+    Call,
+
+    /**
+     * 正在呼出中
+     * */
+    @Response(clz = TMtCallLinkSate.class,
+            id = "ConfCallingNtf")
+    Calling,
+
+    /**
+     * 点对点会议已开始
+     * */
+    @Response(clz = TMtCallLinkSate.class,
+            id = "P2PStartedNtf")
+    P2pConfStarted,
+
+    /**
+     * 点对点会议已结束
+     * */
+    @Response(clz = BaseTypeInt.class,
+            id = "P2PEndedNtf")
+    P2pConfEnded,
+
+    /**
+     * 多方会议已开始
+     * */
+    @Response(clz = TMtCallLinkSate.class,
+            id = "MulConfStartedNtf")
+    MultipartyConfStarted,
+
+    /**
+     * 多方会议已结束
+     * */
+    @Response(clz = BaseTypeInt.class,
+            id = "MulConfEndedNtf")
+    MultipartyConfEnded,
+
+    /**
+     * 呼入通知
+     * */
+    @Response(clz = TMtCallLinkSate.class,
+            id = "ConfInComingNtf")
+    CallIncoming,
 
 
     /**获取流列表*/
@@ -86,6 +149,7 @@ enum Msg {
 
         private static final String MonitorCtrl = PKG + "MonitorCtrl";
         private static final String ConfigCtrl = PKG + "ConfigCtrl";
+        private static final String ConfCtrl = PKG + "ConfCtrl";
     }
 
 }

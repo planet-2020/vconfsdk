@@ -43,7 +43,7 @@ dependencies {
 
     compileOnly project(':annotation')
     annotationProcessor project(':processor')
-    implementation 'com.kedacom.vconf.sdk:common:1.0.2-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:common:1.0.4-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:utils:1.0.2-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:amulet:1.0.2-SNAPSHOT'
 }

@@ -18,6 +18,9 @@ import com.kedacom.osp.EmMtOspMsgSys;
 import com.kedacom.osp.MtMsg;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
+import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
+import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 import com.kedacom.vconf.sdk.webrtc.bean.StreamInfo;
@@ -114,6 +117,7 @@ public class WebRtcManager extends Caster<Msg>{
         Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
         processorMap.put(new Msg[]{
                 Msg.Login,
+                Msg.Call
         }, this::onRsp);
         return processorMap;
     }
@@ -125,6 +129,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.StreamListReady,
                 Msg.StreamJoined,
                 Msg.StreamLeft,
+                Msg.CallIncoming
         }, this::onNtfs);
 
         return processorMap;
@@ -135,7 +140,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 登录rtc
      * 注意，需先登录aps成功。
      * */
-    public void login(IResultListener resultListener){
+    public void login(String e164, IResultListener resultListener){
         TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) get(Msg.GetSvrAddr);
 //        if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0){
 //            KLog.p(KLog.ERROR, "invalid rtcSvrAddr, have you logined APS");
@@ -147,13 +152,22 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p(KLog.ERROR, "null == rtcSvrAddr");
             try {
                 long ip = NetAddrHelper.ipStr2LongLittleEndian("172.16.179.114"); //FIXME 写死方便调试
-                rtcSvrAddr = new TMtRtcSvrAddr(ip, 7961,"0512110000004");
+//                rtcSvrAddr = new TMtRtcSvrAddr(ip, 7961,"0512110000004");
+                rtcSvrAddr = new TMtRtcSvrAddr(ip, 7961, e164);
             } catch (NetAddrHelper.InvalidIpv4Exception e) {
                 e.printStackTrace();
             }
 //        }
 
         req(Msg.Login, resultListener, rtcSvrAddr);
+    }
+
+
+    /**
+     * 点对点呼叫
+     * */
+    public void P2pCall(String peerE164, IResultListener resultListener){
+        req(Msg.Call, resultListener, peerE164, 1024, EmConfProtocol.emrtc.ordinal());
     }
 
 
@@ -167,6 +181,25 @@ public class WebRtcManager extends Caster<Msg>{
                     reportFailed(-1, listener);
                 }
                 break;
+
+            case Calling:
+                TMtCallLinkSate callLinkSate = (TMtCallLinkSate) rspContent;
+                KLog.p("Calling: %s", callLinkSate);
+                if (EmConfProtocol.emrtc != callLinkSate.emConfProtocol){
+                    return false;
+                }
+
+                break;
+            case P2pConfStarted:
+                callLinkSate = (TMtCallLinkSate) rspContent;
+                KLog.p("P2pConfStarted: %s", callLinkSate);
+                break;
+
+            case P2pConfEnded:
+                BaseTypeInt reason = (BaseTypeInt) rspContent;
+                KLog.p("P2pConfEnded: %s", reason.basetype);
+                break;
+
             default:
                 return false;
         }
@@ -177,6 +210,12 @@ public class WebRtcManager extends Caster<Msg>{
 
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
         switch (ntfId){
+
+            case CallIncoming:
+                TMtCallLinkSate callLinkSate = (TMtCallLinkSate) ntfContent;
+                KLog.p("CallIncoming: %s", callLinkSate);
+                break;
+
             case StreamListReady:
                 List<TRtcPlayItem> rtcPlayItems = new ArrayList<>();
                 TRtcStreamInfoList streamInfoList = (TRtcStreamInfoList) ntfContent;
