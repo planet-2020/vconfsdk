@@ -164,10 +164,11 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     /**
-     * 点对点呼叫
+     * 呼叫
+     * @param peerId 对于点对点而言是对端e164，对于多方会议而言是会议e164
      * */
-    public void P2pCall(String peerE164, IResultListener resultListener){
-        req(Msg.Call, resultListener, peerE164, 1024, EmConfProtocol.emrtc.ordinal());
+    public void makeCall(String peerId, IResultListener resultListener){
+        req(Msg.Call, resultListener, peerId, 1024, EmConfProtocol.emrtc.ordinal());
     }
 
 
@@ -200,6 +201,16 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p("P2pConfEnded: %s", reason.basetype);
                 break;
 
+            case MultipartyConfStarted:
+                callLinkSate = (TMtCallLinkSate) rspContent;
+                KLog.p("MultipartyConfStarted: %s", callLinkSate);
+                break;
+
+            case MultipartyConfEnded:
+                reason = (BaseTypeInt) rspContent;
+                KLog.p("MultipartyConfEnded: %s", reason.basetype);
+                break;
+
             default:
                 return false;
         }
@@ -214,6 +225,16 @@ public class WebRtcManager extends Caster<Msg>{
             case CallIncoming:
                 TMtCallLinkSate callLinkSate = (TMtCallLinkSate) ntfContent;
                 KLog.p("CallIncoming: %s", callLinkSate);
+                break;
+
+            case P2pConfEnded:
+                BaseTypeInt reason = (BaseTypeInt) ntfContent;
+                KLog.p("P2pConfEnded: %s", reason.basetype);
+                break;
+
+            case MultipartyConfEnded:
+                reason = (BaseTypeInt) ntfContent;
+                KLog.p("MultipartyConfEnded: %s", reason.basetype);
                 break;
 
             case StreamListReady:
