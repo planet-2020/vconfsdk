@@ -15,4 +15,17 @@ public final class TRtcStreamInfo {
     public int                 byMediaIndex;                        ///如果有多路主流， 多流里的索引，暂时主流只有1路，所以为0
     public List<EmMtResolution> aemSimcastRes;       ///流支持的分辨率
     public int                 byResCount;
+
+    @Override
+    public String toString() {
+        return "TRtcStreamInfo{" +
+                "achStreamId='" + achStreamId + '\'' +
+                ", tMtId=" + tMtId +
+                ", bAudio=" + bAudio +
+                ", bAss=" + bAss +
+                ", byMediaIndex=" + byMediaIndex +
+                ", aemSimcastRes=" + aemSimcastRes +
+                ", byResCount=" + byResCount +
+                '}';
+    }
 }

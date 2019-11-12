@@ -434,10 +434,10 @@ class RtcConnector implements IRcvMsgCallback{
 				.build()
 		);
 		byte[] abyContent = msg.Encode();
-		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 //		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-//				dispatchId, dispatchNode, myId, myNode, 5000 );
+//                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
+		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+				dispatchId, dispatchNode, myId, myNode, 5000 );
 		if (0 != ret){
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
@@ -452,10 +452,10 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
 		msg.addMsg(BasePB.TString.newBuilder().setValue(answerSdp).build());
 		byte[] abyContent = msg.Encode();
-		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 //		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-//				dispatchId, dispatchNode, myId, myNode, 5000 );
+//                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
+		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+				dispatchId, dispatchNode, myId, myNode, 5000 );
         KLog.p("=> send answer, rtcServiceId=%s, rtcServiceNode=%s, sdp=%s", rtcServiceId, rtcServiceNode, answerSdp);
         if (0 != ret){
             KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
@@ -473,10 +473,10 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(sdpMLineIndex).build());
 		msg.addMsg(BasePB.TString.newBuilder().setValue(sdp).build());
 		byte[] abyContent = msg.Encode();
-		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 //		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-//				dispatchId, dispatchNode, myId, myNode, 5000 );
+//                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
+		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+				dispatchId, dispatchNode, myId, myNode, 5000 );
 		if (0 != ret){
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}

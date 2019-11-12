@@ -1,8 +1,12 @@
 package com.kedacom.vconf.sdk.common.constant;
 
+import com.google.gson.annotations.JsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter;
+
 /**
  * 呼叫状态
  */
+@JsonAdapter(Enum2IntJsonAdapter.class)
 public enum EmMtCallState {
 	emCallIdle, 
 	emCallRasConfJoining,      // ras非标加入会议，等待mcu 呼叫  

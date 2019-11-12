@@ -1,6 +1,11 @@
 package com.kedacom.vconf.sdk.common.constant;
 
+import com.google.gson.annotations.JsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter;
+
 /** 画面合成风格定义 */
+
+@JsonAdapter(Enum2IntJsonAdapter.class)
 public enum EmMtVmpStyle
 {
 	emInvalid_Style_Api ,            ///<非法值

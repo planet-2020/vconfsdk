@@ -176,6 +176,7 @@ public class WebRtcManager extends Caster<Msg>{
         switch (rsp){
             case LoginRsp:
                 TLoginResult loginResult = (TLoginResult) rspContent;
+                KLog.p("loginResult: %s", loginResult.AssParam.basetype);
                 if (100 == loginResult.AssParam.basetype){
                     reportSuccess(null, listener);
                 }else{
@@ -242,11 +243,13 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case StreamListReady:
+                KLog.p("StreamListReady");
                 List<TRtcPlayItem> rtcPlayItems = new ArrayList<>();
                 TRtcStreamInfoList streamInfoList = (TRtcStreamInfoList) ntfContent;
                 streamInfos.clear();
                 streamInfos.addAll(streamInfoList.atStramInfoList);
                 for (TRtcStreamInfo streamInfo : streamInfos){
+                    KLog.p("streamInfo: %s", streamInfo);
                     if (streamInfo.bAudio){
                         continue;
                     }
@@ -260,6 +263,7 @@ public class WebRtcManager extends Caster<Msg>{
                 set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
                 break;
             case StreamJoined:  //NOTE: 这里是增量过来的
+                KLog.p("StreamJoined");
                 rtcPlayItems = new ArrayList<>();
                 streamInfoList = (TRtcStreamInfoList) ntfContent;
                 streamInfos.addAll(streamInfoList.atStramInfoList);
@@ -277,6 +281,7 @@ public class WebRtcManager extends Caster<Msg>{
                 set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems)); // 这里设置是增量的，还是覆盖的？如果是覆盖的，我需要本地记录下原本的列表？
                 break;
             case StreamLeft: //NOTE: 这里是增量过来的
+                KLog.p("StreamLeft");
                 rtcPlayItems = new ArrayList<>();
                 streamInfoList = (TRtcStreamInfoList) ntfContent;
 

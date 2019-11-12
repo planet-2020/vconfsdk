@@ -1,6 +1,10 @@
 package com.kedacom.vconf.sdk.common.constant;
 
+import com.google.gson.annotations.JsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter;
+
 /** codec组件 */
+@JsonAdapter(Enum2IntJsonAdapter.class)
 public enum EmCodecComponent
 {
 	emVidMainEncoder_Api   ,      ///<主流视频编码器
