@@ -9,8 +9,9 @@ class CommonDef {
     static final int CONN_TYPE_ASS_PUBLISHER = 2;
     static final int CONN_TYPE_ASS_SUBSCRIBER = 3;
 
-    static final int MEDIA_TYPE_UNKNOWN = -1;
-    static final int MEDIA_TYPE_AUDIO = 0;
+    static final int MEDIA_TYPE_UNKNOWN = 0;
     static final int MEDIA_TYPE_VIDEO = 1;
-    static final int MEDIA_TYPE_AV = 2;
+    static final int MEDIA_TYPE_AUDIO = 2;
+    static final int MEDIA_TYPE_AV = 3;
+    static final int MEDIA_TYPE_ASS_VIDEO = 4;
 }

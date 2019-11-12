@@ -800,7 +800,9 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p("connType=%s, mediaType=%s", connType, mediaType);
             PeerConnectionWrapper pcWrapper = getPeerConnectionWrapper(connType);
             VideoCapturer videoCapturer = null;
-            if ((CommonDef.MEDIA_TYPE_VIDEO == mediaType || CommonDef.MEDIA_TYPE_AV == mediaType)
+            if ((CommonDef.MEDIA_TYPE_VIDEO == mediaType
+                    || CommonDef.MEDIA_TYPE_AV == mediaType
+                    || CommonDef.MEDIA_TYPE_ASS_VIDEO == mediaType)
                     && pcWrapper.config.videoEnabled){
                 if (CommonDef.CONN_TYPE_PUBLISHER == connType) {
                     videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
@@ -874,7 +876,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onCreateSuccess(final SessionDescription origSdp) {
-            KLog.p("create local sdp success: %s", origSdp);
+            KLog.p("create local sdp success: type=%s, sdp=%s", origSdp.type, origSdp.description);
             PeerConnectionWrapper peerConnectionWrapper = getPeerConnectionWrapper(connType);
             executor.execute(() -> peerConnectionWrapper.pc.setLocalDescription(this, origSdp));
         }
@@ -890,7 +892,7 @@ public class WebRtcManager extends Caster<Msg>{
                         pcWrapper.drainCandidates();
                     }else{
 //                        updateRtpPara(true);
-                        KLog.p("setLocalDescription success, sending offer...");
+                        KLog.p("setLocalDescription success, sending offer... \n%s", pc.getLocalDescription().description);
                         RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(pcWrapper.STREAM_ID, getMid(pc.getLocalDescription().description), createEncodingList());
                         handler.post(() -> rtcConnector.sendOfferSdp(connType, pc.getLocalDescription().description, rtcMedia));
                     }
@@ -898,7 +900,7 @@ public class WebRtcManager extends Caster<Msg>{
                 } else {
 
                     if (pcWrapper.isSdpProgressFinished()){
-                        KLog.p("setLocalDescription success, sending answer...,");
+                        KLog.p("setLocalDescription success, sending answer..., \n%s", pc.getLocalDescription().description);
                         handler.post(() -> rtcConnector.sendAnswerSdp(connType, pc.getLocalDescription().description));
                         KLog.p("answer sent, sdp progress finished, drainCandidates");
                         pcWrapper.drainCandidates();
@@ -1206,6 +1208,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
 
+        KLog.p(KLog.WARN, "getMid null");
         return null;
 
     }
