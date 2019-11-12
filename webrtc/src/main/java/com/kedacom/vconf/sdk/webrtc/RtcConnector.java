@@ -9,6 +9,7 @@ import com.kedacom.kdv.mt.ospconnector.Connector;
 import com.kedacom.kdv.mt.ospconnector.IRcvMsgCallback;
 import com.kedacom.mt.netmanage.protobuf.BasePB;
 import com.kedacom.mt.netmanage.protobuf.EnumPB;
+import com.kedacom.mt.netmanage.protobuf.StructCommonPB;
 import com.kedacom.mt.netmanage.protobuf.StructConfPB;
 import com.kedacom.osp.BodyItem;
 import com.kedacom.osp.EmMtOspMsgSys;
@@ -48,6 +49,7 @@ class RtcConnector implements IRcvMsgCallback{
 	}
 
 	RtcConnector( ) {
+		// 注册消息处理方法
 		cbMsgHandlerMap.put("Ev_MT_GetOffer_Cmd", this::onGetOfferCmd);
 		cbMsgHandlerMap.put("Ev_MT_GetOffer_Ntf", this::onGetOfferNtf);
 		cbMsgHandlerMap.put("Ev_MT_SetOffer_Cmd", this::onSetOfferCmd);
@@ -59,6 +61,23 @@ class RtcConnector implements IRcvMsgCallback{
 		if (!CreateOspObject()){
 			throw new RuntimeException("CreateOspObject failed!");
 		}
+
+		// 向业务组件订阅消息
+		MtMsg msg = new MtMsg();
+		msg.SetMsgId("Ev_MT_Subscribe_Cmd");
+		StructCommonPB.TSubsMsgID.Builder subsMsgBuilder = StructCommonPB.TSubsMsgID.newBuilder();
+		subsMsgBuilder.addMsgid("Ev_MT_GetOffer_Cmd");
+		subsMsgBuilder.addMsgid("Ev_MT_SetOffer_Cmd");
+		subsMsgBuilder.addMsgid("Ev_MT_SetAnswer_Cmd");
+		subsMsgBuilder.addMsgid("Ev_MT_SetIceCandidate_Cmd");
+		msg.addMsg(subsMsgBuilder.build());
+		byte[] abyContent = msg.Encode();
+		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+				dispatchId, dispatchNode, myId, myNode, 5000 );
+		if (0 != ret){
+			throw new RuntimeException("Register msg failed!");
+		}
+
 	}
 
 	void destroy(){
