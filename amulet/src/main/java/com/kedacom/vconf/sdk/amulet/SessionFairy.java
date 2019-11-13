@@ -112,9 +112,11 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
     @Override
     public synchronized void cancelReq(int reqSn) {
+        KLog.p("try cancel request sn=%s", reqSn);
         handler.post(() -> {
             synchronized(this){
                 for (Session s : sessions){
+                    KLog.p("session id=%s, reqSn=%s, state=%s", s.id, s.reqSn, s.state);
                     if (reqSn == s.reqSn) {
                         if (Session.READY == s.state) {
                             reqHandler.removeMessages(MSG_ID_START_SESSION, s);
@@ -123,7 +125,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                         }
                         s.state = Session.END;
                         sessions.remove(s);
-                        Log.d(TAG, String.format("%s<-~- | session state = END(user cancel), req=%s", s.id, s.reqName));
+                        KLog.p("%s<-~- | session state = END(user cancel), req=%s", s.id, s.reqName);
                         return;
                     }
                 }
@@ -178,12 +180,12 @@ final class SessionFairy implements IFairy.ISessionFairy{
             if (bConsumed){
                 s.candidates = candidates; // 更新候选序列
                 if (gotLast){
-                    Log.d(TAG, String.format("%s<-~- %s / %s | session state = END, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
+                    KLog.p("%s<-~- %s / %s | session state = END, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent);
                     handler.removeMessages(MSG_ID_TIMEOUT, s); // 移除定时器
                     s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                     sessions.remove(s);
                 }else{
-                    Log.d(TAG, String.format("%s<-~- %s / %s | session state = RECVING, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
+                    KLog.p("%s<-~- %s / %s | session state = RECVING, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent);
                     s.state = Session.RECVING; // 已收到响应，继续接收后续响应
                 }
             }
@@ -211,7 +213,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
             sb.append(paras[i]).append(", ");
         }
         String methodName = magicBook.getMethod(s.reqName);
-        Log.d(TAG, String.format("%s-~-> %s / %s | session state = START \nparas={%s}", s.id, s.reqName, methodName, sb));
+        KLog.p("%s-~-> %s / %s | session state = START \nparas={%s}", s.id, s.reqName, methodName, sb);
 
         crystalBall.spell(magicBook.getMethodOwner(s.reqName),
                 methodName,
@@ -219,7 +221,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 magicBook.getParaClasses(s.reqName));
 
         if (null==s.rspSeqs || 0==s.rspSeqs.length){
-            Log.d(TAG, String.format("%s<-~- | session state = END(no response), req=%s", s.id, s.reqName));
+            KLog.p("%s<-~- | session state = END(no response), req=%s", s.id, s.reqName);
             Message msg = Message.obtain();
             msg.what = MSG_ID_FIN_DUE_TO_NO_RSP;
             msg.obj = s;
@@ -243,7 +245,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
      * 会话超时
      * */
     private synchronized void timeout(Session s){
-        Log.d(TAG, String.format("%s<-~- | session state = END(timeout). req=%s", s.id, s.reqName));
+        KLog.p("%s<-~- | session state = END(timeout). req=%s", s.id, s.reqName);
         s.state = Session.END; // 会话结束
         sessions.remove(s);
         // 通知用户请求超时

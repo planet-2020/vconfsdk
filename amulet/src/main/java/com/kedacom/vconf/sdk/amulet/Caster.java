@@ -176,12 +176,13 @@ public abstract class Caster<T extends Enum<T>> implements
             return;
         }
 
-        if (!sessionFairy.req(this, prefixMsg(req.name()), ++reqSn, reqPara)){
+        String prefixedReq = prefixMsg(req.name());
+        if (!sessionFairy.req(this, prefixedReq, ++reqSn, reqPara)){
             KLog.p(KLog.ERROR, "%s failed", req);
             return;
         }
 
-        KLog.p(KLog.DEBUG,"req=%s, reqSn=%s, listener=%s", req, reqSn, rspListener);
+        KLog.p(KLog.DEBUG,"req=%s, reqSn=%s, listener=%s", prefixedReq, reqSn, rspListener);
 
         listenerLifecycleObserver.tryObserve(rspListener);
 
@@ -208,7 +209,7 @@ public abstract class Caster<T extends Enum<T>> implements
             ReqBundle value = entry.getValue();
             if (req == value.req
                     && rspListener==value.listener){
-                KLog.p(KLog.DEBUG,"cancel reqSn=%s, req=%s, listener=%s", reqSn, prefixMsg(req.name()), value.listener);
+                KLog.p(KLog.DEBUG,"cancel req=%s, reqSn=%s, listener=%s", prefixMsg(req.name()), reqSn, value.listener);
                 sessionFairy.cancelReq(reqSn);
                 rspListeners.remove(reqSn);
                 listenerLifecycleObserver.unobserve(rspListener);
@@ -408,11 +409,8 @@ public abstract class Caster<T extends Enum<T>> implements
 
     @Override
     public boolean onRsp(boolean bLast, String rspName, Object rspContent, String reqName, int reqSn, Object[] reqParas) {
-        KLog.p(KLog.DEBUG,"rsp=%s, req=%s, reqSn=%s", rspName, reqName, reqSn);
-        rspName = unprefixMsg(rspName);
-        reqName = unprefixMsg(reqName);
-        T req = T.valueOf(enumT, reqName);
-        T rsp = T.valueOf(enumT, rspName);
+        T req = T.valueOf(enumT, unprefixMsg(reqName));
+        T rsp = T.valueOf(enumT, unprefixMsg(rspName));
         IResultListener resultListener = rspListeners.get(reqSn).listener;
         StringBuffer sb = new StringBuffer();
         for (Object para : reqParas){
@@ -433,9 +431,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     @Override
     public void onTimeout(String reqName, int reqSn, Object[] reqParas) {
-        KLog.p(KLog.DEBUG,"req=%s, reqSn=%s", reqName, reqSn);
-        reqName = unprefixMsg(reqName);
-        T req = T.valueOf(enumT, reqName);
+        T req = T.valueOf(enumT, unprefixMsg(reqName));
         IResultListener resultListener = rspListeners.remove(reqSn).listener;
         listenerLifecycleObserver.unobserve(resultListener);
         StringBuffer sb = new StringBuffer();
@@ -458,13 +454,13 @@ public abstract class Caster<T extends Enum<T>> implements
 
     @Override
     public void onNtf(String ntfName, Object ntfContent) {
-        ntfName = unprefixMsg(ntfName);
-        Set<Object> listeners = ntfListeners.get(ntfName);
+        String unPrefixedNtfName = unprefixMsg(ntfName);
+        Set<Object> listeners = ntfListeners.get(unPrefixedNtfName);
         StringBuffer sb = new StringBuffer();
         for (Object listener : listeners){
             sb.append(listener).append("; ");
         }
-        T ntf = T.valueOf(enumT, ntfName);
+        T ntf = T.valueOf(enumT, unPrefixedNtfName);
         KLog.p(KLog.DEBUG,"ntfId=%s, ntfContent=%s, listeners=%s", ntf, ntfContent, sb);
         ntfProcessorMap.get(ntf).process(ntf, ntfContent, listeners);
     }
