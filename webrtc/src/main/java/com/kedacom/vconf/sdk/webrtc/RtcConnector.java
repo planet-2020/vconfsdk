@@ -30,7 +30,6 @@ class RtcConnector implements IRcvMsgCallback{
 	public static final String WEBRTC_NAME = "WEBRTC_NAME";
 	public static final short WEBRTC_ID = 142;
 	public static final short MTDISPATCH_ID = 107;
-	public static boolean stopHanldeJni = false;
 	private final Map<String, ICbMsgHandler> cbMsgHandlerMap = new HashMap<>();
 
 	private final long myId =Connector.MAKEIID(WEBRTC_ID, (short)1 );
@@ -118,13 +117,6 @@ class RtcConnector implements IRcvMsgCallback{
 
 	@Override
 	public void Callback( long nEvent, byte[] abyContent, short wLen, long nDstIId, long nDstNode, long nSrcIId, long nSrcNode ) {
-
-		if ( stopHanldeJni )
-		{
-			//停止接收
-			KLog.p( TAG, " stop rev connector msg, and will dismiss msg:" + nEvent );
-			return;
-		}
 
 		MtMsg mtMsg = new MtMsg();
 		

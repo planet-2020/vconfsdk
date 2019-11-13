@@ -208,7 +208,7 @@ public abstract class Caster<T extends Enum<T>> implements
             ReqBundle value = entry.getValue();
             if (req == value.req
                     && rspListener==value.listener){
-                KLog.p(KLog.DEBUG,"cancel reqSn=%s, req=%s, listener=%s", reqSn, value.req, value.listener);
+                KLog.p(KLog.DEBUG,"cancel reqSn=%s, req=%s, listener=%s", reqSn, prefixMsg(req.name()), value.listener);
                 sessionFairy.cancelReq(reqSn);
                 rspListeners.remove(reqSn);
                 listenerLifecycleObserver.unobserve(rspListener);
