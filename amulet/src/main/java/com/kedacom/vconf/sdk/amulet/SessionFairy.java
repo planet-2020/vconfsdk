@@ -112,20 +112,24 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
     @Override
     public synchronized void cancelReq(int reqSn) {
-        for (Session s : sessions){
-            KLog.p("reqSn=%s, s.reqSn=%s, s.id=%s, s.reqName=%s, s.state=%s", reqSn, s.reqSn, s.id, s.reqName, s.state);
-            if (reqSn == s.reqSn) {
-                if (Session.READY == s.state) {
-                    reqHandler.removeMessages(MSG_ID_START_SESSION, s);
-                }else {
-                    handler.removeMessages(MSG_ID_TIMEOUT, s);
+        handler.post(() -> {
+            synchronized(this){
+                for (Session s : sessions){
+                    if (reqSn == s.reqSn) {
+                        if (Session.READY == s.state) {
+                            reqHandler.removeMessages(MSG_ID_START_SESSION, s);
+                        }else {
+                            handler.removeMessages(MSG_ID_TIMEOUT, s);
+                        }
+                        s.state = Session.END;
+                        sessions.remove(s);
+                        Log.d(TAG, String.format("%s<-~- | session state = END(user cancel), req=%s", s.id, s.reqName));
+                        return;
+                    }
                 }
-                s.state = Session.END;
-                sessions.remove(s);
-                handler.post(() -> Log.d(TAG, String.format("%s<-~- | session state = END(user cancel), req=%s", s.id, s.reqName)));
-                return;
             }
-        }
+        });
+
     }
 
     @Override
@@ -215,7 +219,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 magicBook.getParaClasses(s.reqName));
 
         if (null==s.rspSeqs || 0==s.rspSeqs.length){
-            Log.d(TAG, String.format("%s<-~- | session state = END(no response), req=%s, reqSn=%s", s.id, s.reqName, s.reqSn));
+            Log.d(TAG, String.format("%s<-~- | session state = END(no response), req=%s", s.id, s.reqName));
             Message msg = Message.obtain();
             msg.what = MSG_ID_FIN_DUE_TO_NO_RSP;
             msg.obj = s;
