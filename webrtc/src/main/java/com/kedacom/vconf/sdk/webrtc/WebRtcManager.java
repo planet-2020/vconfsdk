@@ -79,6 +79,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.kedacom.vconf.sdk.webrtc.bean.*;
+
 @SuppressWarnings("SwitchStatementWithTooFewBranches")
 public class WebRtcManager extends Caster<Msg>{
 
@@ -163,6 +165,9 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 呼叫
      * @param peerId 对于点对点而言是对端e164，对于多方会议而言是会议e164
+     **@param resultListener 结果监听器。
+     *          成功: {@link MakeCallResult};
+     *          失败：TODO
      * */
     public void makeCall(String peerId, IResultListener resultListener){
         req(Msg.Call, resultListener, peerId, 1024, EmConfProtocol.emrtc.ordinal());
@@ -192,7 +197,7 @@ public class WebRtcManager extends Caster<Msg>{
             case P2pConfStarted:
                 callLinkSate = (TMtCallLinkSate) rspContent;
                 KLog.p("P2pConfStarted: %s", callLinkSate);
-                reportSuccess(null, listener);
+                reportSuccess(ToDoConverter.fromTransferObj(callLinkSate), listener);
                 break;
 
             case P2pConfEnded:
