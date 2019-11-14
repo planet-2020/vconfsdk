@@ -177,7 +177,7 @@ class RtcConnector implements IRcvMsgCallback{
 
 		KLog.p("rtcServiceId=%s, rtcServiceNode=%s, peerType=%s, mediaType=%s", rtcServiceId, rtcServiceNode, connType, mediaType);
 
-		handler.post(() -> signalingEvents.onGetOfferCmd(connType, mediaType));
+		if (null != signalingEvents) handler.post(() -> signalingEvents.onGetOfferCmd(connType, mediaType));
 
 	}
 
@@ -257,7 +257,7 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		KLog.p("rtcServiceId=%s, rtcServiceNode=%s,  peerType=%s, offer=%s, rtcMedialist=%s", rtcServiceId, rtcServiceNode, connType, offer, rtcMedialist);
-		handler.post(() -> signalingEvents.onSetOfferCmd(connType, offer, rtcMediaFromPB(rtcMedialist.getMedia(0))) );
+		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetOfferCmd(connType, offer, rtcMediaFromPB(rtcMedialist.getMedia(0))) );
 
 	}
 
@@ -313,7 +313,7 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		KLog.p("peerType=%s, answer=%s", connType, answer);
-		handler.post(() -> signalingEvents.onSetAnswerCmd(connType, answer) );
+		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetAnswerCmd(connType, answer) );
 
 	}
 
@@ -382,7 +382,7 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		KLog.p("peerType=%s, mid=%s, index=%s, candidate", connType, mid, index, candidate);
-		handler.post(() -> signalingEvents.onSetIceCandidateCmd(connType, mid, index, candidate) );
+		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetIceCandidateCmd(connType, mid, index, candidate) );
 	}
 
 

@@ -82,7 +82,7 @@ import java.util.concurrent.Executors;
 @SuppressWarnings("SwitchStatementWithTooFewBranches")
 public class WebRtcManager extends Caster<Msg>{
 
-    private RtcConnector rtcConnector;
+    private RtcConnector rtcConnector = new RtcConnector();
 
     private Context context;
     private Map<String, ProxyVideoSink> videoSinks = new HashMap<>();
@@ -324,7 +324,6 @@ public class WebRtcManager extends Caster<Msg>{
         context = ctx;
         sessionEventListener = listener;
 
-        rtcConnector = new RtcConnector();
         rtcConnector.setSignalingEventsCallback(new RtcConnectorEventListener());
 
         int videoWidth = context.getResources().getDisplayMetrics().widthPixels;
@@ -376,10 +375,7 @@ public class WebRtcManager extends Caster<Msg>{
         context = null;
         sessionEventListener = null;
 
-        if (null != rtcConnector){
-            rtcConnector.destroy();
-            rtcConnector = null;
-        }
+        rtcConnector.setSignalingEventsCallback(null);
 
         for (PeerConnectionWrapper peerConnectionWrapper : connWrapperList){
             peerConnectionWrapper.close();

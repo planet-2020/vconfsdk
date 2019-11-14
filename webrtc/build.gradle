@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '0.0.7-SNAPSHOT'
+version = '0.0.9-SNAPSHOT'
 android {
     compileSdkVersion 28
 
@@ -45,7 +45,7 @@ dependencies {
     annotationProcessor project(':processor')
     implementation 'com.kedacom.vconf.sdk:common:1.0.5-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:utils:1.0.2-SNAPSHOT'
-    implementation 'com.kedacom.vconf.sdk:amulet:1.0.4-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:amulet:1.1.0-SNAPSHOT'
 }
 
 apply from: '../publish.gradle'
