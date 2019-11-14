@@ -19,55 +19,32 @@ import java.util.Set;
 final class SessionFairy implements IFairy.ISessionFairy{
     private static final String TAG = SessionFairy.class.getSimpleName();
 
-    private Handler handler;
-    private Handler reqHandler;
-    private static final int MSG_ID_START_SESSION = 100;
-    private static final int MSG_ID_FIN_DUE_TO_NO_RSP = 102;
-    private static final int MSG_ID_TIMEOUT = 999;
-
     private static MagicBook magicBook = MagicBook.instance();
 
     private ICrystalBall crystalBall;
 
     private Set<Session> sessions = new LinkedHashSet<>();
 
+    private static final int MSG_ID_START_SESSION = 100;
+    private static final int MSG_ID_REQUEST_TIMEOUT = 999;
+
     private static HandlerThread reqThread = new HandlerThread("reqThr", Process.THREAD_PRIORITY_BACKGROUND);
     static {
         reqThread.start();
     }
 
-    SessionFairy(){
-        if (null == handler){
-            handler = new Handler(Looper.getMainLooper()){
-                @Override
-                public void handleMessage(Message msg) {
-                    switch (msg.what){
-                        case MSG_ID_TIMEOUT:
-                            timeout((Session) msg.obj);
-                            break;
-                        case MSG_ID_FIN_DUE_TO_NO_RSP:
-                            Session s = (Session) msg.obj;
-                            s.listener.onFinDueToNoRsp(s.reqName, s.reqSn, s.reqPara);
-                            break;
-                    }
-                }
-            };
-        }
+    private Handler uiHandler = new Handler(Looper.getMainLooper());
 
-        if (null == reqHandler) {
-            reqHandler = new Handler(reqThread.getLooper()) {
-                @Override
-                public void handleMessage(Message msg) {
-                    switch (msg.what) {
-                        case MSG_ID_START_SESSION:
-                            startSession((Session) msg.obj);
-                            break;
-                    }
-                }
-            };
+    private Handler reqHandler = new Handler(reqThread.getLooper()) {
+        @Override
+        public void handleMessage(Message msg) {
+            if (msg.what == MSG_ID_START_SESSION) {
+                startSession((int) msg.obj);
+            }else if (msg.what == MSG_ID_REQUEST_TIMEOUT) {
+                timeout((int) msg.obj);
+            }
         }
-
-    }
+    };
 
     @Override
     public void setCrystalBall(ICrystalBall crystalBall) {
@@ -104,9 +81,10 @@ final class SessionFairy implements IFairy.ISessionFairy{
         // 创建会话
         Session s = new Session(listener, reqSn, reqName, reqPara,magicBook.getTimeout(reqName) * 1000, magicBook.getRspSeqs(reqName));
         s.state = Session.READY;
+        sessions.add(s);
         Message msg = Message.obtain();
         msg.what = MSG_ID_START_SESSION;
-        msg.obj = s;
+        msg.obj = s.id;
         reqHandler.sendMessage(msg);
 
         return true;
@@ -118,15 +96,15 @@ final class SessionFairy implements IFairy.ISessionFairy{
         for (Session s : sessions){
             if (reqSn == s.reqSn) {
                 if (Session.READY == s.state) {
-                    reqHandler.removeMessages(MSG_ID_START_SESSION, s);
+                    reqHandler.removeMessages(MSG_ID_START_SESSION, s.id);
                 }else {
-                    handler.removeMessages(MSG_ID_TIMEOUT, s);
+                    reqHandler.removeMessages(MSG_ID_REQUEST_TIMEOUT, s.id);
                 }
                 s.state = Session.END;
-                handler.post(() -> {
-                    Log.d(TAG, String.format("%s<-~- | session state = END(user cancel), req=%s", s.id, s.reqName));
+                reqHandler.post(() -> {
                     synchronized (this) {
                         sessions.remove(s);
+                        Log.d(TAG, String.format("%s<-~- | session state = END(user cancel), req=%s", s.id, s.reqName));
                     }
                 });
                 return;
@@ -173,6 +151,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 continue; // 该响应不是该会话所期望的，继续寻找期望该响应的会话
             }
 
+            @SuppressWarnings("ConstantConditions")
             boolean bConsumed = s.listener.onRsp(gotLast, msgName,
                     Kson.fromJson(msgContent, magicBook.getRspClazz(msgName)),
                     s.reqName, s.reqSn, s.reqPara);
@@ -180,13 +159,13 @@ final class SessionFairy implements IFairy.ISessionFairy{
             if (bConsumed){
                 s.candidates = candidates; // 更新候选序列
                 if (gotLast){
-                    Log.d(TAG, String.format("%s<-~- %s / %s | session state = END, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
-                    handler.removeMessages(MSG_ID_TIMEOUT, s); // 移除定时器
+                    reqHandler.removeMessages(MSG_ID_REQUEST_TIMEOUT, s.id); // 移除定时器
                     s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                     sessions.remove(s);
+                    Log.d(TAG, String.format("%s<-~- %s / %s | session state = END, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
                 }else{
-                    Log.d(TAG, String.format("%s<-~- %s / %s | session state = RECVING, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
                     s.state = Session.RECVING; // 已收到响应，继续接收后续响应
+                    Log.d(TAG, String.format("%s<-~- %s / %s | session state = RECVING, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
                 }
             }
 
@@ -200,19 +179,25 @@ final class SessionFairy implements IFairy.ISessionFairy{
     /**
      * 启动会话
      * */
-    private synchronized void startSession(Session s){
+    private synchronized void startSession(int sid){
         if (null == crystalBall){
             KLog.p(KLog.ERROR, "no crystalBall");
+            return;
+        }
+        Session s = findSession(sid, Session.READY);
+        if (null == s){
+            KLog.p(KLog.ERROR, "no such session with id %s and state in %s", sid, Session.READY);
             return;
         }
 
         // 用户参数转换为底层方法需要的参数
         Object[] paras = magicBook.userPara2MethodPara(s.reqPara, magicBook.getParaClasses(s.reqName));
         StringBuffer sb = new StringBuffer();
-        for (int i=0; i<paras.length; ++i){
-            sb.append(paras[i]).append(", ");
+        for (Object para : paras) {
+            sb.append(para).append(", ");
         }
         String methodName = magicBook.getMethod(s.reqName);
+
         Log.d(TAG, String.format("%s-~-> %s / %s | session state = START \nparas={%s}", s.id, s.reqName, methodName, sb));
 
         crystalBall.spell(magicBook.getMethodOwner(s.reqName),
@@ -221,35 +206,57 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 magicBook.getParaClasses(s.reqName));
 
         if (null==s.rspSeqs || 0==s.rspSeqs.length){
+            s.state = Session.END;
+            sessions.remove(s);
             Log.d(TAG, String.format("%s<-~- | session state = END(no response), req=%s", s.id, s.reqName));
-            Message msg = Message.obtain();
-            msg.what = MSG_ID_FIN_DUE_TO_NO_RSP;
-            msg.obj = s;
-            handler.sendMessage(msg);
+            uiHandler.post(() -> s.listener.onFinDueToNoRsp(s.reqName, s.reqSn, s.reqPara));
             return;
         }
 
         s.state = Session.WAITING; // 请求已发出正在等待响应
 
-        sessions.add(s);
-
         // 启动超时
         Message msg = Message.obtain();
-        msg.what = MSG_ID_TIMEOUT;
-        msg.obj = s;
-        handler.sendMessageDelayed(msg, s.timeoutVal);
+        msg.what = MSG_ID_REQUEST_TIMEOUT;
+        msg.obj = s.id;
+        reqHandler.sendMessageDelayed(msg, s.timeoutVal);
     }
 
 
     /**
      * 会话超时
      * */
-    private synchronized void timeout(Session s){
-        Log.d(TAG, String.format("%s<-~- | session state = END(timeout). req=%s", s.id, s.reqName));
+    private synchronized void timeout(int sid){
+        Session s = findSession(sid, Session.WAITING, Session.RECVING);
+        if (null == s){
+            KLog.p(KLog.ERROR, "no such session with id %s and state in %s|%s",
+                    sid, Session.WAITING, Session.RECVING);
+            return;
+        }
+
         s.state = Session.END; // 会话结束
         sessions.remove(s);
+        Log.d(TAG, String.format("%s<-~- | session state = END(timeout). req=%s", s.id, s.reqName));
         // 通知用户请求超时
-        s.listener.onTimeout(s.reqName, s.reqSn, s.reqPara);
+        uiHandler.post(()-> s.listener.onTimeout(s.reqName, s.reqSn, s.reqPara));
+    }
+
+    /**
+     * 查找会话
+     * @param sid 会话id
+     * @param states 会话所在状态列表
+     * */
+    private Session findSession(int sid, int... states){
+        for (Session s : sessions){
+            if (sid == s.id){
+                for (int state : states){
+                    if (state == s.state){
+                        return s;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
 
