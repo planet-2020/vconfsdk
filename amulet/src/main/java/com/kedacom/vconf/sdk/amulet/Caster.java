@@ -416,7 +416,7 @@ public abstract class Caster<T extends Enum<T>> implements
         for (Object para : reqParas){
             sb.append(para).append("; ");
         }
-        KLog.p(KLog.DEBUG,"rsp=%s, rspContent=%s, resultListener=%s, req=%s, reqSn=%s, \nreqParas=%s", rsp, rspContent, resultListener, reqName, reqSn, sb);
+        KLog.p(KLog.DEBUG,"rsp=%s, rspContent=%s, resultListener=%s, req=%s, reqSn=%s, \nreqParas=%s", rspName, rspContent, resultListener, reqName, reqSn, sb);
         boolean bConsumed = rspProcessorMap.get(req).process(rsp, rspContent, resultListener, req, reqParas);
         if (bConsumed){
             if (bLast){
@@ -424,7 +424,7 @@ public abstract class Caster<T extends Enum<T>> implements
                 listenerLifecycleObserver.unobserve(resultListener);
             }
         }else{
-            KLog.p(KLog.WARN, "rsp %s not consumed, req=%s, reqSn=%s", rsp, reqName, reqSn);
+            KLog.p(KLog.WARN, "rsp %s not consumed, req=%s, reqSn=%s", rspName, reqName, reqSn);
         }
         return bConsumed;
     }
@@ -461,7 +461,7 @@ public abstract class Caster<T extends Enum<T>> implements
             sb.append(listener).append("; ");
         }
         T ntf = T.valueOf(enumT, unPrefixedNtfName);
-        KLog.p(KLog.DEBUG,"ntfId=%s, ntfContent=%s, listeners=%s", ntf, ntfContent, sb);
+        KLog.p(KLog.DEBUG,"ntfId=%s, ntfContent=%s, listeners=%s", ntfName, ntfContent, sb);
         ntfProcessorMap.get(ntf).process(ntf, ntfContent, listeners);
     }
 
