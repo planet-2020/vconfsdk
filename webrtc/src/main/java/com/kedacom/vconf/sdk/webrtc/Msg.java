@@ -4,6 +4,7 @@ import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
 
@@ -101,6 +102,22 @@ enum Msg {
     CallIncoming,
 
 
+    /**
+     * 创建会议
+     * */
+    @Request(method = "MGRestCreateConferenceReq",
+            owner = MethodOwner.MeetingCtrl,
+            paras = StringBuffer.class,
+            userParas = TMTInstanceCreateConference.class,
+            rspSeq = {} //TODO
+    )
+    CreateConf,
+
+
+
+
+
+
     /**获取流列表*/
     @Request(method = "GetRtcStreamList",
             owner = MethodOwner.MonitorCtrl,
@@ -150,6 +167,7 @@ enum Msg {
         private static final String MonitorCtrl = PKG + "MonitorCtrl";
         private static final String ConfigCtrl = PKG + "ConfigCtrl";
         private static final String ConfCtrl = PKG + "ConfCtrl";
+        private static final String MeetingCtrl = PKG + "MeetingCtrl";
     }
 
 }

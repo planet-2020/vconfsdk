@@ -138,6 +138,10 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 登录rtc
      * 注意，需先登录aps成功。
+     * @param e164
+     * @param resultListener 结果监听器。
+     *          成功: null;
+     *          失败：错误码 TODO
      * */
     public void login(String e164, IResultListener resultListener){
         TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) get(Msg.GetSvrAddr);
@@ -173,6 +177,16 @@ public class WebRtcManager extends Caster<Msg>{
         req(Msg.Call, resultListener, peerId, 1024, EmConfProtocol.emrtc.ordinal());
     }
 
+    /**
+     * 创建会议
+     * @param peerId 对于点对点而言是对端e164，对于多方会议而言是会议e164
+     **@param resultListener 结果监听器。
+     *          成功: {@link MakeCallResult};
+     *          失败：TODO
+     * */
+    public void createConf(String peerId, IResultListener resultListener){
+        req(Msg.CreateConf, resultListener, peerId, 1024, EmConfProtocol.emrtc.ordinal());
+    }
 
     private boolean onRsp(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas) {
         switch (rsp){
@@ -192,8 +206,8 @@ public class WebRtcManager extends Caster<Msg>{
                 if (EmConfProtocol.emrtc != callLinkSate.emConfProtocol){
                     return false;
                 }
-
                 break;
+
             case P2pConfStarted:
                 callLinkSate = (TMtCallLinkSate) rspContent;
                 KLog.p("P2pConfStarted: %s", callLinkSate);
@@ -209,7 +223,7 @@ public class WebRtcManager extends Caster<Msg>{
             case MultipartyConfStarted:
                 callLinkSate = (TMtCallLinkSate) rspContent;
                 KLog.p("MultipartyConfStarted: %s", callLinkSate);
-                reportSuccess(null, listener);
+                reportSuccess(ToDoConverter.fromTransferObj(callLinkSate), listener);
                 break;
 
             case MultipartyConfEnded:
