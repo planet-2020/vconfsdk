@@ -188,6 +188,99 @@ public class WebRtcManager extends Caster<Msg>{
         req(Msg.CreateConf, resultListener, peerId, 1024, EmConfProtocol.emrtc.ordinal());
     }
 
+
+    /**
+     * 退出会议。
+     * */
+    public void quitConf(IResultListener resultListener){
+
+    }
+
+    /**
+     * 结束会议。
+     * */
+    public void finishConf(IResultListener resultListener){
+
+    }
+
+    /**
+     * 接受会议邀请
+     * */
+    public void acceptConf(){
+
+    }
+
+    /**
+     * 拒绝会议邀请
+     * */
+    public void refuseConf(){
+
+    }
+
+
+    private Intent screenCapturePermissionData;
+    /**
+     * 开始桌面共享
+     * @param permissionData 截屏权限申请结果
+     * */
+    public void startScreenShare(Intent permissionData, IResultListener resultListener){
+        screenCapturePermissionData = permissionData;
+    }
+
+    /**
+     * 结束桌面共享
+     * */
+    public void stopScreenShare(){
+        screenCapturePermissionData = null;
+    }
+
+
+    /**
+     * 设置静音。（放开/屏蔽对方语音，默认放开）
+     * @param bSilence true，屏蔽对方语音；false，放开对方语音。
+     * */
+    public void setSilence(boolean bSilence){
+
+    }
+
+
+    /**
+     * 设置哑音。（放开/屏蔽自己语音，默认放开）
+     * @param bMute true，屏蔽自己语音；false，放开自己语音。
+     * */
+    public void setMute(boolean bMute){
+
+    }
+
+
+    /**
+     * 切换摄像头
+     * */
+    public void switchCamera(){
+
+    }
+
+    /**
+     * 当前摄像头
+     * */
+    public int currentCamera(){
+        return 0;
+    }
+
+    /**
+     * 开启/关闭摄像头
+     * */
+    public void setCameraEnable(final boolean enable) {
+
+    }
+
+    /**
+     * 开启/关闭视频
+     * */
+    public void setVideoEnable(final boolean enable) {
+
+    }
+
     private boolean onRsp(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas) {
         switch (rsp){
             case LoginRsp:
@@ -669,14 +762,6 @@ public class WebRtcManager extends Caster<Msg>{
         return videoCapturer;
     }
 
-    private Intent screenCapturePermissionData;
-    /**
-     * 设置截屏权限。（发送辅流需要截屏）
-     * */
-    public void setScreenCapturePermission(Intent permissionData){
-        screenCapturePermissionData = permissionData;
-    }
-
 
     private PeerConnectionWrapper getPcWrapper(int connType){
         for (PeerConnectionWrapper peerConnectionWrapper : connWrapperList){
@@ -736,6 +821,17 @@ public class WebRtcManager extends Caster<Msg>{
      * 事件监听器
      * */
     public interface SessionEventListener {
+        /**
+         * 会议邀请
+         * */
+        void onConfInvitation();
+
+        /**
+         * 会议结束
+         * */
+        void onConfFinished();
+
+
         /**
          * 本地流到达
          * @param streamId 本地流Id。
