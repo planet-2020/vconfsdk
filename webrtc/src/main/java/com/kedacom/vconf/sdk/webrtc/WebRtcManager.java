@@ -664,7 +664,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             });
         }else{
-            KLog.p(KLog.ERROR, "API level < LOLLIPOP(21)");
+            KLog.p(KLog.ERROR, "createScreenCapturer failed, API level < LOLLIPOP(21)");
         }
         return videoCapturer;
     }
@@ -812,30 +812,29 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onGetOfferCmd(int connType, int mediaType) {
             KLog.p("connType=%s, mediaType=%s", connType, mediaType);
-            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            pcWrapper.curMediaType = mediaType;
-            VideoCapturer videoCapturer = null;
-            if (CommonDef.MEDIA_TYPE_AV == mediaType){
-                // 针对多路码流的情形，我们需要一路一路地发布（平台的限制）
-                // 我们先发AudioTrack，等到收到setAnswerCmd后再发VideoTrack
-                pcWrapper.setSegmentallyPublishState(pcWrapper.SegmentallyPublishState_PublishingAudio);
-            }else{
-                if ((CommonDef.MEDIA_TYPE_VIDEO == mediaType
+
+            executor.execute(()->{
+                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                pcWrapper.curMediaType = mediaType;
+                VideoCapturer videoCapturer = null;
+                if (CommonDef.MEDIA_TYPE_AV == mediaType){
+                    // 针对多路码流的情形，我们需要一路一路地发布（平台的限制）
+                    // 我们先发AudioTrack，等到收到setAnswerCmd后再发VideoTrack
+                    pcWrapper.setSegmentallyPublishState(pcWrapper.SegmentallyPublishState_PublishingAudio);
+                }else{
+                    if ((CommonDef.MEDIA_TYPE_VIDEO == mediaType
 //                    || CommonDef.MEDIA_TYPE_AV == mediaType
-                        || CommonDef.MEDIA_TYPE_ASS_VIDEO == mediaType)
-                        && pcWrapper.config.videoEnabled){
-                    if (CommonDef.CONN_TYPE_PUBLISHER == connType) {
-                        videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
-                    }else if (CommonDef.CONN_TYPE_ASS_PUBLISHER == connType) {
-                        videoCapturer = createScreenCapturer();
+                            || CommonDef.MEDIA_TYPE_ASS_VIDEO == mediaType)
+                            && pcWrapper.config.videoEnabled){
+                        if (CommonDef.CONN_TYPE_PUBLISHER == connType) {
+                            videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
+                        }else if (CommonDef.CONN_TYPE_ASS_PUBLISHER == connType) {
+                            videoCapturer = createScreenCapturer();
+                        }
                     }
                 }
-            }
-
-            VideoCapturer finalVideoCapturer = videoCapturer;
-            executor.execute(()->{
-                if (pcWrapper.config.videoEnabled && null != finalVideoCapturer) {
-                    pcWrapper.createVideoTrack(finalVideoCapturer);
+                if (pcWrapper.config.videoEnabled && null != /*finalVideoCapturer*/videoCapturer) {
+                    pcWrapper.createVideoTrack(/*finalVideoCapturer*/videoCapturer);
                 }
                 if (pcWrapper.config.audioEnabled) {
                     pcWrapper.createAudioTrack();
@@ -850,50 +849,53 @@ public class WebRtcManager extends Caster<Msg>{
         public void onSetOfferCmd(int connType, String offerSdp, RtcConnector.TRtcMedia rtcMedia) {
             KLog.p("connType=%s, rtcMedia.mid=%s, rtcMedia.streamid=%s, offerSdp=%s",
                     connType, rtcMedia.mid, rtcMedia.streamid, offerSdp);
-            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            PeerConnection pc = pcWrapper.pc;
-            PeerConnectionConfig config = pcWrapper.config;
-            SDPObserver observer = pcWrapper.sdpObserver;
+
             midStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
 
             executor.execute(()-> {
-                pc.setRemoteDescription(observer, new SessionDescription(SessionDescription.Type.OFFER, offerSdp));
-                pc.createAnswer(observer, new MediaConstraints());
+                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                pcWrapper.pc.setRemoteDescription(pcWrapper.sdpObserver,
+                        new SessionDescription(SessionDescription.Type.OFFER, offerSdp)
+                );
+                pcWrapper.pc.createAnswer(pcWrapper.sdpObserver, new MediaConstraints());
             });
         }
 
         @Override
         public void onSetAnswerCmd(int connType, String answerSdp) {
             KLog.p("connType=%s, answerSdp=%s", connType, answerSdp);
-            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            PeerConnection pc = pcWrapper.pc;
-            PeerConnectionConfig config = pcWrapper.config;
-            SDPObserver observer = pcWrapper.sdpObserver;
-            executor.execute(()-> pc.setRemoteDescription(observer, new SessionDescription(SessionDescription.Type.ANSWER, answerSdp)));
 
-            if (pcWrapper.isSegmentallyPublishState(pcWrapper.SegmentallyPublishState_PublishingAudio)){
-                pcWrapper.setSegmentallyPublishState(pcWrapper.SegmentallyPublishState_PublishingVideo);
-                // 针对多路码流的情形，我们需要一路一路地发布（平台的限制）
-                // 我们先发AudioTrack，等到收到setAnswerCmd后再发VideoTrack。
-                // 此处我们收到了audiotrack对应的响应，接着我们发videotrack
-                VideoCapturer videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
-                if (pcWrapper.config.videoEnabled && null != videoCapturer) {
-                    executor.execute(() -> {
+            executor.execute(() -> {
+                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                pcWrapper.pc.setRemoteDescription(pcWrapper.sdpObserver,
+                        new SessionDescription(SessionDescription.Type.ANSWER, answerSdp)
+                );
+
+                if (pcWrapper.isSegmentallyPublishState(pcWrapper.SegmentallyPublishState_PublishingAudio)){
+                    pcWrapper.setSegmentallyPublishState(pcWrapper.SegmentallyPublishState_PublishingVideo);
+                    // 针对多路码流的情形，我们需要一路一路地发布（平台的限制）
+                    // 我们先发AudioTrack，等到收到setAnswerCmd后再发VideoTrack。
+                    // 此处我们收到了audiotrack对应的响应，接着我们发videotrack
+                    VideoCapturer videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
+                    if (pcWrapper.config.videoEnabled && null != videoCapturer) {
                         pcWrapper.createVideoTrack(videoCapturer);
                         pcWrapper.pc.createOffer(pcWrapper.sdpObserver, new MediaConstraints());
-                    });
+                    }
+                }else if(pcWrapper.isSegmentallyPublishState(pcWrapper.SegmentallyPublishState_PublishingVideo)){
+                    pcWrapper.setSegmentallyPublishState(pcWrapper.SegmentallyPublishState_Finished);
                 }
-            }else if(pcWrapper.isSegmentallyPublishState(pcWrapper.SegmentallyPublishState_PublishingVideo)){
-                pcWrapper.setSegmentallyPublishState(pcWrapper.SegmentallyPublishState_Finished);
-            }
+
+            });
 
         }
 
         @Override
         public void onSetIceCandidateCmd(int connType, String sdpMid, int sdpMLineIndex, String sdp) {
             KLog.p("connType=%s, sdpMid=%s, sdpMLineIndex=%s, sdp=%s", connType, sdpMid, sdpMLineIndex, sdp);
-            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            executor.execute(()-> pcWrapper.addCandidate(new IceCandidate(sdpMid, sdpMLineIndex, sdp)));
+            executor.execute(()-> {
+                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                pcWrapper.addCandidate(new IceCandidate(sdpMid, sdpMLineIndex, sdp));
+            });
         }
     }
 
@@ -907,15 +909,17 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onCreateSuccess(final SessionDescription origSdp) {
             KLog.p("create local sdp success: type=%s, sdp=%s", origSdp.type, origSdp.description);
-            bCreateLocalSdpSuccess = true;
-            PeerConnectionWrapper peerConnectionWrapper = getPcWrapper(this);
-            executor.execute(() -> peerConnectionWrapper.pc.setLocalDescription(this, origSdp));
+            executor.execute(() -> {
+                bCreateLocalSdpSuccess = true;
+                PeerConnectionWrapper pcWrapper = getPcWrapper(this);
+                pcWrapper.pc.setLocalDescription(this, origSdp);
+            });
         }
 
         @Override
         public void onSetSuccess() {
-            PeerConnectionWrapper pcWrapper = getPcWrapper(this);
             executor.execute(() -> {
+                PeerConnectionWrapper pcWrapper = getPcWrapper(this);
                 PeerConnection pc = pcWrapper.pc;
                 if (pcWrapper.isOffer()) {
                     if (pcWrapper.isSdpProgressFinished()){
