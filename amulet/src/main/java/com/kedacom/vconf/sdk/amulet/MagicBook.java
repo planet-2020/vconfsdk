@@ -220,6 +220,8 @@ final class MagicBook {
                 } else if (methodParaType.isPrimitive()) {
                     if (userPara.getClass() == PrimitiveTypeHelper.getWrapperClass(methodParaType)){
                         methodParas[i] = userPara;
+                    }else if (userPara.getClass().isEnum() && methodParaType==int.class) {
+                        methodParas[i] = Integer.valueOf(Kson.toJson(userPara));
                     }else{
                         throw new ClassCastException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+methodParaType);
                     }

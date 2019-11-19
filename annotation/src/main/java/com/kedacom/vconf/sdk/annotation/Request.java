@@ -66,7 +66,8 @@ public @interface Request {
      1、若userPara为基本类型包装类型，para为对应的基本类型，则将包装类型解包；
      2、若userPara为String，para为StringBuffer则将String转为StringBuffer；
      3、若para为String或StringBuffer，则将userPara转为String或StringBuffer类型的json字符串；
-     4、其余情形不做转换；
+     4、若para为int且userPara为枚举则将该枚举转为json字符串再转为整型（NOTE：这种情况下用户需保证枚举到json的转换已定制化为转为整型）；
+     5、其余情形不做转换；
      */
     Class[] userParas() default {};
 
