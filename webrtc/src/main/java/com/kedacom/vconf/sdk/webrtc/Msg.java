@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.webrtc;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
+import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
@@ -113,6 +114,45 @@ enum Msg {
     )
     CreateConf,
 
+
+    /**
+     * 退出会议
+     * */
+    @Request(method = "ConfHangupConfCmd",
+            owner = MethodOwner.ConfCtrl,
+            paras = int.class,
+            userParas = EmMtCallDisReason.class,
+            rspSeq = {} //TODO
+    )
+    QuitConf,
+
+    /**
+     * 结束会议
+     * */
+    @Request(method = "ConfEndConfCmd",
+            owner = MethodOwner.ConfCtrl,
+            rspSeq = "MultipartyConfEnded"
+    )
+    EndConf,
+
+    /**
+     * 接受入会邀请
+     * */
+    @Request(method = "ConfAcceptCmd",
+            owner = MethodOwner.ConfCtrl,
+            rspSeq = "P2pConfStarted",
+            rspSeq2 = "MultipartyConfStarted"
+    )
+    AcceptInvitation,
+
+    /**
+     * 拒绝入会邀请
+     * */
+    @Request(method = "ConfRejectConfCmd",
+            owner = MethodOwner.ConfCtrl,
+            rspSeq = {} //TODO
+    )
+    DeclineInvitation,
 
 
 

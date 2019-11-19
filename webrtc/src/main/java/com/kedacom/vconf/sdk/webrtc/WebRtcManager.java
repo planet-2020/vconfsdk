@@ -19,6 +19,7 @@ import com.kedacom.osp.MtMsg;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
+import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.utils.log.KLog;
@@ -116,7 +117,11 @@ public class WebRtcManager extends Caster<Msg>{
         Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
         processorMap.put(new Msg[]{
                 Msg.Login,
-                Msg.Call
+                Msg.Call,
+                Msg.QuitConf,
+                Msg.EndConf,
+                Msg.AcceptInvitation,
+                Msg.DeclineInvitation,
         }, this::onRsp);
         return processorMap;
     }
@@ -185,36 +190,37 @@ public class WebRtcManager extends Caster<Msg>{
      *          失败：TODO
      * */
     public void createConf(String peerId, IResultListener resultListener){
-        req(Msg.CreateConf, resultListener, peerId, 1024, EmConfProtocol.emrtc.ordinal());
+        return;
+//        req(Msg.CreateConf, resultListener, peerId, 1024, EmConfProtocol.emrtc.ordinal());
     }
 
 
     /**
      * 退出会议。
      * */
-    public void quitConf(IResultListener resultListener){
-
+    public void quitConf(){
+        req(Msg.QuitConf, null, EmMtCallDisReason.emDisconnect_Normal);
     }
 
     /**
      * 结束会议。
      * */
-    public void finishConf(IResultListener resultListener){
-
+    public void endConf(IResultListener resultListener){
+        req(Msg.EndConf, resultListener);
     }
 
     /**
      * 接受会议邀请
      * */
-    public void acceptConf(){
-
+    public void acceptInvitation(IResultListener resultListener){
+        req(Msg.AcceptInvitation, resultListener);
     }
 
     /**
      * 拒绝会议邀请
      * */
-    public void refuseConf(){
-
+    public void declineInvitation(){
+        req(Msg.DeclineInvitation, null);
     }
 
 
@@ -322,7 +328,11 @@ public class WebRtcManager extends Caster<Msg>{
             case MultipartyConfEnded:
                 reason = (BaseTypeInt) rspContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
-                reportFailed(-1, listener);
+                if (Msg.EndConf == req) {
+                    reportSuccess(null, listener);
+                }else{
+                    reportFailed(-1, listener);
+                }
                 break;
 
             default:
