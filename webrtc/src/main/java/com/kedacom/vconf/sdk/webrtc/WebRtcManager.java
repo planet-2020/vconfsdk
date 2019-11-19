@@ -20,7 +20,10 @@ import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
+import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
@@ -133,7 +136,9 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.StreamListReady,
                 Msg.StreamJoined,
                 Msg.StreamLeft,
-                Msg.CallIncoming
+                Msg.CallIncoming,
+                Msg.P2pConfEnded,
+                Msg.MultipartyConfEnded,
         }, this::onNtfs);
 
         return processorMap;
@@ -230,14 +235,31 @@ public class WebRtcManager extends Caster<Msg>{
      * @param permissionData 截屏权限申请结果
      * */
     public void startScreenShare(Intent permissionData, IResultListener resultListener){
+        if (null == permissionData){
+            KLog.p(KLog.ERROR, "null == permissionData");
+            reportFailed(-1, resultListener);
+            return;
+        }
+        if (null != screenCapturePermissionData){
+            KLog.p(KLog.ERROR, "Screen Share started already");
+            reportFailed(-1, resultListener);
+            return;
+        }
         screenCapturePermissionData = permissionData;
+        req(Msg.ToggleScreenShare, resultListener, true);
     }
 
     /**
      * 结束桌面共享
      * */
     public void stopScreenShare(){
+        if (null == screenCapturePermissionData){
+            KLog.p(KLog.ERROR, "Screen Share not started yet!");
+            return;
+        }
         screenCapturePermissionData = null;
+
+        req(Msg.ToggleScreenShare, null, false);
     }
 
 
@@ -335,6 +357,20 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 break;
 
+            case ToggleScreenShareRsp:
+                TMtAssVidStatusList assVidStatusList = (TMtAssVidStatusList) rspContent;
+                if (assVidStatusList.arrTAssVidStatus.length == 0){
+                    reportFailed(-1, listener);
+                }else{
+                    TAssVidStatus assVidStatus = assVidStatusList.arrTAssVidStatus[0]; // 目前仅支持一路
+                    if (EmMtChanState.emChanConnected == assVidStatus.emChanState){
+                        reportSuccess(null, listener);
+                    }else{
+                        reportFailed(-1, listener);
+                    }
+                }
+                break;
+
             default:
                 return false;
         }
@@ -349,16 +385,19 @@ public class WebRtcManager extends Caster<Msg>{
             case CallIncoming:
                 TMtCallLinkSate callLinkSate = (TMtCallLinkSate) ntfContent;
                 KLog.p("CallIncoming: %s", callLinkSate);
+                if (null != sessionEventListener) sessionEventListener.onConfInvitation();
                 break;
 
             case P2pConfEnded:
                 BaseTypeInt reason = (BaseTypeInt) ntfContent;
                 KLog.p("P2pConfEnded: %s", reason.basetype);
+                if (null != sessionEventListener) sessionEventListener.onConfFinished();
                 break;
 
             case MultipartyConfEnded:
                 reason = (BaseTypeInt) ntfContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
+                if (null != sessionEventListener) sessionEventListener.onConfFinished();
                 break;
 
             case StreamListReady:

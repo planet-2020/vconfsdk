@@ -6,6 +6,7 @@ import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
 
@@ -155,6 +156,22 @@ enum Msg {
     DeclineInvitation,
 
 
+    /**
+     * 开启/关闭桌面共享（双流）
+     * */
+    @Request(method = "VideoAssStreamCmd",
+            paras = boolean.class,
+            owner = MethodOwner.MonitorCtrl,
+            rspSeq = "ToggleScreenShareRsp"
+    )
+    ToggleScreenShare,
+
+    /**
+     * 开启/关闭桌面共享（双流）响应
+     * */
+    @Response(clz = TMtAssVidStatusList.class,
+            id = "AssSndSreamStatusNtf")
+    ToggleScreenShareRsp,
 
 
 
