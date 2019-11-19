@@ -907,7 +907,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onGetOfferCmd(int connType, int mediaType) {
-            KLog.p("connType=%s, mediaType=%s", connType, mediaType);
 
             executor.execute(()->{
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
@@ -943,9 +942,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onSetOfferCmd(int connType, String offerSdp, RtcConnector.TRtcMedia rtcMedia) {
-            KLog.p("connType=%s, rtcMedia.mid=%s, rtcMedia.streamid=%s, offerSdp=%s",
-                    connType, rtcMedia.mid, rtcMedia.streamid, offerSdp);
-
             midStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
 
             executor.execute(()-> {
@@ -959,7 +955,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onSetAnswerCmd(int connType, String answerSdp) {
-            KLog.p("connType=%s, answerSdp=%s", connType, answerSdp);
 
             executor.execute(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
@@ -987,7 +982,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onSetIceCandidateCmd(int connType, String sdpMid, int sdpMLineIndex, String sdp) {
-            KLog.p("connType=%s, sdpMid=%s, sdpMLineIndex=%s, sdp=%s", connType, sdpMid, sdpMLineIndex, sdp);
             executor.execute(()-> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 pcWrapper.addCandidate(new IceCandidate(sdpMid, sdpMLineIndex, sdp));
@@ -1025,7 +1019,7 @@ public class WebRtcManager extends Caster<Msg>{
                         if (bCreateLocalSdpSuccess) {
                             bCreateLocalSdpSuccess = false;
 //                        updateRtpPara(true);
-                            KLog.p("setLocalDescription success, sending offer... \n%s", pc.getLocalDescription().description);
+                            KLog.p("setLocalDescription success, sending offer...");
                             boolean bGetAudioMid = false;
                             if (pcWrapper.curMediaType == CommonDef.MEDIA_TYPE_AUDIO
                                     || pcWrapper.curMediaType == CommonDef.MEDIA_TYPE_AV && pcWrapper.isSegmentallyPublishState(pcWrapper.SegmentallyPublishState_PublishingAudio)) {
@@ -1041,7 +1035,7 @@ public class WebRtcManager extends Caster<Msg>{
                 } else {
 
                     if (pcWrapper.isSdpProgressFinished()){
-                        KLog.p("setLocalDescription success, sending answer..., \n%s", pc.getLocalDescription().description);
+                        KLog.p("setLocalDescription success, sending answer...,");
                         handler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType, pc.getLocalDescription().description));
                         KLog.p("answer sent, sdp progress finished, drainCandidates");
                         pcWrapper.drainCandidates();
@@ -1069,7 +1063,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onIceCandidate(final IceCandidate candidate) {
-            KLog.p("onIceCandidate, sending candidate... %s", candidate.sdp);
+            KLog.p("onIceCandidate, sending candidate...");
             PeerConnectionWrapper pcWrapper = getPcWrapper(this);
             handler.post(() -> rtcConnector.sendIceCandidate(pcWrapper.connType, candidate.sdpMid, candidate.sdpMLineIndex, candidate.sdp));
         }
@@ -1358,7 +1352,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private String getMid(String sdpDescription, boolean bAudio){
-        KLog.p("bAudio =%s, sdp=%s", bAudio, sdpDescription);
+//        KLog.p("bAudio =%s, sdp=%s", bAudio, sdpDescription);
         final String[] lines = sdpDescription.split("\r\n");
         String mediaHead = bAudio ? "m=audio" : "m=video";
         boolean gotMediaHead = false;

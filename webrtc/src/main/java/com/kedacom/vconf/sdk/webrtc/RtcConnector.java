@@ -175,7 +175,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("rtcServiceId=%s, rtcServiceNode=%s, peerType=%s, mediaType=%s", rtcServiceId, rtcServiceNode, connType, mediaType);
+		KLog.p("<= rtcServiceId=%s, rtcServiceNode=%s, peerType=%s, mediaType=%s", rtcServiceId, rtcServiceNode, connType, mediaType);
 
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onGetOfferCmd(connType, mediaType));
 
@@ -183,7 +183,7 @@ class RtcConnector implements IRcvMsgCallback{
 
 
 	/**
-	 * （模拟mtrtcservice）收到mtrtcmp的Ev_MT_GetOffer_Ntf的处理
+	 * FORDEBUG（模拟mtrtcservice）收到mtrtcmp的Ev_MT_GetOffer_Ntf的处理
 	 * */
 	private void onGetOfferNtf(MtMsg mtMsg, long nSrcId, long nSrcNode){
 		BodyItem item0 = mtMsg.GetMsgBody(0);
@@ -256,13 +256,13 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("rtcServiceId=%s, rtcServiceNode=%s,  peerType=%s, offer=%s, rtcMedialist=%s", rtcServiceId, rtcServiceNode, connType, offer, rtcMedialist);
+		KLog.p("<= rtcServiceId=%s, rtcServiceNode=%s,  peerType=%s, offer=%s, rtcMedialist=%s", rtcServiceId, rtcServiceNode, connType, offer, rtcMedialist);
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetOfferCmd(connType, offer, rtcMediaFromPB(rtcMedialist.getMedia(0))) );
 
 	}
 
 	/**
-	 * （模拟mtrtcservice）收到mtrtcmp的onGetAnswerNtf的处理
+	 * FORDEBUG （模拟mtrtcservice）收到mtrtcmp的onGetAnswerNtf的处理
 	 * */
 	private void onGetAnswerNtf(MtMsg mtMsg, long nSrcId, long nSrcNode){
 		BodyItem item0 = mtMsg.GetMsgBody(0);
@@ -312,13 +312,13 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("peerType=%s, answer=%s", connType, answer);
+		KLog.p("<= peerType=%s, answer=%s", connType, answer);
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetAnswerCmd(connType, answer) );
 
 	}
 
 	/**
-	 * （模拟mtrtcservice）收到mtrtcmp的Ev_MT_IceCandidate_Ntf的处理
+	 * FORDEBUG （模拟mtrtcservice）收到mtrtcmp的Ev_MT_IceCandidate_Ntf的处理
 	 * */
 	private void onIceCandidateNtf(MtMsg mtMsg, long nSrcId, long nSrcNode){
 		BodyItem item0 = mtMsg.GetMsgBody(0);
@@ -381,7 +381,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("peerType=%s, mid=%s, index=%s, candidate", connType, mid, index, candidate);
+		KLog.p("<= peerType=%s, mid=%s, index=%s, candidate=%s", connType, mid, index, candidate);
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetIceCandidateCmd(connType, mid, index, candidate) );
 	}
 
