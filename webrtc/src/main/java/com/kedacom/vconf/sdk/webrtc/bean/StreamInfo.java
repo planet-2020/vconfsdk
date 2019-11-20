@@ -13,4 +13,13 @@ public final class StreamInfo {
         this.dwTerId = dwTerId;
         this.streamId = streamId;
     }
+
+    @Override
+    public String toString() {
+        return "StreamInfo{" +
+                "dwMcuId=" + dwMcuId +
+                ", dwTerId=" + dwTerId +
+                ", streamId='" + streamId + '\'' +
+                '}';
+    }
 }

@@ -1340,6 +1340,7 @@ public class WebRtcManager extends Caster<Msg>{
                 surfaceViewRenderer.setEnableHardwareScaler(true);
                 localVideoSink.setTarget(surfaceViewRenderer);
                 if (null != sessionEventListener) {
+                    KLog.p("####onLocalStream localTrackId=%s, render=%s", localTrackId, surfaceViewRenderer);
                     sessionEventListener.onLocalStream(localTrackId, surfaceViewRenderer);
                 }
             });
@@ -1357,22 +1358,21 @@ public class WebRtcManager extends Caster<Msg>{
                 String streamId = midStreamIdMap.get(mid);
                 KLog.p("mid=%s, streamId=%s", mid, streamId);
                 if (null == streamId){
-                    KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress", mid);
+                    KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
                     return;
                 }
 
-                // SEALED TODO 暂时无法联调
-//                    TRtcStreamInfo rtcStreamInfo = null;
-//                    for (TRtcStreamInfo streamInfo : streamInfos){
-//                        if (streamId.equals(streamInfo.achStreamId)){
-//                            rtcStreamInfo = streamInfo;
-//                            break;
-//                        }
-//                    }
-//                    if (null == rtcStreamInfo){
-//                        KLog.p(KLog.ERROR, "no such stream %s in stream list", streamId);
-//                        return;
-//                    }
+                TRtcStreamInfo rtcStreamInfo = null;
+                for (TRtcStreamInfo streamInfo : streamInfos){
+                    if (streamId.equals(streamInfo.achStreamId)){
+                        rtcStreamInfo = streamInfo;
+                        break;
+                    }
+                }
+                if (null == rtcStreamInfo){
+                    KLog.p(KLog.ERROR, "no such stream %s in stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.StreamListReady branch in method onNtf)", streamId);
+                    return;
+                }
 
                 SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
                 surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
@@ -1381,9 +1381,11 @@ public class WebRtcManager extends Caster<Msg>{
                 videoSink.setTarget(surfaceViewRenderer);
 
                 if (null != sessionEventListener) {
-//                    sessionEventListener.onRemoteStream(new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId), surfaceViewRenderer);
-                    // XXX 仅调试，用上面行
-                    sessionEventListener.onRemoteStream(new StreamInfo(0, 0, streamId), surfaceViewRenderer);
+                    StreamInfo streamInfo = new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId);
+                    KLog.p("####onRemoteStream, streamInfo=%s", streamInfo);
+                    sessionEventListener.onRemoteStream(streamInfo, surfaceViewRenderer);
+//                    // FORDEBUG 仅调试
+//                    sessionEventListener.onRemoteStream(new StreamInfo(0, 0, streamId), surfaceViewRenderer);
                 }
 
             });
