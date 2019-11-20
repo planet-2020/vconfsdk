@@ -157,6 +157,36 @@ public final class KLog {
         log(INFO, getClassName(ste.getClassName()), simplePrefix(ste) + str);
     }
 
+
+    /**
+     * 对比{@link #p(String, Object...)}打印上一级信息。
+     * 例如：
+     * methodA(){
+     *     methodB();
+     * }
+     * methodB(){
+     *     KLog.p("print by KLog.p");
+     *     KLog.up("print by KLog.up");
+     * }
+     * p()将打印出 [methodB:#lineNum] print by KLog.p
+     * up()将打印出 [methodA:#lineNum] print by KLog.up
+     *
+     * NOTE: 区别在于一个打印出的方法tag是methodA一个是methodB。 这在某些场景下会比较有用，比如：
+     * methodB在许多地方被调用了，想要追踪其被调用的痕迹又不想在每个调用处加一行打印，
+     * 那么可以在methodB内部使用up打印。
+     * */
+    public static void up(String format, Object... para){
+        if (!isEnabled || INFO < level || null == format || null == para) {
+            return;
+        }
+        StackTraceElement[] stes = Thread.currentThread().getStackTrace();
+        if (stes.length<5){
+            return;
+        }
+        StackTraceElement ste = stes[4];
+        log(INFO, getClassName(ste.getClassName()), simplePrefix(ste) + String.format(format, para));
+    }
+
     /*Raw print*/
     public static void rp(String str){
         if (!isEnabled) {

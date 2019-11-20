@@ -4,6 +4,8 @@ package com.kedacom.vconf.sdk.webrtc;
 import android.os.Handler;
 import android.os.Looper;
 
+import androidx.annotation.NonNull;
+
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.kedacom.kdv.mt.ospconnector.Connector;
 import com.kedacom.kdv.mt.ospconnector.IRcvMsgCallback;
@@ -26,10 +28,10 @@ import java.util.Map;
 
 class RtcConnector implements IRcvMsgCallback{
 
-	public static final String TAG = "RtcConnector";
-	public static final String WEBRTC_NAME = "WEBRTC_NAME";
-	public static final short WEBRTC_ID = 142;
-	public static final short MTDISPATCH_ID = 107;
+	private static final String TAG = "RtcConnector";
+	private static final String WEBRTC_NAME = "WEBRTC_NAME";
+	private static final short WEBRTC_ID = 142;
+	private static final short MTDISPATCH_ID = 107;
 	private final Map<String, ICbMsgHandler> cbMsgHandlerMap = new HashMap<>();
 
 	private final long myId =Connector.MAKEIID(WEBRTC_ID, (short)1 );
@@ -50,12 +52,13 @@ class RtcConnector implements IRcvMsgCallback{
 	RtcConnector( ) {
 		// 注册消息处理方法
 		cbMsgHandlerMap.put("Ev_MT_GetOffer_Cmd", this::onGetOfferCmd);
-		cbMsgHandlerMap.put("Ev_MT_GetOffer_Ntf", this::onGetOfferNtf);
+//		cbMsgHandlerMap.put("Ev_MT_GetOffer_Ntf", this::onGetOfferNtf);
 		cbMsgHandlerMap.put("Ev_MT_SetOffer_Cmd", this::onSetOfferCmd);
-		cbMsgHandlerMap.put("Ev_MT_GetAnswer_Ntf", this::onGetAnswerNtf);
+//		cbMsgHandlerMap.put("Ev_MT_GetAnswer_Ntf", this::onGetAnswerNtf);
 		cbMsgHandlerMap.put("Ev_MT_SetAnswer_Cmd", this::onSetAnswerCmd);
-		cbMsgHandlerMap.put("Ev_MT_IceCandidate_Ntf", this::onIceCandidateNtf);
+//		cbMsgHandlerMap.put("Ev_MT_IceCandidate_Ntf", this::onIceCandidateNtf);
 		cbMsgHandlerMap.put("Ev_MT_SetIceCandidate_Cmd", this::onSetIceCandidateCmd);
+		cbMsgHandlerMap.put("Ev_MT_GetFingerPrint_Cmd", this::onGetFingerPrintCmd);
 
 		if (!CreateOspObject()){
 			throw new RuntimeException("CreateOspObject failed!");
@@ -69,6 +72,7 @@ class RtcConnector implements IRcvMsgCallback{
 		subsMsgBuilder.addMsgid("Ev_MT_SetOffer_Cmd");
 		subsMsgBuilder.addMsgid("Ev_MT_SetAnswer_Cmd");
 		subsMsgBuilder.addMsgid("Ev_MT_SetIceCandidate_Cmd");
+//        subsMsgBuilder.addMsgid("Ev_MT_GetFingerPrint_Cmd");
 		msg.addMsg(subsMsgBuilder.build());
 		byte[] abyContent = msg.Encode();
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
@@ -175,7 +179,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<= rtcServiceId=%s, rtcServiceNode=%s, peerType=%s, mediaType=%s", rtcServiceId, rtcServiceNode, connType, mediaType);
+		KLog.p("<= connType=%s, mediaType=%s", connType, mediaType);
 
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onGetOfferCmd(connType, mediaType));
 
@@ -256,7 +260,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<= rtcServiceId=%s, rtcServiceNode=%s,  peerType=%s, offer=%s, rtcMedialist=%s", rtcServiceId, rtcServiceNode, connType, offer, rtcMedialist);
+		KLog.p("<= connType=%s, offer=%s, rtcMedialist=%s", connType, offer, rtcMedialist);
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetOfferCmd(connType, offer, rtcMediaFromPB(rtcMedialist.getMedia(0))) );
 
 	}
@@ -312,7 +316,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<= peerType=%s, answer=%s", connType, answer);
+		KLog.p("<= connType=%s, answer=%s", connType, answer);
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetAnswerCmd(connType, answer) );
 
 	}
@@ -381,8 +385,31 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<= peerType=%s, mid=%s, index=%s, candidate=%s", connType, mid, index, candidate);
+		KLog.p("<= connType=%s, mid=%s, index=%s, candidate=%s", connType, mid, index, candidate);
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetIceCandidateCmd(connType, mid, index, candidate) );
+	}
+
+
+	/**
+	 * 获取指纹。
+	 * 业务组件定的流程：
+	 * 组件先向界面获取FingerPrint，然后向界面推送StreamListNtf，
+	 * 界面setPlayPara，然后组件推onSetOfferCmd给界面开始订阅
+	 * */
+	private void onGetFingerPrintCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
+		this.rtcServiceId = nSrcId;
+		this.rtcServiceNode = nSrcNode;
+		BodyItem item0 = mtMsg.GetMsgBody(0);
+		int connType;
+		try {
+			connType = BasePB.TU32.parseFrom(item0.getAbyContent()).getValue();
+		} catch (InvalidProtocolBufferException e) {
+			e.printStackTrace();
+			return;
+		}
+
+		KLog.p("<= connType=%s", connType);
+		if (null != signalingEvents) handler.post(() -> signalingEvents.onGetFingerPrintCmd(connType) );
 	}
 
 
@@ -413,37 +440,29 @@ class RtcConnector implements IRcvMsgCallback{
 
 	private StructConfPB.TRtcMedia rtcMediaToPB(TRtcMedia rtcMedia){
 		StructConfPB.TRtcMedia.Builder rtcMediaBuilder = StructConfPB.TRtcMedia.newBuilder();
-		for (RtpParameters.Encoding encoding : rtcMedia.encodings){
-			StructConfPB.TRtcRid.Builder ridBuider = StructConfPB.TRtcRid.newBuilder();
-			ridBuider.setRid(encoding.rid)
-					.setEmres(convertRes(encoding.scaleResolutionDownBy));
-			rtcMediaBuilder.addRidlist(ridBuider.build());
+		if (null != rtcMedia.encodings){
+			for (RtpParameters.Encoding encoding : rtcMedia.encodings){
+				StructConfPB.TRtcRid.Builder ridBuider = StructConfPB.TRtcRid.newBuilder();
+				ridBuider.setRid(encoding.rid)
+						.setEmres(convertRes(encoding.scaleResolutionDownBy));
+				rtcMediaBuilder.addRidlist(ridBuider.build());
+			}
 		}
 		rtcMediaBuilder.setMid(rtcMedia.mid);
 		rtcMediaBuilder.setStreamid(rtcMedia.streamid);
 		return rtcMediaBuilder.build();
 	}
 
-	public void sendOfferSdp(int connType, String offerSdp, TRtcMedia rtcMedia) {
-		// 发送offer
-		StructConfPB.TRtcMedia.Builder rtcMediaBuilder = StructConfPB.TRtcMedia.newBuilder();
-		for (RtpParameters.Encoding encoding : rtcMedia.encodings){
-			StructConfPB.TRtcRid.Builder ridBuider = StructConfPB.TRtcRid.newBuilder();
-			ridBuider.setRid(encoding.rid)
-					.setEmres(convertRes(encoding.scaleResolutionDownBy));
-			rtcMediaBuilder.addRidlist(ridBuider.build());
-		}
-		rtcMediaBuilder.setMid(rtcMedia.mid);
-		rtcMediaBuilder.setStreamid(rtcMedia.streamid);
-
+	void sendOfferSdp(int connType, @NonNull String offerSdp, TRtcMedia... rtcMediaList) {
+        StructConfPB.TRtcMedialist.Builder builder = StructConfPB.TRtcMedialist.newBuilder();
+        for (TRtcMedia rtcMedia : rtcMediaList){
+            builder.addMedia(rtcMediaToPB(rtcMedia));
+        }
 		MtMsg msg = new MtMsg();
 		msg.SetMsgId("Ev_MT_GetOffer_Ntf");
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
 		msg.addMsg(BasePB.TString.newBuilder().setValue(offerSdp).build());
-		msg.addMsg(StructConfPB.TRtcMedialist.newBuilder()
-				.addMedia(rtcMediaToPB(rtcMedia))
-				.build()
-		);
+		msg.addMsg(builder.build());
 		byte[] abyContent = msg.Encode();
 //		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
 //                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
@@ -453,10 +472,10 @@ class RtcConnector implements IRcvMsgCallback{
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
 
-		KLog.p("=> send offer: rtcServiceId=%s, rtcServiceNode=%s, sdp=%s", rtcServiceId, rtcServiceNode, offerSdp);
+		KLog.p("=> send offer: connType=%s, sdp=%s", connType, offerSdp);
 	}
 
-	public void sendAnswerSdp(int connType, final String answerSdp) {
+	void sendAnswerSdp(int connType, @NonNull String answerSdp) {
 		// 发送answer给对端
 		MtMsg msg = new MtMsg();
 		msg.SetMsgId("Ev_MT_GetAnswer_Ntf");
@@ -467,7 +486,7 @@ class RtcConnector implements IRcvMsgCallback{
 //                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
 				dispatchId, dispatchNode, myId, myNode, 5000 );
-        KLog.p("=> send answer, rtcServiceId=%s, rtcServiceNode=%s, sdp=%s", rtcServiceId, rtcServiceNode, answerSdp);
+        KLog.p("=> send answer, connType=%s, sdp=%s", connType, answerSdp);
         if (0 != ret){
             KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
         }
@@ -476,7 +495,7 @@ class RtcConnector implements IRcvMsgCallback{
 
 
 	// 发送IceCandidate给对端
-	public void sendIceCandidate(int connType, String sdpMid, int sdpMLineIndex, String sdp) {
+	void sendIceCandidate(int connType, @NonNull String sdpMid, int sdpMLineIndex, @NonNull String sdp) {
 		MtMsg msg = new MtMsg();
 		msg.SetMsgId("Ev_MT_IceCandidate_Ntf");
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
@@ -493,6 +512,24 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		KLog.p("=> send candidate sdpmid=%s, sdpline=%s, candidate=%s", sdpMid, sdpMLineIndex, sdp);
+	}
+
+
+	void sendFingerPrint(int connType, @NonNull String fingerPrint){
+        MtMsg msg = new MtMsg();
+        msg.SetMsgId("Ev_MT_FingerPrint_Ntf");
+        msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
+        msg.addMsg(BasePB.TString.newBuilder().setValue(fingerPrint).build());
+        byte[] abyContent = msg.Encode();
+//		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+//                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
+        int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+                dispatchId, dispatchNode, myId, myNode, 5000 );
+        if (0 != ret){
+            KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
+        }
+
+        KLog.p("=> sendFingerPrint connType=%s, fingerPrint=%s", connType, fingerPrint);
 	}
 
 	static class TRtcMedia {
@@ -519,6 +556,9 @@ class RtcConnector implements IRcvMsgCallback{
 		void onSetAnswerCmd(int connType, String answerSdp);
 
 		void onSetIceCandidateCmd(int connType, String sdpMid, int sdpMLineIndex, String sdp);
+
+		void onGetFingerPrintCmd(int connType);
+
 	}
 
 
