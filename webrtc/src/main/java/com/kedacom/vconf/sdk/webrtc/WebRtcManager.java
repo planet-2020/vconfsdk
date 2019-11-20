@@ -12,10 +12,6 @@ import androidx.annotation.Nullable;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
-import com.kedacom.kdv.mt.ospconnector.Connector;
-import com.kedacom.mt.netmanage.protobuf.BasePB;
-import com.kedacom.osp.EmMtOspMsgSys;
-import com.kedacom.osp.MtMsg;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
@@ -1014,7 +1010,7 @@ public class WebRtcManager extends Caster<Msg>{
             midStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
 
             executor.execute(()-> {
-                KLog.p("onSetOfferCmd: connType=%s");
+                KLog.p("onSetOfferCmd: connType=%s", connType);
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 pcWrapper.checkSdpState(pcWrapper.Idle);
                 pcWrapper.setSdpType(pcWrapper.Answer);
@@ -1101,7 +1097,7 @@ public class WebRtcManager extends Caster<Msg>{
                         handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia));
                         pcWrapper.setSdpState(pcWrapper.Sending);
                     }else {
-                        KLog.p("setRemoteDescription for Offer success, sdp progress finished, drainCandidates");
+                        KLog.p("setRemoteDescription for Offer success, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
                         pcWrapper.setSdpState(pcWrapper.Idle);
                     }
@@ -1114,7 +1110,7 @@ public class WebRtcManager extends Caster<Msg>{
                     }else {
                         KLog.p("setLocalDescription for Answer success, sending answer...");
                         handler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType, pc.getLocalDescription().description));
-                        KLog.p("answer sent, sdp progress finished, drainCandidates");
+                        KLog.p("answer sent, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
                         pcWrapper.setSdpState(pcWrapper.Idle);
                     }
@@ -1154,7 +1150,7 @@ public class WebRtcManager extends Caster<Msg>{
                         handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcAudio, rtcVideo));
                         pcWrapper.setSdpState(pcWrapper.Sending);
                     }else{
-                        KLog.p("setRemoteDescription for VideoOffer success, sdp progress finished, drainCandidates");
+                        KLog.p("setRemoteDescription for VideoOffer success, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
                         // videooffer发布完毕，整个发布结束
                         pcWrapper.setSdpState(pcWrapper.Idle);

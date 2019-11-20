@@ -72,7 +72,7 @@ class RtcConnector implements IRcvMsgCallback{
 		subsMsgBuilder.addMsgid("Ev_MT_SetOffer_Cmd");
 		subsMsgBuilder.addMsgid("Ev_MT_SetAnswer_Cmd");
 		subsMsgBuilder.addMsgid("Ev_MT_SetIceCandidate_Cmd");
-//        subsMsgBuilder.addMsgid("Ev_MT_GetFingerPrint_Cmd");
+        subsMsgBuilder.addMsgid("Ev_MT_GetFingerPrint_Cmd");
 		msg.addMsg(subsMsgBuilder.build());
 		byte[] abyContent = msg.Encode();
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
