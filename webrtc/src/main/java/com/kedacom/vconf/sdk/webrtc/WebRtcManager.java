@@ -212,7 +212,6 @@ public class WebRtcManager extends Caster<Msg>{
      * 退出会议。
      * */
     public void quitConf(){
-        stopSession();
         req(Msg.QuitConf, null, EmMtCallDisReason.emDisconnect_Normal);
     }
 
@@ -220,7 +219,6 @@ public class WebRtcManager extends Caster<Msg>{
      * 结束会议。
      * */
     public void endConf(IResultListener resultListener){
-        stopSession();
         req(Msg.EndConf, resultListener);
     }
 
@@ -485,13 +483,20 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
+    private boolean bSessionStarted;
 
-    public synchronized boolean startSession(@NonNull Context ctx, @NonNull SessionEventListener listener){ // TODO 内部调用
-        if (null != factory){
+    /**
+     * 开始会话
+     * 会话创建webrtc相关资源。
+     * 开始会议(如{@link #makeCall(String, IResultListener)}/{@link #createConf(String, IResultListener)})
+     * 前请务必保证会话已开启，会话期间可创建多个会议。请在适当的时机停止会话以释放资源，如{@link #quitConf()}/{@link #endConf(IResultListener)}
+     * */
+    public synchronized boolean startSession(@NonNull Context ctx, @NonNull SessionEventListener listener){
+        if (bSessionStarted){
             KLog.p(KLog.ERROR, "session has started already!");
             return false;
         }
-
+        bSessionStarted = true;
         context = ctx;
         sessionEventListener = listener;
 
@@ -537,12 +542,15 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    /**
+     * 停止会话
+     * */
     public synchronized void stopSession(){
-        if (null == factory){
+        if (!bSessionStarted){
             KLog.p(KLog.ERROR, "session has stopped already!");
             return;
         }
-
+        bSessionStarted = false;
         context = null;
         sessionEventListener = null;
 
