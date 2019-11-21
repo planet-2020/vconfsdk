@@ -966,9 +966,8 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onGetOfferCmd(int connType, int mediaType) {
-
+            KLog.p("onGetOfferCmd: connType=%s, mediaType=%s", connType, mediaType);
             executor.execute(()->{
-                KLog.p("onGetOfferCmd: connType=%s, mediaType=%s", connType, mediaType);
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
 
                 pcWrapper.checkSdpState(pcWrapper.Idle);
@@ -1006,11 +1005,14 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         @Override
-        public void onSetOfferCmd(int connType, String offerSdp, RtcConnector.TRtcMedia rtcMedia) {
-            midStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
+        public void onSetOfferCmd(int connType, String offerSdp, List<RtcConnector.TRtcMedia> rtcMediaList) {
+            KLog.p("connType=%s", connType);
+            for (RtcConnector.TRtcMedia rtcMedia : rtcMediaList) {
+                KLog.p("mid=%s, streamid=%s", rtcMedia.mid, rtcMedia.streamid);
+                midStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
+            }
 
             executor.execute(()-> {
-                KLog.p("onSetOfferCmd: connType=%s", connType);
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 pcWrapper.checkSdpState(pcWrapper.Idle);
                 pcWrapper.setSdpType(pcWrapper.Answer);
@@ -1023,9 +1025,8 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onSetAnswerCmd(int connType, String answerSdp) {
-
+            KLog.p("connType=%s", connType);
             executor.execute(() -> {
-                KLog.p("onSetAnswerCmd: connType=%s", connType);
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 pcWrapper.checkSdpState(pcWrapper.Sending);
                 pcWrapper.pc.setRemoteDescription(pcWrapper.sdpObserver,
@@ -1038,8 +1039,8 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onSetIceCandidateCmd(int connType, String sdpMid, int sdpMLineIndex, String sdp) {
+            KLog.p("connType=%s, sdpMid=%s, sdpMLineIndex=%s", connType, sdpMid, sdpMLineIndex);
             executor.execute(()-> {
-                KLog.p("onSetIceCandidateCmd: connType=%s, sdpMid=%s, sdpMLineIndex=%s", connType, sdpMid, sdpMLineIndex);
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 pcWrapper.addCandidate(new IceCandidate(sdpMid, sdpMLineIndex, sdp));
             });
@@ -1047,8 +1048,8 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onGetFingerPrintCmd(int connType) {
+            KLog.p("connType=%s", connType);
             executor.execute(()-> {
-                KLog.p("onGetFingerPrintCmd: connType=%s", connType);
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 pcWrapper.checkSdpState(pcWrapper.Idle);
                 pcWrapper.setSdpType(pcWrapper.FingerPrintOffer);
@@ -1109,7 +1110,12 @@ public class WebRtcManager extends Caster<Msg>{
                         pcWrapper.setSdpState(pcWrapper.Creating);
                     }else {
                         KLog.p("setLocalDescription for Answer success, sending answer...");
-                        handler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType, pc.getLocalDescription().description));
+                        List<RtcConnector.TRtcMedia> rtcMediaList = new ArrayList<>();
+                        List<String> mids = getAllMids(pc.getLocalDescription().description);
+                        for (String mid : mids){
+                            rtcMediaList.add(new RtcConnector.TRtcMedia(pcWrapper.STREAM_ID, mid,null));
+                        }
+                        handler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMediaList));
                         KLog.p("answer sent, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
                         pcWrapper.setSdpState(pcWrapper.Idle);
@@ -1254,12 +1260,11 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onTrack(RtpTransceiver transceiver) {
-            KLog.p("onTrack: %s", transceiver);
             MediaStreamTrack track = transceiver.getReceiver().track();
+            KLog.p("received remote track %s", track);
             if (!(track instanceof VideoTrack)){
                 return;
             }
-
             PeerConnectionWrapper pcWrapper = getPcWrapper(this);
             pcWrapper.createRemoteVideoTrack(transceiver.getMid(), (VideoTrack) track);
 
@@ -1506,6 +1511,18 @@ public class WebRtcManager extends Caster<Msg>{
 
         KLog.p(KLog.WARN, "getMid null");
         return null;
+    }
+
+    private List<String> getAllMids(String sdpDescription){
+//        KLog.p("sdp=%s", sdpDescription);
+        final String[] lines = sdpDescription.split("\r\n");
+        List<String> mids = new ArrayList<>();
+        for (String line : lines) {
+            if (line.startsWith("a=mid:")) {
+                mids.add(line.substring("a=mid:".length()));
+            }
+        }
+        return mids;
     }
 
     private String getFingerPrint(String sdpDescription){

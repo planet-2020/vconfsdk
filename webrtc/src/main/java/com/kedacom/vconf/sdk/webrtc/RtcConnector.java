@@ -261,7 +261,12 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		KLog.p("<= connType=%s, offer=%s, rtcMedialist=%s", connType, offer, rtcMedialist);
-		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetOfferCmd(connType, offer, rtcMediaFromPB(rtcMedialist.getMedia(0))) );
+
+		List<TRtcMedia> rtcMedias = new ArrayList<>();
+		for (StructConfPB.TRtcMedia tRtcMedia : rtcMedialist.getMediaList()){
+			rtcMedias.add(rtcMediaFromPB(tRtcMedia));
+		}
+		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetOfferCmd(connType, offer, rtcMedias) );
 
 	}
 
@@ -432,7 +437,7 @@ class RtcConnector implements IRcvMsgCallback{
 		for (StructConfPB.TRtcRid tRtcRid : pbRtcMedia.getRidlistList()){
 			String rid = tRtcRid.getRid();
 //			encodings.add(PeerConnectionClient.createEncoding(rid,
-//					1 // FIXME 这里暂时写死为了联调
+//					1 // encodings不用处理
 //			));
 		}
 		return new TRtcMedia(pbRtcMedia.getStreamid(), pbRtcMedia.getMid(), encodings);
@@ -475,12 +480,16 @@ class RtcConnector implements IRcvMsgCallback{
 		KLog.p("=> send offer: connType=%s, sdp=%s", connType, offerSdp);
 	}
 
-	void sendAnswerSdp(int connType, @NonNull String answerSdp) {
-		// 发送answer给对端
+	void sendAnswerSdp(int connType, @NonNull String answerSdp, List<RtcConnector.TRtcMedia> rtcMediaList) {
+		StructConfPB.TRtcMedialist.Builder builder = StructConfPB.TRtcMedialist.newBuilder();
+		for (TRtcMedia rtcMedia : rtcMediaList){
+			builder.addMedia(rtcMediaToPB(rtcMedia));
+		}
 		MtMsg msg = new MtMsg();
 		msg.SetMsgId("Ev_MT_GetAnswer_Ntf");
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
 		msg.addMsg(BasePB.TString.newBuilder().setValue(answerSdp).build());
+		msg.addMsg(builder.build());
 		byte[] abyContent = msg.Encode();
 //		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
 //                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
@@ -551,7 +560,7 @@ class RtcConnector implements IRcvMsgCallback{
 
 		void onGetOfferCmd(int connType, int mediaType);
 
-		void onSetOfferCmd(int connType, String offerSdp, TRtcMedia rtcMedia);
+		void onSetOfferCmd(int connType, String offerSdp, List<TRtcMedia> rtcMediaList);
 
 		void onSetAnswerCmd(int connType, String answerSdp);
 
