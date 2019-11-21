@@ -1100,9 +1100,10 @@ public class WebRtcManager extends Caster<Msg>{
                 if (pcWrapper.isSdpType(pcWrapper.Offer)){
                     if (pcWrapper.isSdpState(pcWrapper.SettingLocal)){
                         KLog.p("setLocalDescription for Offer success, sending offer...");
-                        RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(pcWrapper.STREAM_ID,
-                                getMid(pc.getLocalDescription().description,pcWrapper.curMediaType == CommonDef.MEDIA_TYPE_AUDIO),
-                                createEncodingList()
+                        boolean bAudio = pcWrapper.curMediaType == CommonDef.MEDIA_TYPE_AUDIO;
+                        RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(
+                                getMid(pc.getLocalDescription().description, bAudio),
+                                bAudio ? null : createEncodingList() // 仅视频需要填encodings
                         );
                         handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia));
                         pcWrapper.setSdpState(pcWrapper.Sending);
@@ -1127,7 +1128,7 @@ public class WebRtcManager extends Caster<Msg>{
                             if (null == streamId){
                                 KLog.p(KLog.ERROR, "no streamId for mid %s (see onSetOfferCmd)", mid);
                             }
-                            rtcMediaList.add(new RtcConnector.TRtcMedia(streamId, mid,null));
+                            rtcMediaList.add(new RtcConnector.TRtcMedia(streamId, mid)); // 仅answer需要填streamId，answer不需要填encodings
                         }
                         handler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMediaList));
                         KLog.p("answer sent, sdp progress FINISHED, drainCandidates");
@@ -1138,10 +1139,7 @@ public class WebRtcManager extends Caster<Msg>{
                 else if (pcWrapper.isSdpType(pcWrapper.AudioOffer)){
                     if (pcWrapper.isSdpState(pcWrapper.SettingLocal)){
                         KLog.p("setLocalDescription for AudioOffer success, sending offer...");
-                        RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(pcWrapper.STREAM_ID,
-                                getMid(pc.getLocalDescription().description,true),
-                                null
-                        );
+                        RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(getMid(pc.getLocalDescription().description,true));
                         handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia));
                         pcWrapper.setSdpState(pcWrapper.Sending);
                     }else{
@@ -1160,11 +1158,8 @@ public class WebRtcManager extends Caster<Msg>{
                 else if (pcWrapper.isSdpType(pcWrapper.VideoOffer)){
                     if (pcWrapper.isSdpState(pcWrapper.SettingLocal)){
                         KLog.p("setLocalDescription for VideoOffer success, sending offer...");
-                        RtcConnector.TRtcMedia rtcAudio = new RtcConnector.TRtcMedia(pcWrapper.STREAM_ID,
-                                getMid(pc.getLocalDescription().description,true),
-                                null
-                        );
-                        RtcConnector.TRtcMedia rtcVideo = new RtcConnector.TRtcMedia(pcWrapper.STREAM_ID,
+                        RtcConnector.TRtcMedia rtcAudio = new RtcConnector.TRtcMedia(getMid(pc.getLocalDescription().description,true));
+                        RtcConnector.TRtcMedia rtcVideo = new RtcConnector.TRtcMedia(
                                 getMid(pc.getLocalDescription().description,false),
                                 createEncodingList()
                         );

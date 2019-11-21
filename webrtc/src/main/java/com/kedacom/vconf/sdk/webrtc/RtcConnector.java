@@ -440,7 +440,7 @@ class RtcConnector implements IRcvMsgCallback{
 //					1 // encodings不用处理
 //			));
 		}
-		return new TRtcMedia(pbRtcMedia.getStreamid(), pbRtcMedia.getMid(), encodings);
+		return new TRtcMedia(pbRtcMedia.getStreamid(), pbRtcMedia.getMid());
 	}
 
 	private StructConfPB.TRtcMedia rtcMediaToPB(TRtcMedia rtcMedia){
@@ -542,12 +542,23 @@ class RtcConnector implements IRcvMsgCallback{
 	}
 
 	static class TRtcMedia {
-		String streamid;
+		String streamid="";
 		String mid;
 		List<RtpParameters.Encoding> encodings;
 
 		TRtcMedia(String streamid, String mid, List<RtpParameters.Encoding> encodings) {
 			this.streamid = streamid;
+			this.mid = mid;
+			this.encodings = encodings;
+		}
+		TRtcMedia(String streamid, String mid) {
+			this.streamid = streamid;
+			this.mid = mid;
+		}
+		TRtcMedia(String mid) {
+			this.mid = mid;
+		}
+		TRtcMedia(String mid, List<RtpParameters.Encoding> encodings) {
 			this.mid = mid;
 			this.encodings = encodings;
 		}
