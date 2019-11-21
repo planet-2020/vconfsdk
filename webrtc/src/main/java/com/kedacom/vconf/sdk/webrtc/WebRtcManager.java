@@ -994,6 +994,7 @@ public class WebRtcManager extends Caster<Msg>{
 
                 if (null != videoCapturer) {
                     pcWrapper.createVideoTrack(videoCapturer);
+//                    pcWrapper.createVideoTrack2(videoCapturer);
                 }
                 pcWrapper.createAudioTrack();
 
@@ -1121,7 +1122,12 @@ public class WebRtcManager extends Caster<Msg>{
                         List<RtcConnector.TRtcMedia> rtcMediaList = new ArrayList<>();
                         List<String> mids = getAllMids(pc.getLocalDescription().description);
                         for (String mid : mids){
-                            rtcMediaList.add(new RtcConnector.TRtcMedia(pcWrapper.STREAM_ID, mid,null));
+                            KLog.p("mid=%s", mid);
+                            String streamId = midStreamIdMap.get(mid);
+                            if (null == streamId){
+                                KLog.p(KLog.ERROR, "no streamId for mid %s (see onSetOfferCmd)", mid);
+                            }
+                            rtcMediaList.add(new RtcConnector.TRtcMedia(streamId, mid,null));
                         }
                         handler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMediaList));
                         KLog.p("answer sent, sdp progress FINISHED, drainCandidates");
@@ -1143,6 +1149,7 @@ public class WebRtcManager extends Caster<Msg>{
                         VideoCapturer videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
                         if (null != videoCapturer) {
                             pcWrapper.createVideoTrack(videoCapturer);
+//                            pcWrapper.createVideoTrack2(videoCapturer);
                             pcWrapper.pc.createOffer(pcWrapper.sdpObserver, new MediaConstraints());
                         }
                         // 不同于正常sdp流程，此时还需要再发video的offer，所以切换sdptype为videoOffer
@@ -1326,6 +1333,15 @@ public class WebRtcManager extends Caster<Msg>{
             this.config = config;
             this.sdpObserver = sdpObserver;
             this.pcObserver = pcObserver;
+//            if (CommonDef.CONN_TYPE_PUBLISHER == connType
+//                    || CommonDef.CONN_TYPE_ASS_PUBLISHER == connType){
+//                RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
+//                        RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
+//                        Collections.singletonList(STREAM_ID),
+//                        createEncodingList()
+//                );
+//                pc.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO, transceiverInit);
+//            }
         }
 
 
@@ -1346,6 +1362,43 @@ public class WebRtcManager extends Caster<Msg>{
             ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
             videoSinks.put(localTrackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
             localVideoTrack.addSink(localVideoSink);
+            handler.post(() -> {
+                SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
+                surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
+                surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
+                surfaceViewRenderer.setEnableHardwareScaler(true);
+                localVideoSink.setTarget(surfaceViewRenderer);
+                if (null != sessionEventListener) {
+                    KLog.p("####onLocalStream localTrackId=%s, render=%s", localTrackId, surfaceViewRenderer);
+                    sessionEventListener.onLocalStream(localTrackId, surfaceViewRenderer);
+                }
+            });
+        }
+
+        void createVideoTrack2(@NonNull VideoCapturer videoCapturer){
+            if (null != localVideoTrack){
+                KLog.p(KLog.ERROR, "localVideoTrack has created");
+                return;
+            }
+            this.videoCapturer = videoCapturer;
+            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
+            videoSource = factory.createVideoSource(videoCapturer.isScreencast());
+            videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
+            videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
+            localVideoTrack = factory.createVideoTrack(VIDEO_TRACK_ID, videoSource);
+            localVideoTrack.setEnabled(config.videoEnabled);
+//            pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
+            String localTrackId = VIDEO_TRACK_ID;
+            ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
+            videoSinks.put(localTrackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
+            localVideoTrack.addSink(localVideoSink);
+            RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
+                            RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
+                            Collections.singletonList(STREAM_ID),
+                            createEncodingList()
+            );
+            RtpTransceiver transceiver = pc.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO, transceiverInit);
+            transceiver.getSender().setTrack(localVideoTrack, false);
             handler.post(() -> {
                 SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
                 surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
