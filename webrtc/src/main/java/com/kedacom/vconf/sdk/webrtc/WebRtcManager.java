@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.webrtc;
 
+import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.media.projection.MediaProjection;
@@ -103,12 +104,13 @@ public class WebRtcManager extends Caster<Msg>{
 
     private static WebRtcManager instance;
 
-    private WebRtcManager(){
+    private WebRtcManager(Context context){
+        this.context = context;
     }
 
-    public synchronized static WebRtcManager getInstance(){
+    public synchronized static WebRtcManager getInstance(@NonNull Application context){
         if (null == instance){
-            return instance = new WebRtcManager();
+            return instance = new WebRtcManager(context);
         }
         return instance;
     }
@@ -151,8 +153,9 @@ public class WebRtcManager extends Caster<Msg>{
      * @param resultListener 结果监听器。
      *          成功: null;
      *          失败：错误码 TODO
+     * @param confEventListener 会议事件监听器
      * */
-    public void login(String e164, IResultListener resultListener){
+    public void login(String e164, IResultListener resultListener, ConfEventListener confEventListener){
         TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) get(Msg.GetSvrAddr);
 //        if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0){
 //            KLog.p(KLog.ERROR, "invalid rtcSvrAddr, have you logined APS");
@@ -170,7 +173,7 @@ public class WebRtcManager extends Caster<Msg>{
                 e.printStackTrace();
             }
 //        }
-
+        this.confEventListener = confEventListener;
         req(Msg.Login, resultListener, rtcSvrAddr);
     }
 
@@ -181,29 +184,41 @@ public class WebRtcManager extends Caster<Msg>{
      *          失败：错误码 TODO
      * */
     public void logout(IResultListener resultListener){
-
+        this.confEventListener = null;
+        stopSession();
     }
 
     /**
      * 呼叫
+     * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
      * @param peerId 对于点对点而言是对端e164，对于多方会议而言是会议e164
      **@param resultListener 结果监听器。
      *          成功: {@link MakeCallResult};
      *          失败：TODO
+     * @param sessionEventListener 会话事件监听器
      * */
-    public void makeCall(String peerId, IResultListener resultListener){
+    public void makeCall(String peerId, IResultListener resultListener, SessionEventListener sessionEventListener){
+        if (!startSession(sessionEventListener)){
+            reportFailed(-1, resultListener);
+            return;
+        }
         req(Msg.Call, resultListener, peerId, 1024, EmConfProtocol.emrtc.ordinal());
     }
 
     /**
      * 创建会议
+     * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
      * @param peerId 对于点对点而言是对端e164，对于多方会议而言是会议e164
      **@param resultListener 结果监听器。
      *          成功: {@link MakeCallResult};
      *          失败：TODO
+     * @param sessionEventListener 会话事件监听器
      * */
-    public void createConf(String peerId, IResultListener resultListener){
-        return;
+    public void createConf(String peerId, IResultListener resultListener, SessionEventListener sessionEventListener){
+        if (!startSession(sessionEventListener)){
+            reportFailed(-1, resultListener);
+            return;
+        }
 //        req(Msg.CreateConf, resultListener, peerId, 1024, EmConfProtocol.emrtc.ordinal());
     }
 
@@ -212,6 +227,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 退出会议。
      * */
     public void quitConf(){
+        stopSession();
         req(Msg.QuitConf, null, EmMtCallDisReason.emDisconnect_Normal);
     }
 
@@ -219,13 +235,20 @@ public class WebRtcManager extends Caster<Msg>{
      * 结束会议。
      * */
     public void endConf(IResultListener resultListener){
+        stopSession();
         req(Msg.EndConf, resultListener);
     }
 
     /**
      * 接受会议邀请
+     * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
+     * @param sessionEventListener 会话事件监听器
      * */
-    public void acceptInvitation(IResultListener resultListener){
+    public void acceptInvitation(IResultListener resultListener, SessionEventListener sessionEventListener){
+        if (!startSession(sessionEventListener)){
+            reportFailed(-1, resultListener);
+            return;
+        }
         req(Msg.AcceptInvitation, resultListener);
     }
 
@@ -344,6 +367,7 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case P2pConfEnded:
+                stopSession();
                 BaseTypeInt reason = (BaseTypeInt) rspContent;
                 KLog.p("P2pConfEnded: %s", reason.basetype);
                 reportFailed(-1, listener);
@@ -356,6 +380,7 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case MultipartyConfEnded:
+                stopSession();
                 reason = (BaseTypeInt) rspContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
                 if (Msg.EndConf == req) {
@@ -386,6 +411,19 @@ public class WebRtcManager extends Caster<Msg>{
         return true;
     }
 
+    @Override
+    protected boolean onTimeout(Msg req, IResultListener rspListener, Object[] reqPara) {
+        switch (req){
+            case Call:
+            case CreateConf:
+            case AcceptInvitation:
+                stopSession();
+                break;
+        }
+        return super.onTimeout(req, rspListener, reqPara);
+    }
+
+
 
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
         switch (ntfId){
@@ -393,19 +431,21 @@ public class WebRtcManager extends Caster<Msg>{
             case CallIncoming:
                 TMtCallLinkSate callLinkSate = (TMtCallLinkSate) ntfContent;
                 KLog.p("CallIncoming: %s", callLinkSate);
-                if (null != sessionEventListener) sessionEventListener.onConfInvitation();
+                if (null != confEventListener) confEventListener.onConfInvitation();
                 break;
 
             case P2pConfEnded:
+                stopSession();
                 BaseTypeInt reason = (BaseTypeInt) ntfContent;
                 KLog.p("P2pConfEnded: %s", reason.basetype);
-                if (null != sessionEventListener) sessionEventListener.onConfFinished();
+                if (null != confEventListener) confEventListener.onConfFinished();
                 break;
 
             case MultipartyConfEnded:
+                stopSession();
                 reason = (BaseTypeInt) ntfContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
-                if (null != sessionEventListener) sessionEventListener.onConfFinished();
+                if (null != confEventListener) confEventListener.onConfFinished();
                 break;
 
             case StreamListReady:
@@ -484,20 +524,12 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private boolean bSessionStarted;
-
-    /**
-     * 开始会话
-     * 会话创建webrtc相关资源。
-     * 开始会议(如{@link #makeCall(String, IResultListener)}/{@link #createConf(String, IResultListener)})
-     * 前请务必保证会话已开启，会话期间可创建多个会议。请在适当的时机停止会话以释放资源，如{@link #quitConf()}/{@link #endConf(IResultListener)}
-     * */
-    public synchronized boolean startSession(@NonNull Context ctx, @NonNull SessionEventListener listener){
+    private synchronized boolean startSession(@NonNull SessionEventListener listener){
         if (bSessionStarted){
             KLog.p(KLog.ERROR, "session has started already!");
             return false;
         }
         bSessionStarted = true;
-        context = ctx;
         sessionEventListener = listener;
 
         rtcConnector.setSignalingEventsCallback(new RtcConnectorEventListener());
@@ -551,7 +583,6 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
         bSessionStarted = false;
-        context = null;
         sessionEventListener = null;
 
         rtcConnector.setSignalingEventsCallback(null);
@@ -883,22 +914,26 @@ public class WebRtcManager extends Caster<Msg>{
 //        return true;
 //    }
 
-
     /**
-     * 事件监听器
+     * 会议事件监听器
      * */
-    public interface SessionEventListener {
+    public interface ConfEventListener {
         /**
          * 会议邀请
-         * */
+         */
         void onConfInvitation();
 
         /**
          * 会议结束
-         * */
+         */
         void onConfFinished();
+    }
+    private ConfEventListener confEventListener;
 
-
+    /**
+     * 会话监听器
+     * */
+    public interface SessionEventListener {
         /**
          * 本地流到达
          * @param streamId 本地流Id。
