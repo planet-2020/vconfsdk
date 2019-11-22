@@ -36,6 +36,7 @@ import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
+import org.webrtc.CryptoOptions;
 import org.webrtc.DataChannel;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
@@ -202,24 +203,24 @@ public class WebRtcManager extends Caster<Msg>{
             reportFailed(-1, resultListener);
             return;
         }
-        req(Msg.Call, resultListener, peerId, 1024, EmConfProtocol.emrtc.ordinal());
+        req(Msg.Call, resultListener, peerId, 1024, EmConfProtocol.emrtc);
     }
 
     /**
      * 创建会议
      * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
-     * @param peerId 对于点对点而言是对端e164，对于多方会议而言是会议e164
+     * @param confPara 创会参数
      **@param resultListener 结果监听器。
      *          成功: {@link MakeCallResult};
      *          失败：TODO
      * @param sessionEventListener 会话事件监听器
      * */
-    public void createConf(String peerId, IResultListener resultListener, SessionEventListener sessionEventListener){
+    public void createConf(ConfPara confPara, IResultListener resultListener, SessionEventListener sessionEventListener){
         if (!startSession(sessionEventListener)){
             reportFailed(-1, resultListener);
             return;
         }
-//        req(Msg.CreateConf, resultListener, peerId, 1024, EmConfProtocol.emrtc.ordinal());
+        req(Msg.CreateConf, resultListener, ToDoConverter.toTransferObj(confPara), EmConfProtocol.emrtc);
     }
 
 
@@ -551,7 +552,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         eglBase = EglBase.create();
         executor.execute(() -> {
-
             createPeerConnectionFactory(
                     eglBase,
                     new PeerConnectionFactory.Options(),
@@ -577,7 +577,7 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 停止会话
      * */
-    public synchronized void stopSession(){
+    private synchronized void stopSession(){
         if (!bSessionStarted){
             KLog.p(KLog.ERROR, "session has stopped already!");
             return;
@@ -679,6 +679,11 @@ public class WebRtcManager extends Caster<Msg>{
         // Enable DTLS for normal calls and disable for loopback calls.
         rtcConfig.enableDtlsSrtp = true;
         rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN;
+
+        // 设置srtp（Secure rtp）加密算法
+        CryptoOptions.Builder builder = CryptoOptions.builder();
+        builder.setEnableGcmCryptoSuites(true);
+        rtcConfig.cryptoOptions = builder.createCryptoOptions();
 
         PCObserver pcObserver = new PCObserver();
         PeerConnection peerConnection = factory.createPeerConnection(rtcConfig, pcObserver);

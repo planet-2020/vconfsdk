@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.webrtc;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
+import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
@@ -52,7 +53,7 @@ enum Msg {
             userParas = {
                     String.class, // 对端e164（点对点）/ 会议号（多点）
                     int.class,  // 呼叫码率
-                    int.class   // 协议类型
+                    EmConfProtocol.class   // 协议类型
             },
             rspSeq = {"Calling", "P2pConfStarted"},
             rspSeq2 = {"Calling", "P2pConfEnded"},
