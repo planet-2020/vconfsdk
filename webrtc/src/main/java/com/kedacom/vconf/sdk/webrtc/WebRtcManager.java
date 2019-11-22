@@ -940,6 +940,14 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public interface SessionEventListener {
         /**
+         *  一路空的流，该流处于所有流的前端。
+         *  主要用来配合{@link #swapStream(String, String)}使用，方便用户全屏显示某一路流。
+         *  例如：假设该空流的id为s1，需要全屏展示的流id为s2，则只需像这样调用swapStream(s1, s2)，即可全屏展示s2。
+         *
+         *  该回调先于所有流回调。
+         * */
+        void onEmptyTopStream(String streamId, View display);
+        /**
          * 本地流到达
          * @param streamId 本地流Id。
          * @param display 流默认的渲染目标 */
@@ -1397,13 +1405,23 @@ public class WebRtcManager extends Caster<Msg>{
             ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
             videoSinks.put(localTrackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
             localVideoTrack.addSink(localVideoSink);
+            ProxyVideoSink emptyVideoSink = new ProxyVideoSink(localTrackId);
+            String emptyTrackId = STREAM_ID+"-vv";
+            videoSinks.put(emptyTrackId, emptyVideoSink);
             handler.post(() -> {
                 SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
                 surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
                 surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
                 surfaceViewRenderer.setEnableHardwareScaler(true);
                 localVideoSink.setTarget(surfaceViewRenderer);
+                SurfaceViewRenderer topSurfaceViewRenderer = new SurfaceViewRenderer(context);
+                topSurfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
+                topSurfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
+                topSurfaceViewRenderer.setZOrderMediaOverlay(true);
+                topSurfaceViewRenderer.setEnableHardwareScaler(true);
+                emptyVideoSink.setTarget(topSurfaceViewRenderer);
                 if (null != sessionEventListener) {
+                    sessionEventListener.onEmptyTopStream(STREAM_ID+"-vv", topSurfaceViewRenderer);
                     KLog.p("####onLocalStream localTrackId=%s, render=%s", localTrackId, surfaceViewRenderer);
                     sessionEventListener.onLocalStream(localTrackId, surfaceViewRenderer);
                 }
