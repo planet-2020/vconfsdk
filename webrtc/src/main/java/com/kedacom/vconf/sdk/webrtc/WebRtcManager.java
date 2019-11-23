@@ -203,7 +203,9 @@ public class WebRtcManager extends Caster<Msg>{
             reportFailed(-1, resultListener);
             return;
         }
-        req(Msg.Call, resultListener, peerId, 1024, EmConfProtocol.emrtc);
+        req(Msg.Call, resultListener, peerId,
+                1024, // XXX 上层传入 ???
+                EmConfProtocol.emrtc);
     }
 
     /**
@@ -294,22 +296,49 @@ public class WebRtcManager extends Caster<Msg>{
         req(Msg.ToggleScreenShare, null, false);
     }
 
-
+    /**
+     * 是否已静音。
+     * */
+    public boolean isSilenced(){
+        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+        return null != pcWrapper && pcWrapper.config.isSilenced;
+    }
     /**
      * 设置静音。（放开/屏蔽对方语音，默认放开）
      * @param bSilence true，屏蔽对方语音；false，放开对方语音。
      * */
     public void setSilence(boolean bSilence){
-
+        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+        if (null != pcWrapper) {
+            pcWrapper.config.isSilenced = bSilence;
+            executor.execute(() -> {
+                for (AudioTrack audioTrack : pcWrapper.remoteAudioTracks) {
+                    audioTrack.setEnabled(bSilence);
+                }
+            });
+        }
     }
 
+    /**
+     * 是否已哑音。
+     * */
+    public boolean isMute(){
+        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+        return null != pcWrapper && pcWrapper.config.isMuted;
+    }
 
     /**
      * 设置哑音。（放开/屏蔽自己语音，默认放开）
      * @param bMute true，屏蔽自己语音；false，放开自己语音。
      * */
     public void setMute(boolean bMute){
-
+        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+        if (null != pcWrapper) {
+            pcWrapper.config.isMuted = bMute;
+            if (pcWrapper.localAudioTrack != null) {
+                executor.execute(() -> pcWrapper.localAudioTrack.setEnabled(bMute));
+            }
+        }
     }
 
 
@@ -982,6 +1011,8 @@ public class WebRtcManager extends Caster<Msg>{
         String videoCodec;
         int audioStartBitrate;
         String audioCodec;
+        boolean isMuted;
+        boolean isSilenced;
 
         PeerConnectionConfig(boolean videoEnabled,
                                     boolean audioEnabled,
@@ -1320,11 +1351,12 @@ public class WebRtcManager extends Caster<Msg>{
         public void onTrack(RtpTransceiver transceiver) {
             MediaStreamTrack track = transceiver.getReceiver().track();
             KLog.p("received remote track %s", track);
-            if (!(track instanceof VideoTrack)){
-                return;
-            }
             PeerConnectionWrapper pcWrapper = getPcWrapper(this);
-            pcWrapper.createRemoteVideoTrack(transceiver.getMid(), (VideoTrack) track);
+            if (track instanceof VideoTrack){
+                pcWrapper.createRemoteVideoTrack(transceiver.getMid(), (VideoTrack) track);
+            }else{
+                pcWrapper.createRemoteAudioTrack(transceiver.getMid(), (AudioTrack) track);
+            }
 
         }
 
@@ -1368,6 +1400,7 @@ public class WebRtcManager extends Caster<Msg>{
         List<VideoTrack> remoteVideoTracks = new ArrayList<>();
         AudioSource audioSource;
         AudioTrack localAudioTrack;
+        List<AudioTrack> remoteAudioTracks = new ArrayList<>();
 
         PeerConnectionWrapper(int connType, @NonNull PeerConnection pc, @NonNull PeerConnectionConfig config,
                               @NonNull SDPObserver sdpObserver, @NonNull PCObserver pcObserver) {
@@ -1518,6 +1551,12 @@ public class WebRtcManager extends Caster<Msg>{
             localAudioTrack = factory.createAudioTrack(AUDIO_TRACK_ID, audioSource);
             localAudioTrack.setEnabled(config.audioEnabled);
             audioSender = pc.addTrack(localAudioTrack, Collections.singletonList(STREAM_ID));
+        }
+
+
+        void createRemoteAudioTrack(String mid, AudioTrack track){
+            // 保存远端audioTrack用于静音
+            remoteAudioTracks.add(track);
         }
 
         void destoryAudioTrack(){
