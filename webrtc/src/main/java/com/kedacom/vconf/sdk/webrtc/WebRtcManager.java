@@ -35,6 +35,7 @@ import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
+import org.webrtc.CameraVideoCapturer;
 import org.webrtc.CryptoOptions;
 import org.webrtc.DataChannel;
 import org.webrtc.DefaultVideoDecoderFactory;
@@ -338,14 +339,22 @@ public class WebRtcManager extends Caster<Msg>{
      * 切换摄像头
      * */
     public void switchCamera(){
-
+        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+        if (null != pcWrapper) {
+            pcWrapper.switchCamera();
+        }
     }
 
     /**
-     * 当前摄像头
+     * 当前摄像头是否为前置
+     * @return true 前置；false 后置
      * */
-    public int currentCamera(){
-        return 0;
+    public boolean isCurrentFrontCamera(){
+        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+        if (null != pcWrapper) {
+            return pcWrapper.isPreferFrontCamera();
+        }
+        return true;
     }
 
     /**
@@ -1113,6 +1122,7 @@ public class WebRtcManager extends Caster<Msg>{
         boolean isRemoteAudioEnabled;
         boolean isLocalVideoEnabled;
         boolean isRemoteVideoEnabled;
+        boolean bPreferFrontCamera;
 
         PeerConnectionConfig(int videoWidth,
                             int videoHeight,
@@ -1132,6 +1142,7 @@ public class WebRtcManager extends Caster<Msg>{
             this.isRemoteAudioEnabled = true;
             this.isLocalVideoEnabled = true;
             this.isRemoteVideoEnabled = true;
+            this.bPreferFrontCamera = true;
         }
 
         PeerConnectionConfig(PeerConnectionConfig config) {
@@ -1146,6 +1157,7 @@ public class WebRtcManager extends Caster<Msg>{
             this.isRemoteAudioEnabled = config.isRemoteAudioEnabled;
             this.isLocalVideoEnabled = config.isLocalVideoEnabled;
             this.isRemoteVideoEnabled = config.isRemoteVideoEnabled;
+            this.bPreferFrontCamera = config.bPreferFrontCamera;
         }
     }
 
@@ -1886,6 +1898,16 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
 
+        boolean isPreferFrontCamera(){
+            return config.bPreferFrontCamera;
+        }
+
+        void switchCamera(){
+            config.bPreferFrontCamera = !config.bPreferFrontCamera;
+            if (null != videoCapturer){
+                executor.execute(() -> ((CameraVideoCapturer)videoCapturer).switchCamera(null));
+            }
+        }
 
     }
 
