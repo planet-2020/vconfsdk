@@ -301,7 +301,7 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public boolean isSilenced(){
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
-        return null != pcWrapper && pcWrapper.config.isSilenced;
+        return null != pcWrapper && pcWrapper.isSilenced();
     }
     /**
      * 设置静音。（放开/屏蔽对方语音，默认放开）
@@ -310,12 +310,7 @@ public class WebRtcManager extends Caster<Msg>{
     public void setSilence(boolean bSilence){
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
         if (null != pcWrapper) {
-            pcWrapper.config.isSilenced = bSilence;
-            executor.execute(() -> {
-                for (AudioTrack audioTrack : pcWrapper.remoteAudioTracks) {
-                    audioTrack.setEnabled(bSilence);
-                }
-            });
+            pcWrapper.setSilence(bSilence);
         }
     }
 
@@ -324,7 +319,7 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public boolean isMute(){
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
-        return null != pcWrapper && pcWrapper.config.isMuted;
+        return null != pcWrapper && pcWrapper.isMute();
     }
 
     /**
@@ -334,10 +329,7 @@ public class WebRtcManager extends Caster<Msg>{
     public void setMute(boolean bMute){
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
         if (null != pcWrapper) {
-            pcWrapper.config.isMuted = bMute;
-            if (pcWrapper.localAudioTrack != null) {
-                executor.execute(() -> pcWrapper.localAudioTrack.setEnabled(bMute));
-            }
+            pcWrapper.setMute(bMute);
         }
     }
 
@@ -1385,6 +1377,112 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+
+    private String getMid(String sdpDescription, boolean bAudio){
+//        KLog.p("bAudio =%s, sdp=%s", bAudio, sdpDescription);
+        final String[] lines = sdpDescription.split("\r\n");
+        String mediaHead = bAudio ? "m=audio" : "m=video";
+        boolean gotMediaHead = false;
+        for (String line : lines) {
+            if (line.startsWith(mediaHead)) {
+                gotMediaHead = true;
+                continue;
+            }
+            if (line.startsWith("a=mid:") && gotMediaHead) {
+                return line.substring("a=mid:".length());
+            }
+        }
+
+        KLog.p(KLog.WARN, "getMid null");
+        return null;
+    }
+
+    private List<String> getAllMids(String sdpDescription){
+//        KLog.p("sdp=%s", sdpDescription);
+        final String[] lines = sdpDescription.split("\r\n");
+        List<String> mids = new ArrayList<>();
+        for (String line : lines) {
+            if (line.startsWith("a=mid:")) {
+                mids.add(line.substring("a=mid:".length()));
+            }
+        }
+        return mids;
+    }
+
+    private String getFingerPrint(String sdpDescription){
+//        KLog.p("sdp=%s", sdpDescription);
+        final String[] lines = sdpDescription.split("\r\n");
+        for (String line : lines) {
+            if (line.startsWith("a=fingerprint:sha-256 ")) {
+                return line.substring("a=fingerprint:sha-256 ".length());
+            }
+        }
+
+        KLog.p(KLog.WARN, "getFingerPrint null");
+        return null;
+    }
+
+    /**
+     * 创建Encoding列表（具体内容由需求决定）
+     * XXX：sdk有意屏蔽了创建Encoding的构造，此处使用了反射强行创建Encoding对象（很可能有问题）。
+     * */
+    private List<RtpParameters.Encoding> encodingList;
+    private List<RtpParameters.Encoding> createEncodingList(){
+        if (null != encodingList){
+            return encodingList;
+        }
+        List<RtpParameters.Encoding> encodings = new ArrayList<>();
+        try {
+            Class<?> clz = Class.forName("org.webrtc.RtpParameters$Encoding");
+            Constructor<?> ctor = clz.getDeclaredConstructor(String.class, boolean.class, Double.class);
+            ctor.setAccessible(true);
+            encodings.add((RtpParameters.Encoding) ctor.newInstance("h", true, 1.0));
+            encodings.add((RtpParameters.Encoding) ctor.newInstance("m", true, 0.5));
+            encodings.add((RtpParameters.Encoding) ctor.newInstance("l", true, 0.25));
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        encodingList = encodings;
+        return encodings;
+    }
+
+    private RtpParameters.Encoding createEncoding(String rid, double scaleDwon){
+        RtpParameters.Encoding encoding = null;
+        try {
+            Class<?> clz = Class.forName("org.webrtc.RtpParameters$Encoding");
+            Constructor<?> ctor = clz.getDeclaredConstructor(String.class, boolean.class, Double.class);
+            ctor.setAccessible(true);
+            encoding = (RtpParameters.Encoding) ctor.newInstance(rid, true, scaleDwon);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        return encoding;
+    }
+
+
+
+
+
+
+    /**
+     * PeerConnection包装类
+     * */
     private class PeerConnectionWrapper{
 
         final String STREAM_ID = "TT-Android-"+System.currentTimeMillis();
@@ -1666,105 +1764,35 @@ public class WebRtcManager extends Caster<Msg>{
                 surfaceTextureHelper = null;
             }
         }
-    }
 
 
-    private String getMid(String sdpDescription, boolean bAudio){
-//        KLog.p("bAudio =%s, sdp=%s", bAudio, sdpDescription);
-        final String[] lines = sdpDescription.split("\r\n");
-        String mediaHead = bAudio ? "m=audio" : "m=video";
-        boolean gotMediaHead = false;
-        for (String line : lines) {
-            if (line.startsWith(mediaHead)) {
-                gotMediaHead = true;
-                continue;
-            }
-            if (line.startsWith("a=mid:") && gotMediaHead) {
-                return line.substring("a=mid:".length());
-            }
+        public boolean isSilenced(){
+            return config.isSilenced;
         }
 
-        KLog.p(KLog.WARN, "getMid null");
-        return null;
-    }
-
-    private List<String> getAllMids(String sdpDescription){
-//        KLog.p("sdp=%s", sdpDescription);
-        final String[] lines = sdpDescription.split("\r\n");
-        List<String> mids = new ArrayList<>();
-        for (String line : lines) {
-            if (line.startsWith("a=mid:")) {
-                mids.add(line.substring("a=mid:".length()));
-            }
+        public void setSilence(boolean bSilence){
+            config.isSilenced = bSilence;
+            executor.execute(() -> {
+                for (AudioTrack audioTrack : remoteAudioTracks) {
+                    audioTrack.setEnabled(bSilence);
+                }
+            });
         }
-        return mids;
-    }
 
-    private String getFingerPrint(String sdpDescription){
-//        KLog.p("sdp=%s", sdpDescription);
-        final String[] lines = sdpDescription.split("\r\n");
-        for (String line : lines) {
-            if (line.startsWith("a=fingerprint:sha-256 ")) {
-                return line.substring("a=fingerprint:sha-256 ".length());
+        public boolean isMute(){
+            return config.isMuted;
+        }
+
+        public void setMute(boolean bMute){
+            config.isMuted = bMute;
+            if (localAudioTrack != null) {
+                executor.execute(() -> localAudioTrack.setEnabled(bMute));
             }
         }
 
-        KLog.p(KLog.WARN, "getFingerPrint null");
-        return null;
     }
 
-    /**
-     * 创建Encoding列表（具体内容由需求决定）
-     * XXX：sdk有意屏蔽了创建Encoding的构造，此处使用了反射强行创建Encoding对象（很可能有问题）。
-     * */
-    private List<RtpParameters.Encoding> encodingList;
-    private List<RtpParameters.Encoding> createEncodingList(){
-        if (null != encodingList){
-            return encodingList;
-        }
-        List<RtpParameters.Encoding> encodings = new ArrayList<>();
-        try {
-            Class<?> clz = Class.forName("org.webrtc.RtpParameters$Encoding");
-            Constructor<?> ctor = clz.getDeclaredConstructor(String.class, boolean.class, Double.class);
-            ctor.setAccessible(true);
-            encodings.add((RtpParameters.Encoding) ctor.newInstance("h", true, 1.0));
-            encodings.add((RtpParameters.Encoding) ctor.newInstance("m", true, 0.5));
-            encodings.add((RtpParameters.Encoding) ctor.newInstance("l", true, 0.25));
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
-        encodingList = encodings;
-        return encodings;
-    }
 
-    static RtpParameters.Encoding createEncoding(String rid, double scaleDwon){
-        RtpParameters.Encoding encoding = null;
-        try {
-            Class<?> clz = Class.forName("org.webrtc.RtpParameters$Encoding");
-            Constructor<?> ctor = clz.getDeclaredConstructor(String.class, boolean.class, Double.class);
-            ctor.setAccessible(true);
-            encoding = (RtpParameters.Encoding) ctor.newInstance(rid, true, scaleDwon);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
-        return encoding;
-    }
 
 
 
