@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -624,9 +623,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         for (ProxyVideoSink videoSink : videoSinks.values()){
-            if (null != videoSink.target){
-                ((SurfaceViewRenderer)videoSink.target).release();
-            }
+            videoSink.release();
         }
         videoSinks.clear();
 
@@ -773,16 +770,11 @@ public class WebRtcManager extends Caster<Msg>{
 
     private class ProxyVideoSink implements VideoSink {
         private String name;
-        private VideoSink target;
+        private List<Display> targets = new ArrayList<>();
         private long timestamp = System.currentTimeMillis();
 
         ProxyVideoSink(String name) {
             this.name = name;
-        }
-
-        ProxyVideoSink(String name, VideoSink target) {
-            this.name = name;
-            this.target = target;
         }
 
         @Override
@@ -790,72 +782,149 @@ public class WebRtcManager extends Caster<Msg>{
             long curts = System.currentTimeMillis();
             if (curts - timestamp > 5000){
                 timestamp = curts;
-                KLog.p("%s onFrame, target %s", name, target);
-                if (target == null) {
-                    KLog.p("Dropping frame in proxy because target is null.");
-                    return;
+                KLog.p("%s onFrame ", name);
+            }
+
+            for (Display target : targets){
+                if (!target.enabled) {
+                    if (curts - timestamp > 5000) {
+                        KLog.p("Dropping frame because display %s is disabled ", target);
+                    }
+                    continue;
                 }
+                target.onFrame(frame);
             }
 
-            if (target == null) {
-                return;
-            }
-
-            target.onFrame(frame);
         }
 
-        synchronized void setTarget(VideoSink target) {
-            this.target = target;
+        synchronized void addTarget(Display target) {
+            targets.add(target);
+        }
+
+        synchronized boolean delTarget(Display target) {
+            return targets.remove(target);
+        }
+
+        synchronized void release() {
+            for (Display display : targets){
+                display.release();
+            }
+            targets.clear();
         }
 
     }
 
 
     /**
-     * 交换流。
-     * 若原本stream1展示在view1上，stream2展示在view2上，
-     * 交换后stream1展示在view2上，stream2展示在view1上。
+     * 用于显示码流的控件。
      * */
-    public boolean swapStream(String streamId1, String streamId2){
-        ProxyVideoSink srcSink = videoSinks.get(streamId1);
-        ProxyVideoSink dstSink = videoSinks.get(streamId2);
-        if (null == srcSink){
-            KLog.p(KLog.ERROR, "null == srcSink");
+    public class Display extends SurfaceViewRenderer{
+
+        private boolean enabled = true;
+
+        private Display(Context context) {
+            super(context);
+            init(eglBase.getEglBaseContext(), null);
+            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
+            setEnableHardwareScaler(true);
+        }
+
+        public Display() {
+            this(context);
+        }
+
+        /**
+         * 设置是否在所有Display最前端展示
+         * */
+        public void setOnTopOverOtherDispalys(boolean bOnTop){
+            setZOrderMediaOverlay(bOnTop);
+        }
+
+        public boolean isEnable() {
+            return enabled;
+        }
+        /**
+         * 设置是否使能。
+         * 若禁用则Display不会展示码流。默认是使能的。
+         * */
+        public void setEnable(boolean enable){
+            enabled = enable;
+        }
+
+    }
+
+    public static final String STREAMID_NULL = "NULL";
+    /**
+     * 将Display绑定到码流。
+     * 一路码流可以绑定多个Display
+     * @param streamId 码流Id。
+     *                 若绑定到{@link #STREAMID_NULL}则该Display不会展示码流，相当于于解除绑定。
+     *                 NOTE：不能通过{@link #getDisplay(String)}找回绑定到{@link #STREAMID_NULL}的Display
+     * */
+    public boolean bindDisplay(Display display, String streamId){
+        ProxyVideoSink sink = videoSinks.get(streamId);
+        if (null == sink && !STREAMID_NULL.equals(streamId)){
+            KLog.p(KLog.ERROR, "no such stream %s", streamId);
             return false;
         }
-        if (null == dstSink){
-            KLog.p(KLog.ERROR, "null == dstSink");
-            return false;
+
+        String oldStreamId = getStreamId(display);
+        if (null != oldStreamId){
+            ProxyVideoSink oldSink = videoSinks.get(oldStreamId);
+            oldSink.delTarget(display);
         }
-        VideoSink srcTarget = srcSink.target;
-        VideoSink dstTarget = dstSink.target;
-        srcSink.setTarget(dstTarget);
-        dstSink.setTarget(srcTarget);
+        if (null != sink) {
+            sink.addTarget(display);
+        }
 
         return true;
     }
 
 
     /**
-     * 根据流的目标视图获取流ID
-     * @param display 流的目标视图，流投射到该视图上展示。该参数为{@link SessionEventListener}的onXxxStream回调传出给用户的。
+     * 切换画面展示
      * */
-    public String getStreamId(View display){
+    public void swapDisplay(Display display1, Display display2){
+        String streamId1 = getStreamId(display1);
+        String streamId2 = getStreamId(display2);
+        if (null == streamId1) streamId1 = STREAMID_NULL;
+        if (null == streamId2) streamId2 = STREAMID_NULL;
+        bindDisplay(display1, streamId2);
+        bindDisplay(display2, streamId1);
+    }
+
+
+    /**
+     * 根据流的目标视图获取流ID
+     * @param display 流的目标视图，流投射到该视图上展示。
+     * @see #bindDisplay(Display, String)
+     * */
+    public String getStreamId(Display display){
         for (Map.Entry<String, ProxyVideoSink> entry : videoSinks.entrySet()){
-            if (display == entry.getValue().target){
-                return entry.getKey();
+            for (Display target : entry.getValue().targets){
+                if (display == target){
+                    return entry.getKey();
+                }
             }
         }
         return null;
     }
 
     /**
-     * 根据流ID获取目标视图
-     * @param streamId 流Id。该参数为{@link SessionEventListener}的onXxxStream回调传出给用户的。
+     * 获取流信息
      * */
-    public View getDisplay(String streamId){
+    public StreamInfo getStreamInfo(String streamId){
+        return null;
+    }
+
+    /**
+     * 根据流ID获取目标视图
+     * @param streamId 流Id
+     * @see  #bindDisplay(Display, String)
+     * */
+    public List<Display> getDisplay(String streamId){
         ProxyVideoSink videoSink = videoSinks.get(streamId);
-        return null != videoSink ? (SurfaceViewRenderer) videoSink.target : null;
+        return null != videoSink ? videoSink.targets : null;
     }
 
 
@@ -983,25 +1052,15 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public interface SessionEventListener {
         /**
-         *  一路空的流，该流处于所有流的前端。
-         *  主要用来配合{@link #swapStream(String, String)}使用，方便用户全屏显示某一路流。
-         *  例如：假设该空流的id为s1，需要全屏展示的流id为s2，则只需像这样调用swapStream(s1, s2)，即可全屏展示s2。
-         *
-         *  该回调先于所有流回调。
+         * 流来了
+         * 正常情形下，用户收到该回调应创建{@link Display}并调用{@link #bindDisplay(Display, String)}以使码流展示在Display上。
          * */
-        void onEmptyTopStream(String streamId, View display);
+        void onStream(StreamInfo stream);
         /**
-         * 本地流到达
-         * @param streamId 本地流Id。
-         * @param display 流默认的渲染目标 */
-        void onLocalStream(String streamId, View display);
-        /**
-         * 远端流到达
-         * @param stream 流信息
-         * @param display 流默认的渲染目标
+         * 流走了
+         * 用户不需要处理stream和Display的绑定关系，只需处理界面相关控件的显隐。
          * */
-        void onRemoteStream(StreamInfo stream, View display);
-        void onRemoteStreamRemoved(StreamInfo stream);
+        void onStreamRemoved(StreamInfo stream);
     }
     private SessionEventListener sessionEventListener;
 
@@ -1486,8 +1545,8 @@ public class WebRtcManager extends Caster<Msg>{
     private class PeerConnectionWrapper{
 
         final String STREAM_ID = "TT-Android-"+System.currentTimeMillis();
-        final String VIDEO_TRACK_ID = STREAM_ID+"-v0";
-        final String AUDIO_TRACK_ID = STREAM_ID+"-a0";
+        final String LOCAL_VIDEO_ID = STREAM_ID+"-v0";
+        final String LOCAL_AUDIO_ID = STREAM_ID+"-a0";
 
         int connType;
         int curMediaType;
@@ -1551,72 +1610,58 @@ public class WebRtcManager extends Caster<Msg>{
             videoSource = factory.createVideoSource(videoCapturer.isScreencast());
             videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
             videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
-            localVideoTrack = factory.createVideoTrack(VIDEO_TRACK_ID, videoSource);
+            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_ID, videoSource);
             localVideoTrack.setEnabled(config.videoEnabled);
             pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
-            String localTrackId = VIDEO_TRACK_ID;
+            String localTrackId = LOCAL_VIDEO_ID;
             ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
-            videoSinks.put(localTrackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
+            videoSinks.put(localTrackId, localVideoSink);
             localVideoTrack.addSink(localVideoSink);
-            ProxyVideoSink emptyVideoSink = new ProxyVideoSink(localTrackId);
-            String emptyTrackId = STREAM_ID+"-vv";
-            videoSinks.put(emptyTrackId, emptyVideoSink);
             handler.post(() -> {
-                SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
-                surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
-                surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
-                surfaceViewRenderer.setEnableHardwareScaler(true);
-                localVideoSink.setTarget(surfaceViewRenderer);
-                SurfaceViewRenderer topSurfaceViewRenderer = new SurfaceViewRenderer(context);
-                topSurfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
-                topSurfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
-                topSurfaceViewRenderer.setZOrderMediaOverlay(true);
-                topSurfaceViewRenderer.setEnableHardwareScaler(true);
-                emptyVideoSink.setTarget(topSurfaceViewRenderer);
                 if (null != sessionEventListener) {
-                    sessionEventListener.onEmptyTopStream(STREAM_ID+"-vv", topSurfaceViewRenderer);
-                    KLog.p("####onLocalStream localTrackId=%s, render=%s", localTrackId, surfaceViewRenderer);
-                    sessionEventListener.onLocalStream(localTrackId, surfaceViewRenderer);
+                    StreamInfo streamInfo = new StreamInfo(localTrackId, videoCapturer.isScreencast() ? StreamInfo.Type_LocalScreenShare : StreamInfo.Type_LocalCamera);
+                    KLog.p("####onLocalStream stream info=%s", streamInfo);
+                    sessionEventListener.onStream(streamInfo);
                 }
             });
         }
 
-        void createVideoTrack2(@NonNull VideoCapturer videoCapturer){
-            if (null != localVideoTrack){
-                KLog.p(KLog.ERROR, "localVideoTrack has created");
-                return;
-            }
-            this.videoCapturer = videoCapturer;
-            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
-            videoSource = factory.createVideoSource(videoCapturer.isScreencast());
-            videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
-            videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
-            localVideoTrack = factory.createVideoTrack(VIDEO_TRACK_ID, videoSource);
-            localVideoTrack.setEnabled(config.videoEnabled);
-//            pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
-            String localTrackId = VIDEO_TRACK_ID;
-            ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
-            videoSinks.put(localTrackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
-            localVideoTrack.addSink(localVideoSink);
-            RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
-                            RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
-                            Collections.singletonList(STREAM_ID),
-                            createEncodingList()
-            );
-            RtpTransceiver transceiver = pc.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO, transceiverInit);
-            transceiver.getSender().setTrack(localVideoTrack, false);
-            handler.post(() -> {
-                SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
-                surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
-                surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
-                surfaceViewRenderer.setEnableHardwareScaler(true);
-                localVideoSink.setTarget(surfaceViewRenderer);
-                if (null != sessionEventListener) {
-                    KLog.p("####onLocalStream localTrackId=%s, render=%s", localTrackId, surfaceViewRenderer);
-                    sessionEventListener.onLocalStream(localTrackId, surfaceViewRenderer);
-                }
-            });
-        }
+//        void createVideoTrack2(@NonNull VideoCapturer videoCapturer){
+//            if (null != localVideoTrack){
+//                KLog.p(KLog.ERROR, "localVideoTrack has created");
+//                return;
+//            }
+//            this.videoCapturer = videoCapturer;
+//            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
+//            videoSource = factory.createVideoSource(videoCapturer.isScreencast());
+//            videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
+//            videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
+//            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_ID, videoSource);
+//            localVideoTrack.setEnabled(config.videoEnabled);
+////            pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
+//            String localTrackId = LOCAL_VIDEO_ID;
+//            ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
+//            videoSinks.put(localTrackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
+//            localVideoTrack.addSink(localVideoSink);
+//            RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
+//                            RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
+//                            Collections.singletonList(STREAM_ID),
+//                            createEncodingList()
+//            );
+//            RtpTransceiver transceiver = pc.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO, transceiverInit);
+//            transceiver.getSender().setTrack(localVideoTrack, false);
+//            handler.post(() -> {
+//                SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
+//                surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
+//                surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
+//                surfaceViewRenderer.setEnableHardwareScaler(true);
+//                localVideoSink.addTarget(surfaceViewRenderer);
+//                if (null != sessionEventListener) {
+//                    KLog.p("####onLocalStream localTrackId=%s, render=%s", localTrackId, surfaceViewRenderer);
+//                    sessionEventListener.onLocalStream(localTrackId, surfaceViewRenderer);
+//                }
+//            });
+//        }
 
 
         void createRemoteVideoTrack(String mid, VideoTrack track){
@@ -1646,16 +1691,12 @@ public class WebRtcManager extends Caster<Msg>{
                     return;
                 }
 
-                SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
-                surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
-                surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
-                surfaceViewRenderer.setEnableHardwareScaler(true);
-                videoSink.setTarget(surfaceViewRenderer);
-
                 if (null != sessionEventListener) {
-                    StreamInfo streamInfo = new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId);
+                    StreamInfo streamInfo = new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId,
+                            StreamInfo.Type_RemoteCamera // FIXME 这里需要区分远端桌面共享，怎么区分???
+                    );
                     KLog.p("####onRemoteStream, streamInfo=%s", streamInfo);
-                    sessionEventListener.onRemoteStream(streamInfo, surfaceViewRenderer);
+                    sessionEventListener.onStream(streamInfo);
 //                    // FORDEBUG 仅调试
 //                    sessionEventListener.onRemoteStream(new StreamInfo(0, 0, streamId), surfaceViewRenderer);
                 }
@@ -1668,7 +1709,7 @@ public class WebRtcManager extends Caster<Msg>{
         private RtpSender audioSender;
         void createAudioTrack(){
             audioSource = factory.createAudioSource(new MediaConstraints());
-            localAudioTrack = factory.createAudioTrack(AUDIO_TRACK_ID, audioSource);
+            localAudioTrack = factory.createAudioTrack(LOCAL_AUDIO_ID, audioSource);
             localAudioTrack.setEnabled(config.audioEnabled);
             audioSender = pc.addTrack(localAudioTrack, Collections.singletonList(STREAM_ID));
         }
