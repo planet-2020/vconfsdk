@@ -844,6 +844,28 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    /**
+     * 根据流的目标视图获取流ID
+     * @param display 流的目标视图，流投射到该视图上展示。该参数为{@link SessionEventListener}的onXxxStream回调传出给用户的。
+     * */
+    public String getStreamId(View display){
+        for (Map.Entry<String, ProxyVideoSink> entry : videoSinks.entrySet()){
+            if (display == entry.getValue().target){
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 根据流ID获取目标视图
+     * @param streamId 流Id。该参数为{@link SessionEventListener}的onXxxStream回调传出给用户的。
+     * */
+    public View getDisplay(String streamId){
+        ProxyVideoSink videoSink = videoSinks.get(streamId);
+        return null != videoSink ? (SurfaceViewRenderer) videoSink.target : null;
+    }
+
 
     private @Nullable VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
         final String[] deviceNames = enumerator.getDeviceNames();
