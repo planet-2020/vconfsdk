@@ -301,7 +301,7 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public boolean isSilenced(){
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
-        return null != pcWrapper && pcWrapper.isSilenced();
+        return null != pcWrapper && !pcWrapper.isRemoteAudioEnabled();
     }
     /**
      * 设置静音。（放开/屏蔽对方语音，默认放开）
@@ -310,7 +310,7 @@ public class WebRtcManager extends Caster<Msg>{
     public void setSilence(boolean bSilence){
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
         if (null != pcWrapper) {
-            pcWrapper.setSilence(bSilence);
+            pcWrapper.setRemoteAudioEnable(!bSilence);
         }
     }
 
@@ -319,7 +319,7 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public boolean isMute(){
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
-        return null != pcWrapper && pcWrapper.isMute();
+        return null != pcWrapper && !pcWrapper.isLocalAudioEnabled();
     }
 
     /**
@@ -329,7 +329,7 @@ public class WebRtcManager extends Caster<Msg>{
     public void setMute(boolean bMute){
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
         if (null != pcWrapper) {
-            pcWrapper.setMute(bMute);
+            pcWrapper.setLocalAudioEnable(!bMute);
         }
     }
 
@@ -352,14 +352,32 @@ public class WebRtcManager extends Caster<Msg>{
      * 开启/关闭摄像头
      * */
     public void setCameraEnable(final boolean enable) {
-
+        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+        if (null != pcWrapper) {
+            pcWrapper.setLocalVideoEnable(enable);
+        }
     }
 
     /**
      * 开启/关闭视频
      * */
     public void setVideoEnable(final boolean enable) {
-
+        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+        if (null != pcWrapper) {
+            pcWrapper.setLocalVideoEnable(enable);
+        }
+        pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+        if (null != pcWrapper) {
+            pcWrapper.setRemoteVideoEnable(enable);
+        }
+        pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_PUBLISHER);
+        if (null != pcWrapper) {
+            pcWrapper.setLocalVideoEnable(enable);
+        }
+        pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
+        if (null != pcWrapper) {
+            pcWrapper.setRemoteVideoEnable(enable);
+        }
     }
 
     private boolean onRsp(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas) {
@@ -559,8 +577,6 @@ public class WebRtcManager extends Caster<Msg>{
         int videoWidth = context.getResources().getDisplayMetrics().widthPixels;
         int videoHeight = context.getResources().getDisplayMetrics().heightPixels;
         PeerConnectionConfig pubConnConfig = new PeerConnectionConfig(
-                        true,
-                        true,
                         videoWidth,
                         videoHeight,
                         20,
@@ -1086,8 +1102,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     private class PeerConnectionConfig{
-        boolean videoEnabled;
-        boolean audioEnabled;
         int videoWidth;
         int videoHeight;
         int videoFps;
@@ -1095,20 +1109,18 @@ public class WebRtcManager extends Caster<Msg>{
         String videoCodec;
         int audioStartBitrate;
         String audioCodec;
-        boolean isMuted;
-        boolean isSilenced;
+        boolean isLocalAudioEnabled;
+        boolean isRemoteAudioEnabled;
+        boolean isLocalVideoEnabled;
+        boolean isRemoteVideoEnabled;
 
-        PeerConnectionConfig(boolean videoEnabled,
-                                    boolean audioEnabled,
-                                    int videoWidth,
-                                    int videoHeight,
-                                    int videoFps,
-                                    int videoMaxBitrate,
-                                    String videoCodec,
-                                    int audioStartBitrate,
-                                    String audioCodec) {
-            this.videoEnabled = videoEnabled;
-            this.audioEnabled = audioEnabled;
+        PeerConnectionConfig(int videoWidth,
+                            int videoHeight,
+                            int videoFps,
+                            int videoMaxBitrate,
+                            String videoCodec,
+                            int audioStartBitrate,
+                            String audioCodec) {
             this.videoWidth = videoWidth;
             this.videoHeight = videoHeight;
             this.videoFps = videoFps;
@@ -1116,11 +1128,13 @@ public class WebRtcManager extends Caster<Msg>{
             this.videoCodec = videoCodec;
             this.audioStartBitrate = audioStartBitrate;
             this.audioCodec = audioCodec;
+            this.isLocalAudioEnabled = true;
+            this.isRemoteAudioEnabled = true;
+            this.isLocalVideoEnabled = true;
+            this.isRemoteVideoEnabled = true;
         }
 
         PeerConnectionConfig(PeerConnectionConfig config) {
-            this.videoEnabled = config.videoEnabled;
-            this.audioEnabled = config.audioEnabled;
             this.videoWidth = config.videoWidth;
             this.videoHeight = config.videoHeight;
             this.videoFps = config.videoFps;
@@ -1128,6 +1142,10 @@ public class WebRtcManager extends Caster<Msg>{
             this.videoCodec = config.videoCodec;
             this.audioStartBitrate = config.audioStartBitrate;
             this.audioCodec = config.audioCodec;
+            this.isLocalAudioEnabled = config.isLocalAudioEnabled;
+            this.isRemoteAudioEnabled = config.isRemoteAudioEnabled;
+            this.isLocalVideoEnabled = config.isLocalVideoEnabled;
+            this.isRemoteVideoEnabled = config.isRemoteVideoEnabled;
         }
     }
 
@@ -1146,20 +1164,22 @@ public class WebRtcManager extends Caster<Msg>{
                 pcWrapper.curMediaType = mediaType;
                 VideoCapturer videoCapturer = null;
                 if ((CommonDef.MEDIA_TYPE_VIDEO == mediaType
-                        || CommonDef.MEDIA_TYPE_ASS_VIDEO == mediaType)
-                        && pcWrapper.config.videoEnabled){
+                        || CommonDef.MEDIA_TYPE_ASS_VIDEO == mediaType)){
                     if (CommonDef.CONN_TYPE_PUBLISHER == connType) {
                         videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
                     }else if (CommonDef.CONN_TYPE_ASS_PUBLISHER == connType) {
                         videoCapturer = createScreenCapturer();
                     }
                 }
-
                 if (null != videoCapturer) {
                     pcWrapper.createVideoTrack(videoCapturer);
 //                    pcWrapper.createVideoTrack2(videoCapturer);
                 }
-                pcWrapper.createAudioTrack();
+
+                if ((CommonDef.MEDIA_TYPE_AUDIO == mediaType
+                        || CommonDef.MEDIA_TYPE_AV == mediaType)) {
+                    pcWrapper.createAudioTrack();
+                }
 
                 pcWrapper.pc.createOffer(pcWrapper.sdpObserver, new MediaConstraints());
                 if (CommonDef.MEDIA_TYPE_AV == mediaType){
@@ -1622,7 +1642,7 @@ public class WebRtcManager extends Caster<Msg>{
             videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
             videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
             localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_ID, videoSource);
-            localVideoTrack.setEnabled(config.videoEnabled);
+            localVideoTrack.setEnabled(config.isLocalVideoEnabled);
             pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
             String localTrackId = LOCAL_VIDEO_ID;
             ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
@@ -1678,7 +1698,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         void createRemoteVideoTrack(String mid, VideoTrack track){
             remoteVideoTracks.add(track);
-            track.setEnabled(config.videoEnabled);
+            track.setEnabled(config.isRemoteVideoEnabled);
             ProxyVideoSink videoSink = new ProxyVideoSink(mid);
             videoSinks.put(mid, videoSink);
             track.addSink(videoSink);
@@ -1720,13 +1740,13 @@ public class WebRtcManager extends Caster<Msg>{
         void createAudioTrack(){
             audioSource = factory.createAudioSource(new MediaConstraints());
             localAudioTrack = factory.createAudioTrack(LOCAL_AUDIO_ID, audioSource);
-            localAudioTrack.setEnabled(config.audioEnabled);
+            localAudioTrack.setEnabled(config.isLocalAudioEnabled);
             audioSender = pc.addTrack(localAudioTrack, Collections.singletonList(STREAM_ID));
         }
 
 
         void createRemoteAudioTrack(String mid, AudioTrack track){
-            // 保存远端audioTrack用于静音
+            track.setEnabled(config.isRemoteAudioEnabled);
             remoteAudioTracks.add(track);
         }
 
@@ -1817,29 +1837,55 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-        public boolean isSilenced(){
-            return config.isSilenced;
+        boolean isRemoteAudioEnabled(){
+            return config.isRemoteAudioEnabled;
         }
 
-        public void setSilence(boolean bSilence){
-            config.isSilenced = bSilence;
+        void setRemoteAudioEnable(boolean bEnable){
+            config.isRemoteAudioEnabled = bEnable;
             executor.execute(() -> {
                 for (AudioTrack audioTrack : remoteAudioTracks) {
-                    audioTrack.setEnabled(bSilence);
+                    audioTrack.setEnabled(bEnable);
                 }
             });
         }
 
-        public boolean isMute(){
-            return config.isMuted;
+        boolean isLocalAudioEnabled(){
+            return config.isLocalAudioEnabled;
         }
 
-        public void setMute(boolean bMute){
-            config.isMuted = bMute;
+        void setLocalAudioEnable(boolean bEnable){
+            config.isLocalAudioEnabled = bEnable;
             if (localAudioTrack != null) {
-                executor.execute(() -> localAudioTrack.setEnabled(bMute));
+                executor.execute(() -> localAudioTrack.setEnabled(bEnable));
             }
         }
+
+
+        boolean isRemoteVideoEnabled(){
+            return config.isRemoteVideoEnabled;
+        }
+
+        void setRemoteVideoEnable(boolean bEnable){
+            config.isRemoteVideoEnabled = bEnable;
+            executor.execute(() -> {
+                for (VideoTrack videoTrack : remoteVideoTracks) {
+                    videoTrack.setEnabled(bEnable);
+                }
+            });
+        }
+
+        boolean isLocalVideoEnabled(){
+            return config.isLocalVideoEnabled;
+        }
+
+        void setLocalVideoEnable(boolean bEnable){
+            config.isLocalVideoEnabled = bEnable;
+            if (localVideoTrack != null) {
+                executor.execute(() -> localVideoTrack.setEnabled(bEnable));
+            }
+        }
+
 
     }
 
