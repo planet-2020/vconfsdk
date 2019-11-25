@@ -16,6 +16,8 @@ import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
 import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
+import com.kedacom.vconf.sdk.webrtc.bean.StreamInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -80,6 +82,20 @@ final class ToDoConverter {
         }
 
         return to;
+    }
+
+    static StreamInfo fromTransferObj(TRtcStreamInfo rtcStreamInfo) {
+        int type;
+        if (rtcStreamInfo.bAudio){
+            type = StreamInfo.Type_Unknown;
+        }else{
+            if (rtcStreamInfo.bAss){
+                type = StreamInfo.Type_RemoteScreenShare;
+            }else{
+                type = StreamInfo.Type_RemoteCamera;
+            }
+        }
+        return new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, rtcStreamInfo.achStreamId, type);
     }
 
 }

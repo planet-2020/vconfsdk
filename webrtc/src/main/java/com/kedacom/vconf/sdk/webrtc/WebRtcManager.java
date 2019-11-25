@@ -99,6 +99,7 @@ public class WebRtcManager extends Caster<Msg>{
     private List<PeerConnectionWrapper> connWrapperList = new ArrayList<>();
     private List<TRtcStreamInfo> streamInfos = new ArrayList<>();
     private BiMap<String, String> midStreamIdMap = HashBiMap.create();
+    private List<StreamInfo> localStreamInfos = new ArrayList<>();
 
     private Handler handler = new Handler(Looper.getMainLooper());
 
@@ -914,6 +915,16 @@ public class WebRtcManager extends Caster<Msg>{
      * 获取流信息
      * */
     public StreamInfo getStreamInfo(String streamId){
+        for (StreamInfo localStreamInfo : localStreamInfos){
+            if (localStreamInfo.streamId.equals(streamId)){
+                return localStreamInfo;
+            }
+        }
+        for (TRtcStreamInfo remoteStreamInfo : streamInfos){
+            if (remoteStreamInfo.achStreamId.equals(streamId)){
+                return ToDoConverter.fromTransferObj(remoteStreamInfo);
+            }
+        }
         return null;
     }
 
@@ -1621,6 +1632,7 @@ public class WebRtcManager extends Caster<Msg>{
                 if (null != sessionEventListener) {
                     StreamInfo streamInfo = new StreamInfo(localTrackId, videoCapturer.isScreencast() ? StreamInfo.Type_LocalScreenShare : StreamInfo.Type_LocalCamera);
                     KLog.p("####onLocalStream stream info=%s", streamInfo);
+                    localStreamInfos.add(streamInfo);
                     sessionEventListener.onStream(streamInfo);
                 }
             });
@@ -1692,9 +1704,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
 
                 if (null != sessionEventListener) {
-                    StreamInfo streamInfo = new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, streamId,
-                            StreamInfo.Type_RemoteCamera // FIXME 这里需要区分远端桌面共享，怎么区分???
-                    );
+                    StreamInfo streamInfo = ToDoConverter.fromTransferObj(rtcStreamInfo);
                     KLog.p("####onRemoteStream, streamInfo=%s", streamInfo);
                     sessionEventListener.onStream(streamInfo);
 //                    // FORDEBUG 仅调试
