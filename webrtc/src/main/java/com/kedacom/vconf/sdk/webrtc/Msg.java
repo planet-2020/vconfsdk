@@ -9,6 +9,7 @@ import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
 
 /**
@@ -112,10 +113,16 @@ enum Msg {
             owner = MethodOwner.MeetingCtrl,
             paras = StringBuffer.class,
             userParas = TMTInstanceCreateConference.class,
-            rspSeq = {} //TODO
+            rspSeq = "CreateConfRsp"
     )
     CreateConf,
 
+    /**
+     * 创建会议响应
+     * */
+    @Response(clz = TCreateConfResult.class,
+            id = "RestCreateConference_Rsp")
+    CreateConfRsp,
 
     /**
      * 退出会议

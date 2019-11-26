@@ -24,6 +24,7 @@ import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 import com.kedacom.vconf.sdk.webrtc.bean.StreamInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TLoginResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayItem;
@@ -124,6 +125,7 @@ public class WebRtcManager extends Caster<Msg>{
         processorMap.put(new Msg[]{
                 Msg.Login,
                 Msg.Call,
+                Msg.CreateConf,
                 Msg.QuitConf,
                 Msg.EndConf,
                 Msg.AcceptInvitation,
@@ -164,9 +166,13 @@ public class WebRtcManager extends Caster<Msg>{
 //            reportFailed(-1, resultListener);
 //            return;
 //        }
+        if (null != rtcSvrAddr){
+            KLog.p("rtcip=%s", NetAddrHelper.ipLong2Str(rtcSvrAddr.dwIp));
+        }else{
+            KLog.p(KLog.ERROR, "null == rtcSvrAddr");
+        }
 
 //        if (null == rtcSvrAddr){
-            KLog.p(KLog.ERROR, "null == rtcSvrAddr");
             try {
                 long ip = NetAddrHelper.ipStr2LongLittleEndian("172.16.179.114"); //FIXME 写死方便调试
 //                rtcSvrAddr = new TMtRtcSvrAddr(ip, 7961,"0512110000004");
@@ -214,7 +220,7 @@ public class WebRtcManager extends Caster<Msg>{
      * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
      * @param confPara 创会参数
      **@param resultListener 结果监听器。
-     *          成功: {@link MakeCallResult};
+     *          成功: {@link CreateConfResult};
      *          失败：TODO
      * @param sessionEventListener 会话事件监听器
      * */
@@ -223,7 +229,7 @@ public class WebRtcManager extends Caster<Msg>{
             reportFailed(-1, resultListener);
             return;
         }
-        req(Msg.CreateConf, resultListener, ToDoConverter.toTransferObj(confPara), EmConfProtocol.emrtc);
+        req(Msg.CreateConf, resultListener, ToDoConverter.confPara2CreateConference(confPara), EmConfProtocol.emrtc);
     }
 
 
@@ -412,7 +418,7 @@ public class WebRtcManager extends Caster<Msg>{
             case P2pConfStarted:
                 callLinkSate = (TMtCallLinkSate) rspContent;
                 KLog.p("P2pConfStarted: %s", callLinkSate);
-                reportSuccess(ToDoConverter.fromTransferObj(callLinkSate), listener);
+                reportSuccess(ToDoConverter.callLinkSate2MakeCallResult(callLinkSate), listener);
                 break;
 
             case P2pConfEnded:
@@ -425,7 +431,7 @@ public class WebRtcManager extends Caster<Msg>{
             case MultipartyConfStarted:
                 callLinkSate = (TMtCallLinkSate) rspContent;
                 KLog.p("MultipartyConfStarted: %s", callLinkSate);
-                reportSuccess(ToDoConverter.fromTransferObj(callLinkSate), listener);
+                reportSuccess(ToDoConverter.callLinkSate2MakeCallResult(callLinkSate), listener);
                 break;
 
             case MultipartyConfEnded:
@@ -450,6 +456,15 @@ public class WebRtcManager extends Caster<Msg>{
                     }else{
                         reportFailed(-1, listener);
                     }
+                }
+                break;
+
+            case CreateConfRsp:
+                TCreateConfResult tCreateConfResult = (TCreateConfResult) rspContent;
+                if (1000 == tCreateConfResult.MainParam.dwErrorID){
+                    reportSuccess(ToDoConverter.tcreateConfResult2CreateConfResult(tCreateConfResult), listener);
+                }else{
+                    reportFailed(-1, listener);
                 }
                 break;
 
@@ -480,7 +495,7 @@ public class WebRtcManager extends Caster<Msg>{
             case CallIncoming:
                 TMtCallLinkSate callLinkSate = (TMtCallLinkSate) ntfContent;
                 KLog.p("CallIncoming: %s", callLinkSate);
-                if (null != confEventListener) confEventListener.onConfInvitation();
+                if (null != confEventListener) confEventListener.onConfInvitation(ToDoConverter.callLinkSate2ConfInvitationInfo(callLinkSate));
                 break;
 
             case P2pConfEnded:
@@ -888,6 +903,7 @@ public class WebRtcManager extends Caster<Msg>{
      *                 NOTE：不能通过{@link #getDisplay(String)}找回绑定到{@link #STREAMID_NULL}的Display
      * */
     public boolean bindDisplay(Display display, String streamId){
+        KLog.p("bind display %s to stream %s", display, streamId);
         ProxyVideoSink sink = videoSinks.get(streamId);
         if (null == sink && !STREAMID_NULL.equals(streamId)){
             KLog.p(KLog.ERROR, "no such stream %s", streamId);
@@ -911,6 +927,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 切换画面展示
      * */
     public void swapDisplay(Display display1, Display display2){
+        KLog.p("swap display %s and display %s", display1, display2);
         String streamId1 = getStreamId(display1);
         String streamId2 = getStreamId(display2);
         if (null == streamId1) streamId1 = STREAMID_NULL;
@@ -947,7 +964,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
         for (TRtcStreamInfo remoteStreamInfo : streamInfos){
             if (remoteStreamInfo.achStreamId.equals(streamId)){
-                return ToDoConverter.fromTransferObj(remoteStreamInfo);
+                return ToDoConverter.rtcStreamInfo2StreamInfo(remoteStreamInfo);
             }
         }
         return null;
@@ -1074,7 +1091,7 @@ public class WebRtcManager extends Caster<Msg>{
         /**
          * 会议邀请
          */
-        void onConfInvitation();
+        void onConfInvitation(ConfInvitationInfo confInvitationInfo);
 
         /**
          * 会议结束
@@ -1736,7 +1753,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
 
                 if (null != sessionEventListener) {
-                    StreamInfo streamInfo = ToDoConverter.fromTransferObj(rtcStreamInfo);
+                    StreamInfo streamInfo = ToDoConverter.rtcStreamInfo2StreamInfo(rtcStreamInfo);
                     KLog.p("####onRemoteStream, streamInfo=%s", streamInfo);
                     sessionEventListener.onStream(streamInfo);
 //                    // FORDEBUG 仅调试

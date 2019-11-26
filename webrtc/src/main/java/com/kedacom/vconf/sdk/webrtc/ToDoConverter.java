@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.webrtc;
 
 import com.kedacom.vconf.sdk.common.constant.EmDcsConfMode;
+import com.kedacom.vconf.sdk.common.constant.EmEndpointType;
 import com.kedacom.vconf.sdk.common.constant.EmH264Profile;
 import com.kedacom.vconf.sdk.common.constant.EmMeetingSafeType;
 import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
@@ -14,9 +15,12 @@ import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTVideoFormatList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfInvitationInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
+import com.kedacom.vconf.sdk.webrtc.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
 import com.kedacom.vconf.sdk.webrtc.bean.StreamInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
 
 import java.util.ArrayList;
@@ -27,7 +31,7 @@ import java.util.List;
  */
 final class ToDoConverter {
 
-    static MakeCallResult fromTransferObj(TMtCallLinkSate tMtCallLinkSate) {
+    static MakeCallResult callLinkSate2MakeCallResult(TMtCallLinkSate tMtCallLinkSate) {
         String e164=null, alias=null, email=null;
         int callBitRate = tMtCallLinkSate.dwCallRate;
         for (TMtAlias tMtAlias : tMtCallLinkSate.tPeerAlias.arrAlias){
@@ -46,7 +50,31 @@ final class ToDoConverter {
         return new MakeCallResult(e164, alias, email, callBitRate);
     }
 
-    static TMTInstanceCreateConference toTransferObj(ConfPara confPara) {
+    static ConfInvitationInfo callLinkSate2ConfInvitationInfo(TMtCallLinkSate tMtCallLinkSate) {
+        String e164=null, alias=null, email=null;
+        int callBitRate = tMtCallLinkSate.dwCallRate;
+        for (TMtAlias tMtAlias : tMtCallLinkSate.tPeerAlias.arrAlias){
+            if (EmMtAliasType.emAliasE164 == tMtAlias.emAliasType){
+                e164 = tMtAlias.achAlias;
+            }else if (EmMtAliasType.emAliasH323 == tMtAlias.emAliasType){
+                alias = tMtAlias.achAlias;
+            }else if (EmMtAliasType.emAliasEmail == tMtAlias.emAliasType){
+                email = tMtAlias.achAlias;
+            }
+            if (null!=e164 && null!=alias && null!=email){
+                break;
+            }
+        }
+
+
+
+        return new ConfInvitationInfo(e164, alias,
+                EmEndpointType.emEndpointTypeMT == tMtCallLinkSate.emEndpointType,
+                callBitRate);
+    }
+
+
+    static TMTInstanceCreateConference confPara2CreateConference(ConfPara confPara) {
         TMTInstanceCreateConference to = new TMTInstanceCreateConference();
         to.achName = confPara.confName;
         to.dwDuration = confPara.duration;
@@ -84,7 +112,7 @@ final class ToDoConverter {
         return to;
     }
 
-    static StreamInfo fromTransferObj(TRtcStreamInfo rtcStreamInfo) {
+    static StreamInfo rtcStreamInfo2StreamInfo(TRtcStreamInfo rtcStreamInfo) {
         int type;
         if (rtcStreamInfo.bAudio){
             type = StreamInfo.Type_Unknown;
@@ -96,6 +124,10 @@ final class ToDoConverter {
             }
         }
         return new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, rtcStreamInfo.achStreamId, type);
+    }
+
+    static CreateConfResult tcreateConfResult2CreateConfResult(TCreateConfResult tCreateConfResult) {
+        return new CreateConfResult(tCreateConfResult.AssParam.basetype);
     }
 
 }
