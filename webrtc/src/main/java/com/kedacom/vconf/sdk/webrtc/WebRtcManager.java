@@ -235,17 +235,18 @@ public class WebRtcManager extends Caster<Msg>{
 
     /**
      * 退出会议。
+     * @param disReason 原因码
      * */
-    public void quitConf(){
-        stopSession();
-        req(Msg.QuitConf, null, EmMtCallDisReason.emDisconnect_Normal);
+    public void quitConf(EmMtCallDisReason disReason){
+        stopSession();  // TODO 响应里去做？
+        req(Msg.QuitConf, null, disReason);
     }
 
     /**
      * 结束会议。
      * */
     public void endConf(IResultListener resultListener){
-        stopSession();
+        stopSession(); // TODO 响应里去做？
         req(Msg.EndConf, resultListener);
     }
 
@@ -821,16 +822,21 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         synchronized public void onFrame(VideoFrame frame) {
             long curts = System.currentTimeMillis();
-            if (curts - timestamp > 5000){
-                timestamp = curts;
-                KLog.p("%s onFrame ", name);
-            }
+//            if (curts - timestamp > 5000){
+//                timestamp = curts;
+//                KLog.p("%s onFrame ", name);
+//            }
 
             for (Display target : targets){
-                if (!target.enabled) {
-                    if (curts - timestamp > 5000) {
+                if (curts - timestamp > 5000) {
+                    timestamp = curts;
+                    if (target.enabled) {
+                        KLog.p("sink %s render frame onto display %s ", name, target);
+                    }else{
                         KLog.p("Dropping frame because display %s is disabled ", target);
                     }
+                }
+                if (!target.enabled) {
                     continue;
                 }
                 target.onFrame(frame);
@@ -839,10 +845,12 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         synchronized void addTarget(Display target) {
+            KLog.p("add Display %s to sink %s", target, name);
             targets.add(target);
         }
 
         synchronized boolean delTarget(Display target) {
+            KLog.p("delete Display %s from sink %s", target, name);
             return targets.remove(target);
         }
 
@@ -889,6 +897,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 若禁用则Display不会展示码流。默认是使能的。
          * */
         public void setEnable(boolean enable){
+            KLog.p("Display %s enable=%s", this, enable);
             enabled = enable;
         }
 
@@ -897,10 +906,14 @@ public class WebRtcManager extends Caster<Msg>{
     public static final String STREAMID_NULL = "NULL";
     /**
      * 将Display绑定到码流。
-     * 一路码流可以绑定多个Display
+     * 一个Display只会绑定到一路码流；
+     * 多个Display可以绑定到同一路码流；
+     * 若一个Display已经绑定到某路码流，则该绑定会先被解除，然后建立新的绑定关系；
      * @param streamId 码流Id。
      *                 若绑定到{@link #STREAMID_NULL}则该Display不会展示码流，相当于于解除绑定。
      *                 NOTE：不能通过{@link #getDisplay(String)}找回绑定到{@link #STREAMID_NULL}的Display
+     *                 对于画面交换的使用场景有个便利方法可以使用{@link #swapDisplay(Display, Display)}。
+     *                 可以通过{@link #getStreamId(Display)}获取某个Display对应的streamId，这适用于“想要绑定到某个Display对应的流”的场景，比如多画面展示同一路码流。
      * */
     public boolean bindDisplay(Display display, String streamId){
         KLog.p("bind display %s to stream %s", display, streamId);
@@ -910,10 +923,10 @@ public class WebRtcManager extends Caster<Msg>{
             return false;
         }
 
-        String oldStreamId = getStreamId(display);
-        if (null != oldStreamId){
-            ProxyVideoSink oldSink = videoSinks.get(oldStreamId);
-            oldSink.delTarget(display);
+        String boundStreamId = getStreamId(display);
+        if (null != boundStreamId){
+            ProxyVideoSink boundSink = videoSinks.get(boundStreamId);
+            boundSink.delTarget(display);
         }
         if (null != sink) {
             sink.addTarget(display);

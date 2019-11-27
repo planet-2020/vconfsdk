@@ -113,7 +113,10 @@ enum Msg {
             owner = MethodOwner.MeetingCtrl,
             paras = StringBuffer.class,
             userParas = TMTInstanceCreateConference.class,
-            rspSeq = "CreateConfRsp"
+            rspSeq = {"CreateConfRsp", // 创会成功与否
+                    "CallIncoming", // 若成功终端收到平台呼叫
+                    "MultipartyConfStarted" // 入会议成功
+            }
     )
     CreateConf,
 

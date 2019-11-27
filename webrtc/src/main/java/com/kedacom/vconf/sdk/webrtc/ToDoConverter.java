@@ -1,9 +1,11 @@
 package com.kedacom.vconf.sdk.webrtc;
 
+import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmDcsConfMode;
 import com.kedacom.vconf.sdk.common.constant.EmEndpointType;
 import com.kedacom.vconf.sdk.common.constant.EmH264Profile;
 import com.kedacom.vconf.sdk.common.constant.EmMeetingSafeType;
+import com.kedacom.vconf.sdk.common.constant.EmMtAddrType;
 import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
 import com.kedacom.vconf.sdk.common.constant.EmMtMixType;
 import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
@@ -12,6 +14,7 @@ import com.kedacom.vconf.sdk.common.constant.EmVidFormat;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTConfMixInfo;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTDCSAttribute;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
+import com.kedacom.vconf.sdk.common.type.vconf.TMTInviteMember;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTVideoFormatList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
@@ -47,7 +50,7 @@ final class ToDoConverter {
             }
         }
 
-        return new MakeCallResult(e164, alias, email, callBitRate);
+        return new MakeCallResult(e164, alias, email, callBitRate, tMtCallLinkSate.emEndpointType == EmEndpointType.emEndpointTypeMT);
     }
 
     static ConfInvitationInfo callLinkSate2ConfInvitationInfo(TMtCallLinkSate tMtCallLinkSate) {
@@ -108,6 +111,15 @@ final class ToDoConverter {
             to.atVideoFormatList = videoFormatLists;
             to.dwVFormatNum = to.atVideoFormatList.size();
         }
+
+        // 参会成员
+        TMTInviteMember inviteMember = new TMTInviteMember();
+        inviteMember.achAccount = confPara.creatorE164;
+        inviteMember.emAccountType = EmMtAddrType.emAddrE164;
+        inviteMember.emProtocol = EmConfProtocol.emrtc;
+        to.atInviteMembers = new ArrayList<>();
+        to.atInviteMembers.add(inviteMember);
+        to.dwIMemberNum = to.atInviteMembers.size();
 
         return to;
     }
