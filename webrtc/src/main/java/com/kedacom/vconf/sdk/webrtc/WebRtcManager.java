@@ -159,7 +159,7 @@ public class WebRtcManager extends Caster<Msg>{
      *          失败：错误码 TODO
      * @param confEventListener 会议事件监听器
      * */
-    public void login(String e164, IResultListener resultListener, ConfEventListener confEventListener){
+    public void login(String e164, IResultListener resultListener, ConfEventListener confEventListener){  // TODO 去掉e164，从aps获取有了
         TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) get(Msg.GetSvrAddr);
 //        if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0){
 //            KLog.p(KLog.ERROR, "invalid rtcSvrAddr, have you logined APS");
@@ -1726,41 +1726,40 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         void createRemoteVideoTrack(String mid, VideoTrack track){
+            String streamId = midStreamIdMap.get(mid);
+            KLog.p("mid=%s, streamId=%s", mid, streamId);
+            if (null == streamId){
+                KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
+                return;
+            }
             remoteVideoTracks.add(track);
             track.setEnabled(config.isRemoteVideoEnabled);
-            ProxyVideoSink videoSink = new ProxyVideoSink(mid);
-            videoSinks.put(mid, videoSink);
+            ProxyVideoSink videoSink = new ProxyVideoSink(streamId);
+            videoSinks.put(streamId, videoSink);
             track.addSink(videoSink);
 
-            handler.post(() -> {
-                String streamId = midStreamIdMap.get(mid);
-                KLog.p("mid=%s, streamId=%s", mid, streamId);
-                if (null == streamId){
-                    KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
-                    return;
+            TRtcStreamInfo rtcStreamInfo = null;
+            for (TRtcStreamInfo streamInfo : streamInfos){
+                if (streamId.equals(streamInfo.achStreamId)){
+                    rtcStreamInfo = streamInfo;
+                    break;
                 }
+            }
+            if (null == rtcStreamInfo){
+                KLog.p(KLog.ERROR, "no such stream %s in stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.StreamListReady branch in method onNtf)", streamId);
+                return;
+            }
 
-                TRtcStreamInfo rtcStreamInfo = null;
-                for (TRtcStreamInfo streamInfo : streamInfos){
-                    if (streamId.equals(streamInfo.achStreamId)){
-                        rtcStreamInfo = streamInfo;
-                        break;
-                    }
-                }
-                if (null == rtcStreamInfo){
-                    KLog.p(KLog.ERROR, "no such stream %s in stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.StreamListReady branch in method onNtf)", streamId);
-                    return;
-                }
-
-                if (null != sessionEventListener) {
-                    StreamInfo streamInfo = ToDoConverter.rtcStreamInfo2StreamInfo(rtcStreamInfo);
+            if (null != sessionEventListener) {
+                TRtcStreamInfo finalRtcStreamInfo = rtcStreamInfo;
+                handler.post(() -> {
+                    StreamInfo streamInfo = ToDoConverter.rtcStreamInfo2StreamInfo(finalRtcStreamInfo);
                     KLog.p("####onRemoteStream, streamInfo=%s", streamInfo);
                     sessionEventListener.onStream(streamInfo);
 //                    // FORDEBUG 仅调试
 //                    sessionEventListener.onRemoteStream(new StreamInfo(0, 0, streamId), surfaceViewRenderer);
-                }
-
-            });
+                });
+            }
 
         }
 

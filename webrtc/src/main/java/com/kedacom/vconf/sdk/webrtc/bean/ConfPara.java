@@ -12,7 +12,7 @@ public final class ConfPara {
     public boolean bAudio;          // 是否音频会议
     public boolean bHighDefinition; // 是否高清视频，高清1080P，其余720P。注：若音频会议则此字段无效
     public boolean enableDC;        // 是否开启数据协作
-    public String virtualConfId;    // 虚拟会议Id。若填写则表示开虚拟会议
+    public String virtualConfId;    // 虚拟会议Id。非虚拟会议填null
 
     public ConfPara(String confName, int duration, boolean bAudio, boolean bHighDefinition, boolean enableDC, String virtualConfId) {
         this.confName = confName;
