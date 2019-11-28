@@ -423,7 +423,11 @@ public class WebRtcManager extends Caster<Msg>{
             case P2pConfStarted:
                 callLinkSate = (TMtCallLinkSate) rspContent;
                 KLog.p("P2pConfStarted: %s", callLinkSate);
-                reportSuccess(ToDoConverter.callLinkSate2MakeCallResult(callLinkSate), listener);
+                if (Msg.Call == req) {
+                    reportSuccess(ToDoConverter.callLinkState2MakeCallResult(callLinkSate), listener);
+                }else if (Msg.CreateConf == req){
+                    reportSuccess(ToDoConverter.callLinkState2CreateConfResult(callLinkSate), listener);
+                }
                 break;
 
             case P2pConfEnded:
@@ -436,7 +440,7 @@ public class WebRtcManager extends Caster<Msg>{
             case MultipartyConfStarted:
                 callLinkSate = (TMtCallLinkSate) rspContent;
                 KLog.p("MultipartyConfStarted: %s", callLinkSate);
-                reportSuccess(ToDoConverter.callLinkSate2MakeCallResult(callLinkSate), listener);
+                reportSuccess(ToDoConverter.callLinkState2MakeCallResult(callLinkSate), listener);
                 break;
 
             case MultipartyConfEnded:
@@ -466,9 +470,8 @@ public class WebRtcManager extends Caster<Msg>{
 
             case CreateConfRsp:
                 TCreateConfResult tCreateConfResult = (TCreateConfResult) rspContent;
-                if (1000 == tCreateConfResult.MainParam.dwErrorID){
-                    reportSuccess(ToDoConverter.tcreateConfResult2CreateConfResult(tCreateConfResult), listener);
-                }else{
+                if (1000 != tCreateConfResult.MainParam.dwErrorID){
+                    cancelReq(req, listener);
                     reportFailed(-1, listener);
                 }
                 break;

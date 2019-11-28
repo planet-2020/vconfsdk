@@ -34,7 +34,7 @@ import java.util.List;
  */
 final class ToDoConverter {
 
-    static MakeCallResult callLinkSate2MakeCallResult(TMtCallLinkSate tMtCallLinkSate) {
+    static MakeCallResult callLinkState2MakeCallResult(TMtCallLinkSate tMtCallLinkSate) {
         String e164=null, alias=null, email=null;
         int callBitRate = tMtCallLinkSate.dwCallRate;
         for (TMtAlias tMtAlias : tMtCallLinkSate.tPeerAlias.arrAlias){
@@ -51,6 +51,25 @@ final class ToDoConverter {
         }
 
         return new MakeCallResult(e164, alias, email, callBitRate, tMtCallLinkSate.emEndpointType == EmEndpointType.emEndpointTypeMT);
+    }
+
+    static CreateConfResult callLinkState2CreateConfResult(TMtCallLinkSate tMtCallLinkSate) {
+        String e164=null, alias=null, email=null;
+        int callBitRate = tMtCallLinkSate.dwCallRate;
+        for (TMtAlias tMtAlias : tMtCallLinkSate.tPeerAlias.arrAlias){
+            if (EmMtAliasType.emAliasE164 == tMtAlias.emAliasType){
+                e164 = tMtAlias.achAlias;
+            }else if (EmMtAliasType.emAliasH323 == tMtAlias.emAliasType){
+                alias = tMtAlias.achAlias;
+            }else if (EmMtAliasType.emAliasEmail == tMtAlias.emAliasType){
+                email = tMtAlias.achAlias;
+            }
+            if (null!=e164 && null!=alias && null!=email){
+                break;
+            }
+        }
+
+        return new CreateConfResult(e164, e164, alias, email, callBitRate);
     }
 
     static ConfInvitationInfo callLinkSate2ConfInvitationInfo(TMtCallLinkSate tMtCallLinkSate) {
@@ -136,10 +155,6 @@ final class ToDoConverter {
             }
         }
         return new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, rtcStreamInfo.achStreamId, type);
-    }
-
-    static CreateConfResult tcreateConfResult2CreateConfResult(TCreateConfResult tCreateConfResult) {
-        return new CreateConfResult(tCreateConfResult.AssParam.basetype);
     }
 
 }
