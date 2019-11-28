@@ -83,7 +83,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -874,9 +874,9 @@ public class WebRtcManager extends Caster<Msg>{
     public class Display extends SurfaceViewRenderer{
 
         private boolean enabled = true;
-        private int decorationIdBase=0;
-        private ConcurrentHashMap<Integer, TextDecoration> onDisplayText = new ConcurrentHashMap<>();
-        private ConcurrentHashMap<Integer, PicDecoration> onDisplayPic = new ConcurrentHashMap<>();
+        private int decorateIdBase = 0;
+        private CopyOnWriteArrayList<TextDecoration> onDisplayTextList = new CopyOnWriteArrayList<>();
+        private CopyOnWriteArrayList<PicDecoration> onDisplayPicList = new CopyOnWriteArrayList<>();
 
         private Display(Context context) {
             super(context);
@@ -895,11 +895,11 @@ public class WebRtcManager extends Caster<Msg>{
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
 
-            for (TextDecoration deco : onDisplayText.values()){
+            for (TextDecoration deco : onDisplayTextList){
                 canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
             }
 
-            for (PicDecoration deco : onDisplayPic.values()){
+            for (PicDecoration deco : onDisplayPicList){
                 canvas.drawBitmap(deco.pic, deco.x, deco.y, deco.paint);
             }
 
@@ -923,57 +923,108 @@ public class WebRtcManager extends Caster<Msg>{
         public void setEnable(boolean enable){
             KLog.p("Display %s enable=%s", this, enable);
             enabled = enable;
+            setWillNotDraw(!enable);
         }
 
         /**
-         * 在display上添加文字
-         * @param text 要展示的文字
-         * @param x 左上角x坐标
-         * @param y 左上角y坐标
-         * @return 返回该文字对应的id，可用于{@link #delOnDisplayText(int)}
+         * 添加文字
+         * @return 文字对应的id
          * */
-        public int addOnDisplayText(String text, int x, int y, Paint paint){
-            TextDecoration decoration = new TextDecoration(text, x, y, paint);
-            onDisplayText.put(++decorationIdBase, decoration);
-            return decorationIdBase;
+        public int addOnDisplayText(TextDecoration decoration){
+            onDisplayTextList.add(decoration);
+            return decoration.id;
         }
 
         /**
-         * 删除添加到display上的文字
+         * 删除文字
+         * @param id 文字对应的id
+         * @return 成功返回被删除的文字decoration，失败返回null
          * */
-        public String delOnDisplayText(int id){
-            TextDecoration decoration = onDisplayText.remove(id);
-            return null != decoration ? decoration.text : null;
+        public TextDecoration delOnDisplayText(int id){
+            for (TextDecoration decoration : onDisplayTextList){
+                if (id == decoration.id){
+                    onDisplayTextList.remove(decoration);
+                    return decoration;
+                }
+            }
+            return null;
         }
 
         /**
-         * 在display上添加图片
-         * @param pic 要展示的图片
-         * @param x 左上角x坐标
-         * @param y 左上角y坐标
-         * @return 返回该图片对应的id，可用于{@link #delOnDisplayPic(int)}
+         * 查找文字
+         * @param id 文字对应的id
+         * @return 若存在则返回该文字decoration，否则返回null
          * */
-        public int addOnDisplayPic(Bitmap pic, int x, int y, Paint paint){
-            PicDecoration decoration = new PicDecoration(pic, x, y, paint);
-            onDisplayPic.put(++decorationIdBase, decoration);
-            return decorationIdBase;
+        public TextDecoration findOnDisplayText(int id){
+            for (TextDecoration decoration : onDisplayTextList){
+                if (id == decoration.id){
+                    return decoration;
+                }
+            }
+            return null;
         }
 
         /**
-         * 删除添加到display上的图片
+         * 清空文字
          * */
-        public Bitmap delOnDisplayPic(int id){
-            PicDecoration decoration = onDisplayPic.remove(id);
-            return null != decoration ? decoration.pic : null;
+        public void clearOnDisplayText(){
+            onDisplayTextList.clear();
         }
 
-        private class TextDecoration{
-            String text;
-            int x;
-            int y;
-            Paint paint;
+        /**
+         * 添加图片
+         * @return 图片对应的id
+         * */
+        public int addOnDisplayPic(PicDecoration decoration){
+            onDisplayPicList.add(decoration);
+            return decoration.id;
+        }
+
+        /**
+         * 删除图片
+         * @param id 图片对应的id
+         * @return 成功返回被删除的图片decoration，失败返回null
+         * */
+        public PicDecoration delOnDisplayPic(int id){
+            for (PicDecoration decoration : onDisplayPicList){
+                if (id == decoration.id){
+                    onDisplayPicList.remove(decoration);
+                    return decoration;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * 查找图片
+         * @param id 图片对应的id
+         * @return 若存在则返回该图片decoration，否则返回null
+         * */
+        public PicDecoration findOnDisplayPic(int id){
+            for (PicDecoration decoration : onDisplayPicList){
+                if (id == decoration.id){
+                    return decoration;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * 清空图片
+         * */
+        public void clearOnDisplayPic(){
+            onDisplayPicList.clear();
+        }
+
+        public class TextDecoration{
+            private int id;
+            public String text;    // 要展示的文字
+            public int x;          // 左上角x坐标
+            public int y;          // 左上角y坐标
+            public Paint paint;
 
             public TextDecoration(String text, int x, int y, Paint paint) {
+                this.id = ++decorateIdBase;
                 this.text = text;
                 this.x = x;
                 this.y = y;
@@ -981,13 +1032,15 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
 
-        private class PicDecoration{
-            Bitmap pic;
-            int x;
-            int y;
-            Paint paint;
+        public class PicDecoration{
+            private int id;
+            public Bitmap pic;     // 要展示的文字
+            public int x;          // 左上角x坐标
+            public int y;          // 左上角y坐标
+            public Paint paint;
 
             public PicDecoration(Bitmap pic, int x, int y, Paint paint) {
+                this.id = ++decorateIdBase;
                 this.pic = pic;
                 this.x = x;
                 this.y = y;
@@ -1031,16 +1084,24 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     /**
-     * 切换画面展示
+     * 切换画面内容
      * */
-    public void swapDisplay(Display display1, Display display2){
+    public void swapDisplayContent(Display display1, Display display2){
         KLog.p("swap display %s and display %s", display1, display2);
+        // 切换绑定的流
         String streamId1 = getStreamId(display1);
         String streamId2 = getStreamId(display2);
         if (null == streamId1) streamId1 = STREAMID_NULL;
         if (null == streamId2) streamId2 = STREAMID_NULL;
         bindDisplay(display1, streamId2);
         bindDisplay(display2, streamId1);
+        // 切换贴在display上面的文字图片
+        CopyOnWriteArrayList<Display.TextDecoration> textDecorationList1 = display1.onDisplayTextList;
+        display1.onDisplayTextList = display2.onDisplayTextList;
+        display2.onDisplayTextList = textDecorationList1;
+        CopyOnWriteArrayList<Display.PicDecoration> picDecorationList1 = display1.onDisplayPicList;
+        display1.onDisplayPicList = display2.onDisplayPicList;
+        display2.onDisplayPicList = picDecorationList1;
     }
 
 
