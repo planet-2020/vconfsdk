@@ -3,6 +3,9 @@ package com.kedacom.vconf.sdk.webrtc;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.Looper;
@@ -80,6 +83,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -822,14 +826,14 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         synchronized public void onFrame(VideoFrame frame) {
             long curts = System.currentTimeMillis();
-//            if (curts - timestamp > 5000){
-//                timestamp = curts;
-//                KLog.p("%s onFrame ", name);
-//            }
+            long ts = timestamp;
+            if (curts - ts > 5000){
+                timestamp = curts;
+                KLog.p("%s onFrame ", name);
+            }
 
             for (Display target : targets){
-                if (curts - timestamp > 5000) {
-                    timestamp = curts;
+                if (curts - ts > 5000) {
                     if (target.enabled) {
                         KLog.p("sink %s render frame onto display %s ", name, target);
                     }else{
@@ -870,22 +874,41 @@ public class WebRtcManager extends Caster<Msg>{
     public class Display extends SurfaceViewRenderer{
 
         private boolean enabled = true;
+        private int decorationIdBase=0;
+        private ConcurrentHashMap<Integer, TextDecoration> onDisplayText = new ConcurrentHashMap<>();
+        private ConcurrentHashMap<Integer, PicDecoration> onDisplayPic = new ConcurrentHashMap<>();
 
         private Display(Context context) {
             super(context);
             init(eglBase.getEglBaseContext(), null);
             setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
             setEnableHardwareScaler(true);
+            setWillNotDraw(false);
         }
 
         public Display() {
             this(context);
         }
 
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+
+            for (TextDecoration deco : onDisplayText.values()){
+                canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
+            }
+
+            for (PicDecoration deco : onDisplayPic.values()){
+                canvas.drawBitmap(deco.pic, deco.x, deco.y, deco.paint);
+            }
+
+        }
+
         /**
-         * 设置是否在所有Display最前端展示
+         * 设置是否在所有Display最前端展示。可用于多个Display层叠的场景
          * */
-        public void setOnTopOverOtherDispalys(boolean bOnTop){
+        public void setOnTopOverOtherDisplays(boolean bOnTop){
             setZOrderMediaOverlay(bOnTop);
         }
 
@@ -894,11 +917,82 @@ public class WebRtcManager extends Caster<Msg>{
         }
         /**
          * 设置是否使能。
-         * 若禁用则Display不会展示码流。默认是使能的。
+         * @param enable true 使能；false 禁用
+         * 若禁用则Display不会展示码流。默认是使能的。禁用后可通过该接口再设置使能以重新展示码流
          * */
         public void setEnable(boolean enable){
             KLog.p("Display %s enable=%s", this, enable);
             enabled = enable;
+        }
+
+        /**
+         * 在display上添加文字
+         * @param text 要展示的文字
+         * @param x 左上角x坐标
+         * @param y 左上角y坐标
+         * @return 返回该文字对应的id，可用于{@link #delOnDisplayText(int)}
+         * */
+        public int addOnDisplayText(String text, int x, int y, Paint paint){
+            TextDecoration decoration = new TextDecoration(text, x, y, paint);
+            onDisplayText.put(++decorationIdBase, decoration);
+            return decorationIdBase;
+        }
+
+        /**
+         * 删除添加到display上的文字
+         * */
+        public String delOnDisplayText(int id){
+            TextDecoration decoration = onDisplayText.remove(id);
+            return null != decoration ? decoration.text : null;
+        }
+
+        /**
+         * 在display上添加图片
+         * @param pic 要展示的图片
+         * @param x 左上角x坐标
+         * @param y 左上角y坐标
+         * @return 返回该图片对应的id，可用于{@link #delOnDisplayPic(int)}
+         * */
+        public int addOnDisplayPic(Bitmap pic, int x, int y, Paint paint){
+            PicDecoration decoration = new PicDecoration(pic, x, y, paint);
+            onDisplayPic.put(++decorationIdBase, decoration);
+            return decorationIdBase;
+        }
+
+        /**
+         * 删除添加到display上的图片
+         * */
+        public Bitmap delOnDisplayPic(int id){
+            PicDecoration decoration = onDisplayPic.remove(id);
+            return null != decoration ? decoration.pic : null;
+        }
+
+        private class TextDecoration{
+            String text;
+            int x;
+            int y;
+            Paint paint;
+
+            public TextDecoration(String text, int x, int y, Paint paint) {
+                this.text = text;
+                this.x = x;
+                this.y = y;
+                this.paint = paint;
+            }
+        }
+
+        private class PicDecoration{
+            Bitmap pic;
+            int x;
+            int y;
+            Paint paint;
+
+            public PicDecoration(Bitmap pic, int x, int y, Paint paint) {
+                this.pic = pic;
+                this.x = x;
+                this.y = y;
+                this.paint = paint;
+            }
         }
 
     }
