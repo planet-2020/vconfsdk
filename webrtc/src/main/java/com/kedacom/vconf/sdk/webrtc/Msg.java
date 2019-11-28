@@ -133,7 +133,7 @@ enum Msg {
             owner = MethodOwner.ConfCtrl,
             paras = int.class,
             userParas = EmMtCallDisReason.class,
-            rspSeq = {} //TODO
+            rspSeq = "P2pConfEnded"
     )
     QuitConf,
 

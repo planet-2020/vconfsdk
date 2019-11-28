@@ -26,4 +26,13 @@ public final class StreamInfo {
         this.streamType = streamType;
     }
 
+    @Override
+    public String toString() {
+        return "StreamInfo{" +
+                "mcuId=" + mcuId +
+                ", terId=" + terId +
+                ", streamId='" + streamId + '\'' +
+                ", streamType=" + streamType +
+                '}';
+    }
 }

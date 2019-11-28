@@ -241,16 +241,14 @@ public class WebRtcManager extends Caster<Msg>{
      * 退出会议。
      * @param disReason 原因码
      * */
-    public void quitConf(EmMtCallDisReason disReason){
-        stopSession();  // TODO 响应里去做？
-        req(Msg.QuitConf, null, disReason);
+    public void quitConf(EmMtCallDisReason disReason, IResultListener resultListener){
+        req(Msg.QuitConf, resultListener, disReason);
     }
 
     /**
      * 结束会议。
      * */
     public void endConf(IResultListener resultListener){
-        stopSession(); // TODO 响应里去做？
         req(Msg.EndConf, resultListener);
     }
 
@@ -434,7 +432,11 @@ public class WebRtcManager extends Caster<Msg>{
                 stopSession();
                 BaseTypeInt reason = (BaseTypeInt) rspContent;
                 KLog.p("P2pConfEnded: %s", reason.basetype);
-                reportFailed(-1, listener);
+                if (Msg.QuitConf == req) {
+                    reportSuccess(null, listener);
+                }else{
+                    reportFailed(-1, listener);
+                }
                 break;
 
             case MultipartyConfStarted:
@@ -488,6 +490,8 @@ public class WebRtcManager extends Caster<Msg>{
         switch (req){
             case Call:
             case CreateConf:
+            case QuitConf:
+            case EndConf:
             case AcceptInvitation:
                 stopSession();
                 break;
@@ -678,6 +682,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         midStreamIdMap.clear();
         streamInfos.clear();
+        localStreamInfos.clear();
         screenCapturePermissionData = null;
 
         // destroy audiomanager
@@ -1128,12 +1133,15 @@ public class WebRtcManager extends Caster<Msg>{
      * 获取流信息
      * */
     public StreamInfo getStreamInfo(String streamId){
+        KLog.p("streamId=%s", streamId);
         for (StreamInfo localStreamInfo : localStreamInfos){
+            KLog.p("localStreamInfo.streamId=%s", localStreamInfo.streamId);
             if (localStreamInfo.streamId.equals(streamId)){
                 return localStreamInfo;
             }
         }
         for (TRtcStreamInfo remoteStreamInfo : streamInfos){
+            KLog.p("remoteStreamInfo.streamId=%s", remoteStreamInfo.achStreamId);
             if (remoteStreamInfo.achStreamId.equals(streamId)){
                 return ToDoConverter.rtcStreamInfo2StreamInfo(remoteStreamInfo);
             }
