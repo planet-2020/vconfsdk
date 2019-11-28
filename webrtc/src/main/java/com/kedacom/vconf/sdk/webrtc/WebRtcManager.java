@@ -880,9 +880,9 @@ public class WebRtcManager extends Caster<Msg>{
      * 用于显示码流的控件。
      * */
     public class Display extends SurfaceViewRenderer{
-
         private boolean enabled = true;
         private int decorateIdBase = 0;
+        public final int INVALID_DECORATION_ID = decorateIdBase - 1;
         private CopyOnWriteArrayList<TextDecoration> onDisplayTextList = new CopyOnWriteArrayList<>();
         private CopyOnWriteArrayList<PicDecoration> onDisplayPicList = new CopyOnWriteArrayList<>();
 
