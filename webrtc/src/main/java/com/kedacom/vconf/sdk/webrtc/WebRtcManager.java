@@ -1016,6 +1016,14 @@ public class WebRtcManager extends Caster<Msg>{
             return onDisplayPicList;
         }
 
+        /**
+         * 清空所有deco，如图片、文字等
+         * */
+        public void clearAllDeco(){
+            clearText();
+            clearPic();
+        }
+
 
         private void adjustDecoration(){
             for (TextDecoration deco : onDisplayTextList){
@@ -1177,7 +1185,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     /**
-     * 切换画面内容
+     * 交换画面内容
      * */
     public void swapDisplayContent(Display display1, Display display2){
         KLog.p("swap display %s and display %s", display1, display2);
@@ -1199,13 +1207,24 @@ public class WebRtcManager extends Caster<Msg>{
         display2.adjustDecoration();
     }
 
+    /**
+     * 拷贝画面内容
+     * 将src的内容拷贝到dst。dst的内容会先被清空，然后添加。
+     * */
+    public void copyDisplayContent(@NonNull Display src, @NonNull Display dst){
+        bindDisplay(dst, getStreamId(src));
+        dst.clearAllDeco();
+        dst.addText(src.getAllText());
+        dst.addPic(src.getAllPic());
+    }
+
 
     /**
      * 根据流的目标视图获取流ID
      * @param display 流的目标视图，流投射到该视图上展示。
      * @see #bindDisplay(Display, String)
      * */
-    public String getStreamId(Display display){
+    public String getStreamId(@NonNull Display display){
         for (Map.Entry<String, ProxyVideoSink> entry : videoSinks.entrySet()){
             for (Display target : entry.getValue().targets){
                 if (display == target){
@@ -1213,7 +1232,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
         }
-        return null;
+        return STREAMID_NULL;
     }
 
     /**
