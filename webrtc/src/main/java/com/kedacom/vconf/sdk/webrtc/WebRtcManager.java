@@ -5,10 +5,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.SurfaceHolder;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -104,6 +106,7 @@ public class WebRtcManager extends Caster<Msg>{
     private PeerConnectionFactory factory;
     private List<PeerConnectionWrapper> connWrapperList = new ArrayList<>();
     private List<TRtcStreamInfo> streamInfos = new ArrayList<>();
+    private List<TRtcStreamInfo> removedStreamInfos = new ArrayList<>();
     private BiMap<String, String> midStreamIdMap = HashBiMap.create();
     private List<StreamInfo> localStreamInfos = new ArrayList<>();
 
@@ -573,6 +576,7 @@ public class WebRtcManager extends Caster<Msg>{
                         TRtcStreamInfo localStreamInfo = iterator.next();
                         if (localStreamInfo.achStreamId.equals(streamInfo.achStreamId)){
                             iterator.remove();
+                            removedStreamInfos.add(localStreamInfo); // 此处保存用户后续通知用户
                             break;
                         }
                     }
@@ -876,15 +880,19 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+
+    private static int decorateIdBase = 0;
     /**
      * 用于显示码流的控件。
      * */
     public class Display extends SurfaceViewRenderer{
         private boolean enabled = true;
-        private int decorateIdBase = 0;
-        public final int INVALID_DECORATION_ID = decorateIdBase - 1;
         private CopyOnWriteArrayList<TextDecoration> onDisplayTextList = new CopyOnWriteArrayList<>();
         private CopyOnWriteArrayList<PicDecoration> onDisplayPicList = new CopyOnWriteArrayList<>();
+        public final int POS_LEFTTOP = 1;
+        public final int POS_LEFTBOTTOM = 2;
+        public final int POS_RIGHTTOP = 3;
+        public final int POS_RIGHTBOTTOM = 4;
 
         private Display(Context context) {
             super(context);
@@ -900,6 +908,12 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         @Override
+        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+            super.surfaceChanged(holder, format, width, height);
+            adjustDecoration(width, height);
+        }
+
+        @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
 
@@ -908,7 +922,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             for (PicDecoration deco : onDisplayPicList){
-                canvas.drawBitmap(deco.pic, deco.x, deco.y, deco.paint);
+                canvas.drawBitmap(deco.pic, deco.matrix, deco.paint);
             }
 
         }
@@ -936,124 +950,176 @@ public class WebRtcManager extends Caster<Msg>{
 
         /**
          * 添加文字
-         * @return 文字对应的id
          * */
-        public int addOnDisplayText(TextDecoration decoration){
+        public void addText(TextDecoration decoration){
             onDisplayTextList.add(decoration);
-            return decoration.id;
         }
 
         /**
-         * 删除文字
-         * @param id 文字对应的id
-         * @return 成功返回被删除的文字decoration，失败返回null
+         * 添加文字
          * */
-        public TextDecoration delOnDisplayText(int id){
-            for (TextDecoration decoration : onDisplayTextList){
-                if (id == decoration.id){
-                    onDisplayTextList.remove(decoration);
-                    return decoration;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * 查找文字
-         * @param id 文字对应的id
-         * @return 若存在则返回该文字decoration，否则返回null
-         * */
-        public TextDecoration findOnDisplayText(int id){
-            for (TextDecoration decoration : onDisplayTextList){
-                if (id == decoration.id){
-                    return decoration;
-                }
-            }
-            return null;
+        public void addText(List<TextDecoration> decoList){
+            onDisplayTextList.addAll(decoList);
         }
 
         /**
          * 清空文字
          * */
-        public void clearOnDisplayText(){
+        public void clearText(){
             onDisplayTextList.clear();
         }
 
         /**
+         * 获取所有文字
+         * */
+        public List<TextDecoration> getAllText(){
+            return onDisplayTextList;
+        }
+
+        /**
          * 添加图片
-         * @return 图片对应的id
          * */
-        public int addOnDisplayPic(PicDecoration decoration){
+        public void addPic(PicDecoration decoration){
             onDisplayPicList.add(decoration);
-            return decoration.id;
         }
-
         /**
-         * 删除图片
-         * @param id 图片对应的id
-         * @return 成功返回被删除的图片decoration，失败返回null
+         * 添加图片
          * */
-        public PicDecoration delOnDisplayPic(int id){
-            for (PicDecoration decoration : onDisplayPicList){
-                if (id == decoration.id){
-                    onDisplayPicList.remove(decoration);
-                    return decoration;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * 查找图片
-         * @param id 图片对应的id
-         * @return 若存在则返回该图片decoration，否则返回null
-         * */
-        public PicDecoration findOnDisplayPic(int id){
-            for (PicDecoration decoration : onDisplayPicList){
-                if (id == decoration.id){
-                    return decoration;
-                }
-            }
-            return null;
+        public void addPic(List<PicDecoration> decoList){
+            onDisplayPicList.addAll(decoList);
         }
 
         /**
          * 清空图片
          * */
-        public void clearOnDisplayPic(){
+        public void clearPic(){
             onDisplayPicList.clear();
         }
 
-        public class TextDecoration{
-            private int id;
-            public String text;    // 要展示的文字
-            public int x;          // 左上角x坐标
-            public int y;          // 左上角y坐标
-            public Paint paint;
+        /**
+         * 获取所有图片
+         * */
+        public List<PicDecoration> getAllPic(){
+            return onDisplayPicList;
+        }
 
-            public TextDecoration(String text, int x, int y, Paint paint) {
-                this.id = ++decorateIdBase;
-                this.text = text;
-                this.x = x;
-                this.y = y;
-                this.paint = paint;
+
+        private void adjustDecoration(int width, int height){
+            for (TextDecoration deco : onDisplayTextList){
+                deco.adjust(width, height);
+            }
+            for (PicDecoration deco : onDisplayPicList){
+                deco.adjust(width, height);
             }
         }
 
-        public class PicDecoration{
-            private int id;
-            public Bitmap pic;     // 要展示的文字
-            public int x;          // 左上角x坐标
-            public int y;          // 左上角y坐标
-            public Paint paint;
-
-            public PicDecoration(Bitmap pic, int x, int y, Paint paint) {
-                this.id = ++decorateIdBase;
-                this.pic = pic;
-                this.x = x;
-                this.y = y;
-                this.paint = paint;
+        public class TextDecoration extends Decoration{
+            public String text;     // 要展示的文字
+            public TextDecoration(@NonNull String text, int size, int color, int dx, int dy, int refPos, int w, int h) {
+                super(dx, dy, refPos, w, h);
+                this.text = text;
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(color);
+                paint.setTextSize(size);
             }
+
+            protected void adjust(int displayW, int displayH){
+                super.adjust(displayW, displayH);
+                float size = paint.getTextSize()*Math.min(ratioW, ratioH);
+                paint.setTextSize(size);
+                if (POS_LEFTBOTTOM == refPos){
+                    y -= size;
+                }else if (POS_RIGHTTOP == refPos){
+                    x -= size * text.length();
+                }else if (POS_RIGHTBOTTOM == refPos){
+                    x -= size * text.length();
+                    y -= size;
+                }
+            }
+
+        }
+
+        public class PicDecoration extends Decoration{
+            public Bitmap pic;     // 要展示的图片
+            private Matrix matrix = new Matrix();
+            public PicDecoration(@NonNull Bitmap pic, int dx, int dy, int refPos, int w, int h) {
+                super(dx, dy, refPos, w, h);
+                this.pic = pic;
+                paint.setStyle(Paint.Style.STROKE);
+            }
+
+            protected void adjust(int displayW, int displayH){
+                super.adjust(displayW, displayH);
+                float scaleFactor = Math.min(ratioW, ratioH);
+                matrix.reset();
+                matrix.postScale(scaleFactor, scaleFactor, originX, originY);
+                int picW = (int) (pic.getWidth()*scaleFactor);
+                int picH = (int) (pic.getHeight()*scaleFactor);
+                if (POS_LEFTBOTTOM == refPos){
+                    y -= picH;
+                }else if (POS_RIGHTTOP == refPos){
+                    x -= picW;
+                }else if (POS_RIGHTBOTTOM == refPos){
+                    x -= picW;
+                    y -= picH;
+                }
+                matrix.postTranslate(x, y);
+            }
+        }
+
+        public class Decoration{
+            protected int id;
+            public int dx;          // 参照pos的x方向距离（UCD标注的）
+            public int dy;          // 参照pos的y方向距离（UCD标注的）
+            public int refPos;      /** dx, dy参照的位置。如取值{@link #POS_LEFTBOTTOM}则dx表示距离左下角的x方向距离*/
+            public int w;           // 该deco所在画面的宽（UCD标注的）
+            public int h;           // 该deco所在画面的高（UCD标注的）
+            protected Paint paint;
+
+            protected int x;          // 锚点x坐标（根据UCD标注结合Display的状态计算得出）
+            protected int y;          // 锚点y坐标（根据UCD标注结合Display的状态计算得出）
+            protected int originX;
+            protected int originY;
+            protected float ratioW;
+            protected float ratioH;
+
+            protected Decoration(int dx, int dy, int refPos, int w, int h) {
+                this.id = ++decorateIdBase;
+                this.dx = dx;
+                this.dy = dy;
+                this.refPos = refPos;
+                this.w = w;
+                this.h = h;
+                this.paint = new Paint();
+            }
+
+            protected void adjust(int displayW, int displayH){
+                ratioW = displayW/(float)w;
+                ratioH = displayH/(float)h;
+                if (POS_LEFTTOP == refPos){
+                    x = Math.round(ratioW * dx);
+                    y = Math.round(ratioH * dy);
+                    originX = originY = 0;
+                }else if (POS_LEFTBOTTOM == refPos){
+                    x = Math.round(ratioW * dx);
+                    y = Math.round(displayH - ratioH * dy);
+                    originX = 0;
+                    originY = displayH;
+                }else if (POS_RIGHTTOP == refPos){
+                    x = Math.round(displayW - ratioW * dx);
+                    y = Math.round(ratioH * dy);
+                    originX = displayW;
+                    originY = 0;
+                }else{
+                    x = Math.round(displayW - ratioW * dx);
+                    y = Math.round(displayH - ratioH * dy);
+                    originX = displayW;
+                    originY = displayH;
+                }
+                KLog.p("displayW=%s, displayH=%s, ratioW=%s, ratioH=%s, x=%s, y=%s, originX=%s, originY=%s",
+                        displayW, displayH, ratioW, ratioH, x, y, originX, originY);
+            }
+
         }
 
     }
@@ -1067,7 +1133,7 @@ public class WebRtcManager extends Caster<Msg>{
      * @param streamId 码流Id。
      *                 若绑定到{@link #STREAMID_NULL}则该Display不会展示码流，相当于于解除绑定。
      *                 NOTE：不能通过{@link #getDisplay(String)}找回绑定到{@link #STREAMID_NULL}的Display
-     *                 对于画面交换的使用场景有个便利方法可以使用{@link #swapDisplay(Display, Display)}。
+     *                 对于画面交换的使用场景有个便利方法可以使用{@link #swapDisplayContent(Display, Display)}。
      *                 可以通过{@link #getStreamId(Display)}获取某个Display对应的streamId，这适用于“想要绑定到某个Display对应的流”的场景，比如多画面展示同一路码流。
      * */
     public boolean bindDisplay(Display display, String streamId){
@@ -1641,6 +1707,13 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onRemoveStream(final MediaStream stream) {
             KLog.p("stream %s removed", stream.getId());
+            PeerConnectionWrapper pcWrapper = getPcWrapper(this);
+            for (VideoTrack videoTrack : stream.videoTracks){
+                pcWrapper.removeRemoteVideoTrack(videoTrack);
+            }
+            for (AudioTrack audioTrack : stream.audioTracks){
+                pcWrapper.removeRemoteAudioTrack(audioTrack);
+            }
         }
 
         @Override
@@ -1815,7 +1888,7 @@ public class WebRtcManager extends Caster<Msg>{
         VideoCapturer videoCapturer;
         VideoSource videoSource;
         VideoTrack localVideoTrack;
-        List<VideoTrack> remoteVideoTracks = new ArrayList<>();
+        Map<String, VideoTrack> remoteVideoTracks = new HashMap<>();
         AudioSource audioSource;
         AudioTrack localAudioTrack;
         List<AudioTrack> remoteAudioTracks = new ArrayList<>();
@@ -1911,7 +1984,7 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
                 return;
             }
-            remoteVideoTracks.add(track);
+            remoteVideoTracks.put(streamId, track);
             track.setEnabled(config.isRemoteVideoEnabled);
             ProxyVideoSink videoSink = new ProxyVideoSink(streamId);
             videoSinks.put(streamId, videoSink);
@@ -1930,9 +2003,8 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             if (null != sessionEventListener) {
-                TRtcStreamInfo finalRtcStreamInfo = rtcStreamInfo;
+                StreamInfo streamInfo = ToDoConverter.rtcStreamInfo2StreamInfo(rtcStreamInfo);
                 handler.post(() -> {
-                    StreamInfo streamInfo = ToDoConverter.rtcStreamInfo2StreamInfo(finalRtcStreamInfo);
                     KLog.p("####onRemoteStream, streamInfo=%s", streamInfo);
                     sessionEventListener.onStream(streamInfo);
 //                    // FORDEBUG 仅调试
@@ -1940,6 +2012,39 @@ public class WebRtcManager extends Caster<Msg>{
                 });
             }
 
+        }
+
+        void removeRemoteVideoTrack(VideoTrack track){
+            track.setEnabled(false);
+            for (Map.Entry<String, VideoTrack> entry : remoteVideoTracks.entrySet()){
+                if (entry.getValue() == track){
+                    String streamId = entry.getKey();
+                    remoteVideoTracks.remove(streamId);
+                    if (null != sessionEventListener) {
+                        TRtcStreamInfo tRtcStreamInfo = null;
+                        for (TRtcStreamInfo si : removedStreamInfos){
+                            if (si.achStreamId.equals(streamId)){
+                                tRtcStreamInfo = si;
+                                removedStreamInfos.remove(si);
+                                break;
+                            }
+                        }
+                        if (null == tRtcStreamInfo){
+                            KLog.p(KLog.ERROR, "failed to removeRemoteVideoTrack streamId=%s, left streaminfo", streamId);
+                            return;
+                        }
+                        StreamInfo streamInfo = ToDoConverter.rtcStreamInfo2StreamInfo(tRtcStreamInfo);
+                        handler.post(() -> {
+                            KLog.p("####onRemoteStreamRemoved, streamInfo=%s", streamInfo);
+                            sessionEventListener.onStreamRemoved(streamInfo);
+                        });
+                    }
+
+                    return;
+                }
+            }
+
+            KLog.p(KLog.ERROR, "failed to removeRemoteVideoTrack, no such track %s", track);
         }
 
 
@@ -1956,6 +2061,12 @@ public class WebRtcManager extends Caster<Msg>{
             track.setEnabled(config.isRemoteAudioEnabled);
             remoteAudioTracks.add(track);
         }
+
+        void removeRemoteAudioTrack(AudioTrack track){
+            track.setEnabled(false);
+            remoteAudioTracks.remove(track);
+        }
+
 
         void destoryAudioTrack(){
             localAudioTrack.setEnabled(false);
@@ -2076,7 +2187,7 @@ public class WebRtcManager extends Caster<Msg>{
         void setRemoteVideoEnable(boolean bEnable){
             config.isRemoteVideoEnabled = bEnable;
             executor.execute(() -> {
-                for (VideoTrack videoTrack : remoteVideoTracks) {
+                for (VideoTrack videoTrack : remoteVideoTracks.values()) {
                     videoTrack.setEnabled(bEnable);
                 }
             });
