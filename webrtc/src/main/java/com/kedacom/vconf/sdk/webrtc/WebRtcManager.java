@@ -106,7 +106,7 @@ public class WebRtcManager extends Caster<Msg>{
     private PeerConnectionFactory factory;
     private List<PeerConnectionWrapper> connWrapperList = new ArrayList<>();
     private List<TRtcStreamInfo> streamInfos = new ArrayList<>();
-    private List<TRtcStreamInfo> removedStreamInfos = new ArrayList<>();
+    private List<TRtcStreamInfo> removingStreamInfos = new ArrayList<>();
     private BiMap<String, String> midStreamIdMap = HashBiMap.create();
     private List<StreamInfo> localStreamInfos = new ArrayList<>();
 
@@ -576,7 +576,7 @@ public class WebRtcManager extends Caster<Msg>{
                         TRtcStreamInfo localStreamInfo = iterator.next();
                         if (localStreamInfo.achStreamId.equals(streamInfo.achStreamId)){
                             iterator.remove();
-                            removedStreamInfos.add(localStreamInfo); // 此处保存用户后续通知用户
+                            removingStreamInfos.add(localStreamInfo); // 此处保存用户后续通知用户
                             break;
                         }
                     }
@@ -1231,6 +1231,12 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p("remoteStreamInfo.streamId=%s", remoteStreamInfo.achStreamId);
             if (remoteStreamInfo.achStreamId.equals(streamId)){
                 return ToDoConverter.rtcStreamInfo2StreamInfo(remoteStreamInfo);
+            }
+        }
+        for (TRtcStreamInfo removingStreamInfo : removingStreamInfos){
+            KLog.p("needRemoveStreamInfo.streamId=%s", removingStreamInfo.achStreamId);
+            if (removingStreamInfo.achStreamId.equals(streamId)){
+                return ToDoConverter.rtcStreamInfo2StreamInfo(removingStreamInfo);
             }
         }
         return null;
@@ -2043,10 +2049,10 @@ public class WebRtcManager extends Caster<Msg>{
                     remoteVideoTracks.remove(streamId);
                     if (null != sessionEventListener) {
                         TRtcStreamInfo tRtcStreamInfo = null;
-                        for (TRtcStreamInfo si : removedStreamInfos){
+                        for (TRtcStreamInfo si : removingStreamInfos){
                             if (si.achStreamId.equals(streamId)){
                                 tRtcStreamInfo = si;
-                                removedStreamInfos.remove(si);
+                                removingStreamInfos.remove(si);
                                 break;
                             }
                         }
