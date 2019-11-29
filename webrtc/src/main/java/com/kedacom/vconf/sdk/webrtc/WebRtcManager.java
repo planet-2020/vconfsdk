@@ -885,7 +885,7 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 用于显示码流的控件。
      * */
-    public class Display extends SurfaceViewRenderer{
+    public final class Display extends SurfaceViewRenderer{
         private boolean enabled = true;
         private CopyOnWriteArrayList<TextDecoration> onDisplayTextList = new CopyOnWriteArrayList<>();
         private CopyOnWriteArrayList<PicDecoration> onDisplayPicList = new CopyOnWriteArrayList<>();
@@ -893,6 +893,8 @@ public class WebRtcManager extends Caster<Msg>{
         public final int POS_LEFTBOTTOM = 2;
         public final int POS_RIGHTTOP = 3;
         public final int POS_RIGHTBOTTOM = 4;
+        private int displayWidth;
+        private int displayHeight;
 
         private Display(Context context) {
             super(context);
@@ -910,7 +912,10 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
             super.surfaceChanged(holder, format, width, height);
-            adjustDecoration(width, height);
+            displayWidth = width;
+            displayHeight = height;
+            KLog.p("displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
+            adjustDecoration();
         }
 
         @Override
@@ -952,6 +957,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 添加文字
          * */
         public void addText(TextDecoration decoration){
+            decoration.adjust();
             onDisplayTextList.add(decoration);
         }
 
@@ -959,6 +965,9 @@ public class WebRtcManager extends Caster<Msg>{
          * 添加文字
          * */
         public void addText(List<TextDecoration> decoList){
+            for (TextDecoration deco : decoList){
+                deco.adjust();
+            }
             onDisplayTextList.addAll(decoList);
         }
 
@@ -980,12 +989,16 @@ public class WebRtcManager extends Caster<Msg>{
          * 添加图片
          * */
         public void addPic(PicDecoration decoration){
+            decoration.adjust();
             onDisplayPicList.add(decoration);
         }
         /**
          * 添加图片
          * */
         public void addPic(List<PicDecoration> decoList){
+            for (PicDecoration deco : decoList){
+                deco.adjust();
+            }
             onDisplayPicList.addAll(decoList);
         }
 
@@ -1004,16 +1017,16 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-        private void adjustDecoration(int width, int height){
+        private void adjustDecoration(){
             for (TextDecoration deco : onDisplayTextList){
-                deco.adjust(width, height);
+                deco.adjust();
             }
             for (PicDecoration deco : onDisplayPicList){
-                deco.adjust(width, height);
+                deco.adjust();
             }
         }
 
-        public class TextDecoration extends Decoration{
+        public final class TextDecoration extends Decoration{
             public String text;     // 要展示的文字
             public TextDecoration(@NonNull String text, int size, int color, int dx, int dy, int refPos, int w, int h) {
                 super(dx, dy, refPos, w, h);
@@ -1023,8 +1036,11 @@ public class WebRtcManager extends Caster<Msg>{
                 paint.setTextSize(size);
             }
 
-            protected void adjust(int displayW, int displayH){
-                super.adjust(displayW, displayH);
+            protected void adjust(){
+                if (displayHeight<=0 || displayWidth<=0){
+                    return;
+                }
+                super.adjust();
                 float size = paint.getTextSize()*Math.min(ratioW, ratioH);
                 paint.setTextSize(size);
                 if (POS_LEFTBOTTOM == refPos){
@@ -1039,7 +1055,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         }
 
-        public class PicDecoration extends Decoration{
+        public final class PicDecoration extends Decoration{
             public Bitmap pic;     // 要展示的图片
             private Matrix matrix = new Matrix();
             public PicDecoration(@NonNull Bitmap pic, int dx, int dy, int refPos, int w, int h) {
@@ -1048,8 +1064,11 @@ public class WebRtcManager extends Caster<Msg>{
                 paint.setStyle(Paint.Style.STROKE);
             }
 
-            protected void adjust(int displayW, int displayH){
-                super.adjust(displayW, displayH);
+            protected void adjust(){
+                if (displayHeight<=0 || displayWidth<=0){
+                    return;
+                }
+                super.adjust();
                 float scaleFactor = Math.min(ratioW, ratioH);
                 matrix.reset();
                 matrix.postScale(scaleFactor, scaleFactor, originX, originY);
@@ -1093,31 +1112,31 @@ public class WebRtcManager extends Caster<Msg>{
                 this.paint = new Paint();
             }
 
-            protected void adjust(int displayW, int displayH){
-                ratioW = displayW/(float)w;
-                ratioH = displayH/(float)h;
+            protected void adjust(){
+                ratioW = displayWidth/(float)w;
+                ratioH = displayHeight/(float)h;
                 if (POS_LEFTTOP == refPos){
                     x = Math.round(ratioW * dx);
                     y = Math.round(ratioH * dy);
                     originX = originY = 0;
                 }else if (POS_LEFTBOTTOM == refPos){
                     x = Math.round(ratioW * dx);
-                    y = Math.round(displayH - ratioH * dy);
+                    y = Math.round(displayHeight - ratioH * dy);
                     originX = 0;
-                    originY = displayH;
+                    originY = displayHeight;
                 }else if (POS_RIGHTTOP == refPos){
-                    x = Math.round(displayW - ratioW * dx);
+                    x = Math.round(displayWidth - ratioW * dx);
                     y = Math.round(ratioH * dy);
-                    originX = displayW;
+                    originX = displayWidth;
                     originY = 0;
                 }else{
-                    x = Math.round(displayW - ratioW * dx);
-                    y = Math.round(displayH - ratioH * dy);
-                    originX = displayW;
-                    originY = displayH;
+                    x = Math.round(displayWidth - ratioW * dx);
+                    y = Math.round(displayHeight - ratioH * dy);
+                    originX = displayWidth;
+                    originY = displayHeight;
                 }
                 KLog.p("displayW=%s, displayH=%s, ratioW=%s, ratioH=%s, x=%s, y=%s, originX=%s, originY=%s",
-                        displayW, displayH, ratioW, ratioH, x, y, originX, originY);
+                        displayWidth, displayHeight, ratioW, ratioH, x, y, originX, originY);
             }
 
         }
@@ -1169,13 +1188,15 @@ public class WebRtcManager extends Caster<Msg>{
         if (null == streamId2) streamId2 = STREAMID_NULL;
         bindDisplay(display1, streamId2);
         bindDisplay(display2, streamId1);
-        // 切换贴在display上面的文字图片
+        // 切换贴在display上面的decoration
         CopyOnWriteArrayList<Display.TextDecoration> textDecorationList1 = display1.onDisplayTextList;
         display1.onDisplayTextList = display2.onDisplayTextList;
         display2.onDisplayTextList = textDecorationList1;
         CopyOnWriteArrayList<Display.PicDecoration> picDecorationList1 = display1.onDisplayPicList;
         display1.onDisplayPicList = display2.onDisplayPicList;
         display2.onDisplayPicList = picDecorationList1;
+        display1.adjustDecoration();
+        display2.adjustDecoration();
     }
 
 
