@@ -100,6 +100,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private Context context;
     private Map<String, ProxyVideoSink> videoSinks = new HashMap<>();
+    public static final String STREAMID_NULL = "NULL";
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private EglBase eglBase;
@@ -880,23 +881,29 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    /**
+     * 创建Display。
+     * */
+    public Display createDisplay(){
+        return new Display(context, eglBase);
+    }
 
-    private static int decorateIdBase = 0;
     /**
      * 用于显示码流的控件。
      * */
-    public final class Display extends SurfaceViewRenderer{
+    public final static class Display extends SurfaceViewRenderer{
         private boolean enabled = true;
-        private CopyOnWriteArrayList<TextDecoration> onDisplayTextList = new CopyOnWriteArrayList<>();
-        private CopyOnWriteArrayList<PicDecoration> onDisplayPicList = new CopyOnWriteArrayList<>();
-        public final int POS_LEFTTOP = 1;
-        public final int POS_LEFTBOTTOM = 2;
-        public final int POS_RIGHTTOP = 3;
-        public final int POS_RIGHTBOTTOM = 4;
+        private String streamId = STREAMID_NULL;
+        private CopyOnWriteArrayList<TextDecoration> textDecorations = new CopyOnWriteArrayList<>();
+        private CopyOnWriteArrayList<PicDecoration> picDecorations = new CopyOnWriteArrayList<>();
+        public static final int POS_LEFTTOP = 1;
+        public static final int POS_LEFTBOTTOM = 2;
+        public static final int POS_RIGHTTOP = 3;
+        public static final int POS_RIGHTBOTTOM = 4;
         private int displayWidth;
         private int displayHeight;
 
-        private Display(Context context) {
+        private Display(Context context, EglBase eglBase) {
             super(context);
             init(eglBase.getEglBaseContext(), null);
             setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
@@ -904,9 +911,128 @@ public class WebRtcManager extends Caster<Msg>{
             setWillNotDraw(false);
         }
 
-        public Display() {
-            this(context);
+
+
+
+        /**
+         * 将Display绑定到码流。
+         * 一个Display只会绑定到一路码流；
+         * 多个Display可以绑定到同一路码流；
+         * 若一个Display已经绑定到某路码流，则该绑定会先被解除，然后建立新的绑定关系；
+         * NOTE:
+         * Display的内容包括码流和Decoration，此方法只影响码流展示不会改变Decoration；
+         * 若绑定到{@link #STREAMID_NULL}则该Display不会展示码流，相当于于解除绑定；
+         *
+         * 对于画面内容交换的使用场景可以使用便捷方法{@link #swapContent(Display)}；
+         * 对于画面内容拷贝的使用场景可以使用便捷方法{@link #copyContentFrom(Display)}；
+         * @param streamId 码流Id。
+         * */
+        public boolean bindStream(@NonNull String streamId){
+            KLog.p("bind display %s to stream %s", this, streamId);
+            Map<String, ProxyVideoSink> videoSinks = instance.videoSinks;
+            ProxyVideoSink sink = videoSinks.get(streamId);
+            if (null == sink && !STREAMID_NULL.equals(streamId)){
+                KLog.p(KLog.ERROR, "no such stream %s", streamId);
+                return false;
+            }
+
+            ProxyVideoSink boundSink = videoSinks.get(this.streamId);
+            if (null != boundSink) boundSink.delTarget(this);
+            this.streamId = streamId;
+
+            if (null != sink) {
+                sink.addTarget(this);
+            }
+
+            return true;
         }
+
+
+        /**
+         * 交换两个display的内容。
+         * NOTE: 内容包括码流、Decoration。
+         * @param otherDisplay 要交换的display。
+         * */
+        public void swapContent(@NonNull Display otherDisplay){
+            KLog.p("swap display %s and display %s", this, otherDisplay);
+            // 切换绑定的流
+            bindStream(otherDisplay.streamId);
+            otherDisplay.bindStream(this.streamId);
+            // 切换贴在display上面的decoration
+            CopyOnWriteArrayList<Display.TextDecoration> textDecorationList = textDecorations;
+            textDecorations = otherDisplay.textDecorations;
+            otherDisplay.textDecorations = textDecorationList;
+            CopyOnWriteArrayList<Display.PicDecoration> picDecorationList = picDecorations;
+            picDecorations = otherDisplay.picDecorations;
+            otherDisplay.picDecorations = picDecorationList;
+            adjustDecoration();
+            otherDisplay.adjustDecoration();
+        }
+
+        /**
+         * 从另一个display拷贝内容
+         * NOTE: 内容包括码流、Decoration。
+         * */
+        public void copyContentFrom(@NonNull Display src){
+            bindStream(src.streamId);
+            clearAllDeco();
+            addText(src.getAllText());
+            addPic(src.getAllPic());
+            adjustDecoration();
+        }
+
+        /**
+         * 清空display内容
+         * NOTE: 内容包括码流、Decoration。
+         * */
+        public void clearContent(){
+            bindStream(STREAMID_NULL);
+            clearAllDeco();
+        }
+
+        /**
+         * 销毁display
+         * */
+        public void release(){
+            clearContent();
+            super.release();
+        }
+
+
+        /**
+         * 获取该display绑定的流ID
+         * */
+        public @NonNull String getStreamId(){
+            return streamId;
+        }
+
+        /**
+         * 获取该display绑定的流的详细信息
+         * */
+        public StreamInfo getStreamInfo(){
+            KLog.p("display streamId=%s", streamId);
+            for (StreamInfo localStreamInfo : instance.localStreamInfos){
+                KLog.p("localStreamInfo.streamId=%s", localStreamInfo.streamId);
+                if (localStreamInfo.streamId.equals(streamId)){
+                    return localStreamInfo;
+                }
+            }
+            for (TRtcStreamInfo remoteStreamInfo : instance.streamInfos){
+                KLog.p("remoteStreamInfo.streamId=%s", remoteStreamInfo.achStreamId);
+                if (remoteStreamInfo.achStreamId.equals(streamId)){
+                    return ToDoConverter.rtcStreamInfo2StreamInfo(remoteStreamInfo);
+                }
+            }
+            for (TRtcStreamInfo removingStreamInfo : instance.removingStreamInfos){
+                KLog.p("needRemoveStreamInfo.streamId=%s", removingStreamInfo.achStreamId);
+                if (removingStreamInfo.achStreamId.equals(streamId)){
+                    return ToDoConverter.rtcStreamInfo2StreamInfo(removingStreamInfo);
+                }
+            }
+            return null;
+        }
+
+
 
 
         @Override
@@ -922,11 +1048,11 @@ public class WebRtcManager extends Caster<Msg>{
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
 
-            for (TextDecoration deco : onDisplayTextList){
+            for (TextDecoration deco : textDecorations){
                 canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
             }
 
-            for (PicDecoration deco : onDisplayPicList){
+            for (PicDecoration deco : picDecorations){
                 canvas.drawBitmap(deco.pic, deco.matrix, deco.paint);
             }
 
@@ -957,8 +1083,8 @@ public class WebRtcManager extends Caster<Msg>{
          * 添加文字
          * */
         public void addText(TextDecoration decoration){
-            decoration.adjust();
-            onDisplayTextList.add(decoration);
+            decoration.adjust(displayWidth, displayHeight);
+            textDecorations.add(decoration);
         }
 
         /**
@@ -966,54 +1092,54 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         public void addText(List<TextDecoration> decoList){
             for (TextDecoration deco : decoList){
-                deco.adjust();
+                deco.adjust(displayWidth, displayHeight);
             }
-            onDisplayTextList.addAll(decoList);
+            textDecorations.addAll(decoList);
         }
 
         /**
          * 清空文字
          * */
         public void clearText(){
-            onDisplayTextList.clear();
+            textDecorations.clear();
         }
 
         /**
          * 获取所有文字
          * */
         public List<TextDecoration> getAllText(){
-            return onDisplayTextList;
+            return textDecorations;
         }
 
         /**
          * 添加图片
          * */
         public void addPic(PicDecoration decoration){
-            decoration.adjust();
-            onDisplayPicList.add(decoration);
+            decoration.adjust(displayWidth, displayHeight);
+            picDecorations.add(decoration);
         }
         /**
          * 添加图片
          * */
         public void addPic(List<PicDecoration> decoList){
             for (PicDecoration deco : decoList){
-                deco.adjust();
+                deco.adjust(displayWidth, displayHeight);
             }
-            onDisplayPicList.addAll(decoList);
+            picDecorations.addAll(decoList);
         }
 
         /**
          * 清空图片
          * */
         public void clearPic(){
-            onDisplayPicList.clear();
+            picDecorations.clear();
         }
 
         /**
          * 获取所有图片
          * */
         public List<PicDecoration> getAllPic(){
-            return onDisplayPicList;
+            return picDecorations;
         }
 
         /**
@@ -1026,15 +1152,15 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         private void adjustDecoration(){
-            for (TextDecoration deco : onDisplayTextList){
-                deco.adjust();
+            for (TextDecoration deco : textDecorations){
+                deco.adjust(displayWidth, displayHeight);
             }
-            for (PicDecoration deco : onDisplayPicList){
-                deco.adjust();
+            for (PicDecoration deco : picDecorations){
+                deco.adjust(displayWidth, displayHeight);
             }
         }
 
-        public final class TextDecoration extends Decoration{
+        public static final class TextDecoration extends Decoration{
             public String text;     // 要展示的文字
             public TextDecoration(@NonNull String text, int size, int color, int dx, int dy, int refPos, int w, int h) {
                 super(dx, dy, refPos, w, h);
@@ -1044,11 +1170,11 @@ public class WebRtcManager extends Caster<Msg>{
                 paint.setTextSize(size);
             }
 
-            protected void adjust(){
-                if (displayHeight<=0 || displayWidth<=0){
+            protected void adjust(int width, int height){
+                if (width<=0 || height<=0){
                     return;
                 }
-                super.adjust();
+                super.adjust(width, height);
                 float size = paint.getTextSize()*Math.min(ratioW, ratioH);
                 paint.setTextSize(size);
                 if (POS_LEFTBOTTOM == refPos){
@@ -1063,7 +1189,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         }
 
-        public final class PicDecoration extends Decoration{
+        public static final class PicDecoration extends Decoration{
             public Bitmap pic;     // 要展示的图片
             private Matrix matrix = new Matrix();
             public PicDecoration(@NonNull Bitmap pic, int dx, int dy, int refPos, int w, int h) {
@@ -1072,11 +1198,11 @@ public class WebRtcManager extends Caster<Msg>{
                 paint.setStyle(Paint.Style.STROKE);
             }
 
-            protected void adjust(){
-                if (displayHeight<=0 || displayWidth<=0){
+            protected void adjust(int width, int height){
+                if (width<=0 || height<=0){
                     return;
                 }
-                super.adjust();
+                super.adjust(width, height);
                 float scaleFactor = Math.min(ratioW, ratioH);
                 matrix.reset();
                 matrix.postScale(scaleFactor, scaleFactor, originX, originY);
@@ -1094,8 +1220,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
 
-        public class Decoration{
-            protected int id;
+        public static class Decoration{
             public int dx;          // 参照pos的x方向距离（UCD标注的）
             public int dy;          // 参照pos的y方向距离（UCD标注的）
             public int refPos;      /** dx, dy参照的位置。如取值{@link #POS_LEFTBOTTOM}则dx表示距离左下角的x方向距离*/
@@ -1111,7 +1236,6 @@ public class WebRtcManager extends Caster<Msg>{
             protected float ratioH;
 
             protected Decoration(int dx, int dy, int refPos, int w, int h) {
-                this.id = ++decorateIdBase;
                 this.dx = dx;
                 this.dy = dy;
                 this.refPos = refPos;
@@ -1120,153 +1244,42 @@ public class WebRtcManager extends Caster<Msg>{
                 this.paint = new Paint();
             }
 
-            protected void adjust(){
-                ratioW = displayWidth/(float)w;
-                ratioH = displayHeight/(float)h;
+            protected void adjust(int width, int height){
+                ratioW = width/(float)w;
+                ratioH = height/(float)h;
                 if (POS_LEFTTOP == refPos){
                     x = Math.round(ratioW * dx);
                     y = Math.round(ratioH * dy);
                     originX = originY = 0;
                 }else if (POS_LEFTBOTTOM == refPos){
                     x = Math.round(ratioW * dx);
-                    y = Math.round(displayHeight - ratioH * dy);
+                    y = Math.round(height - ratioH * dy);
                     originX = 0;
-                    originY = displayHeight;
+                    originY = height;
                 }else if (POS_RIGHTTOP == refPos){
-                    x = Math.round(displayWidth - ratioW * dx);
+                    x = Math.round(width - ratioW * dx);
                     y = Math.round(ratioH * dy);
-                    originX = displayWidth;
+                    originX = width;
                     originY = 0;
                 }else{
-                    x = Math.round(displayWidth - ratioW * dx);
-                    y = Math.round(displayHeight - ratioH * dy);
-                    originX = displayWidth;
-                    originY = displayHeight;
+                    x = Math.round(width - ratioW * dx);
+                    y = Math.round(height - ratioH * dy);
+                    originX = width;
+                    originY = height;
                 }
                 KLog.p("displayW=%s, displayH=%s, ratioW=%s, ratioH=%s, x=%s, y=%s, originX=%s, originY=%s",
-                        displayWidth, displayHeight, ratioW, ratioH, x, y, originX, originY);
+                        width, height, ratioW, ratioH, x, y, originX, originY);
             }
 
         }
 
     }
 
-    public static final String STREAMID_NULL = "NULL";
     /**
-     * 将Display绑定到码流。
-     * 一个Display只会绑定到一路码流；
-     * 多个Display可以绑定到同一路码流；
-     * 若一个Display已经绑定到某路码流，则该绑定会先被解除，然后建立新的绑定关系；
-     * @param streamId 码流Id。
-     *                 若绑定到{@link #STREAMID_NULL}则该Display不会展示码流，相当于于解除绑定。
-     *                 NOTE：不能通过{@link #getDisplay(String)}找回绑定到{@link #STREAMID_NULL}的Display
-     *                 对于画面交换的使用场景有个便利方法可以使用{@link #swapDisplayContent(Display, Display)}。
-     *                 可以通过{@link #getStreamId(Display)}获取某个Display对应的streamId，这适用于“想要绑定到某个Display对应的流”的场景，比如多画面展示同一路码流。
-     * */
-    public boolean bindDisplay(Display display, String streamId){
-        KLog.p("bind display %s to stream %s", display, streamId);
-        ProxyVideoSink sink = videoSinks.get(streamId);
-        if (null == sink && !STREAMID_NULL.equals(streamId)){
-            KLog.p(KLog.ERROR, "no such stream %s", streamId);
-            return false;
-        }
-
-        String boundStreamId = getStreamId(display);
-        if (null != boundStreamId){
-            ProxyVideoSink boundSink = videoSinks.get(boundStreamId);
-            boundSink.delTarget(display);
-        }
-        if (null != sink) {
-            sink.addTarget(display);
-        }
-
-        return true;
-    }
-
-
-    /**
-     * 交换画面内容
-     * */
-    public void swapDisplayContent(Display display1, Display display2){
-        KLog.p("swap display %s and display %s", display1, display2);
-        // 切换绑定的流
-        String streamId1 = getStreamId(display1);
-        String streamId2 = getStreamId(display2);
-        if (null == streamId1) streamId1 = STREAMID_NULL;
-        if (null == streamId2) streamId2 = STREAMID_NULL;
-        bindDisplay(display1, streamId2);
-        bindDisplay(display2, streamId1);
-        // 切换贴在display上面的decoration
-        CopyOnWriteArrayList<Display.TextDecoration> textDecorationList1 = display1.onDisplayTextList;
-        display1.onDisplayTextList = display2.onDisplayTextList;
-        display2.onDisplayTextList = textDecorationList1;
-        CopyOnWriteArrayList<Display.PicDecoration> picDecorationList1 = display1.onDisplayPicList;
-        display1.onDisplayPicList = display2.onDisplayPicList;
-        display2.onDisplayPicList = picDecorationList1;
-        display1.adjustDecoration();
-        display2.adjustDecoration();
-    }
-
-    /**
-     * 拷贝画面内容
-     * 将src的内容拷贝到dst。dst的内容会先被清空，然后添加。
-     * */
-    public void copyDisplayContent(@NonNull Display src, @NonNull Display dst){
-        bindDisplay(dst, getStreamId(src));
-        dst.clearAllDeco();
-        dst.addText(src.getAllText());
-        dst.addPic(src.getAllPic());
-    }
-
-
-    /**
-     * 根据流的目标视图获取流ID
-     * @param display 流的目标视图，流投射到该视图上展示。
-     * @see #bindDisplay(Display, String)
-     * */
-    public String getStreamId(@NonNull Display display){
-        for (Map.Entry<String, ProxyVideoSink> entry : videoSinks.entrySet()){
-            for (Display target : entry.getValue().targets){
-                if (display == target){
-                    return entry.getKey();
-                }
-            }
-        }
-        return STREAMID_NULL;
-    }
-
-    /**
-     * 获取流信息
-     * */
-    public StreamInfo getStreamInfo(String streamId){
-        KLog.p("streamId=%s", streamId);
-        for (StreamInfo localStreamInfo : localStreamInfos){
-            KLog.p("localStreamInfo.streamId=%s", localStreamInfo.streamId);
-            if (localStreamInfo.streamId.equals(streamId)){
-                return localStreamInfo;
-            }
-        }
-        for (TRtcStreamInfo remoteStreamInfo : streamInfos){
-            KLog.p("remoteStreamInfo.streamId=%s", remoteStreamInfo.achStreamId);
-            if (remoteStreamInfo.achStreamId.equals(streamId)){
-                return ToDoConverter.rtcStreamInfo2StreamInfo(remoteStreamInfo);
-            }
-        }
-        for (TRtcStreamInfo removingStreamInfo : removingStreamInfos){
-            KLog.p("needRemoveStreamInfo.streamId=%s", removingStreamInfo.achStreamId);
-            if (removingStreamInfo.achStreamId.equals(streamId)){
-                return ToDoConverter.rtcStreamInfo2StreamInfo(removingStreamInfo);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * 根据流ID获取目标视图
+     * 获取绑定到流的所有Display。
      * @param streamId 流Id
-     * @see  #bindDisplay(Display, String)
      * */
-    public List<Display> getDisplay(String streamId){
+    public List<Display> getBoundDisplays(String streamId){
         ProxyVideoSink videoSink = videoSinks.get(streamId);
         return null != videoSink ? videoSink.targets : null;
     }
@@ -1396,13 +1409,17 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public interface SessionEventListener {
         /**
-         * 流来了
-         * 正常情形下，用户收到该回调应创建{@link Display}并调用{@link #bindDisplay(Display, String)}以使码流展示在Display上。
+         * 流来了。
+         * 一般情形下，用户收到该回调时调用{@link #createDisplay()}创建Display，
+         * 并调用{@link Display#bindStream(String)} 将Display绑定到一路码流以使码流展示在Display上，
+         * 如果还需要展示文字图标等可调用{@link Display#addText(Display.TextDecoration)}, {@link Display#addPic(Display.PicDecoration)}
          * */
         void onStream(StreamInfo stream);
+
         /**
-         * 流走了
-         * 用户不需要处理stream和Display的绑定关系，只需处理界面相关控件的显隐。
+         * 流走了。
+         * 如果该Display不需要了请调用{@link Display#release()}销毁；
+         * 如果后续要复用则不需要销毁可以调用{@link Display#clearContent()}清空内容；
          * */
         void onStreamRemoved(StreamInfo stream);
     }
