@@ -28,21 +28,21 @@ enum Msg {
     GetSvrAddr,
 
     /**
-     * 登录Rtc服务器
+     * 登录/登出Rtc服务器
      */
     @Request(method = "SetRtcSvrCfgCmd",
             owner = MethodOwner.ConfigCtrl,
             paras = StringBuffer.class,
-            userParas = TMtRtcSvrAddr.class,
-            rspSeq = "LoginRsp")
-    Login,
+            userParas = TMtRtcSvrAddr.class, // 登录：TMtRtcSvrAddr.bUsedRtc==true，登出：=false
+            rspSeq = "RegisterRsp")
+    Register,
 
     /**
-     * 登录Rtc服务器响应
+     * 登录/登出Rtc服务器响应
      */
     @Response(clz = TLoginResult.class,
             id = "RegResultNtf")
-    LoginRsp,
+    RegisterRsp,
 
 
     /**

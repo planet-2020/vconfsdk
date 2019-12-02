@@ -26,4 +26,8 @@ public final class TMtRtcSvrAddr {
         this.achIpv6 = "";
     }
 
+    public TMtRtcSvrAddr( boolean enable) {
+        bUsedRtc = enable;
+    }
+
 }

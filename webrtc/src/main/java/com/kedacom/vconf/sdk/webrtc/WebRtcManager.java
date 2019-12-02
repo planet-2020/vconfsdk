@@ -91,7 +91,7 @@ import java.util.concurrent.Executors;
 
 import com.kedacom.vconf.sdk.webrtc.bean.*;
 
-@SuppressWarnings("SwitchStatementWithTooFewBranches")
+@SuppressWarnings({"unused"})
 public class WebRtcManager extends Caster<Msg>{
 
     private static final String TAG = WebRtcManager.class.getSimpleName();
@@ -131,7 +131,7 @@ public class WebRtcManager extends Caster<Msg>{
     protected Map<Msg[], RspProcessor<Msg>> rspsProcessors() {
         Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
         processorMap.put(new Msg[]{
-                Msg.Login,
+                Msg.Register,
                 Msg.Call,
                 Msg.CreateConf,
                 Msg.QuitConf,
@@ -167,30 +167,26 @@ public class WebRtcManager extends Caster<Msg>{
      *          失败：错误码 TODO
      * @param confEventListener 会议事件监听器
      * */
-    public void login(String e164, IResultListener resultListener, ConfEventListener confEventListener){  // TODO 去掉e164，从aps获取有了
+    public void login(String e164, IResultListener resultListener, ConfEventListener confEventListener){
         TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) get(Msg.GetSvrAddr);
-//        if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0){
-//            KLog.p(KLog.ERROR, "invalid rtcSvrAddr, have you logined APS");
-//            reportFailed(-1, resultListener);
-//            return;
-//        }
-        if (null != rtcSvrAddr){
-            KLog.p("rtcip=%s", NetAddrHelper.ipLong2Str(rtcSvrAddr.dwIp));
-        }else{
-            KLog.p(KLog.ERROR, "null == rtcSvrAddr");
+        if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0){
+            KLog.p(KLog.ERROR, "invalid rtcSvrAddr");
+            reportFailed(-1, resultListener);
+            return;
         }
 
-//        if (null == rtcSvrAddr){
-            try {
-                long ip = NetAddrHelper.ipStr2LongLittleEndian("172.16.179.114"); //FIXME 写死方便调试
-//                rtcSvrAddr = new TMtRtcSvrAddr(ip, 7961,"0512110000004");
-                rtcSvrAddr = new TMtRtcSvrAddr(ip, 7961, e164);
-            } catch (NetAddrHelper.InvalidIpv4Exception e) {
-                e.printStackTrace();
-            }
+//        try {
+//            long ip = NetAddrHelper.ipStr2LongLittleEndian("172.16.179.114"); //XXX 写死方便调试
+//            rtcSvrAddr = new TMtRtcSvrAddr(ip, 7961, e164);
+//        } catch (NetAddrHelper.InvalidIpv4Exception e) {
+//            e.printStackTrace();
 //        }
+        
+        rtcSvrAddr.bUsedRtc = true;
+        rtcSvrAddr.achNumber = e164;
+
         this.confEventListener = confEventListener;
-        req(Msg.Login, resultListener, rtcSvrAddr);
+        req(Msg.Register, resultListener, rtcSvrAddr);
     }
 
     /**
@@ -202,6 +198,7 @@ public class WebRtcManager extends Caster<Msg>{
     public void logout(IResultListener resultListener){
         this.confEventListener = null;
         stopSession();
+        req(Msg.Register, resultListener, new TMtRtcSvrAddr(false));
     }
 
     /**
@@ -404,13 +401,18 @@ public class WebRtcManager extends Caster<Msg>{
 
     private boolean onRsp(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas) {
         switch (rsp){
-            case LoginRsp:
+            case RegisterRsp:
                 TLoginResult loginResult = (TLoginResult) rspContent;
                 KLog.p("loginResult: %s", loginResult.AssParam.basetype);
-                if (100 == loginResult.AssParam.basetype){
-                    reportSuccess(null, listener);
+                TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) reqParas[0];
+                if (rtcSvrAddr.bUsedRtc) {
+                    if (100 == loginResult.AssParam.basetype) {
+                        reportSuccess(null, listener);
+                    } else {
+                        reportFailed(-1, listener);
+                    }
                 }else{
-                    reportFailed(-1, listener);
+                    reportSuccess(null, listener);
                 }
                 break;
 
@@ -885,7 +887,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 创建Display。
      * */
     public Display createDisplay(){
-        return new Display(context, eglBase);
+        return new Display(context);
     }
 
     /**
@@ -903,9 +905,9 @@ public class WebRtcManager extends Caster<Msg>{
         private int displayWidth;
         private int displayHeight;
 
-        private Display(Context context, EglBase eglBase) {
+        private Display(Context context) {
             super(context);
-            init(eglBase.getEglBaseContext(), null);
+            init(instance.eglBase.getEglBaseContext(), null);
             setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
             setEnableHardwareScaler(true);
             setWillNotDraw(false);
@@ -1044,9 +1046,14 @@ public class WebRtcManager extends Caster<Msg>{
             adjustDecoration();
         }
 
+        long ts = System.currentTimeMillis();
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
+
+            if (System.currentTimeMillis() - ts > 5000){
+                KLog.p("onDraw, displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
+            }
 
             for (TextDecoration deco : textDecorations){
                 canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
