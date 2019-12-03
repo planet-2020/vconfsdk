@@ -27,7 +27,6 @@ import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.utils.log.KLog;
-import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 import com.kedacom.vconf.sdk.webrtc.bean.StreamInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TLoginResult;
@@ -277,7 +276,27 @@ public class WebRtcManager extends Caster<Msg>{
     private Intent screenCapturePermissionData;
     /**
      * 开始桌面共享
-     * @param permissionData 截屏权限申请结果
+     * @param permissionData 截屏权限申请结果。该参数可以通过如下方式取得：
+     * {@code
+     *     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+     *     private void requestScreenCapturePermission() {
+     *         MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) getApplication().getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+     *         Intent intent = mediaProjectionManager.createScreenCaptureIntent();
+     *         startActivityForResult(intent, YOUR_REQ_CODE);
+     *     }
+     *
+     *     ...
+     *
+     *         @Override
+     *     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+     *         super.onActivityResult(requestCode, resultCode, data);
+     *         if (requestCode == YOUR_REQ_CODE){
+     *             if (RESULT_OK == resultCode){
+     *                 webRtcClient.startScreenShare(data, resultListener);
+     *             }
+     *         }
+     *     }
+     * }
      * */
     public void startScreenShare(Intent permissionData, IResultListener resultListener){
         if (null == permissionData){
@@ -958,8 +977,9 @@ public class WebRtcManager extends Caster<Msg>{
         public void swapContent(@NonNull Display otherDisplay){
             KLog.p("swap display %s and display %s", this, otherDisplay);
             // 切换绑定的流
+            String myStreamId = streamId;
             bindStream(otherDisplay.streamId);
-            otherDisplay.bindStream(this.streamId);
+            otherDisplay.bindStream(myStreamId);
             // 切换贴在display上面的decoration
             CopyOnWriteArrayList<Display.TextDecoration> textDecorationList = textDecorations;
             textDecorations = otherDisplay.textDecorations;
