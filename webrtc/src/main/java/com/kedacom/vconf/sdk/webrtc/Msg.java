@@ -56,8 +56,6 @@ enum Msg {
                     int.class,  // 呼叫码率
                     EmConfProtocol.class   // 协议类型
             },
-            rspSeq = {"Calling", "P2pConfStarted"},
-            rspSeq2 = {"Calling", "P2pConfEnded"},
             rspSeq3 = {"Calling", "MultipartyConfStarted"},
             rspSeq4 = {"Calling", "MultipartyConfEnded"}
             )
@@ -69,20 +67,6 @@ enum Msg {
     @Response(clz = TMtCallLinkSate.class,
             id = "ConfCallingNtf")
     Calling,
-
-    /**
-     * 点对点会议已开始
-     * */
-    @Response(clz = TMtCallLinkSate.class,
-            id = "P2PStartedNtf")
-    P2pConfStarted,
-
-    /**
-     * 点对点会议已结束
-     * */
-    @Response(clz = BaseTypeInt.class,
-            id = "P2PEndedNtf")
-    P2pConfEnded,
 
     /**
      * 多方会议已开始
@@ -114,7 +98,7 @@ enum Msg {
             paras = StringBuffer.class,
             userParas = TMTInstanceCreateConference.class,
             rspSeq = {"CreateConfRsp", // 创会成功与否。创会成功后平台会拉终端入会
-                    "P2pConfStarted",  // 终端（己端）被成功拉入会议
+                    "MultipartyConfStarted",  // 终端（己端）被成功拉入会议
             }
     )
     CreateConf,
@@ -133,7 +117,7 @@ enum Msg {
             owner = MethodOwner.ConfCtrl,
             paras = int.class,
             userParas = EmMtCallDisReason.class,
-            rspSeq = "P2pConfEnded"
+            rspSeq = "MultipartyConfEnded"
     )
     QuitConf,
 
@@ -151,8 +135,7 @@ enum Msg {
      * */
     @Request(method = "ConfAcceptCmd",
             owner = MethodOwner.ConfCtrl,
-            rspSeq = "P2pConfStarted",
-            rspSeq2 = "MultipartyConfStarted"
+            rspSeq = "MultipartyConfStarted"
     )
     AcceptInvitation,
 

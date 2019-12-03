@@ -148,7 +148,6 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.StreamJoined,
                 Msg.StreamLeft,
                 Msg.CallIncoming,
-                Msg.P2pConfEnded,
                 Msg.MultipartyConfEnded,
         }, this::onNtfs);
 
@@ -442,7 +441,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 break;
 
-            case P2pConfStarted:
+            case MultipartyConfStarted:
                 callLinkSate = (TMtCallLinkSate) rspContent;
                 KLog.p("P2pConfStarted: %s", callLinkSate);
                 if (Msg.Call == req) {
@@ -452,28 +451,11 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 break;
 
-            case P2pConfEnded:
-                stopSession();
-                BaseTypeInt reason = (BaseTypeInt) rspContent;
-                KLog.p("P2pConfEnded: %s", reason.basetype);
-                if (Msg.QuitConf == req) {
-                    reportSuccess(null, listener);
-                }else{
-                    reportFailed(-1, listener);
-                }
-                break;
-
-            case MultipartyConfStarted:
-                callLinkSate = (TMtCallLinkSate) rspContent;
-                KLog.p("MultipartyConfStarted: %s", callLinkSate);
-                reportSuccess(ToDoConverter.callLinkState2MakeCallResult(callLinkSate), listener);
-                break;
-
             case MultipartyConfEnded:
                 stopSession();
-                reason = (BaseTypeInt) rspContent;
+                BaseTypeInt reason = (BaseTypeInt) rspContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
-                if (Msg.EndConf == req) {
+                if (Msg.QuitConf == req || Msg.EndConf == req) {
                     reportSuccess(null, listener);
                 }else{
                     reportFailed(-1, listener);
@@ -534,16 +516,9 @@ public class WebRtcManager extends Caster<Msg>{
                 if (null != confEventListener) confEventListener.onConfInvitation(ToDoConverter.callLinkSate2ConfInvitationInfo(callLinkSate));
                 break;
 
-            case P2pConfEnded:
-                stopSession();
-                BaseTypeInt reason = (BaseTypeInt) ntfContent;
-                KLog.p("P2pConfEnded: %s", reason.basetype);
-                if (null != confEventListener) confEventListener.onConfFinished();
-                break;
-
             case MultipartyConfEnded:
                 stopSession();
-                reason = (BaseTypeInt) ntfContent;
+                BaseTypeInt reason = (BaseTypeInt) ntfContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
                 if (null != confEventListener) confEventListener.onConfFinished();
                 break;
