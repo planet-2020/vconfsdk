@@ -84,7 +84,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -915,8 +914,8 @@ public class WebRtcManager extends Caster<Msg>{
     public final static class Display extends SurfaceViewRenderer{
         private boolean enabled = true;
         private String streamId = STREAMID_NULL;
-        private CopyOnWriteArrayList<TextDecoration> textDecorations = new CopyOnWriteArrayList<>();
-        private CopyOnWriteArrayList<PicDecoration> picDecorations = new CopyOnWriteArrayList<>();
+        private List<TextDecoration> textDecorations = new ArrayList<>();
+        private List<PicDecoration> picDecorations = new ArrayList<>();
         public static final int POS_LEFTTOP = 1;
         public static final int POS_LEFTBOTTOM = 2;
         public static final int POS_RIGHTTOP = 3;
@@ -933,7 +932,17 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-
+        @Override
+        public String toString() {
+            return "Display{hash=" + hashCode()+
+                    " enabled=" + enabled +
+                    ", streamId='" + streamId + '\'' +
+                    ", textDecorations=" + textDecorations +
+                    ", picDecorations=" + picDecorations +
+                    ", displayWidth=" + displayWidth +
+                    ", displayHeight=" + displayHeight +
+                    '}';
+        }
 
         /**
          * 将Display绑定到码流。
@@ -949,7 +958,8 @@ public class WebRtcManager extends Caster<Msg>{
          * @param streamId 码流Id。
          * */
         public boolean bindStream(@NonNull String streamId){
-            KLog.p("bind display %s to stream %s", this, streamId);
+//            KLog.p("bind display %s to stream %s", this, streamId);
+            KLog.sp(String.format("bind display %s to stream %s", this, streamId));
             Map<String, ProxyVideoSink> videoSinks = instance.videoSinks;
             ProxyVideoSink sink = videoSinks.get(streamId);
             if (null == sink && !STREAMID_NULL.equals(streamId)){
@@ -975,20 +985,22 @@ public class WebRtcManager extends Caster<Msg>{
          * @param otherDisplay 要交换的display。
          * */
         public void swapContent(@NonNull Display otherDisplay){
-            KLog.p("swap display %s and display %s", this, otherDisplay);
+//            KLog.p("swap display %s and display %s", this, otherDisplay);
+            KLog.sp(String.format("swap this display %s and other display %s", this, otherDisplay));
             // 切换绑定的流
             String myStreamId = streamId;
             bindStream(otherDisplay.streamId);
             otherDisplay.bindStream(myStreamId);
             // 切换贴在display上面的decoration
-            CopyOnWriteArrayList<Display.TextDecoration> textDecorationList = textDecorations;
+            List<Display.TextDecoration> myTextDecorationList = textDecorations;
             textDecorations = otherDisplay.textDecorations;
-            otherDisplay.textDecorations = textDecorationList;
-            CopyOnWriteArrayList<Display.PicDecoration> picDecorationList = picDecorations;
+            otherDisplay.textDecorations = myTextDecorationList;
+            List<Display.PicDecoration> myPicDecorationList = picDecorations;
             picDecorations = otherDisplay.picDecorations;
-            otherDisplay.picDecorations = picDecorationList;
+            otherDisplay.picDecorations = myPicDecorationList;
             adjustDecoration();
             otherDisplay.adjustDecoration();
+            KLog.p("after swap: this display %s, other display %s", this, otherDisplay);
         }
 
         /**
@@ -1032,21 +1044,21 @@ public class WebRtcManager extends Caster<Msg>{
          * 获取该display绑定的流的详细信息
          * */
         public StreamInfo getStreamInfo(){
-            KLog.p("display streamId=%s", streamId);
+//            KLog.p("display streamId=%s", streamId);
             for (StreamInfo localStreamInfo : instance.localStreamInfos){
-                KLog.p("localStreamInfo.streamId=%s", localStreamInfo.streamId);
+//                KLog.p("localStreamInfo.streamId=%s", localStreamInfo.streamId);
                 if (localStreamInfo.streamId.equals(streamId)){
                     return localStreamInfo;
                 }
             }
             for (TRtcStreamInfo remoteStreamInfo : instance.streamInfos){
-                KLog.p("remoteStreamInfo.streamId=%s", remoteStreamInfo.achStreamId);
+//                KLog.p("remoteStreamInfo.streamId=%s", remoteStreamInfo.achStreamId);
                 if (remoteStreamInfo.achStreamId.equals(streamId)){
                     return ToDoConverter.rtcStreamInfo2StreamInfo(remoteStreamInfo);
                 }
             }
             for (TRtcStreamInfo removingStreamInfo : instance.removingStreamInfos){
-                KLog.p("needRemoveStreamInfo.streamId=%s", removingStreamInfo.achStreamId);
+//                KLog.p("needRemoveStreamInfo.streamId=%s", removingStreamInfo.achStreamId);
                 if (removingStreamInfo.achStreamId.equals(streamId)){
                     return ToDoConverter.rtcStreamInfo2StreamInfo(removingStreamInfo);
                 }
@@ -1076,6 +1088,9 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             for (TextDecoration deco : textDecorations){
+                if (System.currentTimeMillis() - ts > 5000){
+                    KLog.p("drawText(%s, %s, %s, %s) for display %s", deco.text, deco.x, deco.y, deco.paint.getTextSize(), this);
+                }
                 canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
             }
 
@@ -1110,8 +1125,10 @@ public class WebRtcManager extends Caster<Msg>{
          * 添加文字
          * */
         public void addText(TextDecoration decoration){
+            KLog.p(decoration.toString());
             decoration.adjust(displayWidth, displayHeight);
             textDecorations.add(decoration);
+            invalidate();
         }
 
         /**
@@ -1122,6 +1139,7 @@ public class WebRtcManager extends Caster<Msg>{
                 deco.adjust(displayWidth, displayHeight);
             }
             textDecorations.addAll(decoList);
+            invalidate();
         }
 
         /**
@@ -1129,6 +1147,7 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         public void clearText(){
             textDecorations.clear();
+            invalidate();
         }
 
         /**
@@ -1142,8 +1161,10 @@ public class WebRtcManager extends Caster<Msg>{
          * 添加图片
          * */
         public void addPic(PicDecoration decoration){
+            KLog.p(decoration.toString());
             decoration.adjust(displayWidth, displayHeight);
             picDecorations.add(decoration);
+            invalidate();
         }
         /**
          * 添加图片
@@ -1153,6 +1174,7 @@ public class WebRtcManager extends Caster<Msg>{
                 deco.adjust(displayWidth, displayHeight);
             }
             picDecorations.addAll(decoList);
+            invalidate();
         }
 
         /**
@@ -1160,6 +1182,7 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         public void clearPic(){
             picDecorations.clear();
+            invalidate();
         }
 
         /**
@@ -1185,16 +1208,18 @@ public class WebRtcManager extends Caster<Msg>{
             for (PicDecoration deco : picDecorations){
                 deco.adjust(displayWidth, displayHeight);
             }
+            invalidate();
         }
 
         public static final class TextDecoration extends Decoration{
             public String text;     // 要展示的文字
-            public TextDecoration(@NonNull String text, int size, int color, int dx, int dy, int refPos, int w, int h) {
+            private int textSize;
+            public TextDecoration(@NonNull String text, int textSize, int color, int dx, int dy, int refPos, int w, int h) {
                 super(dx, dy, refPos, w, h);
                 this.text = text;
+                this.textSize = textSize;
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setColor(color);
-                paint.setTextSize(size);
             }
 
             protected void adjust(int width, int height){
@@ -1202,7 +1227,7 @@ public class WebRtcManager extends Caster<Msg>{
                     return;
                 }
                 super.adjust(width, height);
-                float size = paint.getTextSize()*Math.min(ratioW, ratioH);
+                float size = textSize *Math.min(ratioW, ratioH);
                 paint.setTextSize(size);
                 if (POS_LEFTBOTTOM == refPos){
                     y -= size;
@@ -1212,8 +1237,28 @@ public class WebRtcManager extends Caster<Msg>{
                     x -= size * text.length();
                     y -= size;
                 }
+                KLog.p(toString());
             }
 
+            @Override
+            public String toString() {
+                return "TextDecoration{" +
+                        "text='" + text + '\'' +
+                        ", textSize=" + textSize +
+                        ", dx=" + dx +
+                        ", dy=" + dy +
+                        ", refPos=" + refPos +
+                        ", w=" + w +
+                        ", h=" + h +
+                        ", paint=" + paint +
+                        ", x=" + x +
+                        ", y=" + y +
+                        ", originX=" + originX +
+                        ", originY=" + originY +
+                        ", ratioW=" + ratioW +
+                        ", ratioH=" + ratioH +
+                        '}';
+            }
         }
 
         public static final class PicDecoration extends Decoration{
@@ -1244,6 +1289,27 @@ public class WebRtcManager extends Caster<Msg>{
                     y -= picH;
                 }
                 matrix.postTranslate(x, y);
+                KLog.p(toString());
+            }
+
+            @Override
+            public String toString() {
+                return "PicDecoration{" +
+                        "pic=" + pic +
+                        ", matrix=" + matrix +
+                        ", dx=" + dx +
+                        ", dy=" + dy +
+                        ", refPos=" + refPos +
+                        ", w=" + w +
+                        ", h=" + h +
+                        ", paint=" + paint +
+                        ", x=" + x +
+                        ", y=" + y +
+                        ", originX=" + originX +
+                        ", originY=" + originY +
+                        ", ratioW=" + ratioW +
+                        ", ratioH=" + ratioH +
+                        '}';
             }
         }
 
@@ -1294,8 +1360,8 @@ public class WebRtcManager extends Caster<Msg>{
                     originX = width;
                     originY = height;
                 }
-                KLog.p("displayW=%s, displayH=%s, ratioW=%s, ratioH=%s, x=%s, y=%s, originX=%s, originY=%s",
-                        width, height, ratioW, ratioH, x, y, originX, originY);
+                KLog.p("displayW=%s, displayH=%s, ratioW=%s, ratioH=%s, x=%s, y=%s, originX=%s, originY=%s, paint.textSize=%s",
+                        width, height, ratioW, ratioH, x, y, originX, originY, paint.getTextSize());
             }
 
         }
