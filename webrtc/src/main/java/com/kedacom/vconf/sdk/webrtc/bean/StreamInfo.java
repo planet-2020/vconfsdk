@@ -1,13 +1,16 @@
 package com.kedacom.vconf.sdk.webrtc.bean;
 
 /**
+ * 流信息
+ *
  * Created by Sissi on 2019/10/25
  */
 public final class StreamInfo {
-    public int      mcuId;                ///< mcu 号码
-    public int      terId;                ///< 终端 号码
-    public String   streamId;         // 流id。注：此为平台合成的跟webrtc里面的streamId没关系。
-    public int      streamType;
+    public String   streamId;   // 流id
+    public int      streamType; // 流类型
+    public String   e164;       // 流对应的终端的e164
+    public String   alias;      // 流对应的终端的别名
+    public String   email;      // 流对应的终端的email
     public static final int Type_Unknown = 0;
     public static final int Type_LocalCamera = 1;
     public static final int Type_LocalScreenShare = 2;
@@ -19,20 +22,23 @@ public final class StreamInfo {
         this.streamType = streamType;
     }
 
-    public StreamInfo(int mcuId, int terId, String streamId, int streamType) {
-        this.mcuId = mcuId;
-        this.terId = terId;
+    public StreamInfo(String streamId, int streamType, String e164, String alias, String email) {
         this.streamId = streamId;
         this.streamType = streamType;
+        this.e164 = e164;
+        this.alias = alias;
+        this.email = email;
     }
 
     @Override
     public String toString() {
         return "StreamInfo{" +
-                "mcuId=" + mcuId +
-                ", terId=" + terId +
-                ", streamId='" + streamId + '\'' +
+                "streamId='" + streamId + '\'' +
                 ", streamType=" + streamType +
+                ", e164='" + e164 + '\'' +
+                ", alias='" + alias + '\'' +
+                ", email='" + email + '\'' +
                 '}';
     }
+
 }

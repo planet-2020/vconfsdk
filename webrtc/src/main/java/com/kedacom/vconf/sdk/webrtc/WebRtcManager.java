@@ -7,6 +7,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.Looper;
@@ -30,6 +31,8 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.webrtc.bean.StreamInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TLoginResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayItem;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
@@ -52,6 +55,8 @@ import org.webrtc.MediaStream;
 import org.webrtc.MediaStreamTrack;
 import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
+import org.webrtc.RTCStatsCollectorCallback;
+import org.webrtc.RTCStatsReport;
 import org.webrtc.RendererCommon;
 import org.webrtc.RtpParameters;
 import org.webrtc.RtpReceiver;
@@ -84,6 +89,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -149,6 +156,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.StreamLeft,
                 Msg.CallIncoming,
                 Msg.MultipartyConfEnded,
+                Msg.ConfMembersInfoNtf,
         }, this::onNtfs);
 
         return processorMap;
@@ -591,9 +599,18 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
                 break;
+
+            case ConfMembersInfoNtf:
+                confMembersInfo = (TMTEntityInfoList) ntfContent;
+                break;
         }
+
     }
 
+    /**
+     * 与会终端信息
+     * */
+    private TMTEntityInfoList confMembersInfo;
 
 
 
@@ -641,6 +658,27 @@ public class WebRtcManager extends Caster<Msg>{
             connWrapperList.add(createPeerConnectionWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER, pubConnConfig));
         });
 
+        /*
+         * 定时获取统计信息
+         * */
+        statsTimer = new Timer();
+        statsTimerTask = new TimerTask() {
+            @Override
+            public void run() {
+                KLog.p("getstats");
+                for (PeerConnectionWrapper pcWrapper : connWrapperList){
+                    pcWrapper.pc.getStats(statsCb);
+                }
+                // 刷新Display TODO
+
+                // 通知用户
+                if (null != rtcStatsListener){
+                    rtcStatsListener.onRtcStats(null/*TODO*/);
+                }
+            }
+        };
+        statsTimer.schedule(statsTimerTask, 3000, 2000);
+
         KLog.p("session started ");
 
         return true;
@@ -659,6 +697,10 @@ public class WebRtcManager extends Caster<Msg>{
         sessionEventListener = null;
 
         rtcConnector.setSignalingEventsCallback(null);
+
+        statsTimer.cancel();
+        statsTimer = null;
+        statsTimerTask = null;
 
         for (PeerConnectionWrapper peerConnectionWrapper : connWrapperList){
             peerConnectionWrapper.close();
@@ -897,11 +939,12 @@ public class WebRtcManager extends Caster<Msg>{
         public static final int POS_RIGHTBOTTOM = 4;
         private int displayWidth;
         private int displayHeight;
+        private Handler handler = getHandler();
 
         private Display(Context context) {
             super(context);
             init(instance.eglBase.getEglBaseContext(), null);
-            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
+            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL);
             setEnableHardwareScaler(true);
             setWillNotDraw(false);
         }
@@ -1029,13 +1072,13 @@ public class WebRtcManager extends Caster<Msg>{
             for (TRtcStreamInfo remoteStreamInfo : instance.streamInfos){
 //                KLog.p("remoteStreamInfo.streamId=%s", remoteStreamInfo.achStreamId);
                 if (remoteStreamInfo.achStreamId.equals(streamId)){
-                    return ToDoConverter.rtcStreamInfo2StreamInfo(remoteStreamInfo);
+                    return ToDoConverter.composeStreamInfo(remoteStreamInfo, instance.findConfMember(remoteStreamInfo.tMtId.dwTerId));
                 }
             }
             for (TRtcStreamInfo removingStreamInfo : instance.removingStreamInfos){
 //                KLog.p("needRemoveStreamInfo.streamId=%s", removingStreamInfo.achStreamId);
                 if (removingStreamInfo.achStreamId.equals(streamId)){
-                    return ToDoConverter.rtcStreamInfo2StreamInfo(removingStreamInfo);
+                    return ToDoConverter.composeStreamInfo(removingStreamInfo, instance.findConfMember(removingStreamInfo.tMtId.dwTerId));
                 }
             }
             return null;
@@ -1050,6 +1093,7 @@ public class WebRtcManager extends Caster<Msg>{
             displayWidth = width;
             displayHeight = height;
             KLog.p("displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
+            voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
             adjustDecoration();
         }
 
@@ -1060,6 +1104,12 @@ public class WebRtcManager extends Caster<Msg>{
 
             if (System.currentTimeMillis() - ts > 5000){
                 KLog.p("onDraw, displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
+            }
+
+            if (bVoiceActivated){
+                canvas.drawRect(voiceActivatedDeco, voiceActivatedDecoPaint);
+                bVoiceActivated = false;
+//                handler.postDelayed()
             }
 
             for (TextDecoration deco : textDecorations){
@@ -1094,6 +1144,23 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p("Display %s enable=%s", this, enable);
             enabled = enable;
             setWillNotDraw(!enable);
+        }
+
+
+        private boolean bVoiceActivated;
+        private Paint voiceActivatedDecoPaint = new Paint();
+        private RectF voiceActivatedDeco = new RectF();
+        /**
+         * 设置语音激励装饰。
+         * 当该Display对应的与会成员讲话时，该装饰会展示。
+         * 该装饰是一个围在画面周围的边框，用户通过该接口设置该边框线条的粗细以及颜色。
+         * @param strokeWidth 线条粗细
+         * @param color 线条颜色
+         * */
+        public void setVoiceActivatedDecoration(int strokeWidth, int color){
+            voiceActivatedDecoPaint.setStyle(Paint.Style.STROKE);
+            voiceActivatedDecoPaint.setStrokeWidth(strokeWidth);
+            voiceActivatedDecoPaint.setColor(color);
         }
 
         /**
@@ -1978,6 +2045,17 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    private TMTEntityInfo findConfMember(int terminalId){
+        if (null == confMembersInfo){
+            return null;
+        }
+        for (TMTEntityInfo entityInfo : confMembersInfo.atMtEntitiy){
+            if (terminalId == entityInfo.dwTerId){
+                return entityInfo;
+            }
+        }
+        return null;
+    }
 
 
 
@@ -2134,7 +2212,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             if (null != sessionEventListener) {
-                StreamInfo streamInfo = ToDoConverter.rtcStreamInfo2StreamInfo(rtcStreamInfo);
+                StreamInfo streamInfo = ToDoConverter.composeStreamInfo(rtcStreamInfo, instance.findConfMember(rtcStreamInfo.tMtId.dwTerId));
                 handler.post(() -> {
                     KLog.p("####onRemoteStream, streamInfo=%s", streamInfo);
                     sessionEventListener.onStream(streamInfo);
@@ -2164,7 +2242,7 @@ public class WebRtcManager extends Caster<Msg>{
                             KLog.p(KLog.ERROR, "failed to removeRemoteVideoTrack streamId=%s, left streaminfo", streamId);
                             return;
                         }
-                        StreamInfo streamInfo = ToDoConverter.rtcStreamInfo2StreamInfo(tRtcStreamInfo);
+                        StreamInfo streamInfo = ToDoConverter.composeStreamInfo(tRtcStreamInfo, instance.findConfMember(tRtcStreamInfo.tMtId.dwTerId));
                         handler.post(() -> {
                             KLog.p("####onRemoteStreamRemoved, streamInfo=%s", streamInfo);
                             sessionEventListener.onStreamRemoved(streamInfo);
@@ -2349,7 +2427,33 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    /**
+     * RTC 统计信息
+     * */
+    public static class RtcStats{
 
+    }
+    public interface RtcStatsListener{
+        void onRtcStats(RtcStats rtcStats);
+    }
 
+    private Timer statsTimer;
+    private TimerTask statsTimerTask;
+
+    private RtcStatsListener rtcStatsListener;
+    /**
+     * 设置RTC统计信息监听器
+     * */
+    public void setRtcStatsListener(RtcStatsListener rtcStatsListener){
+        this.rtcStatsListener = rtcStatsListener;
+    }
+
+    private RTCStatsCollectorCallback statsCb = new RTCStatsCollectorCallback(){
+
+        @Override
+        public void onStatsDelivered(RTCStatsReport rtcStatsReport) {
+            System.out.println("rtcStatsReport="+rtcStatsReport);
+        }
+    };
 
 }

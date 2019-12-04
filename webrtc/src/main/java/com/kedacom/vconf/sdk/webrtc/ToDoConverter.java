@@ -23,7 +23,7 @@ import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
 import com.kedacom.vconf.sdk.webrtc.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
 import com.kedacom.vconf.sdk.webrtc.bean.StreamInfo;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
 
 import java.util.ArrayList;
@@ -143,7 +143,7 @@ final class ToDoConverter {
         return to;
     }
 
-    static StreamInfo rtcStreamInfo2StreamInfo(TRtcStreamInfo rtcStreamInfo) {
+    static StreamInfo composeStreamInfo(TRtcStreamInfo rtcStreamInfo, TMTEntityInfo entityInfo) {
         int type;
         if (rtcStreamInfo.bAudio){
             type = StreamInfo.Type_Unknown;
@@ -154,7 +154,24 @@ final class ToDoConverter {
                 type = StreamInfo.Type_RemoteCamera;
             }
         }
-        return new StreamInfo(rtcStreamInfo.tMtId.dwMcuId, rtcStreamInfo.tMtId.dwTerId, rtcStreamInfo.achStreamId, type);
+
+        String e164="", alias="", email="";
+        if (null != entityInfo) {
+            for (TMtAlias tMtAlias : entityInfo.tMtAlias.arrAlias) {
+                if (EmMtAliasType.emAliasE164 == tMtAlias.emAliasType) {
+                    e164 = tMtAlias.achAlias;
+                } else if (EmMtAliasType.emAliasH323 == tMtAlias.emAliasType) {
+                    alias = tMtAlias.achAlias;
+                } else if (EmMtAliasType.emAliasEmail == tMtAlias.emAliasType) {
+                    email = tMtAlias.achAlias;
+                }
+                if (null != e164 && null != alias && null != email) {
+                    break;
+                }
+            }
+        }
+
+        return new StreamInfo(rtcStreamInfo.achStreamId, type, e164, alias, email);
     }
 
 }

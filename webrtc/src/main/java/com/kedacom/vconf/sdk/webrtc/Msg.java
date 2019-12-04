@@ -209,6 +209,14 @@ enum Msg {
             id = "RtcStreamLeft_Ntf")
     StreamLeft,
 
+    /**
+     * 与会成员列表通知
+     * */
+    @Response(clz = TMTEntityInfoList.class,
+            id = "OnLineTerListNtf")
+    ConfMembersInfoNtf,
+
+
     END;
 
     private static class MethodOwner {
