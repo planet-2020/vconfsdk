@@ -196,7 +196,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * 请在所有画板创建前调用，一次即可。
      * @param density 重设的屏幕密度值。图元绘制时坐标会放大density/2倍。
      * */
-    public static void correctDensity(float density){
+    static void correctDensity(float density){
         correctedDensity = density;
     }
 
