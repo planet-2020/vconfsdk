@@ -124,7 +124,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         this.boardInfo = boardInfo;
 
-        relativeDensity = context.getResources().getDisplayMetrics().density/2;
+        relativeDensity = -1==correctedDensity ? context.getResources().getDisplayMetrics().density/2 : correctedDensity/2;
 
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         View paintBoard = layoutInflater.inflate(R.layout.default_paintboard_layout, this);
@@ -185,6 +185,19 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     public DefaultPaintBoard(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
+    }
+
+
+    private static float correctedDensity = -1;
+    /**
+     * 修正屏幕密度值。
+     * 为了使不同设备上展示的效果尽量一致，我们会根据屏幕密度对图元的坐标进行相应的缩放处理。
+     * 但是有些设备上根据此法变换后出来的效果不符合预期，所以提供该接口供用户手动修正屏幕密度值以达到较理想的展示效果。
+     * 请在所有画板创建前调用，一次即可。
+     * @param density 重设的屏幕密度值。图元绘制时坐标会放大density/2倍。
+     * */
+    public static void correctDensity(float density){
+        correctedDensity = density;
     }
 
     void setEnableManipulate(boolean enable){
