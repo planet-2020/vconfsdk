@@ -7,7 +7,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.RectF;
 import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.Looper;
@@ -163,6 +162,7 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    private String userE164;
     /**
      * 登录rtc
      * 注意，需先登录aps成功。
@@ -186,7 +186,8 @@ public class WebRtcManager extends Caster<Msg>{
 //        } catch (NetAddrHelper.InvalidIpv4Exception e) {
 //            e.printStackTrace();
 //        }
-        
+
+        userE164 = e164;
         rtcSvrAddr.bUsedRtc = true;
         rtcSvrAddr.achNumber = e164;
 
@@ -202,6 +203,7 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public void logout(IResultListener resultListener){
         this.confEventListener = null;
+        userE164 = null;
         stopSession();
         req(Msg.Register, resultListener, new TMtRtcSvrAddr(false));
     }
@@ -649,7 +651,7 @@ public class WebRtcManager extends Caster<Msg>{
             );
 
             /* 创建peerconnectclient。
-             * NOTE：一个peerconnect可以处理多路码流，收发均可。
+             * NOTE：一个peerconnection可以处理多路码流，收发均可。
              * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
              * */
             connWrapperList.add(createPeerConnectionWrapper(CommonDef.CONN_TYPE_PUBLISHER, pubConnConfig));
@@ -962,6 +964,50 @@ public class WebRtcManager extends Caster<Msg>{
                     '}';
         }
 
+
+
+
+        private static Paint voiceActivatedDecoPaint = new Paint();
+        /**
+         * 设置语音激励装饰。
+         * 当该Display对应的与会成员讲话音量最大时，该装饰会展示。
+         * 该装饰是一个围在画面周围的边框，用户通过该接口设置该边框线条的粗细以及颜色。
+         * @param strokeWidth 线条粗细
+         * @param color 线条颜色
+         * */
+        public static void setVoiceActivatedDecoration(int strokeWidth, int color){
+            voiceActivatedDecoPaint.reset();
+            voiceActivatedDecoPaint.setStyle(Paint.Style.STROKE);
+            voiceActivatedDecoPaint.setStrokeWidth(strokeWidth);
+            voiceActivatedDecoPaint.setColor(color);
+        }
+
+        private static Bitmap videoCaptureDisabledDeco;
+        /**
+         * 设置关闭摄像头采集时本地画面对应的Display展示的图片。
+         * */
+        public static void setCameraDisabledDecoration(Bitmap bitmap){ // TODO 改成资源id
+            videoCaptureDisabledDeco = bitmap;
+        }
+
+        private static Bitmap audioTerminalDeco;
+        /**
+         * 设置音频入会方对应的Display展示的图片。
+         * */
+        public static void setAudioTerminalDecoration(Bitmap bitmap){
+            audioTerminalDeco = bitmap;
+        }
+
+        private static Bitmap streamLostDeco;
+        /**
+         * 设置Display无视频源时展示的图片
+         * */
+        public static void setStreamLostDecoration(Bitmap bitmap){
+            streamLostDeco = bitmap;
+        }
+
+
+
         /**
          * 将Display绑定到码流。
          * 一个Display只会绑定到一路码流；
@@ -1048,6 +1094,7 @@ public class WebRtcManager extends Caster<Msg>{
         public void release(){
             clearContent();
             super.release();
+            KLog.p("display %s released", this);
         }
 
 
@@ -1093,7 +1140,7 @@ public class WebRtcManager extends Caster<Msg>{
             displayWidth = width;
             displayHeight = height;
             KLog.p("displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
-            voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
+//            voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
             adjustDecoration();
         }
 
@@ -1106,11 +1153,11 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p("onDraw, displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
             }
 
-            if (bVoiceActivated){
-                canvas.drawRect(voiceActivatedDeco, voiceActivatedDecoPaint);
-                bVoiceActivated = false;
-//                handler.postDelayed()
-            }
+//            if (bVoiceActivated){
+//                canvas.drawRect(voiceActivatedDeco, voiceActivatedDecoPaint);
+//                bVoiceActivated = false;
+////                handler.postDelayed()
+//            }
 
             for (TextDecoration deco : textDecorations){
                 if (System.currentTimeMillis() - ts > 5000){
@@ -1146,22 +1193,6 @@ public class WebRtcManager extends Caster<Msg>{
             setWillNotDraw(!enable);
         }
 
-
-        private boolean bVoiceActivated;
-        private Paint voiceActivatedDecoPaint = new Paint();
-        private RectF voiceActivatedDeco = new RectF();
-        /**
-         * 设置语音激励装饰。
-         * 当该Display对应的与会成员讲话时，该装饰会展示。
-         * 该装饰是一个围在画面周围的边框，用户通过该接口设置该边框线条的粗细以及颜色。
-         * @param strokeWidth 线条粗细
-         * @param color 线条颜色
-         * */
-        public void setVoiceActivatedDecoration(int strokeWidth, int color){
-            voiceActivatedDecoPaint.setStyle(Paint.Style.STROKE);
-            voiceActivatedDecoPaint.setStrokeWidth(strokeWidth);
-            voiceActivatedDecoPaint.setColor(color);
-        }
 
         /**
          * 添加文字
@@ -2140,7 +2171,7 @@ public class WebRtcManager extends Caster<Msg>{
             localVideoTrack.addSink(localVideoSink);
             handler.post(() -> {
                 if (null != sessionEventListener) {
-                    StreamInfo streamInfo = new StreamInfo(localTrackId, videoCapturer.isScreencast() ? StreamInfo.Type_LocalScreenShare : StreamInfo.Type_LocalCamera);
+                    StreamInfo streamInfo = new StreamInfo(localTrackId, videoCapturer.isScreencast() ? StreamInfo.Type_LocalScreenShare : StreamInfo.Type_LocalCamera, userE164, userE164, null);
                     KLog.p("####onLocalStream stream info=%s", streamInfo);
                     localStreamInfos.add(streamInfo);
                     sessionEventListener.onStream(streamInfo);
