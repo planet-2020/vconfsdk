@@ -144,6 +144,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.DeclineInvitation,
                 Msg.SetSilence,
                 Msg.SetMute,
+                Msg.ToggleScreenShare,
         }, this::onRsp);
         return processorMap;
     }
