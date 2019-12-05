@@ -217,6 +217,24 @@ enum Msg {
     ConfMembersInfoNtf,
 
 
+    /**
+     * 静音
+     */
+    @Request(method = "AudQuiteLocalSpeakerCmd",
+            owner = MethodOwner.AudioCtrl,
+            paras = boolean.class)
+    SetSilence,
+
+
+    /**
+     * 哑音
+     */
+    @Request(method = "AudMuteLocalMicCmd",
+            owner = MethodOwner.AudioCtrl,
+            paras = boolean.class)
+    SetMute,
+
+
     END;
 
     private static class MethodOwner {
@@ -226,6 +244,7 @@ enum Msg {
         private static final String ConfigCtrl = PKG + "ConfigCtrl";
         private static final String ConfCtrl = PKG + "ConfCtrl";
         private static final String MeetingCtrl = PKG + "MeetingCtrl";
+        private static final String AudioCtrl = PKG + "AudioCtrl";
     }
 
 }

@@ -60,6 +60,9 @@ class RtcConnector implements IRcvMsgCallback{
 		cbMsgHandlerMap.put("Ev_MT_SetIceCandidate_Cmd", this::onSetIceCandidateCmd);
 		cbMsgHandlerMap.put("Ev_MT_GetFingerPrint_Cmd", this::onGetFingerPrintCmd);
 
+		cbMsgHandlerMap.put("Ev_MT_CodecQuiet_Cmd", this::onCodecQuietCmd);
+		cbMsgHandlerMap.put("Ev_MT_CodecMute_Cmd", this::onCodecMuteCmd);
+
 		if (!CreateOspObject()){
 			throw new RuntimeException("CreateOspObject failed!");
 		}
@@ -73,6 +76,8 @@ class RtcConnector implements IRcvMsgCallback{
 		subsMsgBuilder.addMsgid("Ev_MT_SetAnswer_Cmd");
 		subsMsgBuilder.addMsgid("Ev_MT_SetIceCandidate_Cmd");
         subsMsgBuilder.addMsgid("Ev_MT_GetFingerPrint_Cmd");
+		subsMsgBuilder.addMsgid("Ev_MT_CodecQuiet_Cmd");
+		subsMsgBuilder.addMsgid("Ev_MT_CodecMute_Cmd");
 		msg.addMsg(subsMsgBuilder.build());
 		byte[] abyContent = msg.Encode();
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
@@ -418,6 +423,46 @@ class RtcConnector implements IRcvMsgCallback{
 	}
 
 
+	/**
+	 * 静音
+	 * */
+	private void onCodecQuietCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
+		this.rtcServiceId = nSrcId;
+		this.rtcServiceNode = nSrcNode;
+		BodyItem item0 = mtMsg.GetMsgBody(0);
+		boolean bQuiet;
+		try {
+			bQuiet = BasePB.TBOOL32.parseFrom(item0.getAbyContent()).getValue();
+		} catch (InvalidProtocolBufferException e) {
+			e.printStackTrace();
+			return;
+		}
+
+		KLog.p("<=##= bQuiet=%s", bQuiet);
+		if (null != signalingEvents) handler.post(() -> signalingEvents.onCodecQuietCmd(bQuiet) );
+	}
+
+
+	/**
+	 * 哑音
+	 * */
+	private void onCodecMuteCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
+		this.rtcServiceId = nSrcId;
+		this.rtcServiceNode = nSrcNode;
+		BodyItem item0 = mtMsg.GetMsgBody(0);
+		boolean bMute;
+		try {
+			bMute = BasePB.TBOOL32.parseFrom(item0.getAbyContent()).getValue();
+		} catch (InvalidProtocolBufferException e) {
+			e.printStackTrace();
+			return;
+		}
+
+		KLog.p("<=##= bMute=%s", bMute);
+		if (null != signalingEvents) handler.post(() -> signalingEvents.onCodecMuteCmd(bMute) );
+	}
+
+
 	private EnumPB.EmMtResolution convertRes(double scale){
 		if (0< scale && scale <= 0.25){
 			return EnumPB.EmMtResolution.emMt480x270;
@@ -578,6 +623,10 @@ class RtcConnector implements IRcvMsgCallback{
 		void onSetIceCandidateCmd(int connType, String sdpMid, int sdpMLineIndex, String sdp);
 
 		void onGetFingerPrintCmd(int connType);
+
+		void onCodecQuietCmd(boolean bQuiet);
+
+		void onCodecMuteCmd(boolean bMute);
 
 	}
 

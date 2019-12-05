@@ -142,6 +142,8 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.EndConf,
                 Msg.AcceptInvitation,
                 Msg.DeclineInvitation,
+                Msg.SetSilence,
+                Msg.SetMute,
         }, this::onRsp);
         return processorMap;
     }
@@ -348,10 +350,7 @@ public class WebRtcManager extends Caster<Msg>{
      * @param bSilence true，屏蔽对方语音；false，放开对方语音。
      * */
     public void setSilence(boolean bSilence){
-        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
-        if (null != pcWrapper) {
-            pcWrapper.setRemoteAudioEnable(!bSilence);
-        }
+        req(Msg.SetSilence, null, bSilence);
     }
 
     /**
@@ -367,10 +366,7 @@ public class WebRtcManager extends Caster<Msg>{
      * @param bMute true，屏蔽自己语音；false，放开自己语音。
      * */
     public void setMute(boolean bMute){
-        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
-        if (null != pcWrapper) {
-            pcWrapper.setLocalAudioEnable(!bMute);
-        }
+        req(Msg.SetMute, null, bMute);
     }
 
 
@@ -1755,6 +1751,22 @@ public class WebRtcManager extends Caster<Msg>{
                 pcWrapper.setSdpState(pcWrapper.Creating);
             });
         }
+
+        @Override
+        public void onCodecQuietCmd(boolean bQuiet) {
+            PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+            if (null != pcWrapper) {
+                pcWrapper.setRemoteAudioEnable(!bQuiet);
+            }
+        }
+
+        @Override
+        public void onCodecMuteCmd(boolean bMute) {
+            PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+            if (null != pcWrapper) {
+                pcWrapper.setLocalAudioEnable(!bMute);
+            }
+        }
     }
 
 
@@ -2038,9 +2050,9 @@ public class WebRtcManager extends Caster<Msg>{
             Class<?> clz = Class.forName("org.webrtc.RtpParameters$Encoding");
             Constructor<?> ctor = clz.getDeclaredConstructor(String.class, boolean.class, Double.class);
             ctor.setAccessible(true);
+//            encodings.add((RtpParameters.Encoding) ctor.newInstance("l", true, 0.25));
+//            encodings.add((RtpParameters.Encoding) ctor.newInstance("m", true, 0.5));
             encodings.add((RtpParameters.Encoding) ctor.newInstance("h", true, 1.0));
-            encodings.add((RtpParameters.Encoding) ctor.newInstance("m", true, 0.5));
-            encodings.add((RtpParameters.Encoding) ctor.newInstance("l", true, 0.25));
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } catch (InstantiationException e) {
