@@ -264,6 +264,8 @@ public class WebRtcManager extends Caster<Msg>{
      * 接受会议邀请
      * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
      * @param sessionEventListener 会话事件监听器
+     *                             成功：{@link MakeCallResult}
+     *                             失败：失败码 //TODO
      * */
     public void acceptInvitation(IResultListener resultListener, SessionEventListener sessionEventListener){
         if (!startSession(sessionEventListener)){
@@ -454,7 +456,7 @@ public class WebRtcManager extends Caster<Msg>{
             case MultipartyConfStarted:
                 callLinkSate = (TMtCallLinkSate) rspContent;
                 KLog.p("P2pConfStarted: %s", callLinkSate);
-                if (Msg.Call == req) {
+                if (Msg.Call == req || Msg.AcceptInvitation == req) {
                     reportSuccess(ToDoConverter.callLinkState2MakeCallResult(callLinkSate), listener);
                 }else if (Msg.CreateConf == req){
                     reportSuccess(ToDoConverter.callLinkState2CreateConfResult(callLinkSate), listener);
