@@ -8,6 +8,7 @@ import com.kedacom.vconf.sdk.common.constant.EmMeetingSafeType;
 import com.kedacom.vconf.sdk.common.constant.EmMtAddrType;
 import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
 import com.kedacom.vconf.sdk.common.constant.EmMtMixType;
+import com.kedacom.vconf.sdk.common.constant.EmMtOpenMode;
 import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
 import com.kedacom.vconf.sdk.common.constant.EmVConfCreateType;
 import com.kedacom.vconf.sdk.common.constant.EmVidFormat;
@@ -19,6 +20,7 @@ import com.kedacom.vconf.sdk.common.type.vconf.TMTVideoFormatList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.webrtc.bean.ConfInvitationInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfMemberInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
 import com.kedacom.vconf.sdk.webrtc.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
@@ -138,7 +140,26 @@ final class ToDoConverter {
         inviteMember.emProtocol = EmConfProtocol.emrtc;
         to.atInviteMembers = new ArrayList<>();
         to.atInviteMembers.add(inviteMember);
+        for (ConfMemberInfo mi : confPara.initedConfMemberInfoList){
+            inviteMember = new TMTInviteMember();
+            if (null != mi.e164 && !mi.e164.trim().isEmpty()){
+                inviteMember.achAccount = mi.e164;
+                inviteMember.emAccountType = EmMtAddrType.emAddrE164;
+            }else if (null != mi.moid && !mi.moid.trim().isEmpty()){
+                inviteMember.achAccount = mi.moid;
+                inviteMember.emAccountType = EmMtAddrType.emAddrMoid;
+            }else if (null != mi.alias && !mi.alias.trim().isEmpty()){
+                inviteMember.achAccount = mi.alias;
+                inviteMember.emAccountType = EmMtAddrType.emAddrAlias;
+            }else{
+                continue;
+            }
+            to.atInviteMembers.add(inviteMember);
+        }
         to.dwIMemberNum = to.atInviteMembers.size();
+
+        // 是否隐藏
+        to.emSafeConf = confPara.bHide ? EmMtOpenMode.emMt_Hide : EmMtOpenMode.emMt_Open;
 
         return to;
     }
