@@ -56,6 +56,7 @@ enum Msg {
                     int.class,  // 呼叫码率
                     EmConfProtocol.class   // 协议类型
             },
+            timeout = 60,
             rspSeq3 = {"Calling", "MultipartyConfStarted"},
             rspSeq4 = {"Calling", "MultipartyConfEnded"}
             )
@@ -97,6 +98,7 @@ enum Msg {
             owner = MethodOwner.MeetingCtrl,
             paras = StringBuffer.class,
             userParas = TMTInstanceCreateConference.class,
+            timeout = 60,
             rspSeq = {"CreateConfRsp", // 创会成功与否。创会成功后平台会拉终端入会
                     "MultipartyConfStarted",  // 终端（己端）被成功拉入会议
             }
@@ -135,6 +137,7 @@ enum Msg {
      * */
     @Request(method = "ConfAcceptCmd",
             owner = MethodOwner.ConfCtrl,
+            timeout = 60,
             rspSeq = "MultipartyConfStarted"
     )
     AcceptInvitation,
