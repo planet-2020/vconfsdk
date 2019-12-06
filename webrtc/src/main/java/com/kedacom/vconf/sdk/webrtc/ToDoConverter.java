@@ -140,21 +140,23 @@ final class ToDoConverter {
         inviteMember.emProtocol = EmConfProtocol.emrtc;
         to.atInviteMembers = new ArrayList<>();
         to.atInviteMembers.add(inviteMember);
-        for (ConfMemberInfo mi : confPara.initedConfMemberInfoList){
-            inviteMember = new TMTInviteMember();
-            if (null != mi.e164 && !mi.e164.trim().isEmpty()){
-                inviteMember.achAccount = mi.e164;
-                inviteMember.emAccountType = EmMtAddrType.emAddrE164;
-            }else if (null != mi.moid && !mi.moid.trim().isEmpty()){
-                inviteMember.achAccount = mi.moid;
-                inviteMember.emAccountType = EmMtAddrType.emAddrMoid;
-            }else if (null != mi.alias && !mi.alias.trim().isEmpty()){
-                inviteMember.achAccount = mi.alias;
-                inviteMember.emAccountType = EmMtAddrType.emAddrAlias;
-            }else{
-                continue;
+        if (null != confPara.initedConfMemberInfoList) {
+            for (ConfMemberInfo mi : confPara.initedConfMemberInfoList) {
+                inviteMember = new TMTInviteMember();
+                if (null != mi.e164 && !mi.e164.trim().isEmpty()) {
+                    inviteMember.achAccount = mi.e164;
+                    inviteMember.emAccountType = EmMtAddrType.emAddrE164;
+                } else if (null != mi.moid && !mi.moid.trim().isEmpty()) {
+                    inviteMember.achAccount = mi.moid;
+                    inviteMember.emAccountType = EmMtAddrType.emAddrMoid;
+                } else if (null != mi.alias && !mi.alias.trim().isEmpty()) {
+                    inviteMember.achAccount = mi.alias;
+                    inviteMember.emAccountType = EmMtAddrType.emAddrAlias;
+                } else {
+                    continue;
+                }
+                to.atInviteMembers.add(inviteMember);
             }
-            to.atInviteMembers.add(inviteMember);
         }
         to.dwIMemberNum = to.atInviteMembers.size();
 
