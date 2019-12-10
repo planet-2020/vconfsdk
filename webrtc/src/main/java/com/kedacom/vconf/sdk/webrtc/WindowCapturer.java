@@ -52,7 +52,10 @@ public class WindowCapturer implements VideoCapturer {
                 GLES20.glGenTextures(1, textures, 0);
 
                 YuvConverter yuvConverter = new YuvConverter();
-                TextureBufferImpl buffer = new TextureBufferImpl(window.getWidth(), window.getHeight(), VideoFrame.TextureBuffer.Type.RGB, textures[0], new Matrix(), surTexture.getHandler(), yuvConverter, null);
+                Matrix matrix = new Matrix();
+                matrix.postScale(-1, 1);
+                matrix.postRotate(180);
+                TextureBufferImpl buffer = new TextureBufferImpl(window.getWidth(), window.getHeight(), VideoFrame.TextureBuffer.Type.RGB, textures[0], matrix, surTexture.getHandler(), yuvConverter, null);
                 Bitmap bitmap = Bitmap.createBitmap(window.getWidth(), window.getHeight(), Bitmap.Config.ARGB_8888);
 
                 Canvas canvas = new Canvas(bitmap);
