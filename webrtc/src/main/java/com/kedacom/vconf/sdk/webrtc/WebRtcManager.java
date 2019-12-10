@@ -2096,7 +2096,6 @@ public class WebRtcManager extends Caster<Msg>{
 
     /**
      * 创建Encoding列表（具体内容由需求决定）
-     * XXX：sdk有意屏蔽了创建Encoding的构造，此处使用了反射强行创建Encoding对象（很可能有问题）。
      * */
     private List<RtpParameters.Encoding> encodingList;
     private List<RtpParameters.Encoding> createEncodingList(){
@@ -2104,47 +2103,11 @@ public class WebRtcManager extends Caster<Msg>{
             return encodingList;
         }
         List<RtpParameters.Encoding> encodings = new ArrayList<>();
-        try {
-            Class<?> clz = Class.forName("org.webrtc.RtpParameters$Encoding");
-            Constructor<?> ctor = clz.getDeclaredConstructor(String.class, boolean.class, Double.class);
-            ctor.setAccessible(true);
-//            encodings.add((RtpParameters.Encoding) ctor.newInstance("l", true, 0.25));
-//            encodings.add((RtpParameters.Encoding) ctor.newInstance("m", true, 0.5));
-            encodings.add((RtpParameters.Encoding) ctor.newInstance("h", true, 1.0));
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
+        encodings.add(new RtpParameters.Encoding("l", true, 0.25));
+        encodings.add(new RtpParameters.Encoding("m", true, 0.5));
+        encodings.add(new RtpParameters.Encoding("h", true, 1.0));
         encodingList = encodings;
         return encodings;
-    }
-
-    private RtpParameters.Encoding createEncoding(String rid, double scaleDwon){
-        RtpParameters.Encoding encoding = null;
-        try {
-            Class<?> clz = Class.forName("org.webrtc.RtpParameters$Encoding");
-            Constructor<?> ctor = clz.getDeclaredConstructor(String.class, boolean.class, Double.class);
-            ctor.setAccessible(true);
-            encoding = (RtpParameters.Encoding) ctor.newInstance(rid, true, scaleDwon);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
-        return encoding;
     }
 
 
@@ -2242,42 +2205,50 @@ public class WebRtcManager extends Caster<Msg>{
             });
         }
 
-//        void createVideoTrack2(@NonNull VideoCapturer videoCapturer){
-//            if (null != localVideoTrack){
-//                KLog.p(KLog.ERROR, "localVideoTrack has created");
-//                return;
-//            }
-//            this.videoCapturer = videoCapturer;
-//            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
-//            videoSource = factory.createVideoSource(videoCapturer.isScreencast());
-//            videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
-//            videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
-//            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_ID, videoSource);
-//            localVideoTrack.setEnabled(config.videoEnabled);
-////            pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
-//            String localTrackId = LOCAL_VIDEO_ID;
-//            ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
-//            videoSinks.put(localTrackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
-//            localVideoTrack.addSink(localVideoSink);
-//            RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
-//                            RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
-//                            Collections.singletonList(STREAM_ID),
-//                            createEncodingList()
-//            );
+        void createVideoTrack2(@NonNull VideoCapturer videoCapturer){
+            if (null != localVideoTrack){
+                KLog.p(KLog.ERROR, "localVideoTrack has created");
+                return;
+            }
+            this.videoCapturer = videoCapturer;
+            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
+            videoSource = factory.createVideoSource(videoCapturer.isScreencast());
+            videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
+            videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
+            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_ID, videoSource);
+            localVideoTrack.setEnabled(config.isLocalVideoEnabled);
+            String localTrackId = LOCAL_VIDEO_ID;
+            ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
+            videoSinks.put(localTrackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
+            localVideoTrack.addSink(localVideoSink);
+            RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
+                            RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
+                            Collections.singletonList(STREAM_ID),
+                            createEncodingList()
+            );
 //            RtpTransceiver transceiver = pc.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO, transceiverInit);
 //            transceiver.getSender().setTrack(localVideoTrack, false);
-//            handler.post(() -> {
-//                SurfaceViewRenderer surfaceViewRenderer = new SurfaceViewRenderer(context);
-//                surfaceViewRenderer.init(eglBase.getEglBaseContext(), null);
-//                surfaceViewRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
-//                surfaceViewRenderer.setEnableHardwareScaler(true);
-//                localVideoSink.addTarget(surfaceViewRenderer);
-//                if (null != sessionEventListener) {
-//                    KLog.p("####onLocalStream localTrackId=%s, render=%s", localTrackId, surfaceViewRenderer);
-//                    sessionEventListener.onLocalStream(localTrackId, surfaceViewRenderer);
-//                }
-//            });
-//        }
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    pc.addTransceiver(localVideoTrack, transceiverInit);
+                }
+            });
+
+            handler.post(() -> {
+                if (null != sessionEventListener) {
+                    StreamInfo streamInfo = new StreamInfo(localTrackId, videoCapturer.isScreencast() ? StreamInfo.Type_LocalScreenShare : StreamInfo.Type_LocalCamera, userE164, userE164, null);
+                    KLog.p("####onLocalStream stream info=%s", streamInfo);
+                    localStreamInfos.add(streamInfo);
+                    sessionEventListener.onStream(streamInfo);
+                }
+            });
+        }
 
 
         void createRemoteVideoTrack(String mid, VideoTrack track){

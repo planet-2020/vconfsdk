@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '0.1.8-SNAPSHOT'
+version = '0.1.11-SNAPSHOT'
 android {
     compileSdkVersion 28
 
@@ -42,7 +42,7 @@ dependencies {
 
     compileOnly project(':annotation')
     annotationProcessor project(':processor')
-    implementation 'com.kedacom.vconf.sdk:common:1.0.10-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:common:1.0.11-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:utils:1.0.3-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:amulet:1.1.2-SNAPSHOT'
 }
