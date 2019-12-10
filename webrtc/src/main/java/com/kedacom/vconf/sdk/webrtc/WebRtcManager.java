@@ -23,6 +23,7 @@ import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
+import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
@@ -579,7 +580,12 @@ public class WebRtcManager extends Caster<Msg>{
                         continue;
                     }
                     TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
-                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便，实际要以需求为准
+                    for (EmMtResolution res : streamInfo.aemSimcastRes){
+                        if (null != res && EmMtResolution.emMtVResEnd_Api != res){
+                            rtcPlayItem.emRes = res; // FIXME 实际要以需求为准
+                            break;
+                        }
+                    }
                     rtcPlayItem.achStreamId = streamInfo.achStreamId;
                     rtcPlayItem.bLocal = false;
                     rtcPlayItem.bAss = streamInfo.bAss;
@@ -597,7 +603,12 @@ public class WebRtcManager extends Caster<Msg>{
                         continue;
                     }
                     TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
-                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便，实际要以需求为准
+                    for (EmMtResolution res : streamInfo.aemSimcastRes){
+                        if (null != res && EmMtResolution.emMtVResEnd_Api != res){
+                            rtcPlayItem.emRes = res; // FIXME 实际要以需求为准
+                            break;
+                        }
+                    }
                     rtcPlayItem.achStreamId = streamInfo.achStreamId;
                     rtcPlayItem.bLocal = false;
                     rtcPlayItem.bAss = streamInfo.bAss;
@@ -627,7 +638,12 @@ public class WebRtcManager extends Caster<Msg>{
                         continue;
                     }
                     TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
-                    rtcPlayItem.emRes = streamInfo.aemSimcastRes.get(0); // FIXME 调试方便，实际要以需求为准
+                    for (EmMtResolution res : streamInfo.aemSimcastRes){
+                        if (null != res && EmMtResolution.emMtVResEnd_Api != res){
+                            rtcPlayItem.emRes = res; // FIXME 实际要以需求为准
+                            break;
+                        }
+                    }
                     rtcPlayItem.achStreamId = streamInfo.achStreamId;
                     rtcPlayItem.bLocal = false;
                     rtcPlayItem.bAss = streamInfo.bAss;
