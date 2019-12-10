@@ -11,6 +11,7 @@ import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.SurfaceHolder;
+import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -157,6 +158,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.StreamJoined,
                 Msg.StreamLeft,
                 Msg.CallIncoming,
+                Msg.ConfCanceled,
                 Msg.MultipartyConfEnded,
                 Msg.ConfMembersInfoNtf,
         }, this::onNtfs);
@@ -339,6 +341,25 @@ public class WebRtcManager extends Caster<Msg>{
         req(Msg.ToggleScreenShare, null, false);
     }
 
+
+    private View sharedWindow;
+    /**
+     * 开启窗口共享
+     * */
+    public void startWindowShare(@NonNull View window, IResultListener resultListener){
+        sharedWindow = window;
+        req(Msg.ToggleScreenShare, resultListener, true);
+    }
+
+    /**
+     * 结束窗口共享
+     * */
+    public void stopWindowShare(){
+        sharedWindow = null;
+        req(Msg.ToggleScreenShare, null, false);
+    }
+
+
     /**
      * 是否已静音。
      * */
@@ -471,6 +492,13 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 break;
 
+            case ConfCanceled:
+                stopSession();
+                reason = (BaseTypeInt) rspContent;
+                KLog.p("ConfCanceled: %s", reason.basetype);
+                reportFailed(-1, listener);
+                break;
+
             case ToggleScreenShareRsp:
                 TMtAssVidStatusList assVidStatusList = (TMtAssVidStatusList) rspContent;
                 if (assVidStatusList.arrTAssVidStatus.length == 0){
@@ -529,6 +557,13 @@ public class WebRtcManager extends Caster<Msg>{
                 stopSession();
                 BaseTypeInt reason = (BaseTypeInt) ntfContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
+                if (null != confEventListener) confEventListener.onConfFinished();
+                break;
+
+            case ConfCanceled:
+                stopSession();
+                reason = (BaseTypeInt) ntfContent;
+                KLog.p("ConfCanceled: %s", reason.basetype);
                 if (null != confEventListener) confEventListener.onConfFinished();
                 break;
 
@@ -1500,6 +1535,11 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    private VideoCapturer createWindowCapturer(){
+        return new WindowCapturer(sharedWindow);
+    }
+
+
     private PeerConnectionWrapper getPcWrapper(int connType){
         for (PeerConnectionWrapper peerConnectionWrapper : connWrapperList){
             if (peerConnectionWrapper.connType == connType){
@@ -1670,7 +1710,8 @@ public class WebRtcManager extends Caster<Msg>{
                     if (CommonDef.CONN_TYPE_PUBLISHER == connType) {
                         videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
                     }else if (CommonDef.CONN_TYPE_ASS_PUBLISHER == connType) {
-                        videoCapturer = createScreenCapturer();
+//                        videoCapturer = createScreenCapturer();
+                        videoCapturer = createWindowCapturer();
                     }
                 }
                 if (null != videoCapturer) {
@@ -2155,15 +2196,6 @@ public class WebRtcManager extends Caster<Msg>{
             this.config = config;
             this.sdpObserver = sdpObserver;
             this.pcObserver = pcObserver;
-//            if (CommonDef.CONN_TYPE_PUBLISHER == connType
-//                    || CommonDef.CONN_TYPE_ASS_PUBLISHER == connType){
-//                RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
-//                        RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
-//                        Collections.singletonList(STREAM_ID),
-//                        createEncodingList()
-//                );
-//                pc.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO, transceiverInit);
-//            }
         }
 
 
