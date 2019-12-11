@@ -697,7 +697,7 @@ public class WebRtcManager extends Caster<Msg>{
             createPeerConnectionFactory(
                     eglBase,
                     new PeerConnectionFactory.Options(),
-                    new PeerConnectionFactoryConfig(Arrays.asList("VP8", "H264 High"),true)
+                    new PeerConnectionFactoryConfig(Arrays.asList("VP8"/*, "H264 High"*/),true)
             );
 
             /* 创建peerconnectclient。
@@ -1072,8 +1072,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param streamId 码流Id。
          * */
         public boolean bindStream(@NonNull String streamId){
-//            KLog.p("bind display %s to stream %s", this, streamId);
-            KLog.sp(String.format("bind display %s to stream %s", this, streamId));
+            KLog.p("bind display %s to stream %s", this, streamId);
             Map<String, ProxyVideoSink> videoSinks = instance.videoSinks;
             ProxyVideoSink sink = videoSinks.get(streamId);
             if (null == sink && !STREAMID_NULL.equals(streamId)){
@@ -1099,8 +1098,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param otherDisplay 要交换的display。
          * */
         public void swapContent(@NonNull Display otherDisplay){
-//            KLog.p("swap display %s and display %s", this, otherDisplay);
-            KLog.sp(String.format("swap this display %s and other display %s", this, otherDisplay));
+            KLog.p("swap display %s and display %s", this, otherDisplay);
             // 切换绑定的流
             String myStreamId = streamId;
             bindStream(otherDisplay.streamId);
@@ -1731,8 +1729,8 @@ public class WebRtcManager extends Caster<Msg>{
                     }
                 }
                 if (null != videoCapturer) {
-                    pcWrapper.createVideoTrack(videoCapturer);
-//                    pcWrapper.createVideoTrack2(videoCapturer);
+//                    pcWrapper.createVideoTrack(videoCapturer);
+                    pcWrapper.createVideoTrack2(videoCapturer);
                 }
 
                 if ((CommonDef.MEDIA_TYPE_AUDIO == mediaType
@@ -1861,7 +1859,7 @@ public class WebRtcManager extends Caster<Msg>{
                         boolean bAudio = pcWrapper.curMediaType == CommonDef.MEDIA_TYPE_AUDIO;
                         RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(
                                 getMid(pc.getLocalDescription().description, bAudio),
-                                bAudio ? null : createEncodingList() // 仅视频需要填encodings
+                                bAudio ? null : createEncodingList(true) // 仅视频需要填encodings
                         );
                         handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia));
                         pcWrapper.setSdpState(pcWrapper.Sending);
@@ -1904,8 +1902,8 @@ public class WebRtcManager extends Caster<Msg>{
                         KLog.p("setRemoteDescription for AudioOffer success, we now need create video offer...");
                         VideoCapturer videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
                         if (null != videoCapturer) {
-                            pcWrapper.createVideoTrack(videoCapturer);
-//                            pcWrapper.createVideoTrack2(videoCapturer);
+//                            pcWrapper.createVideoTrack(videoCapturer);
+                            pcWrapper.createVideoTrack2(videoCapturer);
                             pcWrapper.pc.createOffer(pcWrapper.sdpObserver, new MediaConstraints());
                         }
                         // 不同于正常sdp流程，此时还需要再发video的offer，所以切换sdptype为videoOffer
@@ -1919,7 +1917,7 @@ public class WebRtcManager extends Caster<Msg>{
                         RtcConnector.TRtcMedia rtcAudio = new RtcConnector.TRtcMedia(getMid(pc.getLocalDescription().description,true));
                         RtcConnector.TRtcMedia rtcVideo = new RtcConnector.TRtcMedia(
                                 getMid(pc.getLocalDescription().description,false),
-                                createEncodingList()
+                                createEncodingList(true)
                         );
                         handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcAudio, rtcVideo));
                         pcWrapper.setSdpState(pcWrapper.Sending);
@@ -2095,18 +2093,26 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     /**
-     * 创建Encoding列表（具体内容由需求决定）
+     * 创建Encoding列表
      * */
-    private List<RtpParameters.Encoding> encodingList;
-    private List<RtpParameters.Encoding> createEncodingList(){
-        if (null != encodingList){
-            return encodingList;
-        }
+    private List<RtpParameters.Encoding> createEncodingList(boolean bTrackAdded){
         List<RtpParameters.Encoding> encodings = new ArrayList<>();
-        encodings.add(new RtpParameters.Encoding("l", true, 0.25));
-        encodings.add(new RtpParameters.Encoding("m", true, 0.5));
-        encodings.add(new RtpParameters.Encoding("h", true, 1.0));
-        encodingList = encodings;
+        if (!bTrackAdded) {
+           /* NOTE
+            track被添加之前scaleResolutionDownBy必须设置为null否则会崩溃，提示
+            "Fatal error: C++ addTransceiver failed"。
+            等到track被添加之后，sdp被创建之前，
+            通过sender.getParameters()获取encodings列表，然后给scaleResolutionDownBy赋予真实的值。
+            */
+            encodings.add(new RtpParameters.Encoding("l", true,null));
+            encodings.add(new RtpParameters.Encoding("m", true, null));
+            encodings.add(new RtpParameters.Encoding("h", true, null));
+        }else{
+            //XXX 暂时写死，具体根据需求来
+            encodings.add(new RtpParameters.Encoding("l", true,0.25));
+            encodings.add(new RtpParameters.Encoding("m", true, 0.5));
+            encodings.add(new RtpParameters.Encoding("h", true, 1.0));
+        }
         return encodings;
     }
 
@@ -2167,6 +2173,8 @@ public class WebRtcManager extends Caster<Msg>{
         AudioSource audioSource;
         AudioTrack localAudioTrack;
         List<AudioTrack> remoteAudioTracks = new ArrayList<>();
+        private RtpSender videoSender;
+        private RtpSender audioSender;
 
         PeerConnectionWrapper(int connType, @NonNull PeerConnection pc, @NonNull PeerConnectionConfig config,
                               @NonNull SDPObserver sdpObserver, @NonNull PCObserver pcObserver) {
@@ -2221,24 +2229,33 @@ public class WebRtcManager extends Caster<Msg>{
             ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
             videoSinks.put(localTrackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
             localVideoTrack.addSink(localVideoSink);
+
+            //=> 启用simulcast
             RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
                             RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
                             Collections.singletonList(STREAM_ID),
-                            createEncodingList()
+                            createEncodingList(false)
             );
-//            RtpTransceiver transceiver = pc.addTransceiver(MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO, transceiverInit);
-//            transceiver.getSender().setTrack(localVideoTrack, false);
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        Thread.sleep(3000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    pc.addTransceiver(localVideoTrack, transceiverInit);
+            RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
+            videoSender = transceiver.getSender();
+            // 在添加track之后才去设置encoding参数。XXX  暂时写死，具体根据需求来。
+            // NOTE：注意和sendOffer时传给业务组件的参数一致。
+            for (RtpParameters.Encoding encoding : videoSender.getParameters().encodings){
+                if (encoding.rid.equals("h")){
+                    encoding.scaleResolutionDownBy = 1.0;
+                    encoding.maxFramerate = config.videoFps;
+                    encoding.maxBitrateBps = 1700;
+                }else if (encoding.rid.equals("m")){
+                    encoding.scaleResolutionDownBy = 0.5;
+                    encoding.maxFramerate = config.videoFps;
+                    encoding.maxBitrateBps = 1700;
+                }else if (encoding.rid.equals("l")){
+                    encoding.scaleResolutionDownBy = 0.25;
+                    encoding.maxFramerate = config.videoFps;
+                    encoding.maxBitrateBps = 1700;
                 }
-            });
+            }
+            //<= 启用simulcast
 
             handler.post(() -> {
                 if (null != sessionEventListener) {
@@ -2322,7 +2339,6 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-        private RtpSender audioSender;
         void createAudioTrack(){
             audioSource = factory.createAudioSource(new MediaConstraints());
             localAudioTrack = factory.createAudioTrack(LOCAL_AUDIO_ID, audioSource);
