@@ -80,8 +80,6 @@ import org.webrtc.VideoTrack;
 import org.webrtc.audio.AudioDeviceModule;
 import org.webrtc.audio.JavaAudioDeviceModule;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -680,16 +678,14 @@ public class WebRtcManager extends Caster<Msg>{
 
         rtcConnector.setSignalingEventsCallback(new RtcConnectorEventListener());
 
-        int videoWidth = context.getResources().getDisplayMetrics().widthPixels;
-        int videoHeight = context.getResources().getDisplayMetrics().heightPixels;
         PeerConnectionConfig pubConnConfig = new PeerConnectionConfig(
-                        videoWidth,
-                        videoHeight,
+                        1920,  // FIXME 暂时写死，实际得看需求
+                        1080,
                         20,
                         1700,
                         "VP8",
                         32,
-                        "OPUS"
+                        "ISAC"
                 );
 
 
@@ -698,7 +694,7 @@ public class WebRtcManager extends Caster<Msg>{
             createPeerConnectionFactory(
                     eglBase,
                     new PeerConnectionFactory.Options(),
-                    new PeerConnectionFactoryConfig(Arrays.asList("VP8"/*, "H264 High"*/),true)
+                    new PeerConnectionFactoryConfig(Arrays.asList("VP8", "H264 High"),true)
             );
 
             /* 创建peerconnectclient。
@@ -797,6 +793,8 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
 
+        KLog.p(config.toString());
+
         final AudioDeviceModule adm = createJavaAudioDevice();
 
         final VideoEncoderFactory encoderFactory;
@@ -833,6 +831,8 @@ public class WebRtcManager extends Caster<Msg>{
         if (null == factory){
             throw new RuntimeException("Factory not exists!");
         }
+
+        KLog.p(config.toString());
 
         PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(new ArrayList<>());
         // TCP candidates are only useful when connecting to a server that supports
@@ -1653,6 +1653,14 @@ public class WebRtcManager extends Caster<Msg>{
             this.videoCodecList = videoCodecList;
             this.enableVideoCodecHwAcceleration = enableVideoCodecHwAcceleration;
         }
+
+        @Override
+        public String toString() {
+            return "PeerConnectionFactoryConfig{" +
+                    "videoCodecList=" + videoCodecList +
+                    ", enableVideoCodecHwAcceleration=" + enableVideoCodecHwAcceleration +
+                    '}';
+        }
     }
 
     private class PeerConnectionConfig{
@@ -1703,6 +1711,24 @@ public class WebRtcManager extends Caster<Msg>{
             this.isLocalVideoEnabled = config.isLocalVideoEnabled;
             this.isRemoteVideoEnabled = config.isRemoteVideoEnabled;
             this.bPreferFrontCamera = config.bPreferFrontCamera;
+        }
+
+        @Override
+        public String toString() {
+            return "PeerConnectionConfig{" +
+                    "videoWidth=" + videoWidth +
+                    ", videoHeight=" + videoHeight +
+                    ", videoFps=" + videoFps +
+                    ", videoMaxBitrate=" + videoMaxBitrate +
+                    ", videoCodec='" + videoCodec + '\'' +
+                    ", audioStartBitrate=" + audioStartBitrate +
+                    ", audioCodec='" + audioCodec + '\'' +
+                    ", isLocalAudioEnabled=" + isLocalAudioEnabled +
+                    ", isRemoteAudioEnabled=" + isRemoteAudioEnabled +
+                    ", isLocalVideoEnabled=" + isLocalVideoEnabled +
+                    ", isRemoteVideoEnabled=" + isRemoteVideoEnabled +
+                    ", bPreferFrontCamera=" + bPreferFrontCamera +
+                    '}';
         }
     }
 
@@ -1766,9 +1792,7 @@ public class WebRtcManager extends Caster<Msg>{
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 pcWrapper.checkSdpState(pcWrapper.Idle);
                 pcWrapper.setSdpType(pcWrapper.Answer);
-                pcWrapper.pc.setRemoteDescription(pcWrapper.sdpObserver,
-                        new SessionDescription(SessionDescription.Type.OFFER, offerSdp)
-                );
+                setRemoteDescription(pcWrapper, offerSdp, SessionDescription.Type.OFFER);
                 pcWrapper.setSdpState(pcWrapper.SettingRemote);
             });
         }
@@ -1779,9 +1803,7 @@ public class WebRtcManager extends Caster<Msg>{
             executor.execute(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 pcWrapper.checkSdpState(pcWrapper.Sending);
-                pcWrapper.pc.setRemoteDescription(pcWrapper.sdpObserver,
-                        new SessionDescription(SessionDescription.Type.ANSWER, answerSdp)
-                );
+                setRemoteDescription(pcWrapper, answerSdp, SessionDescription.Type.ANSWER);
                 pcWrapper.setSdpState(pcWrapper.SettingRemote);
             });
 
@@ -1824,6 +1846,21 @@ public class WebRtcManager extends Caster<Msg>{
                 pcWrapper.setLocalAudioEnable(!bMute);
             }
         }
+
+        private void setRemoteDescription(PeerConnectionWrapper pcWrapper, String sdp, SessionDescription.Type type){
+            // 根据音视频编码偏好修改sdp
+            if (pcWrapper.isSdpType(pcWrapper.Offer) || pcWrapper.isSdpType(pcWrapper.Answer)){
+                sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.audioCodec, true);
+                sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.videoCodec, false);
+            }else if (pcWrapper.isSdpType(pcWrapper.AudioOffer)){
+                sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.audioCodec, true);
+            }else if (pcWrapper.isSdpType(pcWrapper.VideoOffer)){
+                sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.videoCodec, false);
+            }
+
+            pcWrapper.pc.setRemoteDescription(pcWrapper.sdpObserver, new SessionDescription(type, sdp));
+        }
+
     }
 
 
@@ -1839,10 +1876,21 @@ public class WebRtcManager extends Caster<Msg>{
                 pcWrapper.checkSdpState(pcWrapper.Creating);
                 if (pcWrapper.isSdpType(pcWrapper.FingerPrintOffer)){
                     pcWrapper.destoryAudioTrack();
-                    rtcConnector.sendFingerPrint(pcWrapper.connType, getFingerPrint(origSdp.description));
+                    rtcConnector.sendFingerPrint(pcWrapper.connType, SdpHelper.getFingerPrint(origSdp.description));
                     pcWrapper.setSdpState(pcWrapper.Idle);
                 }else {
-                    pcWrapper.pc.setLocalDescription(this, origSdp);
+                    // 根据音视频编码偏好修改sdp
+                    String sdp = origSdp.description;
+                    if (pcWrapper.isSdpType(pcWrapper.Offer) || pcWrapper.isSdpType(pcWrapper.Answer)){
+                        sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.audioCodec, true);
+                        sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.videoCodec, false);
+                    }else if (pcWrapper.isSdpType(pcWrapper.AudioOffer)){
+                        sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.audioCodec, true);
+                    }else if (pcWrapper.isSdpType(pcWrapper.VideoOffer)){
+                        sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.videoCodec, false);
+                    }
+
+                    pcWrapper.pc.setLocalDescription(this, new SessionDescription(origSdp.type, sdp));
                     pcWrapper.setSdpState(pcWrapper.SettingLocal);
                 }
             });
@@ -1859,7 +1907,7 @@ public class WebRtcManager extends Caster<Msg>{
                         KLog.p("setLocalDescription for Offer success, sending offer...");
                         boolean bAudio = pcWrapper.curMediaType == CommonDef.MEDIA_TYPE_AUDIO;
                         RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(
-                                getMid(pc.getLocalDescription().description, bAudio),
+                                SdpHelper.getMid(pc.getLocalDescription().description, bAudio),
                                 bAudio ? null : createEncodingList(true) // 仅视频需要填encodings
                         );
                         handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia));
@@ -1878,7 +1926,7 @@ public class WebRtcManager extends Caster<Msg>{
                     }else {
                         KLog.p("setLocalDescription for Answer success, sending answer...");
                         List<RtcConnector.TRtcMedia> rtcMediaList = new ArrayList<>();
-                        List<String> mids = getAllMids(pc.getLocalDescription().description);
+                        List<String> mids = SdpHelper.getAllMids(pc.getLocalDescription().description);
                         for (String mid : mids){
                             KLog.p("mid=%s", mid);
                             String streamId = midStreamIdMap.get(mid);
@@ -1896,7 +1944,7 @@ public class WebRtcManager extends Caster<Msg>{
                 else if (pcWrapper.isSdpType(pcWrapper.AudioOffer)){
                     if (pcWrapper.isSdpState(pcWrapper.SettingLocal)){
                         KLog.p("setLocalDescription for AudioOffer success, sending offer...");
-                        RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(getMid(pc.getLocalDescription().description,true));
+                        RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(SdpHelper.getMid(pc.getLocalDescription().description,true));
                         handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia));
                         pcWrapper.setSdpState(pcWrapper.Sending);
                     }else{
@@ -1915,9 +1963,9 @@ public class WebRtcManager extends Caster<Msg>{
                 else if (pcWrapper.isSdpType(pcWrapper.VideoOffer)){
                     if (pcWrapper.isSdpState(pcWrapper.SettingLocal)){
                         KLog.p("setLocalDescription for VideoOffer success, sending offer...");
-                        RtcConnector.TRtcMedia rtcAudio = new RtcConnector.TRtcMedia(getMid(pc.getLocalDescription().description,true));
+                        RtcConnector.TRtcMedia rtcAudio = new RtcConnector.TRtcMedia(SdpHelper.getMid(pc.getLocalDescription().description,true));
                         RtcConnector.TRtcMedia rtcVideo = new RtcConnector.TRtcMedia(
-                                getMid(pc.getLocalDescription().description,false),
+                                SdpHelper.getMid(pc.getLocalDescription().description,false),
                                 createEncodingList(true)
                         );
                         handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcAudio, rtcVideo));
@@ -2048,50 +2096,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-
-    private String getMid(String sdpDescription, boolean bAudio){
-//        KLog.p("bAudio =%s, sdp=%s", bAudio, sdpDescription);
-        final String[] lines = sdpDescription.split("\r\n");
-        String mediaHead = bAudio ? "m=audio" : "m=video";
-        boolean gotMediaHead = false;
-        for (String line : lines) {
-            if (line.startsWith(mediaHead)) {
-                gotMediaHead = true;
-                continue;
-            }
-            if (line.startsWith("a=mid:") && gotMediaHead) {
-                return line.substring("a=mid:".length());
-            }
-        }
-
-        KLog.p(KLog.WARN, "getMid null");
-        return null;
-    }
-
-    private List<String> getAllMids(String sdpDescription){
-//        KLog.p("sdp=%s", sdpDescription);
-        final String[] lines = sdpDescription.split("\r\n");
-        List<String> mids = new ArrayList<>();
-        for (String line : lines) {
-            if (line.startsWith("a=mid:")) {
-                mids.add(line.substring("a=mid:".length()));
-            }
-        }
-        return mids;
-    }
-
-    private String getFingerPrint(String sdpDescription){
-//        KLog.p("sdp=%s", sdpDescription);
-        final String[] lines = sdpDescription.split("\r\n");
-        for (String line : lines) {
-            if (line.startsWith("a=fingerprint:sha-256 ")) {
-                return line.substring("a=fingerprint:sha-256 ".length());
-            }
-        }
-
-        KLog.p(KLog.WARN, "getFingerPrint null");
-        return null;
-    }
 
     /**
      * 创建Encoding列表
@@ -2245,15 +2249,15 @@ public class WebRtcManager extends Caster<Msg>{
                 if (encoding.rid.equals("h")){
                     encoding.scaleResolutionDownBy = 1.0;
                     encoding.maxFramerate = config.videoFps;
-                    encoding.maxBitrateBps = 1700;
+                    encoding.maxBitrateBps = config.videoMaxBitrate;
                 }else if (encoding.rid.equals("m")){
                     encoding.scaleResolutionDownBy = 0.5;
                     encoding.maxFramerate = config.videoFps;
-                    encoding.maxBitrateBps = 1700;
+                    encoding.maxBitrateBps = config.videoMaxBitrate;
                 }else if (encoding.rid.equals("l")){
                     encoding.scaleResolutionDownBy = 0.25;
                     encoding.maxFramerate = config.videoFps;
-                    encoding.maxBitrateBps = 1700;
+                    encoding.maxBitrateBps = config.videoMaxBitrate;
                 }
             }
             //<= 启用simulcast
