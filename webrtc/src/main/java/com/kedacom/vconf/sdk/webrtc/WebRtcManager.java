@@ -517,6 +517,7 @@ public class WebRtcManager extends Caster<Msg>{
             case CreateConfRsp:
                 TCreateConfResult tCreateConfResult = (TCreateConfResult) rspContent;
                 if (1000 != tCreateConfResult.MainParam.dwErrorID){
+                    stopSession();
                     cancelReq(req, listener);
                     reportFailed(-1, listener);
                 }
