@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.webrtc;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -184,7 +185,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<=##= connType=%s, mediaType=%s", connType, mediaType);
+		Log.i(TAG, String.format("[PUB]<=#= onGetOfferCmd, connType=%s, mediaType=%s", connType, mediaType));
 
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onGetOfferCmd(connType, mediaType));
 
@@ -265,7 +266,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<=##= connType=%s, offer=%s, rtcMedialist=%s", connType, offer, rtcMedialist);
+		Log.i(TAG, String.format("[sub]<=#= onSetOfferCmd, connType=%s, offer=\n%s", connType, offer));
 
 		List<TRtcMedia> rtcMedias = new ArrayList<>();
 		for (StructConfPB.TRtcMedia tRtcMedia : rtcMedialist.getMediaList()){
@@ -326,7 +327,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<=##= connType=%s, answer=%s", connType, answer);
+		Log.i(TAG, String.format("[PUB]<=#= onSetAnswerCmd, connType=%s, answer=\n%s", connType, answer));
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetAnswerCmd(connType, answer) );
 
 	}
@@ -395,7 +396,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<=##= connType=%s, mid=%s, index=%s, candidate=%s", connType, mid, index, candidate);
+		Log.i(TAG, String.format("<=#= connType=%s, mid=%s, index=%s, candidate=\n%s", connType, mid, index, candidate));
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetIceCandidateCmd(connType, mid, index, candidate) );
 	}
 
@@ -418,7 +419,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<=##= connType=%s", connType);
+		KLog.p("connType=%s", connType);
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onGetFingerPrintCmd(connType) );
 	}
 
@@ -438,7 +439,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<=##= bQuiet=%s", bQuiet);
+		KLog.p("bQuiet=%s", bQuiet);
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onCodecQuietCmd(bQuiet) );
 	}
 
@@ -458,7 +459,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("<=##= bMute=%s", bMute);
+		KLog.p("bMute=%s", bMute);
 		if (null != signalingEvents) handler.post(() -> signalingEvents.onCodecMuteCmd(bMute) );
 	}
 
@@ -522,7 +523,8 @@ class RtcConnector implements IRcvMsgCallback{
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
 
-		KLog.p("=##=> send offer: connType=%s, sdp=%s", connType, offerSdp);
+
+		Log.i(TAG, String.format("[PUB]=#=> sendOfferSdp, connType=%s, offerSdp=\n%s", connType, offerSdp));
 	}
 
 	void sendAnswerSdp(int connType, @NonNull String answerSdp, List<RtcConnector.TRtcMedia> rtcMediaList) {
@@ -540,7 +542,8 @@ class RtcConnector implements IRcvMsgCallback{
 //                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
 				dispatchId, dispatchNode, myId, myNode, 5000 );
-        KLog.p("=##=> send answer, connType=%s, sdp=%s", connType, answerSdp);
+
+		Log.i(TAG, String.format("[sub]=#=> sendAnswerSdp, connType=%s, answerSdp=\n%s", connType, answerSdp));
         if (0 != ret){
             KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
         }
@@ -565,7 +568,7 @@ class RtcConnector implements IRcvMsgCallback{
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
 
-		KLog.p("=##=> send candidate sdpmid=%s, sdpline=%s, candidate=%s", sdpMid, sdpMLineIndex, sdp);
+		Log.i(TAG, String.format("=#=>sendIceCandidate, sdpmid=%s, sdpline=%s, candidate=\n%s", sdpMid, sdpMLineIndex, sdp));
 	}
 
 
@@ -583,7 +586,7 @@ class RtcConnector implements IRcvMsgCallback{
             KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
         }
 
-        KLog.p("=##=> sendFingerPrint connType=%s, fingerPrint=%s", connType, fingerPrint);
+        KLog.p("sendFingerPrint connType=%s, fingerPrint=%s", connType, fingerPrint);
 	}
 
 	static class TRtcMedia {

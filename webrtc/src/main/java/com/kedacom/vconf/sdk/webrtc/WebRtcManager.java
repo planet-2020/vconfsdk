@@ -184,13 +184,6 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
 
-//        try {
-//            long ip = NetAddrHelper.ipStr2LongLittleEndian("172.16.179.114"); //XXX 写死方便调试
-//            rtcSvrAddr = new TMtRtcSvrAddr(ip, 7961, e164);
-//        } catch (NetAddrHelper.InvalidIpv4Exception e) {
-//            e.printStackTrace();
-//        }
-
         userE164 = e164;
         rtcSvrAddr.bUsedRtc = true;
         rtcSvrAddr.achNumber = e164;
@@ -227,7 +220,7 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
         req(Msg.Call, resultListener, peerId,
-                1024, // XXX 上层传入 ???
+                1024*4, // 按需求创会码率固定为4M，呼叫码率也是???
                 EmConfProtocol.emrtc);
     }
 
@@ -574,7 +567,6 @@ public class WebRtcManager extends Caster<Msg>{
                 streamInfos.clear();
                 streamInfos.addAll(streamInfoList.atStramInfoList);
                 for (TRtcStreamInfo streamInfo : streamInfos){
-                    KLog.p("streamInfo: %s", streamInfo);
                     if (streamInfo.bAudio){
                         continue;
                     }
@@ -613,7 +605,7 @@ public class WebRtcManager extends Caster<Msg>{
                     rtcPlayItem.bAss = streamInfo.bAss;
                     rtcPlayItems.add(rtcPlayItem);
                 }
-                set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems)); // 这里设置是增量的，还是覆盖的？如果是覆盖的，我需要本地记录下原本的列表？
+                set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
                 break;
             case StreamLeft: //NOTE: 这里是增量过来的
                 KLog.p("StreamLeft");
@@ -2487,7 +2479,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         void setSdpType(int sdpType) {
-            KLog.up("set sdp type from %s to %s", this.sdpType, sdpType);
+//            KLog.up("set sdp type from %s to %s", this.sdpType, sdpType);
             this.sdpType = sdpType;
         }
 
@@ -2496,7 +2488,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         void setSdpState(int sdpState) {
-            KLog.up("switch sdp state from %s to %s", this.sdpState, sdpState);
+//            KLog.up("switch sdp state from %s to %s", this.sdpState, sdpState);
             this.sdpState = sdpState;
         }
 
