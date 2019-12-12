@@ -68,8 +68,7 @@ final class SdpHelper {
 
 
     @SuppressWarnings("StringSplitter")
-    static String setStartBitrate(
-            String codec, boolean isVideoCodec, String sdpDescription, int bitrateKbps) {
+    static String setStartBitrate(String codec, boolean isVideoCodec, String sdpDescription, int bitrateKbps) {
         String[] lines = sdpDescription.split("\r\n");
         int rtpmapLineIndex = -1;
         boolean sdpFormatUpdated = false;
@@ -135,7 +134,7 @@ final class SdpHelper {
     private static int findMediaDescriptionLine(boolean isAudio, String[] sdpLines) {
         final String mediaDescription = isAudio ? "m=audio " : "m=video ";
         for (int i = 0; i < sdpLines.length; ++i) {
-            KLog.p("mediaDescription=%s, sdpLines=%s", mediaDescription, sdpLines[i]);
+//            KLog.p("mediaDescription=%s, sdpLines=%s", mediaDescription, sdpLines[i]);
             if (sdpLines[i].startsWith(mediaDescription)) {
                 return i;
             }
@@ -143,8 +142,7 @@ final class SdpHelper {
         return -1;
     }
 
-    private static String joinString(
-            Iterable<? extends CharSequence> s, String delimiter, boolean delimiterAtEnd) {
+    private static String joinString(Iterable<? extends CharSequence> s, String delimiter, boolean delimiterAtEnd) {
         Iterator<? extends CharSequence> iter = s.iterator();
         if (!iter.hasNext()) {
             return "";

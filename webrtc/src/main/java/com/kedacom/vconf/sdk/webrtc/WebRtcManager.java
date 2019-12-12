@@ -665,7 +665,106 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
+    public static final String VIDEO_CODEC_VP8 = "VP8";
+    public static final String VIDEO_CODEC_VP9 = "VP9";
+    public static final String VIDEO_CODEC_H264 = "H264";
+    public static final String VIDEO_CODEC_H264_BASELINE = "H264 Baseline";
+    public static final String VIDEO_CODEC_H264_HIGH = "H264 High";
+    public static final String AUDIO_CODEC_OPUS = "opus";
+    public static final String AUDIO_CODEC_ISAC = "ISAC";
+    private static String getSdpVideoCodecName(String videoCodec) {
+        switch (videoCodec) {
+            case VIDEO_CODEC_VP9:
+                return VIDEO_CODEC_VP9;
+            case VIDEO_CODEC_H264_HIGH:
+            case VIDEO_CODEC_H264_BASELINE:
+                return VIDEO_CODEC_H264;
+            case VIDEO_CODEC_VP8:
+            default:
+                return VIDEO_CODEC_VP8;
+        }
+    }
 
+
+    public static class Config{
+        public boolean enableVideoCodecHwAcceleration;
+        public boolean enableSimulcast;
+        public String videoCodec;
+        public int videoWidth;
+        public int videoHeight;
+        public int videoFps;
+        public int videoMaxBitrate;
+        public String audioCodec;
+        public int audioStartBitrate;
+
+        public Config(){
+
+        }
+
+        public Config(boolean enableVideoCodecHwAcceleration, boolean enableSimulcast,
+                      String videoCodec, int videoWidth, int videoHeight, int videoFps, int videoMaxBitrate,
+                      String audioCodec, int audioStartBitrate) {
+            this.enableVideoCodecHwAcceleration = enableVideoCodecHwAcceleration;
+            this.enableSimulcast = enableSimulcast;
+            this.videoCodec = videoCodec;
+            this.videoWidth = videoWidth;
+            this.videoHeight = videoHeight;
+            this.videoFps = videoFps;
+            this.videoMaxBitrate = videoMaxBitrate;
+            this.audioCodec = audioCodec;
+            this.audioStartBitrate = audioStartBitrate;
+        }
+
+        private void set(Config config){
+            this.enableVideoCodecHwAcceleration = config.enableVideoCodecHwAcceleration;
+            this.enableSimulcast = config.enableSimulcast;
+            this.videoCodec = config.videoCodec;
+            this.videoWidth = config.videoWidth;
+            this.videoHeight = config.videoHeight;
+            this.videoFps = config.videoFps;
+            this.videoMaxBitrate = config.videoMaxBitrate;
+            this.audioCodec = config.audioCodec;
+            this.audioStartBitrate = config.audioStartBitrate;
+        }
+
+        @Override
+        public String toString() {
+            return "Config{" +
+                    "enableVideoCodecHwAcceleration=" + enableVideoCodecHwAcceleration +
+                    ", videoCodec='" + videoCodec + '\'' +
+                    ", videoWidth=" + videoWidth +
+                    ", videoHeight=" + videoHeight +
+                    ", videoFps=" + videoFps +
+                    ", videoMaxBitrate=" + videoMaxBitrate +
+                    ", audioCodec='" + audioCodec + '\'' +
+                    ", audioStartBitrate=" + audioStartBitrate +
+                    '}';
+        }
+    }
+    private Config config = new Config(
+            true,
+            true,
+            VIDEO_CODEC_H264_HIGH,
+            1920,
+            1080,
+            20,
+            1700,
+            AUDIO_CODEC_OPUS,
+            32
+    );
+
+    /**
+     * 设置媒体偏好
+     * */
+    public void setConfig(@NonNull Config config){
+        this.config.set(config);
+    }
+
+    public Config getConfig(){
+        Config config = new Config();
+        config.set(this.config);
+        return config;
+    }
 
     private boolean bSessionStarted;
     private synchronized boolean startSession(@NonNull SessionEventListener listener){
@@ -679,14 +778,14 @@ public class WebRtcManager extends Caster<Msg>{
         rtcConnector.setSignalingEventsCallback(new RtcConnectorEventListener());
 
         PeerConnectionConfig pubConnConfig = new PeerConnectionConfig(
-                        1920,  // FIXME 暂时写死，实际得看需求
-                        1080,
-                        20,
-                        1700,
-                        "VP8",
-                        32,
-                        "ISAC"
-                );
+                config.videoWidth,
+                config.videoHeight,
+                config.videoFps,
+                config.videoMaxBitrate,
+                config.videoCodec,
+                config.audioStartBitrate,
+                config.audioCodec
+        );
 
 
         eglBase = EglBase.create();
@@ -694,7 +793,7 @@ public class WebRtcManager extends Caster<Msg>{
             createPeerConnectionFactory(
                     eglBase,
                     new PeerConnectionFactory.Options(),
-                    new PeerConnectionFactoryConfig(Arrays.asList("VP8", "H264 High"),true)
+                    new PeerConnectionFactoryConfig(Arrays.asList(VIDEO_CODEC_VP8, VIDEO_CODEC_H264_HIGH), config.enableVideoCodecHwAcceleration)
             );
 
             /* 创建peerconnectclient。
@@ -803,13 +902,17 @@ public class WebRtcManager extends Caster<Msg>{
         if (config.enableVideoCodecHwAcceleration) {
             encoderFactory = new DefaultVideoEncoderFactory(
                     eglBase.getEglBaseContext(),
-                    config.videoCodecList.contains("VP8"),
-                    config.videoCodecList.contains("H264 High"));
+                    config.videoCodecList.contains(VIDEO_CODEC_VP8),
+                    config.videoCodecList.contains(VIDEO_CODEC_H264_HIGH));
             decoderFactory = new DefaultVideoDecoderFactory(eglBase.getEglBaseContext());
         } else {
             encoderFactory = new SoftwareVideoEncoderFactory();
             decoderFactory = new SoftwareVideoDecoderFactory();
         }
+
+//        for (VideoCodecInfo videoCodecInfo : encoderFactory.getSupportedCodecs()) {
+//            KLog.p("supported video codec: %s", videoCodecInfo.name);
+//        }
 
         PeerConnectionFactory.initialize(
                 PeerConnectionFactory.InitializationOptions.builder(context)
@@ -1756,8 +1859,11 @@ public class WebRtcManager extends Caster<Msg>{
                     }
                 }
                 if (null != videoCapturer) {
-//                    pcWrapper.createVideoTrack(videoCapturer);
-                    pcWrapper.createVideoTrack2(videoCapturer);
+                    if (config.enableSimulcast){
+                        pcWrapper.createVideoTrack2(videoCapturer);
+                    }else{
+                        pcWrapper.createVideoTrack(videoCapturer);
+                    }
                 }
 
                 if ((CommonDef.MEDIA_TYPE_AUDIO == mediaType
@@ -1849,13 +1955,14 @@ public class WebRtcManager extends Caster<Msg>{
 
         private void setRemoteDescription(PeerConnectionWrapper pcWrapper, String sdp, SessionDescription.Type type){
             // 根据音视频编码偏好修改sdp
+            String sdpVideoCodecName = getSdpVideoCodecName(pcWrapper.config.videoCodec);
             if (pcWrapper.isSdpType(pcWrapper.Offer) || pcWrapper.isSdpType(pcWrapper.Answer)){
                 sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.audioCodec, true);
-                sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.videoCodec, false);
+                sdp = SdpHelper.preferCodec(sdp, sdpVideoCodecName, false);
             }else if (pcWrapper.isSdpType(pcWrapper.AudioOffer)){
                 sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.audioCodec, true);
             }else if (pcWrapper.isSdpType(pcWrapper.VideoOffer)){
-                sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.videoCodec, false);
+                sdp = SdpHelper.preferCodec(sdp, sdpVideoCodecName, false);
             }
 
             pcWrapper.pc.setRemoteDescription(pcWrapper.sdpObserver, new SessionDescription(type, sdp));
@@ -1881,13 +1988,14 @@ public class WebRtcManager extends Caster<Msg>{
                 }else {
                     // 根据音视频编码偏好修改sdp
                     String sdp = origSdp.description;
+                    String sdpVideoCodecName = getSdpVideoCodecName(pcWrapper.config.videoCodec);
                     if (pcWrapper.isSdpType(pcWrapper.Offer) || pcWrapper.isSdpType(pcWrapper.Answer)){
                         sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.audioCodec, true);
-                        sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.videoCodec, false);
+                        sdp = SdpHelper.preferCodec(sdp, sdpVideoCodecName, false);
                     }else if (pcWrapper.isSdpType(pcWrapper.AudioOffer)){
                         sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.audioCodec, true);
                     }else if (pcWrapper.isSdpType(pcWrapper.VideoOffer)){
-                        sdp = SdpHelper.preferCodec(sdp, pcWrapper.config.videoCodec, false);
+                        sdp = SdpHelper.preferCodec(sdp, sdpVideoCodecName, false);
                     }
 
                     pcWrapper.pc.setLocalDescription(this, new SessionDescription(origSdp.type, sdp));
@@ -1951,8 +2059,11 @@ public class WebRtcManager extends Caster<Msg>{
                         KLog.p("setRemoteDescription for AudioOffer success, we now need create video offer...");
                         VideoCapturer videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
                         if (null != videoCapturer) {
-//                            pcWrapper.createVideoTrack(videoCapturer);
-                            pcWrapper.createVideoTrack2(videoCapturer);
+                            if (config.enableSimulcast){
+                                pcWrapper.createVideoTrack2(videoCapturer);
+                            }else{
+                                pcWrapper.createVideoTrack(videoCapturer);
+                            }
                             pcWrapper.pc.createOffer(pcWrapper.sdpObserver, new MediaConstraints());
                         }
                         // 不同于正常sdp流程，此时还需要再发video的offer，所以切换sdptype为videoOffer
