@@ -50,6 +50,7 @@ import org.webrtc.DataChannel;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
 import org.webrtc.EglBase;
+import org.webrtc.HardwareVideoEncoderFactory;
 import org.webrtc.IceCandidate;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
@@ -71,6 +72,7 @@ import org.webrtc.SoftwareVideoEncoderFactory;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.SurfaceViewRenderer;
 import org.webrtc.VideoCapturer;
+import org.webrtc.VideoCodecInfo;
 import org.webrtc.VideoDecoderFactory;
 import org.webrtc.VideoEncoderFactory;
 import org.webrtc.VideoFrame;
@@ -897,6 +899,12 @@ public class WebRtcManager extends Caster<Msg>{
                     config.videoCodecList.contains(VIDEO_CODEC_VP8),
                     config.videoCodecList.contains(VIDEO_CODEC_H264_HIGH));
             decoderFactory = new DefaultVideoDecoderFactory(eglBase.getEglBaseContext());
+
+//            encoderFactory = new HardwareVideoEncoderFactory(
+//                    eglBase.getEglBaseContext(),
+//                    config.videoCodecList.contains(VIDEO_CODEC_VP8),
+//                    config.videoCodecList.contains(VIDEO_CODEC_H264_HIGH));
+//            decoderFactory = new DefaultVideoDecoderFactory(eglBase.getEglBaseContext());
         } else {
             encoderFactory = new SoftwareVideoEncoderFactory();
             decoderFactory = new SoftwareVideoDecoderFactory();
