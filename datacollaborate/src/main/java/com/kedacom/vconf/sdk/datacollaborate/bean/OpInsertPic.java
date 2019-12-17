@@ -1,7 +1,6 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean;
 
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.PointF;
 import android.graphics.RectF;
@@ -116,12 +115,12 @@ public class OpInsertPic extends OpPaint implements IBoundary{
         type = EOpType.INSERT_PICTURE;
     }
 
-    public OpInsertPic(String picPath, Matrix matrix){
+    public OpInsertPic(String picPath, Bitmap bitmap, Matrix matrix){
 
         File file = new File(picPath);
         this.picPath = picPath;
         this.picName = file.getName();
-        this.pic = BitmapFactory.decodeFile(picPath);
+        this.pic = bitmap;
         this.picWidth = pic.getWidth();
         this.picHeight = pic.getHeight();
         this.matrix.set(matrix);

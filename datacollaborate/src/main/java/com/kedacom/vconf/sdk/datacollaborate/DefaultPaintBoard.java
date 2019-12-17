@@ -30,6 +30,7 @@ import android.widget.FrameLayout;
 import com.google.common.collect.Sets;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.datacollaborate.bean.*;
+import com.kedacom.vconf.sdk.utils.bitmap.BitmapHelper;
 import com.kedacom.vconf.sdk.utils.collection.CompatibleConcurrentLinkedDeque;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
@@ -455,13 +456,11 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         bInsertingPic = true;
 
+        Bitmap bitmap = BitmapHelper.decode(path, Bitmap.Config.RGB_565);
         Matrix matrix = new Matrix();
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(path, options);
-        matrix.setTranslate((getWidth()-options.outWidth)/2f, (getHeight()-options.outHeight)/2f);
+        matrix.setTranslate((getWidth()-bitmap.getWidth())/2f, (getHeight()-bitmap.getHeight())/2f);
         matrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix(new Matrix())));
-        OpInsertPic op = assignBasicInfo(new OpInsertPic(path, matrix));
+        OpInsertPic op = assignBasicInfo(new OpInsertPic(path, bitmap, matrix));
 
         startEditPic(Sets.newHashSet(op));
         handler.postDelayed(finishEditPicRunnable, 5000);
@@ -1498,7 +1497,8 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 opInsertPic.setBoardMatrix(opWrapper.getLastMatrixOp().getMatrix());
                 if (null == opInsertPic.getPic()
                         && null != opInsertPic.getPicPath()) {
-                    opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicPath())); // XXX TODO 优化。比如大分辨率图片裁剪
+//                    opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicPath())); // XXX TODO 优化。比如大分辨率图片裁剪
+                    opInsertPic.setPic(BitmapHelper.decode(opInsertPic.getPicPath(), Bitmap.Config.RGB_565));
                 }
                 Bitmap pic = opInsertPic.getPic();
                 if (null != pic){
@@ -2095,8 +2095,9 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     OpInsertPic opInsertPic = (OpInsertPic) picOp;
                     if (opInsertPic.getPicId().equals(opUpdatePic.getPicId())) {
                         opInsertPic.setPicPath(opUpdatePic.getPicSavePath()); // 更新图片路径
-                        Bitmap pic = BitmapFactory.decodeFile(opInsertPic.getPicPath());
-                        opInsertPic.setPic(pic); // TODO 优化。比如大分辨率图片裁剪
+//                        Bitmap pic = BitmapFactory.decodeFile(opInsertPic.getPicPath()); // TODO 优化。比如大分辨率图片裁剪
+                        Bitmap pic = BitmapHelper.decode(opInsertPic.getPicPath(), Bitmap.Config.RGB_565);
+                        opInsertPic.setPic(pic);
                         if (null != pic){
                             PointF insertPos = opInsertPic.getInsertPos();
                             Matrix mixMatrix = MatrixHelper.calcTransMatrix(new RectF(0, 0, pic.getWidth(), pic.getHeight()),
