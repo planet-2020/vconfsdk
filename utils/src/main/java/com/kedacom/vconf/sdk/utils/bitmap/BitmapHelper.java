@@ -52,6 +52,34 @@ public final class BitmapHelper {
         });
     }
 
+
+    public static Bitmap decode(String bitmapFilePath, Bitmap.Config config){
+        printMemUsage();
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inPreferredConfig = config;
+        Bitmap bitmap = BitmapFactory.decodeFile(bitmapFilePath, options);
+        int origW = bitmap.getWidth();
+        int origH = bitmap.getHeight();
+        KLog.p("bitmap %s, origW=%s, origH=%s, origSize=%s, limit=%s", bitmapFilePath, origW, origH, origW*origH, UHD);
+        if (origW * origH > UHD){
+            bitmap = scale(bitmap, UHD);
+        }
+        printMemUsage();
+        return bitmap;
+
+    }
+
+    public static Bitmap decode(String bitmapFilePath, int outputWidth, int outputHeight, Bitmap.Config config){
+        printMemUsage();
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inPreferredConfig = config;
+        Bitmap bitmap = BitmapFactory.decodeFile(bitmapFilePath, options);
+        KLog.p("bitmap %s", bitmapFilePath);
+        Bitmap scaledBitmap = scale(bitmap, outputWidth, outputHeight);
+        printMemUsage();
+        return scaledBitmap;
+    }
+
     public static Bitmap scale(Bitmap bitmap, int targetResolution){
         int origW = bitmap.getWidth();
         int origH = bitmap.getHeight();
