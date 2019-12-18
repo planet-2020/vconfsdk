@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '0.2.1-SNAPSHOT'
+version = '0.2.2-SNAPSHOT'
 android {
     compileSdkVersion 28
 
@@ -35,16 +35,67 @@ android {
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation fileTree(dir: 'libs', include: ['*.aar', "*.jar"])
 
     implementation 'com.google.protobuf:protobuf-java:2.6.1'
-    implementation 'org.webrtc:google-webrtc:1.0.+'
+//    implementation 'org.webrtc:google-webrtc:1.0.+'
 
     compileOnly project(':annotation')
     annotationProcessor project(':processor')
     implementation 'com.kedacom.vconf.sdk:common:1.0.11-SNAPSHOT'
-    implementation 'com.kedacom.vconf.sdk:utils:1.0.3-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:utils:1.0.6-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:amulet:1.1.2-SNAPSHOT'
 }
+
+
+//-> 修改WebRTC SDK实现以绕过H264硬编白名单机制（使用Transform API替换SDK中的相关方法）
+//import com.android.build.api.transform.Context
+//import com.android.build.api.transform.QualifiedContent
+//import com.android.build.api.transform.Transform
+//import com.android.build.api.transform.TransformException
+//import com.android.build.api.transform.TransformInput
+//import com.android.build.api.transform.TransformOutputProvider
+//import org.gradle.api.logging.Logger
+//
+//class PatchXWalkTransform extends Transform {
+//    Logger logger = null;
+//
+//    public PatchXWalkTransform(Logger logger) {
+//        this.logger = logger
+//    }
+//
+//    @Override
+//    String getName() {
+//        return "PatchXWalk"
+//    }
+//
+//    @Override
+//    Set<QualifiedContent.ContentType> getInputTypes() {
+//        return Collections.singleton(QualifiedContent.DefaultContentType.CLASSES)
+//    }
+//
+//    @Override
+//    Set<QualifiedContent.Scope> getScopes() {
+//        return Collections.singleton(QualifiedContent.Scope.EXTERNAL_LIBRARIES)
+//    }
+//
+//    @Override
+//    boolean isIncremental() {
+//        return true
+//    }
+//
+//    @Override
+//    void transform(Context context,
+//                   Collection<TransformInput> inputs,
+//                   Collection<TransformInput> referencedInputs,
+//                   TransformOutputProvider outputProvider,
+//                   boolean isIncremental) throws IOException, TransformException, InterruptedException {
+//        // We should do something here
+//    }
+//}
+//
+//// Register the transform
+//android.registerTransform(new PatchXWalkTransform(logger))
+
 
 apply from: '../publish.gradle'

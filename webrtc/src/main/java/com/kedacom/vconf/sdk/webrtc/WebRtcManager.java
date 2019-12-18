@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.media.projection.MediaProjection;
@@ -50,13 +51,13 @@ import org.webrtc.DataChannel;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
 import org.webrtc.EglBase;
-import org.webrtc.HardwareVideoEncoderFactory;
 import org.webrtc.IceCandidate;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
 import org.webrtc.MediaStreamTrack;
 import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
+import org.webrtc.RTCStats;
 import org.webrtc.RTCStatsCollectorCallback;
 import org.webrtc.RTCStatsReport;
 import org.webrtc.RendererCommon;
@@ -72,7 +73,6 @@ import org.webrtc.SoftwareVideoEncoderFactory;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.SurfaceViewRenderer;
 import org.webrtc.VideoCapturer;
-import org.webrtc.VideoCodecInfo;
 import org.webrtc.VideoDecoderFactory;
 import org.webrtc.VideoEncoderFactory;
 import org.webrtc.VideoFrame;
@@ -86,6 +86,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -114,8 +115,14 @@ public class WebRtcManager extends Caster<Msg>{
     private List<PeerConnectionWrapper> connWrapperList = new ArrayList<>();
     private List<TRtcStreamInfo> streamInfos = new ArrayList<>();
     private List<TRtcStreamInfo> removingStreamInfos = new ArrayList<>();
-    private BiMap<String, String> midStreamIdMap = HashBiMap.create();
+    private BiMap<String, String> midKdStreamIdMap = HashBiMap.create();
+    private BiMap<String, String> rtcStreamIdKdStreamIdMap = HashBiMap.create();
     private List<StreamInfo> localStreamInfos = new ArrayList<>();
+    /**
+     * 与会终端信息
+     * */
+    private TMTEntityInfoList confMembersInfo;
+
 
     private Handler handler = new Handler(Looper.getMainLooper());
 
@@ -409,12 +416,30 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     /**
+     * 摄像头是否已设置为开启
+     * */
+    public boolean isCameraEnabled(){
+        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+        if (null != pcWrapper) {
+            return pcWrapper.isLocalVideoEnabled();
+        }
+        return false;
+    }
+
+    /**
      * 开启/关闭摄像头
      * */
     public void setCameraEnable(final boolean enable) {
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
         if (null != pcWrapper) {
             pcWrapper.setLocalVideoEnable(enable);
+        }
+        for (Display display : displaySet){
+            if (LOCAL_VIDEO_STREAM_ID.equals(display.streamId)){
+                display.bShowVideoCaptureDisabledDeco = !enable;
+                display.invalidate();
+                break;
+            }
         }
     }
 
@@ -652,11 +677,6 @@ public class WebRtcManager extends Caster<Msg>{
 
     }
 
-    /**
-     * 与会终端信息
-     * */
-    private TMTEntityInfoList confMembersInfo;
-
 
 
     public static final String VIDEO_CODEC_VP8 = "VP8";
@@ -803,15 +823,44 @@ public class WebRtcManager extends Caster<Msg>{
         /*
          * 定时获取统计信息
          * */
+        RTCStatsCollectorCallback publisherStatsCb = rtcStatsReport -> {
+            System.out.println(String.format("publisherStats=%s ",rtcStatsReport));
+            for (Map.Entry<String, RTCStats> statsEntry : rtcStatsReport.getStatsMap().entrySet()){
+                RTCStats stats = statsEntry.getValue();
+                String type = stats.getType();
+                Map<String, Object> members = stats.getMembers();
+                System.out.println(String.format("statsEntry={key=%s, values={type=%s ",statsEntry.getKey(), type));
+                for (Map.Entry<String, Object> member  : members.entrySet()){
+                    System.out.println(String.format("member={%s, %s}",member.getKey(), member.getValue().getClass()));
+                }
+                System.out.println("}");
+            }
+        };
+
+        RTCStatsCollectorCallback subscriberStatsCb = rtcStatsReport -> {
+            System.out.println(String.format("subscriberStats=%s ",rtcStatsReport));
+            for (Map.Entry<String, RTCStats> statsEntry : rtcStatsReport.getStatsMap().entrySet()){
+                RTCStats stats = statsEntry.getValue();
+                String type = stats.getType();
+                Map<String, Object> members = stats.getMembers();
+                System.out.println(String.format("statsEntry={key=%s, values={type=%s ",statsEntry.getKey(), type));
+                for (Map.Entry<String, Object> member  : members.entrySet()){
+                    System.out.println(String.format("member={%s, %s}",member.getKey(), member.getValue().getClass()));
+                }
+                System.out.println("}}");
+            }
+        };
         statsTimer = new Timer();
         statsTimerTask = new TimerTask() {
             @Override
             public void run() {
-                KLog.p("getstats");
                 for (PeerConnectionWrapper pcWrapper : connWrapperList){
-                    pcWrapper.pc.getStats(statsCb);
+                    if (CommonDef.CONN_TYPE_PUBLISHER == pcWrapper.connType){
+                        pcWrapper.pc.getStats(publisherStatsCb);
+                    }else if (CommonDef.CONN_TYPE_SUBSCRIBER == pcWrapper.connType){
+                        pcWrapper.pc.getStats(subscriberStatsCb);
+                    }
                 }
-                // 刷新Display TODO
 
                 // 通知用户
                 if (null != rtcStatsListener){
@@ -863,8 +912,12 @@ public class WebRtcManager extends Caster<Msg>{
             videoSink.release();
         }
         videoSinks.clear();
+        for (Display display : displaySet){
+            display.destroy();
+        }
+        displaySet.clear();
 
-        midStreamIdMap.clear();
+        midKdStreamIdMap.clear();
         streamInfos.clear();
         localStreamInfos.clear();
         screenCapturePermissionData = null;
@@ -1066,7 +1119,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         synchronized void release() {
             for (Display display : targets){
-                display.release();
+                display.destroy();
             }
             targets.clear();
         }
@@ -1074,11 +1127,27 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    private Set<Display> displaySet = new HashSet<>();
     /**
      * 创建Display。
      * */
     public Display createDisplay(){
-        return new Display(context);
+        Display display =  new Display(context);
+        displaySet.add(display);
+        KLog.p("create display %s", display);
+        return display;
+    }
+
+    /**
+     * 销毁display
+     * */
+    public void releaseDisplay(Display display){
+        KLog.p("release display %s", display);
+        if (displaySet.remove(display)){
+            display.destroy();
+        }else{
+            KLog.p(KLog.ERROR, "wired, this display is not created by me!");
+        }
     }
 
     /**
@@ -1096,6 +1165,11 @@ public class WebRtcManager extends Caster<Msg>{
         private int displayWidth;
         private int displayHeight;
         private Handler handler = getHandler();
+
+        private boolean bShowVoiceActivatedDeco;
+        private boolean bShowVideoCaptureDisabledDeco;
+        private boolean bShowAudioTerminalDeco;
+        private boolean bShowStreamLostDeco;
 
         private Display(Context context) {
             super(context);
@@ -1140,7 +1214,7 @@ public class WebRtcManager extends Caster<Msg>{
         /**
          * 设置关闭摄像头采集时本地画面对应的Display展示的图片。
          * */
-        public static void setCameraDisabledDecoration(Bitmap bitmap){ // TODO 改成资源id
+        public static void setCameraDisabledDecoration(Bitmap bitmap){
             videoCaptureDisabledDeco = bitmap;
         }
 
@@ -1243,10 +1317,10 @@ public class WebRtcManager extends Caster<Msg>{
         /**
          * 销毁display
          * */
-        public void release(){
+        private void destroy(){
             clearContent();
             super.release();
-            KLog.p("display %s released", this);
+            KLog.p("display %s destroyed", this);
         }
 
 
@@ -1310,6 +1384,15 @@ public class WebRtcManager extends Caster<Msg>{
 //                bVoiceActivated = false;
 ////                handler.postDelayed()
 //            }
+
+            if (bShowVideoCaptureDisabledDeco){
+                if (null != videoCaptureDisabledDeco) {
+                    canvas.drawBitmap(videoCaptureDisabledDeco, 0, 0, null);
+                }else{
+                    canvas.drawColor(Color.BLACK);
+                }
+            }
+
 
             for (TextDecoration deco : textDecorations){
                 if (System.currentTimeMillis() - ts > 5000){
@@ -1890,8 +1973,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void onSetOfferCmd(int connType, String offerSdp, List<RtcConnector.TRtcMedia> rtcMediaList) {
             KLog.p("connType=%s", connType);
             for (RtcConnector.TRtcMedia rtcMedia : rtcMediaList) {
-                KLog.p("mid=%s, streamid=%s", rtcMedia.mid, rtcMedia.streamid);
-                midStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
+                KLog.p("mid=%s, kdstreamId=%s", rtcMedia.mid, rtcMedia.streamid);
+                midKdStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
             }
 
             executor.execute(()-> {
@@ -2037,7 +2120,7 @@ public class WebRtcManager extends Caster<Msg>{
                         List<String> mids = SdpHelper.getAllMids(pc.getLocalDescription().description);
                         for (String mid : mids){
                             KLog.p("mid=%s", mid);
-                            String streamId = midStreamIdMap.get(mid);
+                            String streamId = midKdStreamIdMap.get(mid);
                             if (null == streamId){
                                 KLog.p(KLog.ERROR, "no streamId for mid %s (see onSetOfferCmd)", mid);
                             }
@@ -2248,14 +2331,14 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
+    private static final String STREAM_ID = "TT-Android-"+System.currentTimeMillis();
+    private static final String LOCAL_VIDEO_STREAM_ID = STREAM_ID+"-v0";
+    private static final String LOCAL_AUDIO_STREAM_ID = STREAM_ID+"-a0";
+
     /**
      * PeerConnection包装类
      * */
     private class PeerConnectionWrapper{
-
-        final String STREAM_ID = "TT-Android-"+System.currentTimeMillis();
-        final String LOCAL_VIDEO_ID = STREAM_ID+"-v0";
-        final String LOCAL_AUDIO_ID = STREAM_ID+"-a0";
 
         int connType;
         int curMediaType;
@@ -2312,13 +2395,17 @@ public class WebRtcManager extends Caster<Msg>{
             videoSource = factory.createVideoSource(videoCapturer.isScreencast());
             videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
             videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
-            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_ID, videoSource);
+            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_STREAM_ID, videoSource);
             localVideoTrack.setEnabled(config.isLocalVideoEnabled);
             pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
-            String localTrackId = LOCAL_VIDEO_ID;
+            String localTrackId = LOCAL_VIDEO_STREAM_ID;
             ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
             videoSinks.put(localTrackId, localVideoSink);
             localVideoTrack.addSink(localVideoSink);
+
+            rtcStreamIdKdStreamIdMap.put(LOCAL_VIDEO_STREAM_ID, LOCAL_VIDEO_STREAM_ID);
+            KLog.p("rtcstreamId=%s, kdstreamId=%s", LOCAL_VIDEO_STREAM_ID, LOCAL_VIDEO_STREAM_ID);
+
             handler.post(() -> {
                 if (null != sessionEventListener) {
                     StreamInfo streamInfo = new StreamInfo(localTrackId, videoCapturer.isScreencast() ? StreamInfo.Type_LocalScreenShare : StreamInfo.Type_LocalCamera, userE164, userE164, null);
@@ -2339,12 +2426,15 @@ public class WebRtcManager extends Caster<Msg>{
             videoSource = factory.createVideoSource(videoCapturer.isScreencast());
             videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
             videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
-            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_ID, videoSource);
+            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_STREAM_ID, videoSource);
             localVideoTrack.setEnabled(config.isLocalVideoEnabled);
-            String localTrackId = LOCAL_VIDEO_ID;
+            String localTrackId = LOCAL_VIDEO_STREAM_ID;
             ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
             videoSinks.put(localTrackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
             localVideoTrack.addSink(localVideoSink);
+
+            rtcStreamIdKdStreamIdMap.put(LOCAL_VIDEO_STREAM_ID, LOCAL_VIDEO_STREAM_ID);
+            KLog.p("rtcstreamId=%s, kdstreamId=%s", LOCAL_VIDEO_STREAM_ID, LOCAL_VIDEO_STREAM_ID);
 
             //=> 启用simulcast
             RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
@@ -2385,7 +2475,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         void createRemoteVideoTrack(String mid, VideoTrack track){
-            String streamId = midStreamIdMap.get(mid);
+            String streamId = midKdStreamIdMap.get(mid);
             KLog.p("mid=%s, streamId=%s", mid, streamId);
             if (null == streamId){
                 KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
@@ -2408,6 +2498,9 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p(KLog.ERROR, "no such stream %s in stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.StreamListReady branch in method onNtf)", streamId);
                 return;
             }
+
+            rtcStreamIdKdStreamIdMap.put(track.id(), rtcStreamInfo.achStreamId);
+            KLog.p("rtcstreamId=%s, kdstreamId=%s", track.id(), streamId);
 
             if (null != sessionEventListener) {
                 StreamInfo streamInfo = ToDoConverter.composeStreamInfo(rtcStreamInfo, instance.findConfMember(rtcStreamInfo.tMtId.dwTerId));
@@ -2457,15 +2550,38 @@ public class WebRtcManager extends Caster<Msg>{
 
         void createAudioTrack(){
             audioSource = factory.createAudioSource(new MediaConstraints());
-            localAudioTrack = factory.createAudioTrack(LOCAL_AUDIO_ID, audioSource);
+            localAudioTrack = factory.createAudioTrack(LOCAL_AUDIO_STREAM_ID, audioSource);
             localAudioTrack.setEnabled(config.isLocalAudioEnabled);
             audioSender = pc.addTrack(localAudioTrack, Collections.singletonList(STREAM_ID));
+            rtcStreamIdKdStreamIdMap.put(LOCAL_AUDIO_STREAM_ID, LOCAL_AUDIO_STREAM_ID);
+            KLog.p("rtcstreamId=%s, kdstreamId=%s", LOCAL_AUDIO_STREAM_ID, LOCAL_AUDIO_STREAM_ID);
         }
 
 
         void createRemoteAudioTrack(String mid, AudioTrack track){
+            String streamId = midKdStreamIdMap.get(mid);
+            KLog.p("mid=%s, streamId=%s", mid, streamId);
+            if (null == streamId){
+                KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
+                return;
+            }
             track.setEnabled(config.isRemoteAudioEnabled);
             remoteAudioTracks.add(track);
+            TRtcStreamInfo rtcStreamInfo = null;
+            for (TRtcStreamInfo streamInfo : streamInfos){
+                if (streamId.equals(streamInfo.achStreamId)){
+                    rtcStreamInfo = streamInfo;
+                    break;
+                }
+            }
+            if (null == rtcStreamInfo){
+                KLog.p(KLog.ERROR, "no such stream %s in stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.StreamListReady branch in method onNtf)", streamId);
+                return;
+            }
+
+            rtcStreamIdKdStreamIdMap.put(track.id(), rtcStreamInfo.achStreamId);
+            KLog.p("rtcstreamId=%s, kdstreamId=%s", track.id(), streamId);
+
         }
 
         void removeRemoteAudioTrack(AudioTrack track){
@@ -2645,12 +2761,5 @@ public class WebRtcManager extends Caster<Msg>{
         this.rtcStatsListener = rtcStatsListener;
     }
 
-    private RTCStatsCollectorCallback statsCb = new RTCStatsCollectorCallback(){
-
-        @Override
-        public void onStatsDelivered(RTCStatsReport rtcStatsReport) {
-            System.out.println("rtcStatsReport="+rtcStatsReport);
-        }
-    };
 
 }
