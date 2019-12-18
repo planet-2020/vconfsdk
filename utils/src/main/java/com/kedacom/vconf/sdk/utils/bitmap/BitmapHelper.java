@@ -18,9 +18,8 @@ public final class BitmapHelper {
 
     private static ExecutorService executor = Executors.newSingleThreadExecutor();
     private static Handler mainHandler = new Handler(Looper.getMainLooper());
-    private static final int UHD = 1920*2*1080*2; // 4K limit
 
-    public static void decode(String bitmapFilePath, Bitmap.Config config, IResultListener resultListener){
+    public static void decode(String bitmapFilePath, Bitmap.Config config, int outputSizeLimit, IResultListener resultListener){
         executor.execute(() -> {
             printMemUsage();
             BitmapFactory.Options options = new BitmapFactory.Options();
@@ -28,9 +27,9 @@ public final class BitmapHelper {
             Bitmap bitmap = BitmapFactory.decodeFile(bitmapFilePath, options);
             int origW = bitmap.getWidth();
             int origH = bitmap.getHeight();
-            KLog.p("bitmap %s, origW=%s, origH=%s, origSize=%s, limit=%s", bitmapFilePath, origW, origH, origW*origH, UHD);
-            if (origW * origH > UHD){
-                bitmap = scale(bitmap, UHD);
+            KLog.p("bitmap %s, origW=%s, origH=%s, origSize=%s, limit=%s", bitmapFilePath, origW, origH, origW*origH, outputSizeLimit);
+            if (outputSizeLimit>0 && origW * origH > outputSizeLimit){
+                bitmap = scale(bitmap, outputSizeLimit);
             }
             Bitmap finalBitmap = bitmap;
             mainHandler.post(() -> resultListener.onResult(finalBitmap));
@@ -53,16 +52,16 @@ public final class BitmapHelper {
     }
 
 
-    public static Bitmap decode(String bitmapFilePath, Bitmap.Config config){
+    public static Bitmap decode(String bitmapFilePath, int outputSizeLimit, Bitmap.Config config){
         printMemUsage();
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inPreferredConfig = config;
         Bitmap bitmap = BitmapFactory.decodeFile(bitmapFilePath, options);
         int origW = bitmap.getWidth();
         int origH = bitmap.getHeight();
-        KLog.p("bitmap %s, origW=%s, origH=%s, origSize=%s, limit=%s", bitmapFilePath, origW, origH, origW*origH, UHD);
-        if (origW * origH > UHD){
-            bitmap = scale(bitmap, UHD);
+        KLog.p("bitmap %s, origW=%s, origH=%s, origSize=%s, limit=%s", bitmapFilePath, origW, origH, origW*origH, outputSizeLimit);
+        if (outputSizeLimit>0 && origW * origH > outputSizeLimit){
+            bitmap = scale(bitmap, outputSizeLimit);
         }
         printMemUsage();
         return bitmap;

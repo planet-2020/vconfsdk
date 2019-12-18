@@ -8,7 +8,6 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static android.os.Environment.isExternalStorageRemovable;
 
 /**
  * Created by Sissi on 2019/12/16
@@ -18,28 +17,8 @@ public final class BitmapCache {
 
 
 //    private DiskLruCache diskLruCache;
-    private int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-    private int cacheSize = maxMemory / 8;
-    private LruCache<String, Bitmap> memoryCache = new LruCache<String, Bitmap>(cacheSize) {
-        @Override
-        protected int sizeOf(String key, Bitmap bitmap) {
-            // The cache size will be measured in kilobytes rather than
-            // number of items.
-            return bitmap.getByteCount() / 1024;
-        }
-
-        @Override
-        protected Bitmap create(String key) {
-            KLog.p("create key=%s", key);
-            return null;
-        }
-
-        @Override
-        protected void entryRemoved(boolean evicted, String key, Bitmap oldValue, Bitmap newValue) {
-            KLog.p("entryRemoved evicted=%s, key=%s, oldValue=%s, newValue=%s", evicted, key, oldValue, newValue);
-        }
-    };
-
+    private int cacheSize;
+    private LruCache<String, Bitmap> memoryCache;
     private static final int maxBitmapSize = 1920*2*1080*2; // UHD/4K
 
 //    private static DiskLruCache diskLruCache;
@@ -48,7 +27,40 @@ public final class BitmapCache {
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
 
-//    private static Application context;
+    /**
+     * @param cacheSize 缓存大小。unit: KB
+     * */
+    public BitmapCache(int cacheSize) {
+        int max = (int) (Runtime.getRuntime().maxMemory() / 1024);
+        int total = (int) (Runtime.getRuntime().totalMemory() / 1024);
+        int free = (int) (Runtime.getRuntime().freeMemory() / 1024);
+        int left = max - (total-free);
+        if (cacheSize > left*2/3f){
+            cacheSize = (int) (left*2/3f);
+        }
+        this.cacheSize = cacheSize;
+        memoryCache = new LruCache<String, Bitmap>(cacheSize) {
+            @Override
+            protected int sizeOf(String key, Bitmap bitmap) {
+                // The cache size will be measured in kilobytes rather than
+                // number of items.
+                return bitmap.getByteCount() / 1024;
+            }
+
+            @Override
+            protected Bitmap create(String key) {
+                KLog.p("create key=%s", key);
+                return null;
+            }
+
+            @Override
+            protected void entryRemoved(boolean evicted, String key, Bitmap oldValue, Bitmap newValue) {
+                KLog.p("entryRemoved evicted=%s, key=%s, oldValue=%s, newValue=%s", evicted, key, oldValue, newValue);
+            }
+        };
+    }
+
+    //    private static Application context;
 //    public static void init(Application app){
 //        context = app;
 //
