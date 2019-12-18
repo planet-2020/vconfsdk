@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 
 //version = '1.0.0'
-version = '2.1.6-SNAPSHOT'
+version = '2.1.11-SNAPSHOT'
 android {
     compileSdkVersion 28
 
@@ -35,7 +35,7 @@ dependencies {
 
     implementation 'com.kedacom.vconf.sdk:amulet:1.0.2-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:common:1.0.2-SNAPSHOT'
-    implementation 'com.kedacom.vconf.sdk:utils:1.0.4-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:utils:1.0.6-SNAPSHOT'
 
 //    implementation fileTree(dir: 'libs', include: ['*.jar'])
 //    implementation project(':base')

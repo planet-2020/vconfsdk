@@ -119,6 +119,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     private static int boardWidth = 1920;
     private static int boardHeight = 1080;
 
+    private static int bitmapSizeLimit = boardWidth*boardHeight;
 
     public DefaultPaintBoard(@NonNull Context context, @NonNull BoardInfo boardInfo) {
         super(context);
@@ -178,6 +179,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         this.post(() -> {
             boardWidth = getWidth()>0 ? getWidth() : boardWidth;
             boardHeight = getHeight()>0 ? getHeight() : boardHeight;
+            bitmapSizeLimit = boardWidth*boardHeight;
         });
 
         // 初始化matrix
@@ -456,7 +458,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         bInsertingPic = true;
 
-        Bitmap bitmap = BitmapHelper.decode(path, Bitmap.Config.RGB_565);
+        Bitmap bitmap = BitmapHelper.decode(path, bitmapSizeLimit, Bitmap.Config.RGB_565);
         Matrix matrix = new Matrix();
         matrix.setTranslate((getWidth()-bitmap.getWidth())/2f, (getHeight()-bitmap.getHeight())/2f);
         matrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix(new Matrix())));
@@ -1497,8 +1499,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 opInsertPic.setBoardMatrix(opWrapper.getLastMatrixOp().getMatrix());
                 if (null == opInsertPic.getPic()
                         && null != opInsertPic.getPicPath()) {
-//                    opInsertPic.setPic(BitmapFactory.decodeFile(opInsertPic.getPicPath())); // XXX TODO 优化。比如大分辨率图片裁剪
-                    opInsertPic.setPic(BitmapHelper.decode(opInsertPic.getPicPath(), Bitmap.Config.RGB_565));
+                    opInsertPic.setPic(BitmapHelper.decode(opInsertPic.getPicPath(), bitmapSizeLimit, Bitmap.Config.RGB_565));
                 }
                 Bitmap pic = opInsertPic.getPic();
                 if (null != pic){
@@ -2095,8 +2096,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     OpInsertPic opInsertPic = (OpInsertPic) picOp;
                     if (opInsertPic.getPicId().equals(opUpdatePic.getPicId())) {
                         opInsertPic.setPicPath(opUpdatePic.getPicSavePath()); // 更新图片路径
-//                        Bitmap pic = BitmapFactory.decodeFile(opInsertPic.getPicPath()); // TODO 优化。比如大分辨率图片裁剪
-                        Bitmap pic = BitmapHelper.decode(opInsertPic.getPicPath(), Bitmap.Config.RGB_565);
+                        Bitmap pic = BitmapHelper.decode(opInsertPic.getPicPath(), bitmapSizeLimit, Bitmap.Config.RGB_565);
                         opInsertPic.setPic(pic);
                         if (null != pic){
                             PointF insertPos = opInsertPic.getInsertPos();
