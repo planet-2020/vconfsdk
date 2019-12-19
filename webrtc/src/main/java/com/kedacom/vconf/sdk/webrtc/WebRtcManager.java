@@ -57,7 +57,6 @@ import org.webrtc.MediaStream;
 import org.webrtc.MediaStreamTrack;
 import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
-import org.webrtc.RTCStats;
 import org.webrtc.RTCStatsCollectorCallback;
 import org.webrtc.RTCStatsReport;
 import org.webrtc.RendererCommon;
@@ -123,6 +122,8 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     private TMTEntityInfoList confMembersInfo;
 
+    private Timer statsTimer;
+    private TimerTask statsTimerTask;
 
     private Handler handler = new Handler(Looper.getMainLooper());
 
@@ -823,48 +824,62 @@ public class WebRtcManager extends Caster<Msg>{
         /*
          * 定时获取统计信息
          * */
-        RTCStatsCollectorCallback publisherStatsCb = rtcStatsReport -> {
-            System.out.println(String.format("publisherStats=%s ",rtcStatsReport));
-            for (Map.Entry<String, RTCStats> statsEntry : rtcStatsReport.getStatsMap().entrySet()){
-                RTCStats stats = statsEntry.getValue();
-                String type = stats.getType();
-                Map<String, Object> members = stats.getMembers();
-                System.out.println(String.format("statsEntry={key=%s, values={type=%s ",statsEntry.getKey(), type));
-                for (Map.Entry<String, Object> member  : members.entrySet()){
-                    System.out.println(String.format("member={%s, %s}",member.getKey(), member.getValue().getClass()));
-                }
-                System.out.println("}");
-            }
-        };
-
-        RTCStatsCollectorCallback subscriberStatsCb = rtcStatsReport -> {
-            System.out.println(String.format("subscriberStats=%s ",rtcStatsReport));
-            for (Map.Entry<String, RTCStats> statsEntry : rtcStatsReport.getStatsMap().entrySet()){
-                RTCStats stats = statsEntry.getValue();
-                String type = stats.getType();
-                Map<String, Object> members = stats.getMembers();
-                System.out.println(String.format("statsEntry={key=%s, values={type=%s ",statsEntry.getKey(), type));
-                for (Map.Entry<String, Object> member  : members.entrySet()){
-                    System.out.println(String.format("member={%s, %s}",member.getKey(), member.getValue().getClass()));
-                }
-                System.out.println("}}");
-            }
-        };
         statsTimer = new Timer();
         statsTimerTask = new TimerTask() {
+            StatsHelper.Stats publisherStats;
+            StatsHelper.Stats subscriberStats;
+            StatsHelper.Stats allStats;
+
             @Override
             public void run() {
                 for (PeerConnectionWrapper pcWrapper : connWrapperList){
                     if (CommonDef.CONN_TYPE_PUBLISHER == pcWrapper.connType){
-                        pcWrapper.pc.getStats(publisherStatsCb);
-                    }else if (CommonDef.CONN_TYPE_SUBSCRIBER == pcWrapper.connType){
-                        pcWrapper.pc.getStats(subscriberStatsCb);
+                        pcWrapper.pc.getStats(rtcStatsReport -> {
+                            publisherStats = StatsHelper.resolveStats(rtcStatsReport);
+                            if (null == subscriberStats){
+                                // start get stats
+                                allStats = publisherStats;
+                            }else {
+                                allStats.audioSource = publisherStats.audioSource;
+                                allStats.videoSource = publisherStats.videoSource;
+                                allStats.sendAudioTrack = publisherStats.sendAudioTrack;
+                                allStats.sendVideoTrack = publisherStats.sendVideoTrack;
+                                allStats.audioOutboundRtp = publisherStats.audioOutboundRtp;
+                                allStats.videoOutboundRtp = publisherStats.videoOutboundRtp;
+                                allStats.encoderList.addAll(publisherStats.encoderList);
+                                allStats.decoderList.addAll(publisherStats.decoderList);
+                                // finish get stats
+                                publisherStats = null;
+                                subscriberStats = null;
+                            }
+                        });
+                    }else if ( CommonDef.CONN_TYPE_SUBSCRIBER == pcWrapper.connType){
+                        pcWrapper.pc.getStats(new RTCStatsCollectorCallback() {
+                            @Override
+                            public void onStatsDelivered(RTCStatsReport rtcStatsReport) {
+                                subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
+                                if (null == publisherStats){
+                                    // start get stats
+                                    allStats = subscriberStats;
+                                }else {
+                                    allStats.audioInboundRtp = subscriberStats.audioInboundRtp;
+                                    allStats.videoInboundRtp = subscriberStats.videoInboundRtp;
+                                    allStats.recvAudioTrack = subscriberStats.recvAudioTrack;
+                                    allStats.recvVideoTrack = subscriberStats.recvVideoTrack;
+                                    allStats.encoderList.addAll(subscriberStats.encoderList);
+                                    allStats.decoderList.addAll(subscriberStats.decoderList);
+                                    // finish get stats
+                                    publisherStats = null;
+                                    subscriberStats = null;
+                                }
+                            }
+                        });
                     }
                 }
 
                 // 通知用户
-                if (null != rtcStatsListener){
-                    rtcStatsListener.onRtcStats(null/*TODO*/);
+                if (null != statsListener){
+                    statsListener.onRtcStats(null/*TODO*/);
                 }
             }
         };
@@ -2743,23 +2758,59 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * RTC 统计信息
      * */
-    public static class RtcStats{
+    public static class Stats {
+        public List<MediaStats> mediaStatsList = new ArrayList<>();
 
+        @Override
+        public String toString() {
+            return "Stats{" +
+                    "mediaStatsList=" + mediaStatsList +
+                    '}';
+        }
     }
-    public interface RtcStatsListener{
-        void onRtcStats(RtcStats rtcStats);
+    private Stats stats = new Stats();
+    public static class MediaStats {
+        public boolean bAudio; // 是否为音频
+        public boolean bLocal; // 是否本地
+        public String trackId; // 音/视轨ID
+        public String fmt;     // 音/视频格式
+
+        // 仅音频相关
+        public float audioLevel;
+
+        // 仅视频相关
+        public int width;
+        public int height;
+        public int fps; // 帧率
+        public boolean bHwa; // 是否硬编解（对于发送是编，接收是解）
+
+        @Override
+        public String toString() {
+            return "MediaStats{" +
+                    "bAudio=" + bAudio +
+                    ", bLocal=" + bLocal +
+                    ", trackId='" + trackId + '\'' +
+                    ", fmt='" + fmt + '\'' +
+                    ", audioLevel=" + audioLevel +
+                    ", width=" + width +
+                    ", height=" + height +
+                    ", fps=" + fps +
+                    ", bHwa=" + bHwa +
+                    '}';
+        }
     }
 
-    private Timer statsTimer;
-    private TimerTask statsTimerTask;
+    public interface StatsListener {
+        void onRtcStats(Stats stats);
+    }
 
-    private RtcStatsListener rtcStatsListener;
+
+    private StatsListener statsListener;
     /**
      * 设置RTC统计信息监听器
      * */
-    public void setRtcStatsListener(RtcStatsListener rtcStatsListener){
-        this.rtcStatsListener = rtcStatsListener;
+    public void setStatsListener(StatsListener statsListener){
+        this.statsListener = statsListener;
     }
-
 
 }
