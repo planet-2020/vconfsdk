@@ -8,6 +8,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.Looper;
@@ -1219,7 +1220,13 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
+        private RectF voiceActivatedDeco = new RectF();
         private static Paint voiceActivatedDecoPaint = new Paint();
+        static{
+            voiceActivatedDecoPaint.setStyle(Paint.Style.STROKE);
+            voiceActivatedDecoPaint.setStrokeWidth(5);
+            voiceActivatedDecoPaint.setColor(Color.GREEN);
+        }
         /**
          * 设置语音激励装饰。
          * 当该Display对应的与会成员讲话音量最大时，该装饰会展示。
@@ -1229,9 +1236,18 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         public static void setVoiceActivatedDecoration(int strokeWidth, int color){
             voiceActivatedDecoPaint.reset();
-            voiceActivatedDecoPaint.setStyle(Paint.Style.STROKE);
             voiceActivatedDecoPaint.setStrokeWidth(strokeWidth);
             voiceActivatedDecoPaint.setColor(color);
+        }
+
+        private void showVoiceActivatedDecoration(){
+            handler.removeCallbacks(this::hideVoiceActivatedDecoration);
+            bShowVoiceActivatedDeco = true;
+            invalidate();
+        }
+        private void hideVoiceActivatedDecoration(){
+            bShowVoiceActivatedDeco = false;
+            invalidate();
         }
 
         private static Bitmap videoCaptureDisabledDeco;
@@ -1403,11 +1419,11 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p("onDraw, displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
             }
 
-//            if (bVoiceActivated){
-//                canvas.drawRect(voiceActivatedDeco, voiceActivatedDecoPaint);
-//                bVoiceActivated = false;
-////                handler.postDelayed()
-//            }
+            if (bShowVoiceActivatedDeco){
+                voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
+                canvas.drawRect(voiceActivatedDeco, voiceActivatedDecoPaint);
+                handler.postDelayed(this::hideVoiceActivatedDecoration, 2000);
+            }
 
             if (bShowVideoCaptureDisabledDeco){
                 if (null != videoCaptureDisabledDeco) {
@@ -2823,7 +2839,23 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     private void dealWithStats(StatsHelper.Stats stats){
-//        stats.audioSource.audioLevel;
+        String maxAudioTrack = stats.audioSource.trackIdentifier;
+        double maxAudioLevel = stats.audioSource.audioLevel;
+        for (StatsHelper.RecvAudioTrack track : stats.recvAudioTrackList){
+            if (track.audioLevel > maxAudioLevel){
+                maxAudioLevel = track.audioLevel;
+                maxAudioTrack = track.trackIdentifier;
+            }
+        }
+        if (maxAudioLevel > 0.1){
+            // 语音激励
+            String kdStreamId = rtcStreamIdKdStreamIdMap.get(maxAudioTrack);  // TODO StreamId改为TrackId，音频Track也要报给上层？上层绑定的应该是终端Id而非流Id，一个终端可以有多个流。
+            for (Display display : displaySet){
+                if (display.streamId.equals(kdStreamId)){
+                    display.showVoiceActivatedDecoration();
+                }
+            }
+        }
 
         // 通知用户
         if (null != statsListener){
