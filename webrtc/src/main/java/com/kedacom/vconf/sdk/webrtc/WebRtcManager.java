@@ -57,8 +57,6 @@ import org.webrtc.MediaStream;
 import org.webrtc.MediaStreamTrack;
 import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
-import org.webrtc.RTCStatsCollectorCallback;
-import org.webrtc.RTCStatsReport;
 import org.webrtc.RendererCommon;
 import org.webrtc.RtpParameters;
 import org.webrtc.RtpReceiver;
@@ -835,52 +833,62 @@ public class WebRtcManager extends Caster<Msg>{
                 for (PeerConnectionWrapper pcWrapper : connWrapperList){
                     if (CommonDef.CONN_TYPE_PUBLISHER == pcWrapper.connType){
                         pcWrapper.pc.getStats(rtcStatsReport -> {
+                            System.out.println(String.format("publisher rtcStatsReport=%s ", rtcStatsReport));
                             publisherStats = StatsHelper.resolveStats(rtcStatsReport);
                             if (null == subscriberStats){
-                                // start get stats
+                                // got publisherStats firstly, append subscriberStats later.
                                 allStats = publisherStats;
                             }else {
+                                // already got subscriberStats, append publisherStats.
                                 allStats.audioSource = publisherStats.audioSource;
                                 allStats.videoSource = publisherStats.videoSource;
                                 allStats.sendAudioTrack = publisherStats.sendAudioTrack;
                                 allStats.sendVideoTrack = publisherStats.sendVideoTrack;
                                 allStats.audioOutboundRtp = publisherStats.audioOutboundRtp;
                                 allStats.videoOutboundRtp = publisherStats.videoOutboundRtp;
+                                allStats.audioInboundRtpList.addAll(publisherStats.audioInboundRtpList);
+                                allStats.videoInboundRtpList.addAll(publisherStats.videoInboundRtpList);
+                                allStats.recvAudioTrackList.addAll(publisherStats.recvAudioTrackList);
+                                allStats.recvVideoTrackList.addAll(publisherStats.recvVideoTrackList);
                                 allStats.encoderList.addAll(publisherStats.encoderList);
                                 allStats.decoderList.addAll(publisherStats.decoderList);
-                                // finish get stats
+
+                                // both publisherStats and subscriberStats got, complete.
                                 publisherStats = null;
                                 subscriberStats = null;
+                                KLog.p(allStats.toString());
+
+                                dealWithStats(allStats);
                             }
                         });
                     }else if ( CommonDef.CONN_TYPE_SUBSCRIBER == pcWrapper.connType){
-                        pcWrapper.pc.getStats(new RTCStatsCollectorCallback() {
-                            @Override
-                            public void onStatsDelivered(RTCStatsReport rtcStatsReport) {
-                                subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
-                                if (null == publisherStats){
-                                    // start get stats
-                                    allStats = subscriberStats;
-                                }else {
-                                    allStats.audioInboundRtp = subscriberStats.audioInboundRtp;
-                                    allStats.videoInboundRtp = subscriberStats.videoInboundRtp;
-                                    allStats.recvAudioTrack = subscriberStats.recvAudioTrack;
-                                    allStats.recvVideoTrack = subscriberStats.recvVideoTrack;
-                                    allStats.encoderList.addAll(subscriberStats.encoderList);
-                                    allStats.decoderList.addAll(subscriberStats.decoderList);
-                                    // finish get stats
-                                    publisherStats = null;
-                                    subscriberStats = null;
-                                }
+                        pcWrapper.pc.getStats(rtcStatsReport -> {
+                            System.out.println(String.format("subscriber rtcStatsReport=%s ", rtcStatsReport));
+                            subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
+                            if (null == publisherStats){
+                                // got subscriberStats firstly, append publisherStats later.
+                                allStats = subscriberStats;
+                            }else {
+
+                                // already got publisherStats, append subscriberStats.
+                                allStats.audioInboundRtpList.addAll(subscriberStats.audioInboundRtpList);
+                                allStats.videoInboundRtpList.addAll(subscriberStats.videoInboundRtpList);
+                                allStats.recvAudioTrackList.addAll(subscriberStats.recvAudioTrackList);
+                                allStats.recvVideoTrackList.addAll(subscriberStats.recvVideoTrackList);
+                                allStats.encoderList.addAll(subscriberStats.encoderList);
+                                allStats.decoderList.addAll(subscriberStats.decoderList);
+
+                                // both publisherStats and subscriberStats got, complete.
+                                publisherStats = null;
+                                subscriberStats = null;
+                                KLog.p(allStats.toString());
+
+                                dealWithStats(allStats);
                             }
                         });
                     }
                 }
 
-                // 通知用户
-                if (null != statsListener){
-                    statsListener.onRtcStats(null/*TODO*/);
-                }
             }
         };
         statsTimer.schedule(statsTimerTask, 3000, 2000);
@@ -933,6 +941,7 @@ public class WebRtcManager extends Caster<Msg>{
         displaySet.clear();
 
         midKdStreamIdMap.clear();
+        rtcStreamIdKdStreamIdMap.clear();
         streamInfos.clear();
         localStreamInfos.clear();
         screenCapturePermissionData = null;
@@ -2811,6 +2820,15 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public void setStatsListener(StatsListener statsListener){
         this.statsListener = statsListener;
+    }
+
+    private void dealWithStats(StatsHelper.Stats stats){
+//        stats.audioSource.audioLevel;
+
+        // 通知用户
+        if (null != statsListener){
+            statsListener.onRtcStats(null/*TODO*/);
+        }
     }
 
 }
