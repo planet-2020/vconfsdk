@@ -172,9 +172,9 @@ final class ToDoConverter {
             type = StreamInfo.Type_Unknown;
         }else{
             if (rtcStreamInfo.bAss){
-                type = StreamInfo.Type_RemoteScreenShare;
+                type = StreamInfo.Type_RemoteAss;
             }else{
-                type = StreamInfo.Type_RemoteCamera;
+                type = StreamInfo.Type_RemoteMain;
             }
         }
 

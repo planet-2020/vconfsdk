@@ -88,6 +88,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -110,7 +111,10 @@ public class WebRtcManager extends Caster<Msg>{
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private EglBase eglBase;
     private PeerConnectionFactory factory;
-    private List<PeerConnectionWrapper> connWrapperList = new ArrayList<>();
+    private PeerConnectionWrapper pubPcWrapper;
+    private PeerConnectionWrapper subPcWrapper;
+    private PeerConnectionWrapper assPubPcWrapper;
+    private PeerConnectionWrapper assSubPcWrapper;
     private List<TRtcStreamInfo> streamInfos = new ArrayList<>();
     private List<TRtcStreamInfo> removingStreamInfos = new ArrayList<>();
     private BiMap<String, String> midKdStreamIdMap = HashBiMap.create();
@@ -791,33 +795,10 @@ public class WebRtcManager extends Caster<Msg>{
 
         rtcConnector.setSignalingEventsCallback(new RtcConnectorEventListener());
 
-        PeerConnectionConfig pubConnConfig = new PeerConnectionConfig(
-                config.videoWidth,
-                config.videoHeight,
-                config.videoFps,
-                config.videoMaxBitrate,
-                config.videoCodec,
-                config.audioStartBitrate,
-                config.audioCodec
-        );
-
-
         eglBase = EglBase.create();
         executor.execute(() -> {
-            createPeerConnectionFactory(
-                    eglBase,
-                    new PeerConnectionFactory.Options(),
-                    new PeerConnectionFactoryConfig(Arrays.asList(VIDEO_CODEC_VP8, VIDEO_CODEC_H264_HIGH), config.enableVideoCodecHwAcceleration)
-            );
-
-            /* 创建peerconnectclient。
-             * NOTE：一个peerconnection可以处理多路码流，收发均可。
-             * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
-             * */
-            connWrapperList.add(createPeerConnectionWrapper(CommonDef.CONN_TYPE_PUBLISHER, pubConnConfig));
-            connWrapperList.add(createPeerConnectionWrapper(CommonDef.CONN_TYPE_SUBSCRIBER, pubConnConfig));
-            connWrapperList.add(createPeerConnectionWrapper(CommonDef.CONN_TYPE_ASS_PUBLISHER, pubConnConfig));
-            connWrapperList.add(createPeerConnectionWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER, pubConnConfig));
+            createPeerConnectionFactory();
+            createPeerConnectionWrapper();
         });
 
         /*
@@ -831,64 +812,59 @@ public class WebRtcManager extends Caster<Msg>{
 
             @Override
             public void run() {
-                for (PeerConnectionWrapper pcWrapper : connWrapperList){
-                    if (CommonDef.CONN_TYPE_PUBLISHER == pcWrapper.connType){
-                        pcWrapper.pc.getStats(rtcStatsReport -> {
-                            System.out.println(String.format("publisher rtcStatsReport=%s ", rtcStatsReport));
-                            publisherStats = StatsHelper.resolveStats(rtcStatsReport);
-                            if (null == subscriberStats){
-                                // got publisherStats firstly, append subscriberStats later.
-                                allStats = publisherStats;
-                            }else {
-                                // already got subscriberStats, append publisherStats.
-                                allStats.audioSource = publisherStats.audioSource;
-                                allStats.videoSource = publisherStats.videoSource;
-                                allStats.sendAudioTrack = publisherStats.sendAudioTrack;
-                                allStats.sendVideoTrack = publisherStats.sendVideoTrack;
-                                allStats.audioOutboundRtp = publisherStats.audioOutboundRtp;
-                                allStats.videoOutboundRtp = publisherStats.videoOutboundRtp;
-                                allStats.audioInboundRtpList.addAll(publisherStats.audioInboundRtpList);
-                                allStats.videoInboundRtpList.addAll(publisherStats.videoInboundRtpList);
-                                allStats.recvAudioTrackList.addAll(publisherStats.recvAudioTrackList);
-                                allStats.recvVideoTrackList.addAll(publisherStats.recvVideoTrackList);
-                                allStats.encoderList.addAll(publisherStats.encoderList);
-                                allStats.decoderList.addAll(publisherStats.decoderList);
+                pubPcWrapper.pc.getStats(rtcStatsReport -> {
+                    System.out.println(String.format("publisher rtcStatsReport=%s ", rtcStatsReport));
+                    publisherStats = StatsHelper.resolveStats(rtcStatsReport);
+                    if (null == subscriberStats){
+                        // got publisherStats firstly, append subscriberStats later.
+                        allStats = publisherStats;
+                    }else {
+                        // already got subscriberStats, append publisherStats.
+                        allStats.audioSource = publisherStats.audioSource;
+                        allStats.videoSource = publisherStats.videoSource;
+                        allStats.sendAudioTrack = publisherStats.sendAudioTrack;
+                        allStats.sendVideoTrack = publisherStats.sendVideoTrack;
+                        allStats.audioOutboundRtp = publisherStats.audioOutboundRtp;
+                        allStats.videoOutboundRtp = publisherStats.videoOutboundRtp;
+                        allStats.audioInboundRtpList.addAll(publisherStats.audioInboundRtpList);
+                        allStats.videoInboundRtpList.addAll(publisherStats.videoInboundRtpList);
+                        allStats.recvAudioTrackList.addAll(publisherStats.recvAudioTrackList);
+                        allStats.recvVideoTrackList.addAll(publisherStats.recvVideoTrackList);
+                        allStats.encoderList.addAll(publisherStats.encoderList);
+                        allStats.decoderList.addAll(publisherStats.decoderList);
 
-                                // both publisherStats and subscriberStats got, complete.
-                                publisherStats = null;
-                                subscriberStats = null;
-                                KLog.p(allStats.toString());
+                        // both publisherStats and subscriberStats got, complete.
+                        publisherStats = null;
+                        subscriberStats = null;
+                        KLog.p(allStats.toString());
 
-                                dealWithStats(allStats);
-                            }
-                        });
-                    }else if ( CommonDef.CONN_TYPE_SUBSCRIBER == pcWrapper.connType){
-                        pcWrapper.pc.getStats(rtcStatsReport -> {
-                            System.out.println(String.format("subscriber rtcStatsReport=%s ", rtcStatsReport));
-                            subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
-                            if (null == publisherStats){
-                                // got subscriberStats firstly, append publisherStats later.
-                                allStats = subscriberStats;
-                            }else {
-
-                                // already got publisherStats, append subscriberStats.
-                                allStats.audioInboundRtpList.addAll(subscriberStats.audioInboundRtpList);
-                                allStats.videoInboundRtpList.addAll(subscriberStats.videoInboundRtpList);
-                                allStats.recvAudioTrackList.addAll(subscriberStats.recvAudioTrackList);
-                                allStats.recvVideoTrackList.addAll(subscriberStats.recvVideoTrackList);
-                                allStats.encoderList.addAll(subscriberStats.encoderList);
-                                allStats.decoderList.addAll(subscriberStats.decoderList);
-
-                                // both publisherStats and subscriberStats got, complete.
-                                publisherStats = null;
-                                subscriberStats = null;
-                                KLog.p(allStats.toString());
-
-                                dealWithStats(allStats);
-                            }
-                        });
+                        dealWithStats(allStats);
                     }
+                });
+
+            subPcWrapper.pc.getStats(rtcStatsReport -> {
+                System.out.println(String.format("subscriber rtcStatsReport=%s ", rtcStatsReport));
+                subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
+                if (null == publisherStats){
+                    // got subscriberStats firstly, append publisherStats later.
+                    allStats = subscriberStats;
+                }else {
+                    // already got publisherStats, append subscriberStats.
+                    allStats.audioInboundRtpList.addAll(subscriberStats.audioInboundRtpList);
+                    allStats.videoInboundRtpList.addAll(subscriberStats.videoInboundRtpList);
+                    allStats.recvAudioTrackList.addAll(subscriberStats.recvAudioTrackList);
+                    allStats.recvVideoTrackList.addAll(subscriberStats.recvVideoTrackList);
+                    allStats.encoderList.addAll(subscriberStats.encoderList);
+                    allStats.decoderList.addAll(subscriberStats.decoderList);
+
+                    // both publisherStats and subscriberStats got, complete.
+                    publisherStats = null;
+                    subscriberStats = null;
+                    KLog.p(allStats.toString());
+
+                    dealWithStats(allStats);
                 }
+            });
 
             }
         };
@@ -917,10 +893,10 @@ public class WebRtcManager extends Caster<Msg>{
         statsTimer = null;
         statsTimerTask = null;
 
-        for (PeerConnectionWrapper peerConnectionWrapper : connWrapperList){
-            peerConnectionWrapper.close();
-        }
-        connWrapperList.clear();
+        pubPcWrapper.close();
+        subPcWrapper.close();
+        assPubPcWrapper.close();
+        assSubPcWrapper.close();
 
         if (factory != null) {
             factory.dispose();
@@ -958,24 +934,25 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private void createPeerConnectionFactory(EglBase eglBase, PeerConnectionFactory.Options options, PeerConnectionFactoryConfig config) {
+    private void createPeerConnectionFactory() {
         if (null != factory){
             KLog.p(KLog.ERROR, "Factory exists!");
             return;
         }
+        PeerConnectionFactoryConfig factoryConfig = new PeerConnectionFactoryConfig(Arrays.asList(VIDEO_CODEC_VP8, VIDEO_CODEC_H264_HIGH), config.enableVideoCodecHwAcceleration);
 
-        KLog.p(config.toString());
+        KLog.p(factoryConfig.toString());
 
         final AudioDeviceModule adm = createJavaAudioDevice();
 
         final VideoEncoderFactory encoderFactory;
         final VideoDecoderFactory decoderFactory;
 
-        if (config.enableVideoCodecHwAcceleration) {
+        if (factoryConfig.enableVideoCodecHwAcceleration) {
             encoderFactory = new DefaultVideoEncoderFactory(
                     eglBase.getEglBaseContext(),
-                    config.videoCodecList.contains(VIDEO_CODEC_VP8),
-                    config.videoCodecList.contains(VIDEO_CODEC_H264_HIGH));
+                    factoryConfig.videoCodecList.contains(VIDEO_CODEC_VP8),
+                    factoryConfig.videoCodecList.contains(VIDEO_CODEC_H264_HIGH));
             decoderFactory = new DefaultVideoDecoderFactory(eglBase.getEglBaseContext());
 
 //            encoderFactory = new HardwareVideoEncoderFactory(
@@ -988,16 +965,12 @@ public class WebRtcManager extends Caster<Msg>{
             decoderFactory = new SoftwareVideoDecoderFactory();
         }
 
-//        for (VideoCodecInfo videoCodecInfo : encoderFactory.getSupportedCodecs()) {
-//            KLog.p("supported video codec: %s", videoCodecInfo.name);
-//        }
-
         PeerConnectionFactory.initialize(
                 PeerConnectionFactory.InitializationOptions.builder(context)
                         .createInitializationOptions());
 
         factory = PeerConnectionFactory.builder()
-                .setOptions(options)
+                .setOptions(new PeerConnectionFactory.Options())
                 .setAudioDeviceModule(adm)
                 .setVideoEncoderFactory(encoderFactory)
                 .setVideoDecoderFactory(decoderFactory)
@@ -1008,12 +981,10 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
-    private PeerConnectionWrapper createPeerConnectionWrapper(int connType, PeerConnectionConfig config) {
+    private void createPeerConnectionWrapper() {
         if (null == factory){
             throw new RuntimeException("Factory not exists!");
         }
-
-        KLog.p(config.toString());
 
         PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(new ArrayList<>());
         // TCP candidates are only useful when connecting to a server that supports
@@ -1033,13 +1004,50 @@ public class WebRtcManager extends Caster<Msg>{
         builder.setEnableGcmCryptoSuites(true);
         rtcConfig.cryptoOptions = builder.createCryptoOptions();
 
-        PCObserver pcObserver = new PCObserver();
-        PeerConnection peerConnection = factory.createPeerConnection(rtcConfig, pcObserver);
-        if (null == peerConnection){
-            throw new RuntimeException("createPeerConnection failed!");
-        }
 
-        return new PeerConnectionWrapper(connType, peerConnection, config, new SDPObserver(), pcObserver);
+        /* 创建4个PeerConnectionWrapper
+        * NOTE：一个peerconnection可以处理多路码流，收发均可。
+        * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
+        * */
+        PeerConnectionConfig pcConfig = new PeerConnectionConfig(
+                config.videoWidth,
+                config.videoHeight,
+                config.videoFps,
+                config.videoMaxBitrate,
+                config.videoCodec,
+                config.audioStartBitrate,
+                config.audioCodec
+        );
+        KLog.p(config.toString());
+        int connType = CommonDef.CONN_TYPE_PUBLISHER;
+        pubPcWrapper = new PeerConnectionWrapper(
+                connType,
+                Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(connType))),
+                pcConfig,
+                new SDPObserver(connType)
+        );
+        connType = CommonDef.CONN_TYPE_SUBSCRIBER;
+        subPcWrapper = new PeerConnectionWrapper(
+                connType,
+                Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(connType))),
+                pcConfig,
+                new SDPObserver(connType)
+        );
+        connType = CommonDef.CONN_TYPE_ASS_PUBLISHER;
+        assPubPcWrapper = new PeerConnectionWrapper(
+                connType,
+                Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(connType))),
+                pcConfig,
+                new SDPObserver(connType)
+        );
+        connType = CommonDef.CONN_TYPE_ASS_SUBSCRIBER;
+        assSubPcWrapper = new PeerConnectionWrapper(
+                connType,
+                Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(connType))),
+                pcConfig,
+                new SDPObserver(connType)
+        );
+
     }
 
 
@@ -1782,57 +1790,20 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private PeerConnectionWrapper getPcWrapper(int connType){
-        for (PeerConnectionWrapper peerConnectionWrapper : connWrapperList){
-            if (peerConnectionWrapper.connType == connType){
-                return peerConnectionWrapper;
-            }
+        if (CommonDef.CONN_TYPE_PUBLISHER == connType){
+            return pubPcWrapper;
+        }else if (CommonDef.CONN_TYPE_SUBSCRIBER == connType){
+            return subPcWrapper;
+        }else if (CommonDef.CONN_TYPE_ASS_PUBLISHER == connType){
+            return assPubPcWrapper;
+        }else if (CommonDef.CONN_TYPE_ASS_SUBSCRIBER == connType){
+            return assSubPcWrapper;
         }
-        return null;
-    }
-
-    private PeerConnectionWrapper getPcWrapper(PCObserver pcObserver){
-        for (PeerConnectionWrapper peerConnectionWrapper : connWrapperList){
-            if (peerConnectionWrapper.pcObserver == pcObserver){
-                return peerConnectionWrapper;
-            }
-        }
-        return null;
-    }
-
-    private PeerConnectionWrapper getPcWrapper(SDPObserver sdpObserver){
-        for (PeerConnectionWrapper peerConnectionWrapper : connWrapperList){
-            if (peerConnectionWrapper.sdpObserver == sdpObserver){
-                return peerConnectionWrapper;
-            }
-        }
+        KLog.p(KLog.ERROR, "no peerconnection to conntype %s", connType);
         return null;
     }
 
 
-
-//    // FORDEBUG
-//    public boolean startSignaling()
-//    {
-//        MtMsg msg = new MtMsg();
-//        msg.SetMsgId("Ev_MT_GetOffer_Cmd");
-//        msg.addMsg(BasePB.TU32.newBuilder().setValue(CommonDef.CONN_TYPE_ASS_PUBLISHER).build());
-//        msg.addMsg(BasePB.TU32.newBuilder().setValue(CommonDef.MEDIA_TYPE_AV).build());
-//
-//        long nSrcID = Connector.MAKEIID(RtcConnector.WEBRTC_ID, (short)1 );
-//        long nSrcNodeId=0;
-//        long nDstID = nSrcID;
-//        long nDstNodeId=nSrcNodeId;
-//
-//        byte[] abyContent = msg.Encode();
-//        int nRet = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-//                nDstID, nDstNodeId, nSrcID, nSrcNodeId, 5000 );
-//        if (nRet != 0){
-//            KLog.p(KLog.ERROR, "post msg %s failed, ret=%s", msg.GetMsgId(), nRet);
-//            return false;
-//        }
-//
-//        return true;
-//    }
 
     /**
      * 会议事件监听器
@@ -1994,7 +1965,8 @@ public class WebRtcManager extends Caster<Msg>{
                     pcWrapper.createAudioTrack();
                 }
 
-                pcWrapper.pc.createOffer(pcWrapper.sdpObserver, new MediaConstraints());
+                pcWrapper.createOffer();
+
                 if (CommonDef.MEDIA_TYPE_AV == mediaType){
                     // 针对多路码流的情形，我们需要一路一路地发布（平台的限制）
                     // 我们先发Audio，等到收到setAnswerCmd后再发Video
@@ -2055,7 +2027,7 @@ public class WebRtcManager extends Caster<Msg>{
                 pcWrapper.checkSdpState(pcWrapper.Idle);
                 pcWrapper.setSdpType(pcWrapper.FingerPrintOffer);
                 pcWrapper.createAudioTrack();
-                pcWrapper.pc.createOffer(pcWrapper.sdpObserver, new MediaConstraints());
+                pcWrapper.createOffer();
                 pcWrapper.setSdpState(pcWrapper.Creating);
             });
         }
@@ -2088,7 +2060,7 @@ public class WebRtcManager extends Caster<Msg>{
                 sdp = SdpHelper.preferCodec(sdp, sdpVideoCodecName, false);
             }
 
-            pcWrapper.pc.setRemoteDescription(pcWrapper.sdpObserver, new SessionDescription(type, sdp));
+            pcWrapper.setRemoteDescription(new SessionDescription(type, sdp));
         }
 
     }
@@ -2097,11 +2069,16 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private class SDPObserver implements SdpObserver {
+        private int connType;
+
+        SDPObserver(int connType) {
+            this.connType = connType;
+        }
 
         @Override
         public void onCreateSuccess(final SessionDescription origSdp) {
             executor.execute(() -> {
-                PeerConnectionWrapper pcWrapper = getPcWrapper(this);
+                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 KLog.p("create local sdp success: type=%s", pcWrapper.sdpType);
                 pcWrapper.checkSdpState(pcWrapper.Creating);
                 if (pcWrapper.isSdpType(pcWrapper.FingerPrintOffer)){
@@ -2121,7 +2098,7 @@ public class WebRtcManager extends Caster<Msg>{
                         sdp = SdpHelper.preferCodec(sdp, sdpVideoCodecName, false);
                     }
 
-                    pcWrapper.pc.setLocalDescription(this, new SessionDescription(origSdp.type, sdp));
+                    pcWrapper.setLocalDescription(new SessionDescription(origSdp.type, sdp));
                     pcWrapper.setSdpState(pcWrapper.SettingLocal);
                 }
             });
@@ -2130,7 +2107,7 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onSetSuccess() {
             executor.execute(() -> {
-                PeerConnectionWrapper pcWrapper = getPcWrapper(this);
+                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 pcWrapper.checkSdpState(pcWrapper.SettingLocal, pcWrapper.SettingRemote);
                 PeerConnection pc = pcWrapper.pc;
                 if (pcWrapper.isSdpType(pcWrapper.Offer)){
@@ -2152,7 +2129,7 @@ public class WebRtcManager extends Caster<Msg>{
                 else if (pcWrapper.isSdpType(pcWrapper.Answer)){
                     if (pcWrapper.isSdpState(pcWrapper.SettingRemote)){
                         KLog.p("setRemoteDescription for Answer success, create answer...");
-                        pcWrapper.pc.createAnswer(pcWrapper.sdpObserver, new MediaConstraints());
+                        pcWrapper.createAnswer();
                         pcWrapper.setSdpState(pcWrapper.Creating);
                     }else {
                         KLog.p("setLocalDescription for Answer success, sending answer...");
@@ -2187,7 +2164,7 @@ public class WebRtcManager extends Caster<Msg>{
                             }else{
                                 pcWrapper.createVideoTrack(videoCapturer);
                             }
-                            pcWrapper.pc.createOffer(pcWrapper.sdpObserver, new MediaConstraints());
+                            pcWrapper.createOffer();
                         }
                         // 不同于正常sdp流程，此时还需要再发video的offer，所以切换sdptype为videoOffer
                         pcWrapper.setSdpType(pcWrapper.VideoOffer);
@@ -2231,11 +2208,16 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private class PCObserver implements PeerConnection.Observer{
+        private int connType;
+
+        PCObserver(int connType) {
+            this.connType = connType;
+        }
 
         @Override
         public void onIceCandidate(final IceCandidate candidate) {
             KLog.p("onIceCandidate, sending candidate...");
-            PeerConnectionWrapper pcWrapper = getPcWrapper(this);
+            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
             handler.post(() -> rtcConnector.sendIceCandidate(pcWrapper.connType, candidate.sdpMid, candidate.sdpMLineIndex, candidate.sdp));
         }
 
@@ -2289,7 +2271,7 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onRemoveStream(final MediaStream stream) {
             KLog.p("stream %s removed", stream.getId());
-            PeerConnectionWrapper pcWrapper = getPcWrapper(this);
+            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
             for (VideoTrack videoTrack : stream.videoTracks){
                 pcWrapper.removeRemoteVideoTrack(videoTrack);
             }
@@ -2318,7 +2300,7 @@ public class WebRtcManager extends Caster<Msg>{
         public void onTrack(RtpTransceiver transceiver) {
             MediaStreamTrack track = transceiver.getReceiver().track();
             KLog.p("received remote track %s", track);
-            PeerConnectionWrapper pcWrapper = getPcWrapper(this);
+            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
             if (track instanceof VideoTrack){
                 pcWrapper.createRemoteVideoTrack(transceiver.getMid(), (VideoTrack) track);
             }else{
@@ -2402,7 +2384,6 @@ public class WebRtcManager extends Caster<Msg>{
         PeerConnection pc;
         PeerConnectionConfig config;
         SDPObserver sdpObserver;
-        PCObserver pcObserver;
         List<IceCandidate> queuedRemoteCandidates = new ArrayList<>();
         SurfaceTextureHelper surfaceTextureHelper;
         VideoCapturer videoCapturer;
@@ -2416,15 +2397,30 @@ public class WebRtcManager extends Caster<Msg>{
         private RtpSender audioSender;
 
         PeerConnectionWrapper(int connType, @NonNull PeerConnection pc, @NonNull PeerConnectionConfig config,
-                              @NonNull SDPObserver sdpObserver, @NonNull PCObserver pcObserver) {
+                              @NonNull SDPObserver sdpObserver) {
             this.connType = connType;
             this.pc = pc;
             this.config = config;
             this.sdpObserver = sdpObserver;
-            this.pcObserver = pcObserver;
         }
 
 
+        void createOffer(){
+            pc.createOffer(sdpObserver, new MediaConstraints());
+        }
+        void createAnswer(){
+            pc.createAnswer(sdpObserver, new MediaConstraints());
+        }
+        void setLocalDescription(SessionDescription sdp){
+            pc.setLocalDescription(sdpObserver, sdp);
+        }
+        void setRemoteDescription(SessionDescription sdp){
+            pc.setRemoteDescription(sdpObserver, sdp);
+        }
+
+        /**创建视频轨道。
+         * （在此前请先创建音频轨道如果有音频）
+         * */
         void createVideoTrack(@NonNull VideoCapturer videoCapturer){
             if (null != localVideoTrack){
                 KLog.p(KLog.ERROR, "localVideoTrack has created");
@@ -2448,7 +2444,11 @@ public class WebRtcManager extends Caster<Msg>{
 
             handler.post(() -> {
                 if (null != sessionEventListener) {
-                    StreamInfo streamInfo = new StreamInfo(localTrackId, videoCapturer.isScreencast() ? StreamInfo.Type_LocalScreenShare : StreamInfo.Type_LocalCamera, userE164, userE164, null);
+                    StreamInfo streamInfo = new StreamInfo(
+                            localTrackId, // XXX 应该是StreamId，包括音视频的。
+                            videoCapturer instanceof WindowCapturer ? StreamInfo.Type_LocalAss : StreamInfo.Type_LocalMain,
+                            userE164, userE164, null
+                    );
                     KLog.p("####onLocalStream stream info=%s", streamInfo);
                     localStreamInfos.add(streamInfo);
                     sessionEventListener.onStream(streamInfo);
@@ -2505,7 +2505,11 @@ public class WebRtcManager extends Caster<Msg>{
 
             handler.post(() -> {
                 if (null != sessionEventListener) {
-                    StreamInfo streamInfo = new StreamInfo(localTrackId, videoCapturer.isScreencast() ? StreamInfo.Type_LocalScreenShare : StreamInfo.Type_LocalCamera, userE164, userE164, null);
+                    StreamInfo streamInfo = new StreamInfo(
+                            localTrackId, // XXX 应该是StreamId，包括音视频的。
+                            videoCapturer instanceof WindowCapturer ? StreamInfo.Type_LocalAss : StreamInfo.Type_LocalMain,
+                            userE164, userE164, null
+                    );
                     KLog.p("####onLocalStream stream info=%s", streamInfo);
                     localStreamInfos.add(streamInfo);
                     sessionEventListener.onStream(streamInfo);
@@ -2839,8 +2843,8 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     private void dealWithStats(StatsHelper.Stats stats){
-        String maxAudioTrack = stats.audioSource.trackIdentifier;
-        double maxAudioLevel = stats.audioSource.audioLevel;
+        String maxAudioTrack = null != stats.audioSource ? stats.audioSource.trackIdentifier : null;
+        double maxAudioLevel = null != stats.audioSource ? stats.audioSource.audioLevel : 0;
         for (StatsHelper.RecvAudioTrack track : stats.recvAudioTrackList){
             if (track.audioLevel > maxAudioLevel){
                 maxAudioLevel = track.audioLevel;
