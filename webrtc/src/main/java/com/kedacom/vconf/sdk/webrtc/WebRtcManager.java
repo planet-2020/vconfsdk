@@ -796,6 +796,7 @@ public class WebRtcManager extends Caster<Msg>{
         rtcConnector.setSignalingEventsCallback(new RtcConnectorEventListener());
 
         eglBase = EglBase.create();
+
         executor.execute(() -> {
             createPeerConnectionFactory();
             createPeerConnectionWrapper();
@@ -893,16 +894,6 @@ public class WebRtcManager extends Caster<Msg>{
         statsTimer = null;
         statsTimerTask = null;
 
-        pubPcWrapper.close();
-        subPcWrapper.close();
-        assPubPcWrapper.close();
-        assSubPcWrapper.close();
-
-        if (factory != null) {
-            factory.dispose();
-            factory = null;
-        }
-
         if (null != eglBase) {
             eglBase.release();
             eglBase = null;
@@ -922,6 +913,18 @@ public class WebRtcManager extends Caster<Msg>{
         streamInfos.clear();
         localStreamInfos.clear();
         screenCapturePermissionData = null;
+
+        executor.execute(() -> {
+            pubPcWrapper.close();
+            subPcWrapper.close();
+            assPubPcWrapper.close();
+            assSubPcWrapper.close();
+
+            if (factory != null) {
+                factory.dispose();
+                factory = null;
+            }
+        });
 
         // destroy audiomanager
 //        if (audioManager != null) {

@@ -8,10 +8,8 @@ import java.util.List;
  * Created by Sissi on 2019/10/25
  */
 public final class StreamInfo {
-    public String   streamId;   // 流id。一路流可能包含多个音视频轨道
+    public String   streamId;   // 流id
     public int      streamType; // 流类型
-    public List<String> videoTrackList; // 视频轨道列表
-    public List<String> audioTrackList; // 音频轨道列表
     public String   e164;       // 流对应的终端的e164
     public String   alias;      // 流对应的终端的别名
     public String   email;      // 流对应的终端的email
