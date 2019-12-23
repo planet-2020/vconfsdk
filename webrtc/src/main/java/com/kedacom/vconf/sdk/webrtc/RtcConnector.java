@@ -39,8 +39,6 @@ class RtcConnector implements IRcvMsgCallback{
     private final long myNode = 0;
     private final long dispatchId = Connector.MAKEIID(MTDISPATCH_ID, (short)1 );
 	private final long dispatchNode = 0;
-    private long rtcServiceId;
-    private long rtcServiceNode;
 
 	private Handler handler = new Handler(Looper.getMainLooper());
 
@@ -53,11 +51,8 @@ class RtcConnector implements IRcvMsgCallback{
 	RtcConnector( ) {
 		// 注册消息处理方法
 		cbMsgHandlerMap.put("Ev_MT_GetOffer_Cmd", this::onGetOfferCmd);
-//		cbMsgHandlerMap.put("Ev_MT_GetOffer_Ntf", this::onGetOfferNtf);
 		cbMsgHandlerMap.put("Ev_MT_SetOffer_Cmd", this::onSetOfferCmd);
-//		cbMsgHandlerMap.put("Ev_MT_GetAnswer_Ntf", this::onGetAnswerNtf);
 		cbMsgHandlerMap.put("Ev_MT_SetAnswer_Cmd", this::onSetAnswerCmd);
-//		cbMsgHandlerMap.put("Ev_MT_IceCandidate_Ntf", this::onIceCandidateNtf);
 		cbMsgHandlerMap.put("Ev_MT_SetIceCandidate_Cmd", this::onSetIceCandidateCmd);
 		cbMsgHandlerMap.put("Ev_MT_GetFingerPrint_Cmd", this::onGetFingerPrintCmd);
 
@@ -171,8 +166,6 @@ class RtcConnector implements IRcvMsgCallback{
 	 * 收到平台“发起signaling”的指示，主动发起signaling流程
 	 * */
 	private void onGetOfferCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
-		this.rtcServiceId = nSrcId;
-		this.rtcServiceNode = nSrcNode;
 		BodyItem item0 = mtMsg.GetMsgBody(0);
 		BodyItem item1 = mtMsg.GetMsgBody(1);
 		int connType;
@@ -191,44 +184,6 @@ class RtcConnector implements IRcvMsgCallback{
 
 	}
 
-
-	/**
-	 * FORDEBUG（模拟mtrtcservice）收到mtrtcmp的Ev_MT_GetOffer_Ntf的处理
-	 * */
-	private void onGetOfferNtf(MtMsg mtMsg, long nSrcId, long nSrcNode){
-		BodyItem item0 = mtMsg.GetMsgBody(0);
-		BodyItem item1 = mtMsg.GetMsgBody(1);
-		BodyItem item2 = mtMsg.GetMsgBody(2);
-		int connType;
-		String offer;
-		StructConfPB.TRtcMedialist rtcMedialist;
-		try {
-			connType = BasePB.TU32.parseFrom(item0.getAbyContent()).getValue();
-			offer = BasePB.TString.parseFrom(item1.getAbyContent()).getValue();
-			rtcMedialist = StructConfPB.TRtcMedialist.parseFrom(item2.getAbyContent());
-		} catch (InvalidProtocolBufferException e) {
-			e.printStackTrace();
-			return;
-		}
-
-		KLog.p("peerType=%s, rtcMedialist=%s", connType, rtcMedialist);
-
-		// 转发offer给对端
-		MtMsg msg = new MtMsg();
-        msg.SetMsgId("Ev_MT_SetOffer_Cmd");
-        msg.addMsg(BasePB.TU32.newBuilder().setValue(convertConnType(connType)).build());
-        msg.addMsg(BasePB.TString.newBuilder().setValue(offer).build());
-        msg.addMsg(StructConfPB.TRtcMedialist.newBuilder().mergeFrom(rtcMedialist).build());
-		byte[] abyContent = msg.Encode();
-		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-				myId, myNode, rtcServiceId, rtcServiceNode, 5000 );
-        KLog.p("-> trans offer, dstId=%s, dstNode=%s, srcId=%s, srcNode=%s", myId, myNode, rtcServiceId, rtcServiceNode);
-		if (0 != ret){
-			KLog.p(KLog.ERROR, "PostOspMsg %s failed", mtMsg.GetMsgId());
-		}
-
-
-	}
 
 	private int convertConnType(int peerType){
 	    switch (peerType){
@@ -249,8 +204,6 @@ class RtcConnector implements IRcvMsgCallback{
 	 * 收到对端的offer，被动开始signaling流程
 	 * */
 	private void onSetOfferCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
-		this.rtcServiceId = nSrcId;
-		this.rtcServiceNode = nSrcNode;
 		BodyItem item0 = mtMsg.GetMsgBody(0);
 		BodyItem item1 = mtMsg.GetMsgBody(1);
 		BodyItem item2 = mtMsg.GetMsgBody(2);
@@ -276,45 +229,11 @@ class RtcConnector implements IRcvMsgCallback{
 
 	}
 
-	/**
-	 * FORDEBUG （模拟mtrtcservice）收到mtrtcmp的onGetAnswerNtf的处理
-	 * */
-	private void onGetAnswerNtf(MtMsg mtMsg, long nSrcId, long nSrcNode){
-		BodyItem item0 = mtMsg.GetMsgBody(0);
-		BodyItem item1 = mtMsg.GetMsgBody(1);
-		int connType;
-		String answer;
-		try {
-			connType = BasePB.TU32.parseFrom(item0.getAbyContent()).getValue();
-			answer = BasePB.TString.parseFrom(item1.getAbyContent()).getValue();
-		} catch (InvalidProtocolBufferException e) {
-			e.printStackTrace();
-			return;
-		}
-
-		KLog.p("peerType=%s", connType);
-
-		// 转发answer到对端
-        MtMsg msg = new MtMsg();
-        msg.SetMsgId("Ev_MT_SetAnswer_Cmd");
-        msg.addMsg(BasePB.TU32.newBuilder().setValue(convertConnType(connType)).build());
-        msg.addMsg(BasePB.TString.newBuilder().setValue(answer).build());
-		byte[] abyContent = msg.Encode();
-		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-				myId, myNode, rtcServiceId, rtcServiceNode, 5000 );
-		if (0 != ret){
-			KLog.p(KLog.ERROR, "PostOspMsg %s failed", mtMsg.GetMsgId());
-		}
-
-		KLog.p("-> trans answer");
-	}
 
 	/**
 	 * 收到对端的answer
 	 * */
 	private void onSetAnswerCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
-		this.rtcServiceId = nSrcId;
-		this.rtcServiceNode = nSrcNode;
 		BodyItem item0 = mtMsg.GetMsgBody(0);
 		BodyItem item1 = mtMsg.GetMsgBody(1);
 		int connType;
@@ -332,52 +251,11 @@ class RtcConnector implements IRcvMsgCallback{
 
 	}
 
-	/**
-	 * FORDEBUG （模拟mtrtcservice）收到mtrtcmp的Ev_MT_IceCandidate_Ntf的处理
-	 * */
-	private void onIceCandidateNtf(MtMsg mtMsg, long nSrcId, long nSrcNode){
-		BodyItem item0 = mtMsg.GetMsgBody(0);
-		BodyItem item1 = mtMsg.GetMsgBody(1);
-		BodyItem item2 = mtMsg.GetMsgBody(2);
-		BodyItem item3 = mtMsg.GetMsgBody(3);
-		int connType;
-		String mid;
-		int index;
-		String candidate;
-		try {
-			connType = BasePB.TU32.parseFrom(item0.getAbyContent()).getValue();
-			mid = BasePB.TString.parseFrom(item1.getAbyContent()).getValue();
-			index = BasePB.TU32.parseFrom(item2.getAbyContent()).getValue();
-			candidate = BasePB.TString.parseFrom(item3.getAbyContent()).getValue();
-		} catch (InvalidProtocolBufferException e) {
-			e.printStackTrace();
-			return;
-		}
-
-		// 转发answer到对端
-        MtMsg msg = new MtMsg();
-        msg.SetMsgId("Ev_MT_SetIceCandidate_Cmd");
-        msg.addMsg(BasePB.TU32.newBuilder().setValue(convertConnType(connType)).build());
-        msg.addMsg(BasePB.TString.newBuilder().setValue(mid).build());
-        msg.addMsg(BasePB.TU32.newBuilder().setValue(index).build());
-        msg.addMsg(BasePB.TString.newBuilder().setValue(candidate).build());
-		byte[] abyContent = msg.Encode();
-		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-				myId, myNode, rtcServiceId, rtcServiceNode, 5000 );
-		if (0 != ret){
-			KLog.p(KLog.ERROR, "PostOspMsg %s failed", mtMsg.GetMsgId());
-		}
-
-		KLog.p("-> trans candidate");
-	}
-
 
 	/**
 	 * 收到对端的candidate
 	 * */
 	private void onSetIceCandidateCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
-		this.rtcServiceId = nSrcId;
-		this.rtcServiceNode = nSrcNode;
 		BodyItem item0 = mtMsg.GetMsgBody(0);
 		BodyItem item1 = mtMsg.GetMsgBody(1);
 		BodyItem item2 = mtMsg.GetMsgBody(2);
@@ -408,8 +286,6 @@ class RtcConnector implements IRcvMsgCallback{
 	 * 界面setPlayPara，然后组件推onSetOfferCmd给界面开始订阅
 	 * */
 	private void onGetFingerPrintCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
-		this.rtcServiceId = nSrcId;
-		this.rtcServiceNode = nSrcNode;
 		BodyItem item0 = mtMsg.GetMsgBody(0);
 		int connType;
 		try {
@@ -428,8 +304,6 @@ class RtcConnector implements IRcvMsgCallback{
 	 * 静音
 	 * */
 	private void onCodecQuietCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
-		this.rtcServiceId = nSrcId;
-		this.rtcServiceNode = nSrcNode;
 		BodyItem item0 = mtMsg.GetMsgBody(0);
 		boolean bQuiet;
 		try {
@@ -448,8 +322,6 @@ class RtcConnector implements IRcvMsgCallback{
 	 * 哑音
 	 * */
 	private void onCodecMuteCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
-		this.rtcServiceId = nSrcId;
-		this.rtcServiceNode = nSrcNode;
 		BodyItem item0 = mtMsg.GetMsgBody(0);
 		boolean bMute;
 		try {
@@ -515,14 +387,11 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(BasePB.TString.newBuilder().setValue(offerSdp).build());
 		msg.addMsg(builder.build());
 		byte[] abyContent = msg.Encode();
-//		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-//                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
 				dispatchId, dispatchNode, myId, myNode, 5000 );
 		if (0 != ret){
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
-
 
 		Log.i(TAG, String.format("[PUB]=#=> sendOfferSdp, connType=%s, offerSdp=\n%s", connType, offerSdp));
 	}
@@ -538,8 +407,6 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(BasePB.TString.newBuilder().setValue(answerSdp).build());
 		msg.addMsg(builder.build());
 		byte[] abyContent = msg.Encode();
-//		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-//                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
 				dispatchId, dispatchNode, myId, myNode, 5000 );
 
@@ -560,8 +427,6 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(sdpMLineIndex).build());
 		msg.addMsg(BasePB.TString.newBuilder().setValue(sdp).build());
 		byte[] abyContent = msg.Encode();
-//		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-//                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
 				dispatchId, dispatchNode, myId, myNode, 5000 );
 		if (0 != ret){
@@ -578,8 +443,6 @@ class RtcConnector implements IRcvMsgCallback{
         msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
         msg.addMsg(BasePB.TString.newBuilder().setValue(fingerPrint).build());
         byte[] abyContent = msg.Encode();
-//		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-//                rtcServiceId, rtcServiceNode, myId, myNode, 5000 );
         int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
                 dispatchId, dispatchNode, myId, myNode, 5000 );
         if (0 != ret){

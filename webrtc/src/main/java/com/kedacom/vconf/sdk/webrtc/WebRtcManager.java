@@ -1953,11 +1953,7 @@ public class WebRtcManager extends Caster<Msg>{
                     }
                 }
                 if (null != videoCapturer) {
-                    if (config.enableSimulcast){
-                        pcWrapper.createVideoTrack2(videoCapturer);
-                    }else{
-                        pcWrapper.createVideoTrack(videoCapturer);
-                    }
+                    pcWrapper.createVideoTrack(videoCapturer);
                 }
 
                 if ((CommonDef.MEDIA_TYPE_AUDIO == mediaType
@@ -2159,11 +2155,7 @@ public class WebRtcManager extends Caster<Msg>{
                         KLog.p("setRemoteDescription for AudioOffer success, we now need create video offer...");
                         VideoCapturer videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
                         if (null != videoCapturer) {
-                            if (config.enableSimulcast){
-                                pcWrapper.createVideoTrack2(videoCapturer);
-                            }else{
-                                pcWrapper.createVideoTrack(videoCapturer);
-                            }
+                            pcWrapper.createVideoTrack(videoCapturer);
                             pcWrapper.createOffer();
                         }
                         // 不同于正常sdp流程，此时还需要再发video的offer，所以切换sdptype为videoOffer
@@ -2418,45 +2410,11 @@ public class WebRtcManager extends Caster<Msg>{
             pc.setRemoteDescription(sdpObserver, sdp);
         }
 
-        /**创建视频轨道。
-         * （在此前请先创建音频轨道如果有音频）
+
+        /**
+         * 创建视频轨道。
          * */
         void createVideoTrack(@NonNull VideoCapturer videoCapturer){
-            if (null != localVideoTrack){
-                KLog.p(KLog.ERROR, "localVideoTrack has created");
-                return;
-            }
-            this.videoCapturer = videoCapturer;
-            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
-            videoSource = factory.createVideoSource(videoCapturer.isScreencast());
-            videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
-            videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
-            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_STREAM_ID, videoSource);
-            localVideoTrack.setEnabled(config.isLocalVideoEnabled);
-            pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
-            String localTrackId = LOCAL_VIDEO_STREAM_ID;
-            ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
-            videoSinks.put(localTrackId, localVideoSink);
-            localVideoTrack.addSink(localVideoSink);
-
-            rtcStreamIdKdStreamIdMap.put(LOCAL_VIDEO_STREAM_ID, LOCAL_VIDEO_STREAM_ID);
-            KLog.p("rtcstreamId=%s, kdstreamId=%s", LOCAL_VIDEO_STREAM_ID, LOCAL_VIDEO_STREAM_ID);
-
-            handler.post(() -> {
-                if (null != sessionEventListener) {
-                    StreamInfo streamInfo = new StreamInfo(
-                            localTrackId, // XXX 应该是StreamId，包括音视频的。
-                            videoCapturer instanceof WindowCapturer ? StreamInfo.Type_LocalAss : StreamInfo.Type_LocalMain,
-                            userE164, userE164, null
-                    );
-                    KLog.p("####onLocalStream stream info=%s", streamInfo);
-                    localStreamInfos.add(streamInfo);
-                    sessionEventListener.onStream(streamInfo);
-                }
-            });
-        }
-
-        void createVideoTrack2(@NonNull VideoCapturer videoCapturer){
             if (null != localVideoTrack){
                 KLog.p(KLog.ERROR, "localVideoTrack has created");
                 return;
@@ -2476,32 +2434,35 @@ public class WebRtcManager extends Caster<Msg>{
             rtcStreamIdKdStreamIdMap.put(LOCAL_VIDEO_STREAM_ID, LOCAL_VIDEO_STREAM_ID);
             KLog.p("rtcstreamId=%s, kdstreamId=%s", LOCAL_VIDEO_STREAM_ID, LOCAL_VIDEO_STREAM_ID);
 
-            //=> 启用simulcast
-            RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
-                            RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
-                            Collections.singletonList(STREAM_ID),
-                            createEncodingList(false)
-            );
-            RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
-            videoSender = transceiver.getSender();
-            // 在添加track之后才去设置encoding参数。XXX  暂时写死，具体根据需求来。
-            // NOTE：注意和sendOffer时传给业务组件的参数一致。
-            for (RtpParameters.Encoding encoding : videoSender.getParameters().encodings){
-                if (encoding.rid.equals("h")){
-                    encoding.scaleResolutionDownBy = 1.0;
-                    encoding.maxFramerate = config.videoFps;
-                    encoding.maxBitrateBps = config.videoMaxBitrate;
-                }else if (encoding.rid.equals("m")){
-                    encoding.scaleResolutionDownBy = 0.5;
-                    encoding.maxFramerate = config.videoFps;
-                    encoding.maxBitrateBps = config.videoMaxBitrate;
-                }else if (encoding.rid.equals("l")){
-                    encoding.scaleResolutionDownBy = 0.25;
-                    encoding.maxFramerate = config.videoFps;
-                    encoding.maxBitrateBps = config.videoMaxBitrate;
+            if (instance.config.enableSimulcast){
+                RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
+                        RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
+                        Collections.singletonList(STREAM_ID),
+                        createEncodingList(false)
+                );
+                RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
+                videoSender = transceiver.getSender();
+                // 在添加track之后才去设置encoding参数。XXX  暂时写死，具体根据需求来。
+                // NOTE：注意和sendOffer时传给业务组件的参数一致。
+                for (RtpParameters.Encoding encoding : videoSender.getParameters().encodings){
+                    if (encoding.rid.equals("h")){
+                        encoding.scaleResolutionDownBy = 1.0;
+                        encoding.maxFramerate = config.videoFps;
+                        encoding.maxBitrateBps = config.videoMaxBitrate;
+                    }else if (encoding.rid.equals("m")){
+                        encoding.scaleResolutionDownBy = 0.5;
+                        encoding.maxFramerate = config.videoFps;
+                        encoding.maxBitrateBps = config.videoMaxBitrate;
+                    }else if (encoding.rid.equals("l")){
+                        encoding.scaleResolutionDownBy = 0.25;
+                        encoding.maxFramerate = config.videoFps;
+                        encoding.maxBitrateBps = config.videoMaxBitrate;
+                    }
                 }
+            }else{
+                pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
             }
-            //<= 启用simulcast
+
 
             handler.post(() -> {
                 if (null != sessionEventListener) {
@@ -2551,8 +2512,6 @@ public class WebRtcManager extends Caster<Msg>{
                 handler.post(() -> {
                     KLog.p("####onRemoteStream, streamInfo=%s", streamInfo);
                     sessionEventListener.onStream(streamInfo);
-//                    // FORDEBUG 仅调试
-//                    sessionEventListener.onRemoteStream(new StreamInfo(0, 0, streamId), surfaceViewRenderer);
                 });
             }
 
