@@ -36,6 +36,7 @@ import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TLoginResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtId;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayItem;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
@@ -120,6 +121,9 @@ public class WebRtcManager extends Caster<Msg>{
     private BiMap<String, String> midKdStreamIdMap = HashBiMap.create();
     private BiMap<String, String> rtcStreamIdKdStreamIdMap = HashBiMap.create();
     private List<StreamInfo> localStreamInfos = new ArrayList<>();
+
+    private List<ConfereeInfo> confereeInfoList = new ArrayList<>();
+
     /**
      * 与会终端信息
      * */
@@ -166,13 +170,15 @@ public class WebRtcManager extends Caster<Msg>{
     protected Map<Msg[], NtfProcessor<Msg>> ntfsProcessors() {
         Map<Msg[], NtfProcessor<Msg>> processorMap = new HashMap<>();
         processorMap.put(new Msg[]{
-                Msg.StreamListReady,
-                Msg.StreamJoined,
-                Msg.StreamLeft,
                 Msg.CallIncoming,
                 Msg.ConfCanceled,
                 Msg.MultipartyConfEnded,
-                Msg.ConfMembersInfoNtf,
+                Msg.ConfereeListArrived,
+                Msg.ConfereeJoined,
+                Msg.ConfereeLeft,
+                Msg.TrackListArrived,
+                Msg.TrackJoined,
+                Msg.TrackLeft,
         }, this::onNtfs);
 
         return processorMap;
@@ -591,8 +597,22 @@ public class WebRtcManager extends Caster<Msg>{
                 if (null != confEventListener) confEventListener.onConfFinished();
                 break;
 
-            case StreamListReady:
-                KLog.p("StreamListReady");
+            case ConfereeListArrived:
+                confMembersInfo = (TMTEntityInfoList) ntfContent;
+                break;
+
+            case ConfereeJoined:
+                TMTEntityInfo tmtEntityInfo = (TMTEntityInfo) ntfContent;
+                KLog.p("ConfereeJoined");
+                break;
+
+            case ConfereeLeft:
+                TMtId tMtId = (TMtId) ntfContent;
+                KLog.p("ConfereeLeft, %s %s", tMtId.dwMcuId, tMtId.dwTerId);
+                break;
+
+            case TrackListArrived:
+                KLog.p("TrackListArrived");
                 List<TRtcPlayItem> rtcPlayItems = new ArrayList<>();
                 TRtcStreamInfoList streamInfoList = (TRtcStreamInfoList) ntfContent;
                 streamInfos.clear();
@@ -615,8 +635,8 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
                 break;
-            case StreamJoined:  //NOTE: 这里是增量过来的
-                KLog.p("StreamJoined");
+            case TrackJoined:  //NOTE: 这里是增量过来的
+                KLog.p("TrackJoined");
                 rtcPlayItems = new ArrayList<>();
                 streamInfoList = (TRtcStreamInfoList) ntfContent;
                 streamInfos.addAll(streamInfoList.atStramInfoList);
@@ -638,8 +658,8 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
                 break;
-            case StreamLeft: //NOTE: 这里是增量过来的
-                KLog.p("StreamLeft");
+            case TrackLeft: //NOTE: 这里是增量过来的
+                KLog.p("TrackLeft");
                 rtcPlayItems = new ArrayList<>();
                 streamInfoList = (TRtcStreamInfoList) ntfContent;
 
@@ -674,9 +694,6 @@ public class WebRtcManager extends Caster<Msg>{
                 set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
                 break;
 
-            case ConfMembersInfoNtf:
-                confMembersInfo = (TMTEntityInfoList) ntfContent;
-                break;
         }
 
     }
@@ -1845,6 +1862,19 @@ public class WebRtcManager extends Caster<Msg>{
     }
     private SessionEventListener sessionEventListener;
 
+    /**
+     * 与会方信息
+     */
+    public static class ConfereeInfo {
+        private String mcuId;
+        private String terId;
+        public String   e164;
+        public String   alias;
+        public String   email;
+        private List<String> videoTrackIdList;
+        private List<String> audioTrackIdList;
+    }
+
 
     private class PeerConnectionFactoryConfig{
         private List<String> videoCodecList;
@@ -2503,7 +2533,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
             if (null == rtcStreamInfo){
-                KLog.p(KLog.ERROR, "no such stream %s in stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.StreamListReady branch in method onNtf)", streamId);
+                KLog.p(KLog.ERROR, "no such stream %s in stream list( see Msg.TrackLeft/Msg.TrackJoined/Msg.TrackListArrived branch in method onNtf)", streamId);
                 return;
             }
 
@@ -2581,7 +2611,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
             if (null == rtcStreamInfo){
-                KLog.p(KLog.ERROR, "no such stream %s in stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.StreamListReady branch in method onNtf)", streamId);
+                KLog.p(KLog.ERROR, "no such stream %s in stream list( see Msg.TrackLeft/Msg.TrackJoined/Msg.TrackListArrived branch in method onNtf)", streamId);
                 return;
             }
 

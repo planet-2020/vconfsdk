@@ -160,6 +160,32 @@ enum Msg {
     DeclineInvitation,
 
 
+
+    /**
+     * 当前会议中已有与会成员列表通知
+     * 入会后会收到一次该通知
+     * */
+    @Response(clz = TMTEntityInfoList.class,
+            id = "OnLineTerListNtf")
+    ConfereeListArrived,
+
+    /**
+     * 与会方加入通知
+     * 入会以后，会议中有新的与会方加入则会收到该通知。
+     * */
+    @Response(clz = TMTEntityInfo.class,
+            id = "TerJoin_Ntf")
+    ConfereeJoined,
+
+    /**
+     * 与会方退出通知
+     * 入会以后，会议中有与会方离会则会收到该通知
+     * */
+    @Response(clz = TMtId.class,
+            id = "TerLeft_Ntf")
+    ConfereeLeft,
+
+
     /**
      * 开启/关闭桌面共享（双流）
      * */
@@ -208,24 +234,32 @@ enum Msg {
     SetPlayPara,
 
 
+    /**
+     * 当前会议中已有音视频（媒体）轨道列表通知
+     * 入会后会收到一次该通知
+     * */
     @Response(clz = TRtcStreamInfoList.class,
             id = "RtcStreamList_Ntf")
-    StreamListReady,
-
-    @Response(clz = TRtcStreamInfoList.class,
-            id = "RtcStreamAdd_Ntf")
-    StreamJoined,
-
-    @Response(clz = TRtcStreamInfoList.class,
-            id = "RtcStreamLeft_Ntf")
-    StreamLeft,
+    TrackListArrived,   // 平台过来的Stream对应的是WebRTC里面的Track。我们对齐WebRTC的概念以便于理解。
 
     /**
-     * 与会成员列表通知
+     * 媒体轨道加入通知
+     * 入会以后，会议中有新的音视频轨道加入则会收到该通知。
      * */
-    @Response(clz = TMTEntityInfoList.class,
-            id = "OnLineTerListNtf")
-    ConfMembersInfoNtf,
+    @Response(clz = TRtcStreamInfoList.class,
+            id = "RtcStreamAdd_Ntf")
+    TrackJoined,
+
+    /**
+     * 媒体轨道退出通知
+     * 入会以后，会议中有音视频轨道离会则会收到该通知
+     * NOTE: 对比{@link #ConfereeLeft}，TrackLeft只表示音/视频离会了，而ConfereeLeft表示与会方退会了（当然相应的音视频轨道也退出了）。
+     * 比如某个与会方关闭了摄像头停止了视频发布，则其他与会方会收到TrackLeft，但不会收到ConfereeLeft。
+     * 如果某个与会方退会了则其他与会方会收到ConfereeLeft和TrackLeft。
+     * */
+    @Response(clz = TRtcStreamInfoList.class,
+            id = "RtcStreamLeft_Ntf")
+    TrackLeft,
 
 
     /**
