@@ -116,19 +116,26 @@ public class WebRtcManager extends Caster<Msg>{
     private PeerConnectionWrapper assSubPcWrapper;
 
 
-    // 与会方列表
+    // 与会方列表。
+    // 一个与会方只有一路视频流可以有多个音频流。
+    // 辅流虽然是由某个与会方发出，但我们特殊处理，既把它看作是一路流也把它看作是一个虚拟的与会方。
     private Map<String, Conferee> conferees = new HashMap<>();
-    // 流列表。这里的流不是WebRTC的Stream而是平台的流，概念上等同于WebRTC的Track
+    // 流列表。
+    // 这里的流不是WebRTC的Stream而是平台的流，概念上等同于WebRTC的Track。
+    // 一路流总是是属于某一个与会方。
+    // 辅流虽然是由某个与会方发出，但我们特殊处理，既把它看作是一路流也把它看作是一个虚拟的与会方。
     private Map<String, Stream> streams = new HashMap<>();
+    // 平台的StreamId到视频槽的映射。
+    // 视频槽输入口连接WebRTC的视频流，输出口连接Display。
+    private Map<String, ProxyVideoSink> videoSinks = new HashMap<>();
+    // 用来展示与会方画面的Display集合。
+    // 一个Display对应一个与会方，需绑定到与会方以展示其内容。
+    private Set<Display> displaySet = new HashSet<>();
+
     // WebRTC的TrackId到平台的StreamId之间的映射
     private BiMap<String, String> rtcTrackId2KdStreamIdMap = HashBiMap.create();
     // WebRTC的mid到平台的StreamId之间的映射
     private BiMap<String, String> mid2KdStreamIdMap = HashBiMap.create();
-    // 平台的StreamId到视频槽的映射
-    private Map<String, ProxyVideoSink> videoSinks = new HashMap<>();
-
-    // 用来展示与会方画面的Display集合
-    private Set<Display> displaySet = new HashSet<>();
 
     // 用于定时收集统计信息
     private StatsHelper.Stats publisherStats;
@@ -650,12 +657,12 @@ public class WebRtcManager extends Caster<Msg>{
             case CurrentStreamList:
             case StreamJoined:
                 KLog.p("CurrentStreamList");
-                Stream assStream = null;
+                TRtcStreamInfo assStream = null;
                 for (TRtcStreamInfo tRtcStreamInfo : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
                     Stream stream = ToDoConverter.tRtcStreamInfo2Stream(tRtcStreamInfo);
                     streams.put(stream.streamId, stream);
-                    if (stream.bAss && !stream.bAudio){
-                        assStream = stream;
+                    if (tRtcStreamInfo.bAss && !tRtcStreamInfo.bAudio){
+                        assStream = tRtcStreamInfo;
                     }
                 }
                 List<TRtcPlayItem> playItems = FluentIterable.from(streams.values()).filter(input -> !input.bAudio).transform(new Function<Stream, TRtcPlayItem>() {
@@ -670,7 +677,7 @@ public class WebRtcManager extends Caster<Msg>{
 
                 if (null != assStream){
                     // 对于辅流我们当作特殊的与会方。所以此处我们构造一个虚拟的与会方上报用户
-                    Conferee sender = getConfereeByStreamId(assStream.streamId);
+                    Conferee sender = getConferee(assStream.tMtId.dwMcuId, assStream.tMtId.dwTerId);
                     if (null != sender){
                         Conferee assStreamConferee = new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, true);
                         conferees.put(assStreamConferee.id, assStreamConferee);
@@ -689,7 +696,7 @@ public class WebRtcManager extends Caster<Msg>{
                     if (success){
                         PeerConnectionWrapper pcWrapper;
                         if (leftStream.bAss) {
-                            assStream = ToDoConverter.tRtcStreamInfo2Stream(leftStream);
+                            assStream = leftStream;
                             pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
                         }else{
                             pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
@@ -713,7 +720,7 @@ public class WebRtcManager extends Caster<Msg>{
                 set(Msg.SelectStream, new TRtcPlayParam(playItems));
 
                 if (null != assStream){
-                    leftConferee = getConfereeByStreamId(assStream.streamId);
+                    leftConferee = getConfereeByStreamId(assStream.achStreamId);
                     if (null != leftConferee && null != sessionEventListener){
                         sessionEventListener.onConfereeLeft(leftConferee);
                     }
@@ -1226,6 +1233,15 @@ public class WebRtcManager extends Caster<Msg>{
         return conferees.get(confereeId);
     }
 
+    private Conferee getConferee(int mcuId, int terId){
+        for (Conferee conferee : conferees.values()){
+            if (conferee.mcuId==mcuId && conferee.terId==terId){
+                return conferee;
+            }
+        }
+        return null;
+    }
+
     public Conferee getConfereeByStreamId(String streamId){
         Stream stream = streams.get(streamId);
         if (null == stream){
@@ -1254,6 +1270,14 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
         return null;
+    }
+
+    public Display getDisplayByStreamId(String streamId){
+        Stream stream = streams.get(streamId);
+        if (null == stream){
+            return null;
+        }
+        return getDisplay(stream.ownerId);
     }
 
 
@@ -1416,7 +1440,7 @@ public class WebRtcManager extends Caster<Msg>{
             // 解绑原来的
             Conferee boundConferee = conferees.get(this.confereeId);
             if (null != boundConferee){
-                Stream boundVideoStream = instance.getStream(boundConferee.id, false, false);
+                Stream boundVideoStream = instance.getStream(boundConferee.id, false, boundConferee.bAssStream);
                 if (null != boundVideoStream){
                     ProxyVideoSink boundSink = videoSinks.get(boundVideoStream.streamId);
                     if (null != boundSink){
@@ -1429,7 +1453,7 @@ public class WebRtcManager extends Caster<Msg>{
             // 重新绑定
             Conferee toBindConferee = conferees.get(confereeId);
             if (null != toBindConferee){
-                Stream toBindVideoStream = instance.getStream(toBindConferee.id, false, false);
+                Stream toBindVideoStream = instance.getStream(toBindConferee.id, false, toBindConferee.bAssStream);
                 if (null != toBindVideoStream){
                     ProxyVideoSink toBindSink = videoSinks.get(toBindVideoStream.streamId);
                     if (null != toBindSink) {
