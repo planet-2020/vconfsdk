@@ -1,5 +1,7 @@
 package com.kedacom.vconf.sdk.webrtc;
 
+import androidx.annotation.NonNull;
+
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmDcsConfMode;
 import com.kedacom.vconf.sdk.common.constant.EmEndpointType;
@@ -166,35 +168,29 @@ final class ToDoConverter {
         return to;
     }
 
-    static StreamInfo composeStreamInfo(TRtcStreamInfo rtcStreamInfo, TMTEntityInfo entityInfo) {
-        int type;
-        if (rtcStreamInfo.bAudio){
-            type = StreamInfo.Type_Unknown;
-        }else{
-            if (rtcStreamInfo.bAss){
-                type = StreamInfo.Type_RemoteAss;
-            }else{
-                type = StreamInfo.Type_RemoteMain;
-            }
-        }
 
+    static WebRtcManager.Conferee tMTEntityInfo2ConfereeInfo(@NonNull TMTEntityInfo entityInfo){
         String e164="", alias="", email="";
-        if (null != entityInfo) {
-            for (TMtAlias tMtAlias : entityInfo.tMtAlias.arrAlias) {
-                if (EmMtAliasType.emAliasE164 == tMtAlias.emAliasType) {
-                    e164 = tMtAlias.achAlias;
-                } else if (EmMtAliasType.emAliasH323 == tMtAlias.emAliasType) {
-                    alias = tMtAlias.achAlias;
-                } else if (EmMtAliasType.emAliasEmail == tMtAlias.emAliasType) {
-                    email = tMtAlias.achAlias;
-                }
-                if (null != e164 && null != alias && null != email) {
-                    break;
-                }
+        for (TMtAlias tMtAlias : entityInfo.tMtAlias.arrAlias) {
+            if (EmMtAliasType.emAliasE164 == tMtAlias.emAliasType) {
+                e164 = tMtAlias.achAlias;
+            } else if (EmMtAliasType.emAliasH323 == tMtAlias.emAliasType) {
+                alias = tMtAlias.achAlias;
+            } else if (EmMtAliasType.emAliasEmail == tMtAlias.emAliasType) {
+                email = tMtAlias.achAlias;
+            }
+            if (null != e164 && null != alias && null != email) {
+                break;
             }
         }
 
-        return new StreamInfo(rtcStreamInfo.achStreamId, type, e164, alias, email);
+        return new WebRtcManager.Conferee(entityInfo.dwMcuId, entityInfo.dwTerId, e164, alias, email, false);
     }
+
+    static WebRtcManager.Stream tRtcStreamInfo2Stream(@NonNull TRtcStreamInfo tRtcStreamInfo){
+        return new WebRtcManager.Stream(tRtcStreamInfo.achStreamId, tRtcStreamInfo.tMtId.dwMcuId, tRtcStreamInfo.tMtId.dwTerId,
+                tRtcStreamInfo.bAudio, tRtcStreamInfo.bAss, tRtcStreamInfo.aemSimcastRes);
+    }
+
 
 }

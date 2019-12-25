@@ -167,7 +167,7 @@ enum Msg {
      * */
     @Response(clz = TMTEntityInfoList.class,
             id = "OnLineTerListNtf")
-    ConfereeListArrived,
+    CurrentConfereeList,
 
     /**
      * 与会方加入通知
@@ -186,22 +186,44 @@ enum Msg {
     ConfereeLeft,
 
 
-    /**
-     * 开启/关闭桌面共享（双流）
-     * */
-    @Request(method = "VideoAssStreamCmd",
-            paras = boolean.class,
-            owner = MethodOwner.MonitorCtrl,
-            rspSeq = "ToggleScreenShareRsp"
-    )
-    ToggleScreenShare,
 
     /**
-     * 开启/关闭桌面共享（双流）响应
+     * 当前会议中已有音视频流列表通知
+     * 入会后会收到一次该通知
+     * NOTE: 平台过来的Stream概念上对应的是WebRTC里面的Track
      * */
-    @Response(clz = TMtAssVidStatusList.class,
-            id = "AssSndSreamStatusNtf")
-    ToggleScreenShareRsp,
+    @Response(clz = TRtcStreamInfoList.class,
+            id = "RtcStreamList_Ntf")
+    CurrentStreamList,
+
+    /**
+     * 流加入通知
+     * 入会以后，会议中有新的流加入则会收到该通知。
+     * */
+    @Response(clz = TRtcStreamInfoList.class,
+            id = "RtcStreamAdd_Ntf")
+    StreamJoined,
+
+    /**
+     * 流退出通知
+     * 入会以后，会议中有流退出则会收到该通知
+     * NOTE: 对比{@link #ConfereeLeft}，StreamLeft只表示音/视频离会了，而ConfereeLeft表示与会方退会了（当然相应的音视频也退出了）。
+     * 比如某个与会方关闭了摄像头停止了视频发布，则其他与会方会收到StreamLeft，但不会收到ConfereeLeft。
+     * 如果某个与会方退会了则其他与会方会收到ConfereeLeft和StreamLeft。
+     * */
+    @Response(clz = TRtcStreamInfoList.class,
+            id = "RtcStreamLeft_Ntf")
+    StreamLeft,
+
+    /**
+     * 选择想要订阅的码流
+     */
+    @Request(method = "SetRtcPlayCmd",
+            owner = MethodOwner.MonitorCtrl,
+            paras = StringBuffer.class,
+            userParas = TRtcPlayParam.class,
+            type = Request.SET)
+    SelectStream,
 
 
 
@@ -223,43 +245,6 @@ enum Msg {
             type = Request.GET)
     GetStreamCount,
 
-    /**
-     * 设置播放参数
-     */
-    @Request(method = "SetRtcPlayCmd",
-            owner = MethodOwner.MonitorCtrl,
-            paras = StringBuffer.class,
-            userParas = TRtcPlayParam.class,
-            type = Request.SET)
-    SetPlayPara,
-
-
-    /**
-     * 当前会议中已有音视频（媒体）轨道列表通知
-     * 入会后会收到一次该通知
-     * */
-    @Response(clz = TRtcStreamInfoList.class,
-            id = "RtcStreamList_Ntf")
-    TrackListArrived,   // 平台过来的Stream对应的是WebRTC里面的Track。我们对齐WebRTC的概念以便于理解。
-
-    /**
-     * 媒体轨道加入通知
-     * 入会以后，会议中有新的音视频轨道加入则会收到该通知。
-     * */
-    @Response(clz = TRtcStreamInfoList.class,
-            id = "RtcStreamAdd_Ntf")
-    TrackJoined,
-
-    /**
-     * 媒体轨道退出通知
-     * 入会以后，会议中有音视频轨道离会则会收到该通知
-     * NOTE: 对比{@link #ConfereeLeft}，TrackLeft只表示音/视频离会了，而ConfereeLeft表示与会方退会了（当然相应的音视频轨道也退出了）。
-     * 比如某个与会方关闭了摄像头停止了视频发布，则其他与会方会收到TrackLeft，但不会收到ConfereeLeft。
-     * 如果某个与会方退会了则其他与会方会收到ConfereeLeft和TrackLeft。
-     * */
-    @Response(clz = TRtcStreamInfoList.class,
-            id = "RtcStreamLeft_Ntf")
-    TrackLeft,
 
 
     /**
@@ -278,6 +263,26 @@ enum Msg {
             owner = MethodOwner.AudioCtrl,
             paras = boolean.class)
     SetMute,
+
+
+
+    /**
+     * 开启/关闭桌面共享（双流）
+     * */
+    @Request(method = "VideoAssStreamCmd",
+            paras = boolean.class,
+            owner = MethodOwner.MonitorCtrl,
+            rspSeq = "ToggleScreenShareRsp"
+    )
+    ToggleScreenShare,
+
+    /**
+     * 开启/关闭桌面共享（双流）响应
+     * */
+    @Response(clz = TMtAssVidStatusList.class,
+            id = "AssSndSreamStatusNtf")
+    ToggleScreenShareRsp,
+
 
 
     END;

@@ -18,8 +18,11 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.google.common.base.Function;
 import com.google.common.collect.BiMap;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBiMap;
+import com.google.common.collect.Iterables;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
@@ -31,7 +34,6 @@ import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.utils.log.KLog;
-import com.kedacom.vconf.sdk.webrtc.bean.StreamInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TLoginResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
@@ -43,6 +45,7 @@ import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
 
+import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.Camera2Enumerator;
@@ -86,7 +89,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -103,11 +105,9 @@ public class WebRtcManager extends Caster<Msg>{
 
     private static final String TAG = WebRtcManager.class.getSimpleName();
 
-    private RtcConnector rtcConnector = new RtcConnector();
-
     private Context context;
-    private Map<String, ProxyVideoSink> videoSinks = new HashMap<>();
-    public static final String STREAMID_NULL = "NULL";
+
+    private RtcConnector rtcConnector = new RtcConnector();
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private EglBase eglBase;
@@ -116,21 +116,31 @@ public class WebRtcManager extends Caster<Msg>{
     private PeerConnectionWrapper subPcWrapper;
     private PeerConnectionWrapper assPubPcWrapper;
     private PeerConnectionWrapper assSubPcWrapper;
-    private List<TRtcStreamInfo> streamInfos = new ArrayList<>();
-    private List<TRtcStreamInfo> removingStreamInfos = new ArrayList<>();
-    private BiMap<String, String> midKdStreamIdMap = HashBiMap.create();
-    private BiMap<String, String> rtcStreamIdKdStreamIdMap = HashBiMap.create();
-    private List<StreamInfo> localStreamInfos = new ArrayList<>();
 
-    private List<ConfereeInfo> confereeInfoList = new ArrayList<>();
 
-    /**
-     * 与会终端信息
-     * */
-    private TMTEntityInfoList confMembersInfo;
+    // 与会方列表
+    private Map<String, Conferee> conferees = new HashMap<>();
+    // 流列表。这里的流不是WebRTC的Stream而是平台的流，概念上等同于WebRTC的Track
+    private Map<String, Stream> streams = new HashMap<>();
+    // WebRTC的TrackId到平台的StreamId之间的映射
+    private BiMap<String, String> rtcTrackId2KdStreamIdMap = HashBiMap.create();
+    // WebRTC的mid到平台的StreamId之间的映射
+    private BiMap<String, String> mid2KdStreamIdMap = HashBiMap.create();
+    // 平台的StreamId到视频槽的映射
+    private Map<String, ProxyVideoSink> videoSinks = new HashMap<>();
 
+    // 用来展示与会方画面的Display集合
+    private Set<Display> displaySet = new HashSet<>();
+
+    // 用于收集统计信息的定时器
     private Timer statsTimer;
     private TimerTask statsTimerTask;
+
+
+    // 当前用户的e164
+    private String userE164;
+
+    private Conferee myConferee;
 
     private Handler handler = new Handler(Looper.getMainLooper());
 
@@ -173,19 +183,18 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.CallIncoming,
                 Msg.ConfCanceled,
                 Msg.MultipartyConfEnded,
-                Msg.ConfereeListArrived,
+                Msg.CurrentConfereeList,
                 Msg.ConfereeJoined,
                 Msg.ConfereeLeft,
-                Msg.TrackListArrived,
-                Msg.TrackJoined,
-                Msg.TrackLeft,
+                Msg.CurrentStreamList,
+                Msg.StreamJoined,
+                Msg.StreamLeft,
         }, this::onNtfs);
 
         return processorMap;
     }
 
 
-    private String userE164;
     /**
      * 登录rtc
      * 注意，需先登录aps成功。
@@ -444,11 +453,10 @@ public class WebRtcManager extends Caster<Msg>{
         if (null != pcWrapper) {
             pcWrapper.setLocalVideoEnable(enable);
         }
-        for (Display display : displaySet){
-            if (LOCAL_VIDEO_STREAM_ID.equals(display.streamId)){
-                display.bShowVideoCaptureDisabledDeco = !enable;
-                display.invalidate();
-                break;
+        if (null != myConferee){
+            Display display = getDisplay(myConferee.id);
+            if (null != display){
+                display.showCameraDisabledDeco(!enable);
             }
         }
     }
@@ -597,101 +605,114 @@ public class WebRtcManager extends Caster<Msg>{
                 if (null != confEventListener) confEventListener.onConfFinished();
                 break;
 
-            case ConfereeListArrived:
-                confMembersInfo = (TMTEntityInfoList) ntfContent;
+            case CurrentConfereeList:
+                TMTEntityInfoList entityInfoList = (TMTEntityInfoList) ntfContent;
+                for (TMTEntityInfo entityInfo : entityInfoList.atMtEntitiy) {
+                    Conferee conferee = ToDoConverter.tMTEntityInfo2ConfereeInfo(entityInfo);
+                    conferees.put(conferee.id, conferee);
+                    if (userE164.equals(conferee.e164)){ // 自己
+                        myConferee = conferee;
+                    }
+                }
+                if (null != sessionEventListener) {
+                    for (Conferee conferee : conferees.values()) {
+                        sessionEventListener.onConfereeJoined(conferee);
+                    }
+                }
                 break;
 
             case ConfereeJoined:
-                TMTEntityInfo tmtEntityInfo = (TMTEntityInfo) ntfContent;
-                KLog.p("ConfereeJoined");
+                Conferee conferee = ToDoConverter.tMTEntityInfo2ConfereeInfo((TMTEntityInfo) ntfContent);
+                conferees.put(conferee.id, conferee);
+                if (null != sessionEventListener) {
+                    sessionEventListener.onConfereeJoined(conferee);
+                }
                 break;
 
             case ConfereeLeft:
                 TMtId tMtId = (TMtId) ntfContent;
                 KLog.p("ConfereeLeft, %s %s", tMtId.dwMcuId, tMtId.dwTerId);
+                Conferee leftConferee = Iterables.find(conferees.values(), input -> input.id.equals(Conferee.buildId(tMtId.dwMcuId, tMtId.dwTerId, false)));
+                if (null != leftConferee){
+                    Conferee removedConferee = conferees.remove(leftConferee.id);
+                    if (null != removedConferee && null != sessionEventListener) {
+                        sessionEventListener.onConfereeLeft(removedConferee);
+                    }
+                }
                 break;
 
-            case TrackListArrived:
-                KLog.p("TrackListArrived");
-                List<TRtcPlayItem> rtcPlayItems = new ArrayList<>();
-                TRtcStreamInfoList streamInfoList = (TRtcStreamInfoList) ntfContent;
-                streamInfos.clear();
-                streamInfos.addAll(streamInfoList.atStramInfoList);
-                for (TRtcStreamInfo streamInfo : streamInfos){
-                    if (streamInfo.bAudio){
-                        continue;
+            case CurrentStreamList:
+            case StreamJoined:
+                KLog.p("CurrentStreamList");
+                Stream assStream = null;
+                for (TRtcStreamInfo tRtcStreamInfo : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
+                    Stream stream = ToDoConverter.tRtcStreamInfo2Stream(tRtcStreamInfo);
+                    streams.put(stream.streamId, stream);
+                    if (stream.bAss && !stream.bAudio){
+                        assStream = stream;
                     }
-                    TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
-                    for (EmMtResolution res : streamInfo.aemSimcastRes){
-                        if (null != res && EmMtResolution.emMtVResEnd_Api != res){
-                            rtcPlayItem.emRes = res; // FIXME 实际要以需求为准
-                            break;
-                        }
-                    }
-                    rtcPlayItem.achStreamId = streamInfo.achStreamId;
-                    rtcPlayItem.bLocal = false;
-                    rtcPlayItem.bAss = streamInfo.bAss;
-                    rtcPlayItems.add(rtcPlayItem);
                 }
-                set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
-                break;
-            case TrackJoined:  //NOTE: 这里是增量过来的
-                KLog.p("TrackJoined");
-                rtcPlayItems = new ArrayList<>();
-                streamInfoList = (TRtcStreamInfoList) ntfContent;
-                streamInfos.addAll(streamInfoList.atStramInfoList);
-                for (TRtcStreamInfo streamInfo : streamInfos){
-                    if (streamInfo.bAudio){
-                        continue;
+                List<TRtcPlayItem> playItems = FluentIterable.from(streams.values()).filter(input -> !input.bAudio).transform(new Function<Stream, TRtcPlayItem>() {
+                    @NullableDecl
+                    @Override
+                    public TRtcPlayItem apply(@NullableDecl Stream input) {
+                        return new TRtcPlayItem(input.streamId, input.bAss, input.supportedResolutionList.get(0));
                     }
-                    TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
-                    for (EmMtResolution res : streamInfo.aemSimcastRes){
-                        if (null != res && EmMtResolution.emMtVResEnd_Api != res){
-                            rtcPlayItem.emRes = res; // FIXME 实际要以需求为准
-                            break;
-                        }
-                    }
-                    rtcPlayItem.achStreamId = streamInfo.achStreamId;
-                    rtcPlayItem.bLocal = false;
-                    rtcPlayItem.bAss = streamInfo.bAss;
-                    rtcPlayItems.add(rtcPlayItem);
-                }
-                set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
-                break;
-            case TrackLeft: //NOTE: 这里是增量过来的
-                KLog.p("TrackLeft");
-                rtcPlayItems = new ArrayList<>();
-                streamInfoList = (TRtcStreamInfoList) ntfContent;
+                }).toList();
 
-                for (TRtcStreamInfo streamInfo : streamInfoList.atStramInfoList){
-                    Iterator<TRtcStreamInfo> iterator = streamInfos.iterator();
-                    while (iterator.hasNext()) {
-                        TRtcStreamInfo localStreamInfo = iterator.next();
-                        if (localStreamInfo.achStreamId.equals(streamInfo.achStreamId)){
-                            iterator.remove();
-                            removingStreamInfos.add(localStreamInfo); // 此处保存用户后续通知用户
-                            break;
+                set(Msg.SelectStream, new TRtcPlayParam(playItems));
+
+                if (null != assStream){
+                    // 对于辅流我们当作特殊的与会方。所以此处我们构造一个虚拟的与会方上报用户
+                    Conferee sender = getConfereeByStreamId(assStream.streamId);
+                    if (null != sender){
+                        Conferee assStreamConferee = new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, true);
+                        conferees.put(assStreamConferee.id, assStreamConferee);
+                        if (null != sessionEventListener){
+                            sessionEventListener.onConfereeJoined(assStreamConferee);
                         }
+                    }
+                }
+                break;
+
+            case StreamLeft:
+                KLog.p("StreamLeft");
+                assStream = null;
+                for (TRtcStreamInfo leftStream : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
+                    boolean success = Iterables.removeIf(streams.entrySet(), input -> input.getKey().equals(leftStream.achStreamId));
+                    if (success){
+                        PeerConnectionWrapper pcWrapper;
+                        if (leftStream.bAss) {
+                            assStream = ToDoConverter.tRtcStreamInfo2Stream(leftStream);
+                            pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
+                        }else{
+                            pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+                        }
+                        // 删除对应的track
+                        if (leftStream.bAudio) {
+                            pcWrapper.removeRemoteAudioTrack(leftStream.achStreamId);
+                        }else{
+                            pcWrapper.removeRemoteVideoTrack(leftStream.achStreamId);
+                        }
+                    }
+                }
+                playItems = FluentIterable.from(streams.values()).filter(input -> !input.bAudio).transform(new Function<Stream, TRtcPlayItem>() {
+                    @NullableDecl
+                    @Override
+                    public TRtcPlayItem apply(@NullableDecl Stream input) {
+                        return new TRtcPlayItem(input.streamId, input.bAss, input.supportedResolutionList.get(0));
+                    }
+                }).toList();
+
+                set(Msg.SelectStream, new TRtcPlayParam(playItems));
+
+                if (null != assStream){
+                    leftConferee = getConfereeByStreamId(assStream.streamId);
+                    if (null != leftConferee && null != sessionEventListener){
+                        sessionEventListener.onConfereeLeft(leftConferee);
                     }
                 }
 
-                for (TRtcStreamInfo streamInfo : streamInfos){
-                    if (streamInfo.bAudio){
-                        continue;
-                    }
-                    TRtcPlayItem rtcPlayItem = new TRtcPlayItem();
-                    for (EmMtResolution res : streamInfo.aemSimcastRes){
-                        if (null != res && EmMtResolution.emMtVResEnd_Api != res){
-                            rtcPlayItem.emRes = res; // FIXME 实际要以需求为准
-                            break;
-                        }
-                    }
-                    rtcPlayItem.achStreamId = streamInfo.achStreamId;
-                    rtcPlayItem.bLocal = false;
-                    rtcPlayItem.bAss = streamInfo.bAss;
-                    rtcPlayItems.add(rtcPlayItem);
-                }
-                set(Msg.SetPlayPara, new TRtcPlayParam(rtcPlayItems));
                 break;
 
         }
@@ -925,10 +946,11 @@ public class WebRtcManager extends Caster<Msg>{
         }
         displaySet.clear();
 
-        midKdStreamIdMap.clear();
-        rtcStreamIdKdStreamIdMap.clear();
-        streamInfos.clear();
-        localStreamInfos.clear();
+        conferees.clear();
+        streams.clear();
+        mid2KdStreamIdMap.clear();
+        rtcTrackId2KdStreamIdMap.clear();
+
         screenCapturePermissionData = null;
 
         executor.execute(() -> {
@@ -1161,8 +1183,10 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         synchronized void addTarget(Display target) {
-            KLog.p("add Display %s to sink %s", target, name);
-            targets.add(target);
+            if (!targets.contains(target)) {
+                KLog.p("add Display %s to sink %s", target, name);
+                targets.add(target);
+            }
         }
 
         synchronized boolean delTarget(Display target) {
@@ -1179,8 +1203,41 @@ public class WebRtcManager extends Caster<Msg>{
 
     }
 
+    public Conferee getConferee(String confereeId){
+        return conferees.get(confereeId);
+    }
 
-    private Set<Display> displaySet = new HashSet<>();
+    public Conferee getConfereeByStreamId(String streamId){
+        Stream stream = streams.get(streamId);
+        if (null == stream){
+            return null;
+        }
+        return conferees.get(stream.ownerId);
+    }
+
+    public Stream getStream(String streamId){
+        return streams.get(streamId);
+    }
+
+    public Stream getStream(String confereeId, boolean bAudio, boolean bAss){
+        for (Stream stream : streams.values()){
+            if (stream.ownerId.equals(confereeId) && bAudio == stream.bAudio && stream.bAss == bAss){
+                return stream;
+            }
+        }
+        return null;
+    }
+
+    public Display getDisplay(String confereeId){
+        for (Display display : displaySet){
+            if ((confereeId == display.confereeId) || (confereeId != null && confereeId.equals(display.confereeId))){
+                return display;
+            }
+        }
+        return null;
+    }
+
+
     /**
      * 创建Display。
      * */
@@ -1203,26 +1260,40 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
+
     /**
-     * 用于显示码流的控件。
+     * 用于展示与会方画面的控件。
      * */
     public final static class Display extends SurfaceViewRenderer{
         private boolean enabled = true;
-        private String streamId = STREAMID_NULL;
+        private String confereeId;
         private List<TextDecoration> textDecorations = new ArrayList<>();
         private List<PicDecoration> picDecorations = new ArrayList<>();
+        private boolean bShowVoiceActivatedDeco;
+        private boolean bShowCameraDisabledDeco;
+        private boolean bShowAudioTerminalDeco;
+        private boolean bShowStreamLostDeco;
+
+        //===== 上面的内容是swap/copy时需要拷贝的内容，下面的则不需要 ========
+
         public static final int POS_LEFTTOP = 1;
         public static final int POS_LEFTBOTTOM = 2;
         public static final int POS_RIGHTTOP = 3;
         public static final int POS_RIGHTBOTTOM = 4;
         private int displayWidth;
         private int displayHeight;
-        private Handler handler = getHandler();
+        private RectF voiceActivatedDeco = new RectF();
+        private static Paint voiceActivatedDecoPaint = new Paint();
+        private static Bitmap videoCaptureDisabledDeco;
+        private static Bitmap audioConfereeDeco;
+        private static Bitmap streamLostDeco;
+        static{
+            voiceActivatedDecoPaint.setStyle(Paint.Style.STROKE);
+            voiceActivatedDecoPaint.setStrokeWidth(5);
+            voiceActivatedDecoPaint.setColor(Color.GREEN);
+        }
 
-        private boolean bShowVoiceActivatedDeco;
-        private boolean bShowVideoCaptureDisabledDeco;
-        private boolean bShowAudioTerminalDeco;
-        private boolean bShowStreamLostDeco;
+        private Handler handler = getHandler();
 
         private Display(Context context) {
             super(context);
@@ -1237,7 +1308,7 @@ public class WebRtcManager extends Caster<Msg>{
         public String toString() {
             return "Display{hash=" + hashCode()+
                     " enabled=" + enabled +
-                    ", streamId='" + streamId + '\'' +
+                    ", confereeId='" + confereeId + '\'' +
                     ", textDecorations=" + textDecorations +
                     ", picDecorations=" + picDecorations +
                     ", displayWidth=" + displayWidth +
@@ -1248,13 +1319,6 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
-        private RectF voiceActivatedDeco = new RectF();
-        private static Paint voiceActivatedDecoPaint = new Paint();
-        static{
-            voiceActivatedDecoPaint.setStyle(Paint.Style.STROKE);
-            voiceActivatedDecoPaint.setStrokeWidth(5);
-            voiceActivatedDecoPaint.setColor(Color.GREEN);
-        }
         /**
          * 设置语音激励装饰。
          * 当该Display对应的与会成员讲话音量最大时，该装饰会展示。
@@ -1268,9 +1332,9 @@ public class WebRtcManager extends Caster<Msg>{
             voiceActivatedDecoPaint.setColor(color);
         }
 
-        private void showVoiceActivatedDecoration(){
+        private void showVoiceActivatedDeco(boolean bShow){
             handler.removeCallbacks(this::hideVoiceActivatedDecoration);
-            bShowVoiceActivatedDeco = true;
+            bShowVoiceActivatedDeco = bShow;
             invalidate();
         }
         private void hideVoiceActivatedDecoration(){
@@ -1278,63 +1342,90 @@ public class WebRtcManager extends Caster<Msg>{
             invalidate();
         }
 
-        private static Bitmap videoCaptureDisabledDeco;
         /**
          * 设置关闭摄像头采集时本地画面对应的Display展示的图片。
          * */
         public static void setCameraDisabledDecoration(Bitmap bitmap){
             videoCaptureDisabledDeco = bitmap;
         }
+        private void showCameraDisabledDeco(boolean bShow){
+            bShowCameraDisabledDeco = bShow;
+            invalidate();
+        }
 
-        private static Bitmap audioTerminalDeco;
         /**
          * 设置音频入会方对应的Display展示的图片。
          * */
-        public static void setAudioTerminalDecoration(Bitmap bitmap){
-            audioTerminalDeco = bitmap;
+        public static void setAudioConfereeDecoration(Bitmap bitmap){
+            audioConfereeDeco = bitmap;
+        }
+        private void showAudioConfereeDeco(boolean bShow){
+            bShowAudioTerminalDeco = bShow;
+            invalidate();
         }
 
-        private static Bitmap streamLostDeco;
         /**
          * 设置Display无视频源时展示的图片
          * */
         public static void setStreamLostDecoration(Bitmap bitmap){
             streamLostDeco = bitmap;
         }
-
-
+        private void showStreamLostDeco(boolean bShow){
+            bShowStreamLostDeco = bShow;
+            invalidate();
+        }
 
         /**
-         * 将Display绑定到码流。
-         * 一个Display只会绑定到一路码流；
-         * 多个Display可以绑定到同一路码流；
-         * 若一个Display已经绑定到某路码流，则该绑定会先被解除，然后建立新的绑定关系；
+         * 将Display绑定到与会方。
+         * 一个Display只会绑定到一个与会方；
+         * 多个Display可以绑定到同一与会方；
+         * 若一个Display已经绑定到某个与会方，则该绑定会先被解除，然后建立新的绑定关系；
          * NOTE:
          * Display的内容包括码流和Decoration，此方法只影响码流展示不会改变Decoration；
-         * 若绑定到{@link #STREAMID_NULL}则该Display不会展示码流，相当于于解除绑定；
+         * 若绑定到null则该Display不会展示码流，相当于于解除绑定；
          *
          * 对于画面内容交换的使用场景可以使用便捷方法{@link #swapContent(Display)}；
          * 对于画面内容拷贝的使用场景可以使用便捷方法{@link #copyContentFrom(Display)}；
-         * @param streamId 码流Id。
+         * @param confereeId 与会方Id。
+         * @return true，若confereeId对应的conferee存在或者confereeId为null；否则返回false。
          * */
-        public boolean bindStream(@NonNull String streamId){
-            KLog.p("bind display %s to stream %s", this, streamId);
+        public boolean bind(String confereeId){
+            Map<String, Conferee> conferees = instance.conferees;
+            Map<String, Stream> streams = instance.streams;
             Map<String, ProxyVideoSink> videoSinks = instance.videoSinks;
-            ProxyVideoSink sink = videoSinks.get(streamId);
-            if (null == sink && !STREAMID_NULL.equals(streamId)){
-                KLog.p(KLog.ERROR, "no such stream %s", streamId);
-                return false;
+
+            // 解绑原来的
+            Conferee boundConferee = conferees.get(this.confereeId);
+            if (null != boundConferee){
+                Stream boundVideoStream = instance.getStream(boundConferee.id, false, false);
+                if (null != boundVideoStream){
+                    ProxyVideoSink boundSink = videoSinks.get(boundVideoStream.streamId);
+                    if (null != boundSink){
+                        boundSink.delTarget(this);
+                        KLog.p("delete display %s from sink %s", this, boundSink);
+                    }
+                }
             }
 
-            ProxyVideoSink boundSink = videoSinks.get(this.streamId);
-            if (null != boundSink) boundSink.delTarget(this);
-            this.streamId = streamId;
-
-            if (null != sink) {
-                sink.addTarget(this);
+            // 重新绑定
+            Conferee toBindConferee = conferees.get(confereeId);
+            if (null != toBindConferee){
+                Stream toBindVideoStream = instance.getStream(toBindConferee.id, false, false);
+                if (null != toBindVideoStream){
+                    ProxyVideoSink toBindSink = videoSinks.get(toBindVideoStream.streamId);
+                    if (null != toBindSink) {
+                        toBindSink.addTarget(this);
+                        KLog.p("add display %s into sink %s", this, toBindSink);
+                    }
+                }
             }
 
-            return true;
+            KLog.p("bind display %s to conferee %s", this, confereeId);
+
+            this.confereeId = confereeId;
+
+            return null != toBindConferee || null == confereeId;
+
         }
 
 
@@ -1345,10 +1436,17 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         public void swapContent(@NonNull Display otherDisplay){
             KLog.p("swap display %s and display %s", this, otherDisplay);
-            // 切换绑定的流
-            String myStreamId = streamId;
-            bindStream(otherDisplay.streamId);
-            otherDisplay.bindStream(myStreamId);
+
+            // 切换使能状态
+            boolean myEnable = enabled;
+            enabled = otherDisplay.enabled;
+            otherDisplay.enabled = myEnable;
+
+            // 切换绑定的与会方
+            String myConfereeId = confereeId;
+            bind(otherDisplay.confereeId);
+            otherDisplay.bind(myConfereeId);
+
             // 切换贴在display上面的decoration
             List<Display.TextDecoration> myTextDecorationList = textDecorations;
             textDecorations = otherDisplay.textDecorations;
@@ -1356,6 +1454,22 @@ public class WebRtcManager extends Caster<Msg>{
             List<Display.PicDecoration> myPicDecorationList = picDecorations;
             picDecorations = otherDisplay.picDecorations;
             otherDisplay.picDecorations = myPicDecorationList;
+
+            // 切换静态图片decoration状态
+            boolean tmp = bShowCameraDisabledDeco;
+            bShowCameraDisabledDeco = otherDisplay.bShowCameraDisabledDeco;
+            otherDisplay.bShowCameraDisabledDeco = tmp;
+            tmp = bShowVoiceActivatedDeco;
+            bShowVoiceActivatedDeco = otherDisplay.bShowVoiceActivatedDeco;
+            otherDisplay.bShowVoiceActivatedDeco = tmp;
+            tmp = bShowAudioTerminalDeco;
+            bShowAudioTerminalDeco = otherDisplay.bShowAudioTerminalDeco;
+            otherDisplay.bShowAudioTerminalDeco = tmp;
+            tmp = bShowStreamLostDeco;
+            bShowStreamLostDeco = otherDisplay.bShowStreamLostDeco;
+            otherDisplay.bShowStreamLostDeco = tmp;
+
+            // 刷新display
             adjustDecoration();
             otherDisplay.adjustDecoration();
             KLog.p("after swap: this display %s, other display %s", this, otherDisplay);
@@ -1366,10 +1480,15 @@ public class WebRtcManager extends Caster<Msg>{
          * NOTE: 内容包括码流、Decoration。
          * */
         public void copyContentFrom(@NonNull Display src){
-            bindStream(src.streamId);
+            enabled = src.enabled;
+            bind(src.confereeId);
             clearAllDeco();
             addText(src.getAllText());
             addPic(src.getAllPic());
+            bShowCameraDisabledDeco = src.bShowCameraDisabledDeco;
+            bShowVoiceActivatedDeco = src.bShowVoiceActivatedDeco;
+            bShowAudioTerminalDeco = src.bShowAudioTerminalDeco;
+            bShowStreamLostDeco = src.bShowStreamLostDeco;
             adjustDecoration();
         }
 
@@ -1378,7 +1497,7 @@ public class WebRtcManager extends Caster<Msg>{
          * NOTE: 内容包括码流、Decoration。
          * */
         public void clearContent(){
-            bindStream(STREAMID_NULL);
+            bind(null);
             clearAllDeco();
         }
 
@@ -1393,38 +1512,18 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         /**
-         * 获取该display绑定的流ID
+         * 获取该display绑定的与会方ID
          * */
-        public @NonNull String getStreamId(){
-            return streamId;
+        public String getConfereeId(){
+            return confereeId;
         }
 
         /**
-         * 获取该display绑定的流的详细信息
+         * 获取该display绑定的与会方信息
          * */
-        public StreamInfo getStreamInfo(){
-//            KLog.p("display streamId=%s", streamId);
-            for (StreamInfo localStreamInfo : instance.localStreamInfos){
-//                KLog.p("localStreamInfo.streamId=%s", localStreamInfo.streamId);
-                if (localStreamInfo.streamId.equals(streamId)){
-                    return localStreamInfo;
-                }
-            }
-            for (TRtcStreamInfo remoteStreamInfo : instance.streamInfos){
-//                KLog.p("remoteStreamInfo.streamId=%s", remoteStreamInfo.achStreamId);
-                if (remoteStreamInfo.achStreamId.equals(streamId)){
-                    return ToDoConverter.composeStreamInfo(remoteStreamInfo, instance.findConfMember(remoteStreamInfo.tMtId.dwTerId));
-                }
-            }
-            for (TRtcStreamInfo removingStreamInfo : instance.removingStreamInfos){
-//                KLog.p("needRemoveStreamInfo.streamId=%s", removingStreamInfo.achStreamId);
-                if (removingStreamInfo.achStreamId.equals(streamId)){
-                    return ToDoConverter.composeStreamInfo(removingStreamInfo, instance.findConfMember(removingStreamInfo.tMtId.dwTerId));
-                }
-            }
-            return null;
+        public Conferee getConferee(){
+            return instance.getConferee(confereeId);
         }
-
 
 
 
@@ -1434,7 +1533,6 @@ public class WebRtcManager extends Caster<Msg>{
             displayWidth = width;
             displayHeight = height;
             KLog.p("displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
-//            voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
             adjustDecoration();
         }
 
@@ -1447,30 +1545,40 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p("onDraw, displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
             }
 
-            if (bShowVoiceActivatedDeco){
-                voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
-                canvas.drawRect(voiceActivatedDeco, voiceActivatedDecoPaint);
-                handler.postDelayed(this::hideVoiceActivatedDecoration, 2000);
-            }
-
-            if (bShowVideoCaptureDisabledDeco){
+            if (bShowCameraDisabledDeco){
                 if (null != videoCaptureDisabledDeco) {
                     canvas.drawBitmap(videoCaptureDisabledDeco, 0, 0, null);
                 }else{
                     canvas.drawColor(Color.BLACK);
                 }
+            }else if (bShowAudioTerminalDeco){
+                if (null != audioConfereeDeco) {
+                    canvas.drawBitmap(audioConfereeDeco, 0, 0, null);
+                }else{
+                    canvas.drawColor(Color.BLACK);
+                }
+            }else if (bShowStreamLostDeco){
+                if (null != streamLostDeco) {
+                    canvas.drawBitmap(streamLostDeco, 0, 0, null);
+                }else{
+                    canvas.drawColor(Color.BLACK);
+                }
             }
 
+            if (bShowVoiceActivatedDeco){
+                canvas.drawRect(voiceActivatedDeco, voiceActivatedDecoPaint);
+//                handler.postDelayed(this::hideVoiceActivatedDecoration, 2000);
+            }
+
+            for (PicDecoration deco : picDecorations){
+                canvas.drawBitmap(deco.pic, deco.matrix, deco.paint);
+            }
 
             for (TextDecoration deco : textDecorations){
                 if (System.currentTimeMillis() - ts > 5000){
                     KLog.p("drawText(%s, %s, %s, %s) for display %s", deco.text, deco.x, deco.y, deco.paint.getTextSize(), this);
                 }
                 canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
-            }
-
-            for (PicDecoration deco : picDecorations){
-                canvas.drawBitmap(deco.pic, deco.matrix, deco.paint);
             }
 
         }
@@ -1574,6 +1682,10 @@ public class WebRtcManager extends Caster<Msg>{
         public void clearAllDeco(){
             clearText();
             clearPic();
+            bShowCameraDisabledDeco = false;
+            bShowVoiceActivatedDeco = false;
+            bShowAudioTerminalDeco =  false;
+            bShowStreamLostDeco =  false;
         }
 
 
@@ -1584,6 +1696,7 @@ public class WebRtcManager extends Caster<Msg>{
             for (PicDecoration deco : picDecorations){
                 deco.adjust(displayWidth, displayHeight);
             }
+            voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
             invalidate();
         }
 
@@ -1744,14 +1857,6 @@ public class WebRtcManager extends Caster<Msg>{
 
     }
 
-    /**
-     * 获取绑定到流的所有Display。
-     * @param streamId 流Id
-     * */
-    public List<Display> getBoundDisplays(String streamId){
-        ProxyVideoSink videoSink = videoSinks.get(streamId);
-        return null != videoSink ? videoSink.targets : null;
-    }
 
 
     private @Nullable VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
@@ -1846,33 +1951,65 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public interface SessionEventListener {
         /**
-         * 流来了。
+         * 与会方入会了。
          * 一般情形下，用户收到该回调时调用{@link #createDisplay()}创建Display，
-         * 并调用{@link Display#bindStream(String)} 将Display绑定到一路码流以使码流展示在Display上，
+         * 然后调用{@link Display#bind(String)} 将Display绑定到与会方以使与会方画面展示在Display上，
          * 如果还需要展示文字图标等可调用{@link Display#addText(Display.TextDecoration)}, {@link Display#addPic(Display.PicDecoration)}
          * */
-        void onStream(StreamInfo stream);
-
+        void onConfereeJoined(Conferee conferee);
         /**
-         * 流走了。
-         * 如果该Display不需要了请调用{@link Display#release()}销毁；
-         * 如果后续要复用则不需要销毁可以调用{@link Display#clearContent()}清空内容；
+         * 与会方离会
+         * 如果该Display不需要了请调用{@link #releaseDisplay(Display)}销毁；
+         * 如果后续要复用则可以不销毁，可以调用{@link Display#clearContent()}清空内容；
+         * NOTE: {@link #stopSession()} 会销毁所有Display。用户不能跨Session复用Display，也不需要在stopSession时手动销毁Display。
          * */
-        void onStreamRemoved(StreamInfo stream);
+        void onConfereeLeft(Conferee conferee);
     }
     private SessionEventListener sessionEventListener;
 
     /**
      * 与会方信息
      */
-    public static class ConfereeInfo {
-        private String mcuId;
-        private String terId;
+    public static class Conferee {
+        public String id;
+        public int mcuId;
+        public int terId;
         public String   e164;
         public String   alias;
         public String   email;
-        private List<String> videoTrackIdList;
-        private List<String> audioTrackIdList;
+        // 是否为辅流与会方（辅流我们当作特殊的与会方）
+        public boolean bAssStream;
+
+        Conferee(int mcuId, int terId, String e164, String alias, String email, boolean bAssStream) {
+            this.mcuId = mcuId;
+            this.terId = terId;
+            this.id = buildId(mcuId, terId, bAssStream);
+            this.e164 = e164;
+            this.alias = alias;
+            this.email = email;
+            this.bAssStream = bAssStream;
+        }
+
+        static String buildId(int mcuId, int terId, boolean bAssStream){
+            String postfix = bAssStream ? "_assStream" : "";
+            return mcuId+"_"+terId+postfix;
+        }
+    }
+
+    public static class Stream {
+        public String streamId; // 平台的StreamId，概念上对应的是WebRTC中的TrackId
+        public String ownerId; // Conferee.id
+        public boolean bAudio;
+        public boolean bAss;
+        public List<EmMtResolution> supportedResolutionList;       // 流支持的分辨率
+
+        public Stream(String streamId, int mcuId, int terId, boolean bAudio, boolean bAss, List<EmMtResolution> supportedResolutionList) {
+            this.streamId = streamId;
+            ownerId = Conferee.buildId(mcuId, terId, bAss);
+            this.bAudio = bAudio;
+            this.bAss = bAss;
+            this.supportedResolutionList = supportedResolutionList;
+        }
     }
 
 
@@ -2015,7 +2152,7 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p("connType=%s", connType);
             for (RtcConnector.TRtcMedia rtcMedia : rtcMediaList) {
                 KLog.p("mid=%s, kdstreamId=%s", rtcMedia.mid, rtcMedia.streamid);
-                midKdStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
+                mid2KdStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
             }
 
             executor.execute(()-> {
@@ -2166,7 +2303,7 @@ public class WebRtcManager extends Caster<Msg>{
                         List<String> mids = SdpHelper.getAllMids(pc.getLocalDescription().description);
                         for (String mid : mids){
                             KLog.p("mid=%s", mid);
-                            String streamId = midKdStreamIdMap.get(mid);
+                            String streamId = mid2KdStreamIdMap.get(mid);
                             if (null == streamId){
                                 KLog.p(KLog.ERROR, "no streamId for mid %s (see onSetOfferCmd)", mid);
                             }
@@ -2295,14 +2432,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onRemoveStream(final MediaStream stream) {
-            KLog.p("stream %s removed", stream.getId());
-            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            for (VideoTrack videoTrack : stream.videoTracks){
-                pcWrapper.removeRemoteVideoTrack(videoTrack);
-            }
-            for (AudioTrack audioTrack : stream.audioTracks){
-                pcWrapper.removeRemoteAudioTrack(audioTrack);
-            }
         }
 
         @Override
@@ -2317,7 +2446,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
-
         }
 
 
@@ -2363,24 +2491,11 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private TMTEntityInfo findConfMember(int terminalId){
-        if (null == confMembersInfo){
-            return null;
-        }
-        for (TMTEntityInfo entityInfo : confMembersInfo.atMtEntitiy){
-            if (terminalId == entityInfo.dwTerId){
-                return entityInfo;
-            }
-        }
-        return null;
-    }
-
-
 
 
     private static final String STREAM_ID = "TT-Android-"+System.currentTimeMillis();
-    private static final String LOCAL_VIDEO_STREAM_ID = STREAM_ID+"-v0";
-    private static final String LOCAL_AUDIO_STREAM_ID = STREAM_ID+"-a0";
+    private static final String LOCAL_VIDEO_TRACK_ID = STREAM_ID+"-v0";
+    private static final String LOCAL_AUDIO_TRACK_ID = STREAM_ID+"-a0";
 
     /**
      * PeerConnection包装类
@@ -2417,7 +2532,7 @@ public class WebRtcManager extends Caster<Msg>{
         Map<String, VideoTrack> remoteVideoTracks = new HashMap<>();
         AudioSource audioSource;
         AudioTrack localAudioTrack;
-        List<AudioTrack> remoteAudioTracks = new ArrayList<>();
+        Map<String, AudioTrack> remoteAudioTracks = new HashMap<>();
         private RtpSender videoSender;
         private RtpSender audioSender;
 
@@ -2457,15 +2572,36 @@ public class WebRtcManager extends Caster<Msg>{
             videoSource = factory.createVideoSource(videoCapturer.isScreencast());
             videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
             videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
-            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_STREAM_ID, videoSource);
+            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_TRACK_ID, videoSource);
             localVideoTrack.setEnabled(config.isLocalVideoEnabled);
-            String localTrackId = LOCAL_VIDEO_STREAM_ID;
-            ProxyVideoSink localVideoSink = new ProxyVideoSink(localTrackId);
-            videoSinks.put(localTrackId, localVideoSink); // XXX 保证trackId 不能和远端流的id冲突
+            String localVideoTrackId = LOCAL_VIDEO_TRACK_ID;
+            ProxyVideoSink localVideoSink = new ProxyVideoSink(localVideoTrackId);
             localVideoTrack.addSink(localVideoSink);
 
-            rtcStreamIdKdStreamIdMap.put(LOCAL_VIDEO_STREAM_ID, LOCAL_VIDEO_STREAM_ID);
-            KLog.p("rtcstreamId=%s, kdstreamId=%s", LOCAL_VIDEO_STREAM_ID, LOCAL_VIDEO_STREAM_ID);
+            videoSinks.put(localVideoTrackId, localVideoSink);
+
+            rtcTrackId2KdStreamIdMap.put(localVideoTrackId, localVideoTrackId);
+
+            // 将本地track添加到流集合
+            if (null != myConferee){
+                streams.put(localVideoTrackId,
+                        new Stream(localVideoTrackId, myConferee.mcuId, myConferee.terId,false, videoCapturer instanceof WindowCapturer,
+                                Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 实际可能并非1080P，比如辅流是截取的window宽高
+                        )
+                );
+            }else{
+                KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
+            }
+
+            // 重新绑定Display，因为之前绑定时Track还没上来。
+            Display myDisplay = getDisplay(myConferee.id);
+            if (null != myDisplay) {
+                myDisplay.bind(myConferee.id);
+                myDisplay.showAudioConfereeDeco(false);
+                myDisplay.showStreamLostDeco(false);
+            }else{
+                KLog.p(KLog.ERROR, "user not bind a display to myConferee");
+            }
 
             if (instance.config.enableSimulcast){
                 RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
@@ -2496,133 +2632,119 @@ public class WebRtcManager extends Caster<Msg>{
                 pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
             }
 
-
-            handler.post(() -> {
-                if (null != sessionEventListener) {
-                    StreamInfo streamInfo = new StreamInfo(
-                            localTrackId, // XXX 应该是StreamId，包括音视频的。
-                            videoCapturer instanceof WindowCapturer ? StreamInfo.Type_LocalAss : StreamInfo.Type_LocalMain,
-                            userE164, userE164, null
-                    );
-                    KLog.p("####onLocalStream stream info=%s", streamInfo);
-                    localStreamInfos.add(streamInfo);
-                    sessionEventListener.onStream(streamInfo);
-                }
-            });
         }
 
 
         void createRemoteVideoTrack(String mid, VideoTrack track){
-            String streamId = midKdStreamIdMap.get(mid);
+            String streamId = mid2KdStreamIdMap.get(mid);
             KLog.p("mid=%s, streamId=%s", mid, streamId);
             if (null == streamId){
                 KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
                 return;
             }
+            KLog.p("stream %s added", streamId);
             remoteVideoTracks.put(streamId, track);
             track.setEnabled(config.isRemoteVideoEnabled);
             ProxyVideoSink videoSink = new ProxyVideoSink(streamId);
-            videoSinks.put(streamId, videoSink);
             track.addSink(videoSink);
+            videoSinks.put(streamId, videoSink);
 
-            TRtcStreamInfo rtcStreamInfo = null;
-            for (TRtcStreamInfo streamInfo : streamInfos){
-                if (streamId.equals(streamInfo.achStreamId)){
-                    rtcStreamInfo = streamInfo;
-                    break;
-                }
-            }
-            if (null == rtcStreamInfo){
-                KLog.p(KLog.ERROR, "no such stream %s in stream list( see Msg.TrackLeft/Msg.TrackJoined/Msg.TrackListArrived branch in method onNtf)", streamId);
+            Stream remoteStream = getStream(streamId);
+            if (null == remoteStream){
+                KLog.p(KLog.ERROR, "no such stream %s in subscribed stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.CurrentStreamList branch in method onNtf)", streamId);
                 return;
             }
 
-            rtcStreamIdKdStreamIdMap.put(track.id(), rtcStreamInfo.achStreamId);
-            KLog.p("rtcstreamId=%s, kdstreamId=%s", track.id(), streamId);
+            rtcTrackId2KdStreamIdMap.put(track.id(), remoteStream.streamId);
 
-            if (null != sessionEventListener) {
-                StreamInfo streamInfo = ToDoConverter.composeStreamInfo(rtcStreamInfo, instance.findConfMember(rtcStreamInfo.tMtId.dwTerId));
-                handler.post(() -> {
-                    KLog.p("####onRemoteStream, streamInfo=%s", streamInfo);
-                    sessionEventListener.onStream(streamInfo);
-                });
-            }
+            KLog.p("rtcstreamId=%s, kdstreamId=%s", track.id(), streamId);
+            handler.post(() -> {
+                // 重新绑定Display，因为之前绑定时Track还没上来。
+                Conferee conferee = getConfereeByStreamId(remoteStream.streamId);
+                if (null != conferee) {
+                    Display myDisplay = getDisplay(conferee.id);
+                    if (null != myDisplay) {
+                        myDisplay.bind(conferee.id);
+                        myDisplay.showAudioConfereeDeco(false);
+                        myDisplay.showStreamLostDeco(false);
+                    } else {
+                        KLog.p(KLog.ERROR, "user not bind a display to myConferee");
+                    }
+                }else{
+                    KLog.p(KLog.ERROR, "what's wrong? owner of stream %s not join conferee yet !?", remoteStream.streamId);
+                }
+            });
 
         }
 
-        void removeRemoteVideoTrack(VideoTrack track){
-            track.setEnabled(false);
-            for (Map.Entry<String, VideoTrack> entry : remoteVideoTracks.entrySet()){
-                if (entry.getValue() == track){
-                    String streamId = entry.getKey();
-                    remoteVideoTracks.remove(streamId);
-                    if (null != sessionEventListener) {
-                        TRtcStreamInfo tRtcStreamInfo = null;
-                        for (TRtcStreamInfo si : removingStreamInfos){
-                            if (si.achStreamId.equals(streamId)){
-                                tRtcStreamInfo = si;
-                                removingStreamInfos.remove(si);
-                                break;
+        void removeRemoteVideoTrack(String kdStreamId){
+            for (String streamId : remoteVideoTracks.keySet()){
+                if (streamId.equals(kdStreamId)){
+                    VideoTrack track = remoteVideoTracks.remove(streamId);
+                    track.dispose();
+                    videoSinks.remove(streamId);
+                    rtcTrackId2KdStreamIdMap.remove(streamId);
+                    KLog.p("stream %s removed", streamId);
+
+                    handler.post(() -> {
+                        Conferee conferee = getConfereeByStreamId(streamId);
+                        if (null != conferee) {
+                            Display display = getDisplay(conferee.id);
+                            if (null != display){
+                                // VideoTrack被删除时显示音频图标
+                                display.showAudioConfereeDeco(true);
                             }
                         }
-                        if (null == tRtcStreamInfo){
-                            KLog.p(KLog.ERROR, "failed to removeRemoteVideoTrack streamId=%s, left streaminfo", streamId);
-                            return;
-                        }
-                        StreamInfo streamInfo = ToDoConverter.composeStreamInfo(tRtcStreamInfo, instance.findConfMember(tRtcStreamInfo.tMtId.dwTerId));
-                        handler.post(() -> {
-                            KLog.p("####onRemoteStreamRemoved, streamInfo=%s", streamInfo);
-                            sessionEventListener.onStreamRemoved(streamInfo);
-                        });
-                    }
-
+                    });
                     return;
                 }
             }
 
-            KLog.p(KLog.ERROR, "failed to removeRemoteVideoTrack, no such track %s", track);
+            KLog.p(KLog.ERROR, "failed to removeRemoteVideoTrack, no such track %s", kdStreamId);
         }
 
 
         void createAudioTrack(){
             audioSource = factory.createAudioSource(new MediaConstraints());
-            localAudioTrack = factory.createAudioTrack(LOCAL_AUDIO_STREAM_ID, audioSource);
+            localAudioTrack = factory.createAudioTrack(LOCAL_AUDIO_TRACK_ID, audioSource);
             localAudioTrack.setEnabled(config.isLocalAudioEnabled);
             audioSender = pc.addTrack(localAudioTrack, Collections.singletonList(STREAM_ID));
-            rtcStreamIdKdStreamIdMap.put(LOCAL_AUDIO_STREAM_ID, LOCAL_AUDIO_STREAM_ID);
-            KLog.p("rtcstreamId=%s, kdstreamId=%s", LOCAL_AUDIO_STREAM_ID, LOCAL_AUDIO_STREAM_ID);
+            rtcTrackId2KdStreamIdMap.put(LOCAL_AUDIO_TRACK_ID, LOCAL_AUDIO_TRACK_ID);
+            KLog.p("rtcstreamId=%s, kdstreamId=%s", LOCAL_AUDIO_TRACK_ID, LOCAL_AUDIO_TRACK_ID);
         }
 
 
         void createRemoteAudioTrack(String mid, AudioTrack track){
-            String streamId = midKdStreamIdMap.get(mid);
+            String streamId = mid2KdStreamIdMap.get(mid);
             KLog.p("mid=%s, streamId=%s", mid, streamId);
             if (null == streamId){
                 KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
                 return;
             }
             track.setEnabled(config.isRemoteAudioEnabled);
-            remoteAudioTracks.add(track);
-            TRtcStreamInfo rtcStreamInfo = null;
-            for (TRtcStreamInfo streamInfo : streamInfos){
-                if (streamId.equals(streamInfo.achStreamId)){
-                    rtcStreamInfo = streamInfo;
-                    break;
-                }
-            }
-            if (null == rtcStreamInfo){
-                KLog.p(KLog.ERROR, "no such stream %s in stream list( see Msg.TrackLeft/Msg.TrackJoined/Msg.TrackListArrived branch in method onNtf)", streamId);
+            remoteAudioTracks.put(streamId, track);
+            Stream remoteStream = getStream(streamId);
+            if (null == remoteStream){
+                KLog.p(KLog.ERROR, "no such stream %s in subscribed stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.CurrentStreamList branch in method onNtf)", streamId);
                 return;
             }
-
-            rtcStreamIdKdStreamIdMap.put(track.id(), rtcStreamInfo.achStreamId);
+            rtcTrackId2KdStreamIdMap.put(track.id(), remoteStream.streamId);
             KLog.p("rtcstreamId=%s, kdstreamId=%s", track.id(), streamId);
 
         }
 
-        void removeRemoteAudioTrack(AudioTrack track){
-            track.setEnabled(false);
-            remoteAudioTracks.remove(track);
+        void removeRemoteAudioTrack(String kdStreamId){
+            for (String streamId : remoteAudioTracks.keySet()){
+                if (streamId.equals(kdStreamId)){
+                    AudioTrack track = remoteAudioTracks.remove(streamId);
+                    track.dispose();
+                    rtcTrackId2KdStreamIdMap.remove(streamId);
+                    KLog.p("stream %s removed", streamId);
+                    return;
+                }
+            }
+
+            KLog.p(KLog.ERROR, "failed to removeRemoteAudioTrack, no such track %s", kdStreamId);
         }
 
 
@@ -2632,6 +2754,8 @@ public class WebRtcManager extends Caster<Msg>{
                 audioSource.dispose();
                 audioSource = null;
             }
+            rtcTrackId2KdStreamIdMap.remove(localAudioTrack.id());
+
             localAudioTrack = null;
             pc.removeTrack(audioSender);
             audioSender = null;
@@ -2693,6 +2817,15 @@ public class WebRtcManager extends Caster<Msg>{
                 audioSource.dispose();
                 audioSource = null;
             }
+            if (localAudioTrack != null) {
+                localAudioTrack.dispose();
+                localAudioTrack = null;
+            }
+            for (AudioTrack track : remoteAudioTracks.values()){
+                track.dispose();
+            }
+            remoteAudioTracks.clear();
+
             if (videoCapturer != null) {
                 try {
                     videoCapturer.stopCapture();
@@ -2706,6 +2839,15 @@ public class WebRtcManager extends Caster<Msg>{
                 videoSource.dispose();
                 videoSource = null;
             }
+            if (localVideoTrack != null) {
+                localVideoTrack.dispose();
+                localVideoTrack = null;
+            }
+            for (VideoTrack track : remoteVideoTracks.values()){
+                track.dispose();
+            }
+            remoteVideoTracks.clear();
+
             if (surfaceTextureHelper != null) {
                 surfaceTextureHelper.dispose();
                 surfaceTextureHelper = null;
@@ -2720,7 +2862,7 @@ public class WebRtcManager extends Caster<Msg>{
         void setRemoteAudioEnable(boolean bEnable){
             config.isRemoteAudioEnabled = bEnable;
             executor.execute(() -> {
-                for (AudioTrack audioTrack : remoteAudioTracks) {
+                for (AudioTrack audioTrack : remoteAudioTracks.values()) {
                     audioTrack.setEnabled(bEnable);
                 }
             });
@@ -2835,22 +2977,25 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     private void dealWithStats(StatsHelper.Stats stats){
-        String maxAudioTrack = null != stats.audioSource ? stats.audioSource.trackIdentifier : null;
+        String maxAudioLevelTrackId = null != stats.audioSource ? stats.audioSource.trackIdentifier : null;
         double maxAudioLevel = null != stats.audioSource ? stats.audioSource.audioLevel : 0;
         for (StatsHelper.RecvAudioTrack track : stats.recvAudioTrackList){
             if (track.audioLevel > maxAudioLevel){
                 maxAudioLevel = track.audioLevel;
-                maxAudioTrack = track.trackIdentifier;
+                maxAudioLevelTrackId = track.trackIdentifier;
             }
         }
         if (maxAudioLevel > 0.1){
             // 语音激励
-            String kdStreamId = rtcStreamIdKdStreamIdMap.get(maxAudioTrack);  // TODO StreamId改为TrackId，音频Track也要报给上层？上层绑定的应该是终端Id而非流Id，一个终端可以有多个流。
-            for (Display display : displaySet){
-                if (display.streamId.equals(kdStreamId)){
-                    display.showVoiceActivatedDecoration();
+            String maxAudioLevelStreamId = rtcTrackId2KdStreamIdMap.get(maxAudioLevelTrackId);
+            Conferee conferee = getConfereeByStreamId(maxAudioLevelStreamId);
+            if (null != conferee){
+                Display display = getDisplay(conferee.id);
+                if (null != display){
+                    display.showVoiceActivatedDeco(true);
                 }
             }
+
         }
 
         // 通知用户

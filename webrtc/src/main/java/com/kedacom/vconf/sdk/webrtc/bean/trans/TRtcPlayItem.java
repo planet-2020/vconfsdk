@@ -15,4 +15,11 @@ public final class TRtcPlayItem {
     public EmMtResolution emRes;                               ///<如果是远端，播放的流的分辨率
     public EmCodecComponent emLocalChan;                         ///<本地码流
     public EmCodecComponentIndex byLocalChanIdx;                      ///<本地第几路
+
+    public TRtcPlayItem(String achStreamId, boolean bAss, EmMtResolution emRes) {
+        this.bLocal = false;
+        this.achStreamId = achStreamId;
+        this.bAss = bAss;
+        this.emRes = emRes;
+    }
 }
