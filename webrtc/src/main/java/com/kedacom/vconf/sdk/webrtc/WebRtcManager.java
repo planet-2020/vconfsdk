@@ -93,8 +93,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -132,9 +130,17 @@ public class WebRtcManager extends Caster<Msg>{
     // 用来展示与会方画面的Display集合
     private Set<Display> displaySet = new HashSet<>();
 
-    // 用于收集统计信息的定时器
-    private Timer statsTimer;
-    private TimerTask statsTimerTask;
+    // 用于定时收集统计信息
+    private StatsHelper.Stats publisherStats;
+    private StatsHelper.Stats subscriberStats;
+    private StatsHelper.Stats allStats;
+    private Runnable statsRunnable = new Runnable() {
+        @Override
+        public void run() {
+            collectStats();
+            sessionHandler.postDelayed(this, 2000);
+        }
+    };
 
 
     // 当前用户的e164
@@ -142,7 +148,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private Conferee myConferee;
 
-    private Handler handler = new Handler(Looper.getMainLooper());
+    private Handler sessionHandler = new Handler(Looper.getMainLooper());
 
     private static WebRtcManager instance;
 
@@ -835,79 +841,11 @@ public class WebRtcManager extends Caster<Msg>{
 
         eglBase = EglBase.create();
 
-        executor.execute(() -> {
-            createPeerConnectionFactory();
-            createPeerConnectionWrapper();
-        });
+        createPeerConnectionFactory();
+        createPeerConnectionWrapper();
 
-        /*
-         * 定时获取统计信息
-         * */
-        statsTimer = new Timer();
-        statsTimerTask = new TimerTask() {
-            StatsHelper.Stats publisherStats;
-            StatsHelper.Stats subscriberStats;
-            StatsHelper.Stats allStats;
-
-            @Override
-            public void run() {
-                pubPcWrapper.pc.getStats(rtcStatsReport -> {
-                    System.out.println(String.format("publisher rtcStatsReport=%s ", rtcStatsReport));
-                    publisherStats = StatsHelper.resolveStats(rtcStatsReport);
-                    if (null == subscriberStats){
-                        // got publisherStats firstly, append subscriberStats later.
-                        allStats = publisherStats;
-                    }else {
-                        // already got subscriberStats, append publisherStats.
-                        allStats.audioSource = publisherStats.audioSource;
-                        allStats.videoSource = publisherStats.videoSource;
-                        allStats.sendAudioTrack = publisherStats.sendAudioTrack;
-                        allStats.sendVideoTrack = publisherStats.sendVideoTrack;
-                        allStats.audioOutboundRtp = publisherStats.audioOutboundRtp;
-                        allStats.videoOutboundRtp = publisherStats.videoOutboundRtp;
-                        allStats.audioInboundRtpList.addAll(publisherStats.audioInboundRtpList);
-                        allStats.videoInboundRtpList.addAll(publisherStats.videoInboundRtpList);
-                        allStats.recvAudioTrackList.addAll(publisherStats.recvAudioTrackList);
-                        allStats.recvVideoTrackList.addAll(publisherStats.recvVideoTrackList);
-                        allStats.encoderList.addAll(publisherStats.encoderList);
-                        allStats.decoderList.addAll(publisherStats.decoderList);
-
-                        // both publisherStats and subscriberStats got, complete.
-                        publisherStats = null;
-                        subscriberStats = null;
-                        KLog.p(allStats.toString());
-
-                        dealWithStats(allStats);
-                    }
-                });
-
-            subPcWrapper.pc.getStats(rtcStatsReport -> {
-                System.out.println(String.format("subscriber rtcStatsReport=%s ", rtcStatsReport));
-                subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
-                if (null == publisherStats){
-                    // got subscriberStats firstly, append publisherStats later.
-                    allStats = subscriberStats;
-                }else {
-                    // already got publisherStats, append subscriberStats.
-                    allStats.audioInboundRtpList.addAll(subscriberStats.audioInboundRtpList);
-                    allStats.videoInboundRtpList.addAll(subscriberStats.videoInboundRtpList);
-                    allStats.recvAudioTrackList.addAll(subscriberStats.recvAudioTrackList);
-                    allStats.recvVideoTrackList.addAll(subscriberStats.recvVideoTrackList);
-                    allStats.encoderList.addAll(subscriberStats.encoderList);
-                    allStats.decoderList.addAll(subscriberStats.decoderList);
-
-                    // both publisherStats and subscriberStats got, complete.
-                    publisherStats = null;
-                    subscriberStats = null;
-                    KLog.p(allStats.toString());
-
-                    dealWithStats(allStats);
-                }
-            });
-
-            }
-        };
-        statsTimer.schedule(statsTimerTask, 3000, 2000);
+        // 定时获取统计信息
+        sessionHandler.postDelayed(statsRunnable, 3000);
 
         KLog.p("session started ");
 
@@ -928,23 +866,22 @@ public class WebRtcManager extends Caster<Msg>{
 
         rtcConnector.setSignalingEventsCallback(null);
 
-        statsTimer.cancel();
-        statsTimer = null;
-        statsTimerTask = null;
+        sessionHandler.removeCallbacksAndMessages(null);
 
         if (null != eglBase) {
             eglBase.release();
             eglBase = null;
         }
 
-        for (ProxyVideoSink videoSink : videoSinks.values()){
-            videoSink.release();
-        }
-        videoSinks.clear();
         for (Display display : displaySet){
             display.destroy();
         }
         displaySet.clear();
+
+        for (ProxyVideoSink videoSink : videoSinks.values()){
+            videoSink.release();
+        }
+        videoSinks.clear();
 
         conferees.clear();
         streams.clear();
@@ -953,17 +890,8 @@ public class WebRtcManager extends Caster<Msg>{
 
         screenCapturePermissionData = null;
 
-        executor.execute(() -> {
-            pubPcWrapper.close();
-            subPcWrapper.close();
-            assPubPcWrapper.close();
-            assSubPcWrapper.close();
-
-            if (factory != null) {
-                factory.dispose();
-                factory = null;
-            }
-        });
+        destroyPeerConnectionWrapper();
+        destroyPeerConnectionFactory();
 
         // destroy audiomanager
 //        if (audioManager != null) {
@@ -976,81 +904,134 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private void createPeerConnectionFactory() {
-        if (null != factory){
-            KLog.p(KLog.ERROR, "Factory exists!");
-            return;
+    private void collectStats(){
+        if (null != pubPcWrapper && null != pubPcWrapper.pc) {
+            pubPcWrapper.pc.getStats(rtcStatsReport -> {
+                KLog.p("publisher rtcStatsReport=%s ", rtcStatsReport);
+                publisherStats = StatsHelper.resolveStats(rtcStatsReport);
+                if (null == subscriberStats) {
+                    // got publisherStats firstly, append subscriberStats later.
+                    allStats = publisherStats;
+                } else {
+                    // already got subscriberStats, append publisherStats.
+                    allStats.audioSource = publisherStats.audioSource;
+                    allStats.videoSource = publisherStats.videoSource;
+                    allStats.sendAudioTrack = publisherStats.sendAudioTrack;
+                    allStats.sendVideoTrack = publisherStats.sendVideoTrack;
+                    allStats.audioOutboundRtp = publisherStats.audioOutboundRtp;
+                    allStats.videoOutboundRtp = publisherStats.videoOutboundRtp;
+                    allStats.audioInboundRtpList.addAll(publisherStats.audioInboundRtpList);
+                    allStats.videoInboundRtpList.addAll(publisherStats.videoInboundRtpList);
+                    allStats.recvAudioTrackList.addAll(publisherStats.recvAudioTrackList);
+                    allStats.recvVideoTrackList.addAll(publisherStats.recvVideoTrackList);
+                    allStats.encoderList.addAll(publisherStats.encoderList);
+                    allStats.decoderList.addAll(publisherStats.decoderList);
+
+                    // both publisherStats and subscriberStats got, complete.
+                    publisherStats = null;
+                    subscriberStats = null;
+                    KLog.p(allStats.toString());
+
+                    dealWithStats(allStats);
+                }
+            });
         }
-        PeerConnectionFactoryConfig factoryConfig = new PeerConnectionFactoryConfig(Arrays.asList(VIDEO_CODEC_VP8, VIDEO_CODEC_H264_HIGH), config.enableVideoCodecHwAcceleration);
 
-        KLog.p(factoryConfig.toString());
+        if (null != subPcWrapper && null != subPcWrapper.pc) {
+            subPcWrapper.pc.getStats(rtcStatsReport -> {
+                System.out.println(String.format("subscriber rtcStatsReport=%s ", rtcStatsReport));
+                subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
+                if (null == publisherStats) {
+                    // got subscriberStats firstly, append publisherStats later.
+                    allStats = subscriberStats;
+                } else {
+                    // already got publisherStats, append subscriberStats.
+                    allStats.audioInboundRtpList.addAll(subscriberStats.audioInboundRtpList);
+                    allStats.videoInboundRtpList.addAll(subscriberStats.videoInboundRtpList);
+                    allStats.recvAudioTrackList.addAll(subscriberStats.recvAudioTrackList);
+                    allStats.recvVideoTrackList.addAll(subscriberStats.recvVideoTrackList);
+                    allStats.encoderList.addAll(subscriberStats.encoderList);
+                    allStats.decoderList.addAll(subscriberStats.decoderList);
 
-        final AudioDeviceModule adm = createJavaAudioDevice();
+                    // both publisherStats and subscriberStats got, complete.
+                    publisherStats = null;
+                    subscriberStats = null;
+                    KLog.p(allStats.toString());
 
-        final VideoEncoderFactory encoderFactory;
-        final VideoDecoderFactory decoderFactory;
+//                    dealWithStats(allStats);
+                }
+            });
+        }
 
-        if (factoryConfig.enableVideoCodecHwAcceleration) {
-            encoderFactory = new DefaultVideoEncoderFactory(
-                    eglBase.getEglBaseContext(),
-                    factoryConfig.videoCodecList.contains(VIDEO_CODEC_VP8),
-                    factoryConfig.videoCodecList.contains(VIDEO_CODEC_H264_HIGH));
-            decoderFactory = new DefaultVideoDecoderFactory(eglBase.getEglBaseContext());
+    }
+
+
+    private void createPeerConnectionFactory() {
+
+        executor.execute(() -> {
+            if (null != factory){
+                KLog.p(KLog.ERROR, "Factory exists!");
+                return;
+            }
+
+            PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions());
+
+            PeerConnectionFactoryConfig factoryConfig = new PeerConnectionFactoryConfig(Arrays.asList(VIDEO_CODEC_VP8, VIDEO_CODEC_H264_HIGH), config.enableVideoCodecHwAcceleration);
+
+            KLog.p(factoryConfig.toString());
+
+            final AudioDeviceModule adm = createJavaAudioDevice();
+
+            final VideoEncoderFactory encoderFactory;
+            final VideoDecoderFactory decoderFactory;
+
+            if (factoryConfig.enableVideoCodecHwAcceleration) {
+                encoderFactory = new DefaultVideoEncoderFactory(
+                        eglBase.getEglBaseContext(),
+                        factoryConfig.videoCodecList.contains(VIDEO_CODEC_VP8),
+                        factoryConfig.videoCodecList.contains(VIDEO_CODEC_H264_HIGH));
+                decoderFactory = new DefaultVideoDecoderFactory(eglBase.getEglBaseContext());
 
 //            encoderFactory = new HardwareVideoEncoderFactory(
 //                    eglBase.getEglBaseContext(),
 //                    config.videoCodecList.contains(VIDEO_CODEC_VP8),
 //                    config.videoCodecList.contains(VIDEO_CODEC_H264_HIGH));
 //            decoderFactory = new DefaultVideoDecoderFactory(eglBase.getEglBaseContext());
-        } else {
-            encoderFactory = new SoftwareVideoEncoderFactory();
-            decoderFactory = new SoftwareVideoDecoderFactory();
-        }
+            } else {
+                encoderFactory = new SoftwareVideoEncoderFactory();
+                decoderFactory = new SoftwareVideoDecoderFactory();
+            }
 
-        PeerConnectionFactory.initialize(
-                PeerConnectionFactory.InitializationOptions.builder(context)
-                        .createInitializationOptions());
+            factory = PeerConnectionFactory.builder()
+                    .setOptions(new PeerConnectionFactory.Options())
+                    .setAudioDeviceModule(adm)
+                    .setVideoEncoderFactory(encoderFactory)
+                    .setVideoDecoderFactory(decoderFactory)
+                    .createPeerConnectionFactory();
 
-        factory = PeerConnectionFactory.builder()
-                .setOptions(new PeerConnectionFactory.Options())
-                .setAudioDeviceModule(adm)
-                .setVideoEncoderFactory(encoderFactory)
-                .setVideoDecoderFactory(decoderFactory)
-                .createPeerConnectionFactory();
+            adm.release();
+        });
 
-        adm.release();
     }
 
 
+    private void destroyPeerConnectionFactory(){
+        executor.execute(() -> {
+            if (null == factory) {
+                KLog.p(KLog.ERROR, "Factory not exists!");
+                return;
+            }
+            factory.dispose();
+            factory = null;
+        });
+    }
+
 
     private void createPeerConnectionWrapper() {
-        if (null == factory){
-            throw new RuntimeException("Factory not exists!");
-        }
-
-        PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(new ArrayList<>());
-        // TCP candidates are only useful when connecting to a server that supports
-        // ICE-TCP.
-        rtcConfig.tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.DISABLED;
-        rtcConfig.bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE;
-        rtcConfig.rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE;
-        rtcConfig.continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY;
-        // Use ECDSA encryption.
-        rtcConfig.keyType = PeerConnection.KeyType.ECDSA;
-        // Enable DTLS for normal calls and disable for loopback calls.
-        rtcConfig.enableDtlsSrtp = true;
-        rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN;
-
-        // 设置srtp（Secure rtp）加密算法
-        CryptoOptions.Builder builder = CryptoOptions.builder();
-        builder.setEnableGcmCryptoSuites(true);
-        rtcConfig.cryptoOptions = builder.createCryptoOptions();
-
-
         /* 创建4个PeerConnectionWrapper
-        * NOTE：一个peerconnection可以处理多路码流，收发均可。
-        * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
-        * */
+         * NOTE：一个peerconnection可以处理多路码流，收发均可。
+         * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
+         * */
         PeerConnectionConfig pcConfig = new PeerConnectionConfig(
                 config.videoWidth,
                 config.videoHeight,
@@ -1061,35 +1042,72 @@ public class WebRtcManager extends Caster<Msg>{
                 config.audioCodec
         );
         KLog.p(config.toString());
-        int connType = CommonDef.CONN_TYPE_PUBLISHER;
-        pubPcWrapper = new PeerConnectionWrapper(
-                connType,
-                Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(connType))),
-                pcConfig,
-                new SDPObserver(connType)
-        );
-        connType = CommonDef.CONN_TYPE_SUBSCRIBER;
-        subPcWrapper = new PeerConnectionWrapper(
-                connType,
-                Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(connType))),
-                pcConfig,
-                new SDPObserver(connType)
-        );
-        connType = CommonDef.CONN_TYPE_ASS_PUBLISHER;
-        assPubPcWrapper = new PeerConnectionWrapper(
-                connType,
-                Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(connType))),
-                pcConfig,
-                new SDPObserver(connType)
-        );
-        connType = CommonDef.CONN_TYPE_ASS_SUBSCRIBER;
-        assSubPcWrapper = new PeerConnectionWrapper(
-                connType,
-                Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(connType))),
-                pcConfig,
-                new SDPObserver(connType)
-        );
 
+        pubPcWrapper = new PeerConnectionWrapper(CommonDef.CONN_TYPE_PUBLISHER, pcConfig, new SDPObserver(CommonDef.CONN_TYPE_PUBLISHER));
+        subPcWrapper = new PeerConnectionWrapper(CommonDef.CONN_TYPE_SUBSCRIBER, pcConfig, new SDPObserver(CommonDef.CONN_TYPE_SUBSCRIBER));
+        assPubPcWrapper = new PeerConnectionWrapper(CommonDef.CONN_TYPE_ASS_PUBLISHER, pcConfig, new SDPObserver(CommonDef.CONN_TYPE_ASS_PUBLISHER));
+        assSubPcWrapper = new PeerConnectionWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER, pcConfig, new SDPObserver(CommonDef.CONN_TYPE_ASS_SUBSCRIBER));
+
+        executor.execute(() -> {
+            if (null == factory){
+                throw new RuntimeException("Factory not exists!");
+            }
+
+            PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(new ArrayList<>());
+            // TCP candidates are only useful when connecting to a server that supports
+            // ICE-TCP.
+            rtcConfig.tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.DISABLED;
+            rtcConfig.bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE;
+            rtcConfig.rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE;
+            rtcConfig.continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY;
+            // Use ECDSA encryption.
+            rtcConfig.keyType = PeerConnection.KeyType.ECDSA;
+            // Enable DTLS for normal calls and disable for loopback calls.
+            rtcConfig.enableDtlsSrtp = true;
+            rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN;
+
+            // 设置srtp（Secure rtp）加密算法
+            CryptoOptions.Builder builder = CryptoOptions.builder();
+            builder.setEnableGcmCryptoSuites(true);
+            rtcConfig.cryptoOptions = builder.createCryptoOptions();
+
+            PeerConnection pubPc = Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(CommonDef.CONN_TYPE_PUBLISHER)));
+            PeerConnection subPc = Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(CommonDef.CONN_TYPE_SUBSCRIBER)));
+            PeerConnection assPubPc = Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(CommonDef.CONN_TYPE_ASS_PUBLISHER)));
+            PeerConnection assSubPc = Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(CommonDef.CONN_TYPE_ASS_SUBSCRIBER)));
+
+            synchronized (pcWrapperLock) {
+                if (null != pubPcWrapper) pubPcWrapper.setPeerConnection(pubPc);
+                if (null != subPcWrapper) subPcWrapper.setPeerConnection(subPc);
+                if (null != assPubPcWrapper) assPubPcWrapper.setPeerConnection(assPubPc);
+                if (null != assSubPcWrapper) assSubPcWrapper.setPeerConnection(assSubPc);
+            }
+
+        });
+
+    }
+
+    private final Object pcWrapperLock = new Object();
+
+    private void destroyPeerConnectionWrapper(){
+        synchronized (pcWrapperLock) {
+            if (null != pubPcWrapper) {
+                pubPcWrapper.close();
+                pubPcWrapper = null;
+            }
+            if (null != subPcWrapper) {
+                subPcWrapper.close();
+                subPcWrapper = null;
+            }
+            if (null != assPubPcWrapper) {
+                assPubPcWrapper.close();
+                assPubPcWrapper = null;
+            }
+            if (null != assSubPcWrapper) {
+                assSubPcWrapper.close();
+                assSubPcWrapper = null;
+            }
+        }
     }
 
 
@@ -1195,9 +1213,10 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         synchronized void release() {
-            for (Display display : targets){
-                display.destroy();
-            }
+            // display会在外部被释放，不需要在此处释放。
+//            for (Display display : targets){
+//                display.destroy();
+//            }
             targets.clear();
         }
 
@@ -1544,42 +1563,42 @@ public class WebRtcManager extends Caster<Msg>{
             if (System.currentTimeMillis() - ts > 5000){
                 KLog.p("onDraw, displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
             }
-
-            if (bShowCameraDisabledDeco){
-                if (null != videoCaptureDisabledDeco) {
-                    canvas.drawBitmap(videoCaptureDisabledDeco, 0, 0, null);
-                }else{
-                    canvas.drawColor(Color.BLACK);
-                }
-            }else if (bShowAudioTerminalDeco){
-                if (null != audioConfereeDeco) {
-                    canvas.drawBitmap(audioConfereeDeco, 0, 0, null);
-                }else{
-                    canvas.drawColor(Color.BLACK);
-                }
-            }else if (bShowStreamLostDeco){
-                if (null != streamLostDeco) {
-                    canvas.drawBitmap(streamLostDeco, 0, 0, null);
-                }else{
-                    canvas.drawColor(Color.BLACK);
-                }
-            }
-
-            if (bShowVoiceActivatedDeco){
-                canvas.drawRect(voiceActivatedDeco, voiceActivatedDecoPaint);
-//                handler.postDelayed(this::hideVoiceActivatedDecoration, 2000);
-            }
-
-            for (PicDecoration deco : picDecorations){
-                canvas.drawBitmap(deco.pic, deco.matrix, deco.paint);
-            }
-
-            for (TextDecoration deco : textDecorations){
-                if (System.currentTimeMillis() - ts > 5000){
-                    KLog.p("drawText(%s, %s, %s, %s) for display %s", deco.text, deco.x, deco.y, deco.paint.getTextSize(), this);
-                }
-                canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
-            }
+//
+//            if (bShowCameraDisabledDeco){
+//                if (null != videoCaptureDisabledDeco) {
+//                    canvas.drawBitmap(videoCaptureDisabledDeco, 0, 0, null);
+//                }else{
+//                    canvas.drawColor(Color.BLACK);
+//                }
+//            }else if (bShowAudioTerminalDeco){
+//                if (null != audioConfereeDeco) {
+//                    canvas.drawBitmap(audioConfereeDeco, 0, 0, null);
+//                }else{
+//                    canvas.drawColor(Color.BLACK);
+//                }
+//            }else if (bShowStreamLostDeco){
+//                if (null != streamLostDeco) {
+//                    canvas.drawBitmap(streamLostDeco, 0, 0, null);
+//                }else{
+//                    canvas.drawColor(Color.BLACK);
+//                }
+//            }
+//
+//            if (bShowVoiceActivatedDeco){
+//                canvas.drawRect(voiceActivatedDeco, voiceActivatedDecoPaint);
+////                sessionHandler.postDelayed(this::hideVoiceActivatedDecoration, 2000);
+//            }
+//
+//            for (PicDecoration deco : picDecorations){
+//                canvas.drawBitmap(deco.pic, deco.matrix, deco.paint);
+//            }
+//
+//            for (TextDecoration deco : textDecorations){
+//                if (System.currentTimeMillis() - ts > 5000){
+//                    KLog.p("drawText(%s, %s, %s, %s) for display %s", deco.text, deco.x, deco.y, deco.paint.getTextSize(), this);
+//                }
+//                canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
+//            }
 
         }
 
@@ -2106,44 +2125,40 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onGetOfferCmd(int connType, int mediaType) {
             KLog.p("onGetOfferCmd: connType=%s, mediaType=%s", connType, mediaType);
-            executor.execute(()->{
-                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            pcWrapper.checkSdpState(pcWrapper.Idle);
 
-                pcWrapper.checkSdpState(pcWrapper.Idle);
-
-                pcWrapper.curMediaType = mediaType;
-                VideoCapturer videoCapturer = null;
-                if ((CommonDef.MEDIA_TYPE_VIDEO == mediaType
-                        || CommonDef.MEDIA_TYPE_ASS_VIDEO == mediaType)){
-                    if (CommonDef.CONN_TYPE_PUBLISHER == connType) {
-                        videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
-                    }else if (CommonDef.CONN_TYPE_ASS_PUBLISHER == connType) {
+            pcWrapper.curMediaType = mediaType;
+            VideoCapturer videoCapturer = null;
+            if ((CommonDef.MEDIA_TYPE_VIDEO == mediaType
+                    || CommonDef.MEDIA_TYPE_ASS_VIDEO == mediaType)){
+                if (CommonDef.CONN_TYPE_PUBLISHER == connType) {
+                    videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
+                }else if (CommonDef.CONN_TYPE_ASS_PUBLISHER == connType) {
 //                        videoCapturer = createScreenCapturer();
-                        videoCapturer = createWindowCapturer();
-                    }
+                    videoCapturer = createWindowCapturer();
                 }
-                if (null != videoCapturer) {
-                    pcWrapper.createVideoTrack(videoCapturer);
-                }
+            }
+            if (null != videoCapturer) {
+                pcWrapper.createVideoTrack(videoCapturer);
+            }
 
-                if ((CommonDef.MEDIA_TYPE_AUDIO == mediaType
-                        || CommonDef.MEDIA_TYPE_AV == mediaType)) {
-                    pcWrapper.createAudioTrack();
-                }
+            if ((CommonDef.MEDIA_TYPE_AUDIO == mediaType
+                    || CommonDef.MEDIA_TYPE_AV == mediaType)) {
+                pcWrapper.createAudioTrack();
+            }
 
-                pcWrapper.createOffer();
+            pcWrapper.createOffer();
 
-                if (CommonDef.MEDIA_TYPE_AV == mediaType){
-                    // 针对多路码流的情形，我们需要一路一路地发布（平台的限制）
-                    // 我们先发Audio，等到收到setAnswerCmd后再发Video
-                    pcWrapper.setSdpType(pcWrapper.AudioOffer);
-                }else{
-                    pcWrapper.setSdpType(pcWrapper.Offer);
-                }
+            if (CommonDef.MEDIA_TYPE_AV == mediaType){
+                // 针对多路码流的情形，我们需要一路一路地发布（平台的限制）
+                // 我们先发Audio，等到收到setAnswerCmd后再发Video
+                pcWrapper.setSdpType(pcWrapper.AudioOffer);
+            }else{
+                pcWrapper.setSdpType(pcWrapper.Offer);
+            }
 
-                pcWrapper.setSdpState(pcWrapper.Creating);
-
-            });
+            pcWrapper.setSdpState(pcWrapper.Creating);
 
         }
 
@@ -2155,47 +2170,38 @@ public class WebRtcManager extends Caster<Msg>{
                 mid2KdStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
             }
 
-            executor.execute(()-> {
-                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-                pcWrapper.checkSdpState(pcWrapper.Idle);
-                pcWrapper.setSdpType(pcWrapper.Answer);
-                setRemoteDescription(pcWrapper, offerSdp, SessionDescription.Type.OFFER);
-                pcWrapper.setSdpState(pcWrapper.SettingRemote);
-            });
+            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            pcWrapper.checkSdpState(pcWrapper.Idle);
+            pcWrapper.setSdpType(pcWrapper.Answer);
+            setRemoteDescription(pcWrapper, offerSdp, SessionDescription.Type.OFFER);
+            pcWrapper.setSdpState(pcWrapper.SettingRemote);
         }
 
         @Override
         public void onSetAnswerCmd(int connType, String answerSdp) {
             KLog.p("connType=%s", connType);
-            executor.execute(() -> {
-                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-                pcWrapper.checkSdpState(pcWrapper.Sending);
-                setRemoteDescription(pcWrapper, answerSdp, SessionDescription.Type.ANSWER);
-                pcWrapper.setSdpState(pcWrapper.SettingRemote);
-            });
-
+            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            pcWrapper.checkSdpState(pcWrapper.Sending);
+            setRemoteDescription(pcWrapper, answerSdp, SessionDescription.Type.ANSWER);
+            pcWrapper.setSdpState(pcWrapper.SettingRemote);
         }
 
         @Override
         public void onSetIceCandidateCmd(int connType, String sdpMid, int sdpMLineIndex, String sdp) {
             KLog.p("connType=%s, sdpMid=%s, sdpMLineIndex=%s", connType, sdpMid, sdpMLineIndex);
-            executor.execute(()-> {
-                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-                pcWrapper.addCandidate(new IceCandidate(sdpMid, sdpMLineIndex, sdp));
-            });
+            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            pcWrapper.addCandidate(new IceCandidate(sdpMid, sdpMLineIndex, sdp));
         }
 
         @Override
         public void onGetFingerPrintCmd(int connType) {
             KLog.p("connType=%s", connType);
-            executor.execute(()-> {
-                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-                pcWrapper.checkSdpState(pcWrapper.Idle);
-                pcWrapper.setSdpType(pcWrapper.FingerPrintOffer);
-                pcWrapper.createAudioTrack();
-                pcWrapper.createOffer();
-                pcWrapper.setSdpState(pcWrapper.Creating);
-            });
+            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            pcWrapper.checkSdpState(pcWrapper.Idle);
+            pcWrapper.setSdpType(pcWrapper.FingerPrintOffer);
+            pcWrapper.createAudioTrack();
+            pcWrapper.createOffer();
+            pcWrapper.setSdpState(pcWrapper.Creating);
         }
 
         @Override
@@ -2243,7 +2249,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onCreateSuccess(final SessionDescription origSdp) {
-            executor.execute(() -> {
+            sessionHandler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 KLog.p("create local sdp success: type=%s", pcWrapper.sdpType);
                 pcWrapper.checkSdpState(pcWrapper.Creating);
@@ -2268,60 +2274,59 @@ public class WebRtcManager extends Caster<Msg>{
                     pcWrapper.setSdpState(pcWrapper.SettingLocal);
                 }
             });
+
         }
 
         @Override
         public void onSetSuccess() {
-            executor.execute(() -> {
+            sessionHandler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 pcWrapper.checkSdpState(pcWrapper.SettingLocal, pcWrapper.SettingRemote);
                 PeerConnection pc = pcWrapper.pc;
-                if (pcWrapper.isSdpType(pcWrapper.Offer)){
-                    if (pcWrapper.isSdpState(pcWrapper.SettingLocal)){
+                if (pcWrapper.isSdpType(pcWrapper.Offer)) {
+                    if (pcWrapper.isSdpState(pcWrapper.SettingLocal)) {
                         KLog.p("setLocalDescription for Offer success, sending offer...");
                         boolean bAudio = pcWrapper.curMediaType == CommonDef.MEDIA_TYPE_AUDIO;
                         RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(
                                 SdpHelper.getMid(pc.getLocalDescription().description, bAudio),
                                 bAudio ? null : createEncodingList(true) // 仅视频需要填encodings
                         );
-                        handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia));
+                        rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia);
                         pcWrapper.setSdpState(pcWrapper.Sending);
-                    }else {
+                    } else {
                         KLog.p("setRemoteDescription for Offer success, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
                         pcWrapper.setSdpState(pcWrapper.Idle);
                     }
-                }
-                else if (pcWrapper.isSdpType(pcWrapper.Answer)){
-                    if (pcWrapper.isSdpState(pcWrapper.SettingRemote)){
+                } else if (pcWrapper.isSdpType(pcWrapper.Answer)) {
+                    if (pcWrapper.isSdpState(pcWrapper.SettingRemote)) {
                         KLog.p("setRemoteDescription for Answer success, create answer...");
                         pcWrapper.createAnswer();
                         pcWrapper.setSdpState(pcWrapper.Creating);
-                    }else {
+                    } else {
                         KLog.p("setLocalDescription for Answer success, sending answer...");
                         List<RtcConnector.TRtcMedia> rtcMediaList = new ArrayList<>();
                         List<String> mids = SdpHelper.getAllMids(pc.getLocalDescription().description);
-                        for (String mid : mids){
+                        for (String mid : mids) {
                             KLog.p("mid=%s", mid);
                             String streamId = mid2KdStreamIdMap.get(mid);
-                            if (null == streamId){
+                            if (null == streamId) {
                                 KLog.p(KLog.ERROR, "no streamId for mid %s (see onSetOfferCmd)", mid);
                             }
                             rtcMediaList.add(new RtcConnector.TRtcMedia(streamId, mid)); // 仅answer需要填streamId，answer不需要填encodings
                         }
-                        handler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMediaList));
+                        rtcConnector.sendAnswerSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMediaList);
                         KLog.p("answer sent, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
                         pcWrapper.setSdpState(pcWrapper.Idle);
                     }
-                }
-                else if (pcWrapper.isSdpType(pcWrapper.AudioOffer)){
-                    if (pcWrapper.isSdpState(pcWrapper.SettingLocal)){
+                } else if (pcWrapper.isSdpType(pcWrapper.AudioOffer)) {
+                    if (pcWrapper.isSdpState(pcWrapper.SettingLocal)) {
                         KLog.p("setLocalDescription for AudioOffer success, sending offer...");
-                        RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(SdpHelper.getMid(pc.getLocalDescription().description,true));
-                        handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia));
+                        RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(SdpHelper.getMid(pc.getLocalDescription().description, true));
+                        rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia);
                         pcWrapper.setSdpState(pcWrapper.Sending);
-                    }else{
+                    } else {
                         KLog.p("setRemoteDescription for AudioOffer success, we now need create video offer...");
                         VideoCapturer videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
                         if (null != videoCapturer) {
@@ -2332,18 +2337,14 @@ public class WebRtcManager extends Caster<Msg>{
                         pcWrapper.setSdpType(pcWrapper.VideoOffer);
                         pcWrapper.setSdpState(pcWrapper.Creating);
                     }
-                }
-                else if (pcWrapper.isSdpType(pcWrapper.VideoOffer)){
-                    if (pcWrapper.isSdpState(pcWrapper.SettingLocal)){
+                } else if (pcWrapper.isSdpType(pcWrapper.VideoOffer)) {
+                    if (pcWrapper.isSdpState(pcWrapper.SettingLocal)) {
                         KLog.p("setLocalDescription for VideoOffer success, sending offer...");
-                        RtcConnector.TRtcMedia rtcAudio = new RtcConnector.TRtcMedia(SdpHelper.getMid(pc.getLocalDescription().description,true));
-                        RtcConnector.TRtcMedia rtcVideo = new RtcConnector.TRtcMedia(
-                                SdpHelper.getMid(pc.getLocalDescription().description,false),
-                                createEncodingList(true)
-                        );
-                        handler.post(() -> rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcAudio, rtcVideo));
+                        RtcConnector.TRtcMedia rtcAudio = new RtcConnector.TRtcMedia(SdpHelper.getMid(pc.getLocalDescription().description, true));
+                        RtcConnector.TRtcMedia rtcVideo = new RtcConnector.TRtcMedia(SdpHelper.getMid(pc.getLocalDescription().description, false), createEncodingList(true));
+                        rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcAudio, rtcVideo);
                         pcWrapper.setSdpState(pcWrapper.Sending);
-                    }else{
+                    } else {
                         KLog.p("setRemoteDescription for VideoOffer success, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
                         // videooffer发布完毕，整个发布结束
@@ -2357,12 +2358,16 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onCreateFailure(final String error) {
-            KLog.p(KLog.ERROR, "error: %s", error);
+            sessionHandler.post(() -> {
+                KLog.p(KLog.ERROR, "error: %s", error);
+            });
         }
 
         @Override
         public void onSetFailure(final String error) {
-            KLog.p(KLog.ERROR, "error: %s", error);
+            sessionHandler.post(() -> {
+                KLog.p(KLog.ERROR, "error: %s", error);
+            });
         }
 
     }
@@ -2378,14 +2383,15 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onIceCandidate(final IceCandidate candidate) {
-            KLog.p("onIceCandidate, sending candidate...");
-            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            handler.post(() -> rtcConnector.sendIceCandidate(pcWrapper.connType, candidate.sdpMid, candidate.sdpMLineIndex, candidate.sdp));
+            sessionHandler.post(() -> {
+                KLog.p("onIceCandidate, sending candidate...");
+                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                rtcConnector.sendIceCandidate(pcWrapper.connType, candidate.sdpMid, candidate.sdpMLineIndex, candidate.sdp);
+            });
         }
 
         @Override
         public void onIceCandidatesRemoved(final IceCandidate[] candidates) {
-            KLog.p("onIceCandidatesRemoved");
         }
 
         @Override
@@ -2398,7 +2404,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onIceConnectionChange(final PeerConnection.IceConnectionState newState) {
-//                handler.post(() -> {
+//                sessionHandler.post(() -> {
 //                    if (newState == PeerConnection.IceConnectionState.CONNECTED) {
 //                    } else if (newState == PeerConnection.IceConnectionState.DISCONNECTED) {
 //                    } else if (newState == PeerConnection.IceConnectionState.FAILED) {
@@ -2411,7 +2417,7 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onConnectionChange(final PeerConnection.PeerConnectionState newState) {
 
-//                handler.post(() -> {
+//                sessionHandler.post(() -> {
 //                    if (newState == PeerConnection.PeerConnectionState.CONNECTED) {
 //                    } else if (newState == PeerConnection.PeerConnectionState.DISCONNECTED) {
 //                    } else if (newState == PeerConnection.PeerConnectionState.FAILED) {
@@ -2452,14 +2458,15 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onTrack(RtpTransceiver transceiver) {
             MediaStreamTrack track = transceiver.getReceiver().track();
-            KLog.p("received remote track %s", track);
-            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            if (track instanceof VideoTrack){
-                pcWrapper.createRemoteVideoTrack(transceiver.getMid(), (VideoTrack) track);
-            }else{
-                pcWrapper.createRemoteAudioTrack(transceiver.getMid(), (AudioTrack) track);
-            }
-
+            sessionHandler.post(() -> {
+                KLog.p("received remote track %s", track);
+                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                if (track instanceof VideoTrack) {
+                    pcWrapper.createRemoteVideoTrack(transceiver.getMid(), (VideoTrack) track);
+                } else {
+                    pcWrapper.createRemoteAudioTrack(transceiver.getMid(), (AudioTrack) track);
+                }
+            });
         }
 
     }
@@ -2536,6 +2543,12 @@ public class WebRtcManager extends Caster<Msg>{
         private RtpSender videoSender;
         private RtpSender audioSender;
 
+        PeerConnectionWrapper(int connType, @NonNull PeerConnectionConfig config, @NonNull SDPObserver sdpObserver) {
+            this.connType = connType;
+            this.config = config;
+            this.sdpObserver = sdpObserver;
+        }
+
         PeerConnectionWrapper(int connType, @NonNull PeerConnection pc, @NonNull PeerConnectionConfig config,
                               @NonNull SDPObserver sdpObserver) {
             this.connType = connType;
@@ -2544,18 +2557,22 @@ public class WebRtcManager extends Caster<Msg>{
             this.sdpObserver = sdpObserver;
         }
 
+        void setPeerConnection(@NonNull PeerConnection pc){
+            this.pc = pc;
+        }
+
 
         void createOffer(){
-            pc.createOffer(sdpObserver, new MediaConstraints());
+            executor.execute(() -> pc.createOffer(sdpObserver, new MediaConstraints()));
         }
         void createAnswer(){
-            pc.createAnswer(sdpObserver, new MediaConstraints());
+            executor.execute(() -> pc.createAnswer(sdpObserver, new MediaConstraints()));
         }
         void setLocalDescription(SessionDescription sdp){
-            pc.setLocalDescription(sdpObserver, sdp);
+            executor.execute(() -> pc.setLocalDescription(sdpObserver, sdp));
         }
         void setRemoteDescription(SessionDescription sdp){
-            pc.setRemoteDescription(sdpObserver, sdp);
+            executor.execute(() -> pc.setRemoteDescription(sdpObserver, sdp));
         }
 
 
@@ -2563,202 +2580,218 @@ public class WebRtcManager extends Caster<Msg>{
          * 创建视频轨道。
          * */
         void createVideoTrack(@NonNull VideoCapturer videoCapturer){
-            if (null != localVideoTrack){
-                KLog.p(KLog.ERROR, "localVideoTrack has created");
-                return;
-            }
-            this.videoCapturer = videoCapturer;
-            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
-            videoSource = factory.createVideoSource(videoCapturer.isScreencast());
-            videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
-            videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
-            localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_TRACK_ID, videoSource);
-            localVideoTrack.setEnabled(config.isLocalVideoEnabled);
-            String localVideoTrackId = LOCAL_VIDEO_TRACK_ID;
-            ProxyVideoSink localVideoSink = new ProxyVideoSink(localVideoTrackId);
-            localVideoTrack.addSink(localVideoSink);
-
-            videoSinks.put(localVideoTrackId, localVideoSink);
-
-            rtcTrackId2KdStreamIdMap.put(localVideoTrackId, localVideoTrackId);
-
-            // 将本地track添加到流集合
-            if (null != myConferee){
-                streams.put(localVideoTrackId,
-                        new Stream(localVideoTrackId, myConferee.mcuId, myConferee.terId,false, videoCapturer instanceof WindowCapturer,
-                                Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 实际可能并非1080P，比如辅流是截取的window宽高
-                        )
-                );
-            }else{
-                KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
-            }
-
-            // 重新绑定Display，因为之前绑定时Track还没上来。
-            Display myDisplay = getDisplay(myConferee.id);
-            if (null != myDisplay) {
-                myDisplay.bind(myConferee.id);
-                myDisplay.showAudioConfereeDeco(false);
-                myDisplay.showStreamLostDeco(false);
-            }else{
-                KLog.p(KLog.ERROR, "user not bind a display to myConferee");
-            }
-
-            if (instance.config.enableSimulcast){
-                RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
-                        RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
-                        Collections.singletonList(STREAM_ID),
-                        createEncodingList(false)
-                );
-                RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
-                videoSender = transceiver.getSender();
-                // 在添加track之后才去设置encoding参数。XXX  暂时写死，具体根据需求来。
-                // NOTE：注意和sendOffer时传给业务组件的参数一致。
-                for (RtpParameters.Encoding encoding : videoSender.getParameters().encodings){
-                    if (encoding.rid.equals("h")){
-                        encoding.scaleResolutionDownBy = 1.0;
-                        encoding.maxFramerate = config.videoFps;
-                        encoding.maxBitrateBps = config.videoMaxBitrate;
-                    }else if (encoding.rid.equals("m")){
-                        encoding.scaleResolutionDownBy = 0.5;
-                        encoding.maxFramerate = config.videoFps;
-                        encoding.maxBitrateBps = config.videoMaxBitrate;
-                    }else if (encoding.rid.equals("l")){
-                        encoding.scaleResolutionDownBy = 0.25;
-                        encoding.maxFramerate = config.videoFps;
-                        encoding.maxBitrateBps = config.videoMaxBitrate;
-                    }
+            executor.execute(() -> {
+                if (null != localVideoTrack){
+                    KLog.p(KLog.ERROR, "localVideoTrack has created");
+                    return;
                 }
-            }else{
-                pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
-            }
+                this.videoCapturer = videoCapturer;
+                surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
+                videoSource = factory.createVideoSource(videoCapturer.isScreencast());
+                videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
+                videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
+                localVideoTrack = factory.createVideoTrack(LOCAL_VIDEO_TRACK_ID, videoSource);
+                localVideoTrack.setEnabled(config.isLocalVideoEnabled);
+                String localVideoTrackId = LOCAL_VIDEO_TRACK_ID;
+                ProxyVideoSink localVideoSink = new ProxyVideoSink(localVideoTrackId);
+                localVideoTrack.addSink(localVideoSink);
 
+                sessionHandler.post(() -> {
+                    videoSinks.put(localVideoTrackId, localVideoSink);
+                    rtcTrackId2KdStreamIdMap.put(localVideoTrackId, localVideoTrackId);
+
+                    // 将本地track添加到流集合
+                    if (null != myConferee){
+                        streams.put(localVideoTrackId,
+                                new Stream(localVideoTrackId, myConferee.mcuId, myConferee.terId,false, videoCapturer instanceof WindowCapturer,
+                                        Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 实际可能并非1080P，比如辅流是截取的window宽高
+                                )
+                        );
+                    }else{
+                        KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
+                    }
+
+                    // 重新绑定Display，因为之前绑定时Track还没上来。
+                    Display myDisplay = getDisplay(myConferee.id);
+                    if (null != myDisplay) {
+                        myDisplay.bind(myConferee.id);
+                        myDisplay.showAudioConfereeDeco(false);
+                        myDisplay.showStreamLostDeco(false);
+                    }else{
+                        KLog.p(KLog.ERROR, "user not bind a display to myConferee");
+                    }
+
+                });
+
+                if (instance.config.enableSimulcast){
+                    RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
+                            RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
+                            Collections.singletonList(STREAM_ID),
+                            createEncodingList(false)
+                    );
+                    RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
+                    videoSender = transceiver.getSender();
+                    // 在添加track之后才去设置encoding参数。XXX  暂时写死，具体根据需求来。
+                    // NOTE：注意和sendOffer时传给业务组件的参数一致。
+                    for (RtpParameters.Encoding encoding : videoSender.getParameters().encodings){
+                        if (encoding.rid.equals("h")){
+                            encoding.scaleResolutionDownBy = 1.0;
+                            encoding.maxFramerate = config.videoFps;
+                            encoding.maxBitrateBps = config.videoMaxBitrate;
+                        }else if (encoding.rid.equals("m")){
+                            encoding.scaleResolutionDownBy = 0.5;
+                            encoding.maxFramerate = config.videoFps;
+                            encoding.maxBitrateBps = config.videoMaxBitrate;
+                        }else if (encoding.rid.equals("l")){
+                            encoding.scaleResolutionDownBy = 0.25;
+                            encoding.maxFramerate = config.videoFps;
+                            encoding.maxBitrateBps = config.videoMaxBitrate;
+                        }
+                    }
+                }else{
+                    pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
+                }
+
+            });
         }
 
 
         void createRemoteVideoTrack(String mid, VideoTrack track){
             String streamId = mid2KdStreamIdMap.get(mid);
             KLog.p("mid=%s, streamId=%s", mid, streamId);
-            if (null == streamId){
+            if (null == streamId) {
                 KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
                 return;
             }
-            KLog.p("stream %s added", streamId);
-            remoteVideoTracks.put(streamId, track);
-            track.setEnabled(config.isRemoteVideoEnabled);
-            ProxyVideoSink videoSink = new ProxyVideoSink(streamId);
-            track.addSink(videoSink);
-            videoSinks.put(streamId, videoSink);
+            rtcTrackId2KdStreamIdMap.put(track.id(), streamId);
 
-            Stream remoteStream = getStream(streamId);
-            if (null == remoteStream){
-                KLog.p(KLog.ERROR, "no such stream %s in subscribed stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.CurrentStreamList branch in method onNtf)", streamId);
-                return;
-            }
+            executor.execute(() -> {
+                KLog.p("stream %s added", streamId);
+                remoteVideoTracks.put(streamId, track);
+                track.setEnabled(config.isRemoteVideoEnabled);
+                ProxyVideoSink videoSink = new ProxyVideoSink(streamId);
+                track.addSink(videoSink);
 
-            rtcTrackId2KdStreamIdMap.put(track.id(), remoteStream.streamId);
-
-            KLog.p("rtcstreamId=%s, kdstreamId=%s", track.id(), streamId);
-            handler.post(() -> {
-                // 重新绑定Display，因为之前绑定时Track还没上来。
-                Conferee conferee = getConfereeByStreamId(remoteStream.streamId);
-                if (null != conferee) {
-                    Display myDisplay = getDisplay(conferee.id);
-                    if (null != myDisplay) {
-                        myDisplay.bind(conferee.id);
-                        myDisplay.showAudioConfereeDeco(false);
-                        myDisplay.showStreamLostDeco(false);
-                    } else {
-                        KLog.p(KLog.ERROR, "user not bind a display to myConferee");
+                KLog.p("rtcstreamId=%s, kdstreamId=%s", track.id(), streamId);
+                sessionHandler.post(() -> {
+                    videoSinks.put(streamId, videoSink);
+                    Stream remoteStream = getStream(streamId);
+                    if (null == remoteStream) {
+                        KLog.p(KLog.ERROR, "no such stream %s in subscribed stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.CurrentStreamList branch in method onNtf)", streamId);
+                        return;
                     }
-                }else{
-                    KLog.p(KLog.ERROR, "what's wrong? owner of stream %s not join conferee yet !?", remoteStream.streamId);
-                }
-            });
+                    // 重新绑定Display，因为之前绑定时Track还没上来。
+                    Conferee conferee = getConfereeByStreamId(remoteStream.streamId);
+                    if (null != conferee) {
+                        Display display = getDisplay(conferee.id);
+                        if (null != display) {
+                            display.bind(conferee.id);
+                            display.showAudioConfereeDeco(false);
+                            display.showStreamLostDeco(false);
+                        } else {
+                            KLog.p(KLog.ERROR, "user not bind a display to myConferee");
+                        }
+                    } else {
+                        KLog.p(KLog.ERROR, "what's wrong? owner of stream %s not join conferee yet !?", remoteStream.streamId);
+                    }
+                });
 
+            });
         }
 
         void removeRemoteVideoTrack(String kdStreamId){
-            for (String streamId : remoteVideoTracks.keySet()){
-                if (streamId.equals(kdStreamId)){
-                    VideoTrack track = remoteVideoTracks.remove(streamId);
-                    track.dispose();
-                    videoSinks.remove(streamId);
-                    rtcTrackId2KdStreamIdMap.remove(streamId);
-                    KLog.p("stream %s removed", streamId);
+            executor.execute(() -> {
+                for (String streamId : remoteVideoTracks.keySet()) {
+                    if (streamId.equals(kdStreamId)) {
+                        VideoTrack track = remoteVideoTracks.remove(streamId);
+//                        track.dispose();
+                        KLog.p("stream %s removed", streamId);
 
-                    handler.post(() -> {
-                        Conferee conferee = getConfereeByStreamId(streamId);
-                        if (null != conferee) {
-                            Display display = getDisplay(conferee.id);
-                            if (null != display){
-                                // VideoTrack被删除时显示音频图标
-                                display.showAudioConfereeDeco(true);
+                        sessionHandler.post(() -> {
+                            videoSinks.remove(streamId);
+                            rtcTrackId2KdStreamIdMap.remove(streamId);
+
+                            Conferee conferee = getConfereeByStreamId(streamId);
+                            if (null != conferee) {
+                                Display display = getDisplay(conferee.id);
+                                if (null != display) {
+                                    // VideoTrack被删除时显示音频图标
+                                    display.showAudioConfereeDeco(true);
+                                }
                             }
-                        }
-                    });
-                    return;
+                        });
+                        return;
+                    }
                 }
-            }
 
-            KLog.p(KLog.ERROR, "failed to removeRemoteVideoTrack, no such track %s", kdStreamId);
+                KLog.p(KLog.ERROR, "failed to removeRemoteVideoTrack, no such track %s", kdStreamId);
+            });
         }
 
 
         void createAudioTrack(){
-            audioSource = factory.createAudioSource(new MediaConstraints());
-            localAudioTrack = factory.createAudioTrack(LOCAL_AUDIO_TRACK_ID, audioSource);
-            localAudioTrack.setEnabled(config.isLocalAudioEnabled);
-            audioSender = pc.addTrack(localAudioTrack, Collections.singletonList(STREAM_ID));
-            rtcTrackId2KdStreamIdMap.put(LOCAL_AUDIO_TRACK_ID, LOCAL_AUDIO_TRACK_ID);
-            KLog.p("rtcstreamId=%s, kdstreamId=%s", LOCAL_AUDIO_TRACK_ID, LOCAL_AUDIO_TRACK_ID);
+            executor.execute(() -> {
+                audioSource = factory.createAudioSource(new MediaConstraints());
+                localAudioTrack = factory.createAudioTrack(LOCAL_AUDIO_TRACK_ID, audioSource);
+                localAudioTrack.setEnabled(config.isLocalAudioEnabled);
+                audioSender = pc.addTrack(localAudioTrack, Collections.singletonList(STREAM_ID));
+
+                sessionHandler.post(() -> rtcTrackId2KdStreamIdMap.put(LOCAL_AUDIO_TRACK_ID, LOCAL_AUDIO_TRACK_ID));
+            });
         }
 
 
         void createRemoteAudioTrack(String mid, AudioTrack track){
             String streamId = mid2KdStreamIdMap.get(mid);
             KLog.p("mid=%s, streamId=%s", mid, streamId);
-            if (null == streamId){
+            if (null == streamId) {
                 KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
                 return;
             }
-            track.setEnabled(config.isRemoteAudioEnabled);
-            remoteAudioTracks.put(streamId, track);
             Stream remoteStream = getStream(streamId);
-            if (null == remoteStream){
+            if (null == remoteStream) {
                 KLog.p(KLog.ERROR, "no such stream %s in subscribed stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.CurrentStreamList branch in method onNtf)", streamId);
                 return;
             }
-            rtcTrackId2KdStreamIdMap.put(track.id(), remoteStream.streamId);
-            KLog.p("rtcstreamId=%s, kdstreamId=%s", track.id(), streamId);
+            rtcTrackId2KdStreamIdMap.put(track.id(), streamId);
 
+            executor.execute(() -> {
+                track.setEnabled(config.isRemoteAudioEnabled);
+                remoteAudioTracks.put(streamId, track);
+            });
         }
 
         void removeRemoteAudioTrack(String kdStreamId){
-            for (String streamId : remoteAudioTracks.keySet()){
-                if (streamId.equals(kdStreamId)){
-                    AudioTrack track = remoteAudioTracks.remove(streamId);
-                    track.dispose();
-                    rtcTrackId2KdStreamIdMap.remove(streamId);
-                    KLog.p("stream %s removed", streamId);
-                    return;
+            executor.execute(() -> {
+                for (String streamId : remoteAudioTracks.keySet()) {
+                    if (streamId.equals(kdStreamId)) {
+                        AudioTrack track = remoteAudioTracks.remove(streamId);
+//                        track.dispose();
+                        sessionHandler.post(() -> rtcTrackId2KdStreamIdMap.remove(streamId));
+                        KLog.p("stream %s removed", streamId);
+                        return;
+                    }
                 }
-            }
 
-            KLog.p(KLog.ERROR, "failed to removeRemoteAudioTrack, no such track %s", kdStreamId);
+                KLog.p(KLog.ERROR, "failed to removeRemoteAudioTrack, no such track %s", kdStreamId);
+            });
         }
 
 
         void destoryAudioTrack(){
-            localAudioTrack.setEnabled(false);
-            if (audioSource != null) {
-                audioSource.dispose();
-                audioSource = null;
-            }
-            rtcTrackId2KdStreamIdMap.remove(localAudioTrack.id());
+            executor.execute(() -> {
+                localAudioTrack.setEnabled(false);
+                if (audioSource != null) {
+                    audioSource.dispose();
+                    audioSource = null;
+                }
+                String trackId = localAudioTrack.id();
+                sessionHandler.post(() -> rtcTrackId2KdStreamIdMap.remove(trackId));
 
-            localAudioTrack = null;
-            pc.removeTrack(audioSender);
-            audioSender = null;
+                localAudioTrack = null;
+                pc.removeTrack(audioSender);
+                audioSender = null;
+            });
         }
 
 
@@ -2792,66 +2825,64 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         void drainCandidates() {
-            if (queuedRemoteCandidates != null) {
-                for (IceCandidate candidate : queuedRemoteCandidates) {
-                    pc.addIceCandidate(candidate);
+            executor.execute(() -> {
+                if (queuedRemoteCandidates != null) {
+                    for (IceCandidate candidate : queuedRemoteCandidates) {
+                        pc.addIceCandidate(candidate);
+                    }
+                    queuedRemoteCandidates = null;
                 }
-                queuedRemoteCandidates = null;
-            }
+            });
         }
 
         void addCandidate(IceCandidate candidate) {
-            if (queuedRemoteCandidates != null) {
-                queuedRemoteCandidates.add(candidate);
-            }else {
-                pc.addIceCandidate(candidate);
-            }
+            executor.execute(() -> {
+                if (queuedRemoteCandidates != null) {
+                    queuedRemoteCandidates.add(candidate);
+                } else {
+                    pc.addIceCandidate(candidate);
+                }
+            });
         }
 
         void close(){
-            if (pc != null) {
-                pc.dispose();
-                pc = null;
-            }
-            if (audioSource != null) {
-                audioSource.dispose();
-                audioSource = null;
-            }
-            if (localAudioTrack != null) {
-                localAudioTrack.dispose();
-                localAudioTrack = null;
-            }
-            for (AudioTrack track : remoteAudioTracks.values()){
-                track.dispose();
-            }
-            remoteAudioTracks.clear();
-
-            if (videoCapturer != null) {
-                try {
-                    videoCapturer.stopCapture();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+            executor.execute(() -> {
+                if (pc != null) {
+                    pc.dispose();
+                    pc = null;
                 }
-                videoCapturer.dispose();
-                videoCapturer = null;
-            }
-            if (videoSource != null) {
-                videoSource.dispose();
-                videoSource = null;
-            }
-            if (localVideoTrack != null) {
-                localVideoTrack.dispose();
-                localVideoTrack = null;
-            }
-            for (VideoTrack track : remoteVideoTracks.values()){
-                track.dispose();
-            }
-            remoteVideoTracks.clear();
+                if (audioSource != null) {
+                    audioSource.dispose();
+                    audioSource = null;
+                }
 
-            if (surfaceTextureHelper != null) {
-                surfaceTextureHelper.dispose();
-                surfaceTextureHelper = null;
-            }
+                localAudioTrack = null;
+
+                remoteAudioTracks.clear();
+
+                if (videoCapturer != null) {
+                    try {
+                        videoCapturer.stopCapture();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    videoCapturer.dispose();
+                    videoCapturer = null;
+                }
+                if (videoSource != null) {
+                    videoSource.dispose();
+                    videoSource = null;
+                }
+
+                localVideoTrack = null;
+
+                remoteVideoTracks.clear();
+
+                if (surfaceTextureHelper != null) {
+                    surfaceTextureHelper.dispose();
+                    surfaceTextureHelper = null;
+                }
+            });
         }
 
 
@@ -2874,9 +2905,11 @@ public class WebRtcManager extends Caster<Msg>{
 
         void setLocalAudioEnable(boolean bEnable){
             config.isLocalAudioEnabled = bEnable;
-            if (localAudioTrack != null) {
-                executor.execute(() -> localAudioTrack.setEnabled(bEnable));
-            }
+            executor.execute(() -> {
+                if (localAudioTrack != null) {
+                    localAudioTrack.setEnabled(bEnable);
+                }
+            });
         }
 
 
@@ -2899,9 +2932,11 @@ public class WebRtcManager extends Caster<Msg>{
 
         void setLocalVideoEnable(boolean bEnable){
             config.isLocalVideoEnabled = bEnable;
-            if (localVideoTrack != null) {
-                executor.execute(() -> localVideoTrack.setEnabled(bEnable));
-            }
+            executor.execute(() -> {
+                if (localVideoTrack != null) {
+                    localVideoTrack.setEnabled(bEnable);
+                }
+            });
         }
 
         boolean isPreferFrontCamera(){
@@ -2910,9 +2945,11 @@ public class WebRtcManager extends Caster<Msg>{
 
         void switchCamera(){
             config.bPreferFrontCamera = !config.bPreferFrontCamera;
-            if (null != videoCapturer){
-                executor.execute(() -> ((CameraVideoCapturer)videoCapturer).switchCamera(null));
-            }
+            executor.execute(() -> {
+                if (null != videoCapturer) {
+                    ((CameraVideoCapturer) videoCapturer).switchCamera(null);
+                }
+            });
         }
 
     }
@@ -2976,7 +3013,10 @@ public class WebRtcManager extends Caster<Msg>{
         this.statsListener = statsListener;
     }
 
-    private void dealWithStats(StatsHelper.Stats stats){
+    private void dealWithStats(StatsHelper.Stats stats){  // TODO 不在这里做。统计信息采集仅负责采集。需要获取数据的主动去获取，而不是在这里通过回调直接穿透。
+        if (true){
+            return;
+        }
         String maxAudioLevelTrackId = null != stats.audioSource ? stats.audioSource.trackIdentifier : null;
         double maxAudioLevel = null != stats.audioSource ? stats.audioSource.audioLevel : 0;
         for (StatsHelper.RecvAudioTrack track : stats.recvAudioTrackList){
