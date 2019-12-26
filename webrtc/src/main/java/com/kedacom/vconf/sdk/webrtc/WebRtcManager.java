@@ -2152,9 +2152,7 @@ public class WebRtcManager extends Caster<Msg>{
         public void onGetOfferCmd(int connType, int mediaType) {
             KLog.p("onGetOfferCmd: connType=%s, mediaType=%s", connType, mediaType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            if (null == pcWrapper) return;
-
-            pcWrapper.checkSdpState(pcWrapper.Idle);
+            if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Idle)) return;
 
             pcWrapper.curMediaType = mediaType;
             VideoCapturer videoCapturer = null;
@@ -2199,9 +2197,8 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            if (null == pcWrapper) return;
+            if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Idle)) return;
 
-            pcWrapper.checkSdpState(pcWrapper.Idle);
             pcWrapper.setSdpType(pcWrapper.Answer);
             setRemoteDescription(pcWrapper, offerSdp, SessionDescription.Type.OFFER);
             pcWrapper.setSdpState(pcWrapper.SettingRemote);
@@ -2211,9 +2208,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void onSetAnswerCmd(int connType, String answerSdp) {
             KLog.p("connType=%s", connType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            if (null == pcWrapper) return;
+            if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Sending)) return;
 
-            pcWrapper.checkSdpState(pcWrapper.Sending);
             setRemoteDescription(pcWrapper, answerSdp, SessionDescription.Type.ANSWER);
             pcWrapper.setSdpState(pcWrapper.SettingRemote);
         }
@@ -2231,9 +2227,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void onGetFingerPrintCmd(int connType) {
             KLog.p("connType=%s", connType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            if (null == pcWrapper) return;
-
-            pcWrapper.checkSdpState(pcWrapper.Idle);
+            if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Idle)) return;
+;
             pcWrapper.setSdpType(pcWrapper.FingerPrintOffer);
             pcWrapper.createAudioTrack();
             pcWrapper.createOffer();
@@ -2306,10 +2301,9 @@ public class WebRtcManager extends Caster<Msg>{
         public void onCreateSuccess(final SessionDescription origSdp) {
             sessionHandler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-                if (null == pcWrapper) return;
+                if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Creating)) return;
 
                 KLog.p("create local sdp success: type=%s", pcWrapper.sdpType);
-                pcWrapper.checkSdpState(pcWrapper.Creating);
                 if (pcWrapper.isSdpType(pcWrapper.FingerPrintOffer)){
                     pcWrapper.destoryAudioTrack();
                     rtcConnector.sendFingerPrint(pcWrapper.connType, SdpHelper.getFingerPrint(origSdp.description));
@@ -2338,9 +2332,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void onSetSuccess() {
             sessionHandler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-                if (null == pcWrapper) return;
+                if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.SettingLocal, pcWrapper.SettingRemote)) return;
 
-                pcWrapper.checkSdpState(pcWrapper.SettingLocal, pcWrapper.SettingRemote);
                 PeerConnection pc = pcWrapper.pc;
                 if (pcWrapper.isSdpType(pcWrapper.Offer)) {
                     if (pcWrapper.isSdpState(pcWrapper.SettingLocal)) {
@@ -2931,13 +2924,14 @@ public class WebRtcManager extends Caster<Msg>{
             return sdpState == this.sdpState;
         }
 
-        void checkSdpState(int... sdpStates) {
+        boolean checkSdpState(int... sdpStates) {
             for (int state : sdpStates){
                 if (state == this.sdpState){
-                    return;
+                    return true;
                 }
             }
-            throw new RuntimeException("invalid sdp sate, expect "+sdpStates+" but current is "+this.sdpState);
+            KLog.p(KLog.ERROR, "invalid sdp sate, expect "+sdpStates+" but current is "+this.sdpState);
+            return false;
         }
 
 

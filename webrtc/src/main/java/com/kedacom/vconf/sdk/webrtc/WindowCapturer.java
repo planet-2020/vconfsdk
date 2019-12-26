@@ -72,6 +72,7 @@ public class WindowCapturer implements VideoCapturer {
                         long frameTime = System.nanoTime() - start;
                         VideoFrame videoFrame = new VideoFrame(i420Buf, 0, frameTime);
                         capturerObs.onFrameCaptured(videoFrame);
+                        videoFrame.release();
                     });
 
                     Thread.sleep(100);
