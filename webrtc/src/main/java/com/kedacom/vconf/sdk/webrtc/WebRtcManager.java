@@ -657,12 +657,12 @@ public class WebRtcManager extends Caster<Msg>{
             case CurrentStreamList:
             case StreamJoined:
                 KLog.p("CurrentStreamList");
-                TRtcStreamInfo assStream = null;
+                TRtcStreamInfo assStreamInfo = null;
                 for (TRtcStreamInfo tRtcStreamInfo : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
                     Stream stream = ToDoConverter.tRtcStreamInfo2Stream(tRtcStreamInfo);
                     streams.put(stream.streamId, stream);
                     if (tRtcStreamInfo.bAss && !tRtcStreamInfo.bAudio){
-                        assStream = tRtcStreamInfo;
+                        assStreamInfo = tRtcStreamInfo;
                     }
                 }
                 List<TRtcPlayItem> playItems = FluentIterable.from(streams.values()).filter(input -> !input.bAudio).transform(new Function<Stream, TRtcPlayItem>() {
@@ -675,9 +675,9 @@ public class WebRtcManager extends Caster<Msg>{
 
                 set(Msg.SelectStream, new TRtcPlayParam(playItems));
 
-                if (null != assStream){
+                if (null != assStreamInfo){
                     // 对于辅流我们当作特殊的与会方。所以此处我们构造一个虚拟的与会方上报用户
-                    Conferee sender = getConferee(assStream.tMtId.dwMcuId, assStream.tMtId.dwTerId);
+                    Conferee sender = getConferee(assStreamInfo.tMtId.dwMcuId, assStreamInfo.tMtId.dwTerId);
                     if (null != sender){
                         Conferee assStreamConferee = new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, true);
                         conferees.put(assStreamConferee.id, assStreamConferee);
@@ -690,22 +690,24 @@ public class WebRtcManager extends Caster<Msg>{
 
             case StreamLeft:
                 KLog.p("StreamLeft");
-                assStream = null;
-                for (TRtcStreamInfo leftStream : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
-                    boolean success = Iterables.removeIf(streams.entrySet(), input -> input.getKey().equals(leftStream.achStreamId));
-                    if (success){
+                Stream assStream = null;
+                for (TRtcStreamInfo kdStream : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
+                    Stream leftStream = Iterables.find(streams.values(), input -> input.streamId.equals(kdStream.achStreamId), null);
+                    if (null != leftStream){
                         PeerConnectionWrapper pcWrapper;
                         if (leftStream.bAss) {
-                            assStream = leftStream;
+                            assStream = leftStream;  // 我们认为只可能有一路辅流，所以此处在循环中赋值也没关系，只可能赋值一次。
                             pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
                         }else{
                             pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
                         }
                         // 删除对应的track
-                        if (leftStream.bAudio) {
-                            pcWrapper.removeRemoteAudioTrack(leftStream.achStreamId);
-                        }else{
-                            pcWrapper.removeRemoteVideoTrack(leftStream.achStreamId);
+                        if (null != pcWrapper) {
+                            if (leftStream.bAudio) {
+                                pcWrapper.removeRemoteAudioTrack(leftStream.streamId);
+                            } else {
+                                pcWrapper.removeRemoteVideoTrack(leftStream.streamId);
+                            }
                         }
                     }
                 }
@@ -720,7 +722,7 @@ public class WebRtcManager extends Caster<Msg>{
                 set(Msg.SelectStream, new TRtcPlayParam(playItems));
 
                 if (null != assStream){
-                    leftConferee = getConfereeByStreamId(assStream.achStreamId);
+                    leftConferee = getConferee(assStream.ownerId);
                     if (null != leftConferee && null != sessionEventListener){
                         sessionEventListener.onConfereeLeft(leftConferee);
                     }
@@ -2150,6 +2152,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void onGetOfferCmd(int connType, int mediaType) {
             KLog.p("onGetOfferCmd: connType=%s, mediaType=%s", connType, mediaType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            if (null == pcWrapper) return;
+
             pcWrapper.checkSdpState(pcWrapper.Idle);
 
             pcWrapper.curMediaType = mediaType;
@@ -2195,6 +2199,8 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            if (null == pcWrapper) return;
+
             pcWrapper.checkSdpState(pcWrapper.Idle);
             pcWrapper.setSdpType(pcWrapper.Answer);
             setRemoteDescription(pcWrapper, offerSdp, SessionDescription.Type.OFFER);
@@ -2205,6 +2211,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void onSetAnswerCmd(int connType, String answerSdp) {
             KLog.p("connType=%s", connType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            if (null == pcWrapper) return;
+
             pcWrapper.checkSdpState(pcWrapper.Sending);
             setRemoteDescription(pcWrapper, answerSdp, SessionDescription.Type.ANSWER);
             pcWrapper.setSdpState(pcWrapper.SettingRemote);
@@ -2214,6 +2222,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void onSetIceCandidateCmd(int connType, String sdpMid, int sdpMLineIndex, String sdp) {
             KLog.p("connType=%s, sdpMid=%s, sdpMLineIndex=%s", connType, sdpMid, sdpMLineIndex);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            if (null == pcWrapper) return;
+
             pcWrapper.addCandidate(new IceCandidate(sdpMid, sdpMLineIndex, sdp));
         }
 
@@ -2221,6 +2231,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void onGetFingerPrintCmd(int connType) {
             KLog.p("connType=%s", connType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            if (null == pcWrapper) return;
+
             pcWrapper.checkSdpState(pcWrapper.Idle);
             pcWrapper.setSdpType(pcWrapper.FingerPrintOffer);
             pcWrapper.createAudioTrack();
@@ -2247,20 +2259,20 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onUnPubCmd(int connType, int mediaType) {
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            if (null != pcWrapper) {
-                // 删除取消发布的媒体轨道
-                if (CommonDef.MEDIA_TYPE_AUDIO == mediaType
-                        || CommonDef.MEDIA_TYPE_AV == mediaType){
-                    pcWrapper.removeAudioTrack();
-                }
-                if(CommonDef.MEDIA_TYPE_AUDIO != mediaType){
-                    pcWrapper.removeVideoTrack();
-                }
-                // 重新走发布
-                pcWrapper.createOffer();
-                pcWrapper.setSdpType(pcWrapper.Offer);
-                pcWrapper.setSdpState(pcWrapper.Creating);
+            if (null == pcWrapper) return;
+
+            // 删除取消发布的媒体轨道
+            if (CommonDef.MEDIA_TYPE_AUDIO == mediaType
+                    || CommonDef.MEDIA_TYPE_AV == mediaType){
+                pcWrapper.removeAudioTrack();
             }
+            if(CommonDef.MEDIA_TYPE_AUDIO != mediaType){
+                pcWrapper.removeVideoTrack();
+            }
+            // 重新走发布
+            pcWrapper.createOffer();
+            pcWrapper.setSdpType(pcWrapper.Offer);
+            pcWrapper.setSdpState(pcWrapper.Creating);
         }
 
         private void setRemoteDescription(PeerConnectionWrapper pcWrapper, String sdp, SessionDescription.Type type){
@@ -2294,6 +2306,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void onCreateSuccess(final SessionDescription origSdp) {
             sessionHandler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                if (null == pcWrapper) return;
+
                 KLog.p("create local sdp success: type=%s", pcWrapper.sdpType);
                 pcWrapper.checkSdpState(pcWrapper.Creating);
                 if (pcWrapper.isSdpType(pcWrapper.FingerPrintOffer)){
@@ -2324,6 +2338,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void onSetSuccess() {
             sessionHandler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                if (null == pcWrapper) return;
+
                 pcWrapper.checkSdpState(pcWrapper.SettingLocal, pcWrapper.SettingRemote);
                 PeerConnection pc = pcWrapper.pc;
                 if (pcWrapper.isSdpType(pcWrapper.Offer)) {
@@ -2429,6 +2445,8 @@ public class WebRtcManager extends Caster<Msg>{
             sessionHandler.post(() -> {
                 KLog.p("onIceCandidate, sending candidate...");
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                if (null == pcWrapper) return;
+
                 rtcConnector.sendIceCandidate(pcWrapper.connType, candidate.sdpMid, candidate.sdpMLineIndex, candidate.sdp);
             });
         }
@@ -2504,6 +2522,8 @@ public class WebRtcManager extends Caster<Msg>{
             sessionHandler.post(() -> {
                 KLog.p("received remote track %s", track);
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                if (null == pcWrapper) return;
+
                 if (track instanceof VideoTrack) {
                     pcWrapper.createRemoteVideoTrack(transceiver.getMid(), (VideoTrack) track);
                 } else {
