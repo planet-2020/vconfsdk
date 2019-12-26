@@ -46,7 +46,7 @@ public class WindowCapturer implements VideoCapturer {
         captureThread = new Thread(() -> {
             try {
                 long start = System.nanoTime();
-                capturerObs.onCapturerStarted(true);
+                if (null != capturerObs) capturerObs.onCapturerStarted(true);
 
                 int[] textures = new int[1];
                 GLES20.glGenTextures(1, textures, 0);
@@ -71,7 +71,7 @@ public class WindowCapturer implements VideoCapturer {
 
                         long frameTime = System.nanoTime() - start;
                         VideoFrame videoFrame = new VideoFrame(i420Buf, 0, frameTime);
-                        capturerObs.onFrameCaptured(videoFrame);
+                        if (null != capturerObs) capturerObs.onFrameCaptured(videoFrame);
                         videoFrame.release();
                     });
 
