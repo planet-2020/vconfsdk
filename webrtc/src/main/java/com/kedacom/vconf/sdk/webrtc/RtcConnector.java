@@ -55,6 +55,7 @@ class RtcConnector implements IRcvMsgCallback{
 		cbMsgHandlerMap.put("Ev_MT_SetAnswer_Cmd", this::onSetAnswerCmd);
 		cbMsgHandlerMap.put("Ev_MT_SetIceCandidate_Cmd", this::onSetIceCandidateCmd);
 		cbMsgHandlerMap.put("Ev_MT_GetFingerPrint_Cmd", this::onGetFingerPrintCmd);
+		cbMsgHandlerMap.put("Ev_MT_UnPub_Cmd", this::onUnPubCmd);
 
 		cbMsgHandlerMap.put("Ev_MT_CodecQuiet_Cmd", this::onCodecQuietCmd);
 		cbMsgHandlerMap.put("Ev_MT_CodecMute_Cmd", this::onCodecMuteCmd);
@@ -74,6 +75,7 @@ class RtcConnector implements IRcvMsgCallback{
         subsMsgBuilder.addMsgid("Ev_MT_GetFingerPrint_Cmd");
 		subsMsgBuilder.addMsgid("Ev_MT_CodecQuiet_Cmd");
 		subsMsgBuilder.addMsgid("Ev_MT_CodecMute_Cmd");
+		subsMsgBuilder.addMsgid("Ev_MT_UnPub_Cmd");
 		msg.addMsg(subsMsgBuilder.build());
 		byte[] abyContent = msg.Encode();
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
@@ -180,7 +182,11 @@ class RtcConnector implements IRcvMsgCallback{
 
 		Log.i(TAG, String.format("[PUB]<=#= onGetOfferCmd, connType=%s, mediaType=%s", connType, mediaType));
 
-		if (null != signalingEvents) handler.post(() -> signalingEvents.onGetOfferCmd(connType, mediaType));
+		handler.post(() -> {
+			if (null != signalingEvents) {
+				signalingEvents.onGetOfferCmd(connType, mediaType);
+			}
+		});
 
 	}
 
@@ -225,7 +231,11 @@ class RtcConnector implements IRcvMsgCallback{
 		for (StructConfPB.TRtcMedia tRtcMedia : rtcMedialist.getMediaList()){
 			rtcMedias.add(rtcMediaFromPB(tRtcMedia));
 		}
-		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetOfferCmd(connType, offer, rtcMedias) );
+		handler.post(() -> {
+			if (null != signalingEvents) {
+				signalingEvents.onSetOfferCmd(connType, offer, rtcMedias);
+			}
+		});
 
 	}
 
@@ -247,7 +257,11 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		Log.i(TAG, String.format("[PUB]<=#= onSetAnswerCmd, connType=%s, answer=\n%s", connType, answer));
-		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetAnswerCmd(connType, answer) );
+		handler.post(() -> {
+			if (null != signalingEvents) {
+				signalingEvents.onSetAnswerCmd(connType, answer);
+			}
+		});
 
 	}
 
@@ -275,7 +289,11 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		Log.i(TAG, String.format("<=#= connType=%s, mid=%s, index=%s, candidate=\n%s", connType, mid, index, candidate));
-		if (null != signalingEvents) handler.post(() -> signalingEvents.onSetIceCandidateCmd(connType, mid, index, candidate) );
+		handler.post(() -> {
+			if (null != signalingEvents) {
+				signalingEvents.onSetIceCandidateCmd(connType, mid, index, candidate);
+			}
+		});
 	}
 
 
@@ -296,7 +314,11 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		KLog.p("connType=%s", connType);
-		if (null != signalingEvents) handler.post(() -> signalingEvents.onGetFingerPrintCmd(connType) );
+		handler.post(() -> {
+			if (null != signalingEvents) {
+				signalingEvents.onGetFingerPrintCmd(connType);
+			}
+		});
 	}
 
 
@@ -314,7 +336,11 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		KLog.p("bQuiet=%s", bQuiet);
-		if (null != signalingEvents) handler.post(() -> signalingEvents.onCodecQuietCmd(bQuiet) );
+		handler.post(() -> {
+			if (null != signalingEvents) {
+				signalingEvents.onCodecQuietCmd(bQuiet);
+			}
+		});
 	}
 
 
@@ -332,7 +358,37 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		KLog.p("bMute=%s", bMute);
-		if (null != signalingEvents) handler.post(() -> signalingEvents.onCodecMuteCmd(bMute) );
+		handler.post(() -> {
+			if (null != signalingEvents) {
+				signalingEvents.onCodecMuteCmd(bMute);
+			}
+		});
+	}
+
+
+	/**
+	 * 取消发布
+	 * */
+	private void onUnPubCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
+		BodyItem item0 = mtMsg.GetMsgBody(0);
+		BodyItem item1 = mtMsg.GetMsgBody(1);
+		int connType;
+		int mediaType;
+		try {
+			connType = BasePB.TU32.parseFrom(item0.getAbyContent()).getValue();
+			mediaType = BasePB.TU32.parseFrom(item1.getAbyContent()).getValue();
+		} catch (InvalidProtocolBufferException e) {
+			e.printStackTrace();
+			return;
+		}
+
+		Log.i(TAG, String.format("[UNPUB]<=#= onUnPubCmd, connType=%s, mediaType=%s", connType, mediaType));
+
+		handler.post(() -> {
+			if (null != signalingEvents) {
+				signalingEvents.onUnPubCmd(connType, mediaType);
+			}
+		});
 	}
 
 
@@ -494,6 +550,7 @@ class RtcConnector implements IRcvMsgCallback{
 
 		void onCodecMuteCmd(boolean bMute);
 
+		void onUnPubCmd(int connType, int mediaType);
 	}
 
 
