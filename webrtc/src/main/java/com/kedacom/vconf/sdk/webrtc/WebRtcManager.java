@@ -137,18 +137,6 @@ public class WebRtcManager extends Caster<Msg>{
     // 平台的StreamId到WebRTC的TrackId之间的映射
     private BiMap<String, String> kdStreamId2RtcTrackIdMap = HashBiMap.create();
 
-    // 用于定时收集统计信息
-    private StatsHelper.Stats publisherStats;
-    private StatsHelper.Stats subscriberStats;
-    private StatsHelper.Stats allStats;
-    private Runnable statsRunnable = new Runnable() {
-        @Override
-        public void run() {
-            collectStats();
-            sessionHandler.postDelayed(this, 2000);
-        }
-    };
-
 
     // 当前用户的e164
     private String userE164;
@@ -853,8 +841,12 @@ public class WebRtcManager extends Caster<Msg>{
         createPeerConnectionFactory();
         createPeerConnectionWrapper();
 
-        // 定时获取统计信息
-        sessionHandler.postDelayed(statsRunnable, 3000);
+//        // 定时获取统计信息
+//        sessionHandler.postDelayed(statsCollector, 3000);
+//        // 定时从统计信息获取各与会方音量用于语音激励
+//        sessionHandler.postDelayed(audioLevelCollector, 3000);
+//        // 定时从统计信息获取各与会方媒体状态（音视频是否正常）
+//        sessionHandler.postDelayed(confereeStatusCollector, 3000);
 
         KLog.p("session started ");
 
@@ -913,66 +905,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private void collectStats(){
-        if (null != pubPcWrapper && null != pubPcWrapper.pc) {
-            pubPcWrapper.pc.getStats(rtcStatsReport -> {
-                KLog.p("publisher rtcStatsReport=%s ", rtcStatsReport);
-                publisherStats = StatsHelper.resolveStats(rtcStatsReport);
-                if (null == subscriberStats) {
-                    // got publisherStats firstly, append subscriberStats later.
-                    allStats = publisherStats;
-                } else {
-                    // already got subscriberStats, append publisherStats.
-                    allStats.audioSource = publisherStats.audioSource;
-                    allStats.videoSource = publisherStats.videoSource;
-                    allStats.sendAudioTrack = publisherStats.sendAudioTrack;
-                    allStats.sendVideoTrack = publisherStats.sendVideoTrack;
-                    allStats.audioOutboundRtp = publisherStats.audioOutboundRtp;
-                    allStats.videoOutboundRtp = publisherStats.videoOutboundRtp;
-                    allStats.audioInboundRtpList.addAll(publisherStats.audioInboundRtpList);
-                    allStats.videoInboundRtpList.addAll(publisherStats.videoInboundRtpList);
-                    allStats.recvAudioTrackList.addAll(publisherStats.recvAudioTrackList);
-                    allStats.recvVideoTrackList.addAll(publisherStats.recvVideoTrackList);
-                    allStats.encoderList.addAll(publisherStats.encoderList);
-                    allStats.decoderList.addAll(publisherStats.decoderList);
-
-                    // both publisherStats and subscriberStats got, complete.
-                    publisherStats = null;
-                    subscriberStats = null;
-                    KLog.p(allStats.toString());
-
-                    dealWithStats(allStats);
-                }
-            });
-        }
-
-        if (null != subPcWrapper && null != subPcWrapper.pc) {
-            subPcWrapper.pc.getStats(rtcStatsReport -> {
-                System.out.println(String.format("subscriber rtcStatsReport=%s ", rtcStatsReport));
-                subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
-                if (null == publisherStats) {
-                    // got subscriberStats firstly, append publisherStats later.
-                    allStats = subscriberStats;
-                } else {
-                    // already got publisherStats, append subscriberStats.
-                    allStats.audioInboundRtpList.addAll(subscriberStats.audioInboundRtpList);
-                    allStats.videoInboundRtpList.addAll(subscriberStats.videoInboundRtpList);
-                    allStats.recvAudioTrackList.addAll(subscriberStats.recvAudioTrackList);
-                    allStats.recvVideoTrackList.addAll(subscriberStats.recvVideoTrackList);
-                    allStats.encoderList.addAll(subscriberStats.encoderList);
-                    allStats.decoderList.addAll(subscriberStats.decoderList);
-
-                    // both publisherStats and subscriberStats got, complete.
-                    publisherStats = null;
-                    subscriberStats = null;
-                    KLog.p(allStats.toString());
-
-//                    dealWithStats(allStats);
-                }
-            });
-        }
-
-    }
 
 
     private void createPeerConnectionFactory() {
@@ -2046,7 +1978,7 @@ public class WebRtcManager extends Caster<Msg>{
         public String ownerId; // Conferee.id
         public boolean bAudio;
         public boolean bAss;
-        public List<EmMtResolution> supportedResolutionList;       // 流支持的分辨率
+        public List<EmMtResolution> supportedResolutionList;       // 流支持的分辨率。仅视频有效
 
         public Stream(String streamId, int mcuId, int terId, boolean bAudio, boolean bAss, List<EmMtResolution> supportedResolutionList) {
             this.streamId = streamId;
@@ -2660,8 +2592,8 @@ public class WebRtcManager extends Caster<Msg>{
 
                     // 将本地track添加到流集合
                     if (null != myConferee){
-                        streams.put(localVideoTrackId,
-                                new Stream(localVideoTrackId, myConferee.mcuId, myConferee.terId,false, localVideoTrackId.equals(LOCAL_ASS_TRACK_ID),
+                        streams.put(kdStreamId,
+                                new Stream(kdStreamId, myConferee.mcuId, myConferee.terId,false, localVideoTrackId.equals(LOCAL_ASS_TRACK_ID),
                                         Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 实际可能并非1080P，比如辅流是截取的window宽高
                                 )
                         );
@@ -2723,17 +2655,8 @@ public class WebRtcManager extends Caster<Msg>{
                     KLog.p("localVideoTrack %s, %s removed ", kdStreamId, trackId);
                     videoSinks.remove(kdStreamId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
-
-                    // 将本地track从流集合删除 // TODO 看是否能收到StreamLeft
-//                    if (null != myConferee) {
-//                        streams.put(localVideoTrackId,
-//                                new Stream(localVideoTrackId, myConferee.mcuId, myConferee.terId, false, videoCapturer instanceof WindowCapturer,
-//                                        Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 实际可能并非1080P，比如辅流是截取的window宽高
-//                                )
-//                        );
-//                    } else {
-//                        KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
-//                    }
+                    // 从流集合删除（取消发布对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流）
+                    streams.remove(kdStreamId);
                 });
 
             });
@@ -2741,31 +2664,25 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         void createRemoteVideoTrack(String mid, VideoTrack track){
-            String streamId = mid2KdStreamIdMap.get(mid);
-            KLog.p("mid=%s, streamId=%s", mid, streamId);
-            if (null == streamId) {
+            String kdStreamId = mid2KdStreamIdMap.get(mid);
+            if (null == kdStreamId) {
                 KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
                 return;
             }
-            kdStreamId2RtcTrackIdMap.put(track.id(), streamId);
+            kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
 
             executor.execute(() -> {
-                KLog.p("stream %s added", streamId);
-                remoteVideoTracks.put(streamId, track);
+                KLog.p("stream %s added", kdStreamId);
+                remoteVideoTracks.put(kdStreamId, track);
                 track.setEnabled(config.isRemoteVideoEnabled);
-                ProxyVideoSink videoSink = new ProxyVideoSink(streamId);
+                ProxyVideoSink videoSink = new ProxyVideoSink(kdStreamId);
                 track.addSink(videoSink);
 
-                KLog.p("rtcstreamId=%s, kdstreamId=%s", track.id(), streamId);
+                KLog.p("rtcstreamId=%s, kdstreamId=%s", track.id(), kdStreamId);
                 sessionHandler.post(() -> {
-                    videoSinks.put(streamId, videoSink);
-                    Stream remoteStream = getStream(streamId);
-                    if (null == remoteStream) {
-                        KLog.p(KLog.ERROR, "no such stream %s in subscribed stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.CurrentStreamList branch in method onNtf)", streamId);
-                        return;
-                    }
+                    videoSinks.put(kdStreamId, videoSink);
                     // 重新绑定Display，因为之前绑定时Track还没上来。
-                    Conferee conferee = getConfereeByStreamId(remoteStream.streamId);
+                    Conferee conferee = getConfereeByStreamId(kdStreamId);
                     if (null != conferee) {
                         Display display = getDisplay(conferee.id);
                         if (null != display) {
@@ -2776,7 +2693,7 @@ public class WebRtcManager extends Caster<Msg>{
                             KLog.p(KLog.ERROR, "user not bind a display to myConferee");
                         }
                     } else {
-                        KLog.p(KLog.ERROR, "what's wrong? owner of stream %s not join conferee yet !?", remoteStream.streamId);
+                        KLog.p(KLog.ERROR, "what's wrong? owner of stream %s not join conferee yet !?", kdStreamId);
                     }
                 });
 
@@ -2787,15 +2704,15 @@ public class WebRtcManager extends Caster<Msg>{
             executor.execute(() -> {
                 for (String streamId : remoteVideoTracks.keySet()) {
                     if (streamId.equals(kdStreamId)) {
-                        VideoTrack track = remoteVideoTracks.remove(streamId);
+                        VideoTrack track = remoteVideoTracks.remove(kdStreamId);
 //                        track.dispose();
-                        KLog.p("stream %s removed", streamId);
+                        KLog.p("stream %s removed", kdStreamId);
 
                         sessionHandler.post(() -> {
-                            videoSinks.remove(streamId);
-                            kdStreamId2RtcTrackIdMap.remove(streamId);
+                            videoSinks.remove(kdStreamId);
+                            kdStreamId2RtcTrackIdMap.remove(kdStreamId);
 
-                            Conferee conferee = getConfereeByStreamId(streamId);
+                            Conferee conferee = getConfereeByStreamId(kdStreamId);
                             if (null != conferee) {
                                 Display display = getDisplay(conferee.id);
                                 if (null != display) {
@@ -2821,7 +2738,15 @@ public class WebRtcManager extends Caster<Msg>{
                 localAudioTrack.setEnabled(config.isLocalAudioEnabled);
                 audioSender = pc.addTrack(localAudioTrack, Collections.singletonList(STREAM_ID));
 
-                sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.put(localAudioTrackId, localAudioTrackId));
+                sessionHandler.post(() -> {
+                    String kdStreamId = localAudioTrackId;
+                    kdStreamId2RtcTrackIdMap.put(kdStreamId, localAudioTrackId);
+                    if (null != myConferee){
+                        streams.put(kdStreamId, new Stream(kdStreamId, myConferee.mcuId, myConferee.terId,true, false, null));
+                    }else{
+                        KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
+                    }
+                });
             });
         }
 
@@ -2832,19 +2757,10 @@ public class WebRtcManager extends Caster<Msg>{
                 sessionHandler.post(() -> {
                     String trackId = localAudioTrack.id();
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
-                    KLog.p("localAudioTrack %s, %s removed ", kdStreamId, trackId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
 
-                    // 将本地track从流集合删除 // TODO 看是否能收到StreamLeft
-//                    if (null != myConferee) {
-//                        streams.put(localVideoTrackId,
-//                                new Stream(localVideoTrackId, myConferee.mcuId, myConferee.terId, false, videoCapturer instanceof WindowCapturer,
-//                                        Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 实际可能并非1080P，比如辅流是截取的window宽高
-//                                )
-//                        );
-//                    } else {
-//                        KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
-//                    }
+                    // 从流集合删除（取消发布对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流）
+                    streams.remove(kdStreamId);
                 });
 
             });
@@ -2853,22 +2769,17 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         void createRemoteAudioTrack(String mid, AudioTrack track){
-            String streamId = mid2KdStreamIdMap.get(mid);
-            KLog.p("mid=%s, streamId=%s", mid, streamId);
-            if (null == streamId) {
+            String kdStreamId = mid2KdStreamIdMap.get(mid);
+            KLog.p("mid=%s, streamId=%s", mid, kdStreamId);
+            if (null == kdStreamId) {
                 KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
                 return;
             }
-            Stream remoteStream = getStream(streamId);
-            if (null == remoteStream) {
-                KLog.p(KLog.ERROR, "no such stream %s in subscribed stream list( see Msg.StreamLeft/Msg.StreamJoined/Msg.CurrentStreamList branch in method onNtf)", streamId);
-                return;
-            }
-            kdStreamId2RtcTrackIdMap.put(track.id(), streamId);
+            kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
 
             executor.execute(() -> {
                 track.setEnabled(config.isRemoteAudioEnabled);
-                remoteAudioTracks.put(streamId, track);
+                remoteAudioTracks.put(kdStreamId, track);
             });
         }
 
@@ -2876,10 +2787,10 @@ public class WebRtcManager extends Caster<Msg>{
             executor.execute(() -> {
                 for (String streamId : remoteAudioTracks.keySet()) {
                     if (streamId.equals(kdStreamId)) {
-                        AudioTrack track = remoteAudioTracks.remove(streamId);
+                        AudioTrack track = remoteAudioTracks.remove(kdStreamId);
 //                        track.dispose();
-                        sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.inverse().remove(streamId));
-                        KLog.p("stream %s removed", streamId);
+                        sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.remove(kdStreamId));
+                        KLog.p("stream %s removed", kdStreamId);
                         return;
                     }
                 }
@@ -2897,7 +2808,7 @@ public class WebRtcManager extends Caster<Msg>{
                     audioSource = null;
                 }
                 String trackId = localAudioTrack.id();
-                sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.remove(trackId));
+                sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.inverse().remove(trackId));
 
                 localAudioTrack = null;
                 pc.removeTrack(audioSender);
@@ -3125,35 +3036,137 @@ public class WebRtcManager extends Caster<Msg>{
         this.statsListener = statsListener;
     }
 
-    private void dealWithStats(StatsHelper.Stats stats){  // TODO 不在这里做。统计信息采集仅负责采集。需要获取数据的主动去获取，而不是在这里通过回调直接穿透。
-        if (true){
-            return;
-        }
-        String maxAudioLevelTrackId = null != stats.audioSource ? stats.audioSource.trackIdentifier : null;
-        double maxAudioLevel = null != stats.audioSource ? stats.audioSource.audioLevel : 0;
-        for (StatsHelper.RecvAudioTrack track : stats.recvAudioTrackList){
-            if (track.audioLevel > maxAudioLevel){
-                maxAudioLevel = track.audioLevel;
-                maxAudioLevelTrackId = track.trackIdentifier;
-            }
-        }
-        if (maxAudioLevel > 0.1){
-            // 语音激励
-            String maxAudioLevelStreamId = kdStreamId2RtcTrackIdMap.inverse().get(maxAudioLevelTrackId);
-            Conferee conferee = getConfereeByStreamId(maxAudioLevelStreamId);
-            if (null != conferee){
-                Display display = getDisplay(conferee.id);
-                if (null != display){
-                    display.showVoiceActivatedDeco(true);
-                }
-            }
+    private void dealWithStats(StatsHelper.Stats stats){
 
-        }
+
 
         // 通知用户
         if (null != statsListener){
             statsListener.onRtcStats(null/*TODO*/);
         }
     }
+
+
+    // 用于定时收集统计信息
+    private final StatsHelper.Stats publisherStats = new StatsHelper.Stats();
+    private final StatsHelper.Stats subscriberStats = new StatsHelper.Stats();
+    private final StatsHelper.Stats assPublisherStats = new StatsHelper.Stats();
+    private final StatsHelper.Stats assSubscriberStats = new StatsHelper.Stats();
+    // RTC统计信息收集器
+    private Runnable statsCollector = new Runnable() {
+        @Override
+        public void run() {
+            if (null != pubPcWrapper && null != pubPcWrapper.pc) {
+                pubPcWrapper.pc.getStats(rtcStatsReport -> {
+                    KLog.p("publisherStats=%s ", rtcStatsReport);
+                    synchronized (publisherStats) {
+                        StatsHelper.resolveStats(rtcStatsReport, publisherStats);
+                    }
+                });
+            }
+            if (null != subPcWrapper && null != subPcWrapper.pc) {
+                subPcWrapper.pc.getStats(rtcStatsReport -> {
+                    KLog.p("subscriberStats=%s ", rtcStatsReport);
+                    synchronized (subscriberStats) {
+                        StatsHelper.resolveStats(rtcStatsReport, subscriberStats);
+                    }
+                });
+            }
+//            if (null != assPubPcWrapper && null != assPubPcWrapper.pc) {
+//                assPubPcWrapper.pc.getStats(rtcStatsReport -> {
+//                    KLog.p("assPublisherStats=%s ", rtcStatsReport);
+//                    synchronized (assPublisherStats) {
+//                        StatsHelper.resolveStats(rtcStatsReport, assPublisherStats);
+//                    }
+//                });
+//            }
+//            if (null != assSubPcWrapper && null != assSubPcWrapper.pc) {
+//                assSubPcWrapper.pc.getStats(rtcStatsReport -> {
+//                    KLog.p("assSubscriberStats=%s ", rtcStatsReport);
+//                    synchronized (assSubscriberStats) {
+//                        StatsHelper.resolveStats(rtcStatsReport, assSubscriberStats);
+//                    }
+//                });
+//            }
+
+            sessionHandler.postDelayed(this, 2000);
+        }
+    };
+
+    // 与会方音量水平收集器
+    private Runnable audioLevelCollector = new Runnable() {
+        @Override
+        public void run() {
+            // 比较各与会方的音量以选出最大者用以语音激励
+            String maxAudioLevelTrackId;
+            double maxAudioLevel;
+            // 己端的音量
+            synchronized (publisherStats) {
+                maxAudioLevelTrackId = null != publisherStats.audioSource ? publisherStats.audioSource.trackIdentifier : null;
+                maxAudioLevel = null != publisherStats.audioSource ? publisherStats.audioSource.audioLevel : 0;
+            }
+            // 其他与会方的音量
+            synchronized (subscriberStats) {
+                for (StatsHelper.RecvAudioTrack track : subscriberStats.recvAudioTrackList) {
+                    if (track.audioLevel > maxAudioLevel) {
+                        maxAudioLevel = track.audioLevel;
+                        maxAudioLevelTrackId = track.trackIdentifier;
+                    }
+                }
+            }
+            KLog.p("maxAudioLevel=%s", maxAudioLevel);
+            if (maxAudioLevel > 0.1){ // 小于0.1认为不是人说话是环境噪音
+                String maxAudioLevelKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(maxAudioLevelTrackId);
+                KLog.p("maxAudioLevelKdStreamId=%s", maxAudioLevelKdStreamId);
+                Conferee conferee = getConfereeByStreamId(maxAudioLevelKdStreamId);
+                if (null != conferee){
+                    Display display = getDisplay(conferee.id);
+                    if (null != display){
+                        display.showVoiceActivatedDeco(true);
+                    }
+                }
+
+            }
+            sessionHandler.postDelayed(this, 2000);
+        }
+    };
+
+    private Map<String, Long> preReceivedFramesMap = new HashMap<>();
+    // 可忍受的帧率下限，低于该下限则认为信号丢失。单位：fps
+    private final float tolerableFrameRate = 1;
+    // 与会方状态（是否纯音频、是否视频丢失等）收集器
+    private Runnable confereeStatusCollector = new Runnable() {
+        @Override
+        public void run() {
+            // 其他与会方的帧率
+            Map<String, Long> framesReceivedMap = new HashMap<>();
+            synchronized (subscriberStats) {
+                for (StatsHelper.RecvVideoTrack track : subscriberStats.recvVideoTrackList) {
+                    framesReceivedMap.put(track.trackIdentifier, track.framesReceived);
+                }
+            }
+            for (Map.Entry<String, Long> entry : framesReceivedMap.entrySet()){
+                String trackIdentifier = entry.getKey();
+                long preReceivedFrames = null != preReceivedFramesMap.get(trackIdentifier) ? preReceivedFramesMap.get(trackIdentifier) : 0;
+                long curReceivedFrames = entry.getValue();
+                KLog.p("trackIdentifier=%s, preReceivedFrames=%s, curReceivedFrames=%s", trackIdentifier, preReceivedFrames, curReceivedFrames);
+                if ((curReceivedFrames - preReceivedFrames) / 5.0f < tolerableFrameRate){
+                    String lostSignalKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackIdentifier);
+                    Conferee conferee = getConfereeByStreamId(lostSignalKdStreamId);
+                    if (null != conferee){
+                        Display display = getDisplay(conferee.id);
+                        if (null != display){
+                            display.showStreamLostDeco(true);
+                        }
+                    }
+                }
+            }
+
+            preReceivedFramesMap = framesReceivedMap;
+
+            sessionHandler.postDelayed(this, 5000);
+        }
+    };
+
 
 }
