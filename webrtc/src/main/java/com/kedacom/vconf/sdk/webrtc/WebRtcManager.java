@@ -436,7 +436,8 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     /**
-     * 摄像头是否已设置为开启
+     * 摄像头是否已设置为开启。
+     * TODO 状态记录在webrtc的config中，跨session。这样退出再入会时可以拿到。
      * */
     public boolean isCameraEnabled(){
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
@@ -841,12 +842,12 @@ public class WebRtcManager extends Caster<Msg>{
         createPeerConnectionFactory();
         createPeerConnectionWrapper();
 
-//        // 定时获取统计信息
-//        sessionHandler.postDelayed(statsCollector, 3000);
-//        // 定时从统计信息获取各与会方音量用于语音激励
-//        sessionHandler.postDelayed(audioLevelCollector, 3000);
-//        // 定时从统计信息获取各与会方媒体状态（音视频是否正常）
-//        sessionHandler.postDelayed(confereeStatusCollector, 3000);
+        // 定时获取统计信息
+        sessionHandler.postDelayed(statsCollector, 3000);
+        // 定时从统计信息获取各与会方音量用于语音激励
+        sessionHandler.postDelayed(audioLevelCollector, 3000);
+        // 定时从统计信息获取各与会方媒体状态（音视频是否正常）
+        sessionHandler.postDelayed(confereeStatusCollector, 6000);
 
         KLog.p("session started ");
 
@@ -3132,8 +3133,6 @@ public class WebRtcManager extends Caster<Msg>{
     };
 
     private Map<String, Long> preReceivedFramesMap = new HashMap<>();
-    // 可忍受的帧率下限，低于该下限则认为信号丢失。单位：fps
-    private final float tolerableFrameRate = 1;
     // 与会方状态（是否纯音频、是否视频丢失等）收集器
     private Runnable confereeStatusCollector = new Runnable() {
         @Override
@@ -3150,7 +3149,7 @@ public class WebRtcManager extends Caster<Msg>{
                 long preReceivedFrames = null != preReceivedFramesMap.get(trackIdentifier) ? preReceivedFramesMap.get(trackIdentifier) : 0;
                 long curReceivedFrames = entry.getValue();
                 KLog.p("trackIdentifier=%s, preReceivedFrames=%s, curReceivedFrames=%s", trackIdentifier, preReceivedFrames, curReceivedFrames);
-                if ((curReceivedFrames - preReceivedFrames) / 5.0f < tolerableFrameRate){
+                if ((curReceivedFrames - preReceivedFrames) / 5.0f < 1){ // 可忍受的帧率下限，低于该下限则认为信号丢失
                     String lostSignalKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackIdentifier);
                     Conferee conferee = getConfereeByStreamId(lostSignalKdStreamId);
                     if (null != conferee){
