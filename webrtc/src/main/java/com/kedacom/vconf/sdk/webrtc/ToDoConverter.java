@@ -187,10 +187,5 @@ final class ToDoConverter {
         return new WebRtcManager.Conferee(entityInfo.dwMcuId, entityInfo.dwTerId, e164, alias, email, false);
     }
 
-    static WebRtcManager.Stream tRtcStreamInfo2Stream(@NonNull TRtcStreamInfo tRtcStreamInfo){
-        return new WebRtcManager.Stream(tRtcStreamInfo.achStreamId, tRtcStreamInfo.tMtId.dwMcuId, tRtcStreamInfo.tMtId.dwTerId,
-                tRtcStreamInfo.bAudio, tRtcStreamInfo.bAss, tRtcStreamInfo.aemSimcastRes);
-    }
-
 
 }

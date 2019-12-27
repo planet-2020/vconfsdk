@@ -22,7 +22,6 @@ import com.google.common.base.Function;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBiMap;
-import com.google.common.collect.Iterables;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
@@ -93,6 +92,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -116,20 +116,10 @@ public class WebRtcManager extends Caster<Msg>{
     private PeerConnectionWrapper assSubPcWrapper;
 
 
-    // 与会方列表。
-    // 一个与会方只有一路视频流可以有多个音频流。
-    // 辅流虽然是由某个与会方发出，但我们特殊处理，既把它看作是一路流也把它看作是一个虚拟的与会方。
-    private Map<String, Conferee> conferees = new HashMap<>();
-    // 流列表。
-    // 这里的流不是WebRTC的Stream而是平台的流，概念上等同于WebRTC的Track。
-    // 一路流总是是属于某一个与会方。
-    // 辅流虽然是由某个与会方发出，但我们特殊处理，既把它看作是一路流也把它看作是一个虚拟的与会方。
-    private Map<String, Stream> streams = new HashMap<>();
-    // 平台的StreamId到视频槽的映射。
-    // 视频槽输入口连接WebRTC的视频流，输出口连接Display。
-    private Map<String, ProxyVideoSink> videoSinks = new HashMap<>();
+    // 与会方集合。
+    private Set<Conferee> conferees = new HashSet<>();
+
     // 用来展示与会方画面的Display集合。
-    // 一个Display对应一个与会方，需绑定到与会方以展示其内容。
     private Set<Display> displaySet = new HashSet<>();
 
     // WebRTC的mid到平台的StreamId之间的映射
@@ -140,8 +130,6 @@ public class WebRtcManager extends Caster<Msg>{
 
     // 当前用户的e164
     private String userE164;
-
-    private Conferee myConferee;
 
     private Handler sessionHandler = new Handler(Looper.getMainLooper());
 
@@ -437,7 +425,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     /**
      * 摄像头是否已设置为开启。
-     * TODO 状态记录在webrtc的config中，跨session。这样退出再入会时可以拿到。
+     * TODO 状态记录在webrtc的config中，记录在SharePerferences中，跨session。这样退出再入会时可以拿到。
      * */
     public boolean isCameraEnabled(){
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
@@ -455,11 +443,9 @@ public class WebRtcManager extends Caster<Msg>{
         if (null != pcWrapper) {
             pcWrapper.setLocalVideoEnable(enable);
         }
-        if (null != myConferee){
-            Display display = getDisplay(myConferee.id);
-            if (null != display){
-                display.showCameraDisabledDeco(!enable);
-            }
+        Conferee conferee = findMyself();
+        if (null != conferee){
+            conferee.setState(Conferee.State_CameraDisabled);
         }
     }
 
@@ -608,114 +594,123 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case CurrentConfereeList:
-                TMTEntityInfoList entityInfoList = (TMTEntityInfoList) ntfContent;
-                for (TMTEntityInfo entityInfo : entityInfoList.atMtEntitiy) {
-                    Conferee conferee = ToDoConverter.tMTEntityInfo2ConfereeInfo(entityInfo);
-                    conferees.put(conferee.id, conferee);
-                    if (userE164.equals(conferee.e164)){ // 自己
-                        myConferee = conferee;
-                    }
+                for (TMTEntityInfo entityInfo : ((TMTEntityInfoList) ntfContent).atMtEntitiy) {
+                    conferees.add(ToDoConverter.tMTEntityInfo2ConfereeInfo(entityInfo));
                 }
                 if (null != sessionEventListener) {
-                    for (Conferee conferee : conferees.values()) {
+                    for (Conferee conferee : conferees) {
                         sessionEventListener.onConfereeJoined(conferee);
                     }
                 }
                 break;
 
             case ConfereeJoined:
-                Conferee conferee = ToDoConverter.tMTEntityInfo2ConfereeInfo((TMTEntityInfo) ntfContent);
-                conferees.put(conferee.id, conferee);
+                Conferee joinedConferee = ToDoConverter.tMTEntityInfo2ConfereeInfo((TMTEntityInfo) ntfContent);
+                conferees.add(joinedConferee);
                 if (null != sessionEventListener) {
-                    sessionEventListener.onConfereeJoined(conferee);
+                    sessionEventListener.onConfereeJoined(joinedConferee);
                 }
                 break;
 
             case ConfereeLeft:
                 TMtId tMtId = (TMtId) ntfContent;
-                KLog.p("ConfereeLeft, %s %s", tMtId.dwMcuId, tMtId.dwTerId);
-                Conferee leftConferee = Iterables.find(conferees.values(), input -> input.id.equals(Conferee.buildId(tMtId.dwMcuId, tMtId.dwTerId, false)));
+                Conferee leftConferee = findConfereeByConfereeId(Conferee.buildId(tMtId.dwMcuId, tMtId.dwTerId, false));
                 if (null != leftConferee){
-                    Conferee removedConferee = conferees.remove(leftConferee.id);
-                    if (null != removedConferee && null != sessionEventListener) {
-                        sessionEventListener.onConfereeLeft(removedConferee);
+                    conferees.remove(leftConferee);
+                    if (null != sessionEventListener) {
+                        sessionEventListener.onConfereeLeft(leftConferee);
                     }
                 }
                 break;
 
             case CurrentStreamList:
             case StreamJoined:
-                KLog.p("CurrentStreamList");
-                TRtcStreamInfo assStreamInfo = null;
-                for (TRtcStreamInfo tRtcStreamInfo : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
-                    Stream stream = ToDoConverter.tRtcStreamInfo2Stream(tRtcStreamInfo);
-                    streams.put(stream.streamId, stream);
-                    if (tRtcStreamInfo.bAss && !tRtcStreamInfo.bAudio){
-                        assStreamInfo = tRtcStreamInfo;
+                TRtcStreamInfo assStream = null;
+                for (TRtcStreamInfo streamInfo : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
+                    if (streamInfo.bAss){
+                        assStream = streamInfo;  // 对于辅流我们稍后特殊处理
+                        continue;
+                    }
+                    // 查找该流所属的与会方
+                    Conferee owner = findConfereeByConfereeId(Conferee.buildId(streamInfo.tMtId.dwMcuId, streamInfo.tMtId.dwTerId, false));
+                    if (null == owner){
+                        KLog.p(KLog.ERROR, "this stream not belong to any conferee");
+                        continue;
+                    }
+                    // 将流关联到与会方
+                    if (streamInfo.bAudio){
+                        owner.addAudioStream(new AudioStream(streamInfo.achStreamId));
+                    }else{
+                        owner.setVideoStream(new VideoStream(streamInfo.achStreamId, false, streamInfo.aemSimcastRes));
                     }
                 }
-                List<TRtcPlayItem> playItems = FluentIterable.from(streams.values()).filter(input -> !input.bAudio).transform(new Function<Stream, TRtcPlayItem>() {
-                    @NullableDecl
-                    @Override
-                    public TRtcPlayItem apply(@NullableDecl Stream input) {
-                        return new TRtcPlayItem(input.streamId, input.bAss, input.supportedResolutionList.get(0));
-                    }
-                }).toList();
 
-                set(Msg.SelectStream, new TRtcPlayParam(playItems));
-
-                if (null != assStreamInfo){
-                    // 对于辅流我们当作特殊的与会方。所以此处我们构造一个虚拟的与会方上报用户
-                    Conferee sender = getConferee(assStreamInfo.tMtId.dwMcuId, assStreamInfo.tMtId.dwTerId);
+                // 对辅流特殊处理
+                if (null != assStream){
+                    Conferee sender = findConfereeByConfereeId(Conferee.buildId(assStream.tMtId.dwMcuId, assStream.tMtId.dwTerId, false));
                     if (null != sender){
+                        // 针对辅流我们构造一个虚拟的与会方
                         Conferee assStreamConferee = new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, true);
-                        conferees.put(assStreamConferee.id, assStreamConferee);
+                        assStreamConferee.setVideoStream(new VideoStream(assStream.achStreamId, true, assStream.aemSimcastRes));
+                        conferees.add(assStreamConferee);
                         if (null != sessionEventListener){
                             sessionEventListener.onConfereeJoined(assStreamConferee);
                         }
                     }
                 }
-                break;
 
-            case StreamLeft:
-                KLog.p("StreamLeft");
-                Stream assStream = null;
-                for (TRtcStreamInfo kdStream : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
-                    Stream leftStream = Iterables.find(streams.values(), input -> input.streamId.equals(kdStream.achStreamId), null);
-                    if (null != leftStream){
-                        PeerConnectionWrapper pcWrapper;
-                        if (leftStream.bAss) {
-                            assStream = leftStream;  // 我们认为只可能有一路辅流，所以此处在循环中赋值也没关系，只可能赋值一次。
-                            pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
-                        }else{
-                            pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
-                        }
-                        // 删除对应的track
-                        if (null != pcWrapper) {
-                            if (leftStream.bAudio) {
-                                pcWrapper.removeRemoteAudioTrack(leftStream.streamId);
-                            } else {
-                                pcWrapper.removeRemoteVideoTrack(leftStream.streamId);
-                            }
-                        }
-                    }
-                }
-                playItems = FluentIterable.from(streams.values()).filter(input -> !input.bAudio).transform(new Function<Stream, TRtcPlayItem>() {
+                // 订阅视频流
+                Set<VideoStream> videoStreams = getAllVideoStreams();
+                List<TRtcPlayItem> playItems = FluentIterable.from(videoStreams).transform(new Function<VideoStream, TRtcPlayItem>() {
                     @NullableDecl
                     @Override
-                    public TRtcPlayItem apply(@NullableDecl Stream input) {
+                    public TRtcPlayItem apply(@NullableDecl VideoStream input) {
                         return new TRtcPlayItem(input.streamId, input.bAss, input.supportedResolutionList.get(0));
                     }
                 }).toList();
 
                 set(Msg.SelectStream, new TRtcPlayParam(playItems));
 
+                break;
+
+            case StreamLeft:
+                assStream = null;
+                for (TRtcStreamInfo kdStream : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
+                    if (kdStream.bAss){
+                        assStream = kdStream;  // 对于辅流我们稍后特殊处理
+                        continue;
+                    }
+                    Conferee owner = findConfereeByStreamId(kdStream.achStreamId);
+                    if (null == owner){
+                        KLog.p(KLog.ERROR, "this stream not belong to any conferee");
+                        continue;
+                    }
+                    owner.removeStream(kdStream.achStreamId);
+                }
+
+                // 对于辅流特殊处理
                 if (null != assStream){
-                    leftConferee = getConferee(assStream.ownerId);
-                    if (null != leftConferee && null != sessionEventListener){
-                        sessionEventListener.onConfereeLeft(leftConferee);
+                    Conferee assConferee = findConfereeByStreamId(assStream.achStreamId);
+                    if (null != assConferee){
+                        assConferee.removeStream(assStream.achStreamId);
+                        conferees.remove(assConferee);
+                        // 辅流退出意味着虚拟的辅流入会方退会
+                         if (null != sessionEventListener) {
+                             sessionEventListener.onConfereeLeft(assConferee);
+                         }
                     }
                 }
+
+                // 重新订阅视频流
+                videoStreams = getAllVideoStreams();
+                playItems = FluentIterable.from(videoStreams).transform(new Function<VideoStream, TRtcPlayItem>() {
+                    @NullableDecl
+                    @Override
+                    public TRtcPlayItem apply(@NullableDecl VideoStream input) {
+                        return new TRtcPlayItem(input.streamId, input.bAss, input.supportedResolutionList.get(0));
+                    }
+                }).toList();
+                set(Msg.SelectStream, new TRtcPlayParam(playItems));
 
                 break;
 
@@ -880,13 +875,8 @@ public class WebRtcManager extends Caster<Msg>{
         }
         displaySet.clear();
 
-        for (ProxyVideoSink videoSink : videoSinks.values()){
-            videoSink.release();
-        }
-        videoSinks.clear();
-
         conferees.clear();
-        streams.clear();
+
         mid2KdStreamIdMap.clear();
         kdStreamId2RtcTrackIdMap.clear();
 
@@ -1108,733 +1098,59 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private class ProxyVideoSink implements VideoSink {
-        private String name;
-        private List<Display> targets = new ArrayList<>();
-        private long timestamp = System.currentTimeMillis();
 
-        ProxyVideoSink(String name) {
-            this.name = name;
-        }
-
-        @Override
-        synchronized public void onFrame(VideoFrame frame) {
-            long curts = System.currentTimeMillis();
-            long ts = timestamp;
-            if (curts - ts > 5000){
-                timestamp = curts;
-                KLog.p("%s onFrame ", name);
-            }
-
-            for (Display target : targets){
-                if (curts - ts > 5000) {
-                    if (target.enabled) {
-                        KLog.p("sink %s render frame onto display %s ", name, target);
-                    }else{
-                        KLog.p("Dropping frame because display %s is disabled ", target);
-                    }
-                }
-                if (!target.enabled) {
-                    continue;
-                }
-                target.onFrame(frame);
-            }
-
-        }
-
-        synchronized void addTarget(Display target) {
-            if (!targets.contains(target)) {
-                KLog.p("add Display %s to sink %s", target, name);
-                targets.add(target);
-            }
-        }
-
-        synchronized boolean delTarget(Display target) {
-            KLog.p("delete Display %s from sink %s", target, name);
-            return targets.remove(target);
-        }
-
-        synchronized void release() {
-            // display会在外部被释放，不需要在此处释放。
-//            for (Display display : targets){
-//                display.destroy();
+//
+//    public Conferee getConferee(String confereeId){
+//        return conferees.get(confereeId);
+//    }
+//
+//    private Conferee getConferee(int mcuId, int terId){
+//        for (Conferee conferee : conferees.values()){
+//            if (conferee.mcuId==mcuId && conferee.terId==terId){
+//                return conferee;
 //            }
-            targets.clear();
-        }
-
-    }
-
-    public Conferee getConferee(String confereeId){
-        return conferees.get(confereeId);
-    }
-
-    private Conferee getConferee(int mcuId, int terId){
-        for (Conferee conferee : conferees.values()){
-            if (conferee.mcuId==mcuId && conferee.terId==terId){
-                return conferee;
-            }
-        }
-        return null;
-    }
-
-    public Conferee getConfereeByStreamId(String streamId){
-        Stream stream = streams.get(streamId);
-        if (null == stream){
-            return null;
-        }
-        return conferees.get(stream.ownerId);
-    }
-
-    public Stream getStream(String streamId){
-        return streams.get(streamId);
-    }
-
-    public Stream getStream(String confereeId, boolean bAudio, boolean bAss){
-        for (Stream stream : streams.values()){
-            if (stream.ownerId.equals(confereeId) && bAudio == stream.bAudio && stream.bAss == bAss){
-                return stream;
-            }
-        }
-        return null;
-    }
-
-    public Display getDisplay(String confereeId){
-        for (Display display : displaySet){
-            if ((confereeId == display.confereeId) || (confereeId != null && confereeId.equals(display.confereeId))){
-                return display;
-            }
-        }
-        return null;
-    }
-
-    public Display getDisplayByStreamId(String streamId){
-        Stream stream = streams.get(streamId);
-        if (null == stream){
-            return null;
-        }
-        return getDisplay(stream.ownerId);
-    }
-
-
-    /**
-     * 创建Display。
-     * */
-    public Display createDisplay(){
-        Display display =  new Display(context);
-        displaySet.add(display);
-        KLog.p("create display %s", display);
-        return display;
-    }
-
-    /**
-     * 销毁display
-     * */
-    public void releaseDisplay(Display display){
-        KLog.p("release display %s", display);
-        if (displaySet.remove(display)){
-            display.destroy();
-        }else{
-            KLog.p(KLog.ERROR, "wired, this display is not created by me!");
-        }
-    }
-
-
-    /**
-     * 用于展示与会方画面的控件。
-     * */
-    public final static class Display extends SurfaceViewRenderer{
-        private boolean enabled = true;
-        private String confereeId;
-        private List<TextDecoration> textDecorations = new ArrayList<>();
-        private List<PicDecoration> picDecorations = new ArrayList<>();
-        private boolean bShowVoiceActivatedDeco;
-        private boolean bShowCameraDisabledDeco;
-        private boolean bShowAudioTerminalDeco;
-        private boolean bShowStreamLostDeco;
-
-        //===== 上面的内容是swap/copy时需要拷贝的内容，下面的则不需要 ========
-
-        public static final int POS_LEFTTOP = 1;
-        public static final int POS_LEFTBOTTOM = 2;
-        public static final int POS_RIGHTTOP = 3;
-        public static final int POS_RIGHTBOTTOM = 4;
-        private int displayWidth;
-        private int displayHeight;
-        private RectF voiceActivatedDeco = new RectF();
-        private static Paint voiceActivatedDecoPaint = new Paint();
-        private static Bitmap videoCaptureDisabledDeco;
-        private static Bitmap audioConfereeDeco;
-        private static Bitmap streamLostDeco;
-        static{
-            voiceActivatedDecoPaint.setStyle(Paint.Style.STROKE);
-            voiceActivatedDecoPaint.setStrokeWidth(5);
-            voiceActivatedDecoPaint.setColor(Color.GREEN);
-        }
-
-        private Handler handler = getHandler();
-
-        private Display(Context context) {
-            super(context);
-            init(instance.eglBase.getEglBaseContext(), null);
-            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL);
-            setEnableHardwareScaler(true);
-            setWillNotDraw(false);
-        }
-
-
-        @Override
-        public String toString() {
-            return "Display{hash=" + hashCode()+
-                    " enabled=" + enabled +
-                    ", confereeId='" + confereeId + '\'' +
-                    ", textDecorations=" + textDecorations +
-                    ", picDecorations=" + picDecorations +
-                    ", displayWidth=" + displayWidth +
-                    ", displayHeight=" + displayHeight +
-                    '}';
-        }
-
-
-
-
-        /**
-         * 设置语音激励装饰。
-         * 当该Display对应的与会成员讲话音量最大时，该装饰会展示。
-         * 该装饰是一个围在画面周围的边框，用户通过该接口设置该边框线条的粗细以及颜色。
-         * @param strokeWidth 线条粗细
-         * @param color 线条颜色
-         * */
-        public static void setVoiceActivatedDecoration(int strokeWidth, int color){
-            voiceActivatedDecoPaint.reset();
-            voiceActivatedDecoPaint.setStrokeWidth(strokeWidth);
-            voiceActivatedDecoPaint.setColor(color);
-        }
-
-        private void showVoiceActivatedDeco(boolean bShow){
-            handler.removeCallbacks(this::hideVoiceActivatedDecoration);
-            bShowVoiceActivatedDeco = bShow;
-            invalidate();
-        }
-        private void hideVoiceActivatedDecoration(){
-            bShowVoiceActivatedDeco = false;
-            invalidate();
-        }
-
-        /**
-         * 设置关闭摄像头采集时本地画面对应的Display展示的图片。
-         * */
-        public static void setCameraDisabledDecoration(Bitmap bitmap){
-            videoCaptureDisabledDeco = bitmap;
-        }
-        private void showCameraDisabledDeco(boolean bShow){
-            bShowCameraDisabledDeco = bShow;
-            invalidate();
-        }
-
-        /**
-         * 设置音频入会方对应的Display展示的图片。
-         * */
-        public static void setAudioConfereeDecoration(Bitmap bitmap){
-            audioConfereeDeco = bitmap;
-        }
-        private void showAudioConfereeDeco(boolean bShow){
-            bShowAudioTerminalDeco = bShow;
-            invalidate();
-        }
-
-        /**
-         * 设置Display无视频源时展示的图片
-         * */
-        public static void setStreamLostDecoration(Bitmap bitmap){
-            streamLostDeco = bitmap;
-        }
-        private void showStreamLostDeco(boolean bShow){
-            bShowStreamLostDeco = bShow;
-            invalidate();
-        }
-
-        /**
-         * 将Display绑定到与会方。
-         * 一个Display只会绑定到一个与会方；
-         * 多个Display可以绑定到同一与会方；
-         * 若一个Display已经绑定到某个与会方，则该绑定会先被解除，然后建立新的绑定关系；
-         * NOTE:
-         * Display的内容包括码流和Decoration，此方法只影响码流展示不会改变Decoration；
-         * 若绑定到null则该Display不会展示码流，相当于于解除绑定；
-         *
-         * 对于画面内容交换的使用场景可以使用便捷方法{@link #swapContent(Display)}；
-         * 对于画面内容拷贝的使用场景可以使用便捷方法{@link #copyContentFrom(Display)}；
-         * @param confereeId 与会方Id。
-         * @return true，若confereeId对应的conferee存在或者confereeId为null；否则返回false。
-         * */
-        public boolean bind(String confereeId){
-            Map<String, Conferee> conferees = instance.conferees;
-            Map<String, Stream> streams = instance.streams;
-            Map<String, ProxyVideoSink> videoSinks = instance.videoSinks;
-
-            // 解绑原来的
-            Conferee boundConferee = conferees.get(this.confereeId);
-            if (null != boundConferee){
-                Stream boundVideoStream = instance.getStream(boundConferee.id, false, boundConferee.bAssStream);
-                if (null != boundVideoStream){
-                    ProxyVideoSink boundSink = videoSinks.get(boundVideoStream.streamId);
-                    if (null != boundSink){
-                        boundSink.delTarget(this);
-                        KLog.p("delete display %s from sink %s", this, boundSink);
-                    }
-                }
-            }
-
-            // 重新绑定
-            Conferee toBindConferee = conferees.get(confereeId);
-            if (null != toBindConferee){
-                Stream toBindVideoStream = instance.getStream(toBindConferee.id, false, toBindConferee.bAssStream);
-                if (null != toBindVideoStream){
-                    ProxyVideoSink toBindSink = videoSinks.get(toBindVideoStream.streamId);
-                    if (null != toBindSink) {
-                        toBindSink.addTarget(this);
-                        KLog.p("add display %s into sink %s", this, toBindSink);
-                    }
-                }
-            }
-
-            KLog.p("bind display %s to conferee %s", this, confereeId);
-
-            this.confereeId = confereeId;
-
-            return null != toBindConferee || null == confereeId;
-
-        }
-
-
-        /**
-         * 交换两个display的内容。
-         * NOTE: 内容包括码流、Decoration。
-         * @param otherDisplay 要交换的display。
-         * */
-        public void swapContent(@NonNull Display otherDisplay){
-            KLog.p("swap display %s and display %s", this, otherDisplay);
-
-            // 切换使能状态
-            boolean myEnable = enabled;
-            enabled = otherDisplay.enabled;
-            otherDisplay.enabled = myEnable;
-
-            // 切换绑定的与会方
-            String myConfereeId = confereeId;
-            bind(otherDisplay.confereeId);
-            otherDisplay.bind(myConfereeId);
-
-            // 切换贴在display上面的decoration
-            List<Display.TextDecoration> myTextDecorationList = textDecorations;
-            textDecorations = otherDisplay.textDecorations;
-            otherDisplay.textDecorations = myTextDecorationList;
-            List<Display.PicDecoration> myPicDecorationList = picDecorations;
-            picDecorations = otherDisplay.picDecorations;
-            otherDisplay.picDecorations = myPicDecorationList;
-
-            // 切换静态图片decoration状态
-            boolean tmp = bShowCameraDisabledDeco;
-            bShowCameraDisabledDeco = otherDisplay.bShowCameraDisabledDeco;
-            otherDisplay.bShowCameraDisabledDeco = tmp;
-            tmp = bShowVoiceActivatedDeco;
-            bShowVoiceActivatedDeco = otherDisplay.bShowVoiceActivatedDeco;
-            otherDisplay.bShowVoiceActivatedDeco = tmp;
-            tmp = bShowAudioTerminalDeco;
-            bShowAudioTerminalDeco = otherDisplay.bShowAudioTerminalDeco;
-            otherDisplay.bShowAudioTerminalDeco = tmp;
-            tmp = bShowStreamLostDeco;
-            bShowStreamLostDeco = otherDisplay.bShowStreamLostDeco;
-            otherDisplay.bShowStreamLostDeco = tmp;
-
-            // 刷新display
-            adjustDecoration();
-            otherDisplay.adjustDecoration();
-            KLog.p("after swap: this display %s, other display %s", this, otherDisplay);
-        }
-
-        /**
-         * 从另一个display拷贝内容
-         * NOTE: 内容包括码流、Decoration。
-         * */
-        public void copyContentFrom(@NonNull Display src){
-            enabled = src.enabled;
-            bind(src.confereeId);
-            clearAllDeco();
-            addText(src.getAllText());
-            addPic(src.getAllPic());
-            bShowCameraDisabledDeco = src.bShowCameraDisabledDeco;
-            bShowVoiceActivatedDeco = src.bShowVoiceActivatedDeco;
-            bShowAudioTerminalDeco = src.bShowAudioTerminalDeco;
-            bShowStreamLostDeco = src.bShowStreamLostDeco;
-            adjustDecoration();
-        }
-
-        /**
-         * 清空display内容
-         * NOTE: 内容包括码流、Decoration。
-         * */
-        public void clearContent(){
-            bind(null);
-            clearAllDeco();
-        }
-
-        /**
-         * 销毁display
-         * */
-        private void destroy(){
-            clearContent();
-            super.release();
-            KLog.p("display %s destroyed", this);
-        }
-
-
-        /**
-         * 获取该display绑定的与会方ID
-         * */
-        public String getConfereeId(){
-            return confereeId;
-        }
-
-        /**
-         * 获取该display绑定的与会方信息
-         * */
-        public Conferee getConferee(){
-            return instance.getConferee(confereeId);
-        }
-
-
-
-        @Override
-        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-            super.surfaceChanged(holder, format, width, height);
-            displayWidth = width;
-            displayHeight = height;
-            KLog.p("displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
-            adjustDecoration();
-        }
-
-        long ts = System.currentTimeMillis();
-        @Override
-        protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-
-            if (System.currentTimeMillis() - ts > 5000){
-                KLog.p("onDraw, displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
-            }
-
-            if (bShowCameraDisabledDeco){
-                if (null != videoCaptureDisabledDeco) {
-                    canvas.drawBitmap(videoCaptureDisabledDeco, 0, 0, null);
-                }else{
-                    canvas.drawColor(Color.BLACK);
-                }
-            }else if (bShowAudioTerminalDeco){
-                if (null != audioConfereeDeco) {
-                    canvas.drawBitmap(audioConfereeDeco, 0, 0, null);
-                }else{
-                    canvas.drawColor(Color.BLACK);
-                }
-            }else if (bShowStreamLostDeco){
-                if (null != streamLostDeco) {
-                    canvas.drawBitmap(streamLostDeco, 0, 0, null);
-                }else{
-                    canvas.drawColor(Color.BLACK);
-                }
-            }
-
-            if (bShowVoiceActivatedDeco){
-                canvas.drawRect(voiceActivatedDeco, voiceActivatedDecoPaint);
-//                sessionHandler.postDelayed(this::hideVoiceActivatedDecoration, 2000);
-            }
-
-            for (PicDecoration deco : picDecorations){
-                canvas.drawBitmap(deco.pic, deco.matrix, deco.paint);
-            }
-
-            for (TextDecoration deco : textDecorations){
-                if (System.currentTimeMillis() - ts > 5000){
-                    KLog.p("drawText(%s, %s, %s, %s) for display %s", deco.text, deco.x, deco.y, deco.paint.getTextSize(), this);
-                }
-                canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
-            }
-
-        }
-
-        /**
-         * 设置是否在所有Display最前端展示。可用于多个Display层叠的场景
-         * */
-        public void setOnTopOverOtherDisplays(boolean bOnTop){
-            setZOrderMediaOverlay(bOnTop);
-        }
-
-        public boolean isEnable() {
-            return enabled;
-        }
-        /**
-         * 设置是否使能。
-         * @param enable true 使能；false 禁用
-         * 若禁用则Display不会展示码流。默认是使能的。禁用后可通过该接口再设置使能以重新展示码流
-         * */
-        public void setEnable(boolean enable){
-            KLog.p("Display %s enable=%s", this, enable);
-            enabled = enable;
-            setWillNotDraw(!enable);
-        }
-
-
-        /**
-         * 添加文字
-         * */
-        public void addText(TextDecoration decoration){
-            KLog.p(decoration.toString());
-            decoration.adjust(displayWidth, displayHeight);
-            textDecorations.add(decoration);
-            invalidate();
-        }
-
-        /**
-         * 添加文字
-         * */
-        public void addText(List<TextDecoration> decoList){
-            for (TextDecoration deco : decoList){
-                deco.adjust(displayWidth, displayHeight);
-            }
-            textDecorations.addAll(decoList);
-            invalidate();
-        }
-
-        /**
-         * 清空文字
-         * */
-        public void clearText(){
-            textDecorations.clear();
-            invalidate();
-        }
-
-        /**
-         * 获取所有文字
-         * */
-        public List<TextDecoration> getAllText(){
-            return textDecorations;
-        }
-
-        /**
-         * 添加图片
-         * */
-        public void addPic(PicDecoration decoration){
-            KLog.p(decoration.toString());
-            decoration.adjust(displayWidth, displayHeight);
-            picDecorations.add(decoration);
-            invalidate();
-        }
-        /**
-         * 添加图片
-         * */
-        public void addPic(List<PicDecoration> decoList){
-            for (PicDecoration deco : decoList){
-                deco.adjust(displayWidth, displayHeight);
-            }
-            picDecorations.addAll(decoList);
-            invalidate();
-        }
-
-        /**
-         * 清空图片
-         * */
-        public void clearPic(){
-            picDecorations.clear();
-            invalidate();
-        }
-
-        /**
-         * 获取所有图片
-         * */
-        public List<PicDecoration> getAllPic(){
-            return picDecorations;
-        }
-
-        /**
-         * 清空所有deco，如图片、文字等
-         * */
-        public void clearAllDeco(){
-            clearText();
-            clearPic();
-            bShowCameraDisabledDeco = false;
-            bShowVoiceActivatedDeco = false;
-            bShowAudioTerminalDeco =  false;
-            bShowStreamLostDeco =  false;
-        }
-
-
-        private void adjustDecoration(){
-            for (TextDecoration deco : textDecorations){
-                deco.adjust(displayWidth, displayHeight);
-            }
-            for (PicDecoration deco : picDecorations){
-                deco.adjust(displayWidth, displayHeight);
-            }
-            voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
-            invalidate();
-        }
-
-        public static final class TextDecoration extends Decoration{
-            public String text;     // 要展示的文字
-            private int textSize;
-            public TextDecoration(@NonNull String text, int textSize, int color, int dx, int dy, int refPos, int w, int h) {
-                super(dx, dy, refPos, w, h);
-                this.text = text;
-                this.textSize = textSize;
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(color);
-            }
-
-            protected void adjust(int width, int height){
-                if (width<=0 || height<=0){
-                    return;
-                }
-                super.adjust(width, height);
-                float size = textSize *Math.min(ratioW, ratioH);
-                paint.setTextSize(size);
-                if (POS_LEFTBOTTOM == refPos){
-                    y -= size;
-                }else if (POS_RIGHTTOP == refPos){
-                    x -= size * text.length();
-                }else if (POS_RIGHTBOTTOM == refPos){
-                    x -= size * text.length();
-                    y -= size;
-                }
-                KLog.p(toString());
-            }
-
-            @Override
-            public String toString() {
-                return "TextDecoration{" +
-                        "text='" + text + '\'' +
-                        ", textSize=" + textSize +
-                        ", dx=" + dx +
-                        ", dy=" + dy +
-                        ", refPos=" + refPos +
-                        ", w=" + w +
-                        ", h=" + h +
-                        ", paint=" + paint +
-                        ", x=" + x +
-                        ", y=" + y +
-                        ", originX=" + originX +
-                        ", originY=" + originY +
-                        ", ratioW=" + ratioW +
-                        ", ratioH=" + ratioH +
-                        '}';
-            }
-        }
-
-        public static final class PicDecoration extends Decoration{
-            public Bitmap pic;     // 要展示的图片
-            private Matrix matrix = new Matrix();
-            public PicDecoration(@NonNull Bitmap pic, int dx, int dy, int refPos, int w, int h) {
-                super(dx, dy, refPos, w, h);
-                this.pic = pic;
-                paint.setStyle(Paint.Style.STROKE);
-            }
-
-            protected void adjust(int width, int height){
-                if (width<=0 || height<=0){
-                    return;
-                }
-                super.adjust(width, height);
-                float scaleFactor = Math.min(ratioW, ratioH);
-                matrix.reset();
-                matrix.postScale(scaleFactor, scaleFactor, originX, originY);
-                int picW = (int) (pic.getWidth()*scaleFactor);
-                int picH = (int) (pic.getHeight()*scaleFactor);
-                if (POS_LEFTBOTTOM == refPos){
-                    y -= picH;
-                }else if (POS_RIGHTTOP == refPos){
-                    x -= picW;
-                }else if (POS_RIGHTBOTTOM == refPos){
-                    x -= picW;
-                    y -= picH;
-                }
-                matrix.postTranslate(x, y);
-                KLog.p(toString());
-            }
-
-            @Override
-            public String toString() {
-                return "PicDecoration{" +
-                        "pic=" + pic +
-                        ", matrix=" + matrix +
-                        ", dx=" + dx +
-                        ", dy=" + dy +
-                        ", refPos=" + refPos +
-                        ", w=" + w +
-                        ", h=" + h +
-                        ", paint=" + paint +
-                        ", x=" + x +
-                        ", y=" + y +
-                        ", originX=" + originX +
-                        ", originY=" + originY +
-                        ", ratioW=" + ratioW +
-                        ", ratioH=" + ratioH +
-                        '}';
-            }
-        }
-
-        public static class Decoration{
-            public int dx;          // 参照pos的x方向距离（UCD标注的）
-            public int dy;          // 参照pos的y方向距离（UCD标注的）
-            public int refPos;      /** dx, dy参照的位置。如取值{@link #POS_LEFTBOTTOM}则dx表示距离左下角的x方向距离*/
-            public int w;           // 该deco所在画面的宽（UCD标注的）
-            public int h;           // 该deco所在画面的高（UCD标注的）
-            protected Paint paint;
-
-            protected int x;          // 锚点x坐标（根据UCD标注结合Display的状态计算得出）
-            protected int y;          // 锚点y坐标（根据UCD标注结合Display的状态计算得出）
-            protected int originX;
-            protected int originY;
-            protected float ratioW;
-            protected float ratioH;
-
-            protected Decoration(int dx, int dy, int refPos, int w, int h) {
-                this.dx = dx;
-                this.dy = dy;
-                this.refPos = refPos;
-                this.w = w;
-                this.h = h;
-                this.paint = new Paint();
-            }
-
-            protected void adjust(int width, int height){
-                ratioW = width/(float)w;
-                ratioH = height/(float)h;
-                if (POS_LEFTTOP == refPos){
-                    x = Math.round(ratioW * dx);
-                    y = Math.round(ratioH * dy);
-                    originX = originY = 0;
-                }else if (POS_LEFTBOTTOM == refPos){
-                    x = Math.round(ratioW * dx);
-                    y = Math.round(height - ratioH * dy);
-                    originX = 0;
-                    originY = height;
-                }else if (POS_RIGHTTOP == refPos){
-                    x = Math.round(width - ratioW * dx);
-                    y = Math.round(ratioH * dy);
-                    originX = width;
-                    originY = 0;
-                }else{
-                    x = Math.round(width - ratioW * dx);
-                    y = Math.round(height - ratioH * dy);
-                    originX = width;
-                    originY = height;
-                }
-                KLog.p("displayW=%s, displayH=%s, ratioW=%s, ratioH=%s, x=%s, y=%s, originX=%s, originY=%s, paint.textSize=%s",
-                        width, height, ratioW, ratioH, x, y, originX, originY, paint.getTextSize());
-            }
-
-        }
-
-    }
-
+//        }
+//        return null;
+//    }
+//
+//    public Conferee getConfereeByStreamId(String streamId){
+//        Stream stream = streams.get(streamId);
+//        if (null == stream){
+//            return null;
+//        }
+//        return conferees.get(stream.ownerId);
+//    }
+//
+//    public Stream getStream(String streamId){
+//        return streams.get(streamId);
+//    }
+//
+//    public Stream getStream(String confereeId, boolean bAudio, boolean bAss){
+//        for (Stream stream : streams.values()){
+//            if (stream.ownerId.equals(confereeId) && bAudio == stream.bAudio && stream.bAss == bAss){
+//                return stream;
+//            }
+//        }
+//        return null;
+//    }
+//
+//    public Display getDisplay(String confereeId){ // XXX 一个Conferee可能绑定到多个Display
+//        for (Display display : displaySet){
+//            if ((confereeId == display.confereeId) || (confereeId != null && confereeId.equals(display.confereeId))){
+//                return display;
+//            }
+//        }
+//        return null;
+//    }
+//
+//    public Display getDisplayByStreamId(String streamId){
+//        Stream stream = streams.get(streamId);
+//        if (null == stream){
+//            return null;
+//        }
+//        return getDisplay(stream.ownerId);
+//    }
+//
 
 
     private @Nullable VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
@@ -1931,32 +1247,62 @@ public class WebRtcManager extends Caster<Msg>{
         /**
          * 与会方入会了。
          * 一般情形下，用户收到该回调时调用{@link #createDisplay()}创建Display，
-         * 然后调用{@link Display#bind(String)} 将Display绑定到与会方以使与会方画面展示在Display上，
-         * 如果还需要展示文字图标等可调用{@link Display#addText(Display.TextDecoration)}, {@link Display#addPic(Display.PicDecoration)}
+         * 然后调用{@link Display#setContent(Conferee)} 将Display绑定到与会方以使与会方画面展示在Display上，
+         * 如果还需要展示文字图标等deco，可调用{@link Conferee#addText(TextDecoration)}}, {@link Conferee#addPic(PicDecoration)}
+         * NOTE: 文字、图片等deco是属于Conferee的而非Display，所以调用{@link Display#swapContent(Display)}等方法时，deco也会跟着迁移。
          * */
         void onConfereeJoined(Conferee conferee);
         /**
          * 与会方离会
          * 如果该Display不需要了请调用{@link #releaseDisplay(Display)}销毁；
-         * 如果后续要复用则可以不销毁，可以调用{@link Display#clearContent()}清空内容；
+         * 如果后续要复用则可以不销毁，可以调用{@link Display#setContent(Conferee=null)}清空内容；
          * NOTE: {@link #stopSession()} 会销毁所有Display。用户不能跨Session复用Display，也不需要在stopSession时手动销毁Display。
          * */
         void onConfereeLeft(Conferee conferee);
     }
     private SessionEventListener sessionEventListener;
 
+
+
     /**
-     * 与会方信息
+     * 与会方
      */
-    public static class Conferee {
+    public static final class Conferee implements VideoSink {
         public String id;
         public int mcuId;
         public int terId;
         public String   e164;
         public String   alias;
         public String   email;
-        // 是否为辅流与会方（辅流我们当作特殊的与会方）
+
+        // 是否为辅流与会方（针对辅流我们创建一个虚拟的“辅流与会方”）
         public boolean bAssStream;
+
+        // 该与会方的视频流。一个与会方只有一路视频流
+        private VideoStream videoStream;
+        // 该与会方的音频流。一个与会方可以有多路音频流
+        private Set<AudioStream> audioStreams = new HashSet<>();
+
+        // 该与会方绑定的Display。与会方内容将展示在Display上。
+        // 一个与会方可以绑定多个Display，一个Display只能绑定一个与会方。
+        private Set<Display> displays = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+        // 文字图片装饰。如台标，静态图片等。
+        // 与会方的展示的内容由码流和装饰组成，展示在Display上。
+        private Set<TextDecoration> textDecorations = new HashSet<>();
+        private Set<PicDecoration> picDecorations = new HashSet<>();
+
+        // 码流状态
+        private int state = State_Normal;
+        private static final int State_Normal = 0;
+        private static final int State_CameraDisabled = 1;
+        private static final int State_WeakVideoSignal = 2;
+        private static final int State_OnlyAudio = 3;
+
+        // 语音激励使能
+        private boolean bVoiceActivated;
+
+        private long timestamp = System.currentTimeMillis();
 
         Conferee(int mcuId, int terId, String e164, String alias, String email, boolean bAssStream) {
             this.mcuId = mcuId;
@@ -1972,23 +1318,799 @@ public class WebRtcManager extends Caster<Msg>{
             String postfix = bAssStream ? "_assStream" : "";
             return mcuId+"_"+terId+postfix;
         }
+
+        void addDisplay(Display display) {
+            if (null != display) {
+                KLog.p("add Display %s to conferee %s", display, id);
+                displays.add(display);
+            }
+        }
+
+        boolean removeDisplay(Display display) {
+            KLog.p("delete Display %s from conferee %s", display, id);
+            boolean success = displays.remove(display);
+            if (success) {
+//                onFrameHandler.post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        display.onFrame(new VideoFrame()); // TODO 构造最后一帧空帧避免画面残留
+//                    }
+//                });
+            }
+            return success;
+        }
+
+        void addAudioStream(AudioStream audioStream){
+            if (null != audioStream){
+                audioStreams.add(audioStream);
+            }
+        }
+
+        void setVideoStream(VideoStream videoStream){
+            this.videoStream = videoStream;  // TODO 修改静态图片
+        }
+
+        boolean removeStream(String kdStreamId){
+            boolean success = false;
+            if (null != videoStream && videoStream.streamId.equals(kdStreamId)){
+                videoStream = null;
+                success = true;
+            }else {
+                for (AudioStream audioStream : audioStreams) {
+                    if (audioStream.streamId.equals(kdStreamId)) {
+                        success = true;
+                        break;
+                    }
+                }
+            }
+
+            // TODO 修改静态图片
+
+            // TODO 从pcwrapper 删除track
+
+
+//            Stream leftStream = Iterables.find(streams.values(), input -> input.streamId.equals(kdStream.achStreamId), null);
+//            if (null != leftStream){
+//                PeerConnectionWrapper pcWrapper;
+//                if (leftStream.bAss) {
+//                    assStream = leftStream;  // 我们认为只可能有一路辅流，所以此处在循环中赋值也没关系，只可能赋值一次。
+//                    pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
+//                }else{
+//                    pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+//                }
+//                // 删除对应的track
+//                if (null != pcWrapper) {
+//                    if (leftStream.bAudio) {
+//                        pcWrapper.removeRemoteAudioTrack(leftStream.streamId);
+//                    } else {
+//                        pcWrapper.removeRemoteVideoTrack(leftStream.streamId);
+//                    }
+//                }
+//            }
+            return success;
+        }
+
+
+
+        /**
+         * 添加文字Deco
+         * */
+        public void addText(TextDecoration decoration){
+            KLog.p(decoration.toString());
+            textDecorations.add(decoration);
+//            invalidate(); TODO
+        }
+
+        /**
+         * 获取所有文字deco
+         * */
+        public Set<TextDecoration> getAllText(){
+            return textDecorations;
+        }
+
+        /**
+         * 添加图片deco
+         * */
+        public void addPic(PicDecoration decoration){
+            KLog.p(decoration.toString());
+            picDecorations.add(decoration);
+//            invalidate();
+        }
+
+        /**
+         * 获取所有图片deco
+         * */
+        public Set<PicDecoration> getAllPic(){
+            return picDecorations;
+        }
+
+        /**
+         * 移除deco
+         * */
+        public boolean removeDeco(String decoId){
+            boolean success = textDecorations.remove(decoId);
+            if (!success){
+                success = picDecorations.remove(decoId);
+            }
+            return success;
+        }
+
+
+
+        /**
+         * 语音激励状态下的装饰
+         * */
+        private RectF voiceActivatedDeco = new RectF();
+        private static Paint voiceActivatedDecoPaint = new Paint();
+        static{
+            voiceActivatedDecoPaint.setStyle(Paint.Style.STROKE);
+            voiceActivatedDecoPaint.setStrokeWidth(5);
+            voiceActivatedDecoPaint.setColor(Color.GREEN);
+        }
+
+        /**
+         * 摄像头关闭状态下的装饰
+         * */
+        private static PicDecoration cameraDisabledDeco;
+        /**
+         * 视频信号弱状态下的装饰
+         * */
+        private static PicDecoration weakVideoSignalDeco;
+        /**
+         * 纯音频与会方的装饰
+         * */
+        private static PicDecoration audioConfereeDeco;
+
+        /**
+         * 设置语音激励装饰。
+         * 当某个与会方讲话音量最大时，该装饰会展示在该与会方对应的Display。
+         * 该装饰是一个围在画面周围的边框，用户通过该接口设置该边框线条的粗细以及颜色。
+         * @param strokeWidth 线条粗细
+         * @param color 线条颜色
+         * */
+        public static void setVoiceActivatedDecoration(int strokeWidth, int color){
+            voiceActivatedDecoPaint.reset();
+            voiceActivatedDecoPaint.setStrokeWidth(strokeWidth);
+            voiceActivatedDecoPaint.setColor(color);
+        }
+
+
+        /**
+         * 设置关闭摄像头采集时本地画面对应的Display展示的图片。
+         * @param winW UCD标注的deco所在窗口的宽
+         * @param winH UCD标注的deco所在窗口的高
+         * */
+        public static void setCameraDisabledDecoration(@NonNull Bitmap bitmap, int winW, int winH){
+            cameraDisabledDeco = PicDecoration.createCenterPicDeco("cameraDisabledDeco", bitmap, winW, winH);
+        }
+
+        /**
+         * 设置音频入会方对应的Display展示的图片。
+         * @param winW UCD标注的deco所在窗口的宽
+         * @param winH UCD标注的deco所在窗口的高
+         * */
+        public static void setAudioConfereeDecoration(@NonNull Bitmap bitmap, int winW, int winH){
+            audioConfereeDeco = PicDecoration.createCenterPicDeco("audioConfereeDeco", bitmap, winW, winH);
+        }
+
+        /**
+         * 设置Display无视频源时展示的图片
+         * @param winW UCD标注的deco所在窗口的宽
+         * @param winH UCD标注的deco所在窗口的高
+         * */
+        public static void setWeakVideoSignalDecoration(@NonNull Bitmap bitmap, int winW, int winH){
+            weakVideoSignalDeco = PicDecoration.createCenterPicDeco("weakVideoSignalDeco", bitmap, winW, winH);
+        }
+
+
+        /**
+         * 设置码流状态
+         * */
+        void setState(int state){
+            this.state = state;
+            // TODO invalidate
+        }
+
+        /**
+         * 设置语音激励状态
+         * */
+        void setbVoiceActivated(boolean bVoiceActivated){
+            this.bVoiceActivated = bVoiceActivated;
+            // TODO invalidate
+        }
+
+
+
+        private Handler onFrameHandler;
+        @Override
+        public void onFrame(VideoFrame videoFrame) {
+            long curts = System.currentTimeMillis();
+            long ts = timestamp;
+            if (curts - ts > 5000){
+                timestamp = curts;
+                KLog.p("%s onFrame ", id);
+            }
+            if (null == onFrameHandler) {
+                onFrameHandler = new Handler();
+            }
+
+            for (Display display : displays){
+                if (curts - ts > 5000) {
+                    if (display.enabled) {
+                        KLog.p("frame of conferee %s rendered onto display %s ", id, display);
+                    }else{
+                        KLog.p("frame of conferee %s dropped off display %s because it is disabled ", id, display);
+                    }
+                }
+                if (!display.enabled) {
+                    continue;
+                }
+                display.onFrame(videoFrame);
+            }
+        }
+
     }
+
+
+
+    /**
+     * 用于展示与会方的控件。
+     * */
+    public final static class Display extends SurfaceViewRenderer{
+        /**
+         * 是否使能。
+         * 若使能则正常显示内容，否则内容不显示。
+         * 使能状态是固属于Display的，不会随着如下方法的执行而迁移：
+         * {@link #copyContentFrom(Display)}
+         * {@link #moveContentTo(Display)}
+         * {@link #swapContent(Display)}
+         * */
+        private boolean enabled = true;
+
+        /**
+         * Display对应的与会方。
+         * Display用于展示与会方相关内容（码流、台标、状态图标等）
+         * 一个Display只会绑定到一个与会方；
+         * 多个Display可以绑定到同一与会方；
+         * */
+        private Conferee conferee;
+
+        private int displayWidth;
+        private int displayHeight;
+
+
+        private Handler handler = getHandler();
+
+
+        private Display(Context context) {
+            super(context);
+            init(instance.eglBase.getEglBaseContext(), null);
+            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL);
+            setEnableHardwareScaler(true);
+            setWillNotDraw(false);
+        }
+
+
+        public boolean isEnable() {
+            return enabled;
+        }
+
+        /**
+         * 设置是否使能该Display
+         * @param enable false 禁用该Display，屏蔽内容展示；true正常展示内容。默认true
+         * */
+        public void setEnable(boolean enable){
+            this.enabled = enable;
+            invalidate();
+        }
+
+
+        /**
+         * 设置Display的内容。
+         * Display的内容即为与会方。
+         * 一个Display只会绑定到一个与会方；
+         * 多个Display可以绑定到同一与会方；
+         * 若一个Display已经绑定到某个与会方，则该绑定会先被解除，然后建立新的绑定关系；
+         *
+         * 对于内容交换的使用场景建议使用便捷方法{@link #swapContent(Display)}；
+         * 对于内容拷贝的使用场景建议使用便捷方法{@link #copyContentFrom(Display)}；
+         * 对于内容移动的使用场景建议使用便捷方法{@link #moveContentTo(Display)}；
+         * @param conferee 与会方。若为null则display不展示任何内容。
+         *                 NOTE: 若用户设置了一个不存在于会议中的Conferee，接口不会报错，但Display不会展示出任何内容，形同设置了null；
+         * */
+        public void setContent(@Nullable Conferee conferee){
+            KLog.p("set content %s to display %s", conferee, this);
+            Conferee oldConferee = instance.findConfereeByDisplay(this);
+            if (null != oldConferee){
+                oldConferee.removeDisplay(this);
+            }
+            if (null != conferee) {
+                conferee.addDisplay(this);
+            }
+            this.conferee = conferee;
+
+            invalidate();
+        }
+
+        /**
+         * 获取Display内容
+         * @return  返回setContent设置的Conferee
+         * */
+        public Conferee getContent(){
+            return conferee;
+        }
+
+        /**
+         * 拷贝源Display的内容到本Display，覆盖原有内容。
+         * @param src 源display。若为null或其没有内容则本display内容被清空，效果同setContent(null)
+         * */
+        public void copyContentFrom(@Nullable Display src){
+            KLog.p("copy content from display %s \nto display %s", src, this);
+            Conferee oldConferee = instance.findConfereeByDisplay(this);
+            if (null != oldConferee){
+                oldConferee.removeDisplay(this);
+            }
+
+            Conferee newConferee = instance.findConfereeByDisplay(src);
+            if (null != newConferee) {
+                newConferee.addDisplay(this);
+            }
+            conferee = newConferee;
+
+            invalidate();
+        }
+
+        /**
+         * 将本Display的内容移动到目标Display，目标原有内容将被覆盖，本Display的内容将被清空。
+         * @param dst 目标display。若为null，效果同setContent(null)
+         * */
+        public void moveContentTo(@Nullable Display dst){
+            KLog.p("move content from display %s \nto display %s", this, dst);
+            if (null != dst){
+                dst.setContent(conferee);
+            }
+
+            if (null != conferee){
+                conferee.removeDisplay(this);
+            }
+
+            conferee = null;
+
+            invalidate();
+        }
+
+
+        /**
+         * 交换两个display的内容。
+         * @param otherDisplay 要交换的display。
+         * */
+        public void swapContent(@Nullable Display otherDisplay){
+            KLog.p("swap display %s \nwith display %s", this, otherDisplay);
+
+            Conferee myConferee = conferee;
+            Conferee otherConferee = null != otherDisplay ? otherDisplay.conferee : null;
+
+            setContent(otherConferee);
+            if (null != otherDisplay) otherDisplay.setContent(myConferee);
+        }
+
+
+        /**
+         * 销毁display
+         * */
+        private void destroy(){
+            KLog.p("destroy display %s ", this);
+            setContent(null);
+            super.release();
+        }
+
+
+
+
+        @Override
+        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+            super.surfaceChanged(holder, format, width, height);
+            displayWidth = width;
+            displayHeight = height;
+            KLog.p("displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
+        }
+
+        long ts = System.currentTimeMillis();
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+
+            if (!enabled || null == conferee){
+                return;
+            }
+
+            if (System.currentTimeMillis() - ts > 5000){
+                KLog.p("onDraw, displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
+            }
+
+
+            // 绘制与会方状态deco
+            PicDecoration stateDeco = null;
+            if (Conferee.State_CameraDisabled == conferee.state){
+                stateDeco = Conferee.cameraDisabledDeco;
+                if (null != stateDeco) {
+                    stateDeco.adjust(displayWidth, displayHeight);
+                    canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
+                }else{
+                    canvas.drawColor(Color.BLACK);
+                }
+            }else if (Conferee.State_OnlyAudio == conferee.state){
+                stateDeco = Conferee.audioConfereeDeco;
+                if (null != stateDeco) {
+                    stateDeco.adjust(displayWidth, displayHeight);
+                    canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
+                }else{
+                    canvas.drawColor(Color.BLACK);
+                }
+            }else if (Conferee.State_WeakVideoSignal == conferee.state){
+                stateDeco = Conferee.weakVideoSignalDeco;
+                if (null != stateDeco) {
+                    stateDeco.adjust(displayWidth, displayHeight);
+                    canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
+                }else{
+                    canvas.drawColor(Color.BLACK);
+                }
+            }
+
+            // 绘制图片deco
+            for (PicDecoration deco : conferee.picDecorations){
+                deco.adjust(displayWidth, displayHeight);
+                canvas.drawBitmap(deco.pic, deco.matrix, deco.paint);
+            }
+
+            // 绘制文字deco
+            for (TextDecoration deco : conferee.textDecorations){
+                deco.adjust(displayWidth, displayHeight);
+                if (System.currentTimeMillis() - ts > 5000){
+                    KLog.p("drawText(%s, %s, %s, %s) for display %s", deco.text, deco.x, deco.y, deco.paint.getTextSize(), this);
+                }
+                canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
+            }
+
+            // 绘制语音激励deco
+            if (conferee.bVoiceActivated){
+                conferee.voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
+                canvas.drawRect(conferee.voiceActivatedDeco, Conferee.voiceActivatedDecoPaint);
+//                sessionHandler.postDelayed(this::hideVoiceActivatedDecoration, 2000);
+            }
+
+        }
+
+        /**
+         * 设置是否在所有Display最前端展示。可用于多个Display层叠的场景
+         * */
+        public void setOnTopOverOtherDisplays(boolean bOnTop){
+            setZOrderMediaOverlay(bOnTop);
+        }
+
+    }
+
+
+
+    public static final class TextDecoration extends Decoration{
+        public String text;     // 要展示的文字
+        private int textSize;
+        private static final int minTextSizeLimit = 5;
+        /**
+         * @param id deco的id，方便用户找回。
+         * @param text deco文字内容
+         * @param textSize 文字大小
+         * @param color 文字颜色
+         * @param w UCD标注的deco所在窗口的宽
+         * @param h UCD标注的deco所在窗口的高
+         * @param dx UCD标注的deco相对于refPos与窗口的x方向边距
+         * @param dy UCD标注的deco相对于refPos与窗口的y方向边距
+         * @param refPos 计算dx,dy的相对位置。取值{@link #POS_LEFTTOP},{@link #POS_LEFTBOTTOM},{@link #POS_RIGHTTOP},{@link #POS_RIGHTBOTTOM}
+         * 示例：
+         * 有UCD的标注图如下：
+         * Window 1920*1080
+         * -----------------------
+         * |
+         * |-dx=80px-|caption| textSize=10px, color=0xFF00FF00
+         * |           |
+         * |         100px
+         * |          |
+         * |-------------------
+         *  则调用该接口时各参数传入情况：
+         *  new TextDecoration("capId", "caption", 10, 0xFF00FF00, 1920, 1080, 80, 100, POS_LEFTBOTTOM);
+         * */
+        public TextDecoration(@NonNull String id, @NonNull String text, int textSize, int color, int w, int h, int dx, int dy, int refPos) {
+            super(id, w, h, dx, dy, refPos);
+            this.text = text;
+            this.textSize = textSize;
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setColor(color);
+        }
+
+        /**
+         * 根据实际窗口的大小调整deco的位置及大小
+         * @param width 实际窗口的宽
+         * @param height 实际窗口的高
+         * @return */
+        protected boolean adjust(int width, int height){
+            if (!super.adjust(width, height)){
+                return false;
+            }
+            float size = textSize * Math.min(ratioW, ratioH);
+            size = size>minTextSizeLimit ? size : minTextSizeLimit;
+            paint.setTextSize(size);
+            if (POS_LEFTBOTTOM == refPos){
+                y -= size;
+            }else if (POS_RIGHTTOP == refPos){
+                x -= size * text.length();
+            }else if (POS_RIGHTBOTTOM == refPos){
+                x -= size * text.length();
+                y -= size;
+            }
+            KLog.p(toString());
+            return true;
+        }
+
+        @Override
+        public String toString() {
+            return "TextDecoration{" +
+                    "text='" + text + '\'' +
+                    ", textSize=" + textSize +
+                    ", id='" + id + '\'' +
+                    ", w=" + w +
+                    ", h=" + h +
+                    ", dx=" + dx +
+                    ", dy=" + dy +
+                    ", refPos=" + refPos +
+                    ", paint=" + paint +
+                    ", x=" + x +
+                    ", y=" + y +
+                    ", ratioW=" + ratioW +
+                    ", ratioH=" + ratioH +
+                    '}';
+        }
+    }
+
+    public static final class PicDecoration extends Decoration{
+        public Bitmap pic;     // 要展示的图片
+        private Matrix matrix = new Matrix();
+        public PicDecoration(@NonNull String id, @NonNull Bitmap pic, int w, int h, int dx, int dy, int refPos) {
+            super(id, w, h, dx, dy, refPos);
+            this.pic = pic;
+            paint.setStyle(Paint.Style.STROKE);
+        }
+
+        protected boolean adjust(int width, int height){
+            if (!super.adjust(width, height)){
+                return false;
+            }
+            float scaleFactor = Math.min(ratioW, ratioH);
+            matrix.reset();
+            matrix.postScale(scaleFactor, scaleFactor, width/2f, height/2f);
+            float picW = pic.getWidth()*scaleFactor;
+            float picH = pic.getHeight()*scaleFactor;
+            if (POS_LEFTBOTTOM == refPos){
+                y -= picH;
+            }else if (POS_RIGHTTOP == refPos){
+                x -= picW;
+            }else if (POS_RIGHTBOTTOM == refPos){
+                x -= picW;
+                y -= picH;
+            }
+            matrix.postTranslate(x, y);
+            KLog.p(toString());
+            return true;
+        }
+
+        static PicDecoration createCenterPicDeco(String id, Bitmap bitmap, int winW, int winH){
+            int bmW = bitmap.getWidth();
+            int bmH = bitmap.getHeight();
+            winW = winW > bmW ? winW : bmW;
+            winH = winH > bmH ? winH : bmH;
+            return new PicDecoration(id, bitmap, winW, winH, (int)((winW-bmW)/2f), (int)((winH-bmH)/2f), Decoration.POS_LEFTTOP);
+        }
+
+        @Override
+        public String toString() {
+            return "PicDecoration{" +
+                    "pic=" + pic +
+                    ", matrix=" + matrix +
+                    ", id='" + id + '\'' +
+                    ", w=" + w +
+                    ", h=" + h +
+                    ", dx=" + dx +
+                    ", dy=" + dy +
+                    ", refPos=" + refPos +
+                    ", paint=" + paint +
+                    ", x=" + x +
+                    ", y=" + y +
+                    ", ratioW=" + ratioW +
+                    ", ratioH=" + ratioH +
+                    '}';
+        }
+    }
+
+    public static class Decoration{
+        public String id;
+        public int w;           // 该deco所在画面的宽（UCD标注的）
+        public int h;           // 该deco所在画面的高（UCD标注的）
+        public int dx;          // 参照pos的x方向距离（UCD标注的）
+        public int dy;          // 参照pos的y方向距离（UCD标注的）
+        public int refPos;      /** dx, dy参照的位置。如取值{@link #POS_LEFTBOTTOM}则dx表示距离左下角的x方向距离*/
+        protected Paint paint;
+
+        protected float x;          // 锚点x坐标（根据UCD标注结合Display的实际尺寸计算得出）
+        protected float y;          // 锚点y坐标（根据UCD标注结合Display的实际尺寸计算得出）
+        protected float ratioW;
+        protected float ratioH;
+        protected float preAdjustedWidth;
+        protected float preAdjustedHeight;
+
+        public static final int POS_LEFTTOP = 1;
+        public static final int POS_LEFTBOTTOM = 2;
+        public static final int POS_RIGHTTOP = 3;
+        public static final int POS_RIGHTBOTTOM = 4;
+
+        protected Decoration(String id, int w, int h, int dx, int dy, int refPos) {
+            this.id = id;
+            this.w = w;
+            this.h = h;
+            this.dx = dx;
+            this.dy = dy;
+            this.refPos = refPos;
+            this.paint = new Paint();
+        }
+
+        protected boolean adjust(int width, int height){
+            if (width<=0 || height<=0){
+                return false;
+            }
+            if (preAdjustedWidth == width && preAdjustedHeight == height){
+                return false;
+            }
+            preAdjustedWidth = width;
+            preAdjustedHeight = height;
+
+            ratioW = width/(float)w;
+            ratioH = height/(float)h;
+            if (POS_LEFTTOP == refPos){
+                x = ratioW * dx;
+                y = ratioH * dy;
+            }else if (POS_LEFTBOTTOM == refPos){
+                x = ratioW * dx;
+                y = height - ratioH * dy;
+            }else if (POS_RIGHTTOP == refPos){
+                x = width - ratioW * dx;
+                y = ratioH * dy;
+            }else{
+                x = width - ratioW * dx;
+                y = height - ratioH * dy;
+            }
+
+            KLog.p("displayW=%s, displayH=%s, ratioW=%s, ratioH=%s, x=%s, y=%s, paint.textSize=%s",
+                    width, height, ratioW, ratioH, x, y, paint.getTextSize());
+
+            return true;
+        }
+
+    }
+
+
+    /**
+     * 创建Display。
+     * */
+    public Display createDisplay(){
+        Display display =  new Display(context);
+        displaySet.add(display);
+        KLog.p("create display %s", display);
+        return display;
+    }
+
+    /**
+     * 销毁display
+     * */
+    public void releaseDisplay(Display display){
+        KLog.p("release display %s", display);
+        if (displaySet.remove(display)){
+            display.destroy();
+        }else{
+            KLog.p(KLog.ERROR, "wired, this display is not created by me!");
+        }
+    }
+
+
+
+
+
 
     public static class Stream {
         public String streamId; // 平台的StreamId，概念上对应的是WebRTC中的TrackId
-        public String ownerId; // Conferee.id
-        public boolean bAudio;
+
+        public Stream(String streamId) {
+            this.streamId = streamId;
+        }
+    }
+
+    public static class AudioStream extends Stream{
+        public AudioStream(String streamId) {
+            super(streamId);
+        }
+    }
+
+    public static class VideoStream extends Stream {
         public boolean bAss;
         public List<EmMtResolution> supportedResolutionList;       // 流支持的分辨率。仅视频有效
 
-        public Stream(String streamId, int mcuId, int terId, boolean bAudio, boolean bAss, List<EmMtResolution> supportedResolutionList) {
-            this.streamId = streamId;
-            ownerId = Conferee.buildId(mcuId, terId, bAss);
-            this.bAudio = bAudio;
+        public VideoStream(String streamId, boolean bAss, List<EmMtResolution> supportedResolutionList) {
+            super(streamId);
             this.bAss = bAss;
             this.supportedResolutionList = supportedResolutionList;
         }
     }
+
+    private VideoStream findVideoStream(String kdStreamId){
+        for (Conferee conferee1 : conferees){
+            if (null != conferee1.videoStream && conferee1.videoStream.equals(kdStreamId)){
+                return conferee1.videoStream;
+            }
+        }
+        return null;
+    }
+
+    private Set<VideoStream> getAllVideoStreams(){
+        Set<VideoStream> videoStreams = new HashSet<>();
+        for (Conferee conferee1 : conferees){
+            if (null != conferee1.videoStream) videoStreams.add(conferee1.videoStream);
+        }
+        return videoStreams;
+    }
+
+    private Conferee findConfereeByConfereeId(String confereeId){
+        for (Conferee conferee : conferees){
+            if (conferee.id.equals(confereeId)){
+                return conferee;
+            }
+        }
+        return null;
+    }
+
+    private Conferee findConfereeByStreamId(String kdStreamId){
+        for (Conferee conferee1 : conferees){
+            if (null != conferee1.videoStream && conferee1.videoStream.streamId.equals(kdStreamId)){
+                return conferee1;
+            }
+            for (AudioStream audioStream : conferee1.audioStreams){
+                if (audioStream.streamId.equals(kdStreamId)){
+                    return conferee1;
+                }
+            }
+        }
+        return null;
+    }
+
+    private Conferee findConfereeByDisplay(Display display){
+        for (Conferee conferee : conferees){
+            if (displaySet.contains(display)){
+                return conferee;
+            }
+        }
+        return null;
+    }
+
+    private Conferee findMyself(){
+        for (Conferee conferee : conferees){
+            if (null != conferee.e164 && conferee.e164.equals(userE164)){
+                return conferee;
+            }
+        }
+        return null;
+    }
+
+
+
+
+
+
 
 
     private class PeerConnectionFactoryConfig{
@@ -2583,36 +2705,6 @@ public class WebRtcManager extends Caster<Msg>{
                 String localVideoTrackId = videoCapturer instanceof WindowCapturer ? LOCAL_ASS_TRACK_ID : LOCAL_VIDEO_TRACK_ID;
                 localVideoTrack = factory.createVideoTrack(localVideoTrackId, videoSource);
                 localVideoTrack.setEnabled(config.isLocalVideoEnabled);
-                ProxyVideoSink localVideoSink = new ProxyVideoSink(localVideoTrackId);
-                localVideoTrack.addSink(localVideoSink);
-
-                sessionHandler.post(() -> {
-                    String kdStreamId = localVideoTrackId;
-                    kdStreamId2RtcTrackIdMap.put(kdStreamId, localVideoTrackId);
-                    videoSinks.put(kdStreamId, localVideoSink);
-
-                    // 将本地track添加到流集合
-                    if (null != myConferee){
-                        streams.put(kdStreamId,
-                                new Stream(kdStreamId, myConferee.mcuId, myConferee.terId,false, localVideoTrackId.equals(LOCAL_ASS_TRACK_ID),
-                                        Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 实际可能并非1080P，比如辅流是截取的window宽高
-                                )
-                        );
-                    }else{
-                        KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
-                    }
-
-                    // 重新绑定Display，因为之前绑定时Track还没上来。
-                    Display myDisplay = getDisplay(myConferee.id);
-                    if (null != myDisplay) {
-                        myDisplay.bind(myConferee.id);
-                        myDisplay.showAudioConfereeDeco(false);
-                        myDisplay.showStreamLostDeco(false);
-                    }else{
-                        KLog.p(KLog.ERROR, "user not bind a display to myConferee");
-                    }
-
-                });
 
                 if (instance.config.enableSimulcast){
                     RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
@@ -2643,6 +2735,28 @@ public class WebRtcManager extends Caster<Msg>{
                     videoSender = pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
                 }
 
+                String kdStreamId = localVideoTrackId;
+                sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, localVideoTrackId));
+
+                if (!localVideoTrackId.equals(LOCAL_ASS_TRACK_ID)) {
+                    // 对于发送辅流我们不需要回显，不需要创建虚拟与会方，展示辅流内容的不是Display而是文档阅读器。
+                    // 所以此处我们仅针对非辅流的情形处理。
+                    Conferee myself = findMyself();
+                    if (null == myself) {
+                        KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
+                        return;
+                    }
+                    localVideoTrack.addSink(myself);  // 本地回显
+
+                    sessionHandler.post(() -> {
+                        myself.videoStream = new VideoStream(kdStreamId, false,
+                                Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 暂时写死了
+                        );
+
+                    });
+                }
+
+
             });
         }
 
@@ -2653,11 +2767,15 @@ public class WebRtcManager extends Caster<Msg>{
                 sessionHandler.post(() -> {
                     String trackId = localVideoTrack.id();
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
-                    KLog.p("localVideoTrack %s, %s removed ", kdStreamId, trackId);
-                    videoSinks.remove(kdStreamId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
-                    // 从流集合删除（取消发布对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流）
-                    streams.remove(kdStreamId);
+                    // 删除流（己端取消发布流对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流）
+                    Conferee myself = findMyself();
+                    if (null != myself) {
+                        myself.removeStream(kdStreamId);
+                        KLog.p("localVideoTrack %s removed ", kdStreamId);
+                    }else{
+                        KLog.p(KLog.ERROR, "something wrong? stream %s is not mine", kdStreamId);
+                    }
                 });
 
             });
@@ -2671,33 +2789,16 @@ public class WebRtcManager extends Caster<Msg>{
                 return;
             }
             kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
+            Conferee conferee = findConfereeByStreamId(kdStreamId);
+            if (null == conferee) {
+                KLog.p(KLog.ERROR, "something wrong? stream %s not belong to any conferee", kdStreamId);
+                return;
+            }
 
             executor.execute(() -> {
-                KLog.p("stream %s added", kdStreamId);
                 remoteVideoTracks.put(kdStreamId, track);
                 track.setEnabled(config.isRemoteVideoEnabled);
-                ProxyVideoSink videoSink = new ProxyVideoSink(kdStreamId);
-                track.addSink(videoSink);
-
-                KLog.p("rtcstreamId=%s, kdstreamId=%s", track.id(), kdStreamId);
-                sessionHandler.post(() -> {
-                    videoSinks.put(kdStreamId, videoSink);
-                    // 重新绑定Display，因为之前绑定时Track还没上来。
-                    Conferee conferee = getConfereeByStreamId(kdStreamId);
-                    if (null != conferee) {
-                        Display display = getDisplay(conferee.id);
-                        if (null != display) {
-                            display.bind(conferee.id);
-                            display.showAudioConfereeDeco(false);
-                            display.showStreamLostDeco(false);
-                        } else {
-                            KLog.p(KLog.ERROR, "user not bind a display to myConferee");
-                        }
-                    } else {
-                        KLog.p(KLog.ERROR, "what's wrong? owner of stream %s not join conferee yet !?", kdStreamId);
-                    }
-                });
-
+                track.addSink(conferee);
             });
         }
 
@@ -2710,17 +2811,7 @@ public class WebRtcManager extends Caster<Msg>{
                         KLog.p("stream %s removed", kdStreamId);
 
                         sessionHandler.post(() -> {
-                            videoSinks.remove(kdStreamId);
                             kdStreamId2RtcTrackIdMap.remove(kdStreamId);
-
-                            Conferee conferee = getConfereeByStreamId(kdStreamId);
-                            if (null != conferee) {
-                                Display display = getDisplay(conferee.id);
-                                if (null != display) {
-                                    // VideoTrack被删除时显示音频图标
-                                    display.showAudioConfereeDeco(true);
-                                }
-                            }
                         });
                         return;
                     }
@@ -2742,8 +2833,9 @@ public class WebRtcManager extends Caster<Msg>{
                 sessionHandler.post(() -> {
                     String kdStreamId = localAudioTrackId;
                     kdStreamId2RtcTrackIdMap.put(kdStreamId, localAudioTrackId);
-                    if (null != myConferee){
-                        streams.put(kdStreamId, new Stream(kdStreamId, myConferee.mcuId, myConferee.terId,true, false, null));
+                    Conferee myself = findMyself();
+                    if (null != myself){
+                        myself.addAudioStream(new AudioStream(kdStreamId));
                     }else{
                         KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
                     }
@@ -2760,8 +2852,14 @@ public class WebRtcManager extends Caster<Msg>{
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
 
-                    // 从流集合删除（取消发布对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流）
-                    streams.remove(kdStreamId);
+                    // 删除流（己端取消发布流对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流）
+                    Conferee myself = findMyself();
+                    if (null != myself) {
+                        myself.removeStream(kdStreamId);
+                        KLog.p("localVideoTrack %s removed ", kdStreamId);
+                    }else{
+                        KLog.p(KLog.ERROR, "something wrong? stream %s is not mine", kdStreamId);
+                    }
                 });
 
             });
@@ -3037,16 +3135,6 @@ public class WebRtcManager extends Caster<Msg>{
         this.statsListener = statsListener;
     }
 
-    private void dealWithStats(StatsHelper.Stats stats){
-
-
-
-        // 通知用户
-        if (null != statsListener){
-            statsListener.onRtcStats(null/*TODO*/);
-        }
-    }
-
 
     // 用于定时收集统计信息
     private final StatsHelper.Stats publisherStats = new StatsHelper.Stats();
@@ -3094,6 +3182,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
     };
 
+
     // 与会方音量水平收集器
     private Runnable audioLevelCollector = new Runnable() {
         @Override
@@ -3119,13 +3208,13 @@ public class WebRtcManager extends Caster<Msg>{
             if (maxAudioLevel > 0.1){ // 小于0.1认为不是人说话是环境噪音
                 String maxAudioLevelKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(maxAudioLevelTrackId);
                 KLog.p("maxAudioLevelKdStreamId=%s", maxAudioLevelKdStreamId);
-                Conferee conferee = getConfereeByStreamId(maxAudioLevelKdStreamId);
-                if (null != conferee){
-                    Display display = getDisplay(conferee.id);
-                    if (null != display){
-                        display.showVoiceActivatedDeco(true);
-                    }
-                }
+//                Conferee conferee = getConfereeByStreamId(maxAudioLevelKdStreamId);
+//                if (null != conferee){
+//                    Display display = getDisplay(conferee.id);
+//                    if (null != display){
+//                        display.showVoiceActivatedDeco(true);
+//                    }
+//                }
 
             }
             sessionHandler.postDelayed(this, 2000);
@@ -3151,13 +3240,13 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p("trackIdentifier=%s, preReceivedFrames=%s, curReceivedFrames=%s", trackIdentifier, preReceivedFrames, curReceivedFrames);
                 if ((curReceivedFrames - preReceivedFrames) / 5.0f < 1){ // 可忍受的帧率下限，低于该下限则认为信号丢失
                     String lostSignalKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackIdentifier);
-                    Conferee conferee = getConfereeByStreamId(lostSignalKdStreamId);
-                    if (null != conferee){
-                        Display display = getDisplay(conferee.id);
-                        if (null != display){
-                            display.showStreamLostDeco(true);
-                        }
-                    }
+//                    Conferee conferee = getConfereeByStreamId(lostSignalKdStreamId);
+//                    if (null != conferee){
+//                        Display display = getDisplay(conferee.id);
+//                        if (null != display){
+//                            display.showStreamLostDeco(true);
+//                        }
+//                    }
                 }
             }
 
