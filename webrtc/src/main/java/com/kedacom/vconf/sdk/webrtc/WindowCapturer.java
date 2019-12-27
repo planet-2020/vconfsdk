@@ -60,9 +60,8 @@ public class WindowCapturer implements VideoCapturer {
 
                 Canvas canvas = new Canvas(bitmap);
                 while (true) {
-                    window.draw(canvas);  // TODO 判断是否前台，非前台不需要draw。
-
                     surTexture.getHandler().post(() -> {
+                        window.draw(canvas);  // TODO 判断是否前台，非前台不需要draw。
                         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
                         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
                         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
