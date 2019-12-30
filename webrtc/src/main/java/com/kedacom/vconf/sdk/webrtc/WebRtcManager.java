@@ -103,7 +103,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private static final String TAG = WebRtcManager.class.getSimpleName();
 
-    private Context context;
+    private Application context;
 
     private RtcConnector rtcConnector = new RtcConnector();
 
@@ -135,8 +135,11 @@ public class WebRtcManager extends Caster<Msg>{
 
     private static WebRtcManager instance;
 
-    private WebRtcManager(Context context){
+    private UserConfig userConfig;
+
+    private WebRtcManager(Application context){
         this.context = context;
+        userConfig = new UserConfig(context);
     }
 
     public synchronized static WebRtcManager getInstance(@NonNull Application context){
@@ -373,9 +376,9 @@ public class WebRtcManager extends Caster<Msg>{
      * 是否已静音。
      * */
     public boolean isSilenced(){
-        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
-        return null != pcWrapper && !pcWrapper.isRemoteAudioEnabled();
+        return !userConfig.getIsRemoteAudioEnabled();
     }
+
     /**
      * 设置静音。（放开/屏蔽对方语音，默认放开）
      * @param bSilence true，屏蔽对方语音；false，放开对方语音。
@@ -388,8 +391,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 是否已哑音。
      * */
     public boolean isMute(){
-        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
-        return null != pcWrapper && !pcWrapper.isLocalAudioEnabled();
+        return !userConfig.getIsLocalAudioEnabled();
     }
 
     /**
@@ -402,6 +404,14 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     /**
+     * 摄像头偏好是否为前置
+     * @return true 前置；false 后置
+     * */
+    public boolean isPreferFrontCamera(){
+        return userConfig.getIsPreferFrontCamera();
+    }
+
+    /**
      * 切换摄像头
      * */
     public void switchCamera(){
@@ -409,30 +419,15 @@ public class WebRtcManager extends Caster<Msg>{
         if (null != pcWrapper) {
             pcWrapper.switchCamera();
         }
+        userConfig.setIsPreferFrontCamera(!userConfig.getIsPreferFrontCamera());
     }
 
-    /**
-     * 当前摄像头是否为前置
-     * @return true 前置；false 后置
-     * */
-    public boolean isCurrentFrontCamera(){
-        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
-        if (null != pcWrapper) {
-            return pcWrapper.isPreferFrontCamera();
-        }
-        return true;
-    }
 
     /**
-     * 摄像头是否已设置为开启。
-     * TODO 状态记录在webrtc的config中，记录在SharePerferences中，跨session。这样退出再入会时可以拿到。
+     * 摄像头是否开启。
      * */
     public boolean isCameraEnabled(){
-        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
-        if (null != pcWrapper) {
-            return pcWrapper.isLocalVideoEnabled();
-        }
-        return false;
+        return userConfig.getIsLocalVideoEnabled();
     }
 
     /**
@@ -443,33 +438,35 @@ public class WebRtcManager extends Caster<Msg>{
         if (null != pcWrapper) {
             pcWrapper.setLocalVideoEnable(enable);
         }
+        userConfig.setIsLocalVideoEnabled(enable);
+
         Conferee conferee = findMyself();
         if (null != conferee){
-            conferee.setState(Conferee.State_CameraDisabled);
+            conferee.setState(enable ? Conferee.State_Normal : Conferee.State_CameraDisabled);
         }
     }
 
-    /**
-     * 开启/关闭视频
-     * */
-    public void setVideoEnable(final boolean enable) {
-        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
-        if (null != pcWrapper) {
-            pcWrapper.setLocalVideoEnable(enable);
-        }
-        pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
-        if (null != pcWrapper) {
-            pcWrapper.setRemoteVideoEnable(enable);
-        }
-        pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_PUBLISHER);
-        if (null != pcWrapper) {
-            pcWrapper.setLocalVideoEnable(enable);
-        }
-        pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
-        if (null != pcWrapper) {
-            pcWrapper.setRemoteVideoEnable(enable);
-        }
-    }
+//    /**
+//     * 开启/关闭视频
+//     * */
+//    public void setVideoEnable(final boolean enable) {
+//        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+//        if (null != pcWrapper) {
+//            pcWrapper.setLocalVideoEnable(enable);
+//        }
+//        pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+//        if (null != pcWrapper) {
+//            pcWrapper.setRemoteVideoEnable(enable);
+//        }
+//        pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_PUBLISHER);
+//        if (null != pcWrapper) {
+//            pcWrapper.setLocalVideoEnable(enable);
+//        }
+//        pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
+//        if (null != pcWrapper) {
+//            pcWrapper.setRemoteVideoEnable(enable);
+//        }
+//    }
 
     private boolean onRsp(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas) {
         switch (rsp){
@@ -739,85 +736,8 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    public static class Config{
-        public boolean enableVideoCodecHwAcceleration;
-        public boolean enableSimulcast;
-        public String videoCodec;
-        public int videoWidth;
-        public int videoHeight;
-        public int videoFps;
-        public int videoMaxBitrate;
-        public String audioCodec;
-        public int audioStartBitrate;
 
-        public Config(){
 
-        }
-
-        public Config(boolean enableVideoCodecHwAcceleration, boolean enableSimulcast,
-                      String videoCodec, int videoWidth, int videoHeight, int videoFps, int videoMaxBitrate,
-                      String audioCodec, int audioStartBitrate) {
-            this.enableVideoCodecHwAcceleration = enableVideoCodecHwAcceleration;
-            this.enableSimulcast = enableSimulcast;
-            this.videoCodec = videoCodec;
-            this.videoWidth = videoWidth;
-            this.videoHeight = videoHeight;
-            this.videoFps = videoFps;
-            this.videoMaxBitrate = videoMaxBitrate;
-            this.audioCodec = audioCodec;
-            this.audioStartBitrate = audioStartBitrate;
-        }
-
-        private void set(Config config){
-            this.enableVideoCodecHwAcceleration = config.enableVideoCodecHwAcceleration;
-            this.enableSimulcast = config.enableSimulcast;
-            this.videoCodec = config.videoCodec;
-            this.videoWidth = config.videoWidth;
-            this.videoHeight = config.videoHeight;
-            this.videoFps = config.videoFps;
-            this.videoMaxBitrate = config.videoMaxBitrate;
-            this.audioCodec = config.audioCodec;
-            this.audioStartBitrate = config.audioStartBitrate;
-        }
-
-        @Override
-        public String toString() {
-            return "Config{" +
-                    "enableVideoCodecHwAcceleration=" + enableVideoCodecHwAcceleration +
-                    ", videoCodec='" + videoCodec + '\'' +
-                    ", videoWidth=" + videoWidth +
-                    ", videoHeight=" + videoHeight +
-                    ", videoFps=" + videoFps +
-                    ", videoMaxBitrate=" + videoMaxBitrate +
-                    ", audioCodec='" + audioCodec + '\'' +
-                    ", audioStartBitrate=" + audioStartBitrate +
-                    '}';
-        }
-    }
-    private Config config = new Config(
-            true,
-            true,
-            VIDEO_CODEC_H264_HIGH,
-            1920,
-            1080,
-            20,
-            1700,
-            AUDIO_CODEC_OPUS,
-            32
-    );
-
-    /**
-     * 设置媒体偏好
-     * */
-    public void setConfig(@NonNull Config config){
-        this.config.set(config);
-    }
-
-    public Config getConfig(){
-        Config config = new Config();
-        config.set(this.config);
-        return config;
-    }
 
     private boolean bSessionStarted;
     private synchronized boolean startSession(@NonNull SessionEventListener listener){
@@ -906,7 +826,7 @@ public class WebRtcManager extends Caster<Msg>{
 
             PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions());
 
-            PeerConnectionFactoryConfig factoryConfig = new PeerConnectionFactoryConfig(Arrays.asList(VIDEO_CODEC_VP8, VIDEO_CODEC_H264_HIGH), config.enableVideoCodecHwAcceleration);
+            PeerConnectionFactoryConfig factoryConfig = new PeerConnectionFactoryConfig(Arrays.asList(VIDEO_CODEC_VP8, VIDEO_CODEC_H264_HIGH), userConfig.getEnableVideoCodecHwAcceleration());
 
             KLog.p(factoryConfig.toString());
 
@@ -963,15 +883,15 @@ public class WebRtcManager extends Caster<Msg>{
          * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
          * */
         PeerConnectionConfig pcConfig = new PeerConnectionConfig(
-                config.videoWidth,
-                config.videoHeight,
-                config.videoFps,
-                config.videoMaxBitrate,
-                config.videoCodec,
-                config.audioStartBitrate,
-                config.audioCodec
+                userConfig.getVideoWidth(),
+                userConfig.getVideoHeight(),
+                userConfig.getVideoFps(),
+                userConfig.getVideoMaxBitrate(),
+                userConfig.getVideoCodec(),
+                userConfig.getAudioStartBitrate(),
+                userConfig.getAudioCodec()
         );
-        KLog.p(config.toString());
+        KLog.p(pcConfig.toString());
 
         pubPcWrapper = new PeerConnectionWrapper(CommonDef.CONN_TYPE_PUBLISHER, pcConfig, new SDPObserver(CommonDef.CONN_TYPE_PUBLISHER));
         subPcWrapper = new PeerConnectionWrapper(CommonDef.CONN_TYPE_SUBSCRIBER, pcConfig, new SDPObserver(CommonDef.CONN_TYPE_SUBSCRIBER));
@@ -2083,11 +2003,6 @@ public class WebRtcManager extends Caster<Msg>{
         String videoCodec;
         int audioStartBitrate;
         String audioCodec;
-        boolean isLocalAudioEnabled;
-        boolean isRemoteAudioEnabled;
-        boolean isLocalVideoEnabled;
-        boolean isRemoteVideoEnabled;
-        boolean bPreferFrontCamera;
 
         PeerConnectionConfig(int videoWidth,
                             int videoHeight,
@@ -2103,11 +2018,6 @@ public class WebRtcManager extends Caster<Msg>{
             this.videoCodec = videoCodec;
             this.audioStartBitrate = audioStartBitrate;
             this.audioCodec = audioCodec;
-            this.isLocalAudioEnabled = true;
-            this.isRemoteAudioEnabled = true;
-            this.isLocalVideoEnabled = true;
-            this.isRemoteVideoEnabled = true;
-            this.bPreferFrontCamera = true;
         }
 
         PeerConnectionConfig(PeerConnectionConfig config) {
@@ -2118,11 +2028,6 @@ public class WebRtcManager extends Caster<Msg>{
             this.videoCodec = config.videoCodec;
             this.audioStartBitrate = config.audioStartBitrate;
             this.audioCodec = config.audioCodec;
-            this.isLocalAudioEnabled = config.isLocalAudioEnabled;
-            this.isRemoteAudioEnabled = config.isRemoteAudioEnabled;
-            this.isLocalVideoEnabled = config.isLocalVideoEnabled;
-            this.isRemoteVideoEnabled = config.isRemoteVideoEnabled;
-            this.bPreferFrontCamera = config.bPreferFrontCamera;
         }
 
         @Override
@@ -2135,11 +2040,6 @@ public class WebRtcManager extends Caster<Msg>{
                     ", videoCodec='" + videoCodec + '\'' +
                     ", audioStartBitrate=" + audioStartBitrate +
                     ", audioCodec='" + audioCodec + '\'' +
-                    ", isLocalAudioEnabled=" + isLocalAudioEnabled +
-                    ", isRemoteAudioEnabled=" + isRemoteAudioEnabled +
-                    ", isLocalVideoEnabled=" + isLocalVideoEnabled +
-                    ", isRemoteVideoEnabled=" + isRemoteVideoEnabled +
-                    ", bPreferFrontCamera=" + bPreferFrontCamera +
                     '}';
         }
     }
@@ -2241,6 +2141,7 @@ public class WebRtcManager extends Caster<Msg>{
             if (null != pcWrapper) {
                 pcWrapper.setRemoteAudioEnable(!bQuiet);
             }
+            userConfig.setIsRemoteAudioEnabled(!bQuiet);
         }
 
         @Override
@@ -2249,6 +2150,7 @@ public class WebRtcManager extends Caster<Msg>{
             if (null != pcWrapper) {
                 pcWrapper.setLocalAudioEnable(!bMute);
             }
+            userConfig.setIsLocalAudioEnabled(!bMute);
         }
 
         @Override
@@ -2663,9 +2565,9 @@ public class WebRtcManager extends Caster<Msg>{
                 videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
                 String localVideoTrackId = videoCapturer instanceof WindowCapturer ? LOCAL_ASS_TRACK_ID : LOCAL_VIDEO_TRACK_ID;
                 localVideoTrack = factory.createVideoTrack(localVideoTrackId, videoSource);
-                localVideoTrack.setEnabled(config.isLocalVideoEnabled);
+                localVideoTrack.setEnabled(userConfig.getIsLocalVideoEnabled());
 
-                if (instance.config.enableSimulcast){
+                if (userConfig.getEnableSimulcast()){
                     RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
                             RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
                             Collections.singletonList(STREAM_ID),
@@ -2758,7 +2660,7 @@ public class WebRtcManager extends Caster<Msg>{
 
             executor.execute(() -> {
                 remoteVideoTracks.put(kdStreamId, track);
-                track.setEnabled(config.isRemoteVideoEnabled);
+                track.setEnabled(userConfig.getIsRemoteVideoEnabled());
                 track.addSink(conferee);
             });
         }
@@ -2788,7 +2690,7 @@ public class WebRtcManager extends Caster<Msg>{
                 audioSource = factory.createAudioSource(new MediaConstraints());
                 String localAudioTrackId = LOCAL_AUDIO_TRACK_ID;
                 localAudioTrack = factory.createAudioTrack(localAudioTrackId, audioSource);
-                localAudioTrack.setEnabled(config.isLocalAudioEnabled);
+                localAudioTrack.setEnabled(userConfig.getIsLocalAudioEnabled());
                 audioSender = pc.addTrack(localAudioTrack, Collections.singletonList(STREAM_ID));
 
                 sessionHandler.post(() -> {
@@ -2840,7 +2742,7 @@ public class WebRtcManager extends Caster<Msg>{
             kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
 
             executor.execute(() -> {
-                track.setEnabled(config.isRemoteAudioEnabled);
+                track.setEnabled(userConfig.getIsRemoteAudioEnabled());
                 remoteAudioTracks.put(kdStreamId, track);
             });
         }
@@ -2971,12 +2873,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-        boolean isRemoteAudioEnabled(){
-            return config.isRemoteAudioEnabled;
-        }
-
         void setRemoteAudioEnable(boolean bEnable){
-            config.isRemoteAudioEnabled = bEnable;
             executor.execute(() -> {
                 for (AudioTrack audioTrack : remoteAudioTracks.values()) {
                     audioTrack.setEnabled(bEnable);
@@ -2984,12 +2881,7 @@ public class WebRtcManager extends Caster<Msg>{
             });
         }
 
-        boolean isLocalAudioEnabled(){
-            return config.isLocalAudioEnabled;
-        }
-
         void setLocalAudioEnable(boolean bEnable){
-            config.isLocalAudioEnabled = bEnable;
             executor.execute(() -> {
                 if (localAudioTrack != null) {
                     localAudioTrack.setEnabled(bEnable);
@@ -2997,13 +2889,7 @@ public class WebRtcManager extends Caster<Msg>{
             });
         }
 
-
-        boolean isRemoteVideoEnabled(){
-            return config.isRemoteVideoEnabled;
-        }
-
         void setRemoteVideoEnable(boolean bEnable){
-            config.isRemoteVideoEnabled = bEnable;
             executor.execute(() -> {
                 for (VideoTrack videoTrack : remoteVideoTracks.values()) {
                     videoTrack.setEnabled(bEnable);
@@ -3011,12 +2897,8 @@ public class WebRtcManager extends Caster<Msg>{
             });
         }
 
-        boolean isLocalVideoEnabled(){
-            return config.isLocalVideoEnabled;
-        }
 
         void setLocalVideoEnable(boolean bEnable){
-            config.isLocalVideoEnabled = bEnable;
             executor.execute(() -> {
                 if (localVideoTrack != null) {
                     localVideoTrack.setEnabled(bEnable);
@@ -3024,12 +2906,7 @@ public class WebRtcManager extends Caster<Msg>{
             });
         }
 
-        boolean isPreferFrontCamera(){
-            return config.bPreferFrontCamera;
-        }
-
         void switchCamera(){
-            config.bPreferFrontCamera = !config.bPreferFrontCamera;
             executor.execute(() -> {
                 if (null != videoCapturer) {
                     ((CameraVideoCapturer) videoCapturer).switchCamera(null);
