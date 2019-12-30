@@ -590,7 +590,7 @@ public class WebRtcManager extends Caster<Msg>{
                 if (null != confEventListener) confEventListener.onConfFinished();
                 break;
 
-            case CurrentConfereeList:
+            case CurrentConfereeList: // NOTE: 入会后会收到一次该通知，创会者也会收到这条消息
                 for (TMTEntityInfo entityInfo : ((TMTEntityInfoList) ntfContent).atMtEntitiy) {
                     conferees.add(ToDoConverter.tMTEntityInfo2ConfereeInfo(entityInfo));
                 }
@@ -620,8 +620,8 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 break;
 
-            case CurrentStreamList:
-            case StreamJoined:
+            case CurrentStreamList: // NOTE: 创会者不会收到这条消息
+            case StreamJoined: // NOTE: 己端不会收到自己的流joined的消息
                 TRtcStreamInfo assStream = null;
                 Conferee assStreamSender = null;
                 for (TRtcStreamInfo streamInfo : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
@@ -669,7 +669,7 @@ public class WebRtcManager extends Caster<Msg>{
 
                 break;
 
-            case StreamLeft:
+            case StreamLeft: // NOTE 己端不会收到自己的流left的消息
                 assStream = null;
                 Conferee assConferee = null;
                 for (TRtcStreamInfo kdStream : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
@@ -1212,7 +1212,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         void setVideoStream(VideoStream videoStream){
-            this.videoStream = videoStream;  // TODO 修改静态图片。与会方的内容、状态变化了都需要刷新展示
+            this.videoStream = videoStream;
         }
 
         boolean removeStream(String kdStreamId){
@@ -1229,29 +1229,6 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
 
-            // TODO 修改静态图片
-
-            // TODO 从pcwrapper 删除track
-
-
-//            Stream leftStream = Iterables.find(streams.values(), input -> input.streamId.equals(kdStream.achStreamId), null);
-//            if (null != leftStream){
-//                PeerConnectionWrapper pcWrapper;
-//                if (leftStream.bAss) {
-//                    assStream = leftStream;  // 我们认为只可能有一路辅流，所以此处在循环中赋值也没关系，只可能赋值一次。
-//                    pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
-//                }else{
-//                    pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
-//                }
-//                // 删除对应的track
-//                if (null != pcWrapper) {
-//                    if (leftStream.bAudio) {
-//                        pcWrapper.removeRemoteAudioTrack(leftStream.streamId);
-//                    } else {
-//                        pcWrapper.removeRemoteVideoTrack(leftStream.streamId);
-//                    }
-//                }
-//            }
             return success;
         }
 
@@ -1263,14 +1240,7 @@ public class WebRtcManager extends Caster<Msg>{
         public void addText(TextDecoration decoration){
             KLog.p(decoration.toString());
             textDecorations.add(decoration);
-//            invalidate(); TODO
-        }
-
-        /**
-         * 获取所有文字deco
-         * */
-        public Set<TextDecoration> getAllText(){
-            return textDecorations;
+            invalidateDisplays();
         }
 
         /**
@@ -1279,25 +1249,34 @@ public class WebRtcManager extends Caster<Msg>{
         public void addPic(PicDecoration decoration){
             KLog.p(decoration.toString());
             picDecorations.add(decoration);
-//            invalidate();
-        }
-
-        /**
-         * 获取所有图片deco
-         * */
-        public Set<PicDecoration> getAllPic(){
-            return picDecorations;
+            invalidateDisplays();
         }
 
         /**
          * 移除deco
          * */
         public boolean removeDeco(String decoId){
-            boolean success = textDecorations.remove(decoId);
-            if (!success){
-                success = picDecorations.remove(decoId);
+            if (null == decoId){
+                return false;
             }
-            return success;
+            boolean success1 = false;
+            for (TextDecoration deco : textDecorations){
+                if (deco.id.equals(decoId)){
+                    success1 = textDecorations.remove(deco);
+                    break;
+                }
+            }
+            boolean success2 = false;
+            for (PicDecoration deco : picDecorations){
+                if (deco.id.equals(decoId)){
+                    success2 = picDecorations.remove(deco);
+                    break;
+                }
+            }
+
+            invalidateDisplays();
+
+            return success1||success2;
         }
 
 
@@ -1373,7 +1352,7 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         void setState(int state){
             this.state = state;
-            // TODO invalidate
+            invalidateDisplays();
         }
 
         /**
@@ -1381,9 +1360,14 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         void setVoiceActivated(boolean bVoiceActivated){
             this.bVoiceActivated = bVoiceActivated;
-            // TODO invalidate
+            invalidateDisplays();
         }
 
+        private void invalidateDisplays(){
+            for (Display display : displays){
+                display.invalidate();
+            }
+        }
 
 
         private Handler onFrameHandler;

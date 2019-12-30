@@ -163,7 +163,7 @@ enum Msg {
 
     /**
      * 当前会议中已有与会成员列表通知
-     * 入会后会收到一次该通知
+     * NOTE: 入会后会收到一次该通知，创会者也会收到这条消息。
      * */
     @Response(clz = TMTEntityInfoList.class,
             id = "OnLineTerListNtf")
@@ -171,7 +171,7 @@ enum Msg {
 
     /**
      * 与会方加入通知
-     * 入会以后，会议中有新的与会方加入则会收到该通知。
+     * 入会以后，会议中有其他与会方加入则会收到该通知。
      * */
     @Response(clz = TMTEntityInfo.class,
             id = "TerJoin_Ntf")
@@ -179,7 +179,7 @@ enum Msg {
 
     /**
      * 与会方退出通知
-     * 入会以后，会议中有与会方离会则会收到该通知
+     * 入会以后，会议中有其他与会方离会则会收到该通知
      * */
     @Response(clz = TMtId.class,
             id = "TerLeft_Ntf")
@@ -189,8 +189,10 @@ enum Msg {
 
     /**
      * 当前会议中已有音视频流列表通知
-     * 入会后会收到一次该通知
-     * NOTE: 平台过来的Stream概念上对应的是WebRTC里面的Track
+     * NOTE:
+     * 加入会议后会收到一次该通知
+     * 创会者不会收到这条消息。
+     * 平台过来的Stream概念上对应的是WebRTC里面的Track
      * */
     @Response(clz = TRtcStreamInfoList.class,
             id = "RtcStreamList_Ntf")
@@ -198,7 +200,8 @@ enum Msg {
 
     /**
      * 流加入通知
-     * 入会以后，会议中有新的流加入则会收到该通知。
+     * 入会以后，会议中有其他与会方的流加入则会收到该通知。
+     * NOTE: 己端不会收到自己的流joined的消息。
      * */
     @Response(clz = TRtcStreamInfoList.class,
             id = "RtcStreamAdd_Ntf")
@@ -206,8 +209,10 @@ enum Msg {
 
     /**
      * 流退出通知
-     * 入会以后，会议中有流退出则会收到该通知
-     * NOTE: 对比{@link #ConfereeLeft}，StreamLeft只表示音/视频离会了，而ConfereeLeft表示与会方退会了（当然相应的音视频也退出了）。
+     * 入会以后，会议中有其他与会方的流退出则会收到该通知
+     * NOTE:
+     * 己端不会收到自己的流left的消息。
+     * 对比{@link #ConfereeLeft}，StreamLeft只表示音/视频离会了，而ConfereeLeft表示与会方退会了（当然相应的音视频也退出了）。
      * 比如某个与会方关闭了摄像头停止了视频发布，则其他与会方会收到StreamLeft，但不会收到ConfereeLeft。
      * 如果某个与会方退会了则其他与会方会收到ConfereeLeft和StreamLeft。
      * */
@@ -216,7 +221,7 @@ enum Msg {
     StreamLeft,
 
     /**
-     * 选择想要订阅的码流
+     * 选择想要订阅的视频码流
      */
     @Request(method = "SetRtcPlayCmd",
             owner = MethodOwner.MonitorCtrl,
