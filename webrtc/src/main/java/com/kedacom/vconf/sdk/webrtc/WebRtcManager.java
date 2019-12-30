@@ -98,7 +98,7 @@ import java.util.concurrent.Executors;
 
 import com.kedacom.vconf.sdk.webrtc.bean.*;
 
-@SuppressWarnings({"unused"})
+@SuppressWarnings({"unused", "WeakerAccess"})
 public class WebRtcManager extends Caster<Msg>{
 
     private static final String TAG = WebRtcManager.class.getSimpleName();
@@ -1120,7 +1120,7 @@ public class WebRtcManager extends Caster<Msg>{
         /**
          * 与会方离会
          * 如果该Display不需要了请调用{@link #releaseDisplay(Display)}销毁；
-         * 如果后续要复用则可以不销毁，可以调用{@link Display#setContent(Conferee=null)}清空内容；
+         * 如果后续要复用则可以不销毁，可以调用{@link Display#setContent)}参数传null清空内容；
          * NOTE: {@link #stopSession()} 会销毁所有Display。用户不能跨Session复用Display，也不需要在stopSession时手动销毁Display。
          * */
         void onConfereeLeft(Conferee conferee);
@@ -1602,7 +1602,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
             // 绘制与会方状态deco
-            PicDecoration stateDeco = null;
+            PicDecoration stateDeco;
             if (Conferee.State_CameraDisabled == conferee.state){
                 stateDeco = Conferee.cameraDisabledDeco;
                 if (null != stateDeco) {
@@ -1888,6 +1888,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
+    @SuppressWarnings("WeakerAccess")
     public static class Stream {
         public String streamId; // 平台的StreamId，概念上对应的是WebRTC中的TrackId
 
@@ -2480,6 +2481,7 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * PeerConnection包装类
      * */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private class PeerConnectionWrapper{
 
         int connType;
