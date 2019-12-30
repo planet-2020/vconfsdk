@@ -626,15 +626,17 @@ public class WebRtcManager extends Caster<Msg>{
             case CurrentStreamList:
             case StreamJoined:
                 TRtcStreamInfo assStream = null;
+                Conferee assStreamSender = null;
                 for (TRtcStreamInfo streamInfo : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
-                    if (streamInfo.bAss){
-                        assStream = streamInfo;  // 对于辅流我们稍后特殊处理
-                        continue;
-                    }
                     // 查找该流所属的与会方
                     Conferee owner = findConfereeByConfereeId(Conferee.buildId(streamInfo.tMtId.dwMcuId, streamInfo.tMtId.dwTerId, false));
                     if (null == owner){
                         KLog.p(KLog.ERROR, "this stream not belong to any conferee");
+                        continue;
+                    }
+                    if (streamInfo.bAss){
+                        assStream = streamInfo;  // 对于辅流我们稍后特殊处理
+                        assStreamSender = owner;
                         continue;
                     }
                     // 将流关联到与会方
@@ -647,15 +649,12 @@ public class WebRtcManager extends Caster<Msg>{
 
                 // 对辅流特殊处理
                 if (null != assStream){
-                    Conferee sender = findConfereeByConfereeId(Conferee.buildId(assStream.tMtId.dwMcuId, assStream.tMtId.dwTerId, false));
-                    if (null != sender){
-                        // 针对辅流我们构造一个虚拟的与会方
-                        Conferee assStreamConferee = new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, true);
-                        assStreamConferee.setVideoStream(new VideoStream(assStream.achStreamId, true, assStream.aemSimcastRes));
-                        conferees.add(assStreamConferee);
-                        if (null != sessionEventListener){
-                            sessionEventListener.onConfereeJoined(assStreamConferee);
-                        }
+                    // 针对辅流我们构造一个虚拟的与会方
+                    Conferee assStreamConferee = new Conferee(assStreamSender.mcuId, assStreamSender.terId, assStreamSender.e164, assStreamSender.alias, assStreamSender.email, true);
+                    assStreamConferee.setVideoStream(new VideoStream(assStream.achStreamId, true, assStream.aemSimcastRes));
+                    conferees.add(assStreamConferee);
+                    if (null != sessionEventListener){
+                        sessionEventListener.onConfereeJoined(assStreamConferee);
                     }
                 }
 
@@ -675,14 +674,16 @@ public class WebRtcManager extends Caster<Msg>{
 
             case StreamLeft:
                 assStream = null;
+                Conferee assConferee = null;
                 for (TRtcStreamInfo kdStream : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
-                    if (kdStream.bAss){
-                        assStream = kdStream;  // 对于辅流我们稍后特殊处理
-                        continue;
-                    }
                     Conferee owner = findConfereeByStreamId(kdStream.achStreamId);
                     if (null == owner){
                         KLog.p(KLog.ERROR, "this stream not belong to any conferee");
+                        continue;
+                    }
+                    if (kdStream.bAss){
+                        assStream = kdStream;  // 对于辅流我们稍后特殊处理
+                        assConferee = owner;
                         continue;
                     }
                     owner.removeStream(kdStream.achStreamId);
@@ -690,15 +691,12 @@ public class WebRtcManager extends Caster<Msg>{
 
                 // 对于辅流特殊处理
                 if (null != assStream){
-                    Conferee assConferee = findConfereeByStreamId(assStream.achStreamId);
-                    if (null != assConferee){
-                        assConferee.removeStream(assStream.achStreamId);
-                        conferees.remove(assConferee);
-                        // 辅流退出意味着虚拟的辅流入会方退会
-                         if (null != sessionEventListener) {
-                             sessionEventListener.onConfereeLeft(assConferee);
-                         }
-                    }
+                    assConferee.removeStream(assStream.achStreamId);
+                    conferees.remove(assConferee);
+                    // 辅流退出意味着虚拟的辅流入会方退会
+                     if (null != sessionEventListener) {
+                         sessionEventListener.onConfereeLeft(assConferee);
+                     }
                 }
 
                 // 重新订阅视频流
@@ -1099,59 +1097,6 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
-//
-//    public Conferee getConferee(String confereeId){
-//        return conferees.get(confereeId);
-//    }
-//
-//    private Conferee getConferee(int mcuId, int terId){
-//        for (Conferee conferee : conferees.values()){
-//            if (conferee.mcuId==mcuId && conferee.terId==terId){
-//                return conferee;
-//            }
-//        }
-//        return null;
-//    }
-//
-//    public Conferee getConfereeByStreamId(String streamId){
-//        Stream stream = streams.get(streamId);
-//        if (null == stream){
-//            return null;
-//        }
-//        return conferees.get(stream.ownerId);
-//    }
-//
-//    public Stream getStream(String streamId){
-//        return streams.get(streamId);
-//    }
-//
-//    public Stream getStream(String confereeId, boolean bAudio, boolean bAss){
-//        for (Stream stream : streams.values()){
-//            if (stream.ownerId.equals(confereeId) && bAudio == stream.bAudio && stream.bAss == bAss){
-//                return stream;
-//            }
-//        }
-//        return null;
-//    }
-//
-//    public Display getDisplay(String confereeId){ // XXX 一个Conferee可能绑定到多个Display
-//        for (Display display : displaySet){
-//            if ((confereeId == display.confereeId) || (confereeId != null && confereeId.equals(display.confereeId))){
-//                return display;
-//            }
-//        }
-//        return null;
-//    }
-//
-//    public Display getDisplayByStreamId(String streamId){
-//        Stream stream = streams.get(streamId);
-//        if (null == stream){
-//            return null;
-//        }
-//        return getDisplay(stream.ownerId);
-//    }
-//
-
 
     private @Nullable VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
         final String[] deviceNames = enumerator.getDeviceNames();
@@ -1275,7 +1220,7 @@ public class WebRtcManager extends Caster<Msg>{
         public String   alias;
         public String   email;
 
-        // 是否为辅流与会方（针对辅流我们创建一个虚拟的“辅流与会方”）
+        // 是否为辅流与会方（针对辅流我们创建了一个虚拟的“辅流与会方”与之对应）
         public boolean bAssStream;
 
         // 该与会方的视频流。一个与会方只有一路视频流
@@ -1288,7 +1233,7 @@ public class WebRtcManager extends Caster<Msg>{
         private Set<Display> displays = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         // 文字图片装饰。如台标，静态图片等。
-        // 与会方的展示的内容由码流和装饰组成，展示在Display上。
+        // 与会方的画面内容由码流和装饰组成，展示在Display上。
         private Set<TextDecoration> textDecorations = new HashSet<>();
         private Set<PicDecoration> picDecorations = new HashSet<>();
 
@@ -1347,7 +1292,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         void setVideoStream(VideoStream videoStream){
-            this.videoStream = videoStream;  // TODO 修改静态图片
+            this.videoStream = videoStream;  // TODO 修改静态图片。与会方的内容、状态变化了都需要刷新展示
         }
 
         boolean removeStream(String kdStreamId){
@@ -1514,7 +1459,7 @@ public class WebRtcManager extends Caster<Msg>{
         /**
          * 设置语音激励状态
          * */
-        void setbVoiceActivated(boolean bVoiceActivated){
+        void setVoiceActivated(boolean bVoiceActivated){
             this.bVoiceActivated = bVoiceActivated;
             // TODO invalidate
         }
@@ -1600,10 +1545,17 @@ public class WebRtcManager extends Caster<Msg>{
          * @param enable false 禁用该Display，屏蔽内容展示；true正常展示内容。默认true
          * */
         public void setEnable(boolean enable){
+            KLog.p("set enable=%s for display %s", enable, this);
             this.enabled = enable;
             invalidate();
         }
 
+        /**
+         * 设置是否在所有Display最前端展示。可用于多个Display层叠的场景
+         * */
+        public void setOnTopOverOtherDisplays(boolean bOnTop){
+            setZOrderMediaOverlay(bOnTop);
+        }
 
         /**
          * 设置Display的内容。
@@ -1619,7 +1571,7 @@ public class WebRtcManager extends Caster<Msg>{
          *                 NOTE: 若用户设置了一个不存在于会议中的Conferee，接口不会报错，但Display不会展示出任何内容，形同设置了null；
          * */
         public void setContent(@Nullable Conferee conferee){
-            KLog.p("set content %s to display %s", conferee, this);
+            KLog.p("set content %s for display %s", conferee, this);
             Conferee oldConferee = instance.findConfereeByDisplay(this);
             if (null != oldConferee){
                 oldConferee.removeDisplay(this);
@@ -1781,13 +1733,31 @@ public class WebRtcManager extends Caster<Msg>{
 
         }
 
-        /**
-         * 设置是否在所有Display最前端展示。可用于多个Display层叠的场景
-         * */
-        public void setOnTopOverOtherDisplays(boolean bOnTop){
-            setZOrderMediaOverlay(bOnTop);
-        }
 
+    }
+
+
+
+    /**
+     * 创建Display。
+     * */
+    public Display createDisplay(){
+        Display display =  new Display(context);
+        displaySet.add(display);
+        KLog.p("create display %s", display);
+        return display;
+    }
+
+    /**
+     * 销毁display
+     * */
+    public void releaseDisplay(Display display){
+        KLog.p("release display %s", display);
+        if (displaySet.remove(display)){
+            display.destroy();
+        }else{
+            KLog.p(KLog.ERROR, "wired, this display is not created by me!");
+        }
     }
 
 
@@ -1797,7 +1767,7 @@ public class WebRtcManager extends Caster<Msg>{
         private int textSize;
         private static final int minTextSizeLimit = 5;
         /**
-         * @param id deco的id，方便用户找回。
+         * @param id deco的id，用户自定义，方便用户找回。
          * @param text deco文字内容
          * @param textSize 文字大小
          * @param color 文字颜色
@@ -1994,31 +1964,6 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
     }
-
-
-    /**
-     * 创建Display。
-     * */
-    public Display createDisplay(){
-        Display display =  new Display(context);
-        displaySet.add(display);
-        KLog.p("create display %s", display);
-        return display;
-    }
-
-    /**
-     * 销毁display
-     * */
-    public void releaseDisplay(Display display){
-        KLog.p("release display %s", display);
-        if (displaySet.remove(display)){
-            display.destroy();
-        }else{
-            KLog.p(KLog.ERROR, "wired, this display is not created by me!");
-        }
-    }
-
-
 
 
 
@@ -2311,7 +2256,9 @@ public class WebRtcManager extends Caster<Msg>{
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
             if (null == pcWrapper) return;
 
-            // 删除取消发布的媒体轨道
+            // 删除取消发布的流。
+            // 取消发布己端不会收到StreamLeft消息（其他与会方会收到），
+            // 所以我们需在此删除流而非依赖收到StreamLeft后的处理逻辑
             if (CommonDef.MEDIA_TYPE_AUDIO == mediaType
                     || CommonDef.MEDIA_TYPE_AV == mediaType){
                 pcWrapper.removeAudioTrack();
@@ -2356,11 +2303,14 @@ public class WebRtcManager extends Caster<Msg>{
         public void onCreateSuccess(final SessionDescription origSdp) {
             sessionHandler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                // 由于是异步，此时可能会议已经结束（如对端挂会），PeerConnectionWrapper已经销毁，所以我们此处需做非空判断
                 if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Creating)) return;
 
                 KLog.p("create local sdp success: type=%s", pcWrapper.sdpType);
                 if (pcWrapper.isSdpType(pcWrapper.FingerPrintOffer)){
+                    // 之前创建的音频流仅用于和平台交互FingerPrint没实际用处，此处交互已完成，销毁
                     pcWrapper.destoryAudioTrack();
+
                     rtcConnector.sendFingerPrint(pcWrapper.connType, SdpHelper.getFingerPrint(origSdp.description));
                     pcWrapper.setSdpState(pcWrapper.Idle);
                 }else {
@@ -2547,6 +2497,15 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onRemoveStream(final MediaStream stream) {
+            // 我们在onTrack回调中createRemoteVideoTrack/createRemoteAudioTrack，
+            // 相应的我们原本期望在onRemoveStream（没有onRemoveTrack）中removeRemoteVideoTrack/removeRemoteAudioTrack，
+            // 然而实测下来发现此回调上来时MediaStream的track列表为空，不得已我们只得
+            for (VideoTrack videoTrack : stream.videoTracks){
+                KLog.p("videoTrack=%s", videoTrack.id()); // TODO 确认码流取消发布时会不会走到这里，如果走到了就在这里removeRemoteVideoTrack/removeRemoteAudioTrack而非在unpub里面
+            }
+            for (AudioTrack audioTrack : stream.audioTracks){
+                KLog.p("audioTrack=%s", audioTrack.id());
+            }
         }
 
         @Override
@@ -2749,6 +2708,7 @@ public class WebRtcManager extends Caster<Msg>{
                     localVideoTrack.addSink(myself);  // 本地回显
 
                     sessionHandler.post(() -> {
+                        // 本地流不会通过StreamJoined消息报上来，所以我们需要在此处创建并设置给己端与会方，而非依赖StreamJoined消息的处理逻辑
                         myself.videoStream = new VideoStream(kdStreamId, false,
                                 Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 暂时写死了
                         );
@@ -2768,7 +2728,8 @@ public class WebRtcManager extends Caster<Msg>{
                     String trackId = localVideoTrack.id();
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
-                    // 删除流（己端取消发布流对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流）
+                    // 删除流
+                    // 己端取消发布流对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流，而非依赖StreamLeft消息的处理逻辑
                     Conferee myself = findMyself();
                     if (null != myself) {
                         myself.removeStream(kdStreamId);
@@ -2835,6 +2796,7 @@ public class WebRtcManager extends Caster<Msg>{
                     kdStreamId2RtcTrackIdMap.put(kdStreamId, localAudioTrackId);
                     Conferee myself = findMyself();
                     if (null != myself){
+                        // 本地流不会通过StreamJoined消息报上来，所以我们需要在此处创建并设置给己端与会方，而非依赖StreamJoined消息的处理逻辑
                         myself.addAudioStream(new AudioStream(kdStreamId));
                     }else{
                         KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
@@ -2852,9 +2814,10 @@ public class WebRtcManager extends Caster<Msg>{
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
 
-                    // 删除流（己端取消发布流对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流）
                     Conferee myself = findMyself();
                     if (null != myself) {
+                        // 删除流
+                        // 己端取消发布流对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流，而非依赖StreamLeft消息的处理逻辑
                         myself.removeStream(kdStreamId);
                         KLog.p("localVideoTrack %s removed ", kdStreamId);
                     }else{

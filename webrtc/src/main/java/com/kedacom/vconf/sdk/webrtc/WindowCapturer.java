@@ -10,6 +10,8 @@ import android.view.View;
 
 import androidx.annotation.NonNull;
 
+import com.kedacom.vconf.sdk.utils.log.KLog;
+
 import org.webrtc.CapturerObserver;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.TextureBufferImpl;
@@ -45,6 +47,11 @@ public class WindowCapturer implements VideoCapturer {
     public void startCapture(int width, int height, int fps) {
         captureThread = new Thread(() -> {
             try {
+                if (null == surTexture || null == window){
+                    KLog.p(KLog.ERROR, "null == surTexture || null == window");
+                    return;
+                }
+
                 long start = System.nanoTime();
                 if (null != capturerObs) capturerObs.onCapturerStarted(true);
 
@@ -60,19 +67,21 @@ public class WindowCapturer implements VideoCapturer {
 
                 Canvas canvas = new Canvas(bitmap);
                 while (true) {
-                    surTexture.getHandler().post(() -> {
-                        window.draw(canvas);  // TODO 判断是否前台，非前台不需要draw。
-                        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-                        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
-                        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+                    if (null != surTexture) {
+                        surTexture.getHandler().post(() -> {
+                            if (null != window) window.draw(canvas);  // TODO 判断是否前台，非前台不需要draw。
+                            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+                            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+                            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
-                        VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
+                            VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
 
-                        long frameTime = System.nanoTime() - start;
-                        VideoFrame videoFrame = new VideoFrame(i420Buf, 0, frameTime);
-                        if (null != capturerObs) capturerObs.onFrameCaptured(videoFrame);
-                        videoFrame.release();
-                    });
+                            long frameTime = System.nanoTime() - start;
+                            VideoFrame videoFrame = new VideoFrame(i420Buf, 0, frameTime);
+                            if (null != capturerObs) capturerObs.onFrameCaptured(videoFrame);
+                            videoFrame.release();
+                        });
+                    }
 
                     Thread.sleep(100);
                 }
