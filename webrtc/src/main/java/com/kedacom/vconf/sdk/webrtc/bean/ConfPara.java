@@ -16,11 +16,12 @@ public final class ConfPara {
     public boolean enableDC;        // 是否开启数据协作
     public String virtualConfId;    // 虚拟会议Id。非虚拟会议填null
     public boolean bHide;           // 是否隐藏。隐藏的会议除了创会者和初始成员其他人不可见
+    public String passwd;           // 会议密码
 
     public List<ConfMemberInfo> initedConfMemberInfoList; // 初始与会成员列表（不包括创建者）
 
     public ConfPara(String creatorE164, String confName, int duration, boolean bAudio, boolean bHighDefinition, boolean enableDC,
-                    String virtualConfId, List<ConfMemberInfo> initedConfMemberInfoList, boolean bHide) {
+                    String virtualConfId, List<ConfMemberInfo> initedConfMemberInfoList, boolean bHide, String passwd) {
         this.creatorE164 = creatorE164;
         this.confName = confName;
         this.duration = duration;
@@ -30,6 +31,7 @@ public final class ConfPara {
         this.virtualConfId = virtualConfId;
         this.initedConfMemberInfoList = initedConfMemberInfoList;
         this.bHide = bHide;
+        this.passwd = passwd;
     }
 
     public ConfPara(String creatorE164, String confName, int duration, boolean bAudio, boolean bHighDefinition, boolean enableDC, String virtualConfId) {

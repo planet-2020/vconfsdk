@@ -229,18 +229,19 @@ public class WebRtcManager extends Caster<Msg>{
      * 呼叫
      * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
      * @param peerId 对于点对点而言是对端e164，对于多方会议而言是会议e164
+     * @param bAudio 是否音频入会
      **@param resultListener 结果监听器。
      *          成功: {@link MakeCallResult};
      *          失败：TODO
      * @param sessionEventListener 会话事件监听器
      * */
-    public void makeCall(String peerId, IResultListener resultListener, SessionEventListener sessionEventListener){
+    public void makeCall(String peerId, boolean bAudio, IResultListener resultListener, SessionEventListener sessionEventListener){
         if (!startSession(sessionEventListener)){
             reportFailed(-1, resultListener);
             return;
         }
         req(Msg.Call, resultListener, peerId,
-                1024*4, // 按需求创会码率固定为4M，呼叫码率也是???
+                bAudio ? 64 : 1024*4, // 音频入会64K码率，视频入会4M
                 EmConfProtocol.emrtc);
     }
 
@@ -522,15 +523,26 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case ToggleScreenShareRsp:
+                boolean bOpen = (boolean) reqParas[0];
                 TMtAssVidStatusList assVidStatusList = (TMtAssVidStatusList) rspContent;
                 if (assVidStatusList.arrTAssVidStatus.length == 0){
                     reportFailed(-1, listener);
                 }else{
                     TAssVidStatus assVidStatus = assVidStatusList.arrTAssVidStatus[0]; // 目前仅支持一路
-                    if (EmMtChanState.emChanConnected == assVidStatus.emChanState){
-                        reportSuccess(null, listener);
+                    if (bOpen){
+                        // 开启双流对应的响应
+                        if (EmMtChanState.emChanConnected == assVidStatus.emChanState){
+                            reportSuccess(null, listener);
+                        }else{
+                            reportFailed(-1, listener);
+                        }
                     }else{
-                        reportFailed(-1, listener);
+                        // 关闭双流对应的响应
+                        if (EmMtChanState.emChanConnected != assVidStatus.emChanState){
+                            reportSuccess(null, listener);
+                        }else{
+                            reportFailed(-1, listener);
+                        }
                     }
                 }
                 break;
@@ -670,7 +682,6 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case StreamLeft: // NOTE 己端不会收到自己的流left的消息
-                assStream = null;
                 Conferee assConferee = null;
                 for (TRtcStreamInfo kdStream : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
                     Conferee owner = findConfereeByStreamId(kdStream.achStreamId);
@@ -678,17 +689,35 @@ public class WebRtcManager extends Caster<Msg>{
                         KLog.p(KLog.ERROR, "this stream not belong to any conferee");
                         continue;
                     }
-                    if (kdStream.bAss){
-                        assStream = kdStream;  // 对于辅流我们稍后特殊处理
-                        assConferee = owner;
-                        continue;
+
+                    // 删除track
+                    // 我们在onTrack回调中createRemoteVideoTrack/createRemoteAudioTrack，
+                    // 相应的我们原本期望在onRemoveStream（没有onRemoveTrack）中removeRemoteVideoTrack/removeRemoteAudioTrack，
+                    // 然而实测下来发现onRemoveStream回调上来时MediaStream的track列表为空，不得已我们只得在StreamLeft消息上来时
+                    // removeRemoteVideoTrack/removeRemoteAudioTrack，由此造成了这种不对称的现象
+                    PeerConnectionWrapper pcWrapper;
+                    VideoStream stream = findVideoStream(kdStream.achStreamId); // StreamLeft消息中只有流id有效，所以我们需本地查找到对应的流再做进一步判断
+                    if (null != stream){
+                        if (stream.bAss) {
+                            assConferee = owner; // 对于辅流我们稍后特殊处理。我们认为只可能有一路辅流，所以此处在循环中赋值也没关系，只可能赋值一次。
+                            pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
+                        }else{
+                            pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+                        }
+                        if (null != pcWrapper) pcWrapper.removeRemoteVideoTrack(stream.streamId);
+                    }else{
+                        AudioStream audioStream = findAudioStream(kdStream.achStreamId);
+                        if (null != audioStream){
+                            pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+                            if (null != pcWrapper) pcWrapper.removeRemoteAudioTrack(audioStream.streamId);
+                        }
                     }
+
                     owner.removeStream(kdStream.achStreamId);
                 }
 
                 // 对于辅流特殊处理
-                if (null != assStream){
-                    assConferee.removeStream(assStream.achStreamId);
+                if (null != assConferee){
                     conferees.remove(assConferee);
                     // 辅流退出意味着虚拟的辅流入会方退会
                      if (null != sessionEventListener) {
@@ -1112,7 +1141,7 @@ public class WebRtcManager extends Caster<Msg>{
         /**
          * 与会方入会了。
          * 一般情形下，用户收到该回调时调用{@link #createDisplay()}创建Display，
-         * 然后调用{@link Display#setContent(Conferee)} 将Display绑定到与会方以使与会方画面展示在Display上，
+         * 然后调用{@link Display#setConferee(Conferee)} 将Display绑定到与会方以使与会方画面展示在Display上，
          * 如果还需要展示文字图标等deco，可调用{@link Conferee#addText(TextDecoration)}}, {@link Conferee#addPic(PicDecoration)}
          * NOTE: 文字、图片等deco是属于Conferee的而非Display，所以调用{@link Display#swapContent(Display)}等方法时，deco也会跟着迁移。
          * */
@@ -1120,7 +1149,7 @@ public class WebRtcManager extends Caster<Msg>{
         /**
          * 与会方离会
          * 如果该Display不需要了请调用{@link #releaseDisplay(Display)}销毁；
-         * 如果后续要复用则可以不销毁，可以调用{@link Display#setContent)}参数传null清空内容；
+         * 如果后续要复用则可以不销毁，可以调用{@link Display#setConferee)}参数传null清空内容；
          * NOTE: {@link #stopSession()} 会销毁所有Display。用户不能跨Session复用Display，也不需要在stopSession时手动销毁Display。
          * */
         void onConfereeLeft(Conferee conferee);
@@ -1240,7 +1269,7 @@ public class WebRtcManager extends Caster<Msg>{
         public void addText(TextDecoration decoration){
             KLog.p(decoration.toString());
             textDecorations.add(decoration);
-            invalidateDisplays();
+            refreshDisplays();
         }
 
         /**
@@ -1249,36 +1278,68 @@ public class WebRtcManager extends Caster<Msg>{
         public void addPic(PicDecoration decoration){
             KLog.p(decoration.toString());
             picDecorations.add(decoration);
-            invalidateDisplays();
+            refreshDisplays();
         }
 
         /**
-         * 移除deco
+         * 移除deco。
+         * NOTE: 移除deco后若要再展示该deco需要重新添加该deco。如果只是屏蔽展示稍后还要开启请使用{@link #setDecoEnable(String, boolean)}
          * */
         public boolean removeDeco(String decoId){
             if (null == decoId){
                 return false;
             }
-            boolean success1 = false;
+            boolean success = false;
             for (TextDecoration deco : textDecorations){
                 if (deco.id.equals(decoId)){
-                    success1 = textDecorations.remove(deco);
+                    success = textDecorations.remove(deco);
                     break;
                 }
             }
-            boolean success2 = false;
             for (PicDecoration deco : picDecorations){
                 if (deco.id.equals(decoId)){
-                    success2 = picDecorations.remove(deco);
+                    success = picDecorations.remove(deco);
                     break;
                 }
             }
 
-            invalidateDisplays();
+            if (success) {
+                refreshDisplays();
+            }
 
-            return success1||success2;
+            return success;
         }
 
+
+        /**
+         * 设置是否启用某个deco
+         * 默认是启用。
+         * @param decoId {@link Decoration#id}
+         * @param enabled true，启用；false，禁用
+         * NOTE: 不同于{@link Display#setDecoEnable(String, boolean)}，该方法会影响到所有绑定到该Conferee的Display。
+         * */
+        public void setDecoEnable(String decoId, boolean enabled){
+            boolean success = false;
+            for (TextDecoration deco : textDecorations){
+                if (deco.id.equals(decoId) && deco.enabled() != enabled){
+                    deco.setEnabled(enabled);
+                    success = true;
+                    break;
+                }
+            }
+            for (PicDecoration deco : picDecorations){
+                if (deco.id.equals(decoId) && deco.enabled() != enabled){
+                    deco.setEnabled(enabled);
+                    success = true;
+                    break;
+                }
+            }
+
+            if (success) {
+                refreshDisplays();
+            }
+
+        }
 
 
         /**
@@ -1295,15 +1356,15 @@ public class WebRtcManager extends Caster<Msg>{
         /**
          * 摄像头关闭状态下的装饰
          * */
-        private static PicDecoration cameraDisabledDeco;
+        private static StreamStateDecoration cameraDisabledDeco;
         /**
          * 视频信号弱状态下的装饰
          * */
-        private static PicDecoration weakVideoSignalDeco;
+        private static StreamStateDecoration weakVideoSignalDeco;
         /**
          * 纯音频与会方的装饰
          * */
-        private static PicDecoration audioConfereeDeco;
+        private static StreamStateDecoration audioConfereeDeco;
 
         /**
          * 设置语音激励装饰。
@@ -1323,27 +1384,39 @@ public class WebRtcManager extends Caster<Msg>{
          * 设置关闭摄像头采集时本地画面对应的Display展示的图片。
          * @param winW UCD标注的deco所在窗口的宽
          * @param winH UCD标注的deco所在窗口的高
+         * @param backgroundColor 背景色
          * */
-        public static void setCameraDisabledDecoration(@NonNull Bitmap bitmap, int winW, int winH){
-            cameraDisabledDeco = PicDecoration.createCenterPicDeco("cameraDisabledDeco", bitmap, winW, winH);
+        public static void setCameraDisabledDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+            cameraDisabledDeco = StreamStateDecoration.createFromPicDecoration(
+                    PicDecoration.createCenterPicDeco("cameraDisabledDeco", bitmap, winW, winH),
+                    backgroundColor
+            );
         }
 
         /**
          * 设置音频入会方对应的Display展示的图片。
          * @param winW UCD标注的deco所在窗口的宽
          * @param winH UCD标注的deco所在窗口的高
+         * @param backgroundColor 背景色
          * */
-        public static void setAudioConfereeDecoration(@NonNull Bitmap bitmap, int winW, int winH){
-            audioConfereeDeco = PicDecoration.createCenterPicDeco("audioConfereeDeco", bitmap, winW, winH);
+        public static void setAudioConfereeDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+            audioConfereeDeco = StreamStateDecoration.createFromPicDecoration(
+                    PicDecoration.createCenterPicDeco("audioConfereeDeco", bitmap, winW, winH),
+                    backgroundColor
+            );
         }
 
         /**
          * 设置Display无视频源时展示的图片
          * @param winW UCD标注的deco所在窗口的宽
          * @param winH UCD标注的deco所在窗口的高
+         * @param backgroundColor 背景色
          * */
-        public static void setWeakVideoSignalDecoration(@NonNull Bitmap bitmap, int winW, int winH){
-            weakVideoSignalDeco = PicDecoration.createCenterPicDeco("weakVideoSignalDeco", bitmap, winW, winH);
+        public static void setWeakVideoSignalDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+            weakVideoSignalDeco = StreamStateDecoration.createFromPicDecoration(
+                    PicDecoration.createCenterPicDeco("weakVideoSignalDeco", bitmap, winW, winH),
+                    backgroundColor
+            );
         }
 
 
@@ -1352,7 +1425,7 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         void setState(int state){
             this.state = state;
-            invalidateDisplays();
+            refreshDisplays();
         }
 
         /**
@@ -1360,17 +1433,16 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         void setVoiceActivated(boolean bVoiceActivated){
             this.bVoiceActivated = bVoiceActivated;
-            invalidateDisplays();
+            refreshDisplays();
         }
 
-        private void invalidateDisplays(){
+        private void refreshDisplays(){
             for (Display display : displays){
-                display.invalidate();
+                display.refresh();
             }
         }
 
 
-        private Handler onFrameHandler;
         @Override
         public void onFrame(VideoFrame videoFrame) {
             long curts = System.currentTimeMillis();
@@ -1379,16 +1451,13 @@ public class WebRtcManager extends Caster<Msg>{
                 timestamp = curts;
                 KLog.p("%s onFrame ", id);
             }
-            if (null == onFrameHandler) {
-                onFrameHandler = new Handler();
-            }
 
             for (Display display : displays){
                 if (curts - ts > 5000) {
                     if (display.enabled) {
-                        KLog.p("frame of conferee %s rendered onto display %s ", id, display);
+                        KLog.p("frame of conferee %s rendered onto display %s ", id, display.hashCode());
                     }else{
-                        KLog.p("frame of conferee %s dropped off display %s because it is disabled ", id, display);
+                        KLog.p("frame of conferee %s dropped off display %s because it is disabled ", id, display.hashCode());
                     }
                 }
                 if (!display.enabled) {
@@ -1424,8 +1493,10 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         private Conferee conferee;
 
-        private int displayWidth;
-        private int displayHeight;
+        /**
+         * 禁止显示的deco集合
+         * */
+        private Set<String> disabledDecos = new HashSet<>();
 
 
         private Handler handler = getHandler();
@@ -1434,7 +1505,7 @@ public class WebRtcManager extends Caster<Msg>{
         private Display(Context context) {
             super(context);
             init(instance.eglBase.getEglBaseContext(), null);
-            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL);
+            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
             setEnableHardwareScaler(true);
             setWillNotDraw(false);
         }
@@ -1451,7 +1522,7 @@ public class WebRtcManager extends Caster<Msg>{
         public void setEnable(boolean enable){
             KLog.p("set enable=%s for display %s", enable, this);
             this.enabled = enable;
-            invalidate();
+            refresh();
         }
 
         /**
@@ -1462,8 +1533,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         /**
-         * 设置Display的内容。
-         * Display的内容即为与会方。
+         * 设置Display绑定的与会方。
          * 一个Display只会绑定到一个与会方；
          * 多个Display可以绑定到同一与会方；
          * 若一个Display已经绑定到某个与会方，则该绑定会先被解除，然后建立新的绑定关系；
@@ -1474,65 +1544,86 @@ public class WebRtcManager extends Caster<Msg>{
          * @param conferee 与会方。若为null则display不展示任何内容。
          *                 NOTE: 若用户设置了一个不存在于会议中的Conferee，接口不会报错，但Display不会展示出任何内容，形同设置了null；
          * */
-        public void setContent(@Nullable Conferee conferee){
-            KLog.p("set content %s for display %s", conferee, this);
-            Conferee oldConferee = instance.findConfereeByDisplay(this);
-            if (null != oldConferee){
-                oldConferee.removeDisplay(this);
+        public void setConferee(@Nullable Conferee conferee){
+            KLog.p("set content %s for display %s", null != conferee ? conferee.id : null, this.hashCode());
+            if (null != this.conferee){
+                this.conferee.removeDisplay(this);
             }
             if (null != conferee) {
                 conferee.addDisplay(this);
             }
             this.conferee = conferee;
 
-            invalidate();
+            refresh();
         }
 
         /**
          * 获取Display内容
          * @return  返回setContent设置的Conferee
          * */
-        public Conferee getContent(){
+        public Conferee getConferee(){
             return conferee;
         }
 
         /**
-         * 拷贝源Display的内容到本Display，覆盖原有内容。
-         * @param src 源display。若为null或其没有内容则本display内容被清空，效果同setContent(null)
+         * 设置是否展示某个deco
+         * 默认是展示。
+         * @param decoId {@link Decoration#id}
+         * @param enabled true，展示；false，屏蔽
          * */
-        public void copyContentFrom(@Nullable Display src){
-            KLog.p("copy content from display %s \nto display %s", src, this);
-            Conferee oldConferee = instance.findConfereeByDisplay(this);
-            if (null != oldConferee){
-                oldConferee.removeDisplay(this);
+        public void setDecoEnable(String decoId, boolean enabled){
+            boolean bSuccess;
+            if (enabled){
+                bSuccess = disabledDecos.remove(decoId);
+            }else{
+                bSuccess = disabledDecos.add(decoId);
             }
-
-            Conferee newConferee = instance.findConfereeByDisplay(src);
-            if (null != newConferee) {
-                newConferee.addDisplay(this);
+            if (bSuccess) {
+                refresh();
             }
-            conferee = newConferee;
+        }
 
-            invalidate();
+
+        /**
+         * 拷贝源Display的内容到本Display，覆盖原有内容。
+         * @param src 源display。
+         * */
+        public void copyContentFrom(@NonNull Display src){
+            KLog.p("copy content from display %s to display %s", src.hashCode(), this.hashCode());
+            if (null != this.conferee){
+                this.conferee.removeDisplay(this);
+            }
+            disabledDecos.clear();
+
+            if (null != src.conferee) {
+                src.conferee.addDisplay(this);
+            }
+            conferee = src.conferee;
+            disabledDecos.addAll(src.disabledDecos);
+            enabled = src.enabled;
+
+            refresh();
         }
 
         /**
          * 将本Display的内容移动到目标Display，目标原有内容将被覆盖，本Display的内容将被清空。
-         * @param dst 目标display。若为null，效果同setContent(null)
+         * @param dst 目标display。
          * */
-        public void moveContentTo(@Nullable Display dst){
-            KLog.p("move content from display %s \nto display %s", this, dst);
-            if (null != dst){
-                dst.setContent(conferee);
-            }
+        public void moveContentTo(@NonNull Display dst){
+            KLog.p("move content from display %s to display %s", this.hashCode(), dst.hashCode());
+            dst.setConferee(conferee);
+            dst.disabledDecos.clear();
+            dst.disabledDecos.addAll(disabledDecos);
+            dst.enabled = enabled;
 
             if (null != conferee){
                 conferee.removeDisplay(this);
             }
-
             conferee = null;
+            disabledDecos.clear();
+            enabled = true;
 
-            invalidate();
+            refresh();
         }
 
 
@@ -1540,73 +1631,97 @@ public class WebRtcManager extends Caster<Msg>{
          * 交换两个display的内容。
          * @param otherDisplay 要交换的display。
          * */
-        public void swapContent(@Nullable Display otherDisplay){
-            KLog.p("swap display %s \nwith display %s", this, otherDisplay);
-
+        public void swapContent(@NonNull Display otherDisplay){
+            KLog.p("swap display %s with display %s", this.hashCode(), otherDisplay.hashCode());
             Conferee myConferee = conferee;
-            Conferee otherConferee = null != otherDisplay ? otherDisplay.conferee : null;
+            setConferee(otherDisplay.conferee);
+            otherDisplay.setConferee(myConferee);
 
-            setContent(otherConferee);
-            if (null != otherDisplay) otherDisplay.setContent(myConferee);
+            Set<String> myDisabledDecos = new HashSet<>(disabledDecos);
+            disabledDecos.clear();
+            disabledDecos.addAll(otherDisplay.disabledDecos);
+            otherDisplay.disabledDecos.clear();
+            otherDisplay.disabledDecos.addAll(myDisabledDecos);
+
+            boolean myEnabled = enabled;
+            enabled = otherDisplay.enabled;
+            otherDisplay.enabled = myEnabled;
         }
 
+        /**
+         * 清空Display。
+         * Conferee以及所有状态均被清空。
+         * */
+        public void clear(){
+            setConferee(null);
+            disabledDecos.clear();
+            enabled = true;
+        }
 
         /**
          * 销毁display
          * */
         private void destroy(){
-            KLog.p("destroy display %s ", this);
-            setContent(null);
+            KLog.p("destroy display %s ", this.hashCode());
+            setConferee(null);
+            disabledDecos.clear();
             super.release();
         }
 
+        /**
+         * 刷新显示
+         * */
+        private void refresh(){
+            KLog.sp("refresh content");
+            invalidate();
+        }
 
 
 
         @Override
         public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
             super.surfaceChanged(holder, format, width, height);
-            displayWidth = width;
-            displayHeight = height;
-            KLog.p("displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
         }
 
-        long ts = System.currentTimeMillis();
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
 
             if (!enabled || null == conferee){
+                KLog.p("enabled=%s, conferee=%s", enabled, conferee);
                 return;
             }
 
-            if (System.currentTimeMillis() - ts > 5000){
-                KLog.p("onDraw, displayWidth = %s, displayHeight=%s", displayWidth, displayHeight);
-            }
+            int displayWidth = getWidth();
+            int displayHeight = getHeight();
 
+            KLog.p("onDraw, displayWidth=%s, displayHeight=%s", displayWidth, displayHeight);
 
             // 绘制与会方状态deco
-            PicDecoration stateDeco;
+            StreamStateDecoration stateDeco;
             if (Conferee.State_CameraDisabled == conferee.state){
                 stateDeco = Conferee.cameraDisabledDeco;
-                if (null != stateDeco) {
+                if (null != stateDeco && stateDeco.enabled() && !disabledDecos.contains(stateDeco.id)) {
                     stateDeco.adjust(displayWidth, displayHeight);
+                    canvas.drawColor(stateDeco.backgroundColor);
                     canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
                 }else{
                     canvas.drawColor(Color.BLACK);
                 }
             }else if (Conferee.State_OnlyAudio == conferee.state){
                 stateDeco = Conferee.audioConfereeDeco;
-                if (null != stateDeco) {
+                if (null != stateDeco && stateDeco.enabled() && !disabledDecos.contains(stateDeco.id)) {
                     stateDeco.adjust(displayWidth, displayHeight);
+                    canvas.drawColor(stateDeco.backgroundColor);
                     canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
                 }else{
                     canvas.drawColor(Color.BLACK);
                 }
             }else if (Conferee.State_WeakVideoSignal == conferee.state){
                 stateDeco = Conferee.weakVideoSignalDeco;
-                if (null != stateDeco) {
+                if (null != stateDeco && stateDeco.enabled() && !disabledDecos.contains(stateDeco.id)) {
                     stateDeco.adjust(displayWidth, displayHeight);
+                    canvas.drawColor(stateDeco.backgroundColor);
                     canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
                 }else{
                     canvas.drawColor(Color.BLACK);
@@ -1615,16 +1730,19 @@ public class WebRtcManager extends Caster<Msg>{
 
             // 绘制图片deco
             for (PicDecoration deco : conferee.picDecorations){
+                if (!deco.enabled() || disabledDecos.contains(deco.id)){
+                    continue;
+                }
                 deco.adjust(displayWidth, displayHeight);
                 canvas.drawBitmap(deco.pic, deco.matrix, deco.paint);
             }
 
             // 绘制文字deco
             for (TextDecoration deco : conferee.textDecorations){
-                deco.adjust(displayWidth, displayHeight);
-                if (System.currentTimeMillis() - ts > 5000){
-                    KLog.p("drawText(%s, %s, %s, %s) for display %s", deco.text, deco.x, deco.y, deco.paint.getTextSize(), this);
+                if (!deco.enabled() || disabledDecos.contains(deco.id)){
+                    continue;
                 }
+                deco.adjust(displayWidth, displayHeight);
                 canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
             }
 
@@ -1666,10 +1784,11 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
-    public static final class TextDecoration extends Decoration{
+    public static class TextDecoration extends Decoration{
         public String text;     // 要展示的文字
         private int textSize;
-        private static final int minTextSizeLimit = 5;
+        private static final int minTextSizeLimit = 20;
+        protected Matrix matrix = new Matrix();
         /**
          * @param id deco的id，用户自定义，方便用户找回。
          * @param text deco文字内容
@@ -1697,7 +1816,8 @@ public class WebRtcManager extends Caster<Msg>{
             super(id, w, h, dx, dy, refPos);
             this.text = text;
             this.textSize = textSize;
-            paint.setStyle(Paint.Style.STROKE);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setAntiAlias(true);
             paint.setColor(color);
         }
 
@@ -1710,17 +1830,30 @@ public class WebRtcManager extends Caster<Msg>{
             if (!super.adjust(width, height)){
                 return false;
             }
-            float size = textSize * Math.min(ratioW, ratioH);
-            size = size>minTextSizeLimit ? size : minTextSizeLimit;
-            paint.setTextSize(size);
+            float size = textSize;
+            float scaleCenterX=0, scaleCenterY=0;
             if (POS_LEFTBOTTOM == refPos){
                 y -= size;
+                scaleCenterY = height;
             }else if (POS_RIGHTTOP == refPos){
                 x -= size * text.length();
+                scaleCenterX = width;
             }else if (POS_RIGHTBOTTOM == refPos){
                 x -= size * text.length();
                 y -= size;
+                scaleCenterX = width;
+                scaleCenterY = height;
             }
+            float cor[] = new float[2];
+            matrix.reset();
+            matrix.postTranslate(x, y);
+            float scaleFactor = Math.min(ratioW, ratioH);
+            matrix.postScale(scaleFactor, scaleFactor, scaleCenterX, scaleCenterY);
+            matrix.mapPoints(cor);
+            x = cor[0]; y = cor[1];
+            size = textSize*Math.min(ratioW, ratioH);
+            size = size>minTextSizeLimit ? size : minTextSizeLimit;
+            paint.setTextSize(size);
             KLog.p(toString());
             return true;
         }
@@ -1745,9 +1878,9 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
-    public static final class PicDecoration extends Decoration{
+    public static class PicDecoration extends Decoration{
         public Bitmap pic;     // 要展示的图片
-        private Matrix matrix = new Matrix();
+        protected Matrix matrix = new Matrix();
         public PicDecoration(@NonNull String id, @NonNull Bitmap pic, int w, int h, int dx, int dy, int refPos) {
             super(id, w, h, dx, dy, refPos);
             this.pic = pic;
@@ -1758,20 +1891,24 @@ public class WebRtcManager extends Caster<Msg>{
             if (!super.adjust(width, height)){
                 return false;
             }
-            float scaleFactor = Math.min(ratioW, ratioH);
-            matrix.reset();
-            matrix.postScale(scaleFactor, scaleFactor, width/2f, height/2f);
-            float picW = pic.getWidth()*scaleFactor;
-            float picH = pic.getHeight()*scaleFactor;
+            float picW = pic.getWidth();
+            float picH = pic.getHeight();
+            float scaleCenterX=0, scaleCenterY=0;
             if (POS_LEFTBOTTOM == refPos){
                 y -= picH;
+                scaleCenterY = height;
             }else if (POS_RIGHTTOP == refPos){
                 x -= picW;
+                scaleCenterX = width;
             }else if (POS_RIGHTBOTTOM == refPos){
                 x -= picW;
                 y -= picH;
+                scaleCenterX = width;
+                scaleCenterY = height;
             }
+            matrix.reset();
             matrix.postTranslate(x, y);
+            matrix.postScale(ratioW, ratioH, scaleCenterX, scaleCenterY);
             KLog.p(toString());
             return true;
         }
@@ -1804,8 +1941,21 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
+    private static class StreamStateDecoration extends PicDecoration{
+        int backgroundColor;
+        StreamStateDecoration(@NonNull String id, @NonNull Bitmap pic, int w, int h, int dx, int dy, int refPos, int backgroundColor) {
+            super(id, pic, w, h, dx, dy, refPos);
+            this.backgroundColor = backgroundColor;
+        }
+
+        static StreamStateDecoration createFromPicDecoration(@NonNull PicDecoration picDeco, int backgroundColor){
+            return new StreamStateDecoration(picDeco.id, picDeco.pic, picDeco.w, picDeco.h, picDeco.dx, picDeco.dy, picDeco.refPos, backgroundColor);
+        }
+    }
+
     public static class Decoration{
         public String id;
+        private boolean enabled = true; // 是否使能。使能则展示否则不展示
         public int w;           // 该deco所在画面的宽（UCD标注的）
         public int h;           // 该deco所在画面的高（UCD标注的）
         public int dx;          // 参照pos的x方向距离（UCD标注的）
@@ -1835,6 +1985,14 @@ public class WebRtcManager extends Caster<Msg>{
             this.paint = new Paint();
         }
 
+        protected void setEnabled(boolean enabled){
+            this.enabled = enabled;
+        }
+
+        protected boolean enabled(){
+            return enabled;
+        }
+
         protected boolean adjust(int width, int height){
             if (width<=0 || height<=0){
                 return false;
@@ -1847,18 +2005,19 @@ public class WebRtcManager extends Caster<Msg>{
 
             ratioW = width/(float)w;
             ratioH = height/(float)h;
+
             if (POS_LEFTTOP == refPos){
-                x = ratioW * dx;
-                y = ratioH * dy;
+                x = dx;
+                y = dy;
             }else if (POS_LEFTBOTTOM == refPos){
-                x = ratioW * dx;
-                y = height - ratioH * dy;
+                x = dx;
+                y = height - dy;
             }else if (POS_RIGHTTOP == refPos){
-                x = width - ratioW * dx;
-                y = ratioH * dy;
+                x = width - dx;
+                y = dy;
             }else{
-                x = width - ratioW * dx;
-                y = height - ratioH * dy;
+                x = width - dx;
+                y = height - dy;
             }
 
             KLog.p("displayW=%s, displayH=%s, ratioW=%s, ratioH=%s, x=%s, y=%s, paint.textSize=%s",
@@ -1900,8 +2059,19 @@ public class WebRtcManager extends Caster<Msg>{
 
     private VideoStream findVideoStream(String kdStreamId){
         for (Conferee conferee1 : conferees){
-            if (null != conferee1.videoStream && conferee1.videoStream.equals(kdStreamId)){
+            if (null != conferee1.videoStream && conferee1.videoStream.streamId.equals(kdStreamId)){
                 return conferee1.videoStream;
+            }
+        }
+        return null;
+    }
+
+    private AudioStream findAudioStream(String kdStreamId){
+        for (Conferee conferee1 : conferees){
+            for (AudioStream audioStream : conferee1.audioStreams){
+                if (audioStream.streamId.equals(kdStreamId)){
+                    return audioStream;
+                }
             }
         }
         return null;
@@ -1938,14 +2108,6 @@ public class WebRtcManager extends Caster<Msg>{
         return null;
     }
 
-    private Conferee findConfereeByDisplay(Display display){
-        for (Conferee conferee : conferees){
-            if (displaySet.contains(display)){
-                return conferee;
-            }
-        }
-        return null;
-    }
 
     private Conferee findMyself(){
         for (Conferee conferee : conferees){
@@ -2386,13 +2548,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void onRemoveStream(final MediaStream stream) {
             // 我们在onTrack回调中createRemoteVideoTrack/createRemoteAudioTrack，
             // 相应的我们原本期望在onRemoveStream（没有onRemoveTrack）中removeRemoteVideoTrack/removeRemoteAudioTrack，
-            // 然而实测下来发现此回调上来时MediaStream的track列表为空，不得已我们只得
-            for (VideoTrack videoTrack : stream.videoTracks){
-                KLog.p("videoTrack=%s", videoTrack.id()); // TODO 确认码流取消发布时会不会走到这里，如果走到了就在这里removeRemoteVideoTrack/removeRemoteAudioTrack而非在unpub里面
-            }
-            for (AudioTrack audioTrack : stream.audioTracks){
-                KLog.p("audioTrack=%s", audioTrack.id());
-            }
+            // 然而实测下来发现此回调上来时MediaStream的track列表为空，不得已我们只得在StreamLeft消息上来时
+            // removeRemoteVideoTrack/removeRemoteAudioTrack，由此造成了这种不对称的现象
         }
 
         @Override

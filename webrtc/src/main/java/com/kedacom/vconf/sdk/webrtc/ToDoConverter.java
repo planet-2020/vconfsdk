@@ -164,6 +164,7 @@ final class ToDoConverter {
 
         // 是否隐藏
         to.emSafeConf = confPara.bHide ? EmMtOpenMode.emMt_Hide : EmMtOpenMode.emMt_Open;
+        to.achPassword = confPara.passwd;
 
         return to;
     }
