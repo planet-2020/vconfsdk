@@ -787,9 +787,9 @@ public class WebRtcManager extends Caster<Msg>{
         // 定时获取统计信息
         sessionHandler.postDelayed(statsCollector, 3000);
         // 定时从统计信息获取各与会方音量用于语音激励
-        sessionHandler.postDelayed(audioLevelCollector, 3000);
+        sessionHandler.postDelayed(audioStatsCollector, 3000);
         // 定时从统计信息获取各与会方媒体状态（音视频是否正常）
-        sessionHandler.postDelayed(confereeStatusCollector, 6000);
+        sessionHandler.postDelayed(videoStatsCollector, 6000);
 
         KLog.p("session started ");
 
@@ -1424,16 +1424,20 @@ public class WebRtcManager extends Caster<Msg>{
          * 设置码流状态
          * */
         void setState(int state){
-            this.state = state;
-            refreshDisplays();
+            if (this.state != state) {
+                this.state = state;
+                refreshDisplays();
+            }
         }
 
         /**
          * 设置语音激励状态
          * */
         void setVoiceActivated(boolean bVoiceActivated){
-            this.bVoiceActivated = bVoiceActivated;
-            refreshDisplays();
+            if (this.bVoiceActivated != bVoiceActivated){
+                this.bVoiceActivated = bVoiceActivated;
+                refreshDisplays();
+            }
         }
 
         private void refreshDisplays(){
@@ -1804,13 +1808,13 @@ public class WebRtcManager extends Caster<Msg>{
          * Window 1920*1080
          * -----------------------
          * |
-         * |-dx=80px-|caption| textSize=10px, color=0xFF00FF00
+         * |-dx=80px-|caption| textSize=20px, color=0xFF00FF00
          * |           |
          * |         100px
          * |          |
          * |-------------------
          *  则调用该接口时各参数传入情况：
-         *  new TextDecoration("capId", "caption", 10, 0xFF00FF00, 1920, 1080, 80, 100, POS_LEFTBOTTOM);
+         *  new TextDecoration("decoId", "caption", 20, 0xFF00FF00, 1920, 1080, 80, 100, POS_LEFTBOTTOM);
          * */
         public TextDecoration(@NonNull String id, @NonNull String text, int textSize, int color, int w, int h, int dx, int dy, int refPos) {
             super(id, w, h, dx, dy, refPos);
@@ -1832,15 +1836,17 @@ public class WebRtcManager extends Caster<Msg>{
             }
             float size = textSize;
             float scaleCenterX=0, scaleCenterY=0;
-            if (POS_LEFTBOTTOM == refPos){
-                y -= size;
+            if (POS_LEFTTOP == refPos){
+                y += size; // 此处需对y坐标添加字符大小的修正。不同于drawBitmap，drawText默认是Baseline对齐的，也就是y坐标以字符底部为基准
+            }else if (POS_LEFTBOTTOM == refPos){
+//                y -= size; //不需要对y坐标做如此修正。 不同于drawBitmap，drawText默认是Baseline对齐的，也就是y坐标以字符底部为基准
                 scaleCenterY = height;
             }else if (POS_RIGHTTOP == refPos){
                 x -= size * text.length();
+                y += size;
                 scaleCenterX = width;
-            }else if (POS_RIGHTBOTTOM == refPos){
+            }else {
                 x -= size * text.length();
-                y -= size;
                 scaleCenterX = width;
                 scaleCenterY = height;
             }
@@ -1851,7 +1857,7 @@ public class WebRtcManager extends Caster<Msg>{
             matrix.postScale(scaleFactor, scaleFactor, scaleCenterX, scaleCenterY);
             matrix.mapPoints(cor);
             x = cor[0]; y = cor[1];
-            size = textSize*Math.min(ratioW, ratioH);
+            size = textSize*scaleFactor;
             size = size>minTextSizeLimit ? size : minTextSizeLimit;
             paint.setTextSize(size);
             KLog.p(toString());
@@ -3166,8 +3172,9 @@ public class WebRtcManager extends Caster<Msg>{
     };
 
 
-    // 与会方音量水平收集器
-    private Runnable audioLevelCollector = new Runnable() {
+    private String preMaxAudioLevelKdStreamId;
+    // 音频统计信息收集器
+    private Runnable audioStatsCollector = new Runnable() {
         @Override
         public void run() {
             // 比较各与会方的音量以选出最大者用以语音激励
@@ -3188,25 +3195,45 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
             KLog.p("maxAudioLevel=%s", maxAudioLevel);
-            if (maxAudioLevel > 0.1){ // 小于0.1认为不是人说话是环境噪音
+            if (maxAudioLevel > 0.1){
+                // 大于0.1才认为是人说话，否则认为是环境噪音
                 String maxAudioLevelKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(maxAudioLevelTrackId);
-                KLog.p("maxAudioLevelKdStreamId=%s", maxAudioLevelKdStreamId);
-//                Conferee conferee = getConfereeByStreamId(maxAudioLevelKdStreamId);
-//                if (null != conferee){
-//                    Display display = getDisplay(conferee.id);
-//                    if (null != display){
-//                        display.showVoiceActivatedDeco(true);
-//                    }
-//                }
-
+                KLog.p("preMaxAudioLevelKdStreamId=%s, maxAudioLevelKdStreamId=%s", preMaxAudioLevelKdStreamId, maxAudioLevelKdStreamId);
+                if (null != maxAudioLevelKdStreamId) {
+                    if (!maxAudioLevelKdStreamId.equals(preMaxAudioLevelKdStreamId)) {
+                        // 说话人变化了才需要刷新语音激励状态
+                        Conferee conferee = findConfereeByStreamId(preMaxAudioLevelKdStreamId);
+                        if (null != conferee) {
+                            conferee.setVoiceActivated(false);
+                        }
+                        conferee = findConfereeByStreamId(maxAudioLevelKdStreamId);
+                        if (null != conferee) {
+                            conferee.setVoiceActivated(true);
+                        }
+                        preMaxAudioLevelKdStreamId = maxAudioLevelKdStreamId;
+                    }
+                }else{
+                    KLog.p(KLog.ERROR, "something wrong! cannot find TrackId %s in kdStreamId2RtcTrackIdMap", maxAudioLevelTrackId);
+                }
+            }else {
+                // 当前没有人说话，原来设置的语音激励清掉
+                KLog.p("preMaxAudioLevelKdStreamId=%s", preMaxAudioLevelKdStreamId);
+                Conferee conferee = findConfereeByStreamId(preMaxAudioLevelKdStreamId);
+                if (null != conferee){
+                    conferee.setVoiceActivated(false);
+                }
+                preMaxAudioLevelKdStreamId = null;
             }
+
+
             sessionHandler.postDelayed(this, 2000);
         }
     };
 
+
     private Map<String, Long> preReceivedFramesMap = new HashMap<>();
-    // 与会方状态（是否纯音频、是否视频丢失等）收集器
-    private Runnable confereeStatusCollector = new Runnable() {
+    // 视频统计信息收集器
+    private Runnable videoStatsCollector = new Runnable() {
         @Override
         public void run() {
             // 其他与会方的帧率
@@ -3221,21 +3248,22 @@ public class WebRtcManager extends Caster<Msg>{
                 long preReceivedFrames = null != preReceivedFramesMap.get(trackIdentifier) ? preReceivedFramesMap.get(trackIdentifier) : 0;
                 long curReceivedFrames = entry.getValue();
                 KLog.p("trackIdentifier=%s, preReceivedFrames=%s, curReceivedFrames=%s", trackIdentifier, preReceivedFrames, curReceivedFrames);
-                if ((curReceivedFrames - preReceivedFrames) / 5.0f < 1){ // 可忍受的帧率下限，低于该下限则认为信号丢失
-                    String lostSignalKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackIdentifier);
-//                    Conferee conferee = getConfereeByStreamId(lostSignalKdStreamId);
-//                    if (null != conferee){
-//                        Display display = getDisplay(conferee.id);
-//                        if (null != display){
-//                            display.showStreamLostDeco(true);
-//                        }
-//                    }
+                String lostSignalKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackIdentifier);
+                Conferee conferee = findConfereeByStreamId(lostSignalKdStreamId);
+                if (null != conferee){
+                    if ((curReceivedFrames - preReceivedFrames) / 2.0f < 0.5){ // 可忍受的帧率下限，低于该下限则认为信号丢失
+                        KLog.p("conferee %s setState %s", conferee.id, Conferee.State_WeakVideoSignal);
+                        conferee.setState(Conferee.State_WeakVideoSignal);
+                    }else{
+                        KLog.p("conferee %s setState %s", conferee.id, Conferee.State_Normal);
+                        conferee.setState(Conferee.State_Normal);
+                    }
                 }
             }
 
             preReceivedFramesMap = framesReceivedMap;
 
-            sessionHandler.postDelayed(this, 5000);
+            sessionHandler.postDelayed(this, 2000);
         }
     };
 
