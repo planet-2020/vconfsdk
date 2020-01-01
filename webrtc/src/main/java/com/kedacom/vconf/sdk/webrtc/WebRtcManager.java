@@ -1374,7 +1374,6 @@ public class WebRtcManager extends Caster<Msg>{
          * @param color 线条颜色
          * */
         public static void setVoiceActivatedDecoration(int strokeWidth, int color){
-            voiceActivatedDecoPaint.reset();
             voiceActivatedDecoPaint.setStrokeWidth(strokeWidth);
             voiceActivatedDecoPaint.setColor(color);
         }
@@ -2622,7 +2621,8 @@ public class WebRtcManager extends Caster<Msg>{
 
     private static final String STREAM_ID = "TT-Android-"+System.currentTimeMillis();
     private static final String LOCAL_VIDEO_TRACK_ID = STREAM_ID+"-v0";
-    private static final String LOCAL_ASS_TRACK_ID = STREAM_ID+"-ass";
+    private static final String LOCAL_WINDOW_TRACK_ID = STREAM_ID+"-window";
+    private static final String LOCAL_SCREEN_TRACK_ID = STREAM_ID+"-screen";
     private static final String LOCAL_AUDIO_TRACK_ID = STREAM_ID+"-a0";
 
     /**
@@ -2712,9 +2712,18 @@ public class WebRtcManager extends Caster<Msg>{
                 videoSource = factory.createVideoSource(videoCapturer.isScreencast());
                 videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
                 videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
-                String localVideoTrackId = videoCapturer instanceof WindowCapturer ? LOCAL_ASS_TRACK_ID : LOCAL_VIDEO_TRACK_ID;
+                String localVideoTrackId;
+                boolean bTrackEnable = true;
+                if (videoCapturer instanceof WindowCapturer){
+                    localVideoTrackId = LOCAL_WINDOW_TRACK_ID;
+                }else if (videoCapturer.isScreencast()){
+                    localVideoTrackId = LOCAL_SCREEN_TRACK_ID;
+                }else{
+                    localVideoTrackId = LOCAL_VIDEO_TRACK_ID;
+                    bTrackEnable = userConfig.getIsLocalVideoEnabled();
+                }
                 localVideoTrack = factory.createVideoTrack(localVideoTrackId, videoSource);
-                localVideoTrack.setEnabled(userConfig.getIsLocalVideoEnabled());
+                localVideoTrack.setEnabled(bTrackEnable);
 
                 if (userConfig.getEnableSimulcast()){
                     RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
@@ -2748,9 +2757,9 @@ public class WebRtcManager extends Caster<Msg>{
                 String kdStreamId = localVideoTrackId;
                 sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, localVideoTrackId));
 
-                if (!localVideoTrackId.equals(LOCAL_ASS_TRACK_ID)) {
-                    // 对于发送辅流我们不需要回显，不需要创建虚拟与会方，展示辅流内容的不是Display而是文档阅读器。
-                    // 所以此处我们仅针对非辅流的情形处理。
+                if (localVideoTrackId.equals(LOCAL_VIDEO_TRACK_ID)) {
+                    // 对于窗口共享、屏幕共享不需要回显。
+                    // 所以此处我们仅针对摄像头采集的情形处理。
                     Conferee myself = findMyself();
                     if (null == myself) {
                         KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
@@ -2759,6 +2768,8 @@ public class WebRtcManager extends Caster<Msg>{
                     localVideoTrack.addSink(myself);  // 本地回显
 
                     sessionHandler.post(() -> {
+                        // 检查摄像头是否屏蔽，若屏蔽则展示静态图片
+                        myself.setState(userConfig.getIsLocalVideoEnabled() ? Conferee.State_Normal : Conferee.State_CameraDisabled);
                         // 本地流不会通过StreamJoined消息报上来，所以我们需要在此处创建并设置给己端与会方，而非依赖StreamJoined消息的处理逻辑
                         myself.videoStream = new VideoStream(kdStreamId, false,
                                 Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 暂时写死了
@@ -3188,6 +3199,13 @@ public class WebRtcManager extends Caster<Msg>{
             // 其他与会方的音量
             synchronized (subscriberStats) {
                 for (StatsHelper.RecvAudioTrack track : subscriberStats.recvAudioTrackList) {
+                    String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(track.trackIdentifier);
+                    Conferee conferee = findConfereeByStreamId(kdStreamId);
+                    if (null == conferee) {
+                        KLog.p("track %s(kdstreamId=%s) not belong to any conferee?", track.trackIdentifier, kdStreamId);
+                        continue;
+                    }
+                    KLog.p("track %s, audioLevel %s, maxAudioLevel=%s", track.trackIdentifier, track.audioLevel, maxAudioLevel);
                     if (track.audioLevel > maxAudioLevel) {
                         maxAudioLevel = track.audioLevel;
                         maxAudioLevelTrackId = track.trackIdentifier;
