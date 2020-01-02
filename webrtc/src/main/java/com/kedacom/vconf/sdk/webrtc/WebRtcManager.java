@@ -30,6 +30,7 @@ import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
 import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
+import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceConferenceInfo;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.utils.log.KLog;
@@ -164,6 +165,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.SetSilence,
                 Msg.SetMute,
                 Msg.ToggleScreenShare,
+                Msg.QueryConfInfo,
         }, this::onRsp);
         return processorMap;
     }
@@ -268,6 +270,10 @@ public class WebRtcManager extends Caster<Msg>{
      * @param disReason 原因码
      * */
     public void quitConf(EmMtCallDisReason disReason, IResultListener resultListener){
+        if (!stopSession()){
+            reportFailed(-1, resultListener);
+            return;
+        }
         req(Msg.QuitConf, resultListener, disReason);
     }
 
@@ -275,6 +281,10 @@ public class WebRtcManager extends Caster<Msg>{
      * 结束会议。
      * */
     public void endConf(IResultListener resultListener){
+        if (!stopSession()){
+            reportFailed(-1, resultListener);
+            return;
+        }
         req(Msg.EndConf, resultListener);
     }
 
@@ -299,6 +309,16 @@ public class WebRtcManager extends Caster<Msg>{
     public void declineInvitation(){
         req(Msg.DeclineInvitation, null);
     }
+
+
+    /**
+     * 查询会议详情
+     * @param confE164 会议e164号
+     * */
+    public void declineInvitation(String confE164, IResultListener resultListener){
+        req(Msg.QueryConfInfo, resultListener, confE164);
+    }
+
 
 
     private Intent screenCapturePermissionData;
@@ -505,7 +525,6 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case MultipartyConfEnded:
-                stopSession();
                 BaseTypeInt reason = (BaseTypeInt) rspContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
                 if (Msg.QuitConf == req || Msg.EndConf == req) {
@@ -556,6 +575,10 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 break;
 
+            case QueryConfInfoRsp:
+                TMTInstanceConferenceInfo confInfo = (TMTInstanceConferenceInfo) rspContent;
+                break;
+
             default:
                 return false;
         }
@@ -568,8 +591,6 @@ public class WebRtcManager extends Caster<Msg>{
         switch (req){
             case Call:
             case CreateConf:
-            case QuitConf:
-            case EndConf:
             case AcceptInvitation:
                 stopSession();
                 break;
@@ -821,10 +842,10 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 停止会话
      * */
-    private synchronized void stopSession(){
+    private synchronized boolean stopSession(){
         if (!bSessionStarted){
-            KLog.p(KLog.ERROR, "session has stopped already!");
-            return;
+            KLog.p(KLog.ERROR, "session has not started yet!");
+            return false;
         }
         bSessionStarted = false;
         sessionEventListener = null;
@@ -855,6 +876,8 @@ public class WebRtcManager extends Caster<Msg>{
 //        }
 
         KLog.p("session stopped ");
+
+        return true;
 
     }
 

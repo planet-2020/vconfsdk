@@ -6,6 +6,7 @@ import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceConferenceInfo;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
@@ -287,6 +288,26 @@ enum Msg {
     @Response(clz = TMtAssVidStatusList.class,
             id = "AssSndSreamStatusNtf")
     ToggleScreenShareRsp,
+
+
+
+    /**
+     * 查询会议详情
+     * */
+    @Request(method = "MGRestGetInstantConfInfoByIDReq",
+            paras = String.class,  // 会议e164号
+            owner = MethodOwner.MonitorCtrl,
+            rspSeq = "QueryConfInfoRsp"
+    )
+    QueryConfInfo,
+
+    /**
+     * 查询会议详情响应
+     * */
+    @Response(clz = TMTInstanceConferenceInfo.class,
+            id = "RestGetInstantConfInfoByID_Rsp")
+    QueryConfInfoRsp,
+
 
 
 
