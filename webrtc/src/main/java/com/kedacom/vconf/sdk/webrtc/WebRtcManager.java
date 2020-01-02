@@ -596,6 +596,10 @@ public class WebRtcManager extends Caster<Msg>{
                 reportSuccess(ToDoConverter.tMTInstanceConferenceInfo2ConfInfo((TMTInstanceConferenceInfo) rspContent), listener);
                 break;
 
+            case MyLabelAssigned:
+                reportSuccess(null, listener);
+                break;
+
             default:
                 return false;
         }
@@ -743,6 +747,11 @@ public class WebRtcManager extends Caster<Msg>{
 
                 break;
 
+            case ConfPasswordNeeded:
+                if (null != sessionEventListener){
+                    sessionEventListener.confPasswordNeeded();
+                }
+                break;
         }
 
     }
