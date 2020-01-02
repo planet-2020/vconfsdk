@@ -18,16 +18,18 @@ final class StatsHelper {
     @SuppressWarnings({"ConstantConditions", "SimplifiableConditionalExpression"})
     static void resolveStats(RTCStatsReport rtcStatsReport, @NonNull Stats resolvedStats){
 
+        resolvedStats.clear();
+
         for (Map.Entry<String, RTCStats> rtcStatsEntry : rtcStatsReport.getStatsMap().entrySet()){
             RTCStats rtcStats = rtcStatsEntry.getValue();
             String type = rtcStats.getType();
             Map<String, Object> members = rtcStats.getMembers();
 
-//            System.out.println(String.format("statsEntry={key=%s, values={type=%s ",rtcStatsEntry.getKey(), type));
-//            for (Map.Entry<String, Object> member  : members.entrySet()){
-//                System.out.println(String.format("member={%s, %s}",member.getKey(), member.getValue().getClass()));
-//            }
-//            System.out.println("}");
+            System.out.println(String.format("statsEntry={key=%s, values={type=%s ",rtcStatsEntry.getKey(), type));
+            for (Map.Entry<String, Object> member  : members.entrySet()){
+                System.out.println(String.format("member={%s, %s, %s}",member.getKey(), member.getValue(), member.getValue().getClass()));
+            }
+            System.out.println("}");
 
             if (type.equals("media-source")) {
                 boolean bAudio = "audio".equals(members.get("kind"));
@@ -237,6 +239,21 @@ final class StatsHelper {
 
         List<Codec> encoderList = new ArrayList<>();
         List<Codec> decoderList = new ArrayList<>();
+
+        void clear(){
+            audioSource = null;
+            videoSource = null;
+            sendAudioTrack = null;
+            sendVideoTrack = null;
+            audioOutboundRtp = null;
+            videoOutboundRtp = null;
+            audioInboundRtpList.clear();
+            videoInboundRtpList.clear();
+            recvAudioTrackList.clear();
+            recvVideoTrackList.clear();
+            encoderList.clear();
+            decoderList.clear();
+        }
 
         @Override
         public Object clone() throws CloneNotSupportedException {
