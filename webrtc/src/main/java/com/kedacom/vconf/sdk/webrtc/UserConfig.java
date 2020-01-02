@@ -64,7 +64,7 @@ final class UserConfig {
     }
 
     boolean getEnableSimulcast(){
-        return rtcUserConfig.getBoolean(key_enableSimulcast, true);
+        return rtcUserConfig.getBoolean(key_enableSimulcast, false);
     }
 
     UserConfig setVideoCodec(String videoCodec){
