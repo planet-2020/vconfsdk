@@ -314,8 +314,11 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 查询会议详情
      * @param confE164 会议e164号
+     * @param resultListener 结果监听器。
+     *          成功: {@link ConfInfo};
+     *          失败：TODO
      * */
-    public void declineInvitation(String confE164, IResultListener resultListener){
+    public void queryConfInfo(String confE164, IResultListener resultListener){
         req(Msg.QueryConfInfo, resultListener, confE164);
     }
 
@@ -576,7 +579,7 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case QueryConfInfoRsp:
-                TMTInstanceConferenceInfo confInfo = (TMTInstanceConferenceInfo) rspContent;
+                reportSuccess(ToDoConverter.tMTInstanceConferenceInfo2ConfInfo((TMTInstanceConferenceInfo) rspContent), listener);
                 break;
 
             default:

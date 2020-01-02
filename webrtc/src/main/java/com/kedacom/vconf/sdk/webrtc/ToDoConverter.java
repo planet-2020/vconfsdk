@@ -16,19 +16,19 @@ import com.kedacom.vconf.sdk.common.constant.EmVConfCreateType;
 import com.kedacom.vconf.sdk.common.constant.EmVidFormat;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTConfMixInfo;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTDCSAttribute;
+import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceConferenceInfo;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInviteMember;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTVideoFormatList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.ConfInvitationInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.ConfMemberInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
 import com.kedacom.vconf.sdk.webrtc.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
-import com.kedacom.vconf.sdk.webrtc.bean.StreamInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -188,5 +188,8 @@ final class ToDoConverter {
         return new WebRtcManager.Conferee(entityInfo.dwMcuId, entityInfo.dwTerId, e164, alias, email, false);
     }
 
+    static ConfInfo tMTInstanceConferenceInfo2ConfInfo(TMTInstanceConferenceInfo ci){
+        return new ConfInfo(ci.achName, ci.achConfID, ci.achStartTime, ci.achEndTime);
+    }
 
 }
