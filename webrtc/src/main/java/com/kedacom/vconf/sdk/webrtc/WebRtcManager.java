@@ -800,8 +800,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         rtcConnector.setSignalingEventsCallback(new RtcConnectorEventListener());
 
-        eglBase = EglBase.create();
-
         createPeerConnectionFactory();
         createPeerConnectionWrapper();
 
@@ -835,11 +833,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         sessionHandler.removeCallbacksAndMessages(null);
 
-        if (null != eglBase) {
-            eglBase.release();
-            eglBase = null;
-        }
-
         for (Display display : displaySet){
             display.destroy();
         }
@@ -869,6 +862,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private void createPeerConnectionFactory() {
+        eglBase = EglBase.create();
 
         executor.execute(() -> {
             if (null != factory){
@@ -923,6 +917,12 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p(KLog.ERROR, "Factory not exists!");
                 return;
             }
+
+            if (null != eglBase) {
+                eglBase.release();
+                eglBase = null;
+            }
+
             factory.dispose();
             factory = null;
         });
