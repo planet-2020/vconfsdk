@@ -166,6 +166,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.SetMute,
                 Msg.ToggleScreenShare,
                 Msg.QueryConfInfo,
+                Msg.VerifyConfPassword,
         }, this::onRsp);
         return processorMap;
     }
@@ -183,6 +184,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.CurrentStreamList,
                 Msg.StreamJoined,
                 Msg.StreamLeft,
+                Msg.ConfPasswordNeeded,
         }, this::onNtfs);
 
         return processorMap;
@@ -320,6 +322,18 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public void queryConfInfo(String confE164, IResultListener resultListener){
         req(Msg.QueryConfInfo, resultListener, confE164);
+    }
+
+
+    /**
+     * 验证会议密码
+     * @param passwd 会议密码
+     * @param resultListener 结果监听器。
+     *          成功: null;
+     *          失败：TODO
+     * */
+    public void verifyConfPassword(String passwd, IResultListener resultListener){
+        req(Msg.VerifyConfPassword, resultListener, passwd);
     }
 
 
@@ -1202,6 +1216,12 @@ public class WebRtcManager extends Caster<Msg>{
          * NOTE: {@link #stopSession()} 会销毁所有Display。用户不能跨Session复用Display，也不需要在stopSession时手动销毁Display。
          * */
         void onConfereeLeft(Conferee conferee);
+
+        /**
+         * 此会议需要输入密码。
+         * 收到此通知后请调用{@link #verifyConfPassword(String, IResultListener)}传入密码验证
+         * */
+        void confPasswordNeeded();
     }
     private SessionEventListener sessionEventListener;
 

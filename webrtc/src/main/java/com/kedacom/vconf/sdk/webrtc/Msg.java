@@ -161,6 +161,14 @@ enum Msg {
     DeclineInvitation,
 
 
+    /**
+     * 此与会方标识已分配
+     * 入会后平台会为每个与会方分配标识。
+     * */
+    @Response(clz = TMtId.class,
+            id = "TerLabelNtf")
+    MyLabelAssigned,
+
 
     /**
      * 当前会议中已有与会成员列表通知
@@ -295,8 +303,9 @@ enum Msg {
      * 查询会议详情
      * */
     @Request(method = "MGRestGetInstantConfInfoByIDReq",
-            paras = String.class,  // 会议e164号
             owner = MethodOwner.MonitorCtrl,
+            paras = StringBuffer.class,  // 会议e164号
+            userParas = String.class,
             rspSeq = "QueryConfInfoRsp"
     )
     QueryConfInfo,
@@ -308,7 +317,23 @@ enum Msg {
             id = "RestGetInstantConfInfoByID_Rsp")
     QueryConfInfoRsp,
 
+    /**
+     * 此会议需要密码
+     * */
+    @Response(clz = Void.class,
+            id = "McReqTerPwdNtf")
+    ConfPasswordNeeded,
 
+    /**
+     * 验证会议密码
+     * */
+    @Request(method = "ConfVerifyConfPwdCmd",
+            owner = MethodOwner.ConfCtrl,
+            paras = StringBuffer.class,  // 会议密码
+            userParas = String.class,
+            rspSeq = "MyLabelAssigned"
+    )
+    VerifyConfPassword,
 
 
     END;
