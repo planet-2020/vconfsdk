@@ -12,6 +12,7 @@ import android.graphics.RectF;
 import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Message;
 import android.view.SurfaceHolder;
 import android.view.View;
 
@@ -30,10 +31,10 @@ import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
 import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
-import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceConferenceInfo;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.utils.log.KLog;
+import com.kedacom.vconf.sdk.utils.thread.HandlerHelper;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TLoginResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
@@ -133,11 +134,23 @@ public class WebRtcManager extends Caster<Msg>{
     // 当前用户的e164
     private String userE164;
 
-    private Handler sessionHandler = new Handler(Looper.getMainLooper());
-
     private static WebRtcManager instance;
 
     private UserConfig userConfig;
+
+    private static final int ConfereeWaitVideoStreamTimeout = 1;
+    private Handler sessionHandler = new Handler(Looper.getMainLooper()){
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what){
+                case ConfereeWaitVideoStreamTimeout:
+                    Conferee conferee = (Conferee) msg.obj;
+                    conferee.bWaitingVideoStream = false;
+                    break;
+            }
+        }
+    };
+
 
     private WebRtcManager(Application context){
         this.context = context;
@@ -655,14 +668,17 @@ public class WebRtcManager extends Caster<Msg>{
             case CurrentConfereeList: // NOTE: 入会后会收到一次该通知，创会者也会收到这条消息
                 conferees.clear();
                 for (TMTEntityInfo entityInfo : ((TMTEntityInfoList) ntfContent).atMtEntitiy) {
-                    conferees.add(ToDoConverter.tMTEntityInfo2ConfereeInfo(entityInfo));
+                    Conferee conferee = ToDoConverter.tMTEntityInfo2ConfereeInfo(entityInfo);
+                    conferees.add(conferee);
+                    conferee.bWaitingVideoStream = true; // 正在等待与之相关的视频码流
+                    HandlerHelper.sendMessageDelayed(sessionHandler, ConfereeWaitVideoStreamTimeout, conferee, 3000);
                 }
                 if (null != sessionEventListener) {
                     for (Conferee conferee : conferees) {
                         sessionEventListener.onConfereeJoined(conferee);
                     }
                 }
-                if (!tmpStreamInfos.isEmpty()){
+                if (!tmpStreamInfos.isEmpty()){ // 码流先于与会方上来了
                     dealStreamAdded(tmpStreamInfos);
                     tmpStreamInfos.clear();
                 }
@@ -671,6 +687,8 @@ public class WebRtcManager extends Caster<Msg>{
             case ConfereeJoined:
                 Conferee joinedConferee = ToDoConverter.tMTEntityInfo2ConfereeInfo((TMTEntityInfo) ntfContent);
                 conferees.add(joinedConferee);
+                joinedConferee.bWaitingVideoStream = true; // 正在等待与之相关的码流
+                HandlerHelper.sendMessageDelayed(sessionHandler, ConfereeWaitVideoStreamTimeout, joinedConferee, 3000);
                 if (null != sessionEventListener) {
                     sessionEventListener.onConfereeJoined(joinedConferee);
                 }
@@ -786,11 +804,14 @@ public class WebRtcManager extends Caster<Msg>{
                 assStreamSender = owner;
                 continue;
             }
+
             // 将流关联到与会方
             if (streamInfo.bAudio){
                 owner.addAudioStream(new AudioStream(streamInfo.achStreamId));
             }else{
                 owner.setVideoStream(new VideoStream(streamInfo.achStreamId, false, streamInfo.aemSimcastRes));
+                owner.bWaitingVideoStream = false;
+                sessionHandler.removeMessages(ConfereeWaitVideoStreamTimeout, owner);
             }
         }
 
@@ -865,7 +886,7 @@ public class WebRtcManager extends Caster<Msg>{
         // 定时处理视频统计信息
         sessionHandler.postDelayed(videoStatsProcesser, 3000);
         // 定时检测音频与会方
-        sessionHandler.postDelayed(kdStreamStatusMonitor, 6000);
+        sessionHandler.postDelayed(kdStreamStatusMonitor, 3000);
 
         KLog.p("session started ");
 
@@ -1262,6 +1283,10 @@ public class WebRtcManager extends Caster<Msg>{
         private VideoStream videoStream;
         // 该与会方的音频流。一个与会方可以有多路音频流
         private Set<AudioStream> audioStreams = new HashSet<>();
+
+        // 是否在等待与之相关的码流，与会人员入会的消息上来后
+        // 可能还要等一会才上来码流消息，该字段标记是否此种场景。
+        private boolean bWaitingVideoStream;
 
         // 该与会方绑定的Display。与会方内容将展示在Display上。
         // 一个与会方可以绑定多个Display，一个Display只能绑定一个与会方。
@@ -1761,7 +1786,6 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         private void refresh(){
-            KLog.sp("refresh content");
             invalidate();
         }
 
@@ -3344,6 +3368,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private Map<String, Long> preReceivedFramesMap = new HashMap<>();
+    private long videoStatsTimeStamp = System.currentTimeMillis();
     // 视频统计信息处理器
     private Runnable videoStatsProcesser = new Runnable() {
         @Override
@@ -3363,7 +3388,7 @@ public class WebRtcManager extends Caster<Msg>{
                 String lostSignalKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackIdentifier);
                 Conferee conferee = findConfereeByStreamId(lostSignalKdStreamId);
                 if (null != conferee){
-                    if ((curReceivedFrames - preReceivedFrames) / 2.0f < 0.5){ // 可忍受的帧率下限，低于该下限则认为信号丢失
+                    if ((curReceivedFrames - preReceivedFrames) / 5.0f < 0.2){ // 可忍受的帧率下限，低于该下限则认为信号丢失
                         KLog.p("conferee %s setState %s", conferee.id, Conferee.VideoState_WeakSignal);
                         conferee.setState(Conferee.VideoState_WeakSignal);
                     }else{
@@ -3373,7 +3398,10 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
 
-            preReceivedFramesMap = framesReceivedMap;
+            if (videoStatsTimeStamp - System.currentTimeMillis() > 5000) {
+                preReceivedFramesMap = framesReceivedMap;
+                videoStatsTimeStamp = System.currentTimeMillis();
+            }
 
             sessionHandler.postDelayed(this, 2000);
         }
@@ -3387,7 +3415,9 @@ public class WebRtcManager extends Caster<Msg>{
         public void run() {
             for (Conferee conferee : conferees){
                 if (null == conferee.videoStream){
-                    conferee.setState(Conferee.VideoState_NoStream);
+                    if (!conferee.bWaitingVideoStream) {
+                        conferee.setState(Conferee.VideoState_NoStream);
+                    }
                 }else{
                     if (conferee.state == Conferee.VideoState_NoStream){
                         conferee.setState(Conferee.VideoState_Normal);
