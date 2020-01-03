@@ -320,11 +320,11 @@ public class WebRtcManager extends Caster<Msg>{
             reportFailed(-1, resultListener);
             return;
         }
+        req(Msg.AcceptInvitation, resultListener);
         if (bAudio) {
             // 音频入会则关闭己端主视频通道。底层上报onGetOfferCmd时带的媒体类型就为Audio了。
             req(Msg.CloseMyMainVideoChannel, resultListener);
         }
-        req(Msg.AcceptInvitation, resultListener);
     }
 
     /**
@@ -2892,23 +2892,27 @@ public class WebRtcManager extends Caster<Msg>{
                 sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, localVideoTrackId));
 
                 if (localVideoTrackId.equals(LOCAL_VIDEO_TRACK_ID)) {
-                    // 对于窗口共享、屏幕共享不需要回显。
-                    // 所以此处我们仅针对摄像头采集的情形处理。
-                    Conferee myself = findMyself();
-                    if (null == myself) {
-                        KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
-                        return;
-                    }
-                    localVideoTrack.addSink(myself);  // 本地回显
-
-                    sessionHandler.post(() -> {
-                        // 检查摄像头是否屏蔽，若屏蔽则展示静态图片
-                        myself.setState(userConfig.getIsLocalVideoEnabled() ? Conferee.VideoState_Normal : Conferee.VideoState_Disabled);
-                        // 本地流不会通过StreamJoined消息报上来，所以我们需要在此处创建并设置给己端与会方，而非依赖StreamJoined消息的处理逻辑
-                        myself.videoStream = new VideoStream(kdStreamId, false,
-                                Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 暂时写死了
-                        );
-
+                    sessionHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            // 对于窗口共享、屏幕共享不需要回显。
+                            // 所以此处我们仅针对摄像头采集的情形处理。
+                            Conferee myself = findMyself();
+                            if (null == myself) {
+                                KLog.p(KLog.ERROR, "what's wrong? myself not join yet !?");
+                                sessionHandler.postDelayed(this, 2000);
+                                return;
+                            }
+                            executor.execute(() -> {
+                                localVideoTrack.addSink(myself);  // 本地回显
+                            });
+                            // 检查摄像头是否屏蔽，若屏蔽则展示静态图片
+                            myself.setState(userConfig.getIsLocalVideoEnabled() ? Conferee.VideoState_Normal : Conferee.VideoState_Disabled);
+                            // 本地流不会通过StreamJoined消息报上来，所以我们需要在此处创建并设置给己端与会方，而非依赖StreamJoined消息的处理逻辑
+                            myself.videoStream = new VideoStream(kdStreamId, false,
+                                    Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 暂时写死了
+                            );
+                        }
                     });
                 }
 
@@ -2985,17 +2989,26 @@ public class WebRtcManager extends Caster<Msg>{
                 String localAudioTrackId = LOCAL_AUDIO_TRACK_ID;
                 localAudioTrack = factory.createAudioTrack(localAudioTrackId, audioSource);
                 localAudioTrack.setEnabled(userConfig.getIsLocalAudioEnabled());
-                audioSender = pc.addTrack(localAudioTrack, Collections.singletonList(STREAM_ID));
+                RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
+                        RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
+                        Collections.singletonList(STREAM_ID)
+                );
+                RtpTransceiver transceiver = pc.addTransceiver(localAudioTrack, transceiverInit);
+                audioSender = transceiver.getSender();
 
-                sessionHandler.post(() -> {
-                    String kdStreamId = localAudioTrackId;
-                    kdStreamId2RtcTrackIdMap.put(kdStreamId, localAudioTrackId);
-                    Conferee myself = findMyself();
-                    if (null != myself){
-                        // 本地流不会通过StreamJoined消息报上来，所以我们需要在此处创建并设置给己端与会方，而非依赖StreamJoined消息的处理逻辑
-                        myself.addAudioStream(new AudioStream(kdStreamId));
-                    }else{
-                        KLog.p(KLog.ERROR, "what's wrong? myself not join conferee yet !?");
+                String kdStreamId = localAudioTrackId;
+                sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, localAudioTrackId));
+                sessionHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Conferee myself = findMyself();
+                        if (null != myself){
+                            // 本地流不会通过StreamJoined消息报上来，所以我们需要在此处创建并设置给己端与会方，而非依赖StreamJoined消息的处理逻辑
+                            myself.addAudioStream(new AudioStream(kdStreamId));
+                        }else{
+                            KLog.p(KLog.ERROR, "what's wrong? myself not join yet !?");
+                            sessionHandler.postDelayed(this, 2000);
+                        }
                     }
                 });
             });
@@ -3065,8 +3078,6 @@ public class WebRtcManager extends Caster<Msg>{
                     audioSource.dispose();
                     audioSource = null;
                 }
-                String trackId = localAudioTrack.id();
-                sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.inverse().remove(trackId));
 
                 localAudioTrack = null;
                 pc.removeTrack(audioSender);
@@ -3329,6 +3340,7 @@ public class WebRtcManager extends Caster<Msg>{
             synchronized (publisherStats) {
                 maxAudioLevelTrackId = null != publisherStats.audioSource ? publisherStats.audioSource.trackIdentifier : null;
                 maxAudioLevel = null != publisherStats.audioSource ? publisherStats.audioSource.audioLevel : 0;
+                KLog.p("my audioLevel= %s", maxAudioLevel);
             }
             // 其他与会方的音量
             synchronized (subscriberStats) {
@@ -3339,7 +3351,7 @@ public class WebRtcManager extends Caster<Msg>{
                         KLog.p(KLog.ERROR, "track %s(kdstreamId=%s) not belong to any conferee?", track.trackIdentifier, kdStreamId);
                         continue;
                     }
-                    KLog.p("track %s, audioLevel %s, maxAudioLevel=%s", track.trackIdentifier, track.audioLevel, maxAudioLevel);
+                    KLog.p("track %s(kdstreamId=%s), audioLevel %s, maxAudioLevel=%s", track.trackIdentifier, kdStreamId, track.audioLevel, maxAudioLevel);
                     if (track.audioLevel > maxAudioLevel) {
                         maxAudioLevel = track.audioLevel;
                         maxAudioLevelTrackId = track.trackIdentifier;
