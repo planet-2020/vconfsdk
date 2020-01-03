@@ -10,8 +10,6 @@ import java.util.Arrays;
 
 final class CommandFairy implements IFairy.ICommandFairy{
 
-    private static final String TAG = CommandFairy.class.getSimpleName();
-
     private static MagicBook magicBook = MagicBook.instance();
 
     private ICrystalBall crystalBall;

@@ -3,6 +3,8 @@ package com.kedacom.vconf.sdk.amulet;
 
 public interface IFairy {
 
+    String TAG = "Fairy";
+
     interface ICommandFairy extends IFairy {
         void set(String setName, Object... paras);
         Object get(String getName, Object... paras);

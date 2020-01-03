@@ -13,7 +13,6 @@ import java.util.Map;
 
 
 final class NotificationFairy implements IFairy.INotificationFairy{
-    private static final String TAG = NotificationFairy.class.getSimpleName();
 
     private static MagicBook magicBook = MagicBook.instance();
 

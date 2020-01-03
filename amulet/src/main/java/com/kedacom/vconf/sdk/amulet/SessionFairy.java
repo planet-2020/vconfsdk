@@ -17,7 +17,6 @@ import java.util.Set;
 
 
 final class SessionFairy implements IFairy.ISessionFairy{
-    private static final String TAG = SessionFairy.class.getSimpleName();
 
     private static MagicBook magicBook = MagicBook.instance();
 
