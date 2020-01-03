@@ -3388,7 +3388,7 @@ public class WebRtcManager extends Caster<Msg>{
                 String lostSignalKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackIdentifier);
                 Conferee conferee = findConfereeByStreamId(lostSignalKdStreamId);
                 if (null != conferee){
-                    if ((curReceivedFrames - preReceivedFrames) / 5.0f < 0.2){ // 可忍受的帧率下限，低于该下限则认为信号丢失
+                    if (!conferee.bWaitingVideoStream && (curReceivedFrames - preReceivedFrames) / 5.0f < 0.2){ // 可忍受的帧率下限，低于该下限则认为信号丢失
                         KLog.p("conferee %s setState %s", conferee.id, Conferee.VideoState_WeakSignal);
                         conferee.setState(Conferee.VideoState_WeakSignal);
                     }else{
