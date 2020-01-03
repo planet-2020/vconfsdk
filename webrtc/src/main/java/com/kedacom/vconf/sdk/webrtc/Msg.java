@@ -303,7 +303,7 @@ enum Msg {
      * 查询会议详情
      * */
     @Request(method = "MGRestGetInstantConfInfoByIDReq",
-            owner = MethodOwner.MonitorCtrl,
+            owner = MethodOwner.MeetingCtrl,
             paras = StringBuffer.class,  // 会议e164号
             userParas = String.class,
             rspSeq = "QueryConfInfoRsp"
