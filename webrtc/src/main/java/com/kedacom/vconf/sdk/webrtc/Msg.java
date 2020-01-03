@@ -58,9 +58,7 @@ enum Msg {
                     EmConfProtocol.class   // 协议类型
             },
             timeout = 60,
-            rspSeq = {"Calling", "MultipartyConfStarted"},
-            rspSeq2 = {"Calling", "ConfCanceled"},
-            rspSeq3 = {"Calling", "MultipartyConfEnded"}
+            rspSeq = {"Calling", "MultipartyConfStarted"}
             )
     Call,
 

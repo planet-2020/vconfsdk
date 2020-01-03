@@ -1744,14 +1744,14 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         private void destroy(){
             KLog.p("destroy display %s ", this.hashCode());
-            setConferee(null);
-            disabledDecos.clear();
+            if (null != conferee){
+                conferee.removeDisplay(this);
+                conferee = null;
+            }
             super.release();
         }
 
-        /**
-         * 刷新显示
-         * */
+
         private void refresh(){
             KLog.sp("refresh content");
             invalidate();
@@ -2803,14 +2803,24 @@ public class WebRtcManager extends Caster<Msg>{
                 localVideoTrack = factory.createVideoTrack(localVideoTrackId, videoSource);
                 localVideoTrack.setEnabled(bTrackEnable);
 
-                if (userConfig.getEnableSimulcast()){
-                    RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
-                            RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
-                            Collections.singletonList(STREAM_ID),
-                            createEncodingList(false)
-                    );
-                    RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
-                    videoSender = transceiver.getSender();
+                boolean bSimulcast = userConfig.getEnableSimulcast();
+                List<RtpParameters.Encoding> encodingList;
+                if (bSimulcast){
+                    encodingList = createEncodingList(false);
+                }else{
+                    encodingList = new ArrayList<>();
+                }
+
+                RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
+                        RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
+                        Collections.singletonList(STREAM_ID),
+                        encodingList
+                );
+
+                RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
+                videoSender = transceiver.getSender();
+
+                if (bSimulcast){
                     // 在添加track之后才去设置encoding参数。XXX  暂时写死，具体根据需求来。
                     // NOTE：注意和sendOffer时传给业务组件的参数一致。
                     for (RtpParameters.Encoding encoding : videoSender.getParameters().encodings){
@@ -2828,8 +2838,6 @@ public class WebRtcManager extends Caster<Msg>{
                             encoding.maxBitrateBps = config.videoMaxBitrate;
                         }
                     }
-                }else{
-                    videoSender = pc.addTrack(localVideoTrack, Collections.singletonList(STREAM_ID));
                 }
 
                 String kdStreamId = localVideoTrackId;
