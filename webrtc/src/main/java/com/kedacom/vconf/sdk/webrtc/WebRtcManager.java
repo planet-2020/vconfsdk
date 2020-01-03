@@ -10,6 +10,7 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.media.projection.MediaProjection;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -86,6 +87,7 @@ import org.webrtc.VideoTrack;
 import org.webrtc.audio.AudioDeviceModule;
 import org.webrtc.audio.JavaAudioDeviceModule;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -666,15 +668,16 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case CurrentConfereeList: // NOTE: 入会后会收到一次该通知，创会者也会收到这条消息
-                conferees.clear();
                 for (TMTEntityInfo entityInfo : ((TMTEntityInfoList) ntfContent).atMtEntitiy) {
+                    if (null != findConfereeByConfereeId(Conferee.buildId(entityInfo.dwMcuId, entityInfo.dwTerId, false))) {
+                        // 去重
+                        continue;
+                    }
                     Conferee conferee = ToDoConverter.tMTEntityInfo2ConfereeInfo(entityInfo);
                     conferees.add(conferee);
                     conferee.bWaitingVideoStream = true; // 正在等待与之相关的视频码流
                     HandlerHelper.sendMessageDelayed(sessionHandler, ConfereeWaitVideoStreamTimeout, conferee, 3000);
-                }
-                if (null != sessionEventListener) {
-                    for (Conferee conferee : conferees) {
+                    if (null != sessionEventListener) {
                         sessionEventListener.onConfereeJoined(conferee);
                     }
                 }
@@ -685,12 +688,15 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case ConfereeJoined:
-                Conferee joinedConferee = ToDoConverter.tMTEntityInfo2ConfereeInfo((TMTEntityInfo) ntfContent);
-                conferees.add(joinedConferee);
-                joinedConferee.bWaitingVideoStream = true; // 正在等待与之相关的码流
-                HandlerHelper.sendMessageDelayed(sessionHandler, ConfereeWaitVideoStreamTimeout, joinedConferee, 3000);
-                if (null != sessionEventListener) {
-                    sessionEventListener.onConfereeJoined(joinedConferee);
+                TMTEntityInfo entityInfo = (TMTEntityInfo) ntfContent;
+                if(null == findConfereeByConfereeId(Conferee.buildId(entityInfo.dwMcuId, entityInfo.dwTerId, false))) {
+                    Conferee joinedConferee = ToDoConverter.tMTEntityInfo2ConfereeInfo((TMTEntityInfo) ntfContent);
+                    conferees.add(joinedConferee);
+                    joinedConferee.bWaitingVideoStream = true; // 正在等待与之相关的码流
+                    HandlerHelper.sendMessageDelayed(sessionHandler, ConfereeWaitVideoStreamTimeout, joinedConferee, 3000);
+                    if (null != sessionEventListener) {
+                        sessionEventListener.onConfereeJoined(joinedConferee);
+                    }
                 }
                 break;
 
@@ -706,7 +712,6 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case CurrentStreamList: // NOTE: 创会者不会收到这条消息；CurrentStreamList和CurrentConfereeList的先后顺序不定
-                tmpStreamInfos.clear();
             case StreamJoined: // NOTE: 己端不会收到自己的流joined的消息
                 if (conferees.isEmpty()){
                     // CurrentConfereeList 消息尚未上报，我们暂存码流信息稍后处理
@@ -915,6 +920,7 @@ public class WebRtcManager extends Caster<Msg>{
         displaySet.clear();
 
         conferees.clear();
+        tmpStreamInfos.clear();
 
         mid2KdStreamIdMap.clear();
         kdStreamId2RtcTrackIdMap.clear();
@@ -947,6 +953,10 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p(KLog.ERROR, "Factory exists!");
                 return;
             }
+
+//            PeerConnectionFactory.startInternalTracingCapture(
+//                    Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator
+//                            + "webrtc-trace.txt");
 
             PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions());
 
