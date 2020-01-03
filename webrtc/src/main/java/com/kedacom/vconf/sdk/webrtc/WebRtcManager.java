@@ -40,6 +40,7 @@ import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtId;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TQueryConfInfoResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayItem;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
@@ -593,11 +594,18 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case QueryConfInfoRsp:
-                reportSuccess(ToDoConverter.tMTInstanceConferenceInfo2ConfInfo((TMTInstanceConferenceInfo) rspContent), listener);
+                TQueryConfInfoResult queryConfInfoResult = (TQueryConfInfoResult) rspContent;
+                if (1000 != queryConfInfoResult.MainParam.dwErrorID){
+                    reportFailed(-1, listener);
+                }else{
+                    reportSuccess(ToDoConverter.tMTInstanceConferenceInfo2ConfInfo(queryConfInfoResult.AssParam), listener);
+                }
                 break;
 
             case MyLabelAssigned:
-                reportSuccess(null, listener);
+                if (Msg.VerifyConfPassword == req) {
+                    reportSuccess(null, listener);
+                }
                 break;
 
             default:

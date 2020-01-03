@@ -311,7 +311,7 @@ enum Msg {
     /**
      * 查询会议详情响应
      * */
-    @Response(clz = TMTInstanceConferenceInfo.class,
+    @Response(clz = TQueryConfInfoResult.class,
             id = "RestGetInstantConfInfoByID_Rsp")
     QueryConfInfoRsp,
 
