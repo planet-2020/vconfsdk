@@ -183,6 +183,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Msg.ToggleScreenShare,
                 Msg.QueryConfInfo,
                 Msg.VerifyConfPassword,
+                Msg.CloseMyMainVideoChannel,
         }, this::onRsp);
         return processorMap;
     }
@@ -309,14 +310,19 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 接受会议邀请
      * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
+     * @param bAudio 是否音频方式入会
      * @param sessionEventListener 会话事件监听器
      *                             成功：{@link MakeCallResult}
      *                             失败：失败码 //TODO
      * */
-    public void acceptInvitation(IResultListener resultListener, SessionEventListener sessionEventListener){
+    public void acceptInvitation(boolean bAudio, IResultListener resultListener, SessionEventListener sessionEventListener){
         if (!startSession(sessionEventListener)){
             reportFailed(-1, resultListener);
             return;
+        }
+        if (bAudio) {
+            // 音频入会则关闭己端主视频通道。底层上报onGetOfferCmd时带的媒体类型就为Audio了。
+            req(Msg.CloseMyMainVideoChannel, resultListener);
         }
         req(Msg.AcceptInvitation, resultListener);
     }

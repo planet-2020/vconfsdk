@@ -333,6 +333,14 @@ enum Msg {
     )
     VerifyConfPassword,
 
+    /**
+     * 关闭己端主流
+     * */
+    @Request(method = "MainVideoOff",
+            owner = MethodOwner.ConfCtrl
+    )
+    CloseMyMainVideoChannel,
+
 
     END;
 
