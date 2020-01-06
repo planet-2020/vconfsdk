@@ -352,7 +352,7 @@ public class WebRtcManager extends Caster<Msg>{
      * @param passwd 会议密码
      * @param resultListener 结果监听器。
      *          成功: null;
-     *          失败：TODO
+     *          失败：{@link RtcErrorCode#IncorrectConfPassword}
      * */
     public void verifyConfPassword(String passwd, IResultListener resultListener){
         req(Msg.VerifyConfPassword, resultListener, passwd);
@@ -626,6 +626,12 @@ public class WebRtcManager extends Caster<Msg>{
             case MyLabelAssigned:
                 if (Msg.VerifyConfPassword == req) {
                     reportSuccess(null, listener);
+                }
+                break;
+
+            case ConfPasswordNeeded:
+                if (Msg.VerifyConfPassword == req) {
+                    reportFailed(RtcErrorCode.IncorrectConfPassword, listener);
                 }
                 break;
 

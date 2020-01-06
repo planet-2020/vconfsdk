@@ -329,7 +329,8 @@ enum Msg {
             owner = MethodOwner.ConfCtrl,
             paras = StringBuffer.class,  // 会议密码
             userParas = String.class,
-            rspSeq = "MyLabelAssigned"
+            rspSeq = "MyLabelAssigned",     // 验证通过
+            rspSeq2 = "ConfPasswordNeeded"  // 验证失败
     )
     VerifyConfPassword,
 
