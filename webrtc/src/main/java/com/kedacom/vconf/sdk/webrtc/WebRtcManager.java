@@ -3454,6 +3454,7 @@ public class WebRtcManager extends Caster<Msg>{
                     framesReceivedMap.put(track.trackIdentifier, track.framesReceived);
                 }
             }
+            long curTimestamp = System.currentTimeMillis();
             for (Map.Entry<String, Long> entry : framesReceivedMap.entrySet()){
                 String trackIdentifier = entry.getKey();
                 long preReceivedFrames = null != preReceivedFramesMap.get(trackIdentifier) ? preReceivedFramesMap.get(trackIdentifier) : 0;
@@ -3462,7 +3463,7 @@ public class WebRtcManager extends Caster<Msg>{
                 String lostSignalKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackIdentifier);
                 Conferee conferee = findConfereeByStreamId(lostSignalKdStreamId);
                 if (null != conferee){
-                    float fps = (curReceivedFrames - preReceivedFrames) / ((System.currentTimeMillis() - videoStatsTimeStamp)/1000f);
+                    float fps = (curReceivedFrames - preReceivedFrames) / ((curTimestamp - videoStatsTimeStamp)/1000f);
                     if (!conferee.bWaitingVideoStream && fps < 0.2){ // 可忍受的帧率下限，低于该下限则认为信号丢失
                         KLog.p("conferee %s setState %s", conferee.id, Conferee.VideoState_WeakSignal);
                         conferee.setState(Conferee.VideoState_WeakSignal);
@@ -3475,9 +3476,9 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
 
-            if (System.currentTimeMillis() - videoStatsTimeStamp > 5000) {
+            if (curTimestamp - videoStatsTimeStamp >= 2000) {
                 preReceivedFramesMap = framesReceivedMap;
-                videoStatsTimeStamp = System.currentTimeMillis();
+                videoStatsTimeStamp = curTimestamp;
             }
 
             sessionHandler.postDelayed(this, 2000);
