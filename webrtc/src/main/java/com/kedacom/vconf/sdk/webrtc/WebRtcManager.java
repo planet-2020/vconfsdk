@@ -60,6 +60,7 @@ import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
 import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
+import org.webrtc.Logging;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
 import org.webrtc.MediaStreamTrack;
@@ -444,6 +445,9 @@ public class WebRtcManager extends Caster<Msg>{
      * @param bSilence true，屏蔽对方语音；false，放开对方语音。
      * */
     public void setSilence(boolean bSilence){
+        if (bSilence == userConfig.getIsRemoteAudioEnabled()){
+            return;
+        }
         req(Msg.SetSilence, null, bSilence);
     }
 
@@ -459,6 +463,9 @@ public class WebRtcManager extends Caster<Msg>{
      * @param bMute true，屏蔽自己语音；false，放开自己语音。
      * */
     public void setMute(boolean bMute){
+        if (bMute == userConfig.getIsLocalAudioEnabled()){
+            return;
+        }
         req(Msg.SetMute, null, bMute);
     }
 
@@ -494,6 +501,9 @@ public class WebRtcManager extends Caster<Msg>{
      * 开启/关闭摄像头
      * */
     public void setCameraEnable(final boolean enable) {
+        if (enable == userConfig.getIsLocalVideoEnabled()){
+            return;
+        }
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
         if (null != pcWrapper) {
             pcWrapper.setLocalVideoEnable(enable);
@@ -1006,6 +1016,9 @@ public class WebRtcManager extends Caster<Msg>{
                     .createPeerConnectionFactory();
 
             adm.release();
+
+//            Logging.enableLogToDebugOutput(Logging.Severity.LS_VERBOSE);
+
         });
 
     }
@@ -1285,6 +1298,15 @@ public class WebRtcManager extends Caster<Msg>{
     }
     private SessionEventListener sessionEventListener;
 
+
+
+    /**
+     * 获取与会方集合
+     * NOTE：该集合不可修改
+     * */
+    public Set<Conferee> getConferees(){
+        return Collections.unmodifiableSet(conferees);
+    }
 
 
     /**
@@ -1832,7 +1854,7 @@ public class WebRtcManager extends Caster<Msg>{
 
             KLog.p("onDraw, displayWidth=%s, displayHeight=%s", displayWidth, displayHeight);
 
-            // 绘制与会方状态deco
+            // 绘制码流状态deco
             StreamStateDecoration stateDeco;
             if (Conferee.VideoState_Disabled == conferee.state){
                 stateDeco = Conferee.cameraDisabledDeco;
@@ -1885,7 +1907,6 @@ public class WebRtcManager extends Caster<Msg>{
             if (conferee.bVoiceActivated){
                 conferee.voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
                 canvas.drawRect(conferee.voiceActivatedDeco, Conferee.voiceActivatedDecoPaint);
-//                sessionHandler.postDelayed(this::hideVoiceActivatedDecoration, 2000);
             }
 
         }
@@ -1917,6 +1938,13 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
+    /**
+     * 获取Display集合
+     * NOTE：该集合不可修改
+     * */
+    public Set<Display> getDisplays(){
+        return Collections.unmodifiableSet(displaySet);
+    }
 
 
     public static class TextDecoration extends Decoration{
@@ -2843,9 +2871,8 @@ public class WebRtcManager extends Caster<Msg>{
                 surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
                 videoSource = factory.createVideoSource(videoCapturer.isScreencast());
                 videoCapturer.initialize(surfaceTextureHelper, context, videoSource.getCapturerObserver());
-                videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
-                String localVideoTrackId;
                 boolean bTrackEnable = true;
+                String localVideoTrackId;
                 if (videoCapturer instanceof WindowCapturer){
                     localVideoTrackId = LOCAL_WINDOW_TRACK_ID;
                 }else if (videoCapturer.isScreencast()){
@@ -2853,6 +2880,10 @@ public class WebRtcManager extends Caster<Msg>{
                 }else{
                     localVideoTrackId = LOCAL_VIDEO_TRACK_ID;
                     bTrackEnable = userConfig.getIsLocalVideoEnabled();
+                }
+                if (bTrackEnable) {
+                    // 仅本地摄像头开启状态下开启采集
+                    videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
                 }
                 localVideoTrack = factory.createVideoTrack(localVideoTrackId, videoSource);
                 localVideoTrack.setEnabled(bTrackEnable);
@@ -3211,8 +3242,17 @@ public class WebRtcManager extends Caster<Msg>{
 
         void setLocalVideoEnable(boolean bEnable){
             executor.execute(() -> {
-                if (localVideoTrack != null) {
+                if (localVideoTrack != null && localVideoTrack.enabled() != bEnable) {
                     localVideoTrack.setEnabled(bEnable);
+                    if (bEnable){
+                        videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
+                    }else{
+                        try {
+                            videoCapturer.stopCapture();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
             });
         }
@@ -3422,17 +3462,20 @@ public class WebRtcManager extends Caster<Msg>{
                 String lostSignalKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackIdentifier);
                 Conferee conferee = findConfereeByStreamId(lostSignalKdStreamId);
                 if (null != conferee){
-                    if (!conferee.bWaitingVideoStream && (curReceivedFrames - preReceivedFrames) / 5.0f < 0.2){ // 可忍受的帧率下限，低于该下限则认为信号丢失
+                    float fps = (curReceivedFrames - preReceivedFrames) / ((System.currentTimeMillis() - videoStatsTimeStamp)/1000f);
+                    if (!conferee.bWaitingVideoStream && fps < 0.2){ // 可忍受的帧率下限，低于该下限则认为信号丢失
                         KLog.p("conferee %s setState %s", conferee.id, Conferee.VideoState_WeakSignal);
                         conferee.setState(Conferee.VideoState_WeakSignal);
-                    }else{
+                    }else if (fps > 1){
+                        // 尽管我们在帧率低于0.2时将状态设为WeakSignal但当帧率超过0.2时我们不立马设置状态为Normal
+                        // 而是等帧率回复到较高水平才切回Normal以使状态切换显得平滑而不是在临界值处频繁切换
                         KLog.p("conferee %s setState %s", conferee.id, Conferee.VideoState_Normal);
                         conferee.setState(Conferee.VideoState_Normal);
                     }
                 }
             }
 
-            if (videoStatsTimeStamp - System.currentTimeMillis() > 5000) {
+            if (System.currentTimeMillis() - videoStatsTimeStamp > 5000) {
                 preReceivedFramesMap = framesReceivedMap;
                 videoStatsTimeStamp = System.currentTimeMillis();
             }
