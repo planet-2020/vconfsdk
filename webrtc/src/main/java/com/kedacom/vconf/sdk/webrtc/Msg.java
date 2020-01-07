@@ -6,7 +6,6 @@ import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
-import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceConferenceInfo;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
@@ -35,15 +34,15 @@ enum Msg {
             owner = MethodOwner.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMtRtcSvrAddr.class, // 登录：TMtRtcSvrAddr.bUsedRtc==true，登出：=false
-            rspSeq = "RegisterRsp")
+            rspSeq = "RegisteredStateChanged")
     Register,
 
     /**
-     * 登录/登出Rtc服务器响应
+     * 注册状态变更通知
      */
-    @Response(clz = TLoginResult.class,
+    @Response(clz = TRegState.class,
             id = "RegResultNtf")
-    RegisterRsp,
+    RegisteredStateChanged,
 
 
     /**

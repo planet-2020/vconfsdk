@@ -10,7 +10,6 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.media.projection.MediaProjection;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -37,7 +36,7 @@ import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.thread.HandlerHelper;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TLoginResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRegState;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtId;
@@ -60,7 +59,6 @@ import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
 import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
-import org.webrtc.Logging;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
 import org.webrtc.MediaStreamTrack;
@@ -88,7 +86,6 @@ import org.webrtc.VideoTrack;
 import org.webrtc.audio.AudioDeviceModule;
 import org.webrtc.audio.JavaAudioDeviceModule;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -193,6 +190,7 @@ public class WebRtcManager extends Caster<Msg>{
     protected Map<Msg[], NtfProcessor<Msg>> ntfsProcessors() {
         Map<Msg[], NtfProcessor<Msg>> processorMap = new HashMap<>();
         processorMap.put(new Msg[]{
+                Msg.RegisteredStateChanged,
                 Msg.CallIncoming,
                 Msg.ConfCanceled,
                 Msg.MultipartyConfEnded,
@@ -543,8 +541,8 @@ public class WebRtcManager extends Caster<Msg>{
 
     private boolean onRsp(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas) {
         switch (rsp){
-            case RegisterRsp:
-                TLoginResult loginResult = (TLoginResult) rspContent;
+            case RegisteredStateChanged:
+                TRegState loginResult = (TRegState) rspContent;
                 KLog.p("loginResult: %s", loginResult.AssParam.basetype);
                 TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) reqParas[0];
                 if (rtcSvrAddr.bUsedRtc) {
@@ -671,6 +669,12 @@ public class WebRtcManager extends Caster<Msg>{
 
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
         switch (ntfId){
+            case RegisteredStateChanged:
+                TRegState regState = (TRegState) ntfContent;
+                if (100 != regState.AssParam.basetype) {
+                    if (null != confEventListener) confEventListener.onConfServerDisconnected();
+                }
+                break;
 
             case CallIncoming:
                 TMtCallLinkSate callLinkSate = (TMtCallLinkSate) ntfContent;
@@ -1018,6 +1022,8 @@ public class WebRtcManager extends Caster<Msg>{
                     .setVideoDecoderFactory(decoderFactory)
                     .createPeerConnectionFactory();
 
+            KLog.p("factory created!");
+
             adm.release();
 
 //            Logging.enableLogToDebugOutput(Logging.Severity.LS_VERBOSE);
@@ -1041,6 +1047,8 @@ public class WebRtcManager extends Caster<Msg>{
 
             factory.dispose();
             factory = null;
+
+            KLog.p(KLog.WARN, "factory destroyed!");
         });
     }
 
@@ -1261,6 +1269,12 @@ public class WebRtcManager extends Caster<Msg>{
      * 会议事件监听器
      * */
     public interface ConfEventListener {
+
+        /**
+         * 会议服务器连接断开
+         * */
+        void onConfServerDisconnected();
+
         /**
          * 会议邀请
          */
@@ -2929,6 +2943,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
 
                 String kdStreamId = localVideoTrackId;
+                KLog.p("create local video track %s/%s", kdStreamId, localVideoTrackId);
                 sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, localVideoTrackId));
 
                 if (localVideoTrackId.equals(LOCAL_VIDEO_TRACK_ID)) {
@@ -2989,6 +3004,7 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
                 return;
             }
+            KLog.p("create remote video track %s/%s", kdStreamId, track.id());
             kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
             Conferee conferee = findConfereeByStreamId(kdStreamId);
             if (null == conferee) {
@@ -3037,6 +3053,7 @@ public class WebRtcManager extends Caster<Msg>{
                 audioSender = transceiver.getSender();
 
                 String kdStreamId = localAudioTrackId;
+                KLog.p("create local audio track %s/%s", kdStreamId, localAudioTrackId);
                 sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, localAudioTrackId));
                 sessionHandler.post(new Runnable() {
                     @Override
@@ -3087,6 +3104,7 @@ public class WebRtcManager extends Caster<Msg>{
                 return;
             }
             kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
+            KLog.p("create remote audio track %s/%s", kdStreamId, track.id());
 
             executor.execute(() -> {
                 track.setEnabled(userConfig.getIsRemoteAudioEnabled());
