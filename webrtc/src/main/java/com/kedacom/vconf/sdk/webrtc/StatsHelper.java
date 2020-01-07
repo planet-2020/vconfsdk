@@ -25,11 +25,11 @@ final class StatsHelper {
             String type = rtcStats.getType();
             Map<String, Object> members = rtcStats.getMembers();
 
-            System.out.println(String.format("statsEntry={key=%s, values={type=%s ",rtcStatsEntry.getKey(), type));
-            for (Map.Entry<String, Object> member  : members.entrySet()){
-                System.out.println(String.format("member={%s, %s, %s}",member.getKey(), member.getValue(), member.getValue().getClass()));
-            }
-            System.out.println("}");
+//            System.out.println(String.format("statsEntry={key=%s, values={type=%s ",rtcStatsEntry.getKey(), type));
+//            for (Map.Entry<String, Object> member  : members.entrySet()){
+//                System.out.println(String.format("member={%s, %s, %s}",member.getKey(), member.getValue(), member.getValue().getClass()));
+//            }
+//            System.out.println("}");
 
             if (type.equals("media-source")) {
                 boolean bAudio = "audio".equals(members.get("kind"));

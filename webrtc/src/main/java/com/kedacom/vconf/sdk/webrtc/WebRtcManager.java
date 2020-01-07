@@ -249,7 +249,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 呼叫
      * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
      * @param peerId 对于点对点而言是对端e164，对于多方会议而言是会议e164
-     * @param bAudio 是否音频入会
+     * @param bAudio 是否音频方式入会
      **@param resultListener 结果监听器。
      *          成功: {@link MakeCallResult};
      *          失败：TODO
@@ -418,6 +418,10 @@ public class WebRtcManager extends Caster<Msg>{
      * 开启窗口共享
      * */
     public void startWindowShare(@NonNull View window, IResultListener resultListener){
+        if (null != sharedWindow){
+            KLog.p(KLog.WARN, "window share started already!");
+            return;
+        }
         sharedWindow = window;
         req(Msg.ToggleScreenShare, resultListener, true);
     }
@@ -426,6 +430,10 @@ public class WebRtcManager extends Caster<Msg>{
      * 结束窗口共享
      * */
     public void stopWindowShare(){
+        if (null == sharedWindow){
+            KLog.p(KLog.WARN, "window share stopped already!");
+            return;
+        }
         sharedWindow = null;
         req(Msg.ToggleScreenShare, null, false);
     }
@@ -603,6 +611,7 @@ public class WebRtcManager extends Caster<Msg>{
                         if (EmMtChanState.emChanConnected == assVidStatus.emChanState){
                             reportSuccess(null, listener);
                         }else{
+                            sharedWindow = null;
                             reportFailed(-1, listener);
                         }
                     }else{
@@ -660,6 +669,9 @@ public class WebRtcManager extends Caster<Msg>{
             case CreateConf:
             case AcceptInvitation:
                 stopSession();
+                break;
+            case ToggleScreenShare:
+                sharedWindow = null;
                 break;
         }
         return super.onTimeout(req, rspListener, reqPara);
@@ -1079,28 +1091,10 @@ public class WebRtcManager extends Caster<Msg>{
                 throw new RuntimeException("Factory not exists!");
             }
 
-            PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(new ArrayList<>());
-            // TCP candidates are only useful when connecting to a server that supports
-            // ICE-TCP.
-            rtcConfig.tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.DISABLED;
-            rtcConfig.bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE;
-            rtcConfig.rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE;
-            rtcConfig.continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY;
-            // Use ECDSA encryption.
-            rtcConfig.keyType = PeerConnection.KeyType.ECDSA;
-            // Enable DTLS for normal calls and disable for loopback calls.
-            rtcConfig.enableDtlsSrtp = true;
-            rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN;
-
-            // 设置srtp（Secure rtp）加密算法
-            CryptoOptions.Builder builder = CryptoOptions.builder();
-            builder.setEnableGcmCryptoSuites(true);
-            rtcConfig.cryptoOptions = builder.createCryptoOptions();
-
-            PeerConnection pubPc = Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(CommonDef.CONN_TYPE_PUBLISHER)));
-            PeerConnection subPc = Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(CommonDef.CONN_TYPE_SUBSCRIBER)));
-            PeerConnection assPubPc = Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(CommonDef.CONN_TYPE_ASS_PUBLISHER)));
-            PeerConnection assSubPc = Objects.requireNonNull(factory.createPeerConnection(rtcConfig, new PCObserver(CommonDef.CONN_TYPE_ASS_SUBSCRIBER)));
+            PeerConnection pubPc = createPeerConnection(CommonDef.CONN_TYPE_PUBLISHER);
+            PeerConnection subPc = createPeerConnection(CommonDef.CONN_TYPE_SUBSCRIBER);
+            PeerConnection assPubPc = createPeerConnection(CommonDef.CONN_TYPE_ASS_PUBLISHER);
+            PeerConnection assSubPc = createPeerConnection(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
 
             synchronized (pcWrapperLock) {
                 if (null != pubPcWrapper) pubPcWrapper.setPeerConnection(pubPc);
@@ -1111,6 +1105,55 @@ public class WebRtcManager extends Caster<Msg>{
 
         });
 
+    }
+
+
+    private PeerConnection createPeerConnection(int connType){
+        PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(new ArrayList<>());
+        // TCP candidates are only useful when connecting to a server that supports
+        // ICE-TCP.
+        rtcConfig.tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.DISABLED;
+        rtcConfig.bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE;
+        rtcConfig.rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE;
+        rtcConfig.continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY;
+        // Use ECDSA encryption.
+        rtcConfig.keyType = PeerConnection.KeyType.ECDSA;
+        // Enable DTLS for normal calls and disable for loopback calls.
+        rtcConfig.enableDtlsSrtp = true;
+        rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN;
+
+        // 设置srtp（Secure rtp）加密算法
+        CryptoOptions.Builder builder = CryptoOptions.builder();
+        builder.setEnableGcmCryptoSuites(true);
+        rtcConfig.cryptoOptions = builder.createCryptoOptions();
+
+        return factory.createPeerConnection(rtcConfig, new PCObserver(connType));
+    }
+
+
+    private void recreatePeerConnection(int connType){
+        synchronized (pcWrapperLock) {
+            PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+            if (null != pcWrapper) pcWrapper.close();
+            executor.execute(() -> {
+                if (null == factory){
+                    KLog.p(KLog.ERROR, "Factory not exists!");
+                    return;
+                }
+
+                PeerConnection pc = createPeerConnection(connType);
+
+                synchronized (pcWrapperLock) {
+                    PeerConnectionWrapper pcw = getPcWrapper(connType);
+                    if (null != pcw){
+                        pcw.setPeerConnection(pc);
+                    }else{
+                        pc.dispose();
+                    }
+                }
+
+            });
+        }
     }
 
     private final Object pcWrapperLock = new Object();
@@ -1245,6 +1288,10 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private VideoCapturer createWindowCapturer(){
+        if (null == sharedWindow){
+            KLog.p(KLog.ERROR, "null == sharedWindow");
+            return null;
+        }
         return new WindowCapturer(sharedWindow);
     }
 
@@ -2487,6 +2534,8 @@ public class WebRtcManager extends Caster<Msg>{
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
             if (null == pcWrapper) return;
 
+            pcWrapper.isUnpublishing = true;
+
             // 删除取消发布的流。
             // 取消发布己端不会收到StreamLeft消息（其他与会方会收到），
             // 所以我们需在此删除流而非依赖收到StreamLeft后的处理逻辑
@@ -2585,6 +2634,11 @@ public class WebRtcManager extends Caster<Msg>{
                         KLog.p("setRemoteDescription for Offer success, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
                         pcWrapper.setSdpState(pcWrapper.Idle);
+                        if (pcWrapper.isUnpublishing) {
+                            // 取消发布结束，因协议组目前实现所限我们需重建PeerConnection。解决第二次发双流失败的问题
+                            pcWrapper.isUnpublishing = false;
+                            recreatePeerConnection(pcWrapper.connType);
+                        }
                     }
                 } else if (pcWrapper.isSdpType(pcWrapper.Answer)) {
                     if (pcWrapper.isSdpState(pcWrapper.SettingRemote)) {
@@ -2841,6 +2895,9 @@ public class WebRtcManager extends Caster<Msg>{
         Map<String, AudioTrack> remoteAudioTracks = new HashMap<>();
         private RtpSender videoSender;
         private RtpSender audioSender;
+
+        // 是否正在取消发布。由于协议组当前实现所限取消发布后我们需要重建PeerConnection
+        private boolean isUnpublishing;
 
         PeerConnectionWrapper(int connType, @NonNull PeerConnectionConfig config, @NonNull SDPObserver sdpObserver) {
             this.connType = connType;
@@ -3359,7 +3416,7 @@ public class WebRtcManager extends Caster<Msg>{
         public void run() {
             if (null != pubPcWrapper && null != pubPcWrapper.pc) {
                 pubPcWrapper.pc.getStats(rtcStatsReport -> {
-                    KLog.p("publisherStats=%s ", rtcStatsReport);
+//                    KLog.p("publisherStats=%s ", rtcStatsReport);
                     synchronized (publisherStats) {
                         StatsHelper.resolveStats(rtcStatsReport, publisherStats);
                     }
@@ -3367,7 +3424,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
             if (null != subPcWrapper && null != subPcWrapper.pc) {
                 subPcWrapper.pc.getStats(rtcStatsReport -> {
-                    KLog.p("subscriberStats=%s ", rtcStatsReport);
+//                    KLog.p("subscriberStats=%s ", rtcStatsReport);
                     synchronized (subscriberStats) {
                         StatsHelper.resolveStats(rtcStatsReport, subscriberStats);
                     }
