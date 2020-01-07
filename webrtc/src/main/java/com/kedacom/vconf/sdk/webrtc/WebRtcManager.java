@@ -1986,7 +1986,7 @@ public class WebRtcManager extends Caster<Msg>{
     public Display createDisplay(){
         Display display =  new Display(context);
         displaySet.add(display);
-        KLog.p("create display %s", display);
+        KLog.p("create display %s", display.hashCode());
         return display;
     }
 
@@ -1994,11 +1994,11 @@ public class WebRtcManager extends Caster<Msg>{
      * 销毁display
      * */
     public void releaseDisplay(Display display){
-        KLog.p("release display %s", display);
+        KLog.p("release display %s", display.hashCode());
         if (displaySet.remove(display)){
             display.destroy();
         }else{
-            KLog.p(KLog.ERROR, "wired, this display is not created by me!");
+            KLog.p(KLog.ERROR, "wired, display %s is not created by me!", display.hashCode());
         }
     }
 
@@ -3551,6 +3551,8 @@ public class WebRtcManager extends Caster<Msg>{
                         KLog.p("conferee %s setState %s", conferee.id, Conferee.VideoState_Normal);
                         conferee.setState(Conferee.VideoState_Normal);
                     }
+                }else{
+                    KLog.p(KLog.ERROR, "track %s(kdstreamId=%s) not belong to any conferee?", trackIdentifier, lostSignalKdStreamId);
                 }
             }
 
