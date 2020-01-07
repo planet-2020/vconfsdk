@@ -956,9 +956,8 @@ public class WebRtcManager extends Caster<Msg>{
         sessionHandler.removeCallbacksAndMessages(null);
 
         for (Display display : displaySet){
-            display.destroy();
+            releaseDisplay(display);
         }
-        displaySet.clear();
 
         conferees.clear();
         tmpStreamInfos.clear();
