@@ -445,7 +445,8 @@ public class WebRtcManager extends Caster<Msg>{
      * @param bSilence true，屏蔽对方语音；false，放开对方语音。
      * */
     public void setSilence(boolean bSilence){
-        if (bSilence == userConfig.getIsRemoteAudioEnabled()){
+        if (!bSilence == userConfig.getIsRemoteAudioEnabled()){
+            KLog.p(KLog.WARN, "!bSilence == userConfig.getIsRemoteAudioEnabled()");
             return;
         }
         req(Msg.SetSilence, null, bSilence);
@@ -463,7 +464,8 @@ public class WebRtcManager extends Caster<Msg>{
      * @param bMute true，屏蔽自己语音；false，放开自己语音。
      * */
     public void setMute(boolean bMute){
-        if (bMute == userConfig.getIsLocalAudioEnabled()){
+        if (!bMute == userConfig.getIsLocalAudioEnabled()){
+            KLog.p(KLog.WARN, "!bMute == userConfig.getIsLocalAudioEnabled()");
             return;
         }
         req(Msg.SetMute, null, bMute);
@@ -502,6 +504,7 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public void setCameraEnable(final boolean enable) {
         if (enable == userConfig.getIsLocalVideoEnabled()){
+            KLog.p(KLog.WARN, "enable == userConfig.getIsLocalVideoEnabled()");
             return;
         }
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
