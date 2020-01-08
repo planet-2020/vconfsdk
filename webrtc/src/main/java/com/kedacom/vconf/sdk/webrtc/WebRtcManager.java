@@ -279,6 +279,10 @@ public class WebRtcManager extends Caster<Msg>{
             reportFailed(-1, resultListener);
             return;
         }
+        if (confPara.bSelfAudioMannerJoin){
+            // 音频入会则关闭己端主视频通道。底层上报onGetOfferCmd时带的媒体类型就为Audio了。
+            req(Msg.CloseMyMainVideoChannel, resultListener);
+        }
         req(Msg.CreateConf, resultListener, ToDoConverter.confPara2CreateConference(confPara), EmConfProtocol.emrtc);
     }
 
@@ -319,11 +323,11 @@ public class WebRtcManager extends Caster<Msg>{
             reportFailed(-1, resultListener);
             return;
         }
-        req(Msg.AcceptInvitation, resultListener);
         if (bAudio) {
             // 音频入会则关闭己端主视频通道。底层上报onGetOfferCmd时带的媒体类型就为Audio了。
             req(Msg.CloseMyMainVideoChannel, resultListener);
         }
+        req(Msg.AcceptInvitation, resultListener);
     }
 
     /**

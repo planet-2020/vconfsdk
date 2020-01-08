@@ -17,11 +17,12 @@ public final class ConfPara {
     public String virtualConfId;    // 虚拟会议Id。非虚拟会议填null
     public boolean bHide;           // 是否隐藏。隐藏的会议除了创会者和初始成员其他人不可见
     public String passwd;           // 会议密码
+    public boolean bSelfAudioMannerJoin;    // 己端是否以音频方式入会（创会后己端会被自动拉入会议，默认情况下己端入会方式跟会议类型一致。设置此字段true可在视频会议中以音频方式入会）
 
     public List<ConfMemberInfo> initedConfMemberInfoList; // 初始与会成员列表（不包括创建者）
 
     public ConfPara(String creatorE164, String confName, int duration, boolean bAudio, boolean bHighDefinition, boolean enableDC,
-                    String virtualConfId, List<ConfMemberInfo> initedConfMemberInfoList, boolean bHide, String passwd) {
+                    String virtualConfId, List<ConfMemberInfo> initedConfMemberInfoList, boolean bHide, String passwd, boolean bSelfAudioMannerJoin) {
         this.creatorE164 = creatorE164;
         this.confName = confName;
         this.duration = duration;
@@ -32,9 +33,10 @@ public final class ConfPara {
         this.initedConfMemberInfoList = initedConfMemberInfoList;
         this.bHide = bHide;
         this.passwd = passwd;
+        this.bSelfAudioMannerJoin = bSelfAudioMannerJoin;
     }
 
-    public ConfPara(String creatorE164, String confName, int duration, boolean bAudio, boolean bHighDefinition, boolean enableDC, String virtualConfId) {
+    public ConfPara(String creatorE164, String confName, int duration, boolean bAudio, boolean bHighDefinition, boolean enableDC, String virtualConfId, boolean bSelfAudioMannerJoin) {
         this.creatorE164 = creatorE164;
         this.confName = confName;
         this.duration = duration;
@@ -42,6 +44,7 @@ public final class ConfPara {
         this.bHighDefinition = bHighDefinition;
         this.enableDC = enableDC;
         this.virtualConfId = virtualConfId;
+        this.bSelfAudioMannerJoin = bSelfAudioMannerJoin;
     }
 
 }
