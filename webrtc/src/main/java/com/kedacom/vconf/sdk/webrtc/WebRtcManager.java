@@ -139,6 +139,7 @@ public class WebRtcManager extends Caster<Msg>{
     private UserConfig userConfig;
 
     private static final int ConfereeWaitVideoStreamTimeout = 1;
+    private static final int RecvingAssStreamTimeout = 2;
     private Handler sessionHandler = new Handler(Looper.getMainLooper()){
         @Override
         public void handleMessage(Message msg) {
@@ -146,6 +147,10 @@ public class WebRtcManager extends Caster<Msg>{
                 case ConfereeWaitVideoStreamTimeout:
                     Conferee conferee = (Conferee) msg.obj;
                     conferee.bWaitingVideoStream = false;
+                    break;
+                case RecvingAssStreamTimeout:
+                    conferee = (Conferee) msg.obj;
+                    conferee.setState(conferee.preState);
                     break;
             }
         }
@@ -874,6 +879,8 @@ public class WebRtcManager extends Caster<Msg>{
             if (null != sessionEventListener){
                 sessionEventListener.onConfereeJoined(assStreamConferee);
             }
+            assStreamConferee.setState(Conferee.VideoState_RecvingAss);
+            HandlerHelper.sendMessageDelayed(sessionHandler, RecvingAssStreamTimeout, assStreamConferee, 3000);
         }
 
         // 订阅视频流
@@ -1411,10 +1418,12 @@ public class WebRtcManager extends Caster<Msg>{
 
         // 视频码流状态
         private int state = VideoState_Normal;
+        private int preState = state; // 上一个状态
         private static final int VideoState_Normal = 0;
         private static final int VideoState_Disabled = 1; // 视频源被屏蔽，如摄像头关闭
         private static final int VideoState_WeakSignal = 2; // 视频信号弱（视频通道在但几乎没有视频帧）
         private static final int VideoState_NoStream = 3; // 没有视频通道，如音频入会
+        private static final int VideoState_RecvingAss = 4; // 正在接收辅流
 
         // 语音激励使能
         private boolean bVoiceActivated;
@@ -1588,6 +1597,11 @@ public class WebRtcManager extends Caster<Msg>{
          * 纯音频与会方的装饰
          * */
         private static StreamStateDecoration audioConfereeDeco;
+        /**
+         * 正在接收辅流的装饰
+         * */
+        private static StreamStateDecoration recvingAssStreamDeco;
+
 
         /**
          * 设置语音激励装饰。
@@ -1603,7 +1617,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         /**
-         * 设置关闭摄像头采集时本地画面对应的Display展示的图片。
+         * 设置关闭摄像头采集时己端与会方展示的图片。
          * @param winW UCD标注的deco所在窗口的宽
          * @param winH UCD标注的deco所在窗口的高
          * @param backgroundColor 背景色
@@ -1616,7 +1630,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         /**
-         * 设置音频入会方对应的Display展示的图片。
+         * 设置音频入会方展示的图片。
          * @param winW UCD标注的deco所在窗口的宽
          * @param winH UCD标注的deco所在窗口的高
          * @param backgroundColor 背景色
@@ -1629,7 +1643,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         /**
-         * 设置Display无视频源时展示的图片
+         * 设置视频信号丢失的与会方展示的图片
          * @param winW UCD标注的deco所在窗口的宽
          * @param winH UCD标注的deco所在窗口的高
          * @param backgroundColor 背景色
@@ -1641,12 +1655,26 @@ public class WebRtcManager extends Caster<Msg>{
             );
         }
 
+        /**
+         * 设置辅流与会方正在接收辅流时展示的图片
+         * @param winW UCD标注的deco所在窗口的宽
+         * @param winH UCD标注的deco所在窗口的高
+         * @param backgroundColor 背景色
+         * */
+        public static void setRecvingAssStreamDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+            recvingAssStreamDeco = StreamStateDecoration.createFromPicDecoration(
+                    PicDecoration.createCenterPicDeco("recvingAssStreamDeco", bitmap, winW, winH),
+                    backgroundColor
+            );
+        }
+
 
         /**
          * 设置码流状态
          * */
         void setState(int state){
             if (this.state != state) {
+                preState = this.state;
                 this.state = state;
                 refreshDisplays();
             }
@@ -1923,34 +1951,22 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p("onDraw, displayWidth=%s, displayHeight=%s", displayWidth, displayHeight);
 
             // 绘制码流状态deco
-            StreamStateDecoration stateDeco;
+            StreamStateDecoration stateDeco = null;
             if (Conferee.VideoState_Disabled == conferee.state){
                 stateDeco = Conferee.cameraDisabledDeco;
-                if (null != stateDeco && stateDeco.enabled() && !disabledDecos.contains(stateDeco.id)) {
-                    stateDeco.adjust(displayWidth, displayHeight);
-                    canvas.drawColor(stateDeco.backgroundColor);
-                    canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
-                }else{
-                    canvas.drawColor(Color.BLACK);
-                }
             }else if (Conferee.VideoState_NoStream == conferee.state){
                 stateDeco = Conferee.audioConfereeDeco;
-                if (null != stateDeco && stateDeco.enabled() && !disabledDecos.contains(stateDeco.id)) {
-                    stateDeco.adjust(displayWidth, displayHeight);
-                    canvas.drawColor(stateDeco.backgroundColor);
-                    canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
-                }else{
-                    canvas.drawColor(Color.BLACK);
-                }
             }else if (Conferee.VideoState_WeakSignal == conferee.state){
                 stateDeco = Conferee.weakVideoSignalDeco;
-                if (null != stateDeco && stateDeco.enabled() && !disabledDecos.contains(stateDeco.id)) {
-                    stateDeco.adjust(displayWidth, displayHeight);
-                    canvas.drawColor(stateDeco.backgroundColor);
-                    canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
-                }else{
-                    canvas.drawColor(Color.BLACK);
-                }
+            }else if (Conferee.VideoState_RecvingAss == conferee.state){
+                stateDeco = Conferee.recvingAssStreamDeco;
+            }
+            if (null != stateDeco && stateDeco.enabled() && !disabledDecos.contains(stateDeco.id)) {
+                stateDeco.adjust(displayWidth, displayHeight);
+                canvas.drawColor(stateDeco.backgroundColor);
+                canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
+            }else{
+                canvas.drawColor(Color.BLACK);
             }
 
             // 绘制图片deco
