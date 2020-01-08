@@ -1965,8 +1965,6 @@ public class WebRtcManager extends Caster<Msg>{
                 stateDeco.adjust(displayWidth, displayHeight);
                 canvas.drawColor(stateDeco.backgroundColor);
                 canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
-            }else{
-                canvas.drawColor(Color.BLACK);
             }
 
             // 绘制图片deco
