@@ -2871,10 +2871,11 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private static final String STREAM_ID = "TT-Android-"+System.currentTimeMillis();
-    private static final String LOCAL_VIDEO_TRACK_ID = STREAM_ID+"-v0";
+    private static final String LOCAL_VIDEO_TRACK_ID = STREAM_ID+"-v";
     private static final String LOCAL_WINDOW_TRACK_ID = STREAM_ID+"-window";
     private static final String LOCAL_SCREEN_TRACK_ID = STREAM_ID+"-screen";
-    private static final String LOCAL_AUDIO_TRACK_ID = STREAM_ID+"-a0";
+    private static final String LOCAL_AUDIO_TRACK_ID = STREAM_ID+"-a";
+    private static int audioTrackCnt = 0;
 
     /**
      * PeerConnection包装类
@@ -3119,7 +3120,7 @@ public class WebRtcManager extends Caster<Msg>{
         void createAudioTrack(){
             executor.execute(() -> {
                 audioSource = factory.createAudioSource(new MediaConstraints());
-                String localAudioTrackId = LOCAL_AUDIO_TRACK_ID;
+                String localAudioTrackId = LOCAL_AUDIO_TRACK_ID+audioTrackCnt++;
                 localAudioTrack = factory.createAudioTrack(localAudioTrackId, audioSource);
                 localAudioTrack.setEnabled(userConfig.getIsLocalAudioEnabled());
                 RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
