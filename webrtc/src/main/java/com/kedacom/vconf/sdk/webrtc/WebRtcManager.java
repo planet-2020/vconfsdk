@@ -520,7 +520,7 @@ public class WebRtcManager extends Caster<Msg>{
         userConfig.setIsLocalVideoEnabled(enable);
 
         Conferee conferee = findMyself();
-        if (null != conferee){
+        if (null != conferee && Conferee.VideoState_NoStream != conferee.state){
             conferee.setState(enable ? Conferee.VideoState_Normal : Conferee.VideoState_Disabled);
         }
     }
@@ -956,8 +956,9 @@ public class WebRtcManager extends Caster<Msg>{
         sessionHandler.removeCallbacksAndMessages(null);
 
         for (Display display : displaySet){
-            releaseDisplay(display);
+            display.destroy();
         }
+        displaySet.clear();
 
         conferees.clear();
         tmpStreamInfos.clear();
