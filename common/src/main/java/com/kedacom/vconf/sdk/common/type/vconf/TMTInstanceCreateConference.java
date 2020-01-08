@@ -16,7 +16,7 @@ import java.util.List;
 public class TMTInstanceCreateConference {
     public String achName;        ///< 会议名称
     public int dwDuration;                                ///< 时长。单位：分钟
-    public int dwBitrate;                                ///< 会议码率。 单位：kb/s
+    public int dwBitrate;                                ///< 会议码率。 单位：kb/s （暂时无用，实际开起来的会议码率跟随主视频码率）
 
     public EmClosedMeeting emCloseConf = EmClosedMeeting.emClosedMeeting_Close;                            ///< 会议免打扰，1开启，0关闭
     public EmMtOpenMode emSafeConf = EmMtOpenMode.emMt_Open;                                ///< 会议安全
