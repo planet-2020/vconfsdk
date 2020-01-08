@@ -34,6 +34,7 @@ enum Msg {
             owner = MethodOwner.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMtRtcSvrAddr.class, // 登录：TMtRtcSvrAddr.bUsedRtc==true，登出：=false
+            timeout = 30,
             rspSeq = "RegisteredStateChanged")
     Register,
 

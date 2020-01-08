@@ -122,13 +122,17 @@ final class ToDoConverter {
         to.emMeetingtype = EmMeetingSafeType.emRestMeetingType_Sfu;
 
         //主视频格式
-        TMTVideoFormatList videoFormat = new TMTVideoFormatList();
-        videoFormat.emVideoFormat = EmVidFormat.emVH264;
-        videoFormat.emVideoProfile = EmH264Profile.emBaseline;
-        videoFormat.emResolution = confPara.bHighDefinition ? EmMtResolution.emMtHD1080p1920x1080_Api : EmMtResolution.emMtHD720p1280x720_Api;
-        videoFormat.dwRate = confPara.bHighDefinition ? 2048 : 1024;
-        videoFormat.dwFrame = 30;
         List<TMTVideoFormatList> videoFormatLists = new ArrayList<>();
+        TMTVideoFormatList videoFormat = new TMTVideoFormatList();
+        if (confPara.bAudio) {
+            videoFormat.dwRate = 64;
+        }else{
+            videoFormat.emVideoFormat = EmVidFormat.emVH264;
+            videoFormat.emVideoProfile = EmH264Profile.emBaseline;
+            videoFormat.emResolution = confPara.bHighDefinition ? EmMtResolution.emMtHD1080p1920x1080_Api : EmMtResolution.emMtHD720p1280x720_Api;
+            videoFormat.dwRate = 4 * 1024;
+            videoFormat.dwFrame = 30;
+        }
         videoFormatLists.add(videoFormat);
         to.atVideoFormatList = videoFormatLists;
         to.dwVFormatNum = to.atVideoFormatList.size();
