@@ -928,6 +928,9 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p(KLog.ERROR, "session has started already!");
             return false;
         }
+
+        KLog.p("starting session...");
+
         bSessionStarted = true;
         sessionEventListener = listener;
 
@@ -959,6 +962,8 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p(KLog.ERROR, "session has not started yet!");
             return false;
         }
+        KLog.p("stopping session...");
+
         bSessionStarted = false;
         sessionEventListener = null;
 
@@ -1005,6 +1010,8 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p(KLog.ERROR, "Factory exists!");
                 return;
             }
+
+            KLog.p("creating factory...");
 
 //            PeerConnectionFactory.startInternalTracingCapture(
 //                    Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator
@@ -1062,7 +1069,7 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p(KLog.ERROR, "Factory not exists!");
                 return;
             }
-
+            KLog.p("destroying factory...");
             if (null != eglBase) {
                 eglBase.release();
                 eglBase = null;
@@ -1081,6 +1088,9 @@ public class WebRtcManager extends Caster<Msg>{
          * NOTE：一个peerconnection可以处理多路码流，收发均可。
          * 但业务要求主流发/收、辅流发/收4种情形分别用单独的peerconnect处理，故此处创建4个。
          * */
+
+        KLog.p("creating pcWrappers...");
+
         PeerConnectionConfig pcConfig = new PeerConnectionConfig(
                 userConfig.getVideoWidth(),
                 userConfig.getVideoHeight(),
@@ -1114,6 +1124,8 @@ public class WebRtcManager extends Caster<Msg>{
                 if (null != assSubPcWrapper) assSubPcWrapper.setPeerConnection(assSubPc);
             }
 
+            KLog.p("pcWrappers created");
+
         });
 
     }
@@ -1143,6 +1155,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private void recreatePeerConnection(int connType){
+        KLog.p("recreating pc %s...", connType);
         synchronized (pcWrapperLock) {
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
             if (null != pcWrapper) pcWrapper.close();
@@ -1158,8 +1171,10 @@ public class WebRtcManager extends Caster<Msg>{
                     PeerConnectionWrapper pcw = getPcWrapper(connType);
                     if (null != pcw){
                         pcw.setPeerConnection(pc);
+                        KLog.p("pc %s recreated", connType);
                     }else{
                         pc.dispose();
+                        KLog.p("pcWrapper not exists, recreating pc %s failed", connType);
                     }
                 }
 
@@ -1170,6 +1185,7 @@ public class WebRtcManager extends Caster<Msg>{
     private final Object pcWrapperLock = new Object();
 
     private void destroyPeerConnectionWrapper(){
+        KLog.p("destroying pcWrappers...");
         synchronized (pcWrapperLock) {
             if (null != pubPcWrapper) {
                 pubPcWrapper.close();
@@ -1188,6 +1204,7 @@ public class WebRtcManager extends Caster<Msg>{
                 assSubPcWrapper = null;
             }
         }
+        KLog.p("pcWrappers destroyed");
     }
 
 
