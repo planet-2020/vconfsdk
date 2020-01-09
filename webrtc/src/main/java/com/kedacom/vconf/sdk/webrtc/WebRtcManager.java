@@ -124,8 +124,6 @@ public class WebRtcManager extends Caster<Msg>{
     // 用来展示与会方画面的Display集合。
     private Set<Display> displaySet = new HashSet<>();
 
-    // WebRTC的mid到平台的StreamId之间的映射
-    private BiMap<String, String> mid2KdStreamIdMap = HashBiMap.create();
     // 平台的StreamId到WebRTC的TrackId之间的映射
     private BiMap<String, String> kdStreamId2RtcTrackIdMap = HashBiMap.create();
 
@@ -978,7 +976,6 @@ public class WebRtcManager extends Caster<Msg>{
         conferees.clear();
         tmpStreamInfos.clear();
 
-        mid2KdStreamIdMap.clear();
         kdStreamId2RtcTrackIdMap.clear();
 
         screenCapturePermissionData = null;
@@ -2501,13 +2498,12 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onSetOfferCmd(int connType, String offerSdp, List<RtcConnector.TRtcMedia> rtcMediaList) {
             KLog.p("connType=%s", connType);
-            for (RtcConnector.TRtcMedia rtcMedia : rtcMediaList) {
-                KLog.p("mid=%s, kdstreamId=%s", rtcMedia.mid, rtcMedia.streamid);
-                mid2KdStreamIdMap.put(rtcMedia.mid, rtcMedia.streamid);
-            }
-
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
             if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Idle)) return;
+            for (RtcConnector.TRtcMedia rtcMedia : rtcMediaList) {
+                KLog.p("mid=%s, kdstreamId=%s", rtcMedia.mid, rtcMedia.streamid);
+                pcWrapper.mapMid2KdStreamId(rtcMedia.mid, rtcMedia.streamid);
+            }
 
             pcWrapper.setSdpType(pcWrapper.Answer);
             setRemoteDescription(pcWrapper, offerSdp, SessionDescription.Type.OFFER);
@@ -2683,15 +2679,17 @@ public class WebRtcManager extends Caster<Msg>{
                         KLog.p("setLocalDescription for Answer success, sending answer...");
                         List<RtcConnector.TRtcMedia> rtcMediaList = new ArrayList<>();
                         List<String> mids = SdpHelper.getAllMids(pc.getLocalDescription().description);
-                        for (String mid : mids) {
-                            String streamId = mid2KdStreamIdMap.get(mid);
-                            KLog.p("mid=%s, streamId=%s", mid, streamId);
-                            if (null == streamId) {
-                                KLog.p(KLog.ERROR, "no streamId for mid %s (see onSetOfferCmd)", mid);
+                        executor.execute(() -> {
+                            for (String mid : mids) {
+                                String streamId = pcWrapper.mid2KdStreamIdMap.get(mid);
+                                KLog.p("mid=%s, streamId=%s", mid, streamId);
+                                if (null == streamId) {
+                                    KLog.p(KLog.ERROR, "no streamId for mid %s (see onSetOfferCmd)", mid);
+                                }
+                                rtcMediaList.add(new RtcConnector.TRtcMedia(streamId, mid)); // 仅answer需要填streamId，answer不需要填encodings
                             }
-                            rtcMediaList.add(new RtcConnector.TRtcMedia(streamId, mid)); // 仅answer需要填streamId，answer不需要填encodings
-                        }
-                        rtcConnector.sendAnswerSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMediaList);
+                            sessionHandler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMediaList));
+                        });
                         KLog.p("answer sent, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
                         pcWrapper.setSdpState(pcWrapper.Idle);
@@ -2931,6 +2929,9 @@ public class WebRtcManager extends Caster<Msg>{
         private RtpSender videoSender;
         private RtpSender audioSender;
 
+        // WebRTC的mid到平台的StreamId之间的映射。mid仅在一个PeerConnection内唯一
+        private final BiMap<String, String> mid2KdStreamIdMap = HashBiMap.create();
+
         // 是否正在取消发布。由于协议组当前实现所限取消发布后我们需要重建PeerConnection
         private boolean isUnpublishing;
 
@@ -2988,6 +2989,10 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 pc.setRemoteDescription(sdpObserver, sdp);
             });
+        }
+
+        void mapMid2KdStreamId(String mid, String kdStreamId){
+            executor.execute(() -> mid2KdStreamIdMap.put(mid, kdStreamId));
         }
 
 
@@ -3118,23 +3123,25 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         void createRemoteVideoTrack(String mid, VideoTrack track){
-            String kdStreamId = mid2KdStreamIdMap.get(mid);
-            if (null == kdStreamId) {
-                KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
-                return;
-            }
-            KLog.p("create remote video track %s/%s", kdStreamId, track.id());
-            kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
-            Conferee conferee = findConfereeByStreamId(kdStreamId);
-            if (null == conferee) {
-                KLog.p(KLog.ERROR, "something wrong? stream %s not belong to any conferee", kdStreamId);
-                return;
-            }
-
             executor.execute(() -> {
+                String kdStreamId = mid2KdStreamIdMap.get(mid);
+                if (null == kdStreamId) {
+                    KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
+                    return;
+                }
                 remoteVideoTracks.put(kdStreamId, track);
                 track.setEnabled(userConfig.getIsRemoteVideoEnabled());
-                track.addSink(conferee);
+
+                sessionHandler.post(() -> {
+                    KLog.p("create remote video track %s/%s", kdStreamId, track.id());
+                    kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
+                    Conferee conferee = findConfereeByStreamId(kdStreamId);
+                    if (null == conferee) {
+                        KLog.p(KLog.ERROR, "something wrong? stream %s not belong to any conferee", kdStreamId);
+                        return;
+                    }
+                    executor.execute(() -> track.addSink(conferee));
+                });
             });
         }
 
@@ -3224,18 +3231,19 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         void createRemoteAudioTrack(String mid, AudioTrack track){
-            String kdStreamId = mid2KdStreamIdMap.get(mid);
-            KLog.p("mid=%s, streamId=%s", mid, kdStreamId);
-            if (null == kdStreamId) {
-                KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
-                return;
-            }
-            kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
-            KLog.p("create remote audio track %s/%s", kdStreamId, track.id());
-
             executor.execute(() -> {
+                String kdStreamId = mid2KdStreamIdMap.get(mid);
+                KLog.p("mid=%s, streamId=%s", mid, kdStreamId);
+                if (null == kdStreamId) {
+                    KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
+                    return;
+                }
                 track.setEnabled(userConfig.getIsRemoteAudioEnabled());
                 remoteAudioTracks.put(kdStreamId, track);
+                sessionHandler.post(() -> {
+                    kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
+                    KLog.p("create remote audio track %s/%s", kdStreamId, track.id());
+                });
             });
         }
 
@@ -3348,6 +3356,8 @@ public class WebRtcManager extends Caster<Msg>{
                 localAudioTrack = null;
 
                 remoteAudioTracks.clear();
+
+                mid2KdStreamIdMap.clear();
 
                 if (videoCapturer != null) {
                     try {
