@@ -6,6 +6,8 @@ import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -30,6 +32,7 @@ public class WindowCapturer implements VideoCapturer {
     private org.webrtc.CapturerObserver capturerObs;
     private Thread captureThread;
     private View window;
+    private final Object lock = new Object();
 
 
     public WindowCapturer(@NonNull View window) {
@@ -66,22 +69,27 @@ public class WindowCapturer implements VideoCapturer {
                 Bitmap bitmap = Bitmap.createBitmap(window.getWidth(), window.getHeight(), Bitmap.Config.ARGB_8888);
 
                 Canvas canvas = new Canvas(bitmap);
+                Handler uiHandler = new Handler(Looper.getMainLooper());
                 while (true) {
-                    if (null != surTexture) {
-                        surTexture.getHandler().post(() -> {
+                    uiHandler.post(() -> {
+                        synchronized (lock) {
                             if (null != window) window.draw(canvas);  // TODO 判断是否前台，非前台不需要draw。
-                            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-                            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
-                            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+                            if (null != surTexture) {
+                                surTexture.getHandler().post(() -> {
+                                    GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+                                    GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+                                    GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
-                            VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
+                                    VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
 
-                            long frameTime = System.nanoTime() - start;
-                            VideoFrame videoFrame = new VideoFrame(i420Buf, 0, frameTime);
-                            if (null != capturerObs) capturerObs.onFrameCaptured(videoFrame);
-                            videoFrame.release();
-                        });
-                    }
+                                    long frameTime = System.nanoTime() - start;
+                                    VideoFrame videoFrame = new VideoFrame(i420Buf, 0, frameTime);
+                                    if (null != capturerObs) capturerObs.onFrameCaptured(videoFrame);
+                                    videoFrame.release();
+                                });
+                            }
+                        }
+                    });
 
                     Thread.sleep(100);
                 }
@@ -104,10 +112,12 @@ public class WindowCapturer implements VideoCapturer {
 
     @Override
     public void dispose() {
-        surTexture = null;
-        appContext = null;
-        capturerObs = null;
-        window = null;
+        synchronized (lock) {
+            surTexture = null;
+            appContext = null;
+            capturerObs = null;
+            window = null;
+        }
     }
 
     @Override

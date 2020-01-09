@@ -2684,8 +2684,8 @@ public class WebRtcManager extends Caster<Msg>{
                         List<RtcConnector.TRtcMedia> rtcMediaList = new ArrayList<>();
                         List<String> mids = SdpHelper.getAllMids(pc.getLocalDescription().description);
                         for (String mid : mids) {
-                            KLog.p("mid=%s", mid);
                             String streamId = mid2KdStreamIdMap.get(mid);
+                            KLog.p("mid=%s, streamId=%s", mid, streamId);
                             if (null == streamId) {
                                 KLog.p(KLog.ERROR, "no streamId for mid %s (see onSetOfferCmd)", mid);
                             }
@@ -2954,16 +2954,40 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         void createOffer(){
-            executor.execute(() -> pc.createOffer(sdpObserver, new MediaConstraints()));
+            executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
+                pc.createOffer(sdpObserver, new MediaConstraints());
+            });
         }
         void createAnswer(){
-            executor.execute(() -> pc.createAnswer(sdpObserver, new MediaConstraints()));
+            executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
+                pc.createAnswer(sdpObserver, new MediaConstraints());
+            });
         }
         void setLocalDescription(SessionDescription sdp){
-            executor.execute(() -> pc.setLocalDescription(sdpObserver, sdp));
+            executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
+                pc.setLocalDescription(sdpObserver, sdp);
+            });
         }
         void setRemoteDescription(SessionDescription sdp){
-            executor.execute(() -> pc.setRemoteDescription(sdpObserver, sdp));
+            executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
+                pc.setRemoteDescription(sdpObserver, sdp);
+            });
         }
 
 
@@ -2972,8 +2996,8 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         void createVideoTrack(@NonNull VideoCapturer videoCapturer){
             executor.execute(() -> {
-                if (null != localVideoTrack){
-                    KLog.p(KLog.ERROR, "localVideoTrack has created");
+                if (null == factory){
+                    KLog.p(KLog.ERROR, "factory destroyed");
                     return;
                 }
                 this.videoCapturer = videoCapturer;
@@ -3069,10 +3093,13 @@ public class WebRtcManager extends Caster<Msg>{
 
         void removeVideoTrack(){
             executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
                 pc.removeTrack(videoSender);
-
+                String trackId = localVideoTrack.id();
                 sessionHandler.post(() -> {
-                    String trackId = localVideoTrack.id();
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
                     // 删除流
@@ -3133,6 +3160,10 @@ public class WebRtcManager extends Caster<Msg>{
 
         void createAudioTrack(){
             executor.execute(() -> {
+                if (null == factory){
+                    KLog.p(KLog.ERROR, "factory destroyed");
+                    return;
+                }
                 audioSource = factory.createAudioSource(new MediaConstraints());
                 String localAudioTrackId = LOCAL_AUDIO_TRACK_ID+audioTrackCnt++;
                 localAudioTrack = factory.createAudioTrack(localAudioTrackId, audioSource);
@@ -3165,6 +3196,10 @@ public class WebRtcManager extends Caster<Msg>{
 
         void removeAudioTrack(){
             executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
                 pc.removeTrack(audioSender);
 
                 sessionHandler.post(() -> {
@@ -3223,6 +3258,10 @@ public class WebRtcManager extends Caster<Msg>{
 
         void destoryAudioTrack(){
             executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
                 localAudioTrack.setEnabled(false);
                 if (audioSource != null) {
                     audioSource.dispose();
@@ -3268,6 +3307,10 @@ public class WebRtcManager extends Caster<Msg>{
 
         void drainCandidates() {
             executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
                 if (queuedRemoteCandidates != null) {
                     for (IceCandidate candidate : queuedRemoteCandidates) {
                         pc.addIceCandidate(candidate);
@@ -3279,6 +3322,10 @@ public class WebRtcManager extends Caster<Msg>{
 
         void addCandidate(IceCandidate candidate) {
             executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
                 if (queuedRemoteCandidates != null) {
                     queuedRemoteCandidates.add(candidate);
                 } else {
@@ -3556,6 +3603,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private Map<String, Long> preReceivedFramesMap = new HashMap<>();
     private long videoStatsTimeStamp = System.currentTimeMillis();
+    private static final int WeakSignalCheckInterval = 5000; // 单位：毫秒
     // 视频统计信息处理器
     private Runnable videoStatsProcesser = new Runnable() {
         @Override
@@ -3576,8 +3624,12 @@ public class WebRtcManager extends Caster<Msg>{
                 String lostSignalKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackIdentifier);
                 Conferee conferee = findConfereeByStreamId(lostSignalKdStreamId);
                 if (null != conferee){
-                    float fps = (curReceivedFrames - preReceivedFrames) / ((curTimestamp - videoStatsTimeStamp)/1000f);
-                    if (!conferee.bWaitingVideoStream && fps < 0.2){ // 可忍受的帧率下限，低于该下限则认为信号丢失
+                    long interval = curTimestamp - videoStatsTimeStamp;
+                    float fps = (curReceivedFrames - preReceivedFrames) / (interval/1000f);
+                    if (!conferee.bWaitingVideoStream
+                            && interval >= WeakSignalCheckInterval // 计算帧率的间隔时长应适度，太短则太敏感地滑入WeakSignal状态，太长则太迟钝
+                            && fps < 0.2 // 可忍受的帧率下限，低于该下限则认为信号丢失
+                    ){
                         KLog.p("conferee %s setState %s", conferee.id, Conferee.VideoState_WeakSignal);
                         conferee.setState(Conferee.VideoState_WeakSignal);
                     }else if (fps > 1){
@@ -3591,7 +3643,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
 
-            if (curTimestamp - videoStatsTimeStamp >= 2000) {
+            if (curTimestamp - videoStatsTimeStamp >= WeakSignalCheckInterval) {
                 preReceivedFramesMap = framesReceivedMap;
                 videoStatsTimeStamp = curTimestamp;
             }
