@@ -28,22 +28,32 @@ enum Msg {
     GetSvrAddr,
 
     /**
-     * 登录/登出Rtc服务器
+     * 登录Rtc服务器
      */
     @Request(method = "SetRtcSvrCfgCmd",
             owner = MethodOwner.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMtRtcSvrAddr.class, // 登录：TMtRtcSvrAddr.bUsedRtc==true，登出：=false
             timeout = 30,
-            rspSeq = "RegisteredStateChanged")
-    Register,
+            rspSeq = "LoginStateChanged")
+    Login,
 
     /**
-     * 注册状态变更通知
+     * 注销Rtc服务器
+     */
+    @Request(method = "SetRtcSvrCfgCmd",
+            owner = MethodOwner.ConfigCtrl,
+            paras = StringBuffer.class,
+            userParas = TMtRtcSvrAddr.class, // 登录：TMtRtcSvrAddr.bUsedRtc==true，登出：=false
+            rspSeq = "LoginStateChanged")
+    Logout,
+
+    /**
+     * 登录状态变更通知
      */
     @Response(clz = TRegState.class,
             id = "RegResultNtf")
-    RegisteredStateChanged,
+    LoginStateChanged,
 
 
     /**

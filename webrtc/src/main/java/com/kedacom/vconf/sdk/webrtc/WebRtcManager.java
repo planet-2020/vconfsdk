@@ -93,7 +93,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -174,7 +173,8 @@ public class WebRtcManager extends Caster<Msg>{
     protected Map<Msg[], RspProcessor<Msg>> rspsProcessors() {
         Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
         processorMap.put(new Msg[]{
-                Msg.Register,
+                Msg.Login,
+                Msg.Logout,
                 Msg.Call,
                 Msg.CreateConf,
                 Msg.QuitConf,
@@ -195,7 +195,7 @@ public class WebRtcManager extends Caster<Msg>{
     protected Map<Msg[], NtfProcessor<Msg>> ntfsProcessors() {
         Map<Msg[], NtfProcessor<Msg>> processorMap = new HashMap<>();
         processorMap.put(new Msg[]{
-                Msg.RegisteredStateChanged,
+                Msg.LoginStateChanged,
                 Msg.CallIncoming,
                 Msg.ConfCanceled,
                 Msg.MultipartyConfEnded,
@@ -234,7 +234,7 @@ public class WebRtcManager extends Caster<Msg>{
         rtcSvrAddr.achNumber = e164;
 
         this.confEventListener = confEventListener;
-        req(Msg.Register, resultListener, rtcSvrAddr);
+        req(Msg.Login, resultListener, rtcSvrAddr);
     }
 
     /**
@@ -247,7 +247,7 @@ public class WebRtcManager extends Caster<Msg>{
         this.confEventListener = null;
         userE164 = null;
         stopSession();
-        req(Msg.Register, resultListener, new TMtRtcSvrAddr(false));
+        req(Msg.Logout, resultListener, new TMtRtcSvrAddr(false));
     }
 
     /**
@@ -558,17 +558,16 @@ public class WebRtcManager extends Caster<Msg>{
 
     private boolean onRsp(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas) {
         switch (rsp){
-            case RegisteredStateChanged:
+            case LoginStateChanged:
                 TRegState loginResult = (TRegState) rspContent;
                 KLog.p("loginResult: %s", loginResult.AssParam.basetype);
-                TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) reqParas[0];
-                if (rtcSvrAddr.bUsedRtc) {
+                if (Msg.Login == req) { // 登录
                     if (100 == loginResult.AssParam.basetype) {
                         reportSuccess(null, listener);
                     } else {
                         reportFailed(-1, listener);
                     }
-                }else{
+                }else{ // 注销
                     reportSuccess(null, listener);
                 }
                 break;
@@ -690,7 +689,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
         switch (ntfId){
-            case RegisteredStateChanged:
+            case LoginStateChanged:
                 TRegState regState = (TRegState) ntfContent;
                 if (100 != regState.AssParam.basetype) {
                     if (null != confEventListener) confEventListener.onConfServerDisconnected();
