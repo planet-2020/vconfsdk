@@ -13,6 +13,9 @@ import com.kedacom.vconf.sdk.utils.lang.StringHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 
@@ -21,7 +24,7 @@ final class MagicBook {
     private static MagicBook instance;
 
     private Set<String> modules = Sets.newConcurrentHashSet();
-    private BiMap<String, String> nameIdMap = Maps.synchronizedBiMap(HashBiMap.create());
+    private BiMap<String, String> rspNameIdMap = Maps.synchronizedBiMap(HashBiMap.create());
     private Table<String, String, Object> reqMap = Tables.synchronizedTable(HashBasedTable.create());
     private Table<String, String, Object> rspMap = Tables.synchronizedTable(HashBasedTable.create());
 
@@ -30,7 +33,6 @@ final class MagicBook {
     private static int REQ_TYPE_SET = 2; // 如设置配置。
 
     private static String COL_ID = "id";
-    private static String COL_METHOD = "method";
     private static String COL_OWNER = "owner";
     private static String COL_PARAS = "paras";
     private static String COL_USERPARAS = "userParas";
@@ -66,9 +68,9 @@ final class MagicBook {
             }
             modules.add(module);
             
-            field = chapter.getDeclaredField("nameIdMap");
+            field = chapter.getDeclaredField("rspNameIdMap");
             field.setAccessible(true);
-            this.nameIdMap.putAll((BiMap<String, String>) field.get(null));
+            this.rspNameIdMap.putAll((BiMap<String, String>) field.get(null));
             field = chapter.getDeclaredField("reqMap");
             field.setAccessible(true);
             reqMap.putAll((Table<String, String, Object>) field.get(null));
@@ -83,12 +85,29 @@ final class MagicBook {
 
     }
 
-    String getMsgName(String msgId){
-        return nameIdMap.inverse().get(msgId);
+
+    String getReqId(String reqName){
+        if (null == reqMap.row(reqName)) return null;
+        return (String) reqMap.row(reqName).get(COL_ID);
     }
 
-    String getMsgId(String msgName){
-        return nameIdMap.get(msgName);
+    List<String> getReqNames(String reqId){
+        List<String> reqNameList = new ArrayList<>();
+        Map<String, Object> map = reqMap.column(COL_ID);
+        for (Map.Entry<String, Object> entry : map.entrySet()){
+            if (entry.getValue().equals(reqId)){
+                reqNameList.add(entry.getKey());
+            }
+        }
+        return reqNameList;
+    }
+
+    String getRspId(String rspName){
+        return rspNameIdMap.get(rspName);
+    }
+
+    String getRspName(String rspId){
+        return rspNameIdMap.inverse().get(rspId);
     }
 
     boolean isRequest(String msgName){
@@ -123,8 +142,7 @@ final class MagicBook {
         return (String) reqMap.row(reqName).get(COL_OWNER);
     }
     String getMethod(String reqName){
-        if (null == reqMap.row(reqName)) return null;
-        return (String) reqMap.row(reqName).get(COL_METHOD);
+        return getReqId(reqName);
     }
 
     Class<?>[] getParaClasses(String reqName) {

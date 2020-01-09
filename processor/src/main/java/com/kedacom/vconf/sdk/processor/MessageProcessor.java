@@ -38,7 +38,6 @@ import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.MirroredTypesException;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
-import javax.tools.Diagnostic;
 
 /**
  * Created by Sissi on 2018/9/3.
@@ -55,7 +54,7 @@ public class MessageProcessor extends AbstractProcessor {
     private boolean bDone = false;
 
     private String module;
-    private BiMap<String, String> nameIdMap = HashBiMap.create();
+    private BiMap<String, String> rspNameIdMap = HashBiMap.create();
     private Table<String, String, Object> reqMap = HashBasedTable.create();
     private Table<String, String, Object> rspMap = HashBasedTable.create();
 
@@ -65,14 +64,13 @@ public class MessageProcessor extends AbstractProcessor {
 
     private Messager messager;
 
-    private static String COL_METHOD = "method";
+    private static String COL_ID = "id";
     private static String COL_OWNER = "owner";
     private static String COL_PARAS = "paras";
     private static String COL_USERPARAS = "userParas";
     private static String COL_TYPE = "type";
     private static String COL_RSPSEQ = "rspSeq";
     private static String COL_TIMEOUT = "timeout";
-    private static String COL_ID = "id";
     private static String COL_CLZ = "clz";
     private static String COL_DELAY = "delay";
 
@@ -109,7 +107,7 @@ public class MessageProcessor extends AbstractProcessor {
         if (module.trim().isEmpty()){
             throw new IllegalArgumentException(msgDefClass+": module name can not be empty!");
         }
-        nameIdMap.clear();
+        rspNameIdMap.clear();
         reqMap.clear();
         rspMap.clear();
         List<? extends Element> msgElements = msgDefClass.getEnclosedElements();
@@ -124,10 +122,9 @@ public class MessageProcessor extends AbstractProcessor {
             if (null != (request = element.getAnnotation(Request.class))){
                 name = module+"_"+element.getSimpleName().toString();
                 String method = request.method();
-                method = !method.isEmpty() ? method : name;
-                nameIdMap.put(name, method);
+                method = !method.isEmpty() ? method : element.getSimpleName().toString();
 
-                reqMap.put(name, COL_METHOD, method);
+                reqMap.put(name, COL_ID, method);
 
                 String owner = request.owner();
                 reqMap.put(name, COL_OWNER, owner);
@@ -172,7 +169,7 @@ public class MessageProcessor extends AbstractProcessor {
                 name = module+"_"+element.getSimpleName().toString();
                 String id = response.id();
                 id = !id.isEmpty() ? id : element.getSimpleName().toString();
-                nameIdMap.put(name, id);
+                rspNameIdMap.put(name, id);
 
                 rspMap.put(name, COL_ID, id);
 
@@ -253,7 +250,7 @@ public class MessageProcessor extends AbstractProcessor {
 
     private void generateFile(){
         String fieldModule = "module";
-        String fieldNameIdMap = "nameIdMap";
+        String fieldRspNameIdMap = "rspNameIdMap";
         String fieldReqMap = "reqMap";
         String fieldRspMap = "rspMap";
 
@@ -263,19 +260,19 @@ public class MessageProcessor extends AbstractProcessor {
         // 构建代码块
         CodeBlock.Builder codeBlockBuilder = CodeBlock.builder()
                 .addStatement("$L = $S", fieldModule, module)
-                .addStatement("$L = $T.create()", fieldNameIdMap, HashBiMap.class)
+                .addStatement("$L = $T.create()", fieldRspNameIdMap, HashBiMap.class)
                 .addStatement("$L = $T.create()", fieldReqMap, HashBasedTable.class)
                 .addStatement("$L = $T.create()", fieldRspMap, HashBasedTable.class)
                 ;
 
-        for(String name : nameIdMap.keySet()){
-            codeBlockBuilder.addStatement("$L.put($S, $S)", fieldNameIdMap, name, nameIdMap.get(name));
+        for(String name : rspNameIdMap.keySet()){
+            codeBlockBuilder.addStatement("$L.put($S, $S)", fieldRspNameIdMap, name, rspNameIdMap.get(name));
         }
 
         for(Table.Cell cell : reqMap.cellSet()){
             String row = (String) cell.getRowKey();
             String col = (String) cell.getColumnKey();
-            if (col.equals(COL_METHOD)
+            if (col.equals(COL_ID)
                     || col.equals(COL_OWNER)) {
                 codeBlockBuilder.addStatement("$L.put($S, $S, $S)", fieldReqMap, row, col, cell.getValue());
             }else if (col.equals(COL_PARAS)
@@ -326,7 +323,7 @@ public class MessageProcessor extends AbstractProcessor {
                         fieldModule, Modifier.PRIVATE, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(BiMap.class, String.class, String.class),
-                        fieldNameIdMap, Modifier.PRIVATE, Modifier.STATIC)
+                        fieldRspNameIdMap, Modifier.PRIVATE, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Table.class, String.class, String.class, Object.class),
                         fieldReqMap, Modifier.PRIVATE, Modifier.STATIC)

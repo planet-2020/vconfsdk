@@ -113,7 +113,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
     @Override
     public synchronized boolean onMsg(String msgId, String msgContent) {
-        String msgName = magicBook.getMsgName(msgId);
+        String msgName = magicBook.getRspName(msgId);
 
         if (!magicBook.isResponse(msgName)){
             KLog.p(KLog.ERROR, "Unknown response %s", msgName);

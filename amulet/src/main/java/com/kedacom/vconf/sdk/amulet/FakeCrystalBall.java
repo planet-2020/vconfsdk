@@ -12,6 +12,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -74,11 +75,16 @@ final class FakeCrystalBall extends CrystalBall {
     @Override
     public int spell(String methodOwner, String methodName, Object[] para, Class[] paraType) {
         KLog.p("receive REQ %s", methodName);
-        String msgName = magicBook.getMsgName(methodName);
-        if (magicBook.isSession(msgName)){
-            String[][] rspSeqs = magicBook.getRspSeqs(msgName);
+        List<String> reqNames = magicBook.getReqNames(methodName);
+        if (reqNames.isEmpty()){
+            KLog.p(KLog.ERROR, "no reqName according to reqId %s", methodName);
+            return -1;
+        }
+        String reqName = reqNames.get(0);
+        if (magicBook.isSession(reqName)){
+            String[][] rspSeqs = magicBook.getRspSeqs(reqName);
             if (null == rspSeqs || 0==rspSeqs.length){
-                KLog.p(KLog.WARN, "%s has no rsp", msgName);
+                KLog.p(KLog.WARN, "%s has no rsp", reqName);
                 return 0;
             }
             String[] rspSeq = rspSeqs[0]; //NOTE: 仅返回第一路响应序列
@@ -96,17 +102,17 @@ final class FakeCrystalBall extends CrystalBall {
                     // 上报响应
                     nativeHandler.postDelayed(() -> {
                         KLog.p("send RSP %s, rspContent=%s", rspName, jsonRspBody);
-                        onAppear(magicBook.getMsgId(rspName), jsonRspBody);
+                        onAppear(magicBook.getRspId(rspName), jsonRspBody);
                     }, delay);
                 }
 
             }
-        }else if (magicBook.isSet(msgName)){
+        }else if (magicBook.isSet(reqName)){
 //            Class<?>[] classes = magicBook.getUserParaClasses(msgName);
 //            Class<?> type = classes[classes.length-1]; // 最后一个为设置参数
 //            cfgCache.put(type, para[para.length-1]);
-        }else if (magicBook.isGet(msgName)){
-            Class<?>[] classes = magicBook.getUserParaClasses(msgName);
+        }else if (magicBook.isGet(reqName)){
+            Class<?>[] classes = magicBook.getUserParaClasses(reqName);
             Class<?> type = classes[classes.length-1];
 //            Object cfg = cfgCache.get(type);
             Object cfg = SimulatedDataRepository.get(type);

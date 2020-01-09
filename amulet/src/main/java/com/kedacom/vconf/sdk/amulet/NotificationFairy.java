@@ -70,7 +70,7 @@ final class NotificationFairy implements IFairy.INotificationFairy{
 
     @Override
     public boolean onMsg(String msgId, String msgContent) {
-        String msgName = magicBook.getMsgName(msgId);
+        String msgName = magicBook.getRspName(msgId);
         if (!magicBook.isNotification(msgName)){
             KLog.p(KLog.ERROR, "Unknown notification %s", msgName);
             return false;
@@ -101,7 +101,7 @@ final class NotificationFairy implements IFairy.INotificationFairy{
 
     @Override
     public void emit(String ntfName, Object ntfContent) {
-        String ntfId = magicBook.getMsgId(ntfName);
+        String ntfId = magicBook.getRspId(ntfName);
         String ntfCont = Kson.toJson(ntfContent);
         int delay = magicBook.getRspDelay(ntfName);
         handler.postDelayed(() -> onMsg(ntfId, ntfCont), delay);
