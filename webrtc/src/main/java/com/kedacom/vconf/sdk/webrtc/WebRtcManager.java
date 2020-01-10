@@ -358,7 +358,7 @@ public class WebRtcManager extends Caster<Msg>{
      * @param passwd 会议密码
      * @param resultListener 结果监听器。
      *          成功: null;
-     *          失败：{@link RtcErrorCode#IncorrectConfPassword}
+     *          失败：{@link RtcResultCode#IncorrectConfPassword}
      * */
     public void verifyConfPassword(String passwd, IResultListener resultListener){
         req(Msg.VerifyConfPassword, resultListener, passwd);
@@ -559,8 +559,11 @@ public class WebRtcManager extends Caster<Msg>{
             case LoginStateChanged:
                 TRegState loginResult = (TRegState) rspContent;
                 KLog.p("loginResult: %s", loginResult.AssParam.basetype);
+                int resCode = RtcResultCode.fromTransfer(loginResult.AssParam.basetype);
                 if (Msg.Login == req) { // 登录
-                    if (100 == loginResult.AssParam.basetype) {
+                    if (RtcResultCode.OK == resCode  // 登录成功
+                            || RtcResultCode.LoginedAlready == resCode // 当前已登录，重复登录（此种情形下直接报用户注册成功）
+                    ) {
                         reportSuccess(null, listener);
                     } else {
                         reportFailed(-1, listener);
@@ -633,7 +636,8 @@ public class WebRtcManager extends Caster<Msg>{
 
             case CreateConfRsp:
                 TCreateConfResult tCreateConfResult = (TCreateConfResult) rspContent;
-                if (1000 != tCreateConfResult.MainParam.dwErrorID){
+                resCode = RtcResultCode.fromTransfer(tCreateConfResult.MainParam.dwErrorID);
+                if (RtcResultCode.ConfOK != resCode){
                     stopSession();
                     cancelReq(req, listener);
                     reportFailed(-1, listener);
@@ -642,7 +646,8 @@ public class WebRtcManager extends Caster<Msg>{
 
             case QueryConfInfoRsp:
                 TQueryConfInfoResult queryConfInfoResult = (TQueryConfInfoResult) rspContent;
-                if (1000 != queryConfInfoResult.MainParam.dwErrorID){
+                resCode = RtcResultCode.fromTransfer(queryConfInfoResult.MainParam.dwErrorID);
+                if (RtcResultCode.ConfOK != resCode){
                     reportFailed(-1, listener);
                 }else{
                     reportSuccess(ToDoConverter.tMTInstanceConferenceInfo2ConfInfo(queryConfInfoResult.AssParam), listener);
@@ -657,7 +662,7 @@ public class WebRtcManager extends Caster<Msg>{
 
             case ConfPasswordNeeded:
                 if (Msg.VerifyConfPassword == req) {
-                    reportFailed(RtcErrorCode.IncorrectConfPassword, listener);
+                    reportFailed(RtcResultCode.IncorrectConfPassword, listener);
                 }
                 break;
 
@@ -689,8 +694,9 @@ public class WebRtcManager extends Caster<Msg>{
         switch (ntfId){
             case LoginStateChanged:
                 TRegState regState = (TRegState) ntfContent;
-                if (100 != regState.AssParam.basetype) {
-                    if (null != confEventListener) confEventListener.onConfServerDisconnected();
+                int resCode = RtcResultCode.fromTransfer(regState.AssParam.basetype);
+                if (RtcResultCode.OK != resCode) {
+                    if (null != confEventListener) confEventListener.onConfServerDisconnected(resCode);
                 }
                 break;
 
@@ -1343,8 +1349,9 @@ public class WebRtcManager extends Caster<Msg>{
 
         /**
          * 会议服务器连接断开
+         * @param errCode 错误码{@link RtcResultCode}
          * */
-        void onConfServerDisconnected();
+        void onConfServerDisconnected(int errCode);
 
         /**
          * 会议邀请

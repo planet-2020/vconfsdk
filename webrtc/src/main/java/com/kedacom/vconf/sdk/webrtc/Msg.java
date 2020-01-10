@@ -294,6 +294,7 @@ enum Msg {
     @Request(method = "VideoAssStreamCmd",
             paras = boolean.class,
             owner = MethodOwner.MonitorCtrl,
+            timeout = 30,
             rspSeq = "ToggleScreenShareRsp"
     )
     ToggleScreenShare,
@@ -314,6 +315,7 @@ enum Msg {
             owner = MethodOwner.MeetingCtrl,
             paras = StringBuffer.class,  // 会议e164号
             userParas = String.class,
+            timeout = 10,
             rspSeq = "QueryConfInfoRsp"
     )
     QueryConfInfo,
@@ -339,6 +341,7 @@ enum Msg {
             owner = MethodOwner.ConfCtrl,
             paras = StringBuffer.class,  // 会议密码
             userParas = String.class,
+            timeout = 10,
             rspSeq = "MyLabelAssigned",     // 验证通过
             rspSeq2 = "ConfPasswordNeeded"  // 验证失败
     )

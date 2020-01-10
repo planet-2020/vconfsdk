@@ -12,7 +12,7 @@ public enum EmMtVidLabel {
 	// 主流标签
 	// 辅流的标签
 	emPcStreamVidLab(20), // pc双流能力， pcdv, mtc
-	emVideoStreamVidLab(21),; // video双流能力
+	emVideoStreamVidLab(21); // video双流能力
 
 	public int value;
 	EmMtVidLabel(int val) {
