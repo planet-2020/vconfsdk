@@ -502,6 +502,13 @@ public class WebRtcManager extends Caster<Msg>{
             pcWrapper.switchCamera();
         }
         userConfig.setIsPreferFrontCamera(!userConfig.getIsPreferFrontCamera());
+        Conferee conferee = findMyself();
+        if (null != conferee) {
+            boolean bFront = userConfig.getIsPreferFrontCamera();
+            for (Display display : conferee.displays){
+                display.setMirror(bFront); // 前置摄像头情况下需镜像显示
+            }
+        }
     }
 
 
@@ -1467,6 +1474,9 @@ public class WebRtcManager extends Caster<Msg>{
 
         void addDisplay(Display display) {
             if (null != display) {
+                // 前置摄像头场景下本地回显需镜像显示
+                display.setMirror(null != e164 && e164.equals(instance.userE164) && instance.userConfig.getIsPreferFrontCamera());
+
                 KLog.p("add Display %s to conferee %s", display, id);
                 displays.add(display);
             }
