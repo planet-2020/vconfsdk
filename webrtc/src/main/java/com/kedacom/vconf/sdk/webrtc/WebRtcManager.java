@@ -573,7 +573,7 @@ public class WebRtcManager extends Caster<Msg>{
                     ) {
                         reportSuccess(null, listener);
                     } else {
-                        reportFailed(-1, listener);
+                        reportFailed(resCode, listener);
                     }
                 }else{ // 注销
                     reportSuccess(null, listener);
@@ -601,10 +601,11 @@ public class WebRtcManager extends Caster<Msg>{
             case MultipartyConfEnded:
                 BaseTypeInt reason = (BaseTypeInt) rspContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
+                resCode = RtcResultCode.fromTransfer(reason.basetype);
                 if (Msg.QuitConf == req || Msg.EndConf == req) {
                     reportSuccess(null, listener);
                 }else{
-                    reportFailed(-1, listener);
+                    reportFailed(resCode, listener);
                 }
                 break;
 
@@ -612,7 +613,8 @@ public class WebRtcManager extends Caster<Msg>{
                 stopSession();
                 reason = (BaseTypeInt) rspContent;
                 KLog.p("ConfCanceled: %s", reason.basetype);
-                reportFailed(-1, listener);
+                resCode = RtcResultCode.fromTransfer(reason.basetype);
+                reportFailed(resCode, listener);
                 break;
 
             case ToggleScreenShareRsp:
@@ -647,7 +649,7 @@ public class WebRtcManager extends Caster<Msg>{
                 if (RtcResultCode.ConfOK != resCode){
                     stopSession();
                     cancelReq(req, listener);
-                    reportFailed(-1, listener);
+                    reportFailed(resCode, listener);
                 }
                 break;
 
@@ -655,7 +657,7 @@ public class WebRtcManager extends Caster<Msg>{
                 TQueryConfInfoResult queryConfInfoResult = (TQueryConfInfoResult) rspContent;
                 resCode = RtcResultCode.fromTransfer(queryConfInfoResult.MainParam.dwErrorID);
                 if (RtcResultCode.ConfOK != resCode){
-                    reportFailed(-1, listener);
+                    reportFailed(resCode, listener);
                 }else{
                     reportSuccess(ToDoConverter.tMTInstanceConferenceInfo2ConfInfo(queryConfInfoResult.AssParam), listener);
                 }
@@ -717,14 +719,16 @@ public class WebRtcManager extends Caster<Msg>{
                 stopSession();
                 BaseTypeInt reason = (BaseTypeInt) ntfContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
-                if (null != confEventListener) confEventListener.onConfFinished();
+                resCode = RtcResultCode.fromTransfer(reason.basetype);
+                if (null != confEventListener) confEventListener.onConfFinished(resCode);
                 break;
 
             case ConfCanceled:
                 stopSession();
                 reason = (BaseTypeInt) ntfContent;
                 KLog.p("ConfCanceled: %s", reason.basetype);
-                if (null != confEventListener) confEventListener.onConfFinished();
+                resCode = RtcResultCode.fromTransfer(reason.basetype);
+                if (null != confEventListener) confEventListener.onConfFinished(resCode);
                 break;
 
             case CurrentConfereeList: // NOTE: 入会后会收到一次该通知，创会者也会收到这条消息
@@ -1367,8 +1371,9 @@ public class WebRtcManager extends Caster<Msg>{
 
         /**
          * 会议结束
+         * @param resultCode 错误码{@link RtcResultCode}
          */
-        void onConfFinished();
+        void onConfFinished(int resultCode);
     }
     private ConfEventListener confEventListener;
 
