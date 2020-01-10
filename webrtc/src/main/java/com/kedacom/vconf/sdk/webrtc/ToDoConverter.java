@@ -182,7 +182,7 @@ final class ToDoConverter {
             } else if (EmMtAliasType.emAliasEmail == tMtAlias.emAliasType) {
                 email = tMtAlias.achAlias;
             }
-            if (null != e164 && null != alias && null != email) {
+            if (!e164.isEmpty() && !alias.isEmpty() && !email.isEmpty()) {
                 break;
             }
         }
