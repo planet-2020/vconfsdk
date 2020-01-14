@@ -434,6 +434,31 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     /**
+     * 暂停窗口共享
+     * */
+    public void pauseWindowShare(){
+        setWindowShareEnable(false);
+    }
+
+    /**
+     * 继续窗口共享
+     * */
+    public void resumeWindowShare(){
+        setWindowShareEnable(true);
+    }
+
+    private void setWindowShareEnable(boolean enable){
+        if (null == sharedWindow){
+            KLog.p(KLog.WARN, "window share stopped!");
+            return;
+        }
+        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_PUBLISHER);
+        if (null != pcWrapper) {
+            pcWrapper.setLocalVideoEnable(enable);
+        }
+    }
+
+    /**
      * 结束窗口共享
      * */
     public void stopWindowShare(){

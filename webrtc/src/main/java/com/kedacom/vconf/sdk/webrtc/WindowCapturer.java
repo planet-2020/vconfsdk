@@ -73,7 +73,7 @@ public class WindowCapturer implements VideoCapturer {
                 while (true) {
                     uiHandler.post(() -> {
                         synchronized (lock) {
-                            if (null != window) window.draw(canvas);  // TODO 判断是否前台，非前台不需要draw。
+                            if (null != window) window.draw(canvas);
                             if (null != surTexture) {
                                 surTexture.getHandler().post(() -> {
                                     GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
