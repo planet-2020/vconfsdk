@@ -449,7 +449,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private void setWindowShareEnable(boolean enable){
         if (null == sharedWindow){
-            KLog.p(KLog.WARN, "window share stopped!");
+            KLog.p(KLog.WARN, "window share not started yet!");
             return;
         }
         PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_PUBLISHER);
