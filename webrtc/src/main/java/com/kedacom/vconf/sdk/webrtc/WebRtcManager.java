@@ -561,6 +561,9 @@ public class WebRtcManager extends Caster<Msg>{
         Conferee conferee = findMyself();
         if (null != conferee && Conferee.VideoState_NoStream != conferee.state){
             conferee.setState(enable ? Conferee.VideoState_Normal : Conferee.VideoState_Disabled);
+//            sessionHandler.postDelayed(() -> conferee.setState(enable ? Conferee.VideoState_Normal : Conferee.VideoState_Disabled),
+//                    500 // 延时以清除掉上次关闭摄像头时的最后一帧
+//            );
         }
     }
 
@@ -883,6 +886,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 就导致码流上来了却没有Conferee可以绑定，针对这种情形我们临时保存码流信息，等Conferee上报了再做绑定。
      * */
     private List<TRtcStreamInfo> tmpStreamInfos = new ArrayList<>();
+
     void dealStreamAdded(List<TRtcStreamInfo> rtcStreamInfos){
         TRtcStreamInfo assStream = null;
         Conferee assStreamSender = null;
@@ -928,7 +932,9 @@ public class WebRtcManager extends Caster<Msg>{
             @NullableDecl
             @Override
             public TRtcPlayItem apply(@NullableDecl VideoStream input) {
-                return new TRtcPlayItem(input.streamId, input.bAss, input.supportedResolutionList.get(0));
+                return new TRtcPlayItem(input.streamId, input.bAss,
+                        input.supportedResolutionList.get(0) // XXX 暂时直接取第一个，最终要根据需求来
+                );
             }
         }).toList();
 
@@ -1769,9 +1775,9 @@ public class WebRtcManager extends Caster<Msg>{
             for (Display display : displays){
                 if (curts - ts > 5000) {
                     if (display.enabled) {
-                        KLog.p("frame of conferee %s rendered onto display %s ", id, display.hashCode());
+                        KLog.p("frame of conferee %s(%s) rendered onto display %s ", id, e164, display.hashCode());
                     }else{
-                        KLog.p("frame of conferee %s dropped off display %s because it is disabled ", id, display.hashCode());
+                        KLog.p("frame of conferee %s(%s) dropped off display %s because it is disabled ", id, e164, display.hashCode());
                     }
                 }
                 if (!display.enabled) {
@@ -2886,9 +2892,12 @@ public class WebRtcManager extends Caster<Msg>{
         public void onTrack(RtpTransceiver transceiver) {
             MediaStreamTrack track = transceiver.getReceiver().track();
             sessionHandler.post(() -> {
-                KLog.p("received remote track %s", track);
+                KLog.p("connType %s received remote track %s", connType, track != null ? track.id() : null);
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-                if (null == pcWrapper) return;
+                if (null == pcWrapper){
+                    KLog.p(KLog.ERROR, "null == pcWrapper(connType=%s)", connType);
+                    return;
+                }
 
                 if (track instanceof VideoTrack) {
                     pcWrapper.createRemoteVideoTrack(transceiver.getMid(), (VideoTrack) track);
@@ -3180,9 +3189,9 @@ public class WebRtcManager extends Caster<Msg>{
                 track.setEnabled(userConfig.getIsRemoteVideoEnabled());
 
                 sessionHandler.post(() -> {
-                    KLog.p("create remote video track %s/%s", kdStreamId, track.id());
                     kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
                     Conferee conferee = findConfereeByStreamId(kdStreamId);
+                    KLog.p("create remote video track(trackId=%s, kdStreamId=%s, mid=%s) for conferee %s", track.id(), kdStreamId, mid, conferee != null ? conferee.e164 : null);
                     if (null == conferee) {
                         KLog.p(KLog.ERROR, "something wrong? stream %s not belong to any conferee", kdStreamId);
                         return;
@@ -3289,7 +3298,11 @@ public class WebRtcManager extends Caster<Msg>{
                 remoteAudioTracks.put(kdStreamId, track);
                 sessionHandler.post(() -> {
                     kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
-                    KLog.p("create remote audio track %s/%s", kdStreamId, track.id());
+                    Conferee conferee = findConfereeByStreamId(kdStreamId);
+                    KLog.p("create remote audio track(trackId=%s, kdStreamId=%s, mid=%s) for conferee %s", track.id(), kdStreamId, mid, conferee != null ? conferee.e164 : null);
+                    if (null == conferee) {
+                        KLog.p(KLog.ERROR, "something wrong? stream %s not belong to any conferee", kdStreamId);
+                    }
                 });
             });
         }

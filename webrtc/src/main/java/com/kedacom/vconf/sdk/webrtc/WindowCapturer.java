@@ -65,8 +65,21 @@ public class WindowCapturer implements VideoCapturer {
                 Matrix matrix = new Matrix();
                 matrix.postScale(-1, 1);
                 matrix.postRotate(180);
-                TextureBufferImpl buffer = new TextureBufferImpl(window.getWidth(), window.getHeight(), VideoFrame.TextureBuffer.Type.RGB, textures[0], matrix, surTexture.getHandler(), yuvConverter, null);
-                Bitmap bitmap = Bitmap.createBitmap(window.getWidth(), window.getHeight(), Bitmap.Config.ARGB_8888);
+                int w = window.getWidth();
+                int h = window.getHeight();
+                if (w > 1920 || h > 1080){ // 分辨率限制在1920*1080以内，超出则等比缩小
+                    if (w*1080 > 1920*h){
+                        h *= 1920f/w;
+                        w = 1920;
+                    }else {
+                        w *= 1080f/h;
+                        h = 1080;
+                    }
+                }
+                KLog.p("window.getWidth()=%s, window.getHeight()=%s, w=%s, h=%s",
+                        window.getWidth(), window.getHeight(), w, h);
+                TextureBufferImpl buffer = new TextureBufferImpl(w, h, VideoFrame.TextureBuffer.Type.RGB, textures[0], matrix, surTexture.getHandler(), yuvConverter, null);
+                Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
 
                 Canvas canvas = new Canvas(bitmap);
                 Handler uiHandler = new Handler(Looper.getMainLooper());
@@ -74,24 +87,29 @@ public class WindowCapturer implements VideoCapturer {
                     uiHandler.post(() -> {
                         synchronized (lock) {
                             if (null != window) window.draw(canvas);
-                            if (null != surTexture) {
-                                surTexture.getHandler().post(() -> {
-                                    GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-                                    GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
-                                    GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
-
-                                    VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
-
-                                    long frameTime = System.nanoTime() - start;
-                                    VideoFrame videoFrame = new VideoFrame(i420Buf, 0, frameTime);
-                                    if (null != capturerObs) capturerObs.onFrameCaptured(videoFrame);
-                                    videoFrame.release();
-                                });
-                            }
                         }
                     });
 
-                    Thread.sleep(100);
+                    synchronized (lock) {
+                        if (null != surTexture) {
+                            surTexture.getHandler().post(() -> {
+                                synchronized (lock) {
+                                    GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+                                    GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+                                    GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+                                }
+
+                                VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
+                                long frameTime = System.nanoTime() - start;
+                                VideoFrame videoFrame = new VideoFrame(i420Buf, 0, frameTime);
+                                if (null != capturerObs) capturerObs.onFrameCaptured(videoFrame);
+                                videoFrame.release();
+                            });
+                        }
+                    }
+
+                    Thread.sleep(66); // 15fps
+
                 }
             } catch(InterruptedException ex) {
                 ex.printStackTrace();

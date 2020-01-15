@@ -1,7 +1,5 @@
 package com.kedacom.vconf.sdk.webrtc;
 
-import android.util.Log;
-
 import androidx.annotation.Nullable;
 
 import com.kedacom.vconf.sdk.utils.log.KLog;
@@ -86,10 +84,10 @@ final class SdpHelper {
             }
         }
         if (codecRtpMap == null) {
-            Log.w(TAG, "No rtpmap for " + codec + " codec");
+            KLog.p(KLog.WARN, "No rtpmap for " + codec + " codec");
             return sdpDescription;
         }
-        Log.d(TAG, "Found " + codec + " rtpmap " + codecRtpMap + " at " + lines[rtpmapLineIndex]);
+        KLog.p("Found " + codec + " rtpmap " + codecRtpMap + " at " + lines[rtpmapLineIndex]);
 
         // Check if a=fmtp string already exist in remote SDP for this codec and
         // update it with new bitrate parameter.
@@ -98,13 +96,13 @@ final class SdpHelper {
         for (int i = 0; i < lines.length; i++) {
             Matcher codecMatcher = codecPattern.matcher(lines[i]);
             if (codecMatcher.matches()) {
-                Log.d(TAG, "Found " + codec + " " + lines[i]);
+                KLog.p( "Found " + codec + " " + lines[i]);
                 if (isVideoCodec) {
                     lines[i] += "; " + VIDEO_CODEC_PARAM_START_BITRATE + "=" + bitrateKbps;
                 } else {
                     lines[i] += "; " + AUDIO_CODEC_PARAM_BITRATE + "=" + (bitrateKbps * 1000);
                 }
-                Log.d(TAG, "Update remote SDP line: " + lines[i]);
+                KLog.p("Update remote SDP line: " + lines[i]);
                 sdpFormatUpdated = true;
                 break;
             }
@@ -123,7 +121,7 @@ final class SdpHelper {
                     bitrateSet = "a=fmtp:" + codecRtpMap + " " + AUDIO_CODEC_PARAM_BITRATE + "="
                             + (bitrateKbps * 1000);
                 }
-                Log.d(TAG, "Add remote SDP line: " + bitrateSet);
+                KLog.p("Add remote SDP line: " + bitrateSet);
                 newSdpDescription.append(bitrateSet).append("\r\n");
             }
         }
@@ -162,7 +160,7 @@ final class SdpHelper {
         // The format of the media description line should be: m=<media> <port> <proto> <fmt> ...
         final List<String> origLineParts = Arrays.asList(mLine.split(" "));
         if (origLineParts.size() <= 3) {
-            Log.e(TAG, "Wrong SDP media description format: " + mLine);
+            KLog.p(KLog.ERROR, "Wrong SDP media description format: " + mLine);
             return null;
         }
         final List<String> header = origLineParts.subList(0, 3);
@@ -182,7 +180,7 @@ final class SdpHelper {
         final String[] lines = sdpDescription.split("\r\n");
         final int mLineIndex = findMediaDescriptionLine(isAudio, lines);
         if (mLineIndex == -1) {
-            Log.w(TAG, "No mediaDescription line, so can't prefer " + codec);
+            KLog.p(KLog.WARN, "No mediaDescription line, so can't prefer " + codec);
             return sdpDescription;
         }
         // A list with all the payload types with name |codec|. The payload types are integers in the
@@ -197,7 +195,7 @@ final class SdpHelper {
             }
         }
         if (codecPayloadTypes.isEmpty()) {
-            Log.w(TAG, "No payload types with name " + codec);
+            KLog.p(KLog.WARN, "No payload types with name " + codec);
             return sdpDescription;
         }
 
@@ -205,7 +203,7 @@ final class SdpHelper {
         if (newMLine == null) {
             return sdpDescription;
         }
-        Log.d(TAG, "Change media description from: " + lines[mLineIndex] + " to " + newMLine);
+        KLog.p("Change media description from: " + lines[mLineIndex] + " to " + newMLine);
         lines[mLineIndex] = newMLine;
         return joinString(Arrays.asList(lines), "\r\n", true /* delimiterAtEnd */);
     }
