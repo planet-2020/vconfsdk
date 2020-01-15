@@ -3475,9 +3475,11 @@ public class WebRtcManager extends Caster<Msg>{
                 if (localVideoTrack != null && localVideoTrack.enabled() != bEnable) {
                     localVideoTrack.setEnabled(bEnable);
                     if (bEnable){
+                        KLog.p("resume capture");
                         videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
                     }else{
                         try {
+                            KLog.p("pause capture");
                             videoCapturer.stopCapture();
                         } catch (InterruptedException e) {
                             e.printStackTrace();
