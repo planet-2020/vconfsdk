@@ -69,14 +69,9 @@ public final class RtcConfig {
         return rtcUserConfig.getBoolean(key_enableSimulcast, true);
     }
 
-    /**
-     * 视频质量自动匹配
-     * 根据网络状况，CPU能力等评估应该订阅的视频质量
-     * */
-    public static final int VideoQuality_Auto = 0;
-    public static final int VideoQuality_High = 1;
-    public static final int VideoQuality_Middle = 2;
-    public static final int VideoQuality_Low = 3;
+    public static final int VideoQuality_High = 10;
+    public static final int VideoQuality_Middle = 9;
+    public static final int VideoQuality_Low = 8;
 
     /**
      * 设置视频质量偏好。
@@ -87,7 +82,7 @@ public final class RtcConfig {
     }
 
     public int getPreferredVideoQuality(){
-        return rtcUserConfig.getInt(key_preferredVideoQuality, VideoQuality_Auto);
+        return rtcUserConfig.getInt(key_preferredVideoQuality, VideoQuality_High);
     }
 
 

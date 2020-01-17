@@ -860,18 +860,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
 
                 // 重新订阅视频流
-                EmMtResolution resolution = getResolutionByUserConfig();
-                Set<VideoStream> videoStreams = getAllVideoStreams();
-                List<TRtcPlayItem> playItems = FluentIterable.from(videoStreams).transform(new Function<VideoStream, TRtcPlayItem>() {
-                    @NullableDecl
-                    @Override
-                    public TRtcPlayItem apply(@NullableDecl VideoStream input) {
-                        return new TRtcPlayItem(input.streamId, input.bAss,
-                                input.supportedResolutionList.contains(resolution) ? resolution : input.supportedResolutionList.get(0));
-                    }
-                }).toList();
-                set(Msg.SelectStream, new TRtcPlayParam(playItems));
-
+                subscribeStreams();
                 break;
 
             case ConfPasswordNeeded:
@@ -931,34 +920,43 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         // 订阅视频流
-        EmMtResolution resolution = getResolutionByUserConfig();
+        subscribeStreams();
+    }
+
+    private EmMtResolution getSubResolution(Conferee conferee){
+        if (conferee == null || conferee.videoStream == null){
+            KLog.p(KLog.ERROR, "conferee == null || conferee.videoStream == null");
+            return null;
+        }
+        List<EmMtResolution> resolutions = conferee.videoStream.supportedResolutionList;
+        int quality = Math.min(userConfig.getPreferredVideoQuality(), conferee.videoQuality);
+        if (RtcConfig.VideoQuality_High == quality){
+            return resolutions.get(resolutions.size()-1);
+        }else if (RtcConfig.VideoQuality_Middle == quality ){
+            if (resolutions.size()>1){
+                return resolutions.get(1);
+            }else{
+                return resolutions.get(0);
+            }
+        }else if (RtcConfig.VideoQuality_Low == quality ){
+            return resolutions.get(0);
+        }
+
+        return resolutions.get(0);
+    }
+
+
+    private void subscribeStreams(){
         Set<VideoStream> videoStreams = getAllVideoStreams();
         List<TRtcPlayItem> playItems = FluentIterable.from(videoStreams).transform(new Function<VideoStream, TRtcPlayItem>() {
             @NullableDecl
             @Override
             public TRtcPlayItem apply(@NullableDecl VideoStream input) {
-                return new TRtcPlayItem(input.streamId, input.bAss,
-                        input.supportedResolutionList.contains(resolution) ? resolution : input.supportedResolutionList.get(0)
-                );
+                return new TRtcPlayItem(input.streamId, input.bAss, getSubResolution(findConfereeByStreamId(input.streamId)) );
             }
         }).toList();
 
         set(Msg.SelectStream, new TRtcPlayParam(playItems));
-
-    }
-
-    private EmMtResolution getResolutionByUserConfig(){
-        int videoQuality = userConfig.getPreferredVideoQuality();
-        if (RtcConfig.VideoQuality_High == videoQuality
-                || RtcConfig.VideoQuality_Auto == videoQuality){
-            return EmMtResolution.emMtHD1080p1920x1080_Api;
-        }else if (RtcConfig.VideoQuality_Low == videoQuality ){
-            return EmMtResolution.emMt480x270_Api;
-        }else if (RtcConfig.VideoQuality_Middle == videoQuality ){
-            return EmMtResolution.emMt960x540_Api;
-        }
-
-        return EmMtResolution.emMtHD1080p1920x1080_Api;
     }
 
 
@@ -1507,6 +1505,9 @@ public class WebRtcManager extends Caster<Msg>{
         private static final int VideoState_NoStream = 3; // 没有视频通道，如音频入会
         private static final int VideoState_RecvingAss = 4; // 正在接收辅流
 
+        // 视频质量
+        private int videoQuality = RtcConfig.VideoQuality_High;
+
         // 语音激励使能
         private boolean bVoiceActivated;
 
@@ -1753,6 +1754,16 @@ public class WebRtcManager extends Caster<Msg>{
             );
         }
 
+        /**
+         * 设置视频质量偏好。
+         * @param quality 视频质量{@link RtcConfig#VideoQuality_High}{@link RtcConfig#VideoQuality_Middle}{@link RtcConfig#VideoQuality_Low}
+         * 越高展示的该与会方的图像质量越高。
+         * */
+        public void setPreferredVideoQuality(int quality){
+            videoQuality = quality;
+            // 重新订阅
+            instance.subscribeStreams();
+        }
 
         /**
          * 设置码流状态
