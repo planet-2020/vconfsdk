@@ -67,12 +67,15 @@ public class WindowCapturer implements VideoCapturer {
                 matrix.postRotate(180);
                 int w = window.getWidth();
                 int h = window.getHeight();
+                float scaleFactor = 1;
                 if (w > 1920 || h > 1080){ // 分辨率限制在1920*1080以内，超出则等比缩小
                     if (w*1080 > 1920*h){
-                        h *= 1920f/w;
+                        scaleFactor = 1920f/w;
+                        h *= scaleFactor;
                         w = 1920;
                     }else {
-                        w *= 1080f/h;
+                        scaleFactor = 1080f/h;
+                        w *= scaleFactor;
                         h = 1080;
                     }
                 }
@@ -82,6 +85,10 @@ public class WindowCapturer implements VideoCapturer {
                 Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
 
                 Canvas canvas = new Canvas(bitmap);
+                Matrix matrix1 = new Matrix();
+                matrix1.postScale(scaleFactor, scaleFactor);
+                canvas.setMatrix(matrix1);
+                KLog.p("canvas.matrix=%s", matrix1);
                 Handler uiHandler = new Handler(Looper.getMainLooper());
                 while (true) {
                     uiHandler.post(() -> {

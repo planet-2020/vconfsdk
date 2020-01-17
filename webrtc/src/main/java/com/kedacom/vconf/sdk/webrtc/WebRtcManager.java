@@ -133,7 +133,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private static WebRtcManager instance;
 
-    private UserConfig userConfig;
+    private RtcConfig userConfig;
 
     private static final int ConfereeWaitVideoStreamTimeout = 1;
     private static final int RecvingAssStreamTimeout = 2;
@@ -156,7 +156,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private WebRtcManager(Application context){
         this.context = context;
-        userConfig = new UserConfig(context);
+        userConfig = new RtcConfig(context);
     }
 
     public synchronized static WebRtcManager getInstance(@NonNull Application context){
@@ -164,6 +164,10 @@ public class WebRtcManager extends Caster<Msg>{
             return instance = new WebRtcManager(context);
         }
         return instance;
+    }
+
+    public RtcConfig getConfig(){
+        return userConfig;
     }
 
 
@@ -858,12 +862,14 @@ public class WebRtcManager extends Caster<Msg>{
                 }
 
                 // 重新订阅视频流
+                EmMtResolution resolution = getResolutionByUserConfig();
                 Set<VideoStream> videoStreams = getAllVideoStreams();
                 List<TRtcPlayItem> playItems = FluentIterable.from(videoStreams).transform(new Function<VideoStream, TRtcPlayItem>() {
                     @NullableDecl
                     @Override
                     public TRtcPlayItem apply(@NullableDecl VideoStream input) {
-                        return new TRtcPlayItem(input.streamId, input.bAss, input.supportedResolutionList.get(0));
+                        return new TRtcPlayItem(input.streamId, input.bAss,
+                                input.supportedResolutionList.contains(resolution) ? resolution : input.supportedResolutionList.get(0));
                     }
                 }).toList();
                 set(Msg.SelectStream, new TRtcPlayParam(playItems));
@@ -927,19 +933,34 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         // 订阅视频流
+        EmMtResolution resolution = getResolutionByUserConfig();
         Set<VideoStream> videoStreams = getAllVideoStreams();
         List<TRtcPlayItem> playItems = FluentIterable.from(videoStreams).transform(new Function<VideoStream, TRtcPlayItem>() {
             @NullableDecl
             @Override
             public TRtcPlayItem apply(@NullableDecl VideoStream input) {
                 return new TRtcPlayItem(input.streamId, input.bAss,
-                        input.supportedResolutionList.get(0) // XXX 暂时直接取第一个，最终要根据需求来
+                        input.supportedResolutionList.contains(resolution) ? resolution : input.supportedResolutionList.get(0)
                 );
             }
         }).toList();
 
         set(Msg.SelectStream, new TRtcPlayParam(playItems));
 
+    }
+
+    private EmMtResolution getResolutionByUserConfig(){
+        int videoQuality = userConfig.getPreferredVideoQuality();
+        if (RtcConfig.VideoQuality_High == videoQuality
+                || RtcConfig.VideoQuality_Auto == videoQuality){
+            return EmMtResolution.emMtHD1080p1920x1080_Api;
+        }else if (RtcConfig.VideoQuality_Low == videoQuality ){
+            return EmMtResolution.emMt480x270_Api;
+        }else if (RtcConfig.VideoQuality_Middle == videoQuality ){
+            return EmMtResolution.emMt960x540_Api;
+        }
+
+        return EmMtResolution.emMtHD1080p1920x1080_Api;
     }
 
 

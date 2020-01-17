@@ -7,7 +7,7 @@ import android.content.SharedPreferences;
 /**
  * Created by Sissi on 2019/12/30
  */
-final class UserConfig {
+public final class RtcConfig {
 
     // 是否开启硬编解
     private static final String key_enableVideoCodecHwAcceleration = "enableVideoCodecHwAcceleration";
@@ -37,141 +37,165 @@ final class UserConfig {
     private static final String key_isRemoteVideoEnabled = "isRemoteVideoEnabled";
     // 是否偏好前置摄像头（true前置，false后置）
     private static final String key_isPreferFrontCamera = "isPreferFrontCamera";
+    // 视频质量偏好
+    private static final String key_preferredVideoQuality = "preferredVideoQuality";
 
     private SharedPreferences rtcUserConfig;
     private SharedPreferences.Editor editor;
     private static final String RTC_SP_NAME = "rtcUserConfig";
 
-    UserConfig(Application context){
+    RtcConfig(Application context){
         rtcUserConfig = context.getSharedPreferences(RTC_SP_NAME, Context.MODE_PRIVATE);
         editor = rtcUserConfig.edit();
     }
 
 
-    UserConfig setEnableVideoCodecHwAcceleration(boolean enableVideoCodecHwAcceleration){
+    public RtcConfig setEnableVideoCodecHwAcceleration(boolean enableVideoCodecHwAcceleration){
         editor.putBoolean(key_enableVideoCodecHwAcceleration, enableVideoCodecHwAcceleration).apply();
         return this;
     }
 
-    boolean getEnableVideoCodecHwAcceleration(){
+    public boolean getEnableVideoCodecHwAcceleration(){
         return rtcUserConfig.getBoolean(key_enableVideoCodecHwAcceleration, true);
     }
 
 
-    UserConfig setEnableSimulcast(boolean enableSimulcast){
+    public RtcConfig setEnableSimulcast(boolean enableSimulcast){
         editor.putBoolean(key_enableSimulcast, enableSimulcast).apply();
         return this;
     }
 
-    boolean getEnableSimulcast(){
-        return rtcUserConfig.getBoolean(key_enableSimulcast, false);
+    public boolean getEnableSimulcast(){
+        return rtcUserConfig.getBoolean(key_enableSimulcast, true);
     }
 
-    UserConfig setVideoCodec(String videoCodec){
+    /**
+     * 视频质量自动匹配
+     * 根据网络状况，CPU能力等评估应该订阅的视频质量
+     * */
+    public static final int VideoQuality_Auto = 0;
+    public static final int VideoQuality_High = 1;
+    public static final int VideoQuality_Middle = 2;
+    public static final int VideoQuality_Low = 3;
+
+    /**
+     * 设置视频质量偏好。
+     * */
+    public RtcConfig setPreferredVideoQuality(int quality){
+        editor.putInt(key_preferredVideoQuality, quality).apply();
+        return this;
+    }
+
+    public int getPreferredVideoQuality(){
+        return rtcUserConfig.getInt(key_preferredVideoQuality, VideoQuality_Auto);
+    }
+
+
+    public RtcConfig setVideoCodec(String videoCodec){
         editor.putString(key_videoCodec, videoCodec).apply();
         return this;
     }
 
-    String getVideoCodec(){
+    public String getVideoCodec(){
         return rtcUserConfig.getString(key_videoCodec, "H264");
     }
 
-    UserConfig setVideoWidth(int videoWidth){
+    public RtcConfig setVideoWidth(int videoWidth){
         editor.putInt(key_videoWidth, videoWidth).apply();
         return this;
     }
 
-    int getVideoWidth(){
+    public int getVideoWidth(){
         return rtcUserConfig.getInt(key_videoWidth, 1920);
     }
 
-    UserConfig setVideoHeight(int videoHeight){
+    public RtcConfig setVideoHeight(int videoHeight){
         editor.putInt(key_videoHeight, videoHeight).apply();
         return this;
     }
 
-    int getVideoHeight(){
+    public int getVideoHeight(){
         return rtcUserConfig.getInt(key_videoHeight, 1080);
     }
 
-    UserConfig setVideoFps(int videoFps){
+    public RtcConfig setVideoFps(int videoFps){
         editor.putInt(key_videoFps, videoFps).apply();
         return this;
     }
 
-    int getVideoFps(){
+    public int getVideoFps(){
         return rtcUserConfig.getInt(key_videoFps, 20);
     }
 
-    UserConfig setVideoMaxBitrate(int videoMaxBitrate){
+    public RtcConfig setVideoMaxBitrate(int videoMaxBitrate){
         editor.putInt(key_videoMaxBitrate, videoMaxBitrate).apply();
         return this;
     }
 
-    int getVideoMaxBitrate(){
+    public int getVideoMaxBitrate(){
         return rtcUserConfig.getInt(key_videoMaxBitrate, 2048);
     }
 
-    UserConfig setAudioCodec(String audioCodec){
+    public RtcConfig setAudioCodec(String audioCodec){
         editor.putString(key_audioCodec, audioCodec).apply();
         return this;
     }
 
-    String getAudioCodec(){
+    public String getAudioCodec(){
         return rtcUserConfig.getString(key_audioCodec, "opus");
     }
 
-    UserConfig setAudioStartBitrate(int audioStartBitrate){
+    public RtcConfig setAudioStartBitrate(int audioStartBitrate){
         editor.putInt(key_audioStartBitrate, audioStartBitrate).apply();
         return this;
     }
 
-    int getAudioStartBitrate(){
+    public int getAudioStartBitrate(){
         return rtcUserConfig.getInt(key_audioStartBitrate, 32);
     }
 
-    UserConfig setIsLocalAudioEnabled(boolean isLocalAudioEnabled){
+    public RtcConfig setIsLocalAudioEnabled(boolean isLocalAudioEnabled){
         editor.putBoolean(key_isLocalAudioEnabled, isLocalAudioEnabled).apply();
         return this;
     }
 
-    boolean getIsLocalAudioEnabled(){
+    public boolean getIsLocalAudioEnabled(){
         return rtcUserConfig.getBoolean(key_isLocalAudioEnabled, true);
     }
 
-    UserConfig setIsRemoteAudioEnabled(boolean isRemoteAudioEnabled){
+    public RtcConfig setIsRemoteAudioEnabled(boolean isRemoteAudioEnabled){
         editor.putBoolean(key_isRemoteAudioEnabled, isRemoteAudioEnabled).apply();
         return this;
     }
 
-    boolean getIsRemoteAudioEnabled(){
+    public boolean getIsRemoteAudioEnabled(){
         return rtcUserConfig.getBoolean(key_isRemoteAudioEnabled, true);
     }
 
-    UserConfig setIsLocalVideoEnabled(boolean isLocalVideoEnabled){
+    public RtcConfig setIsLocalVideoEnabled(boolean isLocalVideoEnabled){
         editor.putBoolean(key_isLocalVideoEnabled, isLocalVideoEnabled).apply();
         return this;
     }
 
-    boolean getIsLocalVideoEnabled(){
+    public boolean getIsLocalVideoEnabled(){
         return rtcUserConfig.getBoolean(key_isLocalVideoEnabled, true);
     }
 
-    UserConfig setIsRemoteVideoEnabled(boolean isRemoteVideoEnabled){
+    public RtcConfig setIsRemoteVideoEnabled(boolean isRemoteVideoEnabled){
         editor.putBoolean(key_isRemoteVideoEnabled, isRemoteVideoEnabled).apply();
         return this;
     }
 
-    boolean getIsRemoteVideoEnabled(){
+    public boolean getIsRemoteVideoEnabled(){
         return rtcUserConfig.getBoolean(key_isRemoteVideoEnabled, true);
     }
 
-    UserConfig setIsPreferFrontCamera(boolean isPreferFrontCamera){
+    public RtcConfig setIsPreferFrontCamera(boolean isPreferFrontCamera){
         editor.putBoolean(key_isPreferFrontCamera, isPreferFrontCamera).apply();
         return this;
     }
 
-    boolean getIsPreferFrontCamera(){
+    public boolean getIsPreferFrontCamera(){
         return rtcUserConfig.getBoolean(key_isPreferFrontCamera, true);
     }
 
