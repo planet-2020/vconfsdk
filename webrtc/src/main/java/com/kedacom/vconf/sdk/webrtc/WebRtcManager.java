@@ -600,9 +600,7 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p("loginResult: %s", loginResult.AssParam.basetype);
                 int resCode = RtcResultCode.fromTransfer(loginResult.AssParam.basetype);
                 if (Msg.Login == req) { // 登录
-                    if (RtcResultCode.OK == resCode  // 登录成功
-                            || RtcResultCode.LoginedAlready == resCode // 当前已登录，重复登录（此种情形下直接报用户注册成功）
-                    ) {
+                    if (RtcResultCode.OK == resCode) {
                         reportSuccess(null, listener);
                     } else {
                         reportFailed(resCode, listener);

@@ -11,7 +11,7 @@ public final class RtcResultCode {
     static final int OK = 0; // 成功
     public static final int Failed = -1; // 未知错误
     public static final int NetworkUnreachable = 1; // 网络不可达
-    static final int LoginedAlready = 2; // 已注册（重复注册）
+    public static final int MultipleRegistration = 2; // 重复注册
     public static final int UnknownServerAddress = 3; // 未知服务器
 
     static final int ConfOK = 100; // 创会、查询会议等操作成功
@@ -25,7 +25,7 @@ public final class RtcResultCode {
         errorCodeMap.put(100, OK);
         errorCodeMap.put(72, UnknownServerAddress);
         errorCodeMap.put(73, NetworkUnreachable);
-        errorCodeMap.put(77, LoginedAlready);
+        errorCodeMap.put(77, MultipleRegistration);
 
         errorCodeMap.put(1000, ConfOK);
         errorCodeMap.put(39, ReachConfereeNumLimit);
