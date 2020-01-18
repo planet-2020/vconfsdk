@@ -928,8 +928,11 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p(KLog.ERROR, "conferee == null || conferee.videoStream == null");
             return null;
         }
+
+        // NOTE: 分辨率是按从小到大的顺序排列的，这点平台保证。
         List<EmMtResolution> resolutions = conferee.videoStream.supportedResolutionList;
-        int quality = Math.min(userConfig.getPreferredVideoQuality(), conferee.videoQuality);
+
+        int quality = Math.min(userConfig.getPreferredVideoQuality(), conferee.preferredVideoQuality);
         if (RtcConfig.VideoQuality_High == quality){
             return resolutions.get(resolutions.size()-1);
         }else if (RtcConfig.VideoQuality_Middle == quality ){
@@ -1505,8 +1508,8 @@ public class WebRtcManager extends Caster<Msg>{
         private static final int VideoState_NoStream = 3; // 没有视频通道，如音频入会
         private static final int VideoState_RecvingAss = 4; // 正在接收辅流
 
-        // 视频质量
-        private int videoQuality = RtcConfig.VideoQuality_High;
+        // 优选的视频质量
+        private int preferredVideoQuality = RtcConfig.VideoQuality_Low;
 
         // 语音激励使能
         private boolean bVoiceActivated;
@@ -1535,6 +1538,8 @@ public class WebRtcManager extends Caster<Msg>{
 
                 KLog.p("add Display %s to conferee %s", display, id);
                 displays.add(display);
+
+                adjustVideoQuality();
             }
         }
 
@@ -1549,6 +1554,7 @@ public class WebRtcManager extends Caster<Msg>{
 //                    }
 //                });
             }
+            adjustVideoQuality();
             return success;
         }
 
@@ -1755,14 +1761,20 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         /**
-         * 设置视频质量偏好。
-         * @param quality 视频质量{@link RtcConfig#VideoQuality_High}{@link RtcConfig#VideoQuality_Middle}{@link RtcConfig#VideoQuality_Low}
-         * 越高展示的该与会方的图像质量越高。
+         * 调整视频质量。
          * */
-        public void setPreferredVideoQuality(int quality){
-            videoQuality = quality;
-            // 重新订阅
-            instance.subscribeStreams();
+        void adjustVideoQuality(){
+            int preferQuality = RtcConfig.VideoQuality_Low;
+            for (Display display : displays){
+                if (display.preferredVideoQuality > preferQuality){
+                    preferQuality = display.preferredVideoQuality;
+                }
+            }
+            if (preferQuality != preferredVideoQuality) {
+                preferredVideoQuality = preferQuality;
+                // 重新订阅
+                instance.subscribeStreams();
+            }
         }
 
         /**
@@ -1848,6 +1860,11 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         private Set<String> disabledDecos = new HashSet<>();
 
+        /**
+         * 视频质量偏好。
+         * 一个与会方可能有高中低三种不同质量的视频流，该字段用于指定该Display倾向于展示哪种质量的视频流。
+         * */
+        private int preferredVideoQuality = RtcConfig.VideoQuality_Low;
 
         private Handler handler = getHandler();
 
@@ -1914,6 +1931,21 @@ public class WebRtcManager extends Caster<Msg>{
         public Conferee getConferee(){
             return conferee;
         }
+
+
+        /**
+         * 设置视频质量偏好。
+         * @param quality 视频质量{@link RtcConfig#VideoQuality_High}{@link RtcConfig#VideoQuality_Middle}{@link RtcConfig#VideoQuality_Low}
+         * 越高展示的该与会方的图像质量越高。
+         * */
+        public void setPreferredVideoQuality(int quality){
+            preferredVideoQuality = quality;
+            if (null != conferee){
+                conferee.adjustVideoQuality();
+            }
+        }
+
+
 
         /**
          * 设置是否展示某个deco
