@@ -932,6 +932,8 @@ public class WebRtcManager extends Caster<Msg>{
         // NOTE: 分辨率是按从小到大的顺序排列的，这点平台保证。
         List<EmMtResolution> resolutions = conferee.videoStream.supportedResolutionList;
 
+        KLog.p("userConfig.PreferredVideoQuality=%s, conferee.preferredVideoQuality=%s, resolutions=%s",
+                userConfig.getPreferredVideoQuality(), conferee.preferredVideoQuality, resolutions);
         int quality = Math.min(userConfig.getPreferredVideoQuality(), conferee.preferredVideoQuality);
         if (RtcConfig.VideoQuality_High == quality){
             return resolutions.get(resolutions.size()-1);
@@ -950,7 +952,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private void subscribeStreams(){
-        Set<VideoStream> videoStreams = getAllVideoStreams();
+        Set<VideoStream> videoStreams = getAllVideoStreamsExceptMine();
         List<TRtcPlayItem> playItems = FluentIterable.from(videoStreams).transform(new Function<VideoStream, TRtcPlayItem>() {
             @NullableDecl
             @Override
@@ -1766,10 +1768,12 @@ public class WebRtcManager extends Caster<Msg>{
         void adjustVideoQuality(){
             int preferQuality = RtcConfig.VideoQuality_Low;
             for (Display display : displays){
+                KLog.p("display %s preferredVideoQuality=%s", display.hashCode(), display.preferredVideoQuality);
                 if (display.preferredVideoQuality > preferQuality){
                     preferQuality = display.preferredVideoQuality;
                 }
             }
+            KLog.p("old preferredVideoQuality=%s, new preferredVideoQuality=%s", preferredVideoQuality, preferQuality);
             if (preferQuality != preferredVideoQuality) {
                 preferredVideoQuality = preferQuality;
                 // 重新订阅
@@ -1939,9 +1943,12 @@ public class WebRtcManager extends Caster<Msg>{
          * 越高展示的该与会方的图像质量越高。
          * */
         public void setPreferredVideoQuality(int quality){
-            preferredVideoQuality = quality;
-            if (null != conferee){
-                conferee.adjustVideoQuality();
+            KLog.p("display %s change preferredVideoQuality from %s to %s", this.hashCode(), preferredVideoQuality, quality);
+            if (preferredVideoQuality != quality){
+                preferredVideoQuality = quality;
+                if (null != conferee){
+                    conferee.adjustVideoQuality();
+                }
             }
         }
 
@@ -2452,10 +2459,13 @@ public class WebRtcManager extends Caster<Msg>{
         return null;
     }
 
-    private Set<VideoStream> getAllVideoStreams(){
+    private Set<VideoStream> getAllVideoStreamsExceptMine(){
         Set<VideoStream> videoStreams = new HashSet<>();
-        for (Conferee conferee1 : conferees){
-            if (null != conferee1.videoStream) videoStreams.add(conferee1.videoStream);
+        for (Conferee conferee : conferees){
+            if (null != conferee.e164 && conferee.e164.equals(userE164)){
+                continue;
+            }
+            if (null != conferee.videoStream) videoStreams.add(conferee.videoStream);
         }
         return videoStreams;
     }
@@ -3198,6 +3208,10 @@ public class WebRtcManager extends Caster<Msg>{
                                 return;
                             }
                             executor.execute(() -> {
+                                if (null == localVideoTrack){
+                                    KLog.p(KLog.ERROR, "what's wrong? pc destroyed?");
+                                    return;
+                                }
                                 localVideoTrack.addSink(myself);  // 本地回显
                             });
                             // 检查摄像头是否屏蔽，若屏蔽则展示静态图片
@@ -3503,6 +3517,8 @@ public class WebRtcManager extends Caster<Msg>{
                     surfaceTextureHelper.dispose();
                     surfaceTextureHelper = null;
                 }
+
+                KLog.p("pcWrapper (connType=%s) closed", connType);
             });
         }
 
