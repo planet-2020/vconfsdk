@@ -2,6 +2,8 @@ package com.kedacom.vconf.sdk.webrtc;
 
 import androidx.annotation.NonNull;
 
+import com.kedacom.vconf.sdk.utils.log.KLog;
+
 import org.webrtc.RTCStats;
 import org.webrtc.RTCStatsReport;
 
@@ -25,11 +27,11 @@ final class StatsHelper {
             String type = rtcStats.getType();
             Map<String, Object> members = rtcStats.getMembers();
 
-            System.out.println(String.format("statsEntry={key=%s, values={type=%s ",rtcStatsEntry.getKey(), type));
-            for (Map.Entry<String, Object> member  : members.entrySet()){
-                System.out.println(String.format("member={%s, %s, %s}",member.getKey(), member.getValue(), member.getValue().getClass()));
-            }
-            System.out.println("}");
+//            System.out.println(String.format("statsEntry={key=%s, values={type=%s ",rtcStatsEntry.getKey(), type));
+//            for (Map.Entry<String, Object> member  : members.entrySet()){
+//                System.out.println(String.format("member={%s, %s, %s}",member.getKey(), member.getValue(), member.getValue().getClass()));
+//            }
+//            System.out.println("}");
 
             if (type.equals("media-source")) {
                 boolean bAudio = "audio".equals(members.get("kind"));
@@ -40,6 +42,7 @@ final class StatsHelper {
                     audioSource.totalAudioEnergy = null != members.get("totalAudioEnergy") ? (double) members.get("totalAudioEnergy") : 0;
                     audioSource.totalSamplesDuration = null != members.get("totalSamplesDuration") ? (double) members.get("totalSamplesDuration") : 0;
                     resolvedStats.audioSource = audioSource;
+                    KLog.p("localAudio: trackIdentifier=%s, audioLevel=%s", audioSource.trackIdentifier, audioSource.audioLevel);
                 }else{
                     VideoSource videoSource = new VideoSource();
                     videoSource.trackIdentifier = null != members.get("trackIdentifier") ? (String) members.get("trackIdentifier") : null;
@@ -47,6 +50,8 @@ final class StatsHelper {
                     videoSource.height = null != members.get("height") ? (long) members.get("height") : 0;
                     videoSource.framesPerSecond = null != members.get("framesPerSecond") ? (long) members.get("framesPerSecond") : 0;
                     resolvedStats.videoSource = videoSource;
+                    KLog.p("localVideo: trackIdentifier=%s, width=%s, height=%s, fps=%s",
+                            videoSource.trackIdentifier, videoSource.width, videoSource.height, videoSource.framesPerSecond);
                 }
 
             }else if (type.equals("codec")){
@@ -88,6 +93,7 @@ final class StatsHelper {
                         recvAudioTrack.interruptionCount = null != members.get("interruptionCount") ? (long) members.get("interruptionCount") : 0;
                         recvAudioTrack.totalInterruptionDuration = null != members.get("totalInterruptionDuration") ? (double) members.get("totalInterruptionDuration") : 0;
                         resolvedStats.recvAudioTrackList.add(recvAudioTrack);
+                        KLog.p("remoteAudio: trackIdentifier=%s, audioLevel=%s", recvAudioTrack.trackIdentifier, recvAudioTrack.audioLevel);
                     }else{
                         RecvVideoTrack recvVideoTrack = new RecvVideoTrack();
                         recvVideoTrack.id = null != members.get("id") ? (String) members.get("id") : null;
@@ -108,6 +114,8 @@ final class StatsHelper {
                         recvVideoTrack.totalFramesDuration = null != members.get("totalFramesDuration") ? (double) members.get("totalFramesDuration") : 0;
                         recvVideoTrack.sumOfSquaredFramesDuration = null != members.get("sumOfSquaredFramesDuration") ? (double) members.get("sumOfSquaredFramesDuration") : 0;
                         resolvedStats.recvVideoTrackList.add(recvVideoTrack);
+                        KLog.p("remoteVideo: trackIdentifier=%s, frameWidth=%s, frameHeight=%s, framesReceived=%s, framesDecoded=%s, framesDropped=%s",
+                                recvVideoTrack.trackIdentifier, recvVideoTrack.frameWidth, recvVideoTrack.frameHeight, recvVideoTrack.framesReceived, recvVideoTrack.framesDecoded, recvVideoTrack.framesDropped);
                     }
                 }else{
                     if (bAudio){
@@ -130,6 +138,8 @@ final class StatsHelper {
                         sendVideoTrack.framesSent = null != members.get("framesSent") ? (long) members.get("framesSent") : 0;
                         sendVideoTrack.hugeFramesSent = null != members.get("hugeFramesSent") ? (long) members.get("hugeFramesSent") : 0;
                         resolvedStats.sendVideoTrack = sendVideoTrack;
+                        KLog.p("localVideo: trackIdentifier=%s, width=%s, height=%s, framesSent=%s",
+                                sendVideoTrack.trackIdentifier, sendVideoTrack.frameWidth, sendVideoTrack.frameHeight, sendVideoTrack.framesSent);
                     }
                 }
 
