@@ -1,0 +1,19 @@
+package mt;
+
+option java_package = "com.kedacom.mt.netmanage.protobuf"; 
+option java_outer_classname = "StructCommonPB"; 
+
+//import "enum.proto";
+
+
+//消息订阅
+message TSubsMsgID
+{
+	repeated string           msgid = 1;                 //订阅消息MsgID，默认值为空，如果一个数据都没有则表示消息没有设置
+}
+
+message TMtId
+{
+	optional uint32 mcu_id = 1;       //mcu id
+	optional uint32 ter_id = 2;       //终端id
+}

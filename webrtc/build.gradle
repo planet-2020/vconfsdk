@@ -1,6 +1,7 @@
 apply plugin: 'com.android.library'
+apply plugin: 'com.google.protobuf'
 
-version = '0.4.38-SNAPSHOT'
+version = '0.4.40-SNAPSHOT'
 android {
     compileSdkVersion 28
 
@@ -37,7 +38,11 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.aar', "*.jar"])
 
-    implementation 'com.google.protobuf:protobuf-java:2.6.1'
+
+//    implementation 'com.google.protobuf:protobuf-javalite:3.8.0'
+
+//    implementation 'com.google.protobuf:protobuf-java:2.6.1'
+    implementation 'com.google.protobuf:protobuf-java:3.8.0'
 //    implementation 'org.webrtc:google-webrtc:1.0.+'
 
     compileOnly project(':annotation')
@@ -46,6 +51,23 @@ dependencies {
     implementation 'com.kedacom.vconf.sdk:utils:1.0.7-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:amulet:1.1.4-SNAPSHOT'
 }
+
+
+
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.8.0'
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {}
+            }
+        }
+    }
+}
+
 
 
 //-> 修改WebRTC SDK实现以绕过H264硬编白名单机制（使用Transform API替换SDK中的相关方法）

@@ -1,0 +1,86 @@
+package mt;
+
+option java_package = "com.kedacom.mt.netmanage.protobuf"; 
+option java_outer_classname = "StructConfPB"; 
+
+import "enum.proto";
+import "structcommon.proto";
+
+
+
+message  TRtcRid
+{
+	optional string rid=1;
+	optional EmMtResolution emres =2;
+
+}
+
+message  TRtcMedia
+{
+	optional string    mid=1;
+	repeated TRtcRid   ridlist=2;
+	optional string    streamid=3;
+}
+
+message TRtcMedialist
+{
+	repeated TRtcMedia  media=1;
+}
+
+message  TRtcPlayItem
+{
+	optional uint64                   play_idx =1;              ///windows是句柄， 硬终端是索引
+
+	optional bool                     is_local=2;               ///是否是本地
+	optional EmCodecComponent         local_chan=3;             ///<本地码流
+	optional EmCodecComponentIndex    local_chan_idx=4;         ///<本地第几路
+
+	optional string                   streamid=5;               ///流id
+	optional EmMtResolution           res = 6;                  ///订阅的分辨率
+	optional bool                     is_ass=7;                 ///用于rtcmp区分， 当前的streamid是主流还是双流，进入不同的peerconnection
+}
+
+message  TRtcPlayParam
+{
+	optional  EmMtVmpStyle emstype= 1;
+	repeated  TRtcPlayItem playlist= 2;
+}
+
+message  TRtcStream
+{
+	optional string               streamid=1;
+	optional TMtId                mtid=2;
+	optional bool                 is_audio=3;
+	optional bool                 is_ass=4;
+	optional uint32               media_idx=5;      ///用在多流，主1， 主2
+	repeated EmMtResolution       simcast_res = 6;  ///支持的多个分辨率
+}
+
+message  TRtcStreamList
+{
+	repeated TRtcStream stream=1;
+}
+
+
+message TRtcTlsCfg
+{
+	optional bool	 is_use_tls = 1;
+	optional string  cert_path  = 2;
+	optional string  key_path   = 3;
+	optional string  ca_path    = 4;
+}
+
+message TRtcVendorInfo
+{
+	optional uint32 vender_type = 1;
+	optional string product_id  = 2;
+	optional string version_id  = 3;
+}
+
+message TRtcRegAuthSet
+{
+	optional string 		username  = 1;
+	optional string 		password  = 2;
+	optional EmRtcAlgType   auth_type = 3;
+}
+

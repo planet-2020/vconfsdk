@@ -1,0 +1,82 @@
+package mt;
+
+option java_package = "com.kedacom.mt.netmanage.protobuf"; 
+option java_outer_classname = "BasePB"; 
+
+import "enum.proto";
+
+//通用基本数据类型
+message TU32
+{
+    optional uint32 value = 1;
+}
+
+message TU64
+{
+    optional uint64 value = 1;
+}
+
+message TU16
+{
+    optional uint32 value = 1;
+}
+
+message TU8
+{
+    optional uint32 value = 1;
+}
+
+message TS32
+{
+    optional int32 value = 1;
+}
+
+message TS16
+{
+    optional int32 value = 1;
+}
+
+message TS8
+{
+    optional int32 value = 1;
+}
+
+message TBOOL32
+{
+    optional bool value = 1;
+}
+
+message TBytes
+{
+    optional bytes value = 1;
+}
+
+message TString
+{
+    optional string value = 1;
+}
+
+message TMultiStr
+{
+	repeated string str = 1;
+}
+
+message TMultiU32
+{
+    repeated uint32 values = 1;
+}
+
+message TMultiS32
+{
+    repeated int32 values = 1;
+}
+
+message TMultiBOOL32
+{
+    repeated bool values = 1;
+}
+
+message TFloat
+{
+	optional float value = 1;
+}

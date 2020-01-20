@@ -1,0 +1,3917 @@
+package mt;
+
+option java_package = "com.kedacom.mt.netmanage.protobuf"; 
+option java_outer_classname = "EnumPB"; 
+
+//提示码
+enum EmHintCode
+{
+  emHintBegin = 0;                    //无效值
+  emFailtoSendDual              = 1;  //对端不支持当前格式和分辨率下的桌面共享
+	emFailtoRecvDual              = 2;  //带宽不足，不支持对端发起的桌面共享
+	emFailtoVodLogin              = 3;  //VOD 登录失败
+	emDHCPTimeOut                 = 4;  //获取DHCP地址超时
+	emPPPoEAuthorError            = 5;  //PPPOE身份验证错误
+	emPPPoEAgentError             = 6;  //PPPOE找不到ISP服务商
+	emPPPoETimeOutError           = 7;  //PPPOE拨号超时
+	emPPPoELinkDownError          = 8;  //PPPOE断链
+	emPPPoEGeneralError           = 9;  //PPPOE其他错误
+	emFailtoSendDualAsReject      = 10;  //对端拒绝发起桌面共享,只有发言人可以发起桌面共享
+	emCallRateNotValidForMc       = 11; //呼叫码率过高,拒绝MC扩展
+	emDualResNotMatchConfRes      = 12; //桌面共享分辨率与会议要求(%s)不匹配
+	
+	emSuccedetoSendDual           = 13; //发起桌面共享成功
+	emSuccedetoRecvDual           = 14; //接收桌面共享成功
+	emSateMtNoP2pPermission       = 15; //卫星终端没有点对点视频会议权限
+	emH323UpLoadBitrateLessThan64Ind = 16;    //上行码率小于等于64K
+	emH323DownLoadBitrateLessThan64Ind = 17;  //下行码率小于等于64k
+	emAssVidHasNoSignal = 18;  //辅视频没有信号
+	emNotRegedToCallFailed = 19;              //gk或者sip注册失败导致别名或者e164号码呼叫失败
+	
+	
+	////mcu通知ter
+	emBePolledNext = 30;                //提示终端将被MCU轮训到
+	
+	emHintNoOpenDSChnnlNonSpeaker = 31; //对端拒绝发起桌面共享,只有发言人可以发起桌面共享
+	emHintNoOpenDSChnnlNonCap     = 32; //能力集限制，桌面共享失败!
+	emHintNoOpenDSChnnlBRLow64    = 33; //码率小于64k，桌面共享失败!
+	emHintNoOpenDSChnnlFECType    = 34; //提示终端打开双流通道因FEC类型不匹配
+	emHintNoOpenDSChnnlNonMp      = 35; //提示终端打开双流通道因对应转发板不存在
+	emHintNoOpenDSChnnlEncryptMode = 36; //提示终端打开双流通道因加密模式不匹配
+	emHintNoOpenDSChnnlOverSatDCastChnNum = 37; //提示终端打开双流通道因超过了卫星分散会议的最大通道数
+	
+	emHintNoOpenFSChnnlNonCap = 38;             //提示终端打开第一路视频通道因能力集限制失败
+  emHintNoOpenFSChnnlBRLow64 = 39;            //提示终端打开第一路视频通道因通道码率小于64k
+  emHintNoOpenFSChnnlEncrpytMode = 40;        //提示终端打开第一路视频通道因加密模式不匹配
+	emHintNoOpenFSChnnlFECType = 41;            //提示终端打开第一路视频通道因FEC类型不匹配
+	emHintNoOpenFSChnnlNonMp = 42;              //提示终端打开第一路视频通道因对应的转发板不存在
+	emHintNoOpenFSChnnlBROverflow = 43;         //提示终端打开第一路视频通道因码率过大
+	emHintNoOpenFSChnnlBothH263plus = 44;       //提示终端打开第一路视频通道因通道类型和动态载荷均为H263
+	emHintNoOpenFSChnnlFormat = 45;	            //提示终端打开第一路视频通道因分辨率过大
+	emHintNoOpenFSChnnlFPS =46;                 //提示终端打开第一路视频通道因帧率过大
+	emHintBRLessThanConf = 47;                  //提示呼叫码率小于会议码率，请重新呼叫   { "wBitrate": 0}
+	emHintBRLargerThanConf = 48;                //提示呼叫码率大于会议码率，已自动调整
+	emHintNoSupportOprForNoAuth = 49;           //提示不支持该操作，权限不足，请联系管理员
+	emHintQueueConfNoIdleServer =50;            //提示无空闲服务，请稍等
+	emHintQueueConfAllocatedServer =51;         //提示正在接受服务
+	emHintOldStackNotSupportSpecVip = 52;        //提示老平台不支持主席指定Vip
+	emHintOldStackNotSupportModifyDumb = 53;    //提示老平台不支持会场哑音
+	emHintOldStackNotSupportModifyConfPwd = 54;    //提示老平台不支持修改会议密码
+	emHintOldStackNotSupportModifyConfNoDisturb = 55;    //提示老平台不支持设置会议免打扰
+	emHintOldStackNotSupportModifyDuration = 56;      //提示老平台不支持延长会议时间
+	emHintOldStackNotSupportModifyConfName = 57;      //提示老平台不支持修改会议名称
+	emHintOldStackNotSupportSetAssStreamSendMod = 58;      //提示老平台不支持修改内容共享权限
+	emHintAssVideoSourceIsSwitch = 59;//辅视频源正在切换，不能发video双流
+	emHintNoSendAssOnVodPlayStatus  = 60;//点播状态的时候不允许发pc双流
+	emHintNoSendAssOnEnterPwdStatus = 61;//入多点会议时，正在输入入会密码时不能发pc双流
+}
+
+///协议栈初始化
+enum  EmStackInitFailReason
+{
+    emH323InitSuccess                  = 1;
+    emH323InitFailed_MemoryProblem     = 2;
+    emH323InitFailed_ConfigProblem     = 3;
+    emH323InitFailed_NetWorkProblem    = 4;
+    emH323InitFailed_InitAgain         = 5;
+    emH323InitFailed_GenConfigFail     = 6;
+    emH323InitFailed_InitSemFail       = 7;
+    emH323InitFailed_NewConnInfoFail   = 8;
+    emH323InitFailed_SetCBFail         = 9;
+    emH323InitFailed_Unknown           = 10;
+    
+    /////sip初始化结果 
+    emSipInitSuccess                   = 30;
+	emSipInitFailed                    = 31; 
+	
+	/////323pxy 初始化结果
+	emH323PxyClient_Running            = 50;    ///代理成功连接到server, 
+	emH323PxyClient_NotRunning         = 51;    ///运行失败，有可能没有连接server,
+	
+}
+
+
+
+/*代码中有对终端型号的判断， 所以这里添加一个终端型号，首选需要表明是自建终端，还是租赁终端
+  同时需要在mtcbbcommon中下列函数加处理, 下面接口影响终端是否是标准，非标，终端的productid字符串，以及终端的通道个数
+  
+  IsCusModelSelfBuild（）；               //终端是否是自建终端
+  IsCusModelPhoneMt（）；                 //终端是否是手机终端
+  GetProductIdAndVersionId（）；          //终端的productid是什么
+  GetModelFromProductid（）；              //从终端的productid返回终端的型号
+  GetMainVideoNumAndAssVideoNum（）；     //获取终端的最大的通道数量是什么
+*/
+
+//产品簇型号(大型号)
+enum EmKdvMtModel
+{
+	emKdvMtModelBeg    = 0;
+	emKdvMtModelX500TI = 1;
+	emKdvMtModelX700   = 2;
+	emKdvMtModelX300   = 3;
+	emKdvMtModelSky300 = 4;
+	emKdvMtModelSky100 = 5;
+	
+	emKdvMtModelEnd    = 9;
+}
+
+//产品型号(具体子型号)
+enum EmMtModel
+{
+    emModelBegin      = 0;  //无效值，
+    emSkyWindows      = 1;  //桌面终端 自建
+	emSkyIPad         = 2;  //移动终端ipad 自建
+	emSkyIPhone       = 3;  //移动终端iphone 自建
+	emSkyAndroidPad   = 7;  //移动终端androidpad 自建
+	emSkyAndroidPhone = 8;  //移动终端androidphone 自建
+	
+	
+	emX500_1080P60 = 9;           //硬终端 自建
+	emX500_1080P30 = 10;          //硬终端 自建
+	emX500_720P60  = 11;          //硬终端 自建
+	emX500_mo_1080P = 12;         //硬终端 租赁
+	emX500_mo_720P  = 13;         //硬终端 租赁
+	emX500_oem_1080P = 14;        //硬终端 自建
+	emX500_oem_mo_1080P = 15;     //硬终端 租赁
+	
+	emTrueLink      = 16;         //桌面终端 租赁
+    emTrueTouchIpad = 17;         //移动终端ipad 租赁
+    emTrueTouchIphone = 18;       //移动终端iphone 租赁
+    emTrueTouchAndroidPhone = 19; //移动终端androidphone 租赁	
+	emTrueTouchAndroidPad   = 20; //移动终端androidpad   租赁
+	
+	emH950_1080P60 = 21;           //硬终端 自建
+	
+	emTrueLinkTV  = 22;           //TV盒子 租赁
+	
+	
+	emX700_4k30 = 23;               //x700-4k30 自建
+	emX700_oem_4k30 = 24;           //x700-4k30 oem 自建
+	emX500_4k30 = 25;               //x500-4k30 自建
+	emX500_oem_4k30 = 26;           //x500-4k30 oem 自建
+	
+	emX300_1080P60 = 27;            //x300-1080P60  自建
+	emX300_1080P30 = 28;            //x300-1080P30  自建
+	emX300_720P60 = 29;             //x300-720P60   自建
+	emX300_oem_1080P60 = 30;        //x300-1080P60 oem 自建
+	
+	emX500_1080P_60 = 31;           //x500-1080P-1080P60  自建  SKY X500-1080P 终端 和从9-15的x500终端不一样，芯片不一样
+	emX500_1080P_30 = 32;           //x500-1080P-1080P30  自建
+	emX500_oem_1080P_60 = 33;       //x500-1080P-1080P60  oem 自建
+	
+	em300_1080P30 = 34;             //300-1080P30  自建
+	em300_720P60 = 35;              //300-720P60   自建
+	em300_oem_1080P30 = 36;         //300-1080P30  oem 自建
+	em300L_1080P30 = 37;            //300L-1080P30 自建
+	em300L_720P60 = 38;             //300L-720P60  自建
+	em300L_oem_1080P30 = 39;        //300L-1080P30 oem 自建
+	
+	em300_1080P60 = 40;             //300-1080P60  自建
+	em300_720P30 = 41;              //300-720P30   自建
+	em300L_1080P60 = 42;            //300-1080P60  自建
+	em300L_720P30 = 43;             //300-720P30   自建
+	emX300_720P30 = 44;             //x300-720P30   自建
+	emX500_720P_30 = 45;             //x500-720P-720P30  自建
+	emX500_720P_60 = 46;             //x500-720P-720P60  自建
+	
+	em100_1080P30_12X = 47;          //100_1080P30_12X
+	em100_1080P30_3X = 48;           //100_1080P30_3X
+	em100L_720P = 49;                //100L_720P
+	em100_oem_1080P30_3X = 50;       //100_oem_1080P30_3X
+	emSkyWindows_s       = 51;      ///< 商密桌面终端 自建
+	emSkyIPad_s          = 52;      ///< 商密移动终端ipad 自建
+	emSkyIPhone_s        = 53;      ///< 商密移动终端iphone 自建
+	emSkyAndroidPad_s    = 54;      ///< 商密移动终端androidpad 自建
+	emSkyAndroidPhone_s  = 55;      ///< 商密移动终端androidphone 自建
+	
+	emX300_1080P60_s = 56;          // 商密硬终端 sky_x300_1080P60_s 
+	emX500_1080P60_s = 57;          // 商密硬终端 sky_x500_1080P60_s
+	em300_1080P60_s  = 58;          // 商密硬终端 sky_300_1080P60_s
+	emX700_s         = 59;          // 商密硬终端 sky_x700_s
+	emX500_4K_s      = 60;          // 商密硬终端 sky_x500_4k_s
+	em100_1080P30_12X_s = 61;       // 商密硬终端 sky_100_1080P30_12x_s
+
+	emX300_1080P60_cs = 62;         // 渠道版本 sky_x300_1080P60_cs 
+	emX500_1080P60_cs = 63;         // 渠道版本 sky_x500_1080P60_cs
+	em300_1080P60_cs  = 64;         // 渠道版本 sky_300_1080P60_cs
+	emX700_cs         = 65;         // 渠道版本 sky_x700_cs
+	emX500_4K_cs      = 66;         // 渠道版本 sky_x500_4k_cs
+	em100_1080P30_12X_cs = 67;      // 渠道版本 sky_100_1080P30_12x_cs
+	
+	em100_1080P30_12X_H5 = 68;      // SKY 100-1080P30-12x-H5,支持H265
+	em100_1080P30_3X_H5 =  69;      // SKY 100-1080P30-3x-H5
+	
+	em100_DX_1080P30_12X = 70;      //SKY 100-DX-1080P30-12x（不支持WIFI）
+	em100_DX_1080P30_3X = 71;
+	em100L_DX_720P     = 72;
+}
+
+//会议协议
+enum EmConfProtocol
+{
+    emProtocolBegin = 0;    //无效值
+    em323 = 1;
+    emsip = 2;
+	emsat = 3;
+	emtip = 4;
+	emrtc = 5;    //webrtc协议
+}
+
+//codec组件
+enum EmCodecComponent
+{
+    emVidMainEncoder   = 0;
+    emVidMainDecoder   = 1;    
+    emAudMainEncoder   = 2;
+    emAudMainDecoder   = 3;
+    emAudMainMixer     = 4;
+    emVidMainMixer     = 5;
+	emVidAssEncoder   = 6;
+    emVidAssDecoder   = 7;    
+    emAudAssEncoder   = 8;
+    emAudAssDecoder   = 9;
+    emAudAssMixer     = 10;
+    emVidAssMixer     = 11;
+	emVidMainSecondEncoder   = 12;//主二编码
+    emVidMainSecondDecoder   = 13; // 主二视频解码  
+	
+	emCodecInvalid = 20;  //无效值
+}
+
+//codec组件码流索引
+enum EmCodecComponentIndex
+{
+    em1st          = 0;
+    em2nd          = 1;
+    em3rd          = 2;
+    em4th          = 3;
+    em5th          = 4;
+    em6th          = 5;
+    em7th          = 6;
+    em8th          = 7;
+    em9th          = 8;
+}
+
+
+//视频格式
+enum EmVidFormat
+{
+    emVH261       = 0;
+    emVH262       = 1;
+    emVH263       = 2;
+    emVH263plus   = 3;
+    emVH264       = 4;
+    emVMPEG4      = 5;
+    
+    emVH265       = 6;  //暂未实现
+    emVEnd        = 7;
+}
+
+//音频格式
+enum EmAudFormat
+{
+    emAG711a     = 0;
+    emAG711u     = 1;
+    emAG722      = 2;
+    emAG7231     = 3;
+    emAG728      = 4;
+    emAG729      = 5;
+    emAMP3       = 6;
+    emAG721      = 7;
+    emAG7221     = 8;
+    emAG719      = 9;
+    emAMpegAACLC = 10;
+    emAMpegAACLD = 11;
+ 
+    emAOpus      = 12;
+    emAudEnd     = 13;
+}
+
+enum EmEncodeMode
+{
+    emQualityFirst  = 0;
+    emSpeedFirst    = 1;
+}
+
+///切换模式
+enum EmTermSwitchMode
+{
+	emModeBegin = 0;
+
+	emAudioAndAssMode = 1;             // 音频 + 双流模式
+
+};
+
+
+
+//0-39分辨率和mcu定义的分辨率对应起来，后面的对应不起来
+enum EmMtResolution
+{
+  emMtResAuto             = 0;   //自适应
+  emMtSQCIF               = 1;   //SQCIF 128*96
+	emMtQCIF                = 2;   //QCIF 176x144
+	emMtCIF                 = 3;   //CIF 352x288
+	emMt2CIF                = 4;   //2CIF 352x576
+	emMt4CIF                = 5;   //4CIF 704x576
+	emMt16CIF               = 6;   //16CIF 1408x1152
+	
+	                   
+	emMtVGA352x240          = 7;   //352x240  对应平台SIF
+	emMt2SIF                = 8;   //对应平台2SIF，具体不知道多少*多少                  
+	emMtVGA704x480          = 9;  //704x480  对应平台4SIF
+	emMtVGA640x480          = 10;  //VGA 640x480                   
+	emMtVGA800x600          = 11;  //SVGA 800x600                     
+	emMtVGA1024x768         = 12;  //XGA 1024x768                     
+	
+	emMtVWCIF               = 13;  //WCIF 512*288
+	
+  //仅用于终端分辨率改变	
+	emMtVSQCIF112x96        = 14;  //SQCIF(112*96)
+	emMtVSQCIF96x80         = 15;  //SQCIF(96*80) 
+	
+	//////高清分辨率
+	emMtVW4CIF              = 16;  //Wide 4CIF(1024*576)
+	emMtHD720p1280x720      = 17;  //720p 1280x720
+	emMtVGA1280x1024        = 18;  //SXGA 1280x1024
+	emMtVGA1600x1200        = 19;  //UXGA 1600x1200
+	emMtHD1080i1920x1080    = 20;  //1080i 1920x1080
+	emMtHD1080p1920x1080    = 21;  //1080p 1920x1080          
+	emMtVGA1280x800         = 22;  //WXGA 1280x800
+  emMtVGA1440x900         = 23;  //WSXGA 1440x900                     
+  emMtVGA1280x960         = 24;  //XVGA  1280x960                     
+                       
+  //非标分辨率（1080p底图）－用于终端分辨率改变                     
+	emMtV1440x816           = 25;  //1440×816(3/4)
+	emMt1280x720            = 26;  //1280×720(2/3)
+	emMtV960x544            = 27;  //960×544(1/2)
+	emMtV640x368            = 28;  //640×368(1/3)
+	emMtV480x272            = 29;  //480×272(1/4)
+	emMt384x272             = 30;  //384×272(1/5)
+	emMt640x544             = 31;  //640x544                       
+	emMt320x272             = 32;  //320x272
+	
+	//非标分辨率（720p底图） －用于终端分辨率改变
+	emMt_720_960x544            = 33; //960×544(3/4)
+	emMt_720_864x480            = 34; //864×480(2/3)
+	emMt_720_640x368            = 35; //640×368(1/2)
+	emMt_720_432x240            = 36; //432×240(1/3)
+  emMt_720_320x192            = 37; //320×192(1/4)
+	
+	
+	//非标分辨率
+	emMtVGA480x352          = 38;  //480×352, iPad专用
+
+	                       
+	emMtHD480i720x480       = 39;   //480i720x480
+	emMtHD480p720x480       = 40;   //480p720x480
+	emMtHD576i720x576       = 41;   //576i720x576
+	emMtHD576p720x576       = 42;  //576p720x576              
+	emMtVGA1280x768         = 43;  //WXGA1280x768
+	emMtVGA1366x768         = 44;  //WXGA1366x768
+	emMtVGA1280x854         = 45;  //WSXGA1280x854
+	emMtVGA1680x1050        = 46;  //WSXGA+1680x1050
+	emMtVGA1920x1200        = 47;  //WUXGA1920x1200
+	emMtV3840x2160          = 48;  //4Kx2K3840x2160
+    emMt1280x600            = 49;  //1280*600
+	emMt1360x768            = 50;  //1360*768
+	emMtVRes3840x2160       = 51;  //3840x2160
+	emMtVRes4096x2048       = 52;  //4096*2048
+	emMtVRes4096x2160       = 53;  //4096*2160
+	emMtVRes4096x2304       = 54;  //4096*2304
+	emMt960x540             =55; 
+	emMt480x270             =56;
+	emMt640x360             =57; 
+	emMt320x180             =58;
+	emMtVResEnd             = 100;	  
+}
+
+//视频端口
+enum EmVidPort
+{
+    emH600VidInHDMI  = 0;
+	emH600VidInVGA   = 1;
+	emH600VidInC     = 2;
+	emH600VidOutDVI  = 3;
+	emH600VidOutHDMI = 4;
+	
+	emH700VidInDVI   = 5;	
+}
+
+//音频端口
+enum EmAudPort
+{
+    emH600AudInRCA   = 0;
+	emH600AudOutRCA  = 1;
+}
+
+//解码器丢包恢复策略
+enum EmLostPackStrategy
+{
+   emLPSQualityFirst  = 0;
+	emLPSSpeedSlow     = 1;
+	emLPSSpeedNormal   = 2;
+	emLPSSpeedFast     = 3;
+}
+
+//IP地址类型
+enum EmIpAddrType
+{
+    emIpV4 = 0;
+	emIpV6 = 1;
+}
+
+//串口停止位
+enum EmStopBits
+{
+    em0StopBit     = 0;
+	em1StopBit     = 1;
+	em2StopBit     = 2;
+	em1HalfStopBit = 3;
+}
+
+//串口校验位
+enum EmParityCheck
+{
+    emNoCheck   = 0;
+	emOddCheck  = 1;
+	emEvenCheck = 2;
+}
+
+//串口类型
+enum EmSerialType
+{
+    emRS232 = 0;
+	emRS422 = 1;
+	emRS485 = 2;
+	emSerialInfrared = 3;
+	emHDBaseT1 = 4;
+	emHDBaseT2 = 5;
+	emRS232_2    = 6;
+}
+
+//显示比例
+enum EmDisplayRatio
+{
+    emDR4to3  = 0;
+	emDR16to9 = 1;
+	emDRAuto  = 2;
+}
+
+//应答方式
+enum EmAnswerMode
+{
+    emAnswerModeAuto     = 0;
+	emAnswerModeManu     = 1;
+	emAnswerModeNegative = 2;
+}
+
+
+enum EmH264AdditionalModes
+{
+    emModeNone = 0;
+	emModeRCD0 = 64;   //RCD0
+	emModeSBP  = 32;   //SCALABLE bp
+	emModeSHP  = 16;   //SCALABLE hp
+
+}
+
+
+//h.264profile
+enum EmH264Profile
+{
+    emInvalid  = 0;
+    emBaseline = 1;
+	emMain     = 2;
+	emExtended = 4;
+	emHigh     = 8;
+	emHigh10   = 16;
+	emHigh422  = 32;
+	emHigh444  = 64;	
+}
+
+enum EmH265Profile
+{
+     emProfileMain = 0;
+     emProfileMain10 = 1;
+     emProfileMainStill = 2;
+}
+
+
+//方向
+enum EmDirection
+{
+    emUP     = 0;
+	emDown   = 1;
+	emLeft   = 2;
+	emRight  = 3;
+	
+	emDirInvalid = 10; 
+	
+}
+
+//严格对应协议栈的 feccPTFZRequest,   EmFeccPTFZRequest， EmFeccAction， EmFeccCMEMsgType 对应协议栈的远摇枚举定义
+enum EmFeccPTFZRequest
+{
+	emFeccRequestInvalid				= 0;
+	emFeccPanLeft								= 0x80;	//向左移动
+	emFeccPanRight							= 0xc0;	//向右移动
+	emFeccTiltUp								= 0x30;	//向上移动
+	emFeccTiltDown							= 0x20;	//向下移动
+	emFeccFocusIn								= 0x03;	//近焦
+	emFeccFocusOut							= 0x02;	//远焦
+	
+	emFeccZoomIn								= 0x0c;	//视野变小
+	emFeccZoomOut								= 0x08;	//视野变大
+
+	emFeccBrightnessUp					= 0x01;	//亮度加(nonstandard)
+	emFeccBrightnessDown				= 0x04;  //亮度减(nonstandard)
+}
+
+///严格对应协议栈的feccAction
+enum EmFeccAction
+{
+	emFeccActionInvalid							= 0;  
+	emFeccActionStart								= 0x01;  //开始
+	emFeccActionContinue						= 0x02;  //继续
+	emFeccActionStop								= 0x03;  //停止
+	emFeccActionSelectVideoSource		= 0x04;  //选择视频源
+	emFeccActionVideoSourceSwitched	= 0x05;  //切换视频源
+	emFeccActionStoreAsPreset				= 0x06;  //存储预置位
+	emFeccActionActivatePreset			= 0x07;  //恢复到预置位
+	emFeccActionAutoFocus						= 0x11;  //自动调焦
+}
+
+////CME message type
+enum EmFeccCMEMsgType
+{
+	emFeccCMEInvalid = 0;				     //无效
+	emFeccCMEClientListInfo = 1;		 //客户列表消息通知
+	emFeccCMEClientListCommond = 2;	 //请求客户列表
+	emFeccCMEExtraCapInfo= 3;		     //额外能力信息通知
+	emFeccCMEExtraCapCommond =4;		 //请求额外能力
+}
+
+
+///////////////////////////////////////////
+// 系统控制涉及枚举
+
+//子系统启动方式
+enum EmMtSysStartMod
+{
+    emSysStartMod_By_lib = 0;			// 静态库加载
+    emSysStartMod_By_Dll = 1;			// 动态库加载
+    emSysStartMod_By_Process = 2;		// 进程加载
+
+    emSysStartMod_End = 3;
+}
+
+//子系统启动方式
+enum EmMtSysStartModFromUI
+{
+    emSysStart_By_Dll = 0;			// 动态库加载
+    emSysStart_By_Process = 1;		// 进程加载
+
+    emSysStart_End = 2;
+}
+
+// 子系统运行状态
+enum EmMtSysSrvState	
+{
+    emSysSrvState_Idle = 0;			// 空闲
+    emSysSrvState_Binded = 1;			// 是否绑定
+    emSysSrvState_Running = 2;			// 运行
+    emSysSrvState_Stop = 3;			// 停止
+    emSysSrvState_Err = 4;			// 异常
+}
+
+// 子系统存活状态
+enum EmMtSysKeepLiveState
+{
+    emSysKLState_Ready = 0;			// 准备就绪
+    emSysKLState_Alive = 1;			// 存活
+    emSysKLState_Err = 2;			// 异常
+}
+
+//会议模块涉及枚举
+//通道类型
+enum EmMtChanType
+{
+	emChanSendAudio = 0;
+	emChanRecvAudio = 1;
+	emChanSendVideo = 2;
+	emChanRecvVideo = 3;
+
+	emChanSendAssAudio = 4;   //音频辅流
+	emChanRecvAssAudio = 5;   //音频辅流
+	emChanSendAssVideo = 6;   //视频辅流
+	emChanRecvAssVideo = 7;   //视频辅流
+
+	emChanSendFecc = 8;
+	emChanRecvFecc = 9;
+	emChanSendT120 = 10;
+	emChanRecvT120 = 11;
+	emChanTypeEnd	 = 12;
+}
+
+//双流类型
+enum EmMtAssStreamType
+{
+    emAssStreamBegin = 0;  //无效值
+    emPcAssStream    = 1;  //pc辅流
+    emVideoAssStream = 2;  //video辅流
+} 
+
+
+//vid能力标签
+enum EmMtVidLabel   
+{
+   emVidLabBegin = 0;
+   
+   //主流标签 
+    
+   //辅流的标签
+   emPcStreamVidLab = 20;        //pc双流能力， pcdv, mtc
+	 emVideoStreamVidLab = 21;     //video双流能力
+}
+
+//aud 能力标签
+enum EmMtAudLabel    
+{
+   emAudLabBegin = 0;
+   
+   //主流标签
+   //辅流标签
+}
+
+
+// 会议类型
+enum EmMtConfType
+{
+	emConfType_Video = 0; //视频 或 共享模式
+	emConfType_Audio = 1; //纯音频
+}
+
+
+
+// 媒体类型
+enum EmMtMediaType
+{
+  emMediaBegin = 0; //非音视频
+	emMediaVideo = 1; //视频
+	emMediaAudio = 2; //音频
+	emMediaAV    = 3; //音频和视频
+	emMediaAssVideo = 4; //辅流
+}
+
+//对应平台 CBB_EmMediaModeDef 
+enum  EmMediaModeDef
+{
+    emMediaMdoeNone	= 0;   //无媒体
+    emMediaMdoeVideo	= 1;   //视频
+    emMediaMdoeAudio	= 2;   //音频
+    emMediaMdoeBoth		= 3;   //音视频
+    emMediaMdoeData     = 4;   //数据 
+    emMediaMdoeSecvideo  = 5;   //双流
+}
+//位置
+enum EmSite
+{
+    emLocal = 0; //本地
+    emRemote  = 1;   //远端
+}
+
+enum EmMtMediaDirection
+{
+  emDirectionBegin = 0;
+	emChannelSend = 1;
+	emChannelRecv = 2;
+}
+
+//aaclc、aacld的声道数
+enum EmAacChnlNum
+{
+    emCnNumCust = 0;
+    emCnNum1 = 1;
+    emCnNum2 = 2;
+	emCnNum3 = 4;
+	emCnNum4 = 8;
+	emCnNum5 = 16;
+	emCnNum5dot1 = 32;
+	emCnNum7dot1 = 64;
+}
+
+//aaclc、aacld采样码率
+enum EmAacSampFreq
+{
+	emASF96000 = 0;
+    emASF88200 = 1;
+    emASF64000 = 2;
+    emASF48000 = 3;
+    emASF44100 = 4;
+    emASF32000 = 5;
+    emASF24000 = 6;
+    emASF22050 = 7;
+    emASF16000 = 8;
+    emASF12000 = 9;
+    emASF11025 = 10;
+    emASF8000  = 11;
+}
+
+enum EmMtChanState 
+{
+	  emChanIdle = 0;
+	  emChanConnected = 1;
+}
+
+enum EmMtCallingType     //呼叫类型
+{
+	emJoinConf    = 0;          ///<加入会议，等待mcu 呼叫  
+	emCreateConf  = 1;          ///<创建会议，等待mcu 呼叫
+	emOutCall     = 2;         ///<呼出
+	emIncomingCall= 3;        ///<呼入
+
+}
+
+enum EmMtCallState    //conf呼叫状态
+{
+		emCallIdle = 0;   
+		
+		emCallRasConfJoining = 1;      //ras非标加入会议，等待mcu 呼叫  
+		emCallRasConfCreating = 2;     //ras非标创建会议，等待mcu 呼叫
+		
+		emCallOuting = 3;   
+		emCallIncoming = 4;
+		emCallAccepted = 5;
+		emCallHanging = 6;
+		emCallConnected = 7;    //h323 是 225connected, sip是呼叫信令交互完
+		
+		emCallP2P = 8;
+		emCallMCC = 9;
+}
+
+enum EmH323ChanState
+{
+        emChanStateIdle =0;
+		emChanStateCreating = 1;       //发送通道创建成功
+		emChanStateOpening = 2;         //发送通道请求发送出去,或接收通道ack出去
+		emChanStateRejected = 3;        //对端拒绝
+		emChanStateOffering = 4;        //收到chanincoming
+		emChanStateConnected = 5;       //收到connected
+		emChanStateReopening = 6;       //重新打开
+		emChanStateDisconnecting = 7;   //正在关闭状态
+}
+
+
+enum EmH323CallState        //323呼叫状态
+{
+  emCallStateIdle = 0;                //空闲状态
+  emCallState460Out = 1;                //终端发出460call之后状态，等待对端setup过来
+	emCallStateCreating = 2;            //创建呼叫
+	emCallStateArqOutgoing = 3;         //发出arq状态
+	emCallStateCallOuting = 4;          //呼出状态
+	emCallStateCallincoming = 5;        //呼入状态
+	emCallStateCallAccepted = 6;        //UI同意呼叫状态
+	emCallStateHanguping = 7;           //主动挂断，等待底层挂断
+	emCallStateConnected = 8;           //h225建立成功状态
+	
+	emCallStateOpenChanReady = 9;       //收到能力集，主从决定后，进入到开通道操作
+}
+
+//终端类型
+enum EmEndpointType
+{
+	emEndpointTypeUnknown = 0;
+	emEndpointTypeMT	    = 0x01;
+	emEndpointTypeMCU	    = 0x02;
+	emEndpointTypeGK      = 0x04;
+}
+
+
+
+//短消息业务类型
+enum EmSMSType  
+{
+	emSMSSingleLine  = 0;  //短消息
+	emSMSPageTitle   = 1;  // 翻页字幕
+	emSMSRollTitle   = 2;  // 滚动字幕
+	emSMSStaticTitle = 3;  // 静态字幕
+	emSMSUpRollTitle   = 4;  // 向上滚动短消息
+}
+
+
+enum EmRollMsgSpeed
+{
+  emROLL_SPEED_1 = 1;	// 最慢
+	emROLL_SPEED_2 = 2;	// 稍慢
+	emROLL_SPEED_3 = 3;	// 中速
+	emROLL_SPEED_4 = 4;	// 稍快
+	emROLL_SPEED_5 = 5;	// 最快
+}
+
+
+//终端视频输入端口
+enum EmMtVideoPort
+{
+	emMtVidInvalid     = 0; // X500                   X700-4K|X500-4K        X500-1080P|X300        SKY300
+	emMtVidMultiView   = 1; // 多视                   多视                   多视                   ...
+	emMtVidInnerCamera = 2; // ...                    ...                    ...                   InnerCamera
+	emMtVidDVI1        = 3; // DVI/YPbPr/VGA/HDMI_3   DVI/HDMI/VGA/YPbPr_5   DVI/HDMI/VGA/YPbPr_1
+	emMtVidDVI2        = 4;  
+	emMtVidDVI3        = 5;  
+	emMtVidDVI4        = 6;  
+	emMtVidHDMI1       = 7; // HDMI_4                 HDMI_6                 HDMI_3|HDMI_2          HDMI_2
+	emMtVidHDMI2       = 8; // ...                    HDMI_1|...
+	emMtVidHDMI3       = 9; // ...                    HDMI_2|...
+	emMtVidHDMI4       = 10;
+	emMtVidYPbPr1      = 11;
+	emMtVidYPbPr2      = 12;
+	emMtVidYPbPr3      = 13;
+	emMtVidYPbPr4      = 14;
+	emMtVidVGA1        = 15;// VGA/YPbPr_4            VGA/YPbPr_6          VGA/YPbPr_3|VGA/YPbPr_2  VGA/YPbPr_1
+	emMtVidVGA2        = 16;
+	emMtVidVGA3        = 17;
+	emMtVidVGA4        = 18;
+	emMtVidC1          = 19;// CVBS_5
+	emMtVidC2          = 20;
+	emMtVidC3          = 21;
+	emMtVidS1          = 22;
+	emMtVidS2          = 23;
+	emMtVidS3          = 24;
+	emMtVidHDBaseT1    = 25;// HDBaseT_1              HDBaseT_1              HDBaseT_1
+	emMtVidHDBaseT2    = 26;// HDBaseT_2              HDBaseT_2              HDBaseT_2|...
+	emMtVidHDBaseT3    = 27;
+	emMtVidHDBaseT4    = 28;
+	emMtVidSDI1        = 29;// SDI_1                  SDI_3                  SDI_2|...
+	emMtVidSDI2        = 30;// SDI_2                  SDI_4
+	emMtVidSDI3        = 31;
+	emMtVidSDI4        = 32;
+}
+
+enum EmMtJoinCreateConfRsp
+{
+  emJoinCreat_Success = 0;
+	emJoinCreat_Serdb_err = 1;
+	emJoinCreat_Timeout_err = 2; 
+	emJoinCreat_Note164_err = 3;
+	emJoinCreat_Data_err = 4; 
+	emJoinCreat_Mcu_noidlevpu = 5;			    // 没有足够能力的空闲媒体处理器 5.0不需要
+	emJoinCreat_Mcu_minimediaconfmtnum = 6;	    // 超过小型媒体会议入会终端限制 5.0不需要
+	emJoinCreat_Mcu_maxconfnum = 7;			    // 已达最大会议数
+	emJoinCreat_Mcu_encrypeerr = 8;			    // 与会议加密模式不符   5.0不需要
+	emJoinCreat_Mcu_confnotexist = 9;		    // 会议不存在
+	emJoinCreat_Mcu_undefined = 10;             // 没有定义 
+	emJoinCreat_Gk_mpcd_disconnected = 11;      // mpcd热备重启
+	emJoinCreat_Mcu_maxmtnum =12;			    // 终端数已达最大上限
+	emJoinCreat_Mcu_pwderr = 13;			    // 密码错误
+	emJoinCreat_Mcu_nsatpms = 14;               // 无卫星权限
+	emJoinCreat_Mcu_nsatdaddr = 15;		        // 没有组播地址
+	emJoinCreat_E164_repeat = 16;               //e164号码重复
+	emJoinCreat_CallerNum_exceed = 17;          //呼叫数超限          5.0不需要
+	emJoinCreat_Mcu_NoDisturbReject = 18;       //会议免打扰拒绝
+	emJoinCreat_Mcu_ConfResuming    = 19;       //mcu正在恢复中
+	emJoinCreat_Mcu_NoPermission	= 20;		//没有创会权限
+}
+
+enum EmMtConfDetailErr
+{
+	emConfDetail_Err_Success = 0;		    //获取会议详细信息成功
+	emConfDetail_Err_Ser_db= 1;			    //数据库错误
+	emConfDetail_Err_Timeout = 2;			  //服务器响应超时
+	emConfDetail_Err_Note164 = 3;		    //通知E164号错误
+	emConfDetail_Err_Data = 4;				  //数据错误
+	emConfDetail_Err_Isover = 5;		    //会议已结束
+	emConfDetail_Err_Unknown = 6;			  //未知
+}
+
+enum EmMtDualMode
+{
+	MT_DUAL_MODE_SPEAKER = 0;			    // 只有发言人能发双流
+	MT_DUAL_MODE_EVERYONE = 1;				// 任何人都能发双流
+	MT_DUAL_MODE_INVALID = 2; 
+}
+
+
+enum EmMtPollModeDef
+{
+        emPOLL_MODE_NONE           =    0;  //不轮询广播 
+        emOLL_MODE_VIDEO           =    1;  //仅图像轮询广播 到本地
+        emPOLL_MODE_SPEAKER        =    2;  //轮流发言       到本地
+        emPOLL_MODE_VIDEO_SPY      =    3;  //仅图像轮询广播 到回传
+        emPOLL_MODE_SPEAKER_SPY    =    4;  //轮流发言       到回传
+        emPOLL_MODE_VIDEO_BOTH     =    5;  //仅图像轮询广播 到本地和回传
+        emPOLL_MODE_SPEAKER_BOTH   =    6;  //轮流发言       到本地和回传
+        emPOLL_MODE_VIDEO_CHAIRMAN =    7;  //只带视频的“主席轮询选看”轮询模式
+        emPOLL_MODE_BOTH_CHAIRMAN  =    8;  //带音频的“主席轮询选看”轮询模式
+}
+
+
+
+
+
+enum EmMtPairTalkOperationType
+{
+	emMtPairTalkOperationTypeBegin = 0;
+	emMtPairTalkOperationTypeChairStart = 1;	  // 主席开启对话模式
+	emMtPairTalkOperationTypeChairStop = 2;		  // 主席停止对话模式
+	emMtPairTalkOperationTypeChairJoin = 3;		  // 主席加入对话模式
+	emMtPairTalkOperationTypeChairQuit = 4; 		// 主席退出对话模式
+	emMtPairTalkOperationTypeAudienceJoin = 5; 	// 普通终端加入对话模式
+	emMtPairTalkOperationTypeAudienceQuit = 6; 	// 普通终端退出对话模式	
+}
+
+enum EmMtCallMode
+{
+	emJoin = 0;
+	emCreate = 1;
+	emInvite = 2;
+}
+
+enum EmMtConfMode
+{
+    emConfNone = 0;
+	emP2PConf  = 1; //点对点会议
+	emMCCConf  = 2; //多点会议
+	emFXOConf  = 3; //电话呼叫
+}
+
+//对应平台过来的CBB_EmLogChnnlType
+enum EmMtLogChnnlType
+{
+    emMt_LOGCHL_VIDEO        = 1;	//主视频逻辑通道
+    emMt_LOGCHL_AUDIO        = 2;	//音频逻辑通道
+    emMt_LOGCHL_SECVIDEO     = 3;	//第二视频逻辑通道
+    emMt_LOGCHL_T120DATA     = 4;	//T120数据逻辑通道
+    emMt_LOGCHL_H224DATA     = 5;	//H224数据逻辑通道
+    emMt_LOGCHL_MMCUDATA     = 6;   //级联数据逻辑通道
+    emMt_LOGCHL_VIDEO_BOTH   = 7;   //主视频+第二视频逻辑通道
+}
+
+
+//mcu通知终端的信息类型  
+enum EmMtMcu2MtNtfMsgType
+{
+    emMt_NONE_NTF           = 1;
+
+    //普通业务控制逻辑相关通知:1-10
+    emMt_BE_POLLED_NEXT_NTF   = 2;            //即将被轮询到 通知
+
+
+    //打开双流通道失败相关通知:11-30
+    emMt_NO_OPEN_DSCHNNL_NONSPEAKER   = 11;   //打开双流通道 因 发言人模式 失败通知
+    emMt_NO_OPEN_DSCHNNLNONCAP       = 12;   //打开双流通道 因 能力集限制 失败通知
+    emMt_NO_OPEN_DSCHNNLBRLOW64      = 13;   //打开双流通道 因 通道码率小于64k 失败通知
+    emMt_NO_OPEN_DSCHNNLFECTYPE      = 14;   //打开双流通道 因 FEC类型不匹配 失败通知
+    emMt_NO_OPEN_DSCHNNLNONMP        = 15;   //打开双流通道 因 对应转发板不存在 失败通知
+    emMt_NO_OPEN_DSCHNNLENCRYPTMODE  = 16;   //打开双流通道 因 加密模式不匹配 失败通知
+    emMt_NO_OPEN_DSCHNNLOVERSATDCASTCHNNUM = 17; //打开双流通道 因 超过了卫星分散会议的最大通道数 失败通知
+
+    //打开第一路视频流通道失败相关通知:31-50
+    emMt_NO_OPEN_FSCHNNL_NONCAP       = 31;   //打开第一路视频通道 因 能力集限制 失败通知
+    emMt_NO_OPEN_FSCHNNL_BR_LOW64      = 32;   //打开第一路视频通道 因 通道码率小于64k 失败通知
+    emMt_NO_OPEN_FSCHNNL_ENCRPYT_MODE  = 33;   //打开第一路视频通道 因 加密模式不匹配 失败通知
+    emMt_NO_OPEN_FSCHNNL_FECTYPE      = 34;  //打开第一路视频通道 因 FEC类型不匹配 失败通知
+    emMt_NO_OPEN_FSCHNNL_NONMP        = 35;   //打开第一路视频通道 因 对应的转发板不存在 失败通知
+    emMt_NO_OPEN_FSCHNNL_BR_OVERFLOW   = 36;   //打开第一路视频通道 因 码率过大 失败通知
+    emMt_NO_OPEN_FSCHNNL_BOTH_H263PLUS = 37;   //打开第一路视频通道 因 通道类型和动态载荷均为H263+ 失败通知
+    emMt_NO_OPEN_FSCHNNL_FORMAT       = 38;   //打开第一路视频通道 因 分辨率过大 失败通知
+    emMt_NO_OPEN_FSCHNNL_FPS          = 39;   //打开第一路视频通道 因 帧率过大 失败通知
+
+
+    //其他类型通知(待扩展):51+
+	emMt_CALL_FAILED_BR_LESS_THAN_CONF		= 51;	//呼叫码率 小于 会议码率，请重新呼叫
+	emMt_CALL_FAILED_BR_LARGER_THAN_CONF	= 52;	//呼叫码率 大于 会议码率，已自动调整
+	emMt_NO_SUPPORT_OPR_FOR_NOAUTH			= 53;	//不支持该操作，权限不足，请联系管理员
+    emMt_NO_IN_MIXGRP_APPLY_INTERRUPT      = 54;    //不在混音组中，发言前需申请插话
+}
+
+
+//获取会议列表错误码
+//获取终端列表
+//获取列表，分包收数据，前三个枚举是通用的，
+enum EmGetListRspErr
+{
+  emList_Finished = 0;	          // 获取列表            成功并结束
+	emList_Not_Finished = 1;        // 超过消息体大小，    余下分包传送
+	emList_UnCompleted = 2;         // 部分获取会议列表，  超时并结束
+	
+	
+	/////下面三个是收到平台来的错误码，仅用在获取会议列表
+	emList_SerDbErr  = 3;			      // 获取会议列表失败——数据库错误
+	emList_Timeout = 4;			        // 获取会议列表失败——服务器响应超时
+	emList_UnknownErr = 5;          // 获取会议列表失败（未知原因）
+}
+
+enum EmConfSpecial
+{
+  emNormalConf = 0;              //普通会议
+	emSatelliteConf = 1;           //卫星会议
+}
+
+enum EmConfListType
+{
+  emConfListType_Hold = 0;				    //正在召开
+	emConfListType_Book = 1;				//预约
+	emConfListType_Temp = 2;			    //模板
+	
+  emConfListType_End = 3;
+}
+
+///会议分辨率， 高清， 标清 
+enum EmMtClarity
+{
+    EmMt_HD_MODE = 1;		     //高清
+    EmMt_SD_MODE = 2;        //标清
+    EmMt_FLUENT_MODE = 3;    //流畅
+    EmMt_UD_MODE = 4;        //自定义
+	EmMt_FHD_MODE = 5;       //全高清
+	EmMt_UHD_MODE = 6;       //超高清
+}
+
+/////多点会议中终端类型
+enum EmMtType
+{
+    EmMt_Type_Mt = 0;        ///普通终端
+	EmMt_Type_PHONE = 1;     ///电话终端
+    EmMt_Type_SATD  = 2;     ///卫星终端
+    EmMt_Type_MMCU  = 3;     ///上级MCU (上级会议)
+    EmMt_Type_SMCU  = 4;     ///下级MCU (下级会议)
+    EmMt_Type_VRSREC= 5;     ///vrs新录播设备
+
+    EmMt_Type_Other = 10;	  ///其他终端
+}
+
+/////终端地址类型
+enum EmMtAddrType
+{
+   emAddrIP = 0;
+   emAddrE164 = 1;
+   emAddrAlias =2;    
+   emDialNum = 3;     ////电话号码
+   emSipAddr = 4;
+   emAddrMoid = 5;
+   emNoSysMailbox = 6; //非系统邮箱
+}
+
+enum EmMtModifyConfInfoType     
+{
+	MT_MODIFY_BEGIN = 0;		
+	MT_MODIFY_CONF_NAMETYPE = 1;            // 修改会议名称
+	MT_MODIFY_CONF_DURATIONTYPE = 2;	    // 修改会议时长
+	MT_MODIFY_CONF_PWDTYPE = 3;             // 修改会议密码
+	MT_MODIFY_CONF_DUAL_MODETYPE = 4;		// 修改会议双流发起方式
+	MT_MODIFY_CONF_SHOW_MEMBERALIAS = 5;    // 修改会议画面合成是否显示成员别名
+	MT_MODIFY_CONF_OPENMODE 	= 6;	    // 修改会议的openmode(对应CBB_EmConfOpenModeDef)
+	MT_MODIFY_CONF_DUMB    	    = 7;	    // 修改会议全体哑音
+	MT_MODIFY_CONF_NoDisturb    = 8;	    // 修改会议是否封闭（对应终端免打扰）
+}
+
+//会议发生错误时带的失败原因
+enum EmMtConfFailureReason        
+{
+	emFAIL_REASON_DIFF_CONF_ENCRYPT_MODE = 1;
+	emFAIL_REASON_MT_NOT_JOINED_CONF = 2;
+	emFAIL_REASON_CONF_IS_NOT_CPING = 3;
+	emFAIL_REASON_MT_IS_NOT_CHAIR = 4;
+	emFAIL_REASON_CONF_IS_NOT_DIALOG_MODE = 5;
+	emFAIL_REASON_NO_IDLE_CONF_RESOURCE = 6;
+	emFAIL_REASON_CONF_RESOURCE_LACK = 7;
+	emFAIL_REASON_MT_IN_DIALOG = 8;
+	emFAIL_REASON_SEL_MT_VID_OVER_CHNNL_NUM = 9;                   //视频选看时，超过最大回传通道数
+	emFAIL_REASON_SEL_MT_AUD_OVER_CHNNL_NUM = 10;                   //音频选看时，超过最大回传通道数
+	emFAIL_REASON_SEL_MT_BOTH_OVER_CHNNL_NUM = 11;                  //音视频选看时，超过最大回传通道数
+	emFAIL_REASON_CAN_NOT_JION_VMP_BY_OVER_CHNNL_NUM = 12;            //自动、对讲画面合成时，由于回传通道数的限制未能加入到画面合成中
+	emFAIL_REASON_CAN_NOT_JION_MIX_BY_OVER_CHNNL_NUM = 13;           //会议讨论时，由于回传通道数的限制未能加入到讨论组中
+	emFAIL_REASON_CHANGE_VMP_ASK_FALSE = 14;                      //终端申请对话方失败
+	emFAIL_REASON_CAN_NOT_JION_CTRY_VMP_BY_OVER_CHNNL_NUM = 15;        //会议模板定制画面合成时，由于回传通道数的限制未能加入到画面合成中
+}
+
+enum EmMtConfReleaseModeDef
+{
+    emCONF_RELEASEMODE_NONE = 0;  //不会自动结束
+    emCONF_RELEASEMODE_NOMT = 1;  //无终端时自动结束
+}
+
+
+enum EmMtAliasType 
+{
+  emBegin = 0;   
+	emE164 = 1;   //e164
+	emAlias = 2;  //别名
+	emEmail = 3;  //email
+	emEpID = 4;   //epid
+	emGKID = 5;   //gkid	                  
+}
+
+enum EmMtOpenMode
+{
+		emMt_OPEN    = 1;  //完全开放
+		emMt_Hide    = 2;  // 隐藏会议，仅受邀列表里的终端可见
+}
+
+enum EmMtVmpMode
+{
+    emMt_VMP_MODE_NONE = 0;  //不进行画面合成
+    emMt_VMP_MODE_CTRL = 1;  //会控或主席选择成员合成
+    emMt_VMP_MODE_AUTO = 2;  //动态分屏与设置成员
+}
+
+//根据CBB_EmMixModeDef
+enum EmMtMixType 
+{
+    emMcuNoMix = 0;         //不混音
+    emMcuWholeMix = 1;      //全体混音
+    emMcuPartMix = 2;       //定制混音
+    emMcuVacMix = 3;        //VAC 
+    emMcuVacWholeMix = 4;   //带Vac的全体混音
+	emMcuSmartMix = 5;      //智能混音
+} 
+
+////呼叫挂断原因
+enum EmMtCallDisReason
+{
+  emDisconnect_Busy = 0;             //对端忙
+	emDisconnect_Normal = 1;           //正常挂断
+	emDisconnect_Rejected = 2;         //对端拒绝
+	emDisconnect_Unreachable = 3;      //对端不可达
+	emDisconnect_Local = 4;            //本地原因
+	emDisconnect_Unknown = 5;          //未知原因
+	//emDisconnect_custom = 6;         //自定义原因, 这个不需要了，
+	emDisconnect_AdaptiveBusy = 7;		 //接入电话终端失败
+	emDisconnect_Occupy = 8;           //其他终端或者mcu抢断
+	//下面原因是自定义的,上面是与协议栈对应起来的标准的原因
+	
+	emDisconnect_Joinconftimeout = 20;		    // 参加会议超时
+  emDisconnect_Createconftimeout = 21;		  // 召集会议超时
+	emDisconnect_Nomediaresource = 22;		  // 没有媒体资源
+  emDisconnect_Exceedmaxinconfmtnum = 23;	// 超过会议最大终端数（参加会议时）
+  emDisconnect_Exceedmaxconfnum = 24;		  // 超过会议最大数（创建会议时）
+	emDisconnect_EncrypeErr = 25;           // 与会议加密模式不符
+	emDisconnect_P2Ptimeout = 26;           // 点对点呼叫超时
+  emDisconnect_MccDrop = 27;              // 会控挂断
+  emDisconnect_ChairDrop = 28;            // 主席挂断
+  emDisconnect_MMcuDrop = 29;             // 上级会议挂断
+  emDisconnect_ConfRelease = 30;          // 会议结束挂断
+	emDisconnect_PeerInConf = 31;           //正在会议中
+	emDisconnect_PeerNoDisturb = 32;        //免打扰
+	emDisconnect_NotInPeerContact = 33;     //非好友
+	emDisconnect_PeerNoP2PPermission = 34;  //对端无点对点权限
+	emDisconnect_PeerOnSleeping = 35;		    //对端正在待机
+	emDisconnect_ConfAutoRelease = 36;		  //会议自动结束挂断
+	
+	emDisconnect_REASON_BUSYEXT = 37;			    //终端忙,带终端目前所在会议的级别及会议名称
+	emDisconnect_REASON_REMOTERECONNECT = 38;	//本端行政级别低，由远端自动发起重连
+	emDisConnect_CallNumExceed = 39;          //呼叫数超限
+	emDisConnect_NotRegedToCallFailed = 40;  //本地没有注册成功导致呼叫别名或者e164号码有问题
+	
+	emDisConnect_LocalVodPlaying = 41;       //本地正在vod点播中
+	
+	/////sec 注册失败reason
+	emDisConnect_SecCrtNotFind    = 42;   ///ca证书找不到
+	emDisConnect_SecCrtVerifyFail = 43;   ///证书验证失败
+	emDisConnect_SecCrtExpired    = 44;   ///证书过期 有效期错误
+	emDisConnect_SecCrtFormatError= 45;   ///证书格式错误
+	
+	emDisConnect_SecLoadCertFailed = 46;  ///证书加载失败
+	emDisConnect_SecEncTypeError = 47;  ///加密类型未协商成功
+	emDisConnect_AuthenticationErr = 48;  ///强认证报错 一般是终端未强认证主呼强认证会议
+	emDisConnect_MtHasInConf = 49;   /// 主席邀请终端入会，该终端已经在会议
+	emDisConnect_MtEviction  = 50;   /// 强拆方式主动退会
+	
+	emDisConnect_SoftIntegrityTestErr = 51;  ///软件完整性自测试失败
+	emDisConnect_GmTestErr            = 52;  ///国密算法自测试失败
+	emDisConnect_RandomNumTestErr     = 53;  ///随机数自测试失败
+	
+	emDisConnect_StrongAuthButIpCallErr = 54; ///强认证，不允许ip呼叫
+	emDisConnect_ChannelNoAuth	  		= 55; ///渠道产品未经授权
+	emDisconnect_CancleInputPwd         = 57; ///< 取消输入会议密码
+	emDisconnect_End = 100;   //前面用于扩展
+}
+
+enum EmUnRegFailedReason  //取消注册失败原因
+{
+    emURJRecived = 0;       //收到GK URJ
+    emURQSendFailed = 1;    //发送URQ失败
+    emURQCreateHRASFailed = 2; //协议栈创建HRAS句柄失败
+}
+
+enum EmRegFailedReason   //注册失败原因
+{
+	emGKFailedBegin = 0;
+	emGKUnReachable = 1;    ///不可达
+	emInvalidAliase = 2;
+	emDupAlias = 3; 
+	emInvalidCallAddress = 4;
+	emResourceUnavailable = 5;  ///不可达
+    emRegNumberFull = 7;         //注册数量满，PCMT绑定GK失败消息提示
+    emGKSecurityDenial = 8;      //GK注册权限失败
+	emGKDismatch = 9;            //GK不是运营版本,服务器不匹配
+	emUnRegGKReq = 10;           //GK被抢登后，要求注销GK
+	emRRQCreateHRASFailed = 11;  //rrq创建句柄失败
+	emRRQSendFailed = 12;        //rrq发送失败
+
+  emSipFailedBegin =50;       //sip注册失败原因开始
+  emSipLocalNormalUnreg = 51;
+	emSipInvalidUserNameAndPassword =52;
+	emSipRegistrarUnReachable = 53;
+	emSipInvalidAlias = 54;
+	emSipUnknownReason = 55;
+	emSipRegisterFailed = 56;
+	emSipRegisterNameDup = 57;
+	
+/////sec 注册失败reason
+	emSecCrtNotFind    = 58;   ///ca证书找不到
+	emSecCrtVerifyFail = 59;   ///证书验证失败
+	emSecCrtExpired    = 60;   ///证书过期 有效期错误
+	emSecCrtFormatError= 61;   ///证书格式错误
+    emSecLoadCertFailed = 62;  ///证书加载失败
+	
+	emRtcFailedBegin = 70;  //rtc注册失败原因开始
+	emRtcUnknownReason = 71;    
+	emRtcRegistrarUnReachable = 72;   
+	emRtcNetworkBroken = 73;   
+	emRtcNeedAuth = 74;
+	emRtcAuthTypeError = 75;
+	emRtcAuthFailed = 76;
+	emRtcDuplicated = 77;
+	emRtcNotAllowed = 78;
+	
+	emUnRegSuc = 90;   ///取消注册成功 
+}
+
+//加密算法
+enum EmEncryptArithmetic
+{
+	emEncryptNone = 0;
+	emDES         = 1;
+	emAES         = 2;
+	emSM1  	      = 3;
+	emSM4 	      = 4;
+	emSM2  	      = 5;
+	emSM3 	      = 6;
+	emAuto        = 10;
+}
+
+/////画面合成风格 对应平台的CBB_EmVmpStyleDef
+enum EmMtVmpStyle{
+        
+        emInvalid_Style = 0;                    //非法值
+        emMt_VMP_STYLE_DYNAMIC = 1;		//动态分屏(仅自动合成时有效)
+	emMt_VMP_STYLE_1 = 2;			//一画面全屏
+	emMt_VMP_STYLE_2_1X2 = 3;		//两画面: 2等大，居中(1行2列)
+	emMt_VMP_STYLE_2_B1_S1RD = 4;	//两画面: 1大1小，1大全屏，1小右下
+	emMt_VMP_STYLE_3_1U_2D1X2 = 5;	//三画面: 等大，1上，2下(1行2列)
+	emMt_VMP_STYLE_3_B1L_S2R2X1 = 6;	//三画面: 1大2小，1大左，2小右(2行1列)
+	emMt_VMP_STYLE_3_1L_2R2X1 = 7;	//三画面: 等大，1左，2右(2行1列)
+	emMt_VMP_STYLE_3_B1_S2LD1X2 = 8;	//三画面: 1大2小，1大全屏，2小左下(1行2列)
+	emMt_VMP_STYLE_3_3X1 = 9;		//三画面: 等大，3行1列
+	emMt_VMP_STYLE_4_2X2 = 10;			//四画面: 等大，2行2列
+	emMt_VMP_STYLE_4_B1L_S3R3X1 = 11;	//四画面: 1大3小，1大左，3小右(3行1列)
+	emMt_VMP_STYLE_4_B1U_S3D1X3 = 12;	//四画面: 1大3小，1大上，3小下(1行3列)
+	emMt_VMP_STYLE_5_B1L_S4R4X1 = 13;	//五画面: 1大4小，1大左，4小右(4行1列)
+	emMt_VMP_STYLE_5_B1U_S4D1X4 = 14;	//五画面: 1大4小，1大上，4小下(1行4列)
+	emMt_VMP_STYLE_5_B2U1X2_S3D1X3 = 15;	//五画面: 2大3小，2大上(1行2列)，3小下(1行3列)
+	emMt_VMP_STYLE_6_B1LU_S2RU2X1_S3D1X3 = 16;	//六画面: 1大5小，1大左上，2小右上(2行1列)，3小下(1行3列)
+	emMt_VMP_STYLE_6_B2U1X2_S4D1X4 = 17;			//六画面: 2大4小，2大上(1行2列), 4小下(1行4列)
+	emMt_VMP_STYLE_6_2X3 = 18;					//六画面: 等大，2行3列
+	emMt_VMP_STYLE_6_B1U_S5D1X5 = 19;			//六画面: 1大5小，1大上，5小下(1行5列)
+	emMt_VMP_STYLE_7_B2U1X2_B1LD_S4RD2X2 = 20;			//七画面: 3大4小，2大上(1行2列)，1大左下，4小右下(2行2列)
+	emMt_VMP_STYLE_7_S2LU2X1_B1MU_S2RU2X1_B2D1X2 = 21;	//七画面: 3大4小，2小左上(2行1列)，1大中上，2小右上(2行1列)，2大下(1行2列)
+	emMt_VMP_STYLE_7_B1U_S6D1X6 = 22;					//七画面: 1大6小，1大上，6小下(1行6列)
+	emMt_VMP_STYLE_8_B1LU_S3RU3X1_S4D1X4 = 23;			//八画面: 1大7小，1大左上，3小右上(3行1列)，4小下(1行4列)
+	emMt_VMP_STYLE_8_B4L2X2_S4R4X1 = 24;					//八画面: 4大4小，4大左(2行2列)，4小右(4行1列)
+	emMt_VMP_STYLE_9_3X3 = 25;					//九画面: 等大，3行3列
+	emMt_VMP_STYLE_9_S4U1X4_B1M_S4D1X4 = 26;		//九画面: 1大8小，4小上(1行4列)，1大中，4小下(1行4列)
+	emMt_VMP_STYLE_10_B2L2X1_S8R4X2 = 27;		//十画面: 2大8小，2大左(2行1列)，8小右(4行2列)
+	emMt_VMP_STYLE_10_B2U1X2_S8D2X4 = 28;		//十画面: 2大8小，2大上(1行2列)，8小下(2行4列)
+	emMt_VMP_STYLE_10_S4U1X4_B2M1X2_S4D1X4 = 29;	//十画面: 2大8小，4小上(1行4列)，2大中(1行2列)，4小下(1行4列)
+	emMt_VMP_STYLE_10_S4L4X1_B2M2X1_S4R4X1 = 30;	//十画面: 2大8小，4小左(4行1列)，2大中(2行1列)，4小右(4行1列)
+	emMt_VMP_STYLE_11_S5U1X5_B1M_S5D1X5 = 31;	//十一画面: 1大10小，5小上(1行5列)，大1中，5小下(1行5列)
+	emMt_VMP_STYLE_11_B1U_S10D2X5 = 32;			//十一画面: 1大10小，1大上，10小下(2行5列)
+	emMt_VMP_STYLE_12_B2U1X2_B1LD_S9RD3X3 = 33;	//十二画面: 3大9小，2大上(1行2列)，1大左下，9小右下(3行3列)
+	emMt_VMP_STYLE_12_B1LU_S5RU4X1_S6D1X6 = 34;	//十二画面: 1大11小，大1左上，5小右上(4行1列)，5小下(1行5列)
+	emMt_VMP_STYLE_13_B1LU_S4RU2X2_S8D2X4 = 35;	//十三画面: 1大12小，大1左上，4小右上(2行2列)，8小下(2行4列)
+	emMt_VMP_STYLE_13_S4U1X4_S2LM2X1_B1MM_S2LM2X1_S4D1X4 = 36;	//十三画面: 1大12小，4小上(1行4列)，2小左中(2行1列)，1大中中，2小右中(2行1列), 4小下(1行4列)
+	emMt_VMP_STYLE_13_B4LU2X2_S4RU4X1_S5D1X5 = 37;				//十三画面: 4大9小，4大左上(2行2列)，4小右上(4行1列)，5小下(1行5列)
+	emMt_VMP_STYLE_14_B2LU1X2_S2RU2X1_S10D2X5 = 38;				//十四画面: 2大12小，2大左上(1行2列)，2小右上(2行1列)，10小下(2行5列)
+	emMt_VMP_STYLE_14_S5U1X5_B1LM_S2MM2X1_B1RM_S5D1X5 = 39;		//十四画面: 2大12小，5小上(1行5列)，1大左中，2小中中(2行1列)，1大右中，5小下(1行5列)
+	emMt_VMP_STYLE_15_B3U1X3_S12D2X6 = 40;						//十五画面: 3大12小，3大上(1行3列)，12小下(2行6列)
+	emMt_VMP_STYLE_15_S4U1X4_S3LM3X1_B1MM_S3RM3X1_S4D1X4 = 41;	//十五画面: 1大14小，4小上(1行4列)，3小左中(3行1列)，1大中中，3小右中(3行1列)，4小下(1行4列)
+	emMt_VMP_STYLE_16_4X4 = 42;									//十六画面: 16等分，4x4
+	emMt_VMP_STYLE_16_B1LU_S7RU7X1_S8D1X8 = 43;					//十六画面: 1大15小，1大左上，7小右上(7行1列)，8小下(1行8列)
+	emMt_VMP_STYLE_17_S5U1X5_S3LM3X1_B1MM_S3RM3X1_S5D1X5 = 44;	//十七画面: 1大16小，5小上(1行5列)，3小左中(3行1列)，1大中中，3小右中(3行1列)，5小下(1行5列)
+	emMt_VMP_STYLE_17_B1LU_S6RU3X2_S10D2X5 = 45;					//十七画面: 1大16小，1大左上，6小右上(3行2列)，10小下(2行5列)
+	emMt_VMP_STYLE_17_B2U1X2_S15D3X5 = 46;			//十七画面: 2大15小，2大上(1行2列)，15小下(5列3行)
+	emMt_VMP_STYLE_18_S6U1X6_B6M2X3_S6D1X6 = 47;		//十八画面: 6大12小，6小上(1行6列)，6大居中(2行3列)，6小下(1行6列)
+	emMt_VMP_STYLE_18_B6U2X3_S12D2X6 = 48;			//十八画面: 6大12小，6大上(2行3列)，12小下(2行6列)
+	emMt_VMP_STYLE_18_S6L6X1_B6M3X2_S6R6X1 = 49;		//十八画面: 6大12小，6小左(6行1列)，6大中(3行2列)，6小右(6行1列)
+	emMt_VMP_STYLE_19_B2LU1X2_S2RU2X1_S15D3X5 = 50;	//十九画面: 2大17小，2大左上(1行2列)，2小右上(2行1列)，15小下(3行5列)
+	emMt_VMP_STYLE_19_B2LU2X1_S12RU4X3_S5D1X5 = 51;	//十九画面: 2大17小，2大左上(2行1列)，12小右上(4行3列)，5小下(1行5列)
+	emMt_VMP_STYLE_20_B2U1X2_S18D3X6 = 52;			//二十画面: 2大18小，2大上(1行2列)，18小下(3行6列)
+	emMt_VMP_STYLE_20_S6U1X6_B2M1X2_S12D2X6 = 53;	//二十画面: 2大18小，6小上(1行6列)，2大中(1行2列)，12小下(2行6列)
+	emMt_VMP_STYLE_21_S6U1X6_S4LM4X1_B1MM_S4RM4X1_S6D1X6 = 54;	//二十一画面: 1大20小，6小上(1行6列)，4小左中(4行1列)，1大中中，4小右中(4行1列)，6小下(1行6列)
+	emMt_VMP_STYLE_21_B1LU_S8RU4X2_S12D2X6 = 55;					//二十一画面: 1大20小，1大左上，8小右上(4行2列)，12小下(2行6列)
+	emMt_VMP_STYLE_22_B1LU_S6RU2X3_S15D3X5 = 56;					//二十二画面: 1大21小，1大左上，6小右上(2行3列)，15小下(3行5列)
+	emMt_VMP_STYLE_23_4U1X4_15M3X5_4D1X4 = 57;					//二十三画面: 23同大，4上(1行4列)，15中(3行5列)，4下(1行4列)
+	emMt_VMP_STYLE_23_B2U1X2_S4LM2X2_B1MM_S4RM2X2_S12D2X6 = 58;	//二十三画面: 3大20小，2大上(1行2列)，4小左中(2行2列)，1大中中，4小右中(2行2列)，12小下(2行6列)
+	emMt_VMP_STYLE_24_S6U1X6_S4LM4X1_B4MM2X2_S4RM4X1_S6D1X6 = 59;//二十四画面: 4大20小，6小上(1行6列)，4小左中(4行1列)，4大中中(2行2列)，4小右中(4行1列)下(1行6列)
+	emMt_VMP_STYLE_25_5X5 = 60;									//二十五画面: 等大，5行5列
+	emMt_VMP_STYLE_25_S3LU3X1_B1MU_S3RU3X1_S18D3X6 = 61;			//二十五画面: 1大24小，3小左上(3行1列)，1大中上，3小右上(3行1列)，18小下(3行6列)  
+    emMt_VMP_STYLE_2_B1_S1RU = 62;						//两画面: 1大1小，1大全屏，1小右上
+	emMt_VMP_STYLE_2_B1_S1LD= 63;						// 两画面: 1大1小，1大全屏，1小左下
+	emMt_VMP_STYLE_2_B1_S1L = 64;						// 两画面: 1大1小，1大全屏，1小左上
+	
+	emMt_VMP_STYLE_20_5X4 = 100;                               //二十画面，等分5*4， 兼容老的行业平台，5.0平台没有
+}
+
+
+
+enum EmMtMemberStatusDef
+{
+        emMT_STATUS_NULL  = 0;      //没有指定状态
+        emMT_STATUS_AUDIENCE = 1;   //观众  
+        emMT_STATUS_CHAIRMAN = 2;   //主席
+        emMT_STATUS_SPEAKER  = 3;   //发言人
+}
+
+
+//画面合成成员类型定义
+enum EmMtVMPMmbType
+{
+    emVmpMmbType_NULL  = 0;  //无效值
+    emVMPMmbMCSspec    = 1;  //会控指定 
+    emVMPMmbSpeaker    = 2;  //发言人跟随
+    emVMPMmbChairman   = 3;  //主席跟随
+    emVMPMmbPoll       = 4;  //轮询视频跟随
+    emVMPMmbVAC        = 5;	 //语音激励(会控不要用此类型)
+	emVMPMmbCHLPOLL    = 6;  //vmp单通道轮询
+	emVMPMmbDSTREAM    = 7;  //双流跟随
+    emVMPMmbVCSPEC     = 8;  //会议业务指定
+}
+
+//操作
+enum EmAction
+{
+    emActionBegin = 0;   ///无效值
+    emStart = 1;
+    emStop = 2; 
+    emPause = 3; 
+    emResume = 4; 
+}
+
+// << 文件系统类型 >>
+enum EmFileSys
+{
+	emRAWFS = 0;  //raw file system [ramdisk + rawblock + tffs]
+	emTFFS = 1;   //tffs
+}
+
+enum EmQoS
+{
+   emDiffServ  = 0;     //区分服务
+   emIPPrecedence  = 1;  //IP优先
+}
+
+enum EmTOS
+{
+	emTOSNone        = 0;//不使用
+	emTOSMinCost     = 1;//最小开销
+	emTOSMaxReliable = 2;//最高可靠性
+	emTOSMaxThruput  = 3;//最大吞吐量
+	emTOSMinDelay    = 4;//最小延迟
+}
+
+enum EmCodecEvent
+{
+    emAudSpkMute      = 0; //系统扬声器静音
+	emAudMicMute      = 1; //系统麦克风静音（或者未选中相应的设备）
+	emAudMicVolChange = 2; //麦克风音量改变
+	emAudSpkVolChange = 3; //扬声器音量改变
+	emAudAecInvalid   = 4; //AEC失效且无法通过重置恢复
+	emVidChange       = 6; //视频保留事件
+	emNetLostPackLv1  = 7; //级别1网络丢包
+	emNetLostPackLv2  = 8; //级别2网络丢包
+	emNetLostPackLv3  = 9; //级别3网络丢包
+	emNoVidCapDev     = 10; //不存在图像采集设备
+	emNoAudCapDev     = 11; //不存在声音采集设备
+	emNoAudPlyDev     = 12; //不存在声音播放设备
+	emOtherEvent      = 13; //保留事件
+}
+
+enum EmMtcType
+{
+    emUnkownT         = 0;   //表示未知类型
+    emMtcT            = 1;  //mtc类型终端客户端
+    emPcdvT           = 2;  //pc流类型终端客户端
+    emNctT            = 3;  //服务器配置类型终端客户端
+}
+
+enum EmMtSleepState
+{
+	emWakeup      	   = 0; 	//唤醒状态
+	emCountDown        = 1; 	//待机倒计时
+	emStandbyIng       = 2;   	//正在待机
+	emStandby          = 3;  	//已待机
+	emWakeuping        = 4; 	//正在唤醒
+	emStandbyProtect   = 5;  	//待机保护
+}
+
+enum EmMtPortType
+{
+	emPortInvalid = 0;
+	emPortTcpForH323 = 1;
+	emPortMP = 2;   //媒体端口 包括音视频编解码器端口
+	emPortAudioEncoder = 3;     // 音频编码器
+	emPortAudioDecoder = 4;     // 音频解码器
+	emPortVideoEncoder = 5;     // 视频编码器
+	emPortVideoDecoder = 6;     // 视频解码器
+	emPortFwdPcAssStream = 7;	// pc控制台辅流转发
+	emPortFwdAudioLoop = 8;		// 音频自环
+	emPortFwdVedioLoop = 9;		// 视频自环
+	emMcNetBuf = 10;            // 内置mc中netbuf音视频——音频两对udp端口，主视频两对udp端口，辅视频两对udp端口
+	emPortMcVmp = 11;           // 内置MC画面合成相关	——双流一对udp端口，合成生成结果端口一对udp端口，合成输入端口n对udp端口
+	emPortMcMixer = 12;         // 内置MC混音器相关——混音生成结果端口一对udp端口，混音输入端口n对udp端口
+	emPortInnerMcAudio = 13;    // 内置MC终端EP对应的本地音频端口——（n+1）*（一对音频接收端口和一对音频发送端口）
+	emPortInnerMcVedio = 14;    // 内置MC终端EP对应的本地视频端口——（n+1）*（一对主视频接收端口、一对主视频发送端口、一对辅视频接收端口、一对辅视频发送端口
+	emPortMc = 15;              // 内置mc中所有端口之和——emPortInnerMcAudio+emPortInnerMcVedio+emMcNetBuf+emPortMcVmp+emPortMcMixer
+	emPortInnerProxy = 16;      // 内置代理emMcNetBuf
+}
+
+//OSD台标类型
+enum EmLabelType
+{
+    emLabelAuto    = 0;     //自动
+    emLabelUserDef = 1;     //自定义
+    emLabelUserDefPic = 2;  //自定义图片
+    emLabelOff     = 3;     //关闭
+}
+
+//OSD台标位置
+enum EmLabelPosType
+{ 
+	emTopLeft      = 0;
+	emTopRight     = 1;
+	emBottomLeft   = 2;
+	emBottomRight  = 3;
+	emCustom	   = 4;
+}
+
+//双流显示模式
+enum EmDualVideoShowMode
+{
+    emDualVideoOnSigleScreen  = 1; //单屏双显
+    emEachVideoOwnScreen      = 2; //双屏双显
+	emTripleVideoOnSingleScn  = 3; //单屏三显
+	emThreeVideoOnThreeScreen = 4; //三屏三显
+}
+
+//画中画显示模式
+enum EmPiPMode
+{
+	emPipInvalid     = 0;//无效的画中画
+	emPiPClose       = 1;//画中画关闭
+	emPIPLeftRight   = 2;//两画面，左右对等
+	emPiPRightBottom = 3;//画中画小画面显示在右下角
+	emPiPLeftBottom  = 4;//画中画小画面显示在左下角
+	emPiPLeftTop     = 5;//画中画小画面显示在左上角
+	emPiPRightTop    = 6;//画中画小画面显示在右上角
+	emPiPTwoSmallLeftInOneBig = 7; //一大两小，大画面包含两个小画面(小画面靠左)	
+	emPiPTwoSmallRightInOneBig = 8; //一大两小，大画面包含两个小画面(小画面靠右)	
+	emPiPOneBigAndTwoSmall = 9; //一大两小，大画面右侧画外有两个小画面	
+	emPiPThree = 10; //三画面,品字形
+}
+
+//显示设别类型
+enum EmDisplayDeviceType
+{
+    emCRT = 1;
+	emLCD = 2;
+}
+
+//OSD界面模式
+enum EmOsdScreenMode
+{
+	emSimple   = 1; //简单模式
+	emNormal   = 2; //普通模式
+	emAdvanced = 3; //高级模式
+}
+
+enum EmMtRing
+{
+	emRingNone = 0;	//关闭
+	emRing1 = 1;	//ring1.pcm
+	emRing2 = 2;	//ring2.pcm
+	emRing3 = 3;	//ring3.pcm
+	emRing4 = 4;	//ring4.pcm
+	emRing5 = 5;	//ring5.pcm
+	emRing6 = 6;	//ring6.pcm
+	emRing7 = 7;	//ring7.pcm
+	emRing8 = 8;	//ring8.pcm
+	emRing9 = 9;	//ring9.pcm
+	emRing10 = 10;	//ring10.pcm
+}
+
+
+/** 数据路径类型 */
+enum EmMtPathType
+{
+	emPathTypeBgn  = 1;
+	emMtPathConfig = 2;     //终端配置
+	emMtPathLog    = 3;     //终端日志
+	emMtDataLog    = 4;     //终端数据
+	emMtPathSec    = 5;     //商密库用到的目录
+	emMtPathSecMT   = 6;     //商密库用到的标准设备证书目录
+	emMtPathSecEnc     = 7;     //商密库用到的加密设备证书目录
+	emMtPathSecSign    = 8;     //商密库用到的签名设备目录
+	emMtPathAi =9;
+	emMtPathAiAudio = 10;
+	emPathTypeEnd  = 255;
+};
+
+///////////////////////////////////////////////
+// Im枚举
+
+enum EmMtOnlineState
+{
+	em_state_invalid = 0;         	  // 无状态
+	em_state_offline = 1;             // 离线
+	em_state_leave = 2;               // 暂时离开
+	em_state_online = 3;              // (正常)在线
+	em_state_no_disturb = 4;          // 免打扰
+	em_state_conference = 5;          // 会议中
+	em_state_hidden = 6;              // 隐身
+	em_state_logining = 7;            // 登陆中
+	em_state_end  = 8;
+}
+
+enum EmMtImTerminalType
+{
+    im_mt_type_unknown = 0;        // 未知
+    im_mt_type_true_link = 1;           // 致邻
+    im_mt_type_true_touch_phone = 2;    // 手机-android
+    im_mt_type_true_touch_pad = 3;      // 平板-ios
+    im_mt_type_true_sens = 4;           // 硬终端
+    im_mt_type_true_touch_phone_ios = 5;    // 手机-ios
+    im_mt_type_true_touch_pad_android = 6;  // 平板-android
+    im_mt_type_web = 7;
+	im_mt_type_true_link_tv = 8;    // TV盒子
+	im_mt_type_end = 9;
+}
+
+enum EmMtFile
+{
+    emMtFileBegin = 0;					//终端文件类型开始
+	emMtConfigFile = 1;					//配置文件
+	emMtDebugConfigFile = 2; 			//调试配置文件	
+	emMtStaticPicFile = 3;				//终端静态图片文件
+	emMtUpgradeStateFile = 4;           //终端升级状态信息保存文件（实现断点续传）
+	emMtMcLicenseFile = 5;              //内置mc的license文件
+	emMtKdvlogCfgFile = 6;              //kdvlog模块需要的配置文件
+	emMtCorruptConfigFile = 7;			//已损坏的配置文件
+	emMtExceptionFile = 8;		  	    //终端崩溃异常文件
+	emMtLogFile = 9;		  	        //终端日志文件路径
+	emMtLocalCARASCertFile = 10;           //终端打包时存放的CA证书文件(RAS)
+	emMtLocalCASM2CertFile = 11;           //终端打包时存放的CA证书文件(SM2)
+	emMtSecCACertFile = 12;             //商密库用到的Ca证书文件
+	emMtSecDeviceCertFile = 13;         //商密库用到的设备证书文件
+	emMtSecPrivkeyFile = 14;            //商密库用到的设备证书对应私钥文件
+	emMtSecSignCertFile = 15;         	//GMTLS使用签名证书文件
+	emMtSecSignPrivKeyFile = 16;        //GMTLS使用签名私钥文件
+	emMtSecEncCertFile = 17;         	//GMTLS使用加密证书文件
+	emMtSecEncPrivKeyFile = 18;         //GMTLS使用加密私钥文件	
+	emMtAgentTerLicenseFile = 19;		//渠道终端license证书文件
+	
+	emMtAiAuthFile = 20;                //授权文件
+	emMtAiVadBinFile =21;            //vad bin文件
+	emMtAiWakeupBinFile =22;            //wakeup bin文件
+	emMtAiGramBinFile =23;              //gram bin文件
+	emMtAiGramOutPutFile=24;            //gram output 语法文件
+	emMtAiGramXbnfFile=25;              //gram 语法文件
+	emMtAiAsrBinFile =26;            //asr bin文件
+	emMtAiWakeupRspFile = 27;        //语音唤醒回复文件
+	emMtAiUnKnowRspFile = 28;        //语音听不懂文件
+	emMtFileEnd = 255; 					//终端文件类型结束
+}
+
+enum EImDeclineReason
+{
+    im_decline_reason_unknown = 1;                                       // 未知原因
+    im_decline_reason_max_persistent_room_count = 2;                     // 达到固定群最大数
+    im_decline_reason_max_temporary_room_count = 3;                      // 达到临时群最大数
+    im_decline_reason_from_weibo = 4;                                    // 仅微博在线时的拒绝
+}
+
+enum EImCharState
+{
+    im_char_state_active    = 0;
+    im_char_state_composing = 1;                               // 正在输入
+	im_char_state_paused    = 2;                               // 停止输入
+}
+
+enum EmMtMemberType
+{
+	em_member_invalid = 0;
+	em_member_im_id = 1;            // XMPP JID
+	em_member_telephone = 2;		// 电话类型	
+	em_member_fxo = 3;		        // FXO电话类型	
+    em_member_jid = 4;
+}
+
+enum EmMtMultiChatType
+{
+	em_multichat_invalid = 0;       //非法类型
+    em_multichat_normal = 1;        //普通类型
+    em_multichat_conf = 2;          //会议类型
+	em_multichat_end = 3;
+}
+
+enum EmRestMeetingNotifyType
+{
+    emRestMeetingNotifyTypeUnknown      = 0;
+    emCreateMeeting                     = 102;
+    emUpdateMeeting						= 103;
+    emDeleteMeeting						= 104;
+    emCreateRegular						= 105;
+    emUpdateRegular						= 106;
+    emDeleteRegular						= 107;
+    emUpdateMeetingCancelPerson			= 108;
+    emAheadOfMeeting					= 109;
+    emCancelRoom						= 110;
+    emDeadLineChanged					= 111;
+    emUserFeedbacked					= 112;
+    emForbiddenRoom						= 113;
+    emDeleteRoom						= 114;
+    emStartTimeAchieve					= 115;
+    emNormalStart						= 116;
+    emStartMeetingRemind				= 117;
+    emStartBeforeMeeting				= 118;
+    emParticipant_Meeting_Remind		= 119;
+    emLive_URL                          = 120;
+}
+
+enum EmMtOperateUserInfo
+{
+	emOperateUserAdd    = 1;				// 增加好友
+	emOperateUserDelete = 2;				// 删除好友
+	emOperateUserModify = 3;
+	emOperateUserSearch = 4;
+};
+
+//H323服务类型
+enum EmH323SrvType
+{
+	emH323SrvH323None = 1; //无
+	emH323SrvH323Pxy = 2; //h323代理
+	emH323SrvH323H460 = 3; //h460代理
+	emH323SrvH323Gk = 4; //注册gk
+}
+
+//SIP服务类型
+enum EmSipSrvType
+{
+	emSipSrvServer = 1;    //注册sip服务器
+	emSipSrvPxy = 2; 	 //注册sip代理
+}
+
+enum APIType
+{
+	emUnknownAPI = 0;
+	emPlatformAPI = 1;
+	emWeiboAPI = 2;
+	emMeetingAPI = 3;
+    emAppAPI = 4;
+}
+
+// 消息类型
+enum EmChatType
+{
+	emChatNormal = 0;       // 普通消息类型
+	emChatAuto = 1;             // 自动回复的消息
+}
+
+enum EmRtspStatus
+{
+    emRtspInit = 1;
+	emRtspPreReady = 2;
+	emRtspReady = 3;
+	emRtspPlaying = 4;
+	emRtspPause = 5;
+	emRtspResume = 6;
+	emRtspAdjustSpeed = 7;
+	emRtspAdjustProcess = 8;
+}
+
+enum EmServerAddrType //服务器地址类型
+{
+	emSrvAddrTypeDefault = 0; //默认不可修改
+	emSrvAddrTypeCustom = 1;  //用户自定义 可编辑
+}
+
+// 会议管理相关枚举
+
+// 会议清晰度
+enum EmVMeetingVideoModel
+{
+    emMeeting_vmeeting_video_model_fluent       = 1;
+    emMeeting_vmeeting_video_model_normal_quality = 2;
+    emMeeting_vmeeting_video_model_high_quality = 3;
+    emMeeting_vmeeting_video_model_full_high_quality = 4;
+}
+
+// 桌面共享权限
+enum EmDesktopShareLimit
+{
+    emMeeting_desktop_share_limit_speaker   = 0; 
+    emMeeting_desktop_share_limit_all = 1;
+}
+
+// 会议模式
+enum EmVMeetingMode
+{
+    emMeeting_vmeeting_mode_discuss           = 0;
+    emMeeting_vmeeting_mode_training		  = 1;
+}
+
+// 呼叫时长（会议API使用）
+enum EmCallDuration
+{
+    emMeeting_call_duration_very_short   = 0;
+    emMeeting_call_duration_short		 = 1;
+    emMeeting_call_duration_normal 		 = 2;
+    emMeeting_call_duration_long		 = 3;
+    emMeeting_call_duration_very_long	 = 4;
+}
+
+// 丢包重传时所选择的网络类型
+enum EmNetType
+{
+	emInternet = 0;
+	emSpecial  = 1;
+	emVPN      = 2;
+}
+
+//升级包版本等级
+enum EmUpgradeVerLevel
+{
+	emUpgradeLevelForced    = 0; //强制
+	emUpgradeLevelSuggested = 1; //建议
+	emUpgradeLevelNormal    = 2; //普通
+}
+
+//版本发布属性
+enum EmUpgradeReleaseAttr
+{
+	emUpgradeAttr           = 0;
+	emUpgradeAttrCommon     = 1;	//普通版本
+	emUpgradeAttrRecommend  = 2;	//推荐版本
+	emUpgradeAttrGray       = 4;	//灰度版本
+}
+
+enum EmMtPortrait
+{
+	mtportrait32 = 0;	 // 32位头像
+	mtportrait40 = 1;      // 40位头像
+	mtportrait64 = 2;		 // 64位头像
+	mtportrait128 = 3;	 // 128位头像
+	mtportrait256 = 4;	 // 256位头像
+}
+
+//内置mc的模式
+enum EmMCMode
+{ 
+    emMcSpeech = 0;     //发言人模式
+	emMcDiscuss = 1;    //讨论模式
+	emMcInvalid = 2;    //无效内置mc模式
+}
+
+//服务器类型
+enum EmServerType
+{
+    emAPS = 0;               //接入
+	emXNU = 1;               //短消息
+	emSUS = 2;               //升级
+	emNMS = 3;               //网管
+	emNTS = 4;               //测速
+	emSIP = 5;               //SIP呼叫
+	emNonH323 = 6;			 //非标H323
+	emStdH323 = 7;           //标准H323
+	emNTP = 8;				 //NTP
+	emVOD = 9;				 //VOD
+	emMoMeeting  = 10;          //会管
+	emMoPlatform = 11;          //平台
+	emVRS = 12;                //会议录播
+	emDCS = 13;                //数据会议
+	emNS  = 14;              //推送服务器
+    emKIS = 15;              //KIS服务器
+	emWebRtc = 16;           //webrtc服务器
+	emServerTypeEnd = 17;	 //
+}
+
+//服务器连接状态
+enum EmServerState
+{
+    emIdle         = 0;      //空闲
+    emDnsQuerying  = 1;      //正在解析IP
+    emLogging_In   = 2;      //正在登录
+    emLogin_Succ   = 3;      //登录成功
+    emLogging_Out  = 4;      //正在登出
+    emDisconnected = 5;      //断链（适用于保持心跳的服务器）
+    emLogin_Err    = 6;      //登录失败
+}
+
+// 呼入，呼出，还是未接，全部
+enum EmMtCallRecordType
+{
+	emCallIn 	= 0;		///< 呼入
+	emCallOut 	= 1;		///< 呼出
+	emMissed 	= 2;		///< 未接
+	emAll 		= 3;		///< 全部
+}
+
+// 呼叫类型（视频，还是音频）
+enum EmMtCallType
+{
+	emVideo = 0;		///< 视频呼叫
+	emAudio = 1;		///< 音频呼叫
+	emPhone = 2;		///< 电话呼叫
+}
+
+enum EmMtRecordErr
+{
+	emRecord_Ok = 0;
+	emRecord_Err_Index = 1;						///< 获取时提供的索引值错误
+	emRecord_Err_No_Marching_Records = 2;		///< 没有符合条件的记录
+	emRecord_Err_No_Marching_Type = 3;			///< 没有符合的匹配类型
+	emRecord_Err_CallRecordType = 4;			///< 呼叫记录类型异常（不在呼入，呼出，未接里）
+	emRecord_Err_CallType = 5;					///< 呼叫类型异常（不在视频呼叫，音频呼叫里）
+	emRecord_Err_Describe = 6;					///< 条目描述为空
+	emRecord_Err_AddrType = 7;					///< 不是有效呼叫（不是E164，也不是IP，也不是电话等等）
+	emRecord_Err_Addr = 8;						///< 本身呼叫内容异常（内容为空）
+	emRecord_Err_Rate = 9;						///< 呼叫码率为0
+	emRecord_Err_PackageNum = 10;				///< 分包数量异常
+	emRecord_Err_Over_MaxLocalRecordNum = 11;   ///< 超过最大联系人数量
+	
+	emRoster_Err_GroupName_NULL = 100;			///< 组名为空
+	emRoster_Err_GroupSn = 101;					///< 组SN号异常
+	emRoster_Err_ParentGroupSn = 102;			///< 父组SN号异常
+	emRoster_Err_RosterSn = 103;				///< 联系人SN号异常
+	emRoster_Err_RosterName = 104;				///< 联系人名称异常
+}
+
+enum EmMtRecordSearchType
+{
+	emCallRecordType = 0;			///< 根据是呼入，呼出，还是未接
+	emCallType       = 1;		    ///< 根据是视频，还是音频呼叫
+	emDescribe       = 2;		    ///< 按条目名称
+}
+
+enum EmMtAudPrecedenceLevel
+{
+	emAudPrecedenceLow = 0;    	////< 低
+	emAudPrecedenceMiddle = 1;	////< 中
+	emAudPrecedenceHigh = 2;	////< 高
+}
+
+//告警等级
+enum EmAlarmLevel
+{
+    emAlarmNormal    = 0; //设备正常
+	emAlarmGeneral   = 1; //普通告警
+	emAlarmImportant = 2; //重要告警
+	emAlarmCritical  = 3; //严重告警
+	emAlarmUnknown   = 4; //未知告警
+}
+
+//告警状态
+enum EmAlarmState
+{
+    emStateAlarm    = 0; //表示各种有问题的告警状态
+	emStateNormal   = 1; //表示各种正常的状态
+}
+
+//告警码
+enum EmAlarmCode
+{
+	emAlarmFileSysErr = 1010;  //文件系统出错
+	emAlarmSysBusy = 1011;     //系统任务忙
+	emAlarmFanErr = 1016;      //设备风扇异常
+	emAlarmTempHigh = 1017;    //设备温度过高
+	emAlarmVoltageHigh = 1018; //设备电压过高
+}
+
+//E1链路检测类型
+enum EmDLProtocol
+{
+    emPPP   = 0;
+    emHDLC  = 1;
+    emPPPOE = 2;
+    emMP    = 3;
+}
+
+//E1验证类型
+enum EmAuthenticationType
+{
+    emE1AuthTypeNone = 0;
+    emE1AuthTypePAP  = 1;
+    emE1AuthTypeCHAP = 2;
+}
+
+enum EmApsLoginErrcode
+{
+	emApsLoginOk = 0; //成功
+	emApsLoginErrUnknown = 1; //未知错误
+}
+
+enum EmPortType
+{
+	emConfChanPort = 0;  //会议通道的端口
+	emImPort = 1;
+	emVodPort = 2;
+	emMcPort = 3;
+	emH323CallingPort = 4;
+	emH323TcpBasePort = 5;
+	emH323TcpEndPort = 6;
+	emH323pxyBasePort = 7;
+	emH323pxyEndPort = 8;
+	emSipBfcpPort =9;
+	emMTCPort = 10;
+	emGKPort = 11;
+	emSipCallingPort = 12;
+}
+
+//硬终端产品的枚举 start
+//视频类型
+enum EmVideoType
+{
+   em1stPriomVideo = 0; //第一路主视频
+   em2ndPriomVideo = 1; //第二路主视频
+   em3rdPriomVideo = 2; //第三路主视频
+   emSecondVideo = 10; //第二路视频
+}
+
+//视频输出制式
+enum EmVideoOutPutMode
+{
+	emVOM_HD_ORIGIN = 0;
+	emVOM_HD_1080p_24 = 1;
+	emVOM_HD_1080p_25 = 2;
+	emVOM_HD_1080p_30 = 3;
+	emVOM_HD_1080p_50 = 4;
+	emVOM_HD_1080p_60hz = 5;
+	emVOM_HD_1080p_60fps = 6;
+	emVOM_HD_1080i_50 = 7;
+	emVOM_HD_1080i_60 = 8;
+	emVOM_HD_720p_50 = 9;
+	emVOM_HD_720p_60hz = 10;
+	emVOM_HD_720p_60fps = 11;
+	emVOM_HD_576i_50 = 12;
+	emVOM_HD_1080p_29 = 13;
+	emVOM_HD_1080p_59 = 14;
+	emVOM_HD_576p = 15;
+	emVOM_HD_1080p_29_97 = 16;
+	emVOM_HD_1080p_59_94 = 17;
+	emVOM_HD_VGA_60 = 18;
+	emVOM_HD_VGA_75 = 19;
+	emVOM_HD_SVGA_60 = 20;
+	emVOM_HD_SVGA_75 = 21;
+	emVOM_HD_XGA_60 = 22;
+	emVOM_HD_XGA_75 = 23;
+	emVOM_HD_SXGA_60 = 24;
+	emVOM_HD_WXGA1280x768_60 = 25;
+	emVOM_HD_WXGA1280x768_75 = 26;
+	emVOM_HD_WXGA1280x800_60 = 27;
+	emVOM_HD_WXGA1280x800_75 = 28;
+	emVOM_HD_WXGA1366x768_60 = 29;
+	emVOM_HD_UXGA1600x1200_60 = 30;
+	emVOM_HD_WSXGA1440x900_60 = 31;
+	emVOM_HD_SXGAPLUS1680x1050_60 = 32;
+	emVOM_HD_4k3860x2160_30 = 33;
+	emVOM_HD_4k3860x2160_60 = 34;
+}
+
+//横幅
+enum EmTextAlign
+{
+	emAlignLeft = 0;//居左
+	emAlignCenter = 1;//居中
+	emAlignRight = 2;//居右
+}
+
+//横幅
+enum EmRollMode
+{
+	emStatic = 0;
+	emRight2Left = 1;
+	emDown2Up = 2;
+	emScollPage = 3;
+}
+
+//横幅
+enum EmRollSpeed
+{
+	emRollSlower = 0;
+	emRollSlow = 1;
+	emRollNormal = 2;
+	emRollFast = 3;
+	emRollFaster = 4;
+}
+
+//音频输入接口
+enum EmHDAudPortIn
+{
+	emHDAudInBegin = 0;     // X500                  X700-4K|X500-4K       X500-1080P|X300       SKY300
+	emHDAudInDMic1 = 1;     // 有线MIC 1             有线MIC_2             有线MIC_1             有线MIC_2
+	emHDAudInDMic2 = 2;     // 有线MIC 2             有线MIC_3             ...
+	emHDAudInXLR   = 3;     // 卡侬MIC_1             卡侬MIC_1             卡侬MIC_2             卡侬MIC_1
+	emHDAudInWMic1 = 4;     // 无线MIC_1             无线MIC_1             无线MIC_1
+	emHDAudInWMic2 = 5;     // 无线MIC_2             无线MIC_2             ...
+	emHDAudInWMic3 = 6;     // 无线MIC_3             无线MIC_3             ...
+	emHDAudInRCA   = 7;     // LINE_4                LINE_5                LINE_4
+	emHDAudInTRS3_5 = 8;    // AUX_3                 AUX_3                 AUX_3                 AUX_3
+	emHDAudInHDMI1 = 9;     // HDMI_4                HDMI_6                HDMI_3|HDMI_3         HDMI_2
+	emHDAudInHDMI2 = 10;    // ...                   HDMI_1|...            ...
+	emHDAudInHDMI3 = 11;    // ...                   HDMI_2|...            ...
+	emHDAudInDHDMI = 12;    // DVI/YPbPr/VGA/HDMI_3  DVI/HDMI/VGA/YPbPr_5  DVI/HDMI/VGA/YPbPr_1
+	emHDAudInSDI1  = 13;    // SDI1                  SDI_3                 SDI_2|...
+	emHDAudInSDI2  = 14;    // SDI2                  SDI_4                 ...
+	emHDAudInHDBaseT1 = 15; // HDBaseT_1             HDBaseT_1             HDBaseT_1
+	emHDAudInHDBaseT2 = 16; // HDBaseT_2             HDBaseT_2             HDBaseT_2|...
+	emHDAudInDsiMic1 = 17;  // ...                   ...                   ...                  DSIMIC_1
+	emHDAudInDsiMic2 = 18;  // ...                   ...                   ...                  DSIMIC_2
+}
+
+//音频输出接口
+enum EmHDAudPortOut
+{
+	emHDAudOutBegin  = 0; // X500                    X700-4K|X500-4K       X500-1080P|X300       SKY300
+	emHDAudOutRCA    = 1; // LINE 3                  LINE 3                LINE_2
+	emHDAudOutTRS6_5 = 2; // TRS 1                   TRS 1                 TRS_3
+	emHDAudOutTRS3_5 = 3; // AUX 2                   AUX 2                 AUX_1                 AUX_1
+	emHDAudOutDHDMI1 = 4; // DVI/YPbPr/VGA/HDMI1_1   DVI/HDMI/VGA/YPbPr_3  DVI/HDMI/VGA/YPbPr_1
+	emHDAudOutDHDMI2 = 5; // ...                     ...                   ...
+	emHDAudOutHDMI   = 6; // HDMI_3                  HDMI_4                HDMI_2                HDMI_2
+	emHDAudOutSDI    = 7; // SDI                     SDI 5                 SDI_1|...
+	emHDAudOutHDMI1  = 8; // ...                     HDMI_1|...            HDMI_1_1|...          HDMI_3
+	emHDAudOutHDMI2  = 9; // ...                     HDMI_2|...            HDMI_1_2|HDMI_1
+}
+
+//多流多视开关
+enum EmHDMultiVideoSwitch
+{
+	emHDMultiVideoStop = 0; //关闭多流或者多视
+	emHDMultiView = 1; //多视
+	emHDMultiStream = 2; //多流
+}
+
+//多视画面风格
+enum EmHDMultiViewMP
+{
+	emMVMP_LeftRight_One      = 0; //两画面,左右对等
+	emMVMP_BigSmall_RightDown = 1; //一大一小，小画面右下
+	emMVMP_BigSmall_LeftDown  = 2; //一大一小，小画面左下
+	emMVMP_BigSmall_LeftUp    = 3; //一大一小，小画面左上
+	emMVMP_BigSmall_RightUp   = 4; //一大一小，小画面右上	
+	emMVMP_3View_1Big2Small   = 5; //三视，1大2小，1左，2右(2行1列)
+	emMVMP_3View_1Top2Bottom  = 6; //三视，品字形，1上，2下(1行2列)
+	emMVMP_SingleView_Close   = 7; //单画面，即关闭多视
+}
+
+//视频接口模式
+enum EmHDVideoPortMode
+{
+	emVPM_Invalid = 0; //用于表示无效视频模式
+	emVPM_Auto = 1; //自动
+	emVPM_HDMI = 2;
+	emVPM_DVI = 3;
+	emVPM_YPBPR = 4;
+	emVPM_VGA = 5;
+}
+
+//视频输出接口定义
+enum EmHDVideoOutPortType
+{
+	emVOT_Invalid = 0; //无效    X500                   X700-4K|X500-4K        X500-1080P|X300       SKY300
+	emVOT_DVI1    = 1; //dvi1    DVI/YPbPr/VGA/HDMI_1   DVI/HDMI/VGA/YPbPr_3   DVI/HDMI/VGA/YPbPr_1
+	emVOT_DVI2    = 2; //dvi2
+	emVOT_DVI3    = 3; //dvi3
+	emVOT_DVI4    = 4; //dvi4
+	emVOT_HDMI1   = 5; //hdmi1   HDMI_3                 HDMI_4                 HDMI_2                HDMI_2
+	emVOT_HDMI2   = 6; //hdmi2                          HDMI_1|...             HDMI_1_1|...          HDMI_3
+	emVOT_HDMI3   = 7; //hdmi3                          HDMI_2|...             HDMI_1_2|HDMI_1
+	emVOT_HDMI4   = 8; //hdmi4
+	emVOT_YPbPr1  = 9; //YPbPr1
+	emVOT_YPbPr2  = 10; //YPbPr2
+	emVOT_YPbPr3  = 11; //YPbPr3
+	emVOT_YPbPr4  = 12; //YPbPr4
+	emVOT_VGA1    = 13; //vga1   VGA/YPbPr_2            VGA/YPbPr_4            VGA/YPbPr_2          VGA/YPbPr_1
+	emVOT_VGA2    = 14; //vga2   VGA/YPbPr_3
+	emVOT_VGA3    = 15; //vga3
+	emVOT_VGA4    = 16; //vga4
+	emVOT_SDI1    = 17; //sdi1   SDI_2                  SDI_5                  SDI_1|...
+	emVOT_SDI2    = 18; //sdi2
+	emVOT_SDI3    = 19; //sdi3
+	emVOT_SDI4    = 20; //sdi4
+	emVOT_C1      = 21; //cvbs1  CVBS_4
+	emVOT_C2      = 22; //cvbs2
+	emVOT_C3      = 23; //cvbs3
+}
+
+//视频输出口的输入源定义
+enum EmHDVideoSourceType
+{
+	emVS_Invalid = 0; //无效视频源
+	emVS_1stDec = 1; //第1路解码
+	emVS_2ndDec = 2; //第2路解码
+	emVS_3rdDec = 3; //第3路解码
+	emVS_4thDec = 4; //第4路解码
+	emVS_5thDec = 5; //第5路解码
+	emVS_6thDec = 6; //第6路解码
+	emVS_7thDec = 7; //第7路解码
+	emVS_8thDec = 8; //第8路解码
+	emVS_9thDec = 9; //第9路解码
+	emVS_10thDec = 10; //第10路解码
+	emVS_MtVidInnerCamera = 11; //内置摄像头
+	emVS_MtVidDVI1 = 12; 
+	emVS_MtVidDVI2 = 13; 
+	emVS_MtVidDVI3 = 14; 
+	emVS_MtVidDVI4 = 15; 
+	emVS_MtVidHDMI1 = 16; 
+	emVS_MtVidHDMI2 = 17; 
+	emVS_MtVidHDMI3 = 18; 
+	emVS_MtVidHDMI4 = 19; 
+	emVS_MtVidYPbPr1= 20; 
+	emVS_MtVidYPbPr2 = 21; 
+	emVS_MtVidYPbPr3 = 22; 
+	emVS_MtVidYPbPr4 = 23; 
+	emVS_MtVidVGA1 = 24; 
+	emVS_MtVidVGA2 = 25; 
+	emVS_MtVidVGA3 = 26; 
+	emVS_MtVidVGA4 = 27; 
+	emVS_MtVidC1 = 28;
+	emVS_MtVidC2 = 29;
+	emVS_MtVidC3 = 30;
+	emVS_MtVidS1 = 31;
+	emVS_MtVidS2 = 32;
+	emVS_MtVidS3 = 33;
+	emVS_MtVidHDBaseT1 = 34; 
+	emVS_MtVidHDBaseT2 = 35; 
+	emVS_MtVidHDBaseT3 = 36; 
+	emVS_MtVidHDBaseT4 = 37; 
+	emVS_MtVidSDI1 = 38; 
+	emVS_MtVidSDI2 = 39; 
+	emVS_MtVidSDI3 = 40;
+	emVS_MtVidSDI4 = 41;
+}
+
+//无图像显示输出配置
+enum EmHDLastDisplay
+{
+	emLD_LastFrame = 0; //最后一帧
+	emLD_BlueScreen = 1; //蓝屏
+	emLD_StaticBMP = 2; //静态图片 
+	emLD_CustomBMP = 3; //用户自定义图片 
+}
+
+//图像降噪
+enum EmHDImageNoise
+{
+	emImageNoise_Disable = 0; //关闭
+	emImageNoise_Low = 1; //微弱
+	emImageNoise_Med = 2; //弱
+	emImageNoise_High = 3; //强
+	emImageNoise_UltraHigh = 4; //超强
+}
+
+//变形拉伸
+enum EmHDImageDeformationTensile
+{
+	emImageDT_Transverse = 0; //左右
+	emImageDT_Longitudinal = 1; //上下
+}
+
+
+
+/** 以太网工作模式 */
+enum EmEthnetWorkMode
+{
+	emEthModeAuto = 0;        //自动
+	emEthMode10MFull = 1;     //10M全双工
+	emEthMode10MHalf = 2;     //10M半双工
+	emEthMode100MFull = 3;    //100M全双工
+	emEthMode100MHalf = 4;    //100M半双工
+	emEthMode1000MFull = 5;   //1000M全双工
+	emEthMode1000MHalf = 6;   //1000M半双工	
+}
+
+
+/** 以太网多网口模式 */
+enum EmEthInterfaceMode
+{
+	emEthInterfaceModeBackup = 0; //备份
+	emEthInterfaceModeMulti = 1; //多网口
+	emEthInterfaceModeSingle = 2; //单网口
+}
+
+
+/** 以太网启动状况 */
+enum EmEthStartupResult
+{
+	emEthStartupSuccess = 0;            //启动成功
+    emEthStartupFail = 1;               //启动失败
+}
+ 
+ 
+/** PPPoE连接状态 */
+enum EmPPPoELinkState
+{
+	emPPPoELinkStateIdle = 0;           //未连接
+	emPPPoELinkStateConnecting = 1;     //连接中
+	emPPPoELinkStateDisConnecting = 2;  //断开中
+	emPPPoELinkStateConnected = 3;      //已连接	
+} 
+
+
+/** PPPoE连接失败原因 */
+enum EmPPPoELinkErrReason
+{
+        emPPPoELinkErrReason_None = 0;            //连接成功
+        emPPPoELinkErrReason_UsrOrPwdError = 1;   //用户名或密码错误
+	emPPPoELinkErrReason_Timeout = 2;         //拨号超时
+	emPPPoELinkErrReason_Linkdown = 3;        //断链
+	emPPPoELinkErrReason_NoISPServer = 4;     //找不到ISP服务商
+	emPPPoELinkErrReason_Unknown = 5;         //其他未知原因
+} 
+
+
+ 
+/** WIFI工作模式 */
+enum EmWifiWorkMode
+{
+	emWifiWorkModeClose = 0;      //关闭
+	emWifiWorkModeWifiClient = 1; //Wifi客户端接入
+	emWifiWorkModeWifiAp = 2;     //Wifi-AP服务          
+}
+
+
+/** WIFI加密模式 */
+enum EmWifiKeyType
+{
+	emWifiKeyTypeNone = 0;         //未加密
+	emWifiKeyTypeWPA = 1;          //WPA-PSK
+	emWifiKeyTypeWPA2 = 2;         //WPA2-PSK
+	emWifiKeyTypeWPAWPA2 = 3;      //WPA-PSK or WPA2-PSK
+	emWifiKeyTypeWEP = 4;          //WEP
+}
+
+
+/** WIFI信号强度(4级) */
+enum EmWifiSignalLevel
+{
+	emWifiSignalLevelNone = 0;      //无信号 0格信号
+	emWifiSignalLevelLess = 1;      //弱     1格信号
+	emWifiSignalLevelLow  = 2;      //低     2格信号
+	emWifiSignalLevelMid  = 3;      //中     3格信号
+	emWifiSignalLevelHigh = 4;      //高     4格信号
+} 
+
+
+/** WIFI连接状态 */
+enum EmWifiLinkState
+{
+	emWifiLinkStateIdle = 0;              //空闲中
+	emWifiLinkStateAuthentication = 1;    //认证中
+	emWifiLinkStateBlocked = 2;           //阻塞	
+	emWifiLinkStateConnected = 3;         //已连接	
+	emWifiLinkStateConnecting = 4;        //连接中
+	emWifiLinkStateDisConnected = 5;      //已断开
+	emWifiLinkStateDisConnecting = 6;     //断开中
+	emWifiLinkStateFailed = 7;            //失败
+	emWifiLinkStateObtainingIpAddr = 8;   //获取IP中
+	emWifiLinkStateScanning = 9;          //扫描中
+	emWifiLinkStateSuspended= 10;         //挂起暂停中
+	emWifiLinkStateVerifyingPoorLink = 11;//
+} 
+
+
+/** WIFI连接失败原因 */
+enum EmWifiLinkErrReason
+{
+        emWifiLinkErrReason_None = 0;      //连接成功
+	emWifiLinkErrReason_Failed = 1;    //连接失败
+	emWifiLinkErrReason_Timeout = 2;   //连接超时
+	emWifiLinkErrReason_Unknown = 3;   //未知原因
+} 
+
+
+/** WIFI-AP加密模式 */
+enum EmWifiApKeyType
+{
+	emWifiApKeyTypeNone = 0;         //未加密
+	emWifiApKeyTypeWPA2 = 1;         //WPA2-PSK AES
+} 
+
+
+/** WIFI-频段类型 */
+enum EmWifiFrequencyBandType
+{
+	emWifiFrequencyBandType_24GHz = 0;       //2.4GHz
+	emWifiFrequencyBandType_50GHz = 1;       //5.0GHz
+} 
+
+
+/** MobileData移动数据连接状态 */
+enum EmMobileDataLinkState
+{
+	emMobileDataLinkStateUnUsed = 0;         //未启用
+	emMobileDataLinkStateIdle = 1;           //未启用
+	emMobileDataLinkStateConnecting = 2;     //连接中
+	emMobileDataLinkLinkStateConnected = 3;  //已连接
+	emMobileDataLinkLinkStateSuspended = 4;  //挂起
+	emMobileDataLinkStateDisConnecting = 5;  //断开中
+	emMobileDataLinkLinkStateDisConnected=6; //已断开
+	emMobileDataLinkLinkStateUnknown = 7;    //未知
+		
+} 
+
+
+/** MobileData移动数据连接失败原因 */
+enum EmMobileDataLinkErrReason
+{
+        emMobileDataLinkErrReason_None = 0;      //连接成功
+	emMobileDataLinkErrReason_Failed = 1;    //连接失败
+	emMobileDataLinkErrReason_Timeout = 2;   //连接超时
+	emMobileDataLinkErrReason_Unknown = 3;   //未知原因
+} 
+
+/** MobileData信号强度(4级) */
+enum EmMobileDataSignalLevel
+{
+	emMobileDataSignalLevelNone = 0;      //无信号 0格信号
+	emMobileDataSignalLevelLess = 1;      //弱     1格信号
+	emMobileDataSignalLevelLow  = 2;      //低     2格信号
+	emMobileDataSignalLevelMid  = 3;      //中     3格信号
+	emMobileDataSignalLevelHigh = 4;      //高     4格信号
+} 
+
+
+enum EmNetAdapterWorkType
+{
+        emNetAdapterWorkType_None = 0;           //不可用
+	emNetAdapterWorkType_Wifi = 1;           //WIFI
+	emNetAdapterWorkType_PPPoE = 2;          //PPPOE
+	emNetAdapterWorkType_MobileData = 3;     //移动数据3G/4G
+	emNetAdapterWorkType_EthnetCard1= 4;     //以太网Lan1
+	emNetAdapterWorkType_EthnetCard2= 5;     //以太网Lan2
+	emNetAdapterWorkType_E1= 6;              //E1通讯
+} 
+
+
+enum EmMobileDataNetType
+{
+	emMobileDataNetType_None = 0;    //未知
+	emMobileDataNetType_CMCC = 1;    //中国移动
+	emMobileDataNetType_CUCC = 2;    //中国联通
+	emMobileDataNetType_CTCC = 3;    //中国电信
+}
+
+
+enum EmMobileDataNetGenerationType {
+	emMobileDataNetGenerationType_None = 0;   //未知
+	emMobileDataNetGenerationType_2G = 1;     //2G
+	emMobileDataNetGenerationType_3G = 2;     //3G
+	emMobileDataNetGenerationType_4G = 3;     //4G
+}
+
+
+/** 设置以太网参数类型*/
+enum EmEthnetParamType{
+	emType_SetIpAndMask = 0;   //设置IP和掩码
+	emType_SetMacAddress = 1;  //设置MAC地址
+	emType_SetAllParam = 2;    //设置所有参数
+	emType_SetSecondIp = 3;    //设置第二个IP信息
+}
+
+
+
+
+/** E1接口类型 */
+enum EmE1InterfaceType{
+	emE1IfType_Serial = 0;    //Serial类型
+	emE1IfType_Virtual = 1;   //Virtual类型 
+}
+
+
+/** E1 Colck类型 */
+enum EmE1ClockType{
+	emClockType_Dce = 0;    
+	emClockType_Dte = 1;
+}
+
+
+
+/** E1 Chain操作类型 */
+enum EmE1ChainOptType{
+	emType_OpenSingle = 0;    //打开单通道
+	emType_CloseSingle = 1;   //关闭单通道
+	emType_OpenMult = 2;      //打开多通道
+	emType_CloseMult = 3;     //关闭多通道	
+}
+
+
+/** E1打开关闭单通道链路或多通道链路响应错误码 */
+enum EmE1LinkErrReason {
+	emE1ErrNone = 0;
+	emE1ErrParamException = 1;
+	emE1ErrSerialIdInvalid = 2;
+	emE1ErrE1IdInvalid = 3;
+	emE1ErrE1TsMaskInvalid = 4;
+	emE1ErrE1ChainGroupInvalid = 5;
+	emE1ErrSerialProtocolTypeInvalid = 6;
+	emE1ErrSerialEchoIntervalInvalid = 7;
+	emE1ErrSerialEchoMaxRetryInvalid = 8;
+	emE1ErrStringLenOverflow = 9;
+	emE1ErrNipOptErr = 10;
+	emE1ErrChainNotConfig = 11;
+	emE1ErrChainConflict = 12;
+	emE1ErrPppAuthTypeInvalid = 13;
+	emE1ErrPppFragTooShort = 14;
+	emE1ParamCheckErr = 15;
+	emE1ParamConflict = 16;
+}
+    
+
+/** Ping错误码 */
+enum EmPingErrcode {
+    emPingReply = 0;      //ping包正常回应
+    emPingTimeout = 1;    //ping包超时
+    emPingError = 2;      //ping包系统错误
+    emPingNetUnreach = 3; //ping包网络不可达 
+}    
+
+
+
+enum EmUpgradeType {
+    emSusUpgrade = 1;            //远端升级
+    emLocalUpgrade = 2;          //本地升级
+    emMtcUpgrade = 3;
+}
+
+
+
+
+enum EmUpgradeNotify {
+    emFileCheckBgn = 0;              // 文件检查开始
+    emWholeUpgradeBgn = 1;           // 整体升级开始
+    emFileCheckSuccess = 2;         // 文件校验成功
+    emWholeUpgradeSuccess = 3;      // 整体升级成功
+    emUnknownErr = 4;               // 未知错误
+    emInvalidFileErr = 5;           // 升级包错误
+    emLoadXmlFileErr = 6;           // 解析xml错误
+    emFileCheckErr = 7;             // 文件校验失败
+    emSysMountBakErr = 8;           // 挂载备份分区失败
+    emUpgradeDriverModuleErr = 9;   // 驱动模块升级失败
+    emUpgradeAppModuleErr = 10;      // 应用模块升级失败
+    emUpgradeExeModuleErr = 11;      // 可执行模块升级失败
+}
+
+
+
+
+
+/**网络冲突类型*/
+enum EmNetConflictType {
+    emConflictType_None = 0;
+    emConflictType_Ip = 1;
+    emConflictType_Mac = 2;
+    emConflictType_Both = 3;
+}
+
+
+//硬终端产品的枚举 end
+
+//MIC增益
+enum EmHDMicGain
+{
+	emMicGainOff = 0;
+	emMicGainLow = 1;
+	emMicGainMiddle = 2;
+	emMicGainHigh = 3;
+}
+
+enum EmPPPoEDialMode
+{
+	emPPPoEDialManual = 0;
+	emPPPoEDialAuto = 1;
+}
+
+ 
+enum EmEquipmentUpgrading
+{
+	emEUbegin = 0;
+	emEUHD120 = 1;		//摄像头Hd120
+	emEUHD200 = 2;		//摄像头Hd200
+	emEUHD120E = 3;		//摄像头Hd120E
+	emEUHD200E = 4;		//摄像头Hd200E
+	emEUMoon50 = 5;		//摄像头moon50_4k
+	emEUMoon50_1080p = 6;		//摄像头moon50_1080p
+	emEUMoon70_1080p = 7;		//摄像头moon70_1080p
+};
+
+//数字mic升级/查询的串口设备号
+enum EmUartNum
+{
+	emUartDMIC1 = 0;		//数字mic1
+	emUartDMIC2 = 1;		//数字mic2
+}
+
+//图片格式
+enum EmPicFormat
+{
+    emJPEG = 0;
+	emBMP  = 1;
+}
+
+//图像参数
+enum EmImgParam
+{
+    emHue           = 0;  //色度
+	emWhiteBalance  = 1;  //白平衡
+	emContrast      = 2;  //对比度
+	emSaturation    = 3;  //饱和度
+	emSharpness     = 4;  //锐度
+	emBright        = 5;  //亮度
+}
+
+
+//Fxo电话状态
+enum EmFxoState
+{
+    emFxoIdle = 0;
+    emFxoCallIn = 1;
+    emFxoCalling = 2;
+    emFxoConnect = 3;
+}
+
+//SDI接口数量
+enum EmSdiInOut
+{
+    emSdiNone = 0; //无sdi
+    emSdiTwoIn = 1; //两进口
+    emSdiOneInOneOut = 2; //一进口一出口
+}
+
+//消息来源
+enum EmMsgFromSource
+{
+	emMsgFromInvalid = 0;
+    emMsgFromWebMtc = 1;
+    emMsgFromOsd = 2;
+}
+
+//登录网服务器结果
+enum EmNmsLoginResult
+{
+    emNmsLogin_Success = 0;                 //登录成功
+	emNmsLogin_ErrorID = 1;                 //登录ID错误
+	emNmsLogin_RepeatLogin = 2;             //终端ID重复登录
+	emNmsLogin_ErrorDevType = 3;            //错误设备类型
+	emNmsLogin_DisConnect = 255;            //断链
+}
+
+//时区选项内容
+enum EmTimeZone
+{
+    emTimeZone_GMT = 0;	// 格林威治标准时间 GMT
+	emTimeZone_UTC = 1;	// 全球标准时间 GMT 
+	emTimeZone_ECT = 2; //欧洲中部时间 GMT+1:00 
+	emTimeZone_EET = 3; //东欧时间 GMT+2:00 
+	emTimeZone_ART = 4; //（阿拉伯）埃及标准时间 GMT+2:00
+	emTimeZone_EAT = 5; //东非时间 GMT+3:00 
+	emTimeZone_MET = 6; //中东时间 GMT+3:30 
+	emTimeZone_NET = 7; //近东时间 GMT+4:00 
+	emTimeZone_PLT = 8; //巴基斯坦拉合尔时间 GMT+5:00 
+	emTimeZone_IST = 9; //印度标准时间 GMT+5:30 
+	emTimeZone_BST = 10; //孟加拉国标准时间 GMT+6:00 
+	emTimeZone_VST = 11; //越南标准时间 GMT+7:00 
+	emTimeZone_CTT = 12; //中国北京时间 GMT+8:00 
+	emTimeZone_JST = 13; //日本标准时间 GMT+9:00 
+	emTimeZone_ACT = 14; //澳大利亚中部时间 GMT+9:30 
+	emTimeZone_AET = 15; //澳大利亚东部时间 GMT+10:00
+	emTimeZone_SST = 16; //所罗门标准时间 GMT+11:00 
+	emTimeZone_NST = 17; //新西兰标准时间 GMT+12:00 
+	emTimeZone_MIT = 18; //中途岛时间 GMT-11:00 
+	emTimeZone_HST = 19; //夏威夷标准时间 GMT-10:00 
+	emTimeZone_AST = 20; //阿拉斯加标准时间 GMT-9:00 
+	emTimeZone_PST = 21; //太平洋标准时间 GMT-8:00 
+	emTimeZone_PNT = 22; //菲尼克斯标准时间 GMT-7:00 
+	emTimeZone_MST = 23; //西部山脉标准时间 GMT-7:00 
+	emTimeZone_CST = 24; //中部标准时间 GMT-6:00 
+	emTimeZone_EST = 25; //东部标准时间 GMT-5:00 
+	emTimeZone_IET = 26; //印第安那东部标准时间 GMT-5:00 
+	emTimeZone_PRT = 27; //波多黎各和美属维尔京群岛时间 GMT-4:00 
+	emTimeZone_CNT = 28; //加拿大纽芬兰时间 GMT-3:30 
+	emTimeZone_AGT = 29; //阿根廷标准时间 GMT-3:00 
+	emTimeZone_BET = 30; //巴西东部时间 GMT-3:00 
+	emTimeZone_CAT = 31; //中非时间 GMT-1:00
+}
+
+//平滑发送等级
+enum EmMtSmoothSendLevel
+{
+	emSmoothSendLevel_Off = 0; //关闭
+	emSmoothSendLevel_High = 1; //高
+	emSmoothSendLevel_Middle = 2; //中
+	emSmoothSendLevel_Low = 3; //低
+}
+
+enum EmRestDualMode
+{
+	emRestDual_Speaker = 0;			// 发言会场
+	emRestDual_any = 1;				// 任意会场
+	emRestDual_assign = 2;			// 指定会场
+}
+
+enum EmRestMeetingSafeType
+{
+	emRestMeetingType_Public = 0;		// 传统媒体会议
+	emRestMeetingType_Port = 1;		// 端口会议
+	emRestMeetingType_Sfu    = 2;       // 纯转发会议(webrtc)
+}
+
+//视频质量
+enum EmRestVideoQuality
+{
+    emRestQualityPrecedence = 0;    // 质量优先
+	emRestSpeedPrecedence = 1;      // 速度优先
+}
+
+//级联模式
+enum EmRestCascadeMode
+{
+    emRestCascade_Simple = 0;    // 简单级联
+    emRestCascade_Merge = 1;     // 合并级联
+}
+
+
+
+enum EmRemoteType
+{
+    emRemoteTypeUnknown = 0;              // 未知遥控器
+    emRemoteTypeShortBlack = 1;           // 短黑色遥控器
+    emRemoteTypeLongBlack = 2;            // 长黑色遥控器
+    emRemoteTypeSilver = 3;               // 银色遥控器
+    emRemoteTypeV3CamCtrl = 4;            // V3Cam遥控器
+    emRemoteTypeSkyWalker = 5;            // SkyWalker遥控器
+	emRemoteTypeIRLongBlack = 6;          // 红外盒子指令
+}
+
+
+enum EmRemoteScanCode
+{
+    emScanCode0            = 0;   // 0 
+    emScanCode1            = 1;   // 1 
+    emScanCode2            = 2;   // 2 
+    emScanCode3            = 3;   // 3 
+    emScanCode4            = 4;   // 4 
+    emScanCode5            = 5;   // 5 
+    emScanCode6            = 6;   // 6 
+    emScanCode7            = 7;   // 7 
+    emScanCode8            = 8;   // 8 
+    emScanCode9            = 9;   // 9   
+    emScanCodePoint        = 10;  // . 
+    emScanCodeSharp        = 11;  // #   
+
+    emScanCodeMenu         = 12;  // 菜单 
+    emScanCodeBackspace    = 13;  // 删除 
+    emScanCodeEnter        = 14;  // 确定 
+    emScanCodeUp           = 15;  // 上 
+    emScanCodeDown         = 16;  // 下 
+    emScanCodeLeft         = 17;  // 左 
+    emScanCodeRight        = 18;  // 右 
+
+    emScanCodePower        = 19;  // 电源 
+    emScanCodeMainVSrc     = 20;  // 主视频源 
+    emScanCodeAV           = 21;  // AV
+    emScanCodeFarCtrl      = 22;  // 远遥
+    emScanCodeMute         = 23;  // 哑音
+    emScanCodeQuiet        = 24;  // 静音
+    emScanCodeVGA          = 25;  // VGA
+    emScanCodeS            = 26;  // S端子
+    emScanCodeShotSnap     = 27;  // 快照
+    emScanCodeVolumeUp     = 28;  // 音量+
+    emScanCodeVolumeDown   = 29;  // 音量-
+
+    emScanCodeConnect      = 30;  // 拨号 
+    emScanCodeDisconnect   = 31;  // 挂断 
+    emScanCodeDirectory    = 32;  // 地址簿 
+    emScanCodePipEnable    = 33;  // 画中画 
+    emScanCodePipAdjust    = 34;  // 画中画缩放 
+    emScanCodeSelfTest     = 35;  // 自检 
+
+    emScanCodeAutoFocus    = 36;  // 自动调焦 
+    emScanCodeNearZoom     = 37;  // 近视 
+    emScanCodeFarZoom      = 38;  // 远视 
+    emScanCodePreSave      = 39;  // 保存预置位 
+    emScanCodePreMove      = 40;  // 加载预置位 
+
+    emScanCodeChairReq     = 41;  // 申请主席 
+    emScanCodeSpeakReq     = 42;  // 申请发言 
+    emScanCodeQuitReq      = 43;  // 退会 
+
+    emScanCodeState        = 44;  // 状态 
+
+    emScanCodeHotLeft      = 45;  // 快捷键1 
+    emScanCodeHotCenter    = 46;  // 快捷键2 
+    emScanCodeHotRight     = 47;  // 快捷键3 
+    emScanCodeHelp         = 48;  // 帮助 
+ 
+    emScanCodeBrightUp     = 49;  // 亮度+
+    emScanCodeBrightDown   = 50;  // 亮度-
+    emScanCodeDual         = 51;  // 双流
+
+    emScanCodeReturn       = 52;  // 返回
+    emScanCodeFunc         = 53;  // 功能
+	
+    emScanCodeSearch       = 54;  // 搜索
+	emScanCodeImixMenu	   = 55;  // 用于网呈，在会议空闲时可以直接返回OSD主界面
+
+    emScanCodeNull         = 98;  // 无键值
+    emScanCodeInvalid      = 99;  // 无效键值
+}
+
+//参与会议反馈
+enum EmParticipantResponse
+{
+    emResponseNoFeedback   = 0;//未反馈
+	emResponseReject       = 1;//拒绝入会
+	emResponseParticipant   = 2;//入会
+	emResponseCustom		=3; //表示会议由当前用户创建
+}
+
+//会议免打扰
+enum EmClosedMeeting
+{
+    emClosedMeeting_Close = 0;//关闭
+	emClosedMeeting_Open = 1;//开启
+}
+
+//摄像机转动速度
+enum EmCameraSpeed
+{
+	emCameraSlow = 0;
+	emCameraNormal = 1;
+	emCameraFast = 2;
+}
+
+//摄像机控制当前画面
+enum EmCameraView
+{
+	emRestoreCameraView = 0;
+	em1stCameraView = 1;
+	em2ndCameraView = 2;
+	emCameraMultiView = 3;
+	em3rdCameraView = 4;
+}
+
+//获取@、赞、粉丝等初始消息相关的消息类型
+enum EmRestNotifyType
+{
+    emUnknownType = 0; //未知消息
+    emNewFan = 1; //新粉丝
+    emNewFeed = 2; //新消息 --目前NEW_FEED获取不到新消息数
+    emNewRemindMe = 3; //@我的消息
+	emNewReply = 4; //回复我的消息
+    emGroupInvite = 5; //群组邀请的消息
+    emNewLike = 6; //赞我的消息
+    emNewPrivateMsg = 7; //私信的消息
+}
+
+enum EmVidRationStrategy
+{
+    EmAssVidPri = 0;   ////辅流优先
+	EmMainVidPri = 1;  ///主流优先
+	EmUserDefined = 2;  ///自定义比例
+}
+
+
+enum EmSystemFileType
+{
+    emFileNormal = 0;       //普通文件
+	emFileDirectory = 1;    //目录文件
+	emFileLink = 2;         //链接文件
+	emFilePipe = 3;         //管道
+}
+
+//需要保存Jpeg的功能
+enum EmSaveJpegType
+{
+    emSJMonitor = 0; //图片监控
+    emSJPresetPos = 1; //预置位图片
+    emSJFtpSnapshot = 2; //ftp快照
+}
+
+//待机失败原因
+enum EmSleepFailReason
+{
+    emSFRNoError = 0;        //没有失败，允许待机
+    emSFRProtectionTime = 1; //待机保护时间(30秒)
+	emSFRMonitor = 2;        //监控
+    emSFRInConf = 3;         //会议
+    emSFRLoop = 4;           //自环
+	emSFRRibbonTest = 5;     //色带测试
+	emSFRSnapView = 6;       //快照浏览
+	emSFRVrs = 7;            //VRS
+	emSFRUpgrade = 8;        //升级
+	emSFRSusUpgrade = 9;     //SUS升级
+	emSFRNetCap = 10;        //抓包
+	emSFRAddrbook = 11;      //地址簿导入或导出
+	emSFRSnapExport = 12;    //快照导出
+	emSFRCameraUpgrade = 13; //摄像机升级
+	emSFRMicPhoneUpgrade = 14; //麦克风升级
+	emSFRMtRecorde = 15;     //本地录像
+	emSFRMtAssStream = 16;   //skyshare双流
+}
+
+//解码后处理策略
+enum EmResizeMode
+{
+    emBlackEdge  = 0;	//加黑边
+	emCutEdge = 1;		//裁边
+	emNoProportionally = 2;	//非等比
+}
+
+//本地声音类型
+enum EmLocalSoundType
+{
+    emLSRing  = 0;	//铃声
+	emLSKeyTone = 1;		//按键音效
+	emLSSpecialEffects= 2;	//动画音效
+}
+
+//本地音效索引
+enum EmLocalSoundIndex
+{
+    emSound1st          = 0;
+    emSound2nd          = 1;
+    emSound3rd          = 2;
+    emSound4th          = 3;
+    emSound5th          = 4;
+    emSound6th          = 5;
+    emSound7th          = 6;
+    emSound8th          = 7;
+    emSound9th          = 8;
+}
+
+
+//文件拷贝错误码
+enum EmFileCopyErr
+{
+    emCopySuccess         = 0;     //成功
+	emCopyUnknownErr      = 1;     //未知错误
+	emCopyNoSpace         = 2;     //空间不足
+	emCopySrcFileNotFound = 3;     //源文件不存在
+	emCopyDstPathNotFound = 4;     //目标路径不存在
+	emCopyStop			  = 5;	   //停止拷贝
+}
+
+//数字麦对应的Id
+enum EmMicDevId
+{
+	emWiredMic0         = 0;     // 0-有线麦0
+	emWiredMic1         = 1;     // 1-有线麦1
+	emWirelessMic0      = 2;     // 2-无线麦0
+	emWirelessMic1      = 3;     // 3-无线麦1
+	emWirelessMic2      = 4;     // 4-无线麦2
+	emWiredMic0Cascade1 = 5;     // 有线麦0级联1
+	emWiredMic0Cascade2 = 6;     // 有线麦0级联2
+	emWiredMic1Cascade1 = 7;     // 有线麦1级联1
+	emWiredMic1Cascade2 = 8;     // 有线麦1级联2
+	emBuiltinMic0       = 9;     // 内置麦1
+	emBuiltinMic1       = 10;     // 内置麦2
+	emMicDevEnd         = 11;     // 麦克最大个数
+}
+
+//会议模板账户类型
+enum EmTemplateAccoutType
+{
+	emAccountNone       = 0; 
+	emAccountMoid       = 1; //MOID
+	emAccountAny        = 3; //任意账号
+	emAccountNonSysMail = 4; //非系统邮箱
+	emAccountE164       = 5; //E164号码
+	emAccountTelPhone   = 6; //电话
+	emAccountIP         = 7; //IP地址
+	emAccountAlias      = 8; //别名@ip(监控前端)
+}
+
+//ping操作的时候，用于标识调用者的UID
+enum EmPingUserId
+{
+    emPingUidLan          = 0;//局域网可连接测试
+    emPingUidInternet     = 1;//互联网可连接测试
+    emPingUidDns          = 2;//服务器DNS解析测试
+    emPingUidServer       = 3;//当前选择的服务器可连接测试
+    emPingUid4          = 4;//保留，使用时添加注释
+    emPingUid5          = 5;//保留，使用时添加注释
+    emPingUid6          = 6;//保留，使用时添加注释
+    emPingUid7          = 7;//保留，使用时添加注释
+    emPingUid8          = 8;//保留，使用时添加注释
+}
+
+//麦克风更新状态
+enum EmMicUpgradeState
+{
+    emUploadEnable        = 0;//可上传
+    emUploading           = 1;//上传中
+    emInstallable         = 2;//可安装
+    emInstalling          = 3;//安装中
+    emUpgradeSuccess      = 4;//安装成功
+    emLatestVersion       = 5;//最新版本
+    emReserve1            = 6;//保留，使用时添加注释
+    emReserve2            = 7;//未连接
+}
+
+//音频时延检测状态
+enum EmAudioDelayCheckState
+{
+	emAudioDelayBegin    = 0;//初始状态
+	emAudioDelayChecking = 1;//正在检测
+	emAudioDelayChecked  = 2;//检测完成
+	emAudioDelayTimeout  = 3;//检测超时
+	emAudioDelayFailed   = 4;//检测失败
+	emAudioDelayReserve1 = 5;//保留，使用时添加注释
+	emAudioDelayReserve2 = 6;//保留，使用时添加注释
+}
+
+//摄像机升级错误码
+enum EmCameraUpgradeErrCode
+{
+	emCUSuccess			= 0;		//升级成功
+	emCUUpgrading		= 1;		//正在升级中
+	emCUErrType 		= 2;		//升级类型错误
+	emCUNoDevice		= 3;		//设备不存在
+	emCUNoUpgradeFile	= 4;		//升级文件不存在
+	emCUFailure         = 5;		//升级失败
+}
+
+//升级异常退出原因(下载升级文件阶段)
+enum EmUpgradeExitErrCode
+{
+    emUpgradeForceExit = 0;         //由于业务需求，需要停止升级文件下载
+    emUpgradeNetWorkDisconnect = 1; //网络断开
+}
+
+//通用等级
+enum EmGeneralLevel
+{
+	emGeneralLevel0 = 0;   // 低	慢
+	emGeneralLevel1 = 1;   // 中	中
+	emGeneralLevel2 = 2;   // 高	快
+}
+
+//感光度
+enum EmISO
+{
+	emISOAuto = 0;
+	emISO80   = 1;
+	emISO100  = 2;
+	emISO200  = 3;
+	emISO400  = 4;
+	emISO800  = 5;
+	emISO1250 = 6;
+}
+
+//曝光模式
+enum EmExposureMode
+{
+	emExMManual      = 0;   //手动 光圈 快门 增益 同时设置
+	emExMAuto        = 1;   //自动
+	emExMAperturePri = 2;   //光圈优先
+    emExMShutterPri  = 3;   //快门优先
+	emExLowLight     = 4; //低照
+	emExHDR			 = 5; //HDR
+}
+
+//光圈大小
+enum EmAperture
+{
+	emF1p2 = 0;       //F1.2
+	emF1p6 = 1;       //F1.6
+	emF1p8 = 2;       //F1.8
+	emF2p0 = 3;       //F2.0
+	emF2p8 = 4;       //F2.8
+	emF4p0 = 5;       //F4.0
+	emF5p6 = 6;       //F5.6
+	emF8p0 = 7;       //F8.0
+	emF11  = 8;       //F11
+}
+
+// 快门类型
+enum EmShutterType
+{
+	emShutterTypeManual = 0;    // 手动
+	emShutterTypeAuto   = 1;    // 自动
+}
+
+//快门速度
+enum EmShutterLevel
+{
+	emShutter8     = 0;     //1/8
+	emShutter15    = 1;     //1/15
+    emShutter30    = 2;     //1/30
+	emShutter60    = 3;     //1/60
+	emShutter100   = 4;     //1/100
+	emShutter125   = 5;     //1/125
+	emShutter250   = 6;     //1/250
+	emShutter500   = 7;     //1/500
+	emShutter1000  = 8;     //1/1000
+	emShutter2000  = 9;     //1/2000
+	emShutter4000  = 10;    //1/4000
+}
+
+//白平衡
+enum EmWBAMode
+{
+	emWBAAuto        = 0;   //自动    自动
+	emWBADay         = 1;   //白天    室内  无
+	emWBACloudy      = 2;   //多云    户外	无
+	emWBAShade       = 3;   //阴天    钠灯  无
+	emWBAFluorescent = 4;   //荧光灯  无
+	emWBATUngsten    = 5;   //白炽灯
+	emWBAWarm		 = 6;   //暖光灯
+	emWBAStandard	 = 7;   //标准光
+	emWBANatural     = 8;  //自然灯
+	emWBASunlight    = 9;  //日光灯
+	emWBAManual      = 10;  //手动
+}
+
+enum EMWBAModeGainType
+{
+	emWBAModeGainRed  = 0; //红增益
+	emWBAModeGainBlue = 1; //蓝增益
+}
+
+//场景模式
+enum EmSceneMode
+{
+	emSceneOff   = 0;   //关闭
+	emSceneNight = 1;   //夜间
+	emSceneAuto  = 2;   //自动
+	emSceneWDR   = 3;   //宽动态
+	emSceneHCT   = 4;   //高色温
+}
+
+// 降噪类型
+enum EmNFType
+{
+	emNFType_2D = 0;    // 2D降噪
+	emNFType_3D = 1;    // 3D降噪
+}
+
+//降噪级别
+enum EmNFMode
+{
+	emNF_Off   = 0;     //关闭
+	emNF_Low   = 1;     //低
+	emNF_Mid   = 2;     //中
+	emNF_High  = 3;     //高
+}
+
+enum EmBrightnessDirection
+{
+	emBrightnessUp   = 0;
+	emBrightnessDown = 1;
+}
+
+//Isp图像参数
+enum EmIspImgInf
+{
+	IspImgInf_Noise        = 0;  // 降噪(EmNFMode) 暂不使用
+	IspImgInf_Sharpness    = 1;  // 锐度(EmGeneralLevel)在HD5里不进行处理
+	IspImgInf_ISO          = 2;  // 感光度(EmISO)
+	IspImgInf_ExposureMode = 3;  // 曝光模式(EmExposureMode)
+	IspImgInf_Aperture     = 4;  // 光圈大小(EmAperture)与曝光模式联动
+	IspImgInf_Shutter      = 5;  // 快门速度(EmShutterLevel)与曝光模式联动
+	IspImgInf_Brightnesss  = 6;  // 亮度调节(EmBrightnessDirection)
+	IspImgInf_WhiteBalance = 7;  // 白平衡(EmWBAMode)
+	IspImgInf_Noise_2D	   = 8;  // 2D降噪(EmNFMode)
+	IspImgInf_Noise_3D	   = 9;  // 3D降噪(EmNFMode)
+    IspImgInf_BrightnesssValue = 10;    // 亮度数值，与亮度调节不同
+	IspImgInf_Contrast     = 11;		// 对比度
+	IspImgInf_Saturation   = 12;		// 饱和度
+    IspImgInf_Sharpness_Value  = 13; 	// 锐度数值
+	IspImgInf_Hue          = 14;		// 色度
+	IspImgInf_BackLight_Type   = 15;	// 背光补偿类别 0为关 1为背光补偿 2为强光抑制
+	IspImgInf_BackLight_Value  = 16; 	// 背光补偿数值
+	IspImgInf_RedGain	   = 17;  		// 红增益 与白平衡联动
+	IspImgInf_BlueGain     = 18;	    // 蓝增益 与白平衡联动
+	IspImgInf_AotoExposureGain   = 19;	// 自动曝光模式增益与曝光模式联动
+	IspImgInf_ManualExposureGain = 20;  // 手动曝光模式增益与曝光模式联动
+	IspImgInf_ImgGamma     = 21;   		// 图像增强 
+	IspImgInf_ImgDefog     = 22; 		// 数字去雾
+	IspImgInf_DigDynSwitch = 23;        // 数字宽动态开关
+	IspImgInf_DigDynLevel  = 24;        // 数字宽动态等级
+	
+    
+}
+
+//曝光增益类型
+enum EmExposureModeGainType
+{
+	emExposureModeGainAuto 	 = 0;
+	emExposureModeGainManual = 1;
+}
+
+//通用曝光增益限制（手动、自动）
+enum EmExposureModeGainRestrict
+{
+	emGainRestrict15		= 0; //15dB
+	emGainRestrict18		= 1; //18dB
+	emGainRestrict21		= 2; //21dB
+	emGainRestrict24		= 3; //24dB
+	emGainRestrict27		= 4; //27dB
+	emGainRestrict30		= 5; //30dB
+	emGainRestrict33		= 6; //33dB
+	emGainRestrict36		= 7; //36dB
+	emGainRestrict39		= 8; //39dB
+	emGainRestrict42		= 9; //42dB
+	emGainRestrict45		= 10; //45dB
+}
+
+//聚焦模式
+enum EmFocusMode
+{
+	emFocusModeManual = 0;		//手动聚焦
+	emFocusModeAuto   = 1;		//自动聚焦
+}
+
+//摄像机图像模式
+enum EmImgMode
+{
+	emImgStandard		= 0; //标准
+	emImgSoft			= 1; //柔和
+	emImgBright			= 2; //明亮
+}
+
+//动作控制相关,主要面向电机的控制
+enum EmIspActionType
+{
+	IspActSetZoomOut       = 0;						// 设置小倍率动作，连续运动
+	IspActSetZoomIn        = 1;						// 设置大倍率动作，连续运动
+	IspActSetZoomStop      = 2;						// 设置拉伸动作停止
+	IspActSetZoomAuto      = 3;						// 设置拉伸动作停止
+	IspActSetZoomSpeed     = 4;						// 设置倍率拉伸速度，参数是0~100
+	IspActSetZoomLimit     = 5;						// 设置zoom当前倍数，放大100，参数u32
+	IspActSetZoomPosition  = 6;						// 设置倍率拉伸位置，参数是u32物理量
+	IspActGetZoomPosition  = 7;						// 获取拉伸电机位置，参数是u32
+
+	IspActSetFocusNear     = 8;						// 设置聚焦拉近动作，连续运动
+	IspActSetFocusFar      = 9;						// 设置聚焦拉远作，连续运动
+	IspActSetFocusStop     = 10;					// 设置聚焦动作停止
+	IspActSetFocusAuto     = 11;					// 设置自动聚焦
+	IspActSetFocusPosition = 12;					// 设置聚焦位置，参数是u32物理量
+	IspActGetFocusPosition = 13;					// 获取聚焦电机位置，参数是u32
+
+	IspActSetAperture      = 14;					// 设置光圈
+	IspActSetPiCalibrate   = 15;					// 曲线校准
+	IspActSetCameraStd     = 16;					// 设置机芯制式
+	IspActSetCameraFlip	   = 17;					// 设置摄像机图像倒装
+}
+
+
+//机芯采集制式
+enum EmCameraVidStd
+{
+	emCamera_Auto     = 0;
+	emCamera_1080p_25 = 1;
+	emCamera_1080p_30 = 2;
+	emCamera_1080p_50 = 3;
+	emCamera_1080p_60 = 4;
+	emCamera_1080i_50 = 5;
+	emCamera_1080i_60 = 6;
+	emCamera_720p_50  = 7;
+	emCamera_720p_60  = 8;
+}
+
+//图像倒装
+enum EmFilpType
+{
+	emFlip_OFF        = 0;
+	emFlip_Vertical   = 1;
+	emFlip_Horizontal = 2;
+	emFlip_Center     = 3;
+}
+
+enum EmVmpMode
+{
+    emScreenVmp       = 0;  //
+    emCustomScreenVmp = 1;  ///<定制画面合成
+    emAutoScreenVmp   = 2;  ///<自动画面合成
+};
+
+enum EmPollMode
+{
+    emPollModeBegin = 0;
+    emVideoPoll     = 1;  ///<视频轮询
+	emReserveTwo    = 2;  ///<如果平台发布对应2值，此项可以被替换
+    emAudioPoll     = 3;  ///<音视频轮询
+};
+
+
+
+//本地录像流序号
+enum EmStreamNumber
+{
+    emStreamBeg = 0;
+	emMainAudEnc = 1;
+	emMainAudDec = 2;
+	emAssAudEnc = 3;
+	emAssAudDec = 4;
+    em1stVidEnc = 5;
+	em1stVidDec = 6;
+	em2ndVidEnc = 7;
+	em2ndVidDec = 8;
+	em3rdVidEnc = 9;
+	em3rdVidDec = 10;
+	emAssVidEnc = 11;
+	emAssVidDec = 12;
+	
+	emStreamEnd = 128;
+}
+
+//录像操作类序号
+enum EmCtrlType
+{
+	emAudioEncType = 0;
+	emAudioDecType = 1;
+	emVideoEncType = 2;
+	emVideoDecType = 3;
+}
+
+enum EmVideoRecordErrorNum
+{
+		emErrorNoError				= 0;   // 没有错误，正确返回
+		emErrorFileNotFound			= 1;   // 文件没有找到
+		emErrorInvalidASFFile		= 2;	// 无效的ASF文件
+		emErrorObjectNotFound 		= 3;	// 对象没有找到
+		emErrorBadIndex				= 4;	// 错误的对象索引
+		emErrorValueNotFound		= 5;	// 没有找到相应的值
+		emErrorBadArgument			= 6;	// 错误的参数
+		emErrorReadOnly				= 7;	// 文件只读错误
+		emErrorNotEnoughSpace		= 8;	// 存储空间不足错误
+		emErrorInternalError  		= 9;	// 无法申请内存的内部错误
+		emErrorReadFileError  		= 10;	// 读文件内部错误
+		emErrorWriteFileError  		= 11;	// 写文件内部错误
+		emErrorSeekFileError  		= 12;	// 查找文件错误
+		emErrorCreateFileError  	= 13;	// 创建文件错误
+		emErrorCreateThreadError	= 14;	// 创建文件错误
+		emErrorObjectNULLError		= 15;	// 参数指针为空的错误
+		emErrorTooMuchVideoStrream	= 16;	//
+		emErrorNotSupportedCodec	= 17;	//
+		emErrorFileEnd				= 18;	//
+		emErrorUnknownError			= 19;	// 无法确定的错误		
+		emErrorWriteMemError		= 20;	// [8/10/2011 liuxu] 写内存错误
+		emErrorFileNameEmpty		= 21;   // 文件名为空
+		emErrorNotDir 				= 22;	// 路径中的目录存在但却非真正的目录
+		emErrorLoop					= 23;	// 欲打开的文件有过多符号连接问题，上限为16符号连接
+		emErrorAccess				= 24;	//  存取文件时被拒绝
+		emErrorNameTooLong			= 25;	// 	参数file_name的路径名称太长
+}
+
+// 遥控器按键状态
+enum EmKeyState
+{
+    emKeyUp             = 0;  ///<按键松开
+    emKeyDown           = 1;  ///<按键压下
+	emKeyLongPressed    = 2;  ///<按键长压
+};
+
+// 录像状态
+enum EmVideoRecordStatus
+{
+		emVideoRecordIdle			= 0;	// 未录像
+		emVideoRecordRecording		= 1;	// 录像中
+		emVideoRecordPause			= 2;	// 录像暂停中
+}
+
+//无线投屏状态
+enum EmWirelessScreenState
+{
+    emWirelessScreen_enabled       = 0;		//启用
+    emWirelessScreen_disabled      = 1;		//未启用
+}
+
+//无线投屏失败原因 */
+enum EmWirelessScreenErrReason
+{
+    emWirelessScreenErrReason_None 	  = 0;      //成功
+	emWirelessScreenErrReason_Failed  = 1;      //失败
+    emWirelessScreenErrReason_Timeout = 2;   	//超时
+	emWirelessScreenErrReason_Unknown = 3;      //其他未知原因
+}
+
+//报警类型 以2的指数倍增加1,2,4,8,,,,,,
+enum EmMtWarnType
+{
+	emMtWarnBegin = 0;
+	emMtWarnTemp = 0x1;
+	emMtWarnFanSpeed = 0x2;
+	emMtWarnCpu = 0x4;
+	emMtWarnVolt = 0x8;
+	emMtWarnEnd = 0x8000;
+}
+
+//设置限定ip类型
+enum EmLimitedIpType
+{
+    emLimitedIpType_WhiteList  = 0;		//白名单
+	emLimitedIpType_BlackList  = 1;		//黑名单
+	emLimitedIpType_Reset      = 2;		//重置
+}
+
+//终端反控摄像机操作osd类型
+enum EmTerControlCameraOsdType
+{
+	emCameraOsdMenu			= 0;	//弹出菜单
+	emCameraOsdOk			= 1;	//按下Ok键
+	emCameraOsdReture		= 2;	//返回
+}
+
+enum EmDigestType
+{
+	emSm3 =0;
+	emMd5 =1; 
+}
+
+///公钥私钥算法
+enum EmPubPriType
+{
+	emRsa = 1; 
+	emSm2 = 2;
+}
+
+//SRTP秘钥类型
+enum EmSrtpCryptoType
+{
+	emSrtpCryptoNone = 0 ;   //不加密
+	emSrtpCryptoAES_CM_128  = 1;
+	emSrtpCryptoAES_CM_192  = 2; 
+	emSrtpCryptoAES_CM_256  = 3;
+	emSrtpCryptoAES_GCM_128 = 4;
+	emSrtpCryptoAES_GCM_192 = 5;
+	emSrtpCryptoAES_GCM_256 = 6;   
+	emSrtpCryptoSM4_CM_128  = 7;  //SM目前只有128的  
+	emSrtpCryptoSM1_CM_128  = 8;
+}
+
+//SRTP秘钥类型
+enum EmSrtpAuthType
+{
+	emSrtpAuthNone  = 0;     //不认证
+	emSrtpAuthTag_8 = 1;
+	emSrtpAuthTag_16 = 2;
+	emSrtpAuthTag_32 = 3;
+	emSrtpAuthTag_80 = 4;
+}
+
+//SIP连接类型
+enum EmSipConnectType
+{
+	emSipUdpConnect	= 0;
+	emSipTcpConnect = 1;
+	emSipTlsConnect = 2;
+	emSipGMTlsConnect = 3;
+
+}
+
+
+
+enum EmSecCertFormat
+{
+	emSecCertFormart_NULL = 0;
+	emSecCertFormart_PEM = 1;
+	emSecCertFormart_DER = 2;
+	emSecCertFormart_PFX = 3;
+	emSecCertFormart_B64 = 4;
+}
+
+//录像类型 
+enum EmRecordType
+{
+    emStartRecordType  = 0;
+    emConferenceRecord = 1; ///会议录像
+    emTerminalRecord   = 2; ///终端录像
+};
+
+//发布模式
+enum EmPublishMode
+{
+    emNotPublishMode = 0; ///不发布
+    emPublishMode    = 1; ///发布
+}
+
+///录像模式
+enum EmRecordMode
+{
+    emDisableRecordMode = 0;  ///不开启录像或直播
+    emRecordMode      = 1;  ///录像
+    emLiveMode        = 2;  ///直播
+    emRecordLiveMode  = 3;  ///录像+直播
+}
+
+//呼叫模式
+enum EmCallMode
+{
+    emMannualCall   = 0; //手动呼叫
+    emAutoCall      = 1; //自动呼叫
+	emTimingCall    = 2; //定时呼叫
+	emChasingCall   = 3; //追呼
+}
+
+//录像状态
+enum EmRecordState
+{
+    emDoNotRecord       = 0; //未录像
+    emRecording         = 1; //正在录像
+    emSuspendRecord     = 2; //暂停
+    emCallingMT         = 3; //正在呼叫实体
+    emPrepareRecord     = 4; //准备录像
+}
+
+enum EmRecordCmd
+{
+	emRecordCmdBak   = 0; //备用参数
+    emPauseRecord    = 1; //暂停录像
+    emContinueRecord = 2; //继续录像
+}
+
+enum EmMtDcsType
+{
+	emTypeUnknown = 0;					// 未知
+	emTypeTrueLink = 1;			       	// 致玲
+	emTypeTrueTouchPhoneIOS = 2;		// 手机-IOS
+	emTypeTrueTouchPadIOS = 3;			// 平板-IOS
+	emTypeTrueTouchPhoneAndroid = 4;	// 手机-android
+	emTypeTrueTouchPadAndroid = 5;		// 平板-android
+	emTypeTrueSens = 6;					// 硬终端
+	emTypeIMIX = 7;						// imix
+	emTypeThirdPartyTer = 8;			// 第三方终端
+	emTypeButt = 9;
+}
+
+enum EmMtDcsRole
+{
+	emRoleManage = 0;			       	// 管理方
+	emRoleOper = 1;				       	// 协作方
+	emRoleUser = 2;                      	// 与会方
+	emRoleErr = 10;						//未填
+};
+
+enum EmMtDcsConfMode
+{
+	emConfModeStop = 0;                     // 关闭数据协作
+	emConfModeManage = 1;			       	// 主席控制
+	emConfModeAuto = 2;				       	// 自动协作
+}
+
+enum EmMtDcsConfType
+{
+	emConfTypeP2P = 0;			       	// 点对点
+	emConfTypeMCC = 1;			       	// 多点
+}
+
+enum EmMtDcsWbMode
+{
+	emWbModeWB = 0;			       	// 白板
+	emWBModeDOC = 1;		       	// 文档
+}
+
+enum EmWbEntityType
+{
+	emUnknow = 0;
+	emLine = 1;			// 直线
+	emCircle = 2;		// 圆形
+	emPencil = 3;		// 铅笔
+	emColorPen = 4;		// 水彩笔
+	emImage = 5;		// 图片
+}
+
+// 图片文件所处状态
+enum EmWbImageState
+{
+	emImageStateDownloading = 0;        // 文件正在接收，请耐心等待... 
+	emImageStateDownLoadFail = 1;		// 文件接收失败，非常抱歉！！！
+	emImageStateOwnerAlreadyLeave = 2;	// 文件同步失败，发起方可能已断开连接
+	emImageStateDownLoadOk = 3;			// 文件接收成功，即将显示
+	emImageStateInit = 4;		        // 初始状态
+	emImageStateConvertFail = 5;		// 文件转换失败，可能文件错误或已损坏
+	emImageStateSelfAlreadyLeave = 6;    // 文件接收未完成，已离开会议
+}
+
+// 白板模式
+enum EmWBMode
+{ 
+	emWbModeUnkown = 0;   // 未知
+	emWbModeWhiteBoard = 1;   // 空白白板模式（非文档模式）
+	emWbModeDOC = 2;          // 文档模式
+}
+
+enum EmDcsConnectType
+{
+	emConnectLogin = 0;			       	// 用于登录注册
+	emConnectConf = 1;				    // 用于会议相关
+}
+
+enum EmDcsOper
+{
+	emWbLineOperInfo = 0; 	// TDCSWbLineOperInfo
+	emWbCircleOperInfo = 1; 	// TDCSWbCircleOperInfo
+	emWbRectangleOperInfo = 2;
+	emWbPencilOperInfo = 3; 	// TDCSWbPencilOperInfo
+	emWbColorPenOperInfo = 4; 	// TDCSWbColorPenOperInfo
+	emWbImageOperInfo = 5;
+	emWbAddSubPageInfo = 6; 	// TDCSWbAddSubPageInfo
+	emWbEraseOperInfo = 7; 	// TDCSWbEraseOperInfo
+	emWbZoomInfo = 8; 			// TDCSWbZoomInfo
+	emWbUndo = 9;
+	emWbRedo = 10;
+	emWbRotateLeft = 11;
+	emWbRotateRight = 12;
+	emWbClearScreen = 13;
+	emWbScrollScreen = 14;
+	emWbFullScreen = 15;
+	emWb100ProportionScreen = 16;
+	emWbReginErase = 17;
+	emWbInsertPic = 18;
+	emWbPitchPicZoom = 19;
+	emWbPitchPicRotate = 20; 
+	emWbPitchPicDrag = 21;
+	emWbPitchPicDel = 22;
+	
+}
+
+enum EmDcsConnectErrCode
+{
+	emConfSuccess = 1;  // 会议服务器建链成功
+	emConfFailed = 2;	// 会议服务器建链失败
+	emConfDisconnect = 3;	// 会议服务器中途断链
+	emLoginSuccess = 4;		// 注册服务器建链成功
+	emLoginFailed = 5;		// 注册服务器建链失败
+	emLoginDisconnect = 6;	// 注册服务器建链中途断链
+}
+
+enum EmDcsAdpRejectJoinConfCode
+{
+	emRejectJoinConf_start          = 1;
+	emRejectJoinConf_busy           = 2;
+	emRejectJoinConf_normal         = 3;
+	emRejectJoinConf_rejected       = 4;
+	emRejectJoinConf_unreachable    = 5;
+	emRejectJoinConf_unknown        = 6;
+	emRejectJoinConf_end            = 7;
+};
+
+enum EmSecAutState
+{
+	emSecAutidle = 0;
+	emSecAuting = 1;
+	emSecAutsuc = 2;
+}
+
+enum EmAuthCancelReason
+{
+	emSecAuth_Cancel = 1;             //主动取消
+	emSecAuth_ErrOverTime = 2;        //认证失败超次数 
+	emSecAut_TimeOut = 3;             //认证超时
+	emSecAut_ErrConnect = 4;          //错误连接方式
+}
+
+enum EmSecKeyUpdateMode
+{
+	EmSecKeyUpdateModeByPeriod   = 0;  // 按照时间周期更新
+    EmSecKeyUpdateModeByPackage  = 1;  // 按照包的个数更新
+}
+
+//SKY300机芯控制类型
+enum EmCameraCtrlType
+{
+	emIspImgCtrl = 1;   //ISP控制
+	emSerialCtrl = 2;   //串口控制（同H650）
+}
+
+enum EmVersionType
+{
+	emChannel = 0;  //CHANNEL代表渠道版本
+	emOthers  = 1;  //暂时代表非渠道
+}
+
+enum EmLicenseKeyCheckValue
+{
+	emWrongKey = 0;  //license错误
+	emRightKey = 1;		 //正确
+	emNotExist = 2;		 //不存在
+	emParseError = 3;	 //格式错误
+}
+
+// 摄像机操作错误类型
+enum EmCameraErrorType
+{
+	EmCameraErrorType_unknown     = 0;
+	EmCameraErrorType_ZoominEnd   = 1;  // 视野到底
+    EmCameraErrorType_ZoomoutEnd  = 2;  // 视野到底
+	EmCameraErrorType_TiltUpEnd   = 3;  // 云台到底
+    EmCameraErrorType_TiltDownEnd = 4;  // 云台到底
+	EmCameraErrorType_PanLeftEnd  = 5;  // 云台到底
+    EmCameraErrorType_PanRightEnd = 6;  // 云台到底
+}
+
+// 摄像机场景模式类型
+enum EmCameraSceneMode
+{
+	EmCameraSceneMode_Standard        = 0;  // 标准会场
+	EmCameraSceneMode_Projector       = 1;  // 投影仪
+    EmCameraSceneMode_Peoplefeature   = 2;  // 人物特写
+	EmCameraSceneMode_Peoplebacklight = 3;  // 人物逆光
+}
+
+// 虚拟会议室
+enum EmMtVConfStatus
+{
+	emVConf_Idle = 0;				///< 0-空闲
+	emVConf_Busy = 1;				///< 1-使用中
+}
+
+// 最大与会终端数 
+enum EmMtMaxJoinMt
+{
+	emMaxJoinMt_8 = 0;				///< 8-小型8方会议
+	emMaxJoinMt_32 = 1;				///< 32-小型32方会议
+	emMaxJoinMt_64 = 2;				///< 864-小型64方会议
+	emMaxJoinMt_192 = 3;				///< 192-大型192方会议
+}
+
+// 资源类型
+enum EmMtVConfResources
+{
+	emVConfResource_8_720 = 1;		///< 8方720P；
+	emVConfResource_8_1080 = 2;		///< 8方1080P；
+	emVConfResource_32_720 = 3;		///< 32方720P；
+	emVConfResource_32_1080 = 4;	///< 32方1080P；
+	emVConfResource_64_720 = 5;		///< 64方720P；
+	emVConfResource_64_1080 = 6;	///< 64方1080P；
+	emVConfResource_192_720 = 7;	///< 192方720P；
+	emVConfResource_192_1080 = 8;	///< 192方1080P；
+}
+
+// FEC模式
+enum EmMtFecMode
+{
+	emMtFec_Close = 0;
+	emMtFec_Open = 1;
+}
+
+enum EmPlatform{
+    emOLD_PLATFORM  = 0;  /*老平台*/
+    emBUSS_PLATFORM = 1;  /*商密平台*/
+    emCOMM_PLATFORM = 2;  /*非商密的新平台*/
+}
+
+// 硬件芯片列举
+enum EmMtChipType
+{
+	emMtChip_Main          = 0;  // 主控
+	emMtChip_VidEnc1       = 1;  // 视频编码1
+    emMtChip_VidEnc2       = 2;  // 视频编码2
+	emMtChip_VidEnc3       = 3;  // 视频编码3
+	emMtChip_VidEnc4       = 4;  // 视频编码4
+	emMtChip_VidEnc5       = 5;  // 视频编码5
+	emMtChip_VidDec1       = 6;  // 视频解码1
+	emMtChip_VidDec2       = 7;  // 视频解码2
+	emMtChip_VidDec3       = 8;  // 视频解码3
+	emMtChip_VidDec4       = 9;  // 视频解码4
+	emMtChip_VidDec5       = 10;  // 视频解码5
+	emMtChip_AudEnc1       = 11;  // 音频编码1
+	emMtChip_AudDec1       = 12;  // 音频解码1
+}
+
+enum EmClientAppType 
+{
+	emClientAppOsd = 0;
+	emClientAppWebService = 1;
+	emClientAppSkyShare = 2;
+	emClientAppSkyRemote = 3;
+	emClientAppSkyMTC =4;
+	emClientAppSkyWindows=5;
+	emClientAppSkyAndroid=6;
+	emClientAppSkyIOS =7;
+	emClientAppThirdParty =8;
+	emClientAppNexVison   =9;
+	emClientAppMTCEnd =   10;
+}
+
+enum EmAuthType
+{
+	emUserNamePwdAuth =0;
+	emInnerPwdAuth =1;
+	emDynamicAuth =2;
+	emAuthEnd =3;
+}
+
+enum EmLoginFailReason
+{
+	emPwdErr 	     = 1;	//密码错误
+	emTerStarting    = 2;	//启动中
+	emTerUpgrading   = 3;   //升级中
+	emFailReasonEnd  = 10;
+}
+
+enum EmVConfCreateType
+{
+	emCreateNormalConf = 0;			
+	emCreateVirtualConf = 1;
+    emCreateConfByTemplate = 2;     ///< 根据公共模板ID创会
+    emCreateConfByPerTemplate = 3;  ///< 根据个人模板ID创会
+    emCreateConfByBook = 4;         ///< 预约会议提前召开
+}
+
+
+enum EmQkState
+{
+	emUsbOff = 0;	//Usb断开
+	emUsbOn = 1;	//Usb连入
+	emUpdating = 2;	//在升级中
+	emWps = 3;		//Wps配对
+	emWpsSucc = 4;  //Wps成功
+	emApLink = 5;   //Ap连入
+	emApOff = 6;	//Ap断开
+	emQkStart = 7;	//开始投屏
+	emQkOff = 8;	//停止投屏
+	emWpsTimeOut = 9;   //超时
+	emUpDateSucc = 10;  //升级成功
+	emUpDateFail = 11;  //升级失败
+}
+
+enum EmResourceType
+{
+	emResourceType_LimitP = 0;			///< 仅限制方数
+	emResourceType_LimitPR = 1;			///< 同时限制方数及分辨率
+	emResourceType_None   = 2;          ///< 平台不支持此功能
+}
+
+/** 网管文件打包错误信息*/
+enum EmAgentPackFileState
+{
+    emPackNotStart    = 0;  ///< 未开始打包
+    emPacking         = 1;  ///< 终端正在打包
+	emPackError       = 2;  ///< 打包失败
+}
+
+enum EmAiAudioType
+{
+    emAiUnknow             = 0;  ///< 我好像不明白，请再说一遍
+    emAiPleaseSay          = 1;  ///< 我在听，请说
+	emAiBayBay             = 2;  ///< 拜拜
+	emAiUnLoginPlatForm    = 3;  ///< 未注册云服务，请查看相关配置
+	emAiRepeatConfName     = 4;  ///< 请重新说出需要参加的会议名称
+	emAiSelectConf         = 5;  ///< 你要参加第几个会议
+	emAiJoinConfFail       = 6;  ///< 参加会议失败
+	emAiOnCreateConf       = 7;  ///< 正在创会请稍后
+	emAiCreateSuccess      = 8;  ///< 创会成功
+	emAiCreateFail         = 9;  ///< 创会失败
+	emAiJoinConfSuccess    =10;  ///< 加入会议成功
+	emAiOnJoinConf         =11;  ///< 好的，为您加入会议 
+	emAiNoPermission       =12;  ///< 只有管理员有此权限
+	emAiHungupConf         =13;  ///< 好的，为你挂断会议
+	emAiRobAss             =14;  ///< 当前已有双流，是否抢发？
+	emAiDelayConf          =15;  ///< 默认为您延长会议一小时
+	emAiConfIsIdle         =16;  ///< 终端处于空闲状态
+	emAiConfNotMcc         =17;  ///< 不是多点会议
+	emAiEndConf            =18;  ///< 好的，为你结束会议
+	emAiUnknowAgain        =19;  ///< 我好像不明白
+	emAiOnFindConf         =20;  ///< 好的，正在查找会议
+	emAiGood               =21;  ///< 好的
+	emAiOnFindConfMember   =22;  ///< 好的，正在查找与会方
+	emAiRepeatInviteMember =23;  ///< 请重新说出需要呼叫的与会方
+	emAiOnInviteMember     =24;  ///< 好的，为您呼叫与会方
+	emAiSatrtAss           =25;  ///< 好的，开始内容共享
+	emAiAssNoSignal        =26;  ///< 辅视频没有信号，请使用科达双流软件发内容共享
+	emAiDelayConfWithTime  =27;  ///< 好的，已延长会议一小时
+	emAiUpAudio            =28;  ///< 已调高音量
+	emAiDownAudio          =29;  ///< 已调低音量
+	emAiMaxAudio           =30;  ///< 音量已调高至最大
+	emAiMinAudio           =31;  ///< 音量已调高至最小
+	emAiSelectMember       =32;  ///< 您需要呼叫第几个与会方
+	emAiCloseAss           =33;  ///< 好的，停止内容共享
+	emAiSureOrNotEndConf   =34;  ///< 确认是否结束会议
+	emAiSureOrNotHangupConf=35;  ///< 确认是否挂断会议
+	emAiCancleOperator     =36;  ///< 好的，取消操作
+	emAiHangupOrEndConf    =37;  ///< 请问需要结束会议还是退出会议
+	emAiApplyChair         =38;  ///< 好的，申请管理权
+	emAiSelectView         =39;  ///< 好的，选看终端
+	emAiSelectViewNotExist =40;  ///< 你选看的终端不存在
+	emAiCancleSelectView   =41;  ///< 好的，取消选看
+	emAiMtOnConf           =42;  ///< 终端已经在会议中
+	emAiAssIsClose         =43;  ///< 已经是停止共享状态
+	emAiEnd              =100;
+}
+
+enum EmAiActionState
+{
+	emAiActionBegin            = 0;
+    emAiActionEndConf          = 1;     ///< 结束会议状态
+    emAiActionHungupConf       = 2;     ///< 挂断会议状态
+    emAiActionOpenAss          = 3;     ///< 开双流状态
+	emAiActionJoinConf         = 4;     ///< 加入会议状态
+	emAiActionInviteCall       = 5;     ///< 邀请呼叫状态
+	emAiActionEnd              = 50;    
+}
+
+enum EmAiContactType
+{
+	emAiContactBegin    = 0;
+	emAiLocalContact    = 1;
+	emAiShareContact    = 2;
+	
+	emAiContactEnd      =20;
+}
+
+enum EmShortCutKeyType
+{
+	emUnkown			   = 0;			///未知
+	emRedShortCutKey       = 1;			///红色快捷键
+	emYellowShortCutKey    = 2;         ///黄色快捷键
+	emGreenShortCutKey     = 3;         ///绿色快捷键
+}
+
+enum EmShortCutKeyFuc
+{
+	emFucBegin             = 0;
+	emLoop                 = 1;         ///自环
+	emApplyChair           = 2;         ///申请主席
+	emApplySpeaker         = 3;         ///申请主讲
+	emShowSystemInfo       = 4;         ///显示系统信息
+	emFullMute             = 5;         ///全场哑音
+	emSpeechHelper         = 6;         ///语音助手
+	emFaceCheckIn          = 7;         ///人脸签到
+	
+	emClose                = 20;        ///关闭功能
+}
+
+enum EmPltSupportConfType
+{
+    emPltConfTypeInvalid   = 0;
+    emSupportMediaConf     = 1; //仅支持传统会议
+    emSupportPortConf      = 2; //仅支持端口会议
+    emSupportMediaPortConf = 3; //支持传统会议和端口会议
+}
+
+enum EmCommEnableEvt
+{
+	emBweEnable = 0;
+	emCommEnableEnd =5;
+}
+
+//获取API版本信息类型
+enum EmAPIVersionType
+{
+    emVcAPIVersion     =0;   //会控API
+	emMcAPIVersion     =1;    //会管API
+	emEqpAPIVersion    =2;    //电视墙API
+	emSystemAPIVersion =3;    //登录认证API
+	emAmcAPIVersion    =4;    //获取账号API
+	emVrsAPIVersion    =5;    //VRS API
+}
+
+
+enum emConnection 
+{
+	EmPub =0;
+	EmSub = 1;
+	EmAssPub = 2;
+	EmAssSub = 3;
+	EmConnEnd = 4;
+}
+
+enum EmRtcAlgType
+{
+	emRtcNone    = 0;
+	emRtcMd2     = 1;
+	emRtcMd5     = 2;
+	emRtcSM3     = 3;
+	emRtcSM4     = 4;
+	emRtcSHA1    = 5;
+	emRtcSHA224  = 6;
+	emRtcSHA256  = 7;
+	emRtcSHA384  = 8;
+	emRtcSHA512  = 9;
+}
+
+enum EmRtcCallState    //rtc呼叫状态
+{
+  emRtcCallIdle     	= 0;    //空闲状态
+  emRtcCallCreating 	= 1;    //创建呼叫
+  emRtcCallOuting   	= 2;    //呼出状态
+  emRtcCallincoming 	= 3;    //呼入状态
+  emRtcCallAccepted		= 4;    //UI同意呼叫状态
+  emRtcCallHanguping    = 5;    //主动挂断，等待底层挂断
+  emRtcCallConnected    = 6;    //呼叫已连接
+}

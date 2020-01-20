@@ -1,0 +1,26 @@
+package mt;
+
+option java_package = "com.kedacom.mt.netmanage.protobuf"; 
+option java_outer_classname = "MessagePB"; 
+
+message TMsgHeader
+{
+    optional string msg_id     = 1;  //消息id，唯一标识一个消息
+    optional string session_id = 2;  //会话id，唯一标识一个会话源
+	optional uint32 seq_id     = 3;  //序列号，唯一标识一次请求
+	optional string user_data  = 4;  //特定场景使用，如fcgi请求可以使用该字段存放会话标识，用于返回响应
+//	optional string req_src_id = 5;  //req消息的初始发送者，仅用于req/rsp消息的接力处理
+	repeated string req_path   = 5;  //req消息的接力路径，req消息每经过一个发送者都要将此发送者加入req_path中，以便rsp消息按原路返回，当返回rsp消息时要逐个去掉。仅用于req/rsp消息的接力处理
+}
+
+message TMsgBody
+{
+    optional string name    = 1;  //消息体名称
+	optional bytes  content = 2;  //消息体数据
+}
+
+message TMessage
+{
+    optional TMsgHeader header = 1;  //消息头部
+	repeated TMsgBody   body   = 2;  //消息体
+}
