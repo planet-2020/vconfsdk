@@ -546,9 +546,9 @@ class RtcConnector implements IRcvMsgCallback{
 
 		void onGetFingerPrintCmd(int connType);
 
-		void onCodecQuietCmd(boolean bQuiet);
+		default void onCodecQuietCmd(boolean bQuiet){}
 
-		void onCodecMuteCmd(boolean bMute);
+		default void onCodecMuteCmd(boolean bMute){}
 
 		void onUnPubCmd(int connType, int mediaType);
 	}
