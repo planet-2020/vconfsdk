@@ -2080,7 +2080,7 @@ public class WebRtcManager extends Caster<Msg>{
             int displayWidth = getWidth();
             int displayHeight = getHeight();
 
-            KLog.p("onDraw, displayWidth=%s, displayHeight=%s", displayWidth, displayHeight);
+//            KLog.p("onDraw, displayWidth=%s, displayHeight=%s", displayWidth, displayHeight);
 
             // 绘制码流状态deco
             StreamStateDecoration stateDeco = null;
@@ -2245,8 +2245,8 @@ public class WebRtcManager extends Caster<Msg>{
             Paint.FontMetrics fm = paint.getFontMetrics();
             bgRect.set(x, y+fm.top, x+paint.measureText(text), y+fm.bottom);
 
-            KLog.p("finish adjust: x=%s, y=%s, textSize=%s, textLength=%s, fm.top=%s, fm.bottom=%s, bgRect=%s",
-                    x, y, size, text.length(), fm.top, fm.bottom, bgRect);
+//            KLog.p("finish adjust: x=%s, y=%s, textSize=%s, textLength=%s, fm.top=%s, fm.bottom=%s, bgRect=%s",
+//                    x, y, size, text.length(), fm.top, fm.bottom, bgRect);
 
             KLog.p(toString());
             return true;
@@ -2415,8 +2415,8 @@ public class WebRtcManager extends Caster<Msg>{
                 y = h - dy;
             }
 
-            KLog.p("displayW=%s, displayH=%s, ratioW=%s, ratioH=%s, x=%s, y=%s, paint.textSize=%s",
-                    width, height, ratioW, ratioH, x, y, paint.getTextSize());
+//            KLog.p("displayW=%s, displayH=%s, ratioW=%s, ratioH=%s, x=%s, y=%s, paint.textSize=%s",
+//                    width, height, ratioW, ratioH, x, y, paint.getTextSize());
 
             return true;
         }
