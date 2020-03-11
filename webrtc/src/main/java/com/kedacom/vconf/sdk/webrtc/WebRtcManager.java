@@ -2096,7 +2096,7 @@ public class WebRtcManager extends Caster<Msg>{
             if (null != stateDeco && stateDeco.enabled() && !disabledDecos.contains(stateDeco.id)) {
                 stateDeco.adjust(displayWidth, displayHeight);
                 canvas.drawColor(stateDeco.backgroundColor);
-                canvas.drawBitmap(stateDeco.pic, stateDeco.x, stateDeco.y, stateDeco.paint);
+                canvas.drawBitmap(stateDeco.pic, stateDeco.matrix, stateDeco.paint);
             }
 
             // 绘制图片deco
@@ -2105,7 +2105,7 @@ public class WebRtcManager extends Caster<Msg>{
                     continue;
                 }
                 deco.adjust(displayWidth, displayHeight);
-                canvas.drawBitmap(deco.pic, deco.x, deco.y, deco.paint);
+                canvas.drawBitmap(deco.pic, deco.matrix, deco.paint);
             }
 
             // 绘制文字deco
@@ -2296,12 +2296,9 @@ public class WebRtcManager extends Caster<Msg>{
                 y -= picH;
             }
 
-            float[] cor = new float[2];
             matrix.reset();
             matrix.postTranslate(x, y);
             matrix.postScale(ratioW, ratioH, 0, 0);
-            matrix.mapPoints(cor);
-            x = cor[0]; y = cor[1];
 
             KLog.p(toString());
             return true;
