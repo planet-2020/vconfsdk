@@ -3,6 +3,16 @@
 buildscript {
     
     repositories {
+        def ALIYUN_GOOGLE = 'https://maven.aliyun.com/repository/google'
+        def ALIYUN_JCENTER = 'https://maven.aliyun.com/repository/jcenter'
+
+        maven{
+            url ALIYUN_GOOGLE
+        }
+        maven{
+            url ALIYUN_JCENTER
+        }
+
         google()
         jcenter()
     }
@@ -19,6 +29,17 @@ buildscript {
 allprojects {
     repositories {
         mavenLocal()
+
+        def ALIYUN_GOOGLE = 'https://maven.aliyun.com/repository/google'
+        def ALIYUN_JCENTER = 'https://maven.aliyun.com/repository/jcenter'
+
+        maven{
+            url ALIYUN_GOOGLE
+        }
+        maven{
+            url ALIYUN_JCENTER
+        }
+
         google()
         jcenter()
 
