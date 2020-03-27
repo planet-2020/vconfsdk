@@ -35,15 +35,16 @@ public class InterpolatingTextWatcher implements TextWatcher {
      * @param editText 监听的EditText
      * @param spans 插入的跨度
      * @param separators 插入的字符串
-     * @param begin 计算的起始位置。若小于0则取值0；若大于等于end则不会执行插入。
-     * @param end 计算的结束位置。若大于text长度则取text长度值；若小于等于start则不会执行插入。取值{@link #TILL_END}表示到text末尾。
+     * @param begin 计算的起始位置。若小于0则取值0，0表示第一个字符的位置。
+     * @param end 计算的结束位置。若大于text长度则取text长度值；取值{@link #TILL_END}表示到text末尾。
+     *            NOTE：计算范围为左闭右开区间即[begin,end)。如对于“1234567”，若begin=1, end=4，则计算的区间为"234"
      *
      * 举例：若editText输入内容“1234567”，span为{1}，separator为{"-"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-2-3-4-5-6-7”。
      *      若editText输入内容“1234567”，span为{1,2}，separator为{"-"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-23-45-67”。
      *      若editText输入内容“1234567”，span为{1}，separator为{"-",":"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-2:3:4:5:6:7”。
      *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-23:45:67”。
      *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，begin=0, end=4, 则最终展示在EditText上的内容为“1-23:4567”。
-     *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，begin=1, end=4, 则最终展示在EditText上的内容为“12-34:567”。
+     *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，begin=1, end=4, 则最终展示在EditText上的内容为“12-34567”。
      * */
     public InterpolatingTextWatcher(@NonNull EditText editText, @NonNull int[] spans, @NonNull String[] separators, int begin, int end) {
         this.editText = editText;
@@ -63,7 +64,7 @@ public class InterpolatingTextWatcher implements TextWatcher {
     }
 
     /**
-     * {@link #InterpolatingTextWatcher(EditText, int[], String[], int, int)}
+     * @see #InterpolatingTextWatcher(EditText, int[], String[], int, int)
      * */
     public InterpolatingTextWatcher(@NonNull EditText editText, @NonNull int[] spans, @NonNull String[] separators) {
         this(editText, spans, separators, 0, TILL_END);
