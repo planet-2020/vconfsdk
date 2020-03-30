@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.utils.view;
 
 import android.text.Editable;
+import android.text.InputFilter;
 import android.text.TextWatcher;
 import android.widget.EditText;
 
@@ -78,7 +79,7 @@ public class InterpolatingTextWatcher implements TextWatcher {
         rawText.delete(0, rawText.length());
         rawText.append(s);
         deletedText.delete(0, deletedText.length());
-        deletedText.append(s.subSequence(/*start*/0, start+count));
+        deletedText.append(s.subSequence(0, start+count));
 
         // 剔除插入的间隔符，拿到原始字符串
         // NOTE：text内容中也有可能包含间隔符，不能剔除那部分，所以我们不能通过内容比对剔除间隔符，而要通过位置。
@@ -87,12 +88,14 @@ public class InterpolatingTextWatcher implements TextWatcher {
              span<Math.min(end, rawText.length());
              ++i, span += i<spans.length ? spans[i] : spans[spans.length-1]){
             KLog.p("spans[%s]=%s, rawText=%s, rawStart=%s", i, span, rawText, rawStart);
-            rawText.deleteCharAt(span);
+            String separator = i<separators.length ? separators[i] : separators[separators.length-1];
+            int separatorLen = separator.length();
+            rawText.delete(span, span+separatorLen);
             if (span< deletedText.length()) {
-                deletedText.deleteCharAt(span);
+                deletedText.delete(span, span+separatorLen);
             }
             if (span<=rawStart){
-                --rawStart;
+                rawStart -= separatorLen;
             }
         }
 
@@ -134,27 +137,30 @@ public class InterpolatingTextWatcher implements TextWatcher {
         int stop = Math.min(end, rawText.length());
         KLog.p("begin=%s, stop=%s, spans[0]=%s, rawText=%s", begin, stop, spans[0], rawText);
         for (int i=0, span=begin+spans[i];
-             span<Math.min(stop+i, finalText.length());
+             span<Math.min(stop, finalText.length());
              ++i, span += i<spans.length ? spans[i] : spans[spans.length-1]){
             String sep = i<separators.length ? separators[i] : separators[separators.length-1];
-            finalText.insert(span++, sep);
-            KLog.p("span=%s, sep=%s, finalText=%s", span, sep, finalText);
+            int sepLen = sep.length();
+            finalText.insert(span, sep);
+            span += sepLen;
+            stop += sepLen;
+            KLog.p("span=%s, stop=%s, sep=%s, finalText=%s", span, stop, sep, finalText);
         }
 
         KLog.p("rawText=%s, finalText=%s", rawText, finalText);
         // setText的行为是先触发“beforeTextChanged->onTextChanged->afterTextChanged”然后才继续往下执行，这非我们期望，故暂时删除listener
         editText.removeTextChangedListener(this);
-        editText.setText(finalText);
+        editText.setText(finalText); // NOTE: 受filter影响，此处设置的finalText不一定等同于editText.getText()
         editText.addTextChangedListener(this);
 
-        editText.setSelection(finalText.length()); // 更新光标位置到最末尾。由于我们修改了Text内容原来的光标位置也需相应更新
+        editText.setSelection(editText.getText().toString().length()); // 更新光标位置到最末尾。由于我们修改了Text内容原来的光标位置也需相应更新
     }
 
     /**
      * 获取关联的EditText的text，包含了插值。
      * */
     public String getText(){
-        return finalText.toString();
+        return editText.getText().toString();
     }
 
     /**
@@ -162,6 +168,38 @@ public class InterpolatingTextWatcher implements TextWatcher {
      * */
     public String getRawText(){
         return rawText.toString();
+    }
+
+
+    /**
+     * 获取EditText的最大长度。该长度可用于{@link android.text.InputFilter.LengthFilter}
+     * @param maxInputTextLen 允许用户输入的最大文本长度
+     * @return 实际的添加插值后的最大文本长度。
+     * 例如：
+     * 一个输入手机号的EditText，规定最多输入11位数字，插值后的文本格式需是"123-4567-8901"，即spans={3,4}, separators={"-"}，
+     * 则用户需创建如下InterpolatingTextWatcher
+     * {@code
+     *  new InterpolatingTextWatcher(phoneNumInput, new int[]{3, 4}, new String[]{"-"});
+     * }
+     * 并且需设置{@link InputFilter.LengthFilter}以限定输入文本长度，但是注意，真正的文本长度上限并非11，还得加上插值。
+     * 此时用户便可以使用该接口获取加上插值后的长度，如下：
+     * {@code
+     *   int maxLen = getMaxTextLength(11); // maxLen=13
+     *   phoneNumInput.setFilters(new InputFilter[]{
+     *      new InputFilter.LengthFilter(maxLen)
+     *   });
+     * }
+     * */
+    public int getMaxTextLength(int maxInputTextLen){
+        int maxTextLen = maxInputTextLen;
+        for (int i=0, cursor=spans[0];
+             cursor < maxInputTextLen;
+             ++i, cursor += i<spans.length ? spans[i] : spans[spans.length-1]){
+            String separator = i<separators.length ? separators[i] : separators[separators.length-1];
+            maxTextLen += separator.length();
+            KLog.p("maxInputTextLen=%s, cursor=%s, separator=%s, maxTextLen=%s", maxInputTextLen, cursor, separator, maxTextLen);
+        }
+        return maxTextLen;
     }
 
 
