@@ -12,7 +12,8 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 
 /**
  * 插值文本监听器。
- * 该TextWatcher根据指定的span插入指定的separator。
+ * 该监听器针对输入的text根据指定的span插入指定的separator。
+ * NOTE：Filters不能过滤掉separator中的字符，否则该监听器不能正常工作。
  * */
 public class InterpolatingTextWatcher implements TextWatcher {
     // 原始的文本（剔除插值）
@@ -29,6 +30,7 @@ public class InterpolatingTextWatcher implements TextWatcher {
     private String[] separators;
     private int begin;
     private int end;
+    private boolean inputSeparatorAllowed;
 
     public static final int TILL_END = Integer.MAX_VALUE;
 
@@ -39,6 +41,7 @@ public class InterpolatingTextWatcher implements TextWatcher {
      * @param begin 计算的起始位置。若小于0则取值0，0表示第一个字符的位置。
      * @param end 计算的结束位置。若大于text长度则取text长度值；取值{@link #TILL_END}表示到text末尾。
      *            NOTE：计算范围为左闭右开区间即[begin,end)。如对于“1234567”，若begin=1, end=4，则计算的区间为"234"
+     * @param inputSeparatorAllowed 是否允许用户输入插值
      *
      * 举例：若editText输入内容“1234567”，span为{1}，separator为{"-"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-2-3-4-5-6-7”。
      *      若editText输入内容“1234567”，span为{1,2}，separator为{"-"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-23-45-67”。
@@ -46,8 +49,10 @@ public class InterpolatingTextWatcher implements TextWatcher {
      *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-23:45:67”。
      *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，begin=0, end=4, 则最终展示在EditText上的内容为“1-23:4567”。
      *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，begin=1, end=4, 则最终展示在EditText上的内容为“12-34567”。
-     * */
-    public InterpolatingTextWatcher(@NonNull EditText editText, @NonNull int[] spans, @NonNull String[] separators, int begin, int end) {
+     *      若editText输入内容“123456-7”，span为{1,2}，separator为{"-",":"}，begin=1, end=4, inputSeparatorAllowed=true, 则最终展示在EditText上的内容为“12-3456-7”。
+     *      若editText输入内容“123456-7”，span为{1,2}，separator为{"-",":"}，begin=1, end=4, inputSeparatorAllowed=false, 则最终展示在EditText上的内容为“12-34567”。
+     *     */
+    public InterpolatingTextWatcher(@NonNull EditText editText, @NonNull int[] spans, @NonNull String[] separators, int begin, int end, boolean inputSeparatorAllowed) {
         this.editText = editText;
         this.spans = new int[spans.length];
         this.separators = new String[separators.length];
@@ -55,6 +60,7 @@ public class InterpolatingTextWatcher implements TextWatcher {
         System.arraycopy(separators, 0, this.separators, 0, separators.length);
         this.begin = Math.max(begin, 0);
         this.end = end;
+        this.inputSeparatorAllowed = inputSeparatorAllowed;
         for (int i=0; i<spans.length; ++i){
             KLog.p("spans[%s]=%s", i, spans[i]);
         }
@@ -65,10 +71,17 @@ public class InterpolatingTextWatcher implements TextWatcher {
     }
 
     /**
-     * @see #InterpolatingTextWatcher(EditText, int[], String[], int, int)
+     * @see #InterpolatingTextWatcher(EditText, int[], String[], int, int, boolean)
+     * */
+    public InterpolatingTextWatcher(@NonNull EditText editText, @NonNull int[] spans, @NonNull String[] separators, boolean inputSeparatorAllowed) {
+        this(editText, spans, separators, 0, TILL_END, inputSeparatorAllowed);
+    }
+
+    /**
+     * @see #InterpolatingTextWatcher(EditText, int[], String[], int, int, boolean)
      * */
     public InterpolatingTextWatcher(@NonNull EditText editText, @NonNull int[] spans, @NonNull String[] separators) {
-        this(editText, spans, separators, 0, TILL_END);
+        this(editText, spans, separators, 0, TILL_END, false);
     }
 
     @Override
@@ -109,7 +122,23 @@ public class InterpolatingTextWatcher implements TextWatcher {
     @Override
     public void onTextChanged(CharSequence s, int start, int before, int count) {
         KLog.p("s=%s, start=%s, before=%s, count=%s, rawText=%s", s, start, before, count, rawText);
+
         CharSequence addedText = s.subSequence(start, start+count);
+        if (!inputSeparatorAllowed){
+            String text = addedText.toString();
+            StringBuilder sb = new StringBuilder();
+            for (String sep : separators){
+                for (int i=0; i<text.length(); ++i){
+                    char c = text.charAt(i);
+                    if (-1 == sep.indexOf(c)){
+                        sb.append(c);
+                    }
+                }
+            }
+            KLog.p("addedText=%s, after polish =%s", addedText, sb.toString());
+            addedText = sb.toString();
+        }
+
         rawText.insert(cursorPos, addedText);
         cursorPos += addedText.length();
 //                String trimedStr = rawStr.toString().replace(" ", "");
