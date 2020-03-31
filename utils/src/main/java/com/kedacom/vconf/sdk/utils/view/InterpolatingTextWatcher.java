@@ -81,8 +81,7 @@ public class InterpolatingTextWatcher implements TextWatcher {
         deletedText.delete(0, deletedText.length());
         deletedText.append(s.subSequence(0, start+count));
 
-        // 剔除插入的间隔符，拿到原始字符串
-        // NOTE：text内容中也有可能包含间隔符，不能剔除那部分，所以我们不能通过内容比对剔除间隔符，而要通过位置。
+        // 剔除插值，拿到原始字符串
         cursorPos = start;
         for (int i=0, span=begin+spans[i];
              span<Math.min(end, rawText.length());
@@ -131,10 +130,7 @@ public class InterpolatingTextWatcher implements TextWatcher {
         }
         interpolatedText.delete(0, interpolatedText.length());
         interpolatedText.append(rawText);
-        // 对原始text进行插值处理生成最终text。
-        // NOTE: xml中EditText的inputType属性可能不包括separator，如inputType=number，separator=" "，
-        // 但是代码中setText不属于input，故不受inputType属性的影响。
-        // 代码中setFilters会影响所有输入的内容包括键盘输入、复制粘贴、代码中setText
+        // 对原始text进行插值处理生成插值后的text
         int stop = Math.min(end, rawText.length());
         KLog.p("begin=%s, stop=%s, spans[0]=%s, rawText=%s", begin, stop, spans[0], rawText);
         for (int i=0, span=begin+spans[i];
@@ -153,7 +149,8 @@ public class InterpolatingTextWatcher implements TextWatcher {
 
         // setText的行为是先触发“beforeTextChanged->onTextChanged->afterTextChanged”然后才继续往下执行，这非我们期望，故暂时删除listener
         editText.removeTextChangedListener(this);
-        editText.setText(interpolatedText); // NOTE: 受filter影响，此处设置的finalText不一定等同于editText.getText()
+        s.clear();
+        s.append(interpolatedText);
         editText.addTextChangedListener(this);
         KLog.p("rawText=%s, interpolatedText=%s, editText.getText()=%s, cursorPos=%s",
                 rawText, interpolatedText, editText.getText(), cursorPos);
@@ -176,7 +173,7 @@ public class InterpolatingTextWatcher implements TextWatcher {
 
 
     /**
-     * 获取EditText的最大长度。该长度可用于{@link android.text.InputFilter.LengthFilter}
+     * 获取EditText实际允许输入的最大长度（包含插值）。该长度可用于{@link android.text.InputFilter.LengthFilter}
      * @param maxInputTextLen 允许用户输入的最大文本长度
      * @return 实际的添加插值后的最大文本长度。
      * 例如：
