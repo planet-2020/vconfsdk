@@ -15,14 +15,14 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
  * 该TextWatcher根据指定的span插入指定的separator。
  * */
 public class InterpolatingTextWatcher implements TextWatcher {
-    // 原始的文本内容（剔除插值）
+    // 原始的文本（剔除插值）
     private StringBuilder rawText = new StringBuilder();
+    // 添加插值后的文本
+    private StringBuilder interpolatedText = new StringBuilder();
     // 删掉的内容
     private StringBuilder deletedText = new StringBuilder();
-    // 内容变化的起点（剔除分隔符以后的）
-    private int rawStart;
-    // 添加插值后的内容
-    private StringBuilder finalText = new StringBuilder();
+
+    private int cursorPos;
 
     private EditText editText;
     private int[] spans;
@@ -83,38 +83,39 @@ public class InterpolatingTextWatcher implements TextWatcher {
 
         // 剔除插入的间隔符，拿到原始字符串
         // NOTE：text内容中也有可能包含间隔符，不能剔除那部分，所以我们不能通过内容比对剔除间隔符，而要通过位置。
-        rawStart = start;
+        cursorPos = start;
         for (int i=0, span=begin+spans[i];
              span<Math.min(end, rawText.length());
              ++i, span += i<spans.length ? spans[i] : spans[spans.length-1]){
-            KLog.p("spans[%s]=%s, rawText=%s, rawStart=%s", i, span, rawText, rawStart);
+            KLog.p("spans[%s]=%s, rawText=%s, cursorPos=%s", i, span, rawText, cursorPos);
             String separator = i<separators.length ? separators[i] : separators[separators.length-1];
             int separatorLen = separator.length();
             rawText.delete(span, span+separatorLen);
             if (span< deletedText.length()) {
                 deletedText.delete(span, span+separatorLen);
             }
-            if (span<=rawStart){
-                rawStart -= separatorLen;
+            if (span<= cursorPos){
+                cursorPos -= separatorLen;
             }
         }
 
-        deletedText.delete(0, rawStart);
-        KLog.p("rawText=%s, rawStart=%s, deletedText=%s", rawText, rawStart, deletedText);
+        deletedText.delete(0, cursorPos);
+        KLog.p("rawText=%s, cursorPos=%s, deletedText=%s", rawText, cursorPos, deletedText);
         if (deletedText.length() != 0) {
-            rawText.delete(rawStart, rawStart+ deletedText.length());
+            rawText.delete(cursorPos, cursorPos + deletedText.length());
         }
-        KLog.p("rawDeletedPart=%s, rawStart=%s, rawText=%s", deletedText, rawStart, rawText);
+        KLog.p("rawDeletedPart=%s, cursorPos=%s, rawText=%s", deletedText, cursorPos, rawText);
     }
 
     @Override
     public void onTextChanged(CharSequence s, int start, int before, int count) {
         KLog.p("s=%s, start=%s, before=%s, count=%s, rawText=%s", s, start, before, count, rawText);
         CharSequence addedText = s.subSequence(start, start+count);
-        rawText.insert(rawStart, addedText);
+        rawText.insert(cursorPos, addedText);
+        cursorPos += addedText.length();
 //                String trimedStr = rawStr.toString().replace(" ", "");
 
-        KLog.p("rawText=%s, addedText=%s", rawText, addedText);
+        KLog.p("rawText=%s, addedText=%s, cursorPos=%s", rawText, addedText, cursorPos);
     }
 
     @Override
@@ -128,8 +129,8 @@ public class InterpolatingTextWatcher implements TextWatcher {
             KLog.p(KLog.ERROR, "begin(%s)>=rawText.length(%s)", begin, rawText.length());
             return;
         }
-        finalText.delete(0, finalText.length());
-        finalText.append(rawText);
+        interpolatedText.delete(0, interpolatedText.length());
+        interpolatedText.append(rawText);
         // 对原始text进行插值处理生成最终text。
         // NOTE: xml中EditText的inputType属性可能不包括separator，如inputType=number，separator=" "，
         // 但是代码中setText不属于input，故不受inputType属性的影响。
@@ -137,23 +138,26 @@ public class InterpolatingTextWatcher implements TextWatcher {
         int stop = Math.min(end, rawText.length());
         KLog.p("begin=%s, stop=%s, spans[0]=%s, rawText=%s", begin, stop, spans[0], rawText);
         for (int i=0, span=begin+spans[i];
-             span<Math.min(stop, finalText.length());
+             span<Math.min(stop, interpolatedText.length());
              ++i, span += i<spans.length ? spans[i] : spans[spans.length-1]){
             String sep = i<separators.length ? separators[i] : separators[separators.length-1];
             int sepLen = sep.length();
-            finalText.insert(span, sep);
+            interpolatedText.insert(span, sep);
+            if (span<= cursorPos){
+                cursorPos += sepLen;
+            }
             span += sepLen;
             stop += sepLen;
-            KLog.p("span=%s, stop=%s, sep=%s, finalText=%s", span, stop, sep, finalText);
+            KLog.p("span=%s, stop=%s, sep=%s, cursorPos=%s, interpolatedText=%s", span, stop, sep, cursorPos, interpolatedText);
         }
 
-        KLog.p("rawText=%s, finalText=%s", rawText, finalText);
         // setText的行为是先触发“beforeTextChanged->onTextChanged->afterTextChanged”然后才继续往下执行，这非我们期望，故暂时删除listener
         editText.removeTextChangedListener(this);
-        editText.setText(finalText); // NOTE: 受filter影响，此处设置的finalText不一定等同于editText.getText()
+        editText.setText(interpolatedText); // NOTE: 受filter影响，此处设置的finalText不一定等同于editText.getText()
         editText.addTextChangedListener(this);
-
-        editText.setSelection(editText.getText().toString().length()); // 更新光标位置到最末尾。由于我们修改了Text内容原来的光标位置也需相应更新
+        KLog.p("rawText=%s, interpolatedText=%s, editText.getText()=%s, cursorPos=%s",
+                rawText, interpolatedText, editText.getText(), cursorPos);
+        editText.setSelection(Math.min(cursorPos, editText.getText().length())); // 更新光标位置。由于我们修改了Text内容原来的光标位置也需相应更新
     }
 
     /**
