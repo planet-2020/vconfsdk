@@ -40,8 +40,9 @@ public class InterpolatingTextWatcher implements TextWatcher {
      * @param separators 插入的字符串
      * @param begin 计算的起始位置。若小于0则取值0，0表示第一个字符的位置。
      * @param end 计算的结束位置。若大于text长度则取text长度值；取值{@link #TILL_END}表示到text末尾。
-     *            NOTE：计算范围为左闭右开区间即[begin,end)。如对于“1234567”，若begin=1, end=4，则计算的区间为"234"
-     * @param rejectInputSeparator 是否丢弃用户输入的插值
+     *            NOTE：计算范围为左闭右开区间即[begin,end)。如对于“1234567”，若begin=1, end=4，则计算的区间为"234"；
+     *                  若begin>=end则使用[0, TILL_END)替代。
+     * @param rejectInputSeparator 是否丢弃用户输入的插值字符。如，若插值为"-"，用户输入"1-2"，则为true时最终text为"12"，为false则维持原样。
      *
      * 举例：若editText输入内容“1234567”，span为{1}，separator为{"-"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-2-3-4-5-6-7”。
      *      若editText输入内容“1234567”，span为{1,2}，separator为{"-"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-23-45-67”。
@@ -59,13 +60,17 @@ public class InterpolatingTextWatcher implements TextWatcher {
         System.arraycopy(spans, 0, this.spans, 0, spans.length);
         System.arraycopy(separators, 0, this.separators, 0, separators.length);
         this.begin = Math.max(begin, 0);
-        this.end = end;
+        this.end = Math.max(end, 0);
+        if (this.end <= this.begin){
+            this.begin = 0;
+            this.end = TILL_END;
+        }
         this.rejectInputSeparator = rejectInputSeparator;
         for (int i=0; i<spans.length; ++i){
             KLog.p("spans[%s]=%s", i, spans[i]);
         }
         for (int i=0; i<separators.length; ++i){
-            KLog.p("separators[%s]=%s", i, separators[i]);
+            KLog.p("separators[%s]=%s,", i, separators[i]);
         }
         KLog.p("begin=%s, end=%s", begin, end);
     }
@@ -112,16 +117,16 @@ public class InterpolatingTextWatcher implements TextWatcher {
         }
 
         deletedText.delete(0, cursorPos);
-        KLog.p("rawText=%s, cursorPos=%s, deletedText=%s", rawText, cursorPos, deletedText);
+        KLog.p("rawText=%s, cursorPos=%s, deletedText=%s,", rawText, cursorPos, deletedText);
         if (deletedText.length() != 0) {
             rawText.delete(cursorPos, cursorPos + deletedText.length());
         }
-        KLog.p("rawDeletedPart=%s, cursorPos=%s, rawText=%s", deletedText, cursorPos, rawText);
+        KLog.p("rawDeletedPart=%s, cursorPos=%s, rawText=%s,", deletedText, cursorPos, rawText);
     }
 
     @Override
     public void onTextChanged(CharSequence s, int start, int before, int count) {
-        KLog.p("s=%s, start=%s, before=%s, count=%s, rawText=%s", s, start, before, count, rawText);
+        KLog.p("s=%s, start=%s, before=%s, count=%s, rawText=%s,", s, start, before, count, rawText);
 
         CharSequence addedText = s.subSequence(start, start+count);
         if (rejectInputSeparator){
@@ -135,7 +140,7 @@ public class InterpolatingTextWatcher implements TextWatcher {
                     }
                 }
             }
-            KLog.p("addedText=%s, after polish =%s", addedText, sb.toString());
+            KLog.p("addedText=%s, after polish=%s,", addedText, sb.toString());
             addedText = sb.toString();
         }
 
@@ -146,22 +151,21 @@ public class InterpolatingTextWatcher implements TextWatcher {
         KLog.p("rawText=%s, addedText=%s, cursorPos=%s", rawText, addedText, cursorPos);
     }
 
+
     @Override
     public void afterTextChanged(Editable s) {
-        KLog.p("s=%s", s);
-        if (begin>=end){
-            KLog.p(KLog.ERROR, "begin(%s)>=end(%s)", begin, end);
-            return;
-        }
-        if (begin>=rawText.length()){
-            KLog.p(KLog.ERROR, "begin(%s)>=rawText.length(%s)", begin, rawText.length());
-            return;
-        }
+        KLog.p("s=%s,", s);
         interpolatedText.delete(0, interpolatedText.length());
         interpolatedText.append(rawText);
+        if (rawText.length() <= begin){
+            KLog.p("rawText.length(%s) <= begin(%s)", rawText.length(), begin);
+            s.clear();
+            s.append(interpolatedText);
+            return;
+        }
         // 对原始text进行插值处理生成插值后的text
         int stop = Math.min(end, rawText.length());
-        KLog.p("begin=%s, stop=%s, spans[0]=%s, rawText=%s", begin, stop, spans[0], rawText);
+        KLog.p("begin=%s, stop=%s, spans[0]=%s, rawText=%s,", begin, stop, spans[0], rawText);
         for (int i=0, span=begin+spans[i];
              span<Math.min(stop, interpolatedText.length());
              ++i, span += i<spans.length ? spans[i] : spans[spans.length-1]){
@@ -173,7 +177,7 @@ public class InterpolatingTextWatcher implements TextWatcher {
             }
             span += sepLen;
             stop += sepLen;
-            KLog.p("span=%s, stop=%s, sep=%s, cursorPos=%s, interpolatedText=%s", span, stop, sep, cursorPos, interpolatedText);
+            KLog.p("span=%s, stop=%s, sep=%s, cursorPos=%s, interpolatedText=%s,", span, stop, sep, cursorPos, interpolatedText);
         }
 
         // setText的行为是先触发“beforeTextChanged->onTextChanged->afterTextChanged”然后才继续往下执行，这非我们期望，故暂时删除listener
