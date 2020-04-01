@@ -859,6 +859,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
             KLog.p(KLog.ERROR, "null == onBoardOpListener");
             return;
         }
+
+        KLog.p("starting synchronizeCachedStuff...");
+
         String curConfE164 = curDcConfE164;
 
         // 查询当前画板
@@ -974,6 +977,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
         }
         if (dcBoards.isEmpty()){
             return;
+        }
+        for (TDCSBoardInfo boardInfo : dcBoards){
+            KLog.p("to synchronize board %s", boardInfo.achTabId);
         }
 
         // “逐个”画板同步（下层不支持一次性同步，会有问题）
