@@ -219,6 +219,21 @@ public abstract class Caster<T extends Enum<T>> implements
 
     }
 
+
+    /**
+     * 取消所有会话请求。
+     * */
+    protected synchronized void cancelAllReqs(){
+        for (Map.Entry<Integer, ReqBundle> entry : rspListeners.entrySet()){
+            int reqSn = entry.getKey();
+            ReqBundle value = entry.getValue();
+            KLog.p(KLog.DEBUG,"cancel req=%s, reqSn=%s, listener=%s", prefixMsg(value.req.name()), reqSn, value.listener);
+            sessionFairy.cancelReq(reqSn);
+            listenerLifecycleObserver.unobserve(value.listener);
+        }
+        rspListeners.clear();
+    }
+
     /**
      * 订阅通知
      * */
@@ -341,7 +356,11 @@ public abstract class Caster<T extends Enum<T>> implements
         return false;
     }
 
-    protected boolean containsRspListener(Object rspListener){ // TODO 改为containsNtfListener(T rsp, Object rspListener)
+    /**
+     * 该响应监听器是否仍在。
+     * 请求发出后，响应回来前，可能由于各种原因，如用户取消请求、或者监听器本身被销毁，导致该监听器已不存在于会话中。
+     * */
+    protected boolean containsRspListener(Object rspListener){ // TODO 改为containsRspListener(T rsp, Object rspListener)
         if (null == rspListener){
             return false;
         }
