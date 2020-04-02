@@ -6,6 +6,7 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -219,6 +220,28 @@ public abstract class Caster<T extends Enum<T>> implements
 
     }
 
+    /**
+     * 取消指定类型的请求。
+     * */
+    protected synchronized void cancelReq(Set<T> reqs){
+        if (null == reqs){
+            return;
+        }
+
+        Iterator<Map.Entry<Integer, ReqBundle>> it = rspListeners.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Integer, ReqBundle> entry = it.next();
+            int reqSn = entry.getKey();
+            ReqBundle value = entry.getValue();
+            if (reqs.contains(value.req)){
+                KLog.p(KLog.DEBUG,"cancel req=%s, reqSn=%s, listener=%s", prefixMsg(value.req.name()), reqSn, value.listener);
+                it.remove();
+                sessionFairy.cancelReq(reqSn);
+                listenerLifecycleObserver.unobserve(value.listener);
+            }
+        }
+
+    }
 
     /**
      * 取消所有会话请求。
