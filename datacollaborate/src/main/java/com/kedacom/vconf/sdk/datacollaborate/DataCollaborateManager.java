@@ -24,7 +24,9 @@ import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +65,58 @@ public final class DataCollaborateManager extends Caster<Msg> {
     标记从入会成功到开始同步会议中已有图元这段时间，对这段时间内到达的图元
     我们也需像同步图元一样先缓存起来而不是直接上报给用户。*/
     private boolean bPreparingSync = false;
+
+    /*同步的画板总数*/
+    private int totalSynBoardCount;
+    /*各画板的同步进度*/
+    private Map<String, Integer> synProgress = new HashMap<>();
+
+    private final int MsgID_CheckSynchronizing = 10;
+    private Handler handler = new Handler(Looper.getMainLooper()){
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MsgID_CheckSynchronizing:
+                    String boardId = (String) msg.obj;
+                    long timestamp = syncTimestamps.get(boardId);
+                    if (System.currentTimeMillis()-timestamp > 1000){ // 同步阶段若1s未收到后续绘制操作则认为同步结束
+                        syncTimestamps.remove(boardId);
+                        PriorityQueue<OpPaint> ops = cachedPaintOps.remove(boardId);
+                        if (null == ops){
+                            KLog.p(KLog.ERROR, "unexpected MsgID_CheckSynchronizing, no such synchronizing board(%s) exists", boardId);
+                            return;
+                        }
+                        KLog.p("finish synchronizing ops for board %s", boardId);
+
+                        reportSynProgress(boardId, synProgress.get(boardId), true);
+
+                        if (null != onPaintOpListener){
+                            /* 同步结束，上报用户该画板已同步的绘制操作。
+                            NOTE：之所以同步结束时才上报而不是边收边上报，是因为同步过程中操作到达时序可能跟操作实际时序不一致，
+                            所以需要收齐后排好序再上报给用户才能保证用户接收到的操作时序是正确的，进而正确绘制。
+                            比如实际的操作时序是“画线、清屏、画圆”最终效果是一个圆，但同步过来的时序可能是“画圆、清屏、画线”，
+                            若不做处理直接上报用户，用户界面展示的效果将是一条线。
+                            此种时序错乱的情形只在同步过程中有，实时广播的操作没有这个问题。*/
+                            List<OpPaint> toReportOps = new ArrayList<>();
+                            while (!ops.isEmpty()) {
+                                toReportOps.add(ops.poll()); // 排序
+                            }
+                            for (OpPaint op : toReportOps) {
+                                onPaintOpListener.onPaint(op);
+                            }
+                        }
+
+                    }else{
+                        KLog.p("synchronizing ops for board %s", boardId);
+                        handler.sendMessageDelayed(Message.obtain(msg), 500); // 同步正在进行中，稍后再做检查是否已结束
+                        int progress = Math.max(synProgress.get(boardId)+10, 99);
+                        reportSynProgress(boardId, progress, false);
+                    }
+
+                    break;
+            }
+        }
+    };
 
     // 当前会议e164号
     private String curDcConfE164;
@@ -152,7 +206,61 @@ public final class DataCollaborateManager extends Caster<Msg> {
         return instance;
     }
 
+    private Msg[] sessionReqs = new Msg[]{
+            Msg.Login,
+            Msg.Logout,
+            Msg.StartCollaborate,
+            Msg.QuitCollaborate,
+            Msg.FinishCollaborate,
+            Msg.ModifyConfig,
+            Msg.QueryConfig,
+    };
 
+    private Msg[] boardReqs = new Msg[]{
+            Msg.QueryCurBoard,
+            Msg.QueryBoard,
+            Msg.QueryAllBoards,
+            Msg.NewBoard,
+            Msg.DelBoard,
+            Msg.DelAllBoards,
+            Msg.SwitchBoard,
+    };
+
+    private Msg[] operatorReqs = new Msg[]{
+            Msg.AddOperator,
+            Msg.DelOperator,
+            Msg.RejectApplyOperator,
+            Msg.ApplyOperator,
+            Msg.CancelOperator,
+            Msg.QueryAllMembers,
+    };
+
+    private Msg[] loadReqs = new Msg[]{
+            Msg.QueryPicUrl,
+            Msg.Download,
+            Msg.QueryPicUploadUrl,
+            Msg.Upload,
+    };
+
+    private Msg[] drawReqs = new Msg[]{
+            Msg.DrawLine,
+            Msg.DrawOval,
+            Msg.DrawRect,
+            Msg.DrawPath,
+            Msg.Undo,
+            Msg.Redo,
+            Msg.ClearScreen,
+            Msg.Erase,
+            Msg.RectErase,
+//        Msg.DCZoom,
+//        Msg.RotateLeft,
+//        Msg.RotateRight,
+//        Msg.DCScrollScreen,
+            Msg.Matrix,
+            Msg.InsertPic,
+            Msg.DelPic,
+            Msg.DragPic,
+    };
 
     @Override
     protected Map<Msg[], RspProcessor<Msg>> rspsProcessors() {
@@ -161,57 +269,11 @@ public final class DataCollaborateManager extends Caster<Msg> {
         processorMap.put(new Msg[]{
                 Msg.QueryAddr
         }, this::onRsp);
-        processorMap.put(new Msg[]{
-                Msg.Login,
-                Msg.Logout,
-                Msg.StartCollaborate,
-                Msg.QuitCollaborate,
-                Msg.FinishCollaborate,
-                Msg.ModifyConfig,
-                Msg.QueryConfig,
-        }, this::onSessionRsps);
-        processorMap.put(new Msg[]{
-                Msg.QueryCurBoard,
-                Msg.QueryBoard,
-                Msg.QueryAllBoards,
-                Msg.NewBoard,
-                Msg.DelBoard,
-                Msg.DelAllBoards,
-                Msg.SwitchBoard,
-        }, this::onBoardOpRsps);
-        processorMap.put(new Msg[]{
-                Msg.AddOperator,
-                Msg.DelOperator,
-                Msg.RejectApplyOperator,
-                Msg.ApplyOperator,
-                Msg.CancelOperator,
-                Msg.QueryAllMembers,
-        }, this::onOperatorRsps);
-        processorMap.put(new Msg[]{
-                Msg.QueryPicUrl,
-                Msg.Download,
-                Msg.QueryPicUploadUrl,
-                Msg.Upload,
-        }, this::onDownUpLoadRsps);
-        processorMap.put(new Msg[]{
-                Msg.DrawLine,
-                Msg.DrawOval,
-                Msg.DrawRect,
-                Msg.DrawPath,
-                Msg.Undo,
-                Msg.Redo,
-                Msg.ClearScreen,
-                Msg.Erase,
-                Msg.RectErase,
-//        Msg.DCZoom,
-//        Msg.RotateLeft,
-//        Msg.RotateRight,
-//        Msg.DCScrollScreen,
-                Msg.Matrix,
-                Msg.InsertPic,
-                Msg.DelPic,
-                Msg.DragPic,
-        }, this::onPublishPaintOpRsps);
+        processorMap.put(sessionReqs, this::onSessionRsps);
+        processorMap.put(boardReqs, this::onBoardOpRsps);
+        processorMap.put(operatorReqs, this::onOperatorRsps);
+        processorMap.put(loadReqs, this::onDownUpLoadRsps);
+        processorMap.put(drawReqs, this::onPublishPaintOpRsps);
 
         return processorMap;
     }
@@ -378,7 +440,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
      *                       失败：{@link DcErrorCode#Failed}
      **/
     public void finishCollaborate(IResultListener resultListener){
-        unsubscribeNtfListeners();
+        clearSession();
         req(Msg.FinishCollaborate, resultListener, curDcConfE164);
     }
 
@@ -390,7 +452,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
      *                       失败：{@link DcErrorCode#Failed}
      **/
     public void quitCollaborate(boolean bQuitConf, IResultListener resultListener){
-        unsubscribeNtfListeners();
+        clearSession();
         req(Msg.QuitCollaborate, resultListener, curDcConfE164, bQuitConf?0:1);
     }
 
@@ -747,7 +809,10 @@ public final class DataCollaborateManager extends Caster<Msg> {
                     curDcConfE164 = createConfResult.achConfE164;
                     reportSuccess(ToDoConverter.fromTransferObj(createConfResult), listener);
 
-                    handler.postDelayed(() -> {  // FIXME 此时上层newboard会导致该board在同步的过程中重复上报给用户（newboard的result listener中已经上报了），注解同步完成后方可newboard？目前同步进度是单个画板，带上总进度。
+                    //准备同步协作内容
+                    //NOTE: 此时若用户newboard会导致该board在同步的过程中重复上报给用户（newboard的result listener中已经上报了），
+                    //规范用户的行为，不要在同步过程中newboard，用户可通过IOnSynchronizeProgressListener监听同步进度。
+                    handler.postDelayed(() -> {
 
                         unsubscribeNtfListeners();
 
@@ -819,7 +884,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 if (!tdcsConnectResult.bSuccess){ // 用户所属的数据协作链路状态异常
                     if (null != onSessionEventListener) onSessionEventListener.onDcFinished(); // 通知用户（对于他来说）数据协作已结束
                     curDcConfE164 = null;
-                    unsubscribeNtfListeners();
+                    clearSession();
                 }
                 break;
 
@@ -868,6 +933,10 @@ public final class DataCollaborateManager extends Caster<Msg> {
         req(Msg.QueryCurBoard, new IResultListener() {
             @Override
             public void onSuccess(Object result) {
+                if (null == onBoardOpListener) {
+                    KLog.p(KLog.WARN, "null == onBoardOpListener");
+                    return;
+                }
                 final String curBoardId = ((BoardInfo) result).getId();
 
                 // 入会成功后准备同步会议中已有的图元。
@@ -925,6 +994,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
                                 }
 
                                 // 同步画板中已有内容
+                                totalSynBoardCount = dcBoards.size();
+                                syncTimestamps.clear();
+                                synProgress.clear();
                                 synchronizeBoards(dcBoards);
                             }
 
@@ -970,6 +1042,19 @@ public final class DataCollaborateManager extends Caster<Msg> {
 
     }
 
+
+    private void reportSynProgress(String boardId, int boardProgress, boolean bBoardFin){
+        synProgress.put(boardId, boardProgress);
+        if (null != onSynchronizeProgressListener) {
+            KLog.p("onProgress(%s, %s, %s)", boardId, boardProgress, bBoardFin);
+            onSynchronizeProgressListener.onProgress(boardId, boardProgress, bBoardFin);
+            int synBoardCount = synProgress.size();
+            int totalProgress = (int) (100f*(synBoardCount-1)/ totalSynBoardCount + 1.0f/ totalSynBoardCount *boardProgress);
+            KLog.p("onOverallProgress(%s, %s, %s, %s)", synBoardCount, totalSynBoardCount, totalProgress, bBoardFin && synBoardCount==totalSynBoardCount);
+            onSynchronizeProgressListener.onOverallProgress(synBoardCount, totalSynBoardCount, totalProgress, bBoardFin && synBoardCount==totalSynBoardCount);
+        }
+    }
+
     private void synchronizeBoards(List<TDCSBoardInfo> dcBoards){
         if (null == onPaintOpListener){
             KLog.p(KLog.WARN, "null == onPaintOpListener");
@@ -982,21 +1067,21 @@ public final class DataCollaborateManager extends Caster<Msg> {
             KLog.p("to synchronize board %s", boardInfo.achTabId);
         }
 
-        // “逐个”画板同步（下层不支持一次性同步，会有问题）
         TDCSBoardInfo board = dcBoards.remove(0);
-        if (null != onSynchronizeProgressListener)
-            onSynchronizeProgressListener.onProgress(board.achTabId, 0, false); // TODO IResultListener添加onProgress替换此处的onProgress，去掉onArrive
+
+        // 上报同步进度
+        reportSynProgress(board.achTabId, 0, false);
+
+        // “逐个”画板同步（下层不支持一次性同步，会有问题）
         req(Msg.Download, new IResultListener() {
-                    @Override
-                    public void onArrive(boolean bSuccess) {
-                        synchronizeBoards(dcBoards); // 同步下一个画板
-                    }
 
                     @Override
                     public void onSuccess(Object result) {
 
-                        if (null != onSynchronizeProgressListener)
-                            onSynchronizeProgressListener.onProgress(board.achTabId, 20, false);
+                        // 上报同步进度
+                        reportSynProgress(board.achTabId, 20, false);
+                        // 同步下一个画板
+                        synchronizeBoards(dcBoards);
 
                         PriorityQueue<OpPaint> ops = cachedPaintOps.get(board.achTabId);
                         if (null == ops) { // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
@@ -1017,13 +1102,19 @@ public final class DataCollaborateManager extends Caster<Msg> {
                     @Override
                     public void onFailed(int errorCode) {
                         KLog.p(KLog.ERROR, "download paint element for board %s failed, errorCode=%s", board.achTabId, errorCode);
-                        if (null != onSynchronizeProgressListener) onSynchronizeProgressListener.onProgress(board.achTabId, 0, true);
+                        // 上报同步进度
+                        reportSynProgress(board.achTabId, 0, true);
+                        // 同步下一个画板
+                        synchronizeBoards(dcBoards);
                     }
 
                     @Override
                     public void onTimeout() {
                         KLog.p(KLog.ERROR, "download paint element for board %s timeout!", board.achTabId);
-                        if (null != onSynchronizeProgressListener) onSynchronizeProgressListener.onProgress(board.achTabId, 0, true);
+                        // 上报同步进度
+                        reportSynProgress(board.achTabId, 0, true);
+                        // 同步下一个画板
+                        synchronizeBoards(dcBoards);
                     }
                 },
 
@@ -1369,54 +1460,6 @@ public final class DataCollaborateManager extends Caster<Msg> {
 
 
 
-    private final int MsgID_CheckSynchronizing = 10;
-    private Handler handler = new Handler(Looper.getMainLooper()){
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MsgID_CheckSynchronizing:
-                    String boardId = (String) msg.obj;
-                    long timestamp = syncTimestamps.get(boardId);
-                    if (System.currentTimeMillis()-timestamp > 1000){ // 同步阶段若1s未收到后续绘制操作则认为同步结束
-                        syncTimestamps.remove(boardId);
-                        PriorityQueue<OpPaint> ops = cachedPaintOps.remove(boardId);
-                        if (null == ops){
-                            KLog.p(KLog.ERROR, "unexpected MsgID_CheckSynchronizing, no such synchronizing board(%s) exists", boardId);
-                            return;
-                        }
-                        KLog.p("finish synchronizing ops for board %s", boardId);
-
-                        if (null != onSynchronizeProgressListener)
-                            onSynchronizeProgressListener.onProgress(boardId, 100, true);
-
-                        if (null != onPaintOpListener){
-                            /* 同步结束，上报用户该画板已同步的绘制操作。
-                            NOTE：之所以同步结束时才上报而不是边收边上报，是因为同步过程中操作到达时序可能跟操作实际时序不一致，
-                            所以需要收齐后排好序再上报给用户才能保证用户接收到的操作时序是正确的，进而正确绘制。
-                            比如实际的操作时序是“画线、清屏、画圆”最终效果是一个圆，但同步过来的时序可能是“画圆、清屏、画线”，
-                            若不做处理直接上报用户，用户界面展示的效果将是一条线。
-                            此种时序错乱的情形只在同步过程中有，实时广播的操作没有这个问题。*/
-                            List<OpPaint> toReportOps = new ArrayList<>();
-                            while (!ops.isEmpty()) {
-                                toReportOps.add(ops.poll()); // 排序
-                            }
-                            for (OpPaint op : toReportOps) {
-                                onPaintOpListener.onPaint(op);
-                            }
-                        }
-
-                    }else{
-                        KLog.p("synchronizing ops for board %s", boardId);
-                        handler.sendMessageDelayed(Message.obtain(msg), 500); // 同步正在进行中，稍后再做检查是否已结束
-                    }
-
-                    break;
-            }
-        }
-    };
-
-
-
     private boolean onPublishPaintOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
 
         OpPaint opPaint = ToDoConverter.fromPaintTransferObj(rspContent);
@@ -1691,6 +1734,16 @@ public final class DataCollaborateManager extends Caster<Msg> {
         onPaintOpListener = null;
     }
 
+    private void clearSession(){
+        unsubscribeNtfListeners();
+        handler.removeCallbacksAndMessages(null);
+        assHandler.removeCallbacksAndMessages(null);
+        Set<Msg> cancelMsgs = new HashSet<>();
+        cancelMsgs.addAll(Arrays.asList(boardReqs));
+        cancelMsgs.addAll(Arrays.asList(operatorReqs));
+        cancelMsgs.addAll(Arrays.asList(loadReqs));
+        cancelReq(cancelMsgs);
+    }
 
     /**
      * 数据协作会话事件监听器。
@@ -1736,15 +1789,27 @@ public final class DataCollaborateManager extends Caster<Msg> {
      * */
     public interface IOnSynchronizeProgressListener extends ILifecycleOwner{
         /**
-         * 同步进度。
+         * 单个画板同步进度。
          * @param boardId 画板ID
-         * @param percentage 画板中的同步百分比。0-100，0代表0%，100代表100%。
+         * @param percentage 画板的同步百分比。0-100，0代表0%，100代表100%。
          * @param bFinished 同步是否结束。
          *                  NOTE: 同步结束不代表同步成功。
          *                  正常情况应是(percentage<100 && !bFinished) || (percentage==100 && bFinished)，
          *                  若同步失败则percentage<100 && bFinished
          * */
         void onProgress(String boardId, int percentage, boolean bFinished);
+
+        /**
+         * 整体同步进度。
+         * @param syn 已同步以及正在同步的画板数
+         * @param total 画板总数
+         * @param percentage 总体进度
+         * @param bFinished 整体同步是否已结束
+         *                  NOTE: 同步结束不代表同步成功。
+         *                  正常情况应是(percentage<100 && !bFinished) || (percentage==100 && bFinished)，
+         *                  若同步失败则percentage<100 && bFinished
+         * */
+        void onOverallProgress(int syn, int total, int percentage, boolean bFinished);
     }
 
     /**
