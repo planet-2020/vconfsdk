@@ -206,7 +206,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
         return instance;
     }
 
-    private Msg[] sessionReqs = new Msg[]{
+    private static Msg[] sessionReqs = new Msg[]{
             Msg.Login,
             Msg.Logout,
             Msg.StartCollaborate,
@@ -216,7 +216,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
             Msg.QueryConfig,
     };
 
-    private Msg[] boardReqs = new Msg[]{
+    private static Msg[] boardReqs = new Msg[]{
             Msg.QueryCurBoard,
             Msg.QueryBoard,
             Msg.QueryAllBoards,
@@ -226,7 +226,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
             Msg.SwitchBoard,
     };
 
-    private Msg[] operatorReqs = new Msg[]{
+    private static Msg[] operatorReqs = new Msg[]{
             Msg.AddOperator,
             Msg.DelOperator,
             Msg.RejectApplyOperator,
@@ -235,14 +235,14 @@ public final class DataCollaborateManager extends Caster<Msg> {
             Msg.QueryAllMembers,
     };
 
-    private Msg[] loadReqs = new Msg[]{
+    private static Msg[] loadReqs = new Msg[]{
             Msg.QueryPicUrl,
             Msg.Download,
             Msg.QueryPicUploadUrl,
             Msg.Upload,
     };
 
-    private Msg[] drawReqs = new Msg[]{
+    private static Msg[] drawReqs = new Msg[]{
             Msg.DrawLine,
             Msg.DrawOval,
             Msg.DrawRect,
@@ -1698,6 +1698,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
             case QueryAddr:
                 reportSuccess(false, rspListener);
                 return true;
+            case StartCollaborate:
+                clearSession();
+                return false;
             default:
                 return false;
         }
