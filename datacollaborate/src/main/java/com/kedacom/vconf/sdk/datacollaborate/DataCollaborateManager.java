@@ -206,9 +206,12 @@ public final class DataCollaborateManager extends Caster<Msg> {
         return instance;
     }
 
-    private static Msg[] sessionReqs = new Msg[]{
+    private static Msg[] logReqs = new Msg[]{
             Msg.Login,
             Msg.Logout,
+    };
+
+    private static Msg[] sessionReqs = new Msg[]{
             Msg.StartCollaborate,
             Msg.QuitCollaborate,
             Msg.FinishCollaborate,
@@ -269,6 +272,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
         processorMap.put(new Msg[]{
                 Msg.QueryAddr
         }, this::onRsp);
+        processorMap.put(logReqs, this::onSessionRsps);
         processorMap.put(sessionReqs, this::onSessionRsps);
         processorMap.put(boardReqs, this::onBoardOpRsps);
         processorMap.put(operatorReqs, this::onOperatorRsps);
@@ -423,7 +427,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                                  IOnBoardOpListener boardOpListener,
                                  IOnPaintOpListener paintOpListener ){
 
-        unsubscribeNtfListeners();
+        clearSession();
 
         curDcConfE164 = null;
         req(Msg.StartCollaborate, resultListener,
@@ -1742,6 +1746,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
         handler.removeCallbacksAndMessages(null);
         assHandler.removeCallbacksAndMessages(null);
         Set<Msg> cancelMsgs = new HashSet<>();
+        cancelMsgs.addAll(Arrays.asList(sessionReqs));
         cancelMsgs.addAll(Arrays.asList(boardReqs));
         cancelMsgs.addAll(Arrays.asList(operatorReqs));
         cancelMsgs.addAll(Arrays.asList(loadReqs));
@@ -1773,6 +1778,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
     public interface IOnDcCreatedListener extends ILifecycleOwner{
         /**
          * 数据协作已创建
+         * 用户收到该通知后应调用{@link #startCollaborate(String, String, EDcMode, EConfType, String, List, IResultListener,
+         * IOnSynchronizeProgressListener, IOnSessionEventListener, IOnOperatorEventListener, IOnBoardOpListener, IOnPaintOpListener)}
+         * 加入协作。
          * @param dcConfInfo 数据协作信息
          * */
         void onDcCreated(DcConfInfo dcConfInfo);
