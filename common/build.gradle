@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '1.0.13-SNAPSHOT'
+version = '1.1.0-SNAPSHOT'
 android {
     compileSdkVersion 28
 
@@ -28,7 +28,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.kedacom.vconf.sdk:utils:1.0.3-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:utils:1.1.0-SNAPSHOT'
 }
 
 apply from: '../publish.gradle'
