@@ -37,7 +37,14 @@ public final class MatrixHelper {
         matrix.getValues(matrixVals);
         float scaleX = matrixVals[Matrix.MSCALE_X];
         float scaleY = matrixVals[Matrix.MSCALE_Y];
-        return scaleX > scaleY ? scaleX : scaleY;
+        return Math.max(scaleX, scaleY);
+    }
+
+    public static float getMinScale(Matrix matrix){
+        matrix.getValues(matrixVals);
+        float scaleX = matrixVals[Matrix.MSCALE_X];
+        float scaleY = matrixVals[Matrix.MSCALE_Y];
+        return Math.min(scaleX, scaleY);
     }
 
 
