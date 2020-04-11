@@ -34,6 +34,7 @@ import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.utils.log.KLog;
+import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
 import com.kedacom.vconf.sdk.utils.thread.HandlerHelper;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRegState;
@@ -2114,11 +2115,11 @@ public class WebRtcManager extends Caster<Msg>{
                     continue;
                 }
                 deco.adjust(displayWidth, displayHeight);
-                canvas.drawText(deco.text, deco.x, deco.y, deco.paint);
                 if (deco.bgPaint.getColor() != 0) {
                     // 绘制文字背景色
                     canvas.drawRect(deco.bgRect, deco.bgPaint);
                 }
+                canvas.drawText(deco.text, deco.actualX, deco.actualY, deco.paint);
             }
 
             // 绘制语音激励deco
@@ -2170,10 +2171,9 @@ public class WebRtcManager extends Caster<Msg>{
         private int textSize;   // 文字大小（UCD标注的，实际展示的大小会依据Display的大小调整）
         private Paint bgPaint = new Paint();
         private RectF bgRect = new RectF();  // 文字背景区域
-        private static final int minTextSizeLimit = 40;
-        protected Matrix matrix = new Matrix();
+        private static final int minTextSizeLimit = 35;
         /**
-         * @param id deco的id，用户自定义，方便用户找回。
+         * @param id deco的id，唯一标识该deco，用户自定义。
          * @param text deco文字内容
          * @param textSize 文字大小
          * @param color 文字颜色
@@ -2182,7 +2182,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param dx UCD标注的deco相对于refPos与窗口的x方向边距
          * @param dy UCD标注的deco相对于refPos与窗口的y方向边距
          * @param refPos 计算dx,dy的相对位置。取值{@link #POS_LEFTTOP},{@link #POS_LEFTBOTTOM},{@link #POS_RIGHTTOP},{@link #POS_RIGHTBOTTOM}
-         * @param backgroundColor 背景色。文字所占矩形区域的背景颜色
+         * @param backgroundColor text背景色。
          * 示例：
          * 有UCD的标注图如下：
          * Window 1920*1080
@@ -2205,6 +2205,21 @@ public class WebRtcManager extends Caster<Msg>{
             paint.setColor(color);
             bgPaint.setStyle(Paint.Style.FILL);
             bgPaint.setColor(backgroundColor);
+
+            paint.setTextSize(textSize);
+            Paint.FontMetrics fm = paint.getFontMetrics();
+            float textLength = paint.measureText(text);
+            if (POS_LEFTTOP == refPos){
+                y -= fm.top; // y坐标对齐至text的baseline。(drawText以baseline为基准，而非左上角)
+            }else if (POS_LEFTBOTTOM == refPos){
+                y -= fm.bottom; // y坐标对齐至text的baseline。
+            }else if (POS_RIGHTTOP == refPos){
+                x -= textLength;
+                y -= fm.top;
+            }else {
+                x -= textLength;
+                y -= fm.bottom;
+            }
         }
 
         public TextDecoration(@NonNull String id, @NonNull String text, int textSize, int color, int w, int h, int dx, int dy, int refPos) {
@@ -2212,79 +2227,50 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-        /**
-         * 根据实际窗口的大小调整deco的位置及大小
-         * @param width 实际窗口的宽
-         * @param height 实际窗口的高
-         * @return */
+
         protected boolean adjust(int width, int height){
             if (!super.adjust(width, height)){
                 return false;
             }
-            float size = textSize;
-            if (POS_LEFTBOTTOM == refPos){
-                y -= size;
-            }else if (POS_RIGHTTOP == refPos){
-                x -= size * text.length();
+
+            // 根据实际窗体宽高计算适配后的字体大小
+            float size = Math.max(minTextSizeLimit, textSize * MatrixHelper.getMinScale(matrix));
+            paint.setTextSize(size);
+            int xPadding = 4;
+            int yPadding = 6;
+            // 修正实际锚点坐标。
+            // 为防止字体缩的过小我们限定了字体大小下限，我们需修正由此可能带来的偏差。
+            // NOTE: 此修正目前仅针对文字横排的情形，若将来增加文字竖排的需求，需在此增加相应的处理逻辑。
+            Paint.FontMetrics fm = paint.getFontMetrics();
+            if (POS_LEFTBOTTOM==refPos || POS_RIGHTBOTTOM==refPos) {
+                actualY = Math.min(height-fm.bottom-yPadding, actualY);
             }else {
-                x -= size * text.length();
-                y -= size;
+                actualY = Math.max(0-fm.top+yPadding, actualY);
             }
 
-            float[] cor = new float[2];
-            matrix.reset();
-            matrix.postTranslate(x, y);
-            float scaleFactor = Math.min(ratioW, ratioH);
-            matrix.postScale(scaleFactor, scaleFactor, 0, 0);
+            // 计算文字背景区域
+            float left = actualX-xPadding;
+            float right = actualX+paint.measureText(text)+xPadding;
+            float top = actualY+fm.top;
+            float bottom = actualY+fm.bottom;
+            bgRect.set(left, top, right, bottom);
 
-            matrix.mapPoints(cor);
-            x = cor[0]; y = cor[1];
-            size = Math.max(size*scaleFactor, minTextSizeLimit);
-            y += size; // drawText默认是Baseline对齐的
-            paint.setTextSize(size);
-            Paint.FontMetrics fm = paint.getFontMetrics();
-            bgRect.set(x, y+fm.top, x+paint.measureText(text), y+fm.bottom);
+//            KLog.p("finish adjust: width=%s, height=%s, x=%s, y=%s, text=%s, textSize=%s," +
+//                            "actualX=%s, actualY=%s, actualTextSize=%s, backgroundRect=(%s,%s,%s,%s)",
+//                    width, height, x,y,text, textSize, actualX, actualY, size, left, top, right, bottom);
 
-//            KLog.p("finish adjust: x=%s, y=%s, textSize=%s, textLength=%s, fm.top=%s, fm.bottom=%s, bgRect=%s",
-//                    x, y, size, text.length(), fm.top, fm.bottom, bgRect);
-
-            KLog.p(toString());
             return true;
         }
 
-        @Override
-        public String toString() {
-            return "TextDecoration{" +
-                    "text='" + text + '\'' +
-                    ", textSize=" + textSize +
-                    ", id='" + id + '\'' +
-                    ", w=" + w +
-                    ", h=" + h +
-                    ", dx=" + dx +
-                    ", dy=" + dy +
-                    ", refPos=" + refPos +
-                    ", paint=" + paint +
-                    ", x=" + x +
-                    ", y=" + y +
-                    ", ratioW=" + ratioW +
-                    ", ratioH=" + ratioH +
-                    '}';
-        }
     }
 
     public static class PicDecoration extends Decoration{
-        public Bitmap pic;     // 要展示的图片
-        protected Matrix matrix = new Matrix();
+        public Bitmap pic;
         public PicDecoration(@NonNull String id, @NonNull Bitmap pic, int w, int h, int dx, int dy, int refPos) {
             super(id, w, h, dx, dy, refPos);
             this.pic = pic;
             paint.setStyle(Paint.Style.STROKE);
-        }
 
-        protected boolean adjust(int width, int height){
-            if (!super.adjust(width, height)){
-                return false;
-            }
             float picW = pic.getWidth();
             float picH = pic.getHeight();
             if (POS_LEFTBOTTOM == refPos){
@@ -2295,13 +2281,6 @@ public class WebRtcManager extends Caster<Msg>{
                 x -= picW;
                 y -= picH;
             }
-
-            matrix.reset();
-            matrix.postTranslate(x, y);
-            matrix.postScale(ratioW, ratioH, 0, 0);
-
-            KLog.p(toString());
-            return true;
         }
 
         static PicDecoration createCenterPicDeco(String id, Bitmap bitmap, int winW, int winH){
@@ -2312,24 +2291,6 @@ public class WebRtcManager extends Caster<Msg>{
             return new PicDecoration(id, bitmap, winW, winH, (int)((winW-bmW)/2f), (int)((winH-bmH)/2f), Decoration.POS_LEFTTOP);
         }
 
-        @Override
-        public String toString() {
-            return "PicDecoration{" +
-                    "pic=" + pic +
-                    ", matrix=" + matrix +
-                    ", id='" + id + '\'' +
-                    ", w=" + w +
-                    ", h=" + h +
-                    ", dx=" + dx +
-                    ", dy=" + dy +
-                    ", refPos=" + refPos +
-                    ", paint=" + paint +
-                    ", x=" + x +
-                    ", y=" + y +
-                    ", ratioW=" + ratioW +
-                    ", ratioH=" + ratioH +
-                    '}';
-        }
     }
 
     private static class StreamStateDecoration extends PicDecoration{
@@ -2345,27 +2306,35 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     public static class Decoration{
-        public String id;
-        private boolean enabled = true; // 是否使能。使能则展示否则不展示
-        public int w;           // 该deco所在画面的宽（UCD标注的）
-        public int h;           // 该deco所在画面的高（UCD标注的）
-        public int dx;          // 参照pos的x方向距离（UCD标注的）
-        public int dy;          // 参照pos的y方向距离（UCD标注的）
-        public int refPos;      /** dx, dy参照的位置。如取值{@link #POS_LEFTBOTTOM}则dx表示距离左下角的x方向距离*/
-        protected Paint paint;
-
-        protected float x;
-        protected float y;
-
-        protected float ratioW;
-        protected float ratioH;
-        protected float preAdjustedWidth;
-        protected float preAdjustedHeight;
-
+        // 相对窗体的位置
         public static final int POS_LEFTTOP = 1;
         public static final int POS_LEFTBOTTOM = 2;
         public static final int POS_RIGHTTOP = 3;
         public static final int POS_RIGHTBOTTOM = 4;
+
+        private boolean enabled = true; // 是否使能。使能则展示否则不展示
+
+        public String id;
+        public int w;           // deco所在窗体的宽（UCD标注的）
+        public int h;           // deco所在窗体的高（UCD标注的）
+        public int dx;          // deco到窗体垂直边界的距离（参照pos）（UCD标注的）
+        public int dy;          // deco到窗体水平边界的距离（参照pos）（UCD标注的）
+        public int refPos;      // dx, dy参照的位置。如取值{@link #POS_LEFTBOTTOM}则dx表示距离窗体左边界的距离，dy表示距离窗体底部边界的距离。
+        protected Paint paint;
+        // 根据以上ucd标注计算出的deco绘制的锚点。
+        // NOTE: 此锚点仅为ucd标注窗体中的锚点，并非实际绘制的锚点，实际的锚点根据该锚点结合实际窗体大小计算得出。
+        protected float x;
+        protected float y;
+
+        // deco实际的锚点
+        protected float actualX;
+        protected float actualY;
+
+        protected Matrix matrix = new Matrix();
+
+        protected float preWidth;
+        protected float preHeight;
+
 
         protected Decoration(String id, int w, int h, int dx, int dy, int refPos) {
             this.id = id;
@@ -2375,28 +2344,6 @@ public class WebRtcManager extends Caster<Msg>{
             this.dy = dy;
             this.refPos = refPos;
             this.paint = new Paint();
-        }
-
-        protected void setEnabled(boolean enabled){
-            this.enabled = enabled;
-        }
-
-        protected boolean enabled(){
-            return enabled;
-        }
-
-        protected boolean adjust(int width, int height){
-            if (width<=0 || height<=0){
-                return false;
-            }
-            if (preAdjustedWidth == width && preAdjustedHeight == height){
-                return false;
-            }
-            preAdjustedWidth = width;
-            preAdjustedHeight = height;
-
-            ratioW = width/(float)w;
-            ratioH = height/(float)h;
 
             if (POS_LEFTTOP == refPos){
                 x = dx;
@@ -2412,8 +2359,40 @@ public class WebRtcManager extends Caster<Msg>{
                 y = h - dy;
             }
 
-//            KLog.p("displayW=%s, displayH=%s, ratioW=%s, ratioH=%s, x=%s, y=%s, paint.textSize=%s",
-//                    width, height, ratioW, ratioH, x, y, paint.getTextSize());
+        }
+
+        protected void setEnabled(boolean enabled){
+            this.enabled = enabled;
+        }
+
+        protected boolean enabled(){
+            return enabled;
+        }
+
+        /**
+         * 根据实际窗口的大小调整deco
+         * @param width 实际窗口的宽
+         * @param height 实际窗口的高
+         * @return */
+        protected boolean adjust(int width, int height){
+            if (width<=0 || height<=0){
+                return false;
+            }
+            if (preWidth == width && preHeight == height){
+                return false;
+            }
+            preWidth = width;
+            preHeight = height;
+
+            matrix.reset();
+            matrix.postTranslate(x, y);
+            matrix.postScale(width/(float)w, height/(float)h, 0, 0);
+            float[] cor = new float[2];
+            matrix.mapPoints(cor);
+            actualX = cor[0]; actualY = cor[1];
+
+//            KLog.p("displayW=%s, displayH=%s, x=%s, y=%s, matrix=%s, actualX=%s, actualY=%s",
+//                    width, height, x, y, matrix, actualX, actualY);
 
             return true;
         }
