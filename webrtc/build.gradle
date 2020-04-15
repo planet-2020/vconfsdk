@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.google.protobuf'
 
-version = '0.4.44-SNAPSHOT'
+version = '0.4.45-SNAPSHOT'
 android {
     compileSdkVersion 28
 

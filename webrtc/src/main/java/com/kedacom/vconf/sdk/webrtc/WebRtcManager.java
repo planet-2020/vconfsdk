@@ -23,6 +23,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBiMap;
+import com.google.common.collect.Sets;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
@@ -1081,6 +1082,14 @@ public class WebRtcManager extends Caster<Msg>{
 //            audioManager.stop();
 //            audioManager = null;
 //        }
+
+        // 取消可能正在进行中的验证密码请求
+        // 验证密码请求有些特殊：
+        // 首先该请求对应的响应ConfPasswordNeeded既是响应（密码验证失败时）也是通知（加入一个密码会议时会推上来）；
+        // 其次当连续3次验证密码失败，第3次不会回响应，而是直接上报会议结束的通知。此时我们再次加入该会议，由于第三次验证请求仍可能存在，
+        // 则当“需要输入密码（ConfPasswordNeeded）”的通知上来时，会被第三次的请求当作它期望的响应给消费掉（原本应该作为通知上报用户输入密码），
+        // 所以我们在会议结束时取消掉可能进行中的密码验证请求以解决该问题。
+        cancelReq(Sets.newHashSet(Msg.VerifyConfPassword));
 
         KLog.p("session stopped ");
 
