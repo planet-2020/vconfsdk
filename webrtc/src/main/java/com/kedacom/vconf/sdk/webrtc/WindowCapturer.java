@@ -13,6 +13,7 @@ import android.view.View;
 import androidx.annotation.NonNull;
 
 import com.kedacom.vconf.sdk.utils.log.KLog;
+import com.kedacom.vconf.sdk.utils.view.ResolutionHelper;
 
 import org.webrtc.CapturerObserver;
 import org.webrtc.SurfaceTextureHelper;
@@ -65,20 +66,11 @@ public class WindowCapturer implements VideoCapturer {
                 Matrix matrix = new Matrix();
                 matrix.postScale(-1, 1);
                 matrix.postRotate(180);
-                int w = window.getWidth();
-                int h = window.getHeight();
-                float scaleFactor = 1;
-                if (w > 1920 || h > 1080){ // 分辨率限制在1920*1080以内，超出则等比缩小
-                    if (w*1080 > 1920*h){
-                        scaleFactor = 1920f/w;
-                        h *= scaleFactor;
-                        w = 1920;
-                    }else {
-                        scaleFactor = 1080f/h;
-                        w *= scaleFactor;
-                        h = 1080;
-                    }
-                }
+                float[] res = ResolutionHelper.adjust(window.getWidth(), window.getHeight(), 16f/9, 1080, true);
+                int w = (int) res[0];
+                int h = (int) res[1];
+                float scaleX = res[2];
+                float scaleY = res[3];
                 KLog.p("window.getWidth()=%s, window.getHeight()=%s, w=%s, h=%s",
                         window.getWidth(), window.getHeight(), w, h);
                 TextureBufferImpl buffer = new TextureBufferImpl(w, h, VideoFrame.TextureBuffer.Type.RGB, textures[0], matrix, surTexture.getHandler(), yuvConverter, null);
@@ -86,7 +78,7 @@ public class WindowCapturer implements VideoCapturer {
 
                 Canvas canvas = new Canvas(bitmap);
                 Matrix matrix1 = new Matrix();
-                matrix1.postScale(scaleFactor, scaleFactor);
+                matrix1.postScale(scaleX, scaleY);
                 canvas.setMatrix(matrix1);
                 KLog.p("canvas.matrix=%s", matrix1);
                 Handler uiHandler = new Handler(Looper.getMainLooper());

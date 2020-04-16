@@ -15,7 +15,7 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
  * 该监听器针对输入的text根据指定的span插入指定的separator。
  * NOTE：Filters不能过滤掉separator中的字符，否则该监听器不能正常工作。
  * */
-public class InterpolatingTextWatcher implements TextWatcher {
+public final class InterpolatingTextWatcher implements TextWatcher {
     // 原始的文本（剔除插值）
     private StringBuilder rawText = new StringBuilder();
     // 添加插值后的文本
