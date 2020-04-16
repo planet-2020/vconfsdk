@@ -412,6 +412,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
      *                       失败：{@link DcErrorCode#Failed}
      *                             {@link DcErrorCode#BuildLink4ConfFailed}
      *                             {@link DcErrorCode#DcAmountReachLimit}
+     *                       NOTE:开启协作成功后SDK内部会去同步协作内容，并通过synchronizeProgressListener上报用户同步进度。
+     *                       用户应该在同步结束后才去执行添加画板操作，否则可能导致新添加的画板被纳入同步的范畴（取决于平台下发的当前协作中已存在的画板列表是否包含了该新添加的画板），
+     *                       进而导致用户有画板重复——一个是自己刚新建的，一个是SDK同步过程中推的。
      *
      * @param synchronizeProgressListener 同步进度监听器（开启协作成功后会同步协作中已有内容）
      * @param sessionEventListener 数据协作会话事件监听器
