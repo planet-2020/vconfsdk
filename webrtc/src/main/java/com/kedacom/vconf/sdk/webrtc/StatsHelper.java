@@ -19,6 +19,7 @@ final class StatsHelper {
 
     @SuppressWarnings({"ConstantConditions", "SimplifiableConditionalExpression"})
     static void resolveStats(RTCStatsReport rtcStatsReport, @NonNull Stats resolvedStats){
+        KLog.p(">>>>>>>>> stats: ");
 
         resolvedStats.clear();
 

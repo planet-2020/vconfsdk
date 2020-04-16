@@ -1654,8 +1654,10 @@ public class WebRtcManager extends Caster<Msg>{
          * NOTE: 不同于{@link Display#setDecoEnable(String, boolean)}只对单独的display起作用，该方法会影响到所有绑定到该Conferee的Display。
          * */
         public void setDecoEnable(String decoId, boolean enabled){
+            KLog.p("decoId %s, enabled=%s", decoId, enabled);
             boolean success = false;
             for (TextDecoration deco : textDecorations){
+                KLog.p("deco %s", deco.id);
                 if (deco.id.equals(decoId) && deco.enabled() != enabled){
                     deco.setEnabled(enabled);
                     success = true;
@@ -2128,6 +2130,7 @@ public class WebRtcManager extends Caster<Msg>{
                     // 绘制文字背景色
                     canvas.drawRect(deco.bgRect, deco.bgPaint);
                 }
+                KLog.p("draw text deco: id=%s", deco.id);
                 canvas.drawText(deco.text, deco.actualX, deco.actualY, deco.paint);
             }
 
