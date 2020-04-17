@@ -61,6 +61,7 @@ import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
 import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
+import org.webrtc.Logging;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
 import org.webrtc.MediaStreamTrack;
@@ -478,7 +479,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 是否处于静音状态
      * */
     public boolean isSilenced(){
-        return config.isMuted;
+        return config.isSilenced;
     }
 
 
@@ -1111,10 +1112,6 @@ public class WebRtcManager extends Caster<Msg>{
 
             KLog.p("creating factory...");
 
-//            PeerConnectionFactory.startInternalTracingCapture(
-//                    Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator
-//                            + "webrtc-trace.txt");
-
             PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions());
 
             final AudioDeviceModule adm = createJavaAudioDevice();
@@ -1144,7 +1141,15 @@ public class WebRtcManager extends Caster<Msg>{
 
             adm.release();
 
-//            Logging.enableLogToDebugOutput(Logging.Severity.LS_VERBOSE);
+//            String webRtcTraceFile = Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "webrtc-trace.txt";
+
+//            KLog.p("start tracing...");
+//            PeerConnectionFactory.startInternalTracingCapture(webRtcTraceFile);
+
+//            Logging.enableLogThreads();
+//            Logging.enableLogTimeStamps();
+//            Logging.enableTracing(webRtcTraceFile, EnumSet.of(Logging.TraceLevel.TRACE_DEFAULT));
+            Logging.enableLogToDebugOutput(Logging.Severity.LS_INFO);
 
         });
 
@@ -1166,6 +1171,8 @@ public class WebRtcManager extends Caster<Msg>{
             factory.dispose();
             factory = null;
 
+//            KLog.p("stop tracing");
+//            PeerConnectionFactory.stopInternalTracingCapture();
             KLog.p(KLog.WARN, "factory destroyed!");
         });
     }
@@ -1602,7 +1609,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 添加文字Deco
          * */
         public void addText(TextDecoration decoration){
-            KLog.p(decoration.toString());
+            KLog.p("add text deco %s", decoration.id);
             textDecorations.add(decoration);
             refreshDisplays();
         }
@@ -1611,7 +1618,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 添加图片deco
          * */
         public void addPic(PicDecoration decoration){
-            KLog.p(decoration.toString());
+            KLog.p("add pic deco %s", decoration.id);
             picDecorations.add(decoration);
             refreshDisplays();
         }
@@ -1657,7 +1664,7 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p("decoId %s, enabled=%s", decoId, enabled);
             boolean success = false;
             for (TextDecoration deco : textDecorations){
-                KLog.p("deco %s", deco.id);
+                KLog.p("deco id=%s, enabled=%s, toSetDecoId=%s, toEnable=%s", deco.id, deco.enabled(), decoId, enabled);
                 if (deco.id.equals(decoId) && deco.enabled() != enabled){
                     deco.setEnabled(enabled);
                     success = true;
@@ -3586,13 +3593,15 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void run() {
             // 比较各与会方的音量以选出最大者用以语音激励
-            String maxAudioLevelTrackId;
-            double maxAudioLevel;
-            // 己端的音量
-            synchronized (publisherStats) {
-                maxAudioLevelTrackId = null != publisherStats.audioSource ? publisherStats.audioSource.trackIdentifier : null;
-                maxAudioLevel = null != publisherStats.audioSource ? publisherStats.audioSource.audioLevel : 0;
-                KLog.p("my audioLevel= %s", maxAudioLevel);
+            String maxAudioLevelTrackId = null;
+            double maxAudioLevel = 0;
+            if (!config.isMuted) { // 非哑音状态我们才将己端音量纳入统计范畴（按理说并不需要这个条件判断，我理解哑音状态下己端音量应该为0才对，但是实测并不是）
+                // 己端的音量
+                synchronized (publisherStats) {
+                    maxAudioLevelTrackId = null != publisherStats.audioSource ? publisherStats.audioSource.trackIdentifier : null;
+                    maxAudioLevel = null != publisherStats.audioSource ? publisherStats.audioSource.audioLevel : 0;
+                    KLog.p("my audioLevel= %s", maxAudioLevel);
+                }
             }
             // 其他与会方的音量
             synchronized (subscriberStats) {
@@ -3611,8 +3620,9 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
             KLog.p("maxAudioLevel=%s", maxAudioLevel);
-            if (maxAudioLevel > 0.1){
-                // 大于0.1才认为是人说话，否则认为是环境噪音
+            if (null != maxAudioLevelTrackId
+                    && maxAudioLevel > 0.1 // 大于0.1才认为是人说话，否则认为是环境噪音
+            ){
                 String maxAudioLevelKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(maxAudioLevelTrackId);
                 KLog.p("preMaxAudioLevelKdStreamId=%s, maxAudioLevelKdStreamId=%s", preMaxAudioLevelKdStreamId, maxAudioLevelKdStreamId);
                 if (null != maxAudioLevelKdStreamId) {
