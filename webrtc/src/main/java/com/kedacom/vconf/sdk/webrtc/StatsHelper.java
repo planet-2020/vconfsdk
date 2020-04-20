@@ -568,7 +568,8 @@ final class StatsHelper {
         @Override
         public String toString() {
             return "SendAudioTrack{" +
-                    "trackIdentifier='" + trackIdentifier + '\'' +
+                    "id='" + id + '\'' +
+                    ", trackIdentifier='" + trackIdentifier + '\'' +
                     ", mediaSourceId='" + mediaSourceId + '\'' +
                     ", ended=" + ended +
                     ", detached=" + detached +
@@ -595,7 +596,8 @@ final class StatsHelper {
         @Override
         public String toString() {
             return "SendVideoTrack{" +
-                    "trackIdentifier='" + trackIdentifier + '\'' +
+                    "id='" + id + '\'' +
+                    ", trackIdentifier='" + trackIdentifier + '\'' +
                     ", mediaSourceId='" + mediaSourceId + '\'' +
                     ", ended=" + ended +
                     ", detached=" + detached +
@@ -637,7 +639,8 @@ final class StatsHelper {
         @Override
         public String toString() {
             return "RecvAudioTrack{" +
-                    "trackIdentifier='" + trackIdentifier + '\'' +
+                    "id='" + id + '\'' +
+                    ", trackIdentifier='" + trackIdentifier + '\'' +
                     ", ended=" + ended +
                     ", detached=" + detached +
                     ", jitterBufferDelay=" + jitterBufferDelay +
@@ -687,7 +690,8 @@ final class StatsHelper {
         @Override
         public String toString() {
             return "RecvVideoTrack{" +
-                    "trackIdentifier='" + trackIdentifier + '\'' +
+                    "id='" + id + '\'' +
+                    ", trackIdentifier='" + trackIdentifier + '\'' +
                     ", ended=" + ended +
                     ", detached=" + detached +
                     ", jitterBufferDelay=" + jitterBufferDelay +
