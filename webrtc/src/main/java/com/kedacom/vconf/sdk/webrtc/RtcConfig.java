@@ -10,8 +10,10 @@ import android.content.SharedPreferences;
  */
 public final class RtcConfig {
 
-    // 是否开启硬编解
-    private static final String key_isVideoCodecHwAccelerationEnabled = "key_isVideoCodecHwAccelerationEnabled";
+    // 是否优先使用视频硬编
+    private static final String key_isHardwareVideoEncoderPreferred = "key_isHardwareVideoEncoderPreferred";
+    // 是否优先使用视频硬解
+    private static final String key_isHardwareVideoDecoderPreferred = "key_isHardwareVideoDecoderPreferred";
     // 是否开启simulcast
     private static final String key_isSimulcastEnabled = "key_isSimulcastEnabled";
     // 偏好的视频格式
@@ -74,17 +76,29 @@ public final class RtcConfig {
     }
 
     /**
-     * 设置是否开启硬编解码
-     * NOTE:
-     * 开启硬编解码后会优先选择硬编解，但若设备本身不支持，则仍可能使用的是软编解；
+     * 设置是否优先使用视频硬编
+     * NOTE: 若设备本身不支持指定视频格式的硬编，则会尝试使用软编；
      * */
-    public RtcConfig setVideoCodecHwAccelerationEnable(boolean enable){
-        editor.putBoolean(key_isVideoCodecHwAccelerationEnabled, enable).apply();
+    public RtcConfig setHardwareVideoEncoderPreferred(boolean prefer){
+        editor.putBoolean(key_isHardwareVideoEncoderPreferred, prefer).apply();
         return this;
     }
     
-    public boolean isVideoCodecHwAccelerationEnabled(){
-        return rtcUserConfig.getBoolean(key_isVideoCodecHwAccelerationEnabled, true);
+    public boolean isHardwareVideoEncoderPreferred(){
+        return rtcUserConfig.getBoolean(key_isHardwareVideoEncoderPreferred, true);
+    }
+
+    /**
+     * 设置是否优先使用视频硬解
+     * NOTE: 若设备本身不支持指定视频格式的硬解，则会尝试使用软解；
+     * */
+    public RtcConfig setHardwareVideoDecoderPreferred(boolean prefer){
+        editor.putBoolean(key_isHardwareVideoDecoderPreferred, prefer).apply();
+        return this;
+    }
+
+    public boolean isHardwareVideoDecoderPreferred(){
+        return rtcUserConfig.getBoolean(key_isHardwareVideoDecoderPreferred, true);
     }
 
 
@@ -273,7 +287,8 @@ public final class RtcConfig {
      * 将RtcConfig对象保存为持久化配置
      * */
     void save(Config config){
-        setVideoCodecHwAccelerationEnable(config.isVideoCodecHwAccelerationEnabled);
+        setHardwareVideoEncoderPreferred(config.isHardwareVideoEncoderPreferred);
+        setHardwareVideoDecoderPreferred(config.isHardwareVideoDecoderPreferred);
         setSimulcastEnable(config.isSimulcastEnabled);
         setPreferredVideoCodec(config.preferredVideoCodec);
         setVideoWidth(config.videoWidth);
@@ -296,7 +311,8 @@ public final class RtcConfig {
      * */
     Config dump(){
         Config config = new Config();
-        config.isVideoCodecHwAccelerationEnabled = isVideoCodecHwAccelerationEnabled();
+        config.isHardwareVideoEncoderPreferred = isHardwareVideoEncoderPreferred();
+        config.isHardwareVideoDecoderPreferred = isHardwareVideoDecoderPreferred();
         config.isSimulcastEnabled = isSimulcastEnabled();
         config.preferredVideoCodec = getPreferredVideoCodec();
         config.videoWidth = getVideoWidth();
@@ -320,8 +336,10 @@ public final class RtcConfig {
      * */
     static class Config {
 
-        // 是否开启硬编解
-        boolean isVideoCodecHwAccelerationEnabled;
+        // 是否开启视频硬编
+        boolean isHardwareVideoEncoderPreferred;
+        // 是否开启视频硬解
+        boolean isHardwareVideoDecoderPreferred;
         // 是否开启simulcast
         boolean isSimulcastEnabled;
         // 偏好的视频格式
@@ -353,7 +371,8 @@ public final class RtcConfig {
 
 
         void copy(Config src){
-            isVideoCodecHwAccelerationEnabled = src.isVideoCodecHwAccelerationEnabled;
+            isHardwareVideoEncoderPreferred = src.isHardwareVideoEncoderPreferred;
+            isHardwareVideoDecoderPreferred = src.isHardwareVideoDecoderPreferred;
             isSimulcastEnabled = src.isSimulcastEnabled;
             preferredVideoCodec = src.preferredVideoCodec;
             videoWidth = src.videoWidth;
@@ -370,11 +389,11 @@ public final class RtcConfig {
             preferredVideoQuality = src.preferredVideoQuality;
         }
 
-
         @Override
         public String toString() {
             return "Config{" +
-                    "isVideoCodecHwAccelerationEnabled=" + isVideoCodecHwAccelerationEnabled +
+                    "isHardwareVideoEncoderPreferred=" + isHardwareVideoEncoderPreferred +
+                    ", isHardwareVideoDecoderPreferred=" + isHardwareVideoDecoderPreferred +
                     ", isSimulcastEnabled=" + isSimulcastEnabled +
                     ", preferredVideoCodec='" + preferredVideoCodec + '\'' +
                     ", videoWidth=" + videoWidth +

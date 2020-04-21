@@ -1119,14 +1119,16 @@ public class WebRtcManager extends Caster<Msg>{
             final VideoEncoderFactory encoderFactory;
             final VideoDecoderFactory decoderFactory;
 
-            if (config.isVideoCodecHwAccelerationEnabled) {
+            if (config.isHardwareVideoEncoderPreferred) {
                 encoderFactory = new DefaultVideoEncoderFactory(eglBase.getEglBaseContext(),true,true);
-                decoderFactory = new DefaultVideoDecoderFactory(eglBase.getEglBaseContext());
-
-//            encoderFactory = new HardwareVideoEncoderFactory(eglBase.getEglBaseContext(),true,true);
-//            decoderFactory = new DefaultVideoDecoderFactory(eglBase.getEglBaseContext());
+//                encoderFactory = new HardwareVideoEncoderFactory(eglBase.getEglBaseContext(),true,true);
             } else {
                 encoderFactory = new SoftwareVideoEncoderFactory();
+            }
+
+            if (config.isHardwareVideoDecoderPreferred){
+                decoderFactory = new DefaultVideoDecoderFactory(eglBase.getEglBaseContext());
+            }else{
                 decoderFactory = new SoftwareVideoDecoderFactory();
             }
 
