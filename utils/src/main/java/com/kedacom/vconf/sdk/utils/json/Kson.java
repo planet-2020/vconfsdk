@@ -2,6 +2,8 @@ package com.kedacom.vconf.sdk.utils.json;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+
+import java.lang.reflect.Type;
 import java.util.Map;
 
 /**
@@ -13,8 +15,8 @@ public final class Kson {
     private static GsonBuilder gsonBuilder = new GsonBuilder();
     private static Gson gson = gsonBuilder.create();
 
-    public static <T> void registerAdapters(Map<Class<T>, Object> adapterMap){
-        for (Map.Entry<Class<T>, Object> entry : adapterMap.entrySet()) {
+    public static void registerAdapters(Map<Type, Object> adapters){
+        for (Map.Entry<Type, Object> entry : adapters.entrySet()) {
             gsonBuilder.registerTypeAdapter(entry.getKey(), entry.getValue());
         }
         gson = gsonBuilder.create();
