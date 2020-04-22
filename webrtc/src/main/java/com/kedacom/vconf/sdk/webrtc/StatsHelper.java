@@ -19,7 +19,6 @@ final class StatsHelper {
 
     @SuppressWarnings({"ConstantConditions", "SimplifiableConditionalExpression"})
     static void resolveStats(RTCStatsReport rtcStatsReport, @NonNull Stats resolvedStats){
-        KLog.p(">>>>>>>>> stats: ");
 
         resolvedStats.clear();
 
@@ -43,7 +42,6 @@ final class StatsHelper {
                     audioSource.totalAudioEnergy = null != members.get("totalAudioEnergy") ? (double) members.get("totalAudioEnergy") : 0;
                     audioSource.totalSamplesDuration = null != members.get("totalSamplesDuration") ? (double) members.get("totalSamplesDuration") : 0;
                     resolvedStats.audioSource = audioSource;
-                    KLog.p(audioSource.toString());
                 }else{
                     VideoSource videoSource = new VideoSource();
                     videoSource.trackIdentifier = null != members.get("trackIdentifier") ? (String) members.get("trackIdentifier") : null;
@@ -51,7 +49,6 @@ final class StatsHelper {
                     videoSource.height = null != members.get("height") ? (long) members.get("height") : 0;
                     videoSource.framesPerSecond = null != members.get("framesPerSecond") ? (long) members.get("framesPerSecond") : 0;
                     resolvedStats.videoSource = videoSource;
-                    KLog.p(videoSource.toString());
                 }
 
             }else if (type.equals("codec")){
@@ -66,7 +63,6 @@ final class StatsHelper {
                 }else{
                     resolvedStats.encoderList.add(codec);
                 }
-                KLog.p(codec.toString());
 
             }else if (type.equals("track")){
                 boolean bRecv = null != members.get("remoteSource") ? (boolean) members.get("remoteSource") : true;
@@ -95,7 +91,6 @@ final class StatsHelper {
                         recvAudioTrack.interruptionCount = null != members.get("interruptionCount") ? (long) members.get("interruptionCount") : 0;
                         recvAudioTrack.totalInterruptionDuration = null != members.get("totalInterruptionDuration") ? (double) members.get("totalInterruptionDuration") : 0;
                         resolvedStats.recvAudioTrackList.add(recvAudioTrack);
-                        KLog.p(recvAudioTrack.toString());
                     }else{
                         RecvVideoTrack recvVideoTrack = new RecvVideoTrack();
                         recvVideoTrack.id = null != members.get("id") ? (String) members.get("id") : null;
@@ -116,7 +111,6 @@ final class StatsHelper {
                         recvVideoTrack.totalFramesDuration = null != members.get("totalFramesDuration") ? (double) members.get("totalFramesDuration") : 0;
                         recvVideoTrack.sumOfSquaredFramesDuration = null != members.get("sumOfSquaredFramesDuration") ? (double) members.get("sumOfSquaredFramesDuration") : 0;
                         resolvedStats.recvVideoTrackList.add(recvVideoTrack);
-                        KLog.p(recvVideoTrack.toString());
                     }
                 }else{
                     if (bAudio){
@@ -127,7 +121,6 @@ final class StatsHelper {
                         sendAudioTrack.ended = null != members.get("ended") ? (boolean) members.get("ended") : true;
                         sendAudioTrack.detached =  null != members.get("detached") ? (boolean) members.get("detached") : true;
                         resolvedStats.sendAudioTrack = sendAudioTrack;
-                        KLog.p(sendAudioTrack.toString());
                     }else{
                         SendVideoTrack sendVideoTrack = new SendVideoTrack();
                         sendVideoTrack.id = null != members.get("id") ? (String) members.get("id") : null;
@@ -140,7 +133,6 @@ final class StatsHelper {
                         sendVideoTrack.framesSent = null != members.get("framesSent") ? (long) members.get("framesSent") : 0;
                         sendVideoTrack.hugeFramesSent = null != members.get("hugeFramesSent") ? (long) members.get("hugeFramesSent") : 0;
                         resolvedStats.sendVideoTrack = sendVideoTrack;
-                        KLog.p(sendVideoTrack.toString());
                     }
                 }
 
@@ -159,7 +151,6 @@ final class StatsHelper {
                     audioOutboundRtp.headerBytesSent = null != members.get("headerBytesSent") ? ((BigInteger) members.get("headerBytesSent")).longValue() : 0;
                     audioOutboundRtp.retransmittedBytesSent = null != members.get("retransmittedBytesSent") ? ((BigInteger) members.get("retransmittedBytesSent")).longValue() : 0;
                     resolvedStats.audioOutboundRtp = audioOutboundRtp;
-                    KLog.p(audioOutboundRtp.toString());
                 }else{
                     VideoOutboundRtp videoOutboundRtp = new VideoOutboundRtp();
                     videoOutboundRtp.ssrc = null != members.get("ssrc") ? (long) members.get("ssrc") : 0;
@@ -185,7 +176,6 @@ final class StatsHelper {
                     videoOutboundRtp.qualityLimitationResolutionChanges = null != members.get("qualityLimitationResolutionChanges") ? (long) members.get("qualityLimitationResolutionChanges") : 0;
                     videoOutboundRtp.encoderImplementation = null != members.get("encoderImplementation") ? (String) members.get("encoderImplementation") : null;
                     resolvedStats.videoOutboundRtp = videoOutboundRtp;
-                    KLog.p(videoOutboundRtp.toString());
                 }
 
             }else if (type.equals("inbound-rtp")){
@@ -203,7 +193,6 @@ final class StatsHelper {
                     audioInboundRtp.lastPacketReceivedTimestamp = null != members.get("lastPacketReceivedTimestamp") ? (double) members.get("lastPacketReceivedTimestamp") : 0;
                     audioInboundRtp.jitter = null != members.get("jitter") ? (double) members.get("jitter") : 0;
                     resolvedStats.audioInboundRtpList.add(audioInboundRtp);
-                    KLog.p(audioInboundRtp.toString());
                 }else{
                     VideoInboundRtp videoInboundRtp = new VideoInboundRtp();
                     videoInboundRtp.ssrc = null != members.get("ssrc") ? (long) members.get("ssrc") : 0;
@@ -226,7 +215,6 @@ final class StatsHelper {
                     videoInboundRtp.totalSquaredInterFrameDelay = null != members.get("totalSquaredInterFrameDelay") ? (double) members.get("totalSquaredInterFrameDelay") : 0;
                     videoInboundRtp.decoderImplementation = null != members.get("decoderImplementation") ? (String) members.get("decoderImplementation") : null;
                     resolvedStats.videoInboundRtpList.add(videoInboundRtp);
-                    KLog.p(videoInboundRtp.toString());
                 }
 
             }

@@ -3553,17 +3553,19 @@ public class WebRtcManager extends Caster<Msg>{
         public void run() {
             if (null != pubPcWrapper && null != pubPcWrapper.pc) {
                 pubPcWrapper.pc.getStats(rtcStatsReport -> {
-//                    KLog.p("publisherStats=%s ", rtcStatsReport);
                     synchronized (publisherStats) {
                         StatsHelper.resolveStats(rtcStatsReport, publisherStats);
+                        KLog.p("####publisherStats: ");
+                        printStats(publisherStats);
                     }
                 });
             }
             if (null != subPcWrapper && null != subPcWrapper.pc) {
                 subPcWrapper.pc.getStats(rtcStatsReport -> {
-//                    KLog.p("subscriberStats=%s ", rtcStatsReport);
                     synchronized (subscriberStats) {
                         StatsHelper.resolveStats(rtcStatsReport, subscriberStats);
+                        KLog.p("####subscriberStats: ");
+                        printStats(subscriberStats);
                     }
                 });
             }
@@ -3730,5 +3732,70 @@ public class WebRtcManager extends Caster<Msg>{
             sessionHandler.postDelayed(this, 2000);
         }
     };
+
+
+    private void printStats(StatsHelper.Stats stats){
+        KLog.p(">>>>>>>>>> stats begin");
+        // 因为android log一次输出有最大字符限制，所以我们分段输出
+        KLog.p("---------- audio");
+        if (null != stats.audioSource) {
+            KLog.p(stats.audioSource.toString());
+        }
+        if (null != stats.sendAudioTrack) {
+            KLog.p(stats.sendAudioTrack.toString());
+        }
+        if (null != stats.audioOutboundRtp) {
+            KLog.p(stats.audioOutboundRtp.toString());
+        }
+        if (null != stats.recvAudioTrackList) {
+            for (StatsHelper.RecvAudioTrack audioTrack : stats.recvAudioTrackList) {
+                String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(audioTrack.trackIdentifier);
+                Conferee conferee = findConfereeByStreamId(kdStreamId);
+                KLog.p(conferee != null ? conferee.alias+" " + audioTrack : audioTrack.toString());
+            }
+        }
+        if (null != stats.audioInboundRtpList) {
+            for (StatsHelper.AudioInboundRtp audioInbound : stats.audioInboundRtpList) {
+                KLog.p(audioInbound.toString());
+            }
+        }
+
+        KLog.p("---------- video");
+        if (null != stats.videoSource) {
+            KLog.p(stats.videoSource.toString());
+        }
+        if (null != stats.sendVideoTrack) {
+            KLog.p(stats.sendVideoTrack.toString());
+        }
+        if (null != stats.videoOutboundRtp) {
+            KLog.p(stats.videoOutboundRtp.toString());
+        }
+        if (null != stats.recvVideoTrackList) {
+            for (StatsHelper.RecvVideoTrack videoTrack : stats.recvVideoTrackList) {
+                String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(videoTrack.trackIdentifier);
+                Conferee conferee = findConfereeByStreamId(kdStreamId);
+                KLog.p(conferee != null ? conferee.alias+" " + videoTrack : videoTrack.toString());
+            }
+        }
+        if (null != stats.videoInboundRtpList) {
+            for (StatsHelper.VideoInboundRtp videoInbound : stats.videoInboundRtpList) {
+                KLog.p(videoInbound.toString());
+            }
+        }
+
+        KLog.p("---------- codec");
+        if (null != stats.encoderList) {
+            for (StatsHelper.Codec codec : stats.encoderList) {
+                KLog.p(codec.toString());
+            }
+        }
+        if (null != stats.decoderList) {
+            for (StatsHelper.Codec codec : stats.decoderList) {
+                KLog.p(codec.toString());
+            }
+        }
+
+        KLog.p(">>>>>>>>>> stats end");
+    }
 
 }
