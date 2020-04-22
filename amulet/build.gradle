@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '1.3.0-SNAPSHOT'
+version = '1.3.1-SNAPSHOT'
 android {
     compileSdkVersion 28
 
@@ -27,7 +27,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.kedacom.vconf.sdk:utils:1.1.0-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:utils:1.1.3-SNAPSHOT'
 //    api "androidx.lifecycle:lifecycle-runtime:2.0.0"
     implementation "androidx.lifecycle:lifecycle-common-java8:2.2.0"
     implementation 'com.google.guava:guava:27.0.1-android'
