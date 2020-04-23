@@ -262,42 +262,77 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * */
     @Override
     public void snapshot(int area, int outputWidth, int outputHeight, @NonNull ISnapshotResultListener resultListener) {
-
-        boolean bLoaded = getWidth()>0 && getHeight()>0;
-
-        int boardW = bLoaded ? getWidth() : boardWidth;
-        int boardH = bLoaded ? getHeight() : boardHeight;
-        int outputW = (outputWidth <=0 || boardW< outputWidth) ? boardW : outputWidth;
-        int outputH = (outputHeight <=0 || boardH< outputHeight) ? boardH : outputHeight;
-
-        Bitmap bt = Bitmap.createBitmap(outputW, outputH, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bt);
-        if (!(outputW==boardW && outputH==boardH)) {
-            canvas.scale(outputW/(float)boardW, outputH/(float)boardH);
-        }
-
-        // 绘制背景
-        if (bLoaded){
-            draw(canvas);
-        }else {
-            Drawable.ConstantState constantState = getBackground().getConstantState();
-            if (null != constantState) {
-                Drawable background = constantState.newDrawable().mutate();
-                background.setBounds(0, 0, boardW, boardH);
-                background.draw(canvas);
-            }
-        }
+        KLog.p("area=%s, outputWidth=%s, outputHeight=%s, resultListener=%s, boardWidth=%s, boardHeight=%s",
+                area, outputWidth, outputHeight, resultListener, getWidth(), getHeight());
 
         if (AREA_WINDOW == area
-                && bLoaded
+                && (getWidth()>0 && getHeight()>0)
                 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            // TextureView提供了bitmap的缓存，对于窗口快照，我们可以直接使用该缓存
+            int boardW = getWidth();
+            int boardH = getHeight();
+            int outputW = (outputWidth <=0 || boardW< outputWidth) ? boardW : outputWidth;
+            int outputH = (outputHeight <=0 || boardH< outputHeight) ? boardH : outputHeight;
+            Bitmap bt = Bitmap.createBitmap(outputW, outputH, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bt);
+            canvas.scale(outputW/(float)boardW, outputH/(float)boardH);
+
+            snapshotBackground(canvas);
+
             snapshotWindow(canvas);
+
             resultListener.onResult(bt);
+
         }else{
-            assHandler.post(() -> {
-                snapshotAll(canvas);
-                handler.post(() -> resultListener.onResult(bt));  // XXX：可能发生resultListener被销毁后用户仍收到该回调的情形。
-            });
+            // 对于全景快照我们通过重绘所有图元的方式获得
+            // 使用任务队列串行处理快照请求以防止同时生成大量bitmap导致内存溢出
+            KLog.p("snapshotTasks.size=%s", snapshotTasks.size());
+            if (snapshotTasks.isEmpty()) {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        SnapshotTask task = snapshotTasks.pollFirst();
+                        if (null == task){
+                            KLog.p(KLog.WARN, "null == snapshotTask");
+                            return;
+                        }
+                        KLog.p("process snapshotTask %s", task);
+                        Runnable snapshotRunnable = this;
+
+                        boolean bLoaded = getWidth()>0 && getHeight()>0;
+                        int boardW = bLoaded ? getWidth() : boardWidth;
+                        int boardH = bLoaded ? getHeight() : boardHeight;
+                        int outputW = (task.outputWidth <=0 || boardW< task.outputWidth) ? boardW : task.outputWidth;
+                        int outputH = (task.outputHeight <=0 || boardH< task.outputHeight) ? boardH : task.outputHeight;
+
+                        Bitmap bt = Bitmap.createBitmap(outputW, outputH, Bitmap.Config.ARGB_8888);
+                        Canvas canvas = new Canvas(bt);
+                        canvas.scale(outputW/(float)boardW, outputH/(float)boardH);
+
+                        snapshotBackground(canvas);
+
+                        // 将画板中所有图元绘制在bitmap上可能比较耗时，我们在非主线程处理
+                        assHandler.post(() -> {
+                            snapshotWholeScene(canvas);
+                            // 绘制结果通过ui线程上报用户
+                            // XXX：此时resultListener可能已被用户销毁，但我们没有提供途径让用户告知。 TODO 考虑使用LifecycleOwner机制
+                            handler.post(() -> {
+                                task.resultListener.onResult(bt);
+                                // 串行处理下一个快照请求
+                                if (!snapshotTasks.isEmpty()){
+                                    handler.post(snapshotRunnable);
+                                }else{
+                                    KLog.p("process snapshotTask finished!");
+                                }
+                            });
+                        });
+
+                    }
+                });
+
+            }
+
+            snapshotTasks.offerLast(new SnapshotTask(outputWidth, outputHeight, resultListener));
         }
 
     }
@@ -499,7 +534,24 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
 
-    private void snapshotAll(Canvas canvas){
+
+    private void snapshotBackground(Canvas canvas){
+        if (getWidth()>0 && getHeight()>0){
+            // 画板已加载到视图中可以直接绘制
+            draw(canvas);
+        }else {
+            // 画板尚未加载到视图中我们需通过Drawable绘制
+            Drawable.ConstantState constantState = getBackground().getConstantState();
+            if (null != constantState) {
+                Drawable background = constantState.newDrawable().mutate();
+                background.setBounds(0, 0, boardWidth, boardHeight);
+                background.draw(canvas);
+            }
+        }
+    }
+
+
+    private void snapshotWholeScene(Canvas canvas){
         CompatibleConcurrentLinkedDeque<OpPaint> ops = new CompatibleConcurrentLinkedDeque<>();
 
         CompatibleConcurrentLinkedDeque<OpInsertPic> picOps = opWrapper.getInsertPicOps();
@@ -614,6 +666,28 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
 
     }
+
+
+    private class SnapshotTask{
+        int outputWidth;
+        int outputHeight;
+        ISnapshotResultListener resultListener;
+        SnapshotTask(int outputWidth, int outputHeight, ISnapshotResultListener resultListener) {
+            this.outputWidth = outputWidth;
+            this.outputHeight = outputHeight;
+            this.resultListener = resultListener;
+        }
+
+        @Override
+        public String toString() {
+            return "SnapshotTask{" +
+                    "outputWidth=" + outputWidth +
+                    ", outputHeight=" + outputHeight +
+                    ", resultListener=" + resultListener +
+                    '}';
+        }
+    }
+    private CompatibleConcurrentLinkedDeque<SnapshotTask> snapshotTasks = new CompatibleConcurrentLinkedDeque<>();
 
 
 
