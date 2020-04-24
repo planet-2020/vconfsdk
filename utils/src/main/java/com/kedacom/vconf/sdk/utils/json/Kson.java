@@ -26,6 +26,14 @@ public final class Kson {
         }
         builderConfigChanged = true;
     }
+    /**
+     * 注册json适配器。
+     * NOTE: Gson2.3引入了JsonAdapter注解可方便快捷的注册适配器，若使用2.3及以上版本的Gson请使用JsonAdapter替代该方法。
+     * */
+    public static void registerAdapter(Type type, Object adapter){
+        gsonBuilder.registerTypeAdapter(type, adapter);
+        builderConfigChanged = true;
+    }
 
     public static String toJson(Object obj){
         if (builderConfigChanged){
