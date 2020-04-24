@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.utils.json;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapterFactory;
 
 import java.lang.reflect.Type;
 import java.util.Map;
@@ -18,7 +19,7 @@ public final class Kson {
 
     /**
      * 注册json适配器。
-     * NOTE: Gson2.3引入了JsonAdapter注解可方便快捷的注册适配器，若使用2.3及以上版本的Gson请使用JsonAdapter替代该方法。
+     * NOTE: Gson2.3引入了JsonAdapter注解可方便快捷的注册适配器，若使用2.3及以上版本的Gson建议使用JsonAdapter替代该方法。
      * */
     public static void registerAdapters(Map<Type, Object> adapters){
         for (Map.Entry<Type, Object> entry : adapters.entrySet()) {
@@ -28,10 +29,19 @@ public final class Kson {
     }
     /**
      * 注册json适配器。
-     * NOTE: Gson2.3引入了JsonAdapter注解可方便快捷的注册适配器，若使用2.3及以上版本的Gson请使用JsonAdapter替代该方法。
+     * NOTE: Gson2.3引入了JsonAdapter注解可方便快捷的注册适配器，若使用2.3及以上版本的Gson建议使用JsonAdapter替代该方法。
      * */
     public static void registerAdapter(Type type, Object adapter){
         gsonBuilder.registerTypeAdapter(type, adapter);
+        builderConfigChanged = true;
+    }
+
+    /**
+     * 注册json适配器工厂
+     * NOTE: Gson2.3引入了JsonAdapter注解可方便快捷的注册适配器，若使用2.3及以上版本的Gson建议使用JsonAdapter替代该方法。
+     * */
+    public static void registerTypeAdapterFactory(TypeAdapterFactory factory) {
+        gsonBuilder.registerTypeAdapterFactory(factory);
         builderConfigChanged = true;
     }
 
