@@ -66,7 +66,7 @@ public class WindowCapturer implements VideoCapturer {
                 Matrix matrix = new Matrix();
                 matrix.postScale(-1, 1);
                 matrix.postRotate(180);
-                float[] res = ResolutionHelper.adjust(window.getWidth(), window.getHeight(), 16f/9, 1080, true);
+                float[] res = ResolutionHelper.adjust(window.getWidth(), window.getHeight(), 16f/9, 720, true);
                 int w = (int) res[0];
                 int h = (int) res[1];
                 float scaleX = res[2];

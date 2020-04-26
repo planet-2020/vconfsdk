@@ -1112,7 +1112,14 @@ public class WebRtcManager extends Caster<Msg>{
 
             KLog.p("creating factory...");
 
-            PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions());
+            String fieldTrials = ""
+//                    +"WebRTC-H264Simulcast/Enabled/"
+                    +"WebRTC-SpsPpsIdrIsH264Keyframe/Enabled/";
+
+            PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(context)
+                    .setFieldTrials(fieldTrials)
+                    .createInitializationOptions()
+            );
 
             final AudioDeviceModule adm = createJavaAudioDevice();
 
@@ -3087,11 +3094,11 @@ public class WebRtcManager extends Caster<Msg>{
                         }else if (encoding.rid.equals("m")){
                             encoding.scaleResolutionDownBy = 0.5;
                             encoding.maxFramerate = config.videoFps;
-                            encoding.maxBitrateBps = config.videoMaxBitrate;
+                            encoding.maxBitrateBps = config.videoMaxBitrate/2;
                         }else if (encoding.rid.equals("l")){
                             encoding.scaleResolutionDownBy = 0.25;
                             encoding.maxFramerate = config.videoFps;
-                            encoding.maxBitrateBps = config.videoMaxBitrate;
+                            encoding.maxBitrateBps = config.videoMaxBitrate/4;
                         }
                     }
                 }

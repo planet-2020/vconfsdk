@@ -152,7 +152,7 @@ public final class RtcConfig {
     }
 
     public int getVideoWidth(){
-        return rtcUserConfig.getInt(key_videoWidth, 1920);
+        return rtcUserConfig.getInt(key_videoWidth, 1280);
     }
 
     /**
@@ -164,7 +164,7 @@ public final class RtcConfig {
     }
 
     public int getVideoHeight(){
-        return rtcUserConfig.getInt(key_videoHeight, 1080);
+        return rtcUserConfig.getInt(key_videoHeight, 720);
     }
 
 
@@ -177,7 +177,7 @@ public final class RtcConfig {
     }
 
     public int getVideoFps(){
-        return rtcUserConfig.getInt(key_videoFps, 20);
+        return rtcUserConfig.getInt(key_videoFps, 30);
     }
 
 
@@ -191,7 +191,7 @@ public final class RtcConfig {
     }
 
     public int getVideoMaxBitrate(){
-        return rtcUserConfig.getInt(key_videoMaxBitrate, 2048);
+        return rtcUserConfig.getInt(key_videoMaxBitrate, 1024*4);
     }
 
     /**
