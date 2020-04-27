@@ -145,7 +145,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
         }
         String methodName = magicBook.getMethod(s.reqName);
 
-        Log.d(TAG, String.format("%s-~-> %s / %s | session state = START \nparas={%s}", s.id, s.reqName, methodName, sb));
+        Log.d(TAG, String.format("%s-~-> %s(%s) | session state = START \nparas={%s}", s.id, s.reqName, methodName, sb));
 
         // 调用底层业务组件接口
         crystalBall.spell(magicBook.getMethodOwner(s.reqName),
@@ -229,13 +229,13 @@ final class SessionFairy implements IFairy.ISessionFairy{
                             reqHandler.removeMessages(MSG_ID_REQUEST_TIMEOUT, s.id); // 移除定时器
                             s.state = Session.END; // 已获取到所有期待的响应，该会话结束
                             sessions.remove(s);
-                            Log.d(TAG, String.format("%s<-~- %s / %s | session state = END, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
+                            Log.d(TAG, String.format("%s<-~- %s(%s) | session state = END, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
                         } else {
                             s.state = Session.RECVING; // 已收到响应，继续接收后续响应
-                            Log.d(TAG, String.format("%s<-~- %s / %s | session state = RECVING, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
+                            Log.d(TAG, String.format("%s<-~- %s(%s) | session state = RECVING, req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
                         }
                     }else{
-                        Log.d(TAG, String.format("%s<-~- %s / %s | session state = END(interrupted), req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
+                        Log.d(TAG, String.format("%s<-~- %s(%s) | session state = END(interrupted), req=%s \n%s", s.id, msgName, msgId, s.reqName, msgContent));
                     }
                 }
 
