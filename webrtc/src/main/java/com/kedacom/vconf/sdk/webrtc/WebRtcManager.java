@@ -938,6 +938,18 @@ public class WebRtcManager extends Caster<Msg>{
 
         // 对辅流特殊处理
         if (null != assStream){
+            Conferee existedAssStreamConferee = findAssStreamConferee();
+            if (null != existedAssStreamConferee){
+                // 如果正在接收辅流，则此为抢发辅流的场景
+                // 我们先删除正在接收的辅流（目前会议中仅支持一路辅流）
+                conferees.remove(existedAssStreamConferee);
+                if (null != sessionEventListener){
+                    // 通知用户之前的辅流已退出
+                    // 按说抢双流的场景平台推送消息的时序应该是：“前面的辅流退出->后面的辅流加入”，实际却是“后面的辅流加入->前面的辅流退出”。
+                    // 这容易引起用户的疑惑，我们内部调整时序为“前面的辅流退出->后面的辅流加入”
+                    sessionEventListener.onConfereeLeft(existedAssStreamConferee);
+                }
+            }
             // 针对辅流我们构造一个虚拟的与会方
             Conferee assStreamConferee = new Conferee(assStreamSender.mcuId, assStreamSender.terId, assStreamSender.e164, assStreamSender.alias, assStreamSender.email, true);
             assStreamConferee.setVideoStream(new VideoStream(assStream.achStreamId, true, assStream.aemSimcastRes));
@@ -2520,6 +2532,14 @@ public class WebRtcManager extends Caster<Msg>{
         return null;
     }
 
+    private Conferee findAssStreamConferee(){
+        for (Conferee conferee : conferees){
+            if (conferee.bAssStream){
+                return conferee;
+            }
+        }
+        return null;
+    }
 
 
     private class RtcConnectorEventListener implements RtcConnector.SignalingEvents{
