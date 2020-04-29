@@ -8,9 +8,11 @@ import androidx.annotation.NonNull;
 
 import com.google.gson.annotations.JsonAdapter;
 import com.kedacom.vconf.sdk.utils.json.Kson;
-import com.kedacom.vconf.sdk.utils.json.LameJsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.LameStrategy;
 
 //@JsonAdapter(DcsGetUserListRsp.Adapter.class)
+
+@LameStrategy(mainField = TDCSResult.class)
 public class DcsGetUserListRsp{
 
     public TDCSResult MainParam;
@@ -25,10 +27,10 @@ public class DcsGetUserListRsp{
                 '}';
     }
 
-    static {
-        // 通过JsonAdapter注解的方式注册适配器更加便捷，但该注解是Gson2.3引入的，有的用户可能必须使用老版Gson，故回退使用老方式注册。
-        Kson.registerAdapter(DcsGetUserListRsp.class, new LameJsonAdapter<DcsGetUserListRsp, TDCSResult, TDCSGetUserList>(){});
-    }
+//    static {
+//        // 通过JsonAdapter注解的方式注册适配器更加便捷，但该注解是Gson2.3引入的，有的用户可能必须使用老版Gson，故回退使用老方式注册。
+//        Kson.registerAdapter(DcsGetUserListRsp.class, new LameJsonAdapter<DcsGetUserListRsp, TDCSResult, TDCSGetUserList>(){});
+//    }
 
 //    static final class Adapter extends LameJsonAdapter<DcsGetUserListRsp, TDCSResult, TDCSGetUserList> { }
 }

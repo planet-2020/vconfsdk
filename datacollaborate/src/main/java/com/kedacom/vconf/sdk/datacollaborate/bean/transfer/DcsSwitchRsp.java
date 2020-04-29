@@ -8,9 +8,10 @@ import androidx.annotation.NonNull;
 
 import com.google.gson.annotations.JsonAdapter;
 import com.kedacom.vconf.sdk.utils.json.Kson;
-import com.kedacom.vconf.sdk.utils.json.LameJsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.LameStrategy;
 
 //@JsonAdapter(DcsSwitchRsp.Adapter.class)
+@LameStrategy(mainField = TDCSBoardResult.class)
 public class DcsSwitchRsp {
     public TDCSBoardResult MainParam;
     public TDCSBoardInfo AssParam;
@@ -24,9 +25,9 @@ public class DcsSwitchRsp {
                 '}';
     }
 
-    static {
-        // 通过JsonAdapter注解的方式注册适配器更加便捷，但该注解是Gson2.3引入的，有的用户可能必须使用老版Gson，故回退使用老方式注册。
-        Kson.registerAdapter(DcsSwitchRsp.class, new LameJsonAdapter<DcsSwitchRsp, TDCSBoardResult, TDCSBoardInfo>(){});
-    }
+//    static {
+//        // 通过JsonAdapter注解的方式注册适配器更加便捷，但该注解是Gson2.3引入的，有的用户可能必须使用老版Gson，故回退使用老方式注册。
+//        Kson.registerAdapter(DcsSwitchRsp.class, new LameJsonAdapter<DcsSwitchRsp, TDCSBoardResult, TDCSBoardInfo>(){});
+//    }
 //    static final class Adapter extends LameJsonAdapter<DcsSwitchRsp, TDCSBoardResult, TDCSBoardInfo> { }
 }

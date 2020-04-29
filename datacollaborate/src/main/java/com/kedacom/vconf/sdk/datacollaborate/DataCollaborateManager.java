@@ -601,12 +601,13 @@ public final class DataCollaborateManager extends Caster<Msg> {
     }
 
     /**获取所有成员
+     * @param dcConfE164 协作所在会议e164
      * @param resultListener 结果监听器。
      *                       成功：List<{@link DCMember}>
      *                       失败：{@link DcErrorCode#Failed}
      */
-    public void queryAllMembers(IResultListener resultListener){
-        req(Msg.QueryAllMembers, resultListener, curDcConfE164);
+    public void queryAllMembers(String dcConfE164, IResultListener resultListener){
+        req(Msg.QueryAllMembers, resultListener, dcConfE164);
     }
 
 

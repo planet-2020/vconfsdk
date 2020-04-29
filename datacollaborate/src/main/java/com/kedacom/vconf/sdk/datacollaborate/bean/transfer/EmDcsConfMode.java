@@ -5,22 +5,34 @@
 package com.kedacom.vconf.sdk.datacollaborate.bean.transfer;
 
 import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter;
+import com.google.gson.reflect.TypeToken;
+import com.kedacom.vconf.sdk.utils.json.EnumCustomValueStrategy;
 import com.kedacom.vconf.sdk.utils.json.Kson;
 
 //@JsonAdapter(Enum2IntJsonAdapter.class)
+
+@EnumCustomValueStrategy
 public enum EmDcsConfMode {
     // @formatter:off
     /** 关闭数据协作 */
-    emConfModeStop,
+    emConfModeStop(0),
     /** 主席控制 */
-    emConfModeManage,
+    emConfModeManage(1),
     /** 自动协作 */
-    emConfModeAuto;
+    emConfModeAuto(2);
     // @formatter:on
 
-    static {
-        // 通过JsonAdapter注解的方式注册适配器更加便捷，但该注解是Gson2.3引入的，有的用户可能必须使用老版Gson，故回退使用老方式注册。
-        Kson.registerAdapter(EmDcsConfMode.class, new Enum2IntJsonAdapter());
+//    static {
+//        Kson.registerAdapter(EmDcsConfMode.class, new Enum2CustomValueJsonAdapter<EmDcsConfMode>(){});
+//    }
+
+    private int value;
+
+    EmDcsConfMode(int value) {
+        this.value = value;
+    }
+
+    public int getValue() {
+        return value;
     }
 }
