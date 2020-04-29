@@ -24,7 +24,7 @@ title __UTILS's Class Diagram__\n
 
   namespace com.kedacom.vconf.sdk.utils {
     namespace json {
-      class com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter {
+      class com.kedacom.vconf.sdk.utils.json.EnumBasicJsonAdapter {
       }
     }
   }
@@ -32,7 +32,7 @@ title __UTILS's Class Diagram__\n
 
   namespace com.kedacom.vconf.sdk.utils {
     namespace json {
-      class com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter {
+      class com.kedacom.vconf.sdk.utils.json.EnumOrdinalJsonAdapter {
       }
     }
   }
@@ -144,8 +144,8 @@ title __UTILS's Class Diagram__\n
 
   com.kedacom.vconf.sdk.utils.collection.CompatibleConcurrentLinkedDeque .up.|> java.lang.Iterable
   com.kedacom.vconf.sdk.utils.collection.CompatibleConcurrentLinkedDeque .up.|> java.util.Collection
-  com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter .up.|> com.google.gson.TypeAdapterFactory
-  com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter .up.|> com.google.gson.TypeAdapterFactory
+  com.kedacom.vconf.sdk.utils.json.EnumBasicJsonAdapter .up.|> com.google.gson.TypeAdapterFactory
+  com.kedacom.vconf.sdk.utils.json.EnumOrdinalJsonAdapter .up.|> com.google.gson.TypeAdapterFactory
   com.kedacom.vconf.sdk.utils.json.LameJsonAdapter .up.|> com.google.gson.JsonDeserializer
   com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver .up.|> androidx.lifecycle.DefaultLifecycleObserver
   com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver o-- com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver.Callback : cb

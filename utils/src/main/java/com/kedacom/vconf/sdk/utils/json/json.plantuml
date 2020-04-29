@@ -4,7 +4,7 @@ title __JSON's Class Diagram__\n
 
   namespace com.kedacom.vconf.sdk.utils {
     namespace json {
-      class com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter {
+      class com.kedacom.vconf.sdk.utils.json.EnumBasicJsonAdapter {
           + create()
       }
     }
@@ -13,7 +13,7 @@ title __JSON's Class Diagram__\n
 
   namespace com.kedacom.vconf.sdk.utils {
     namespace json {
-      interface com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter.IReader {
+      interface com.kedacom.vconf.sdk.utils.json.EnumBasicJsonAdapter.IReader {
           {abstract} + read()
       }
     }
@@ -22,7 +22,7 @@ title __JSON's Class Diagram__\n
 
   namespace com.kedacom.vconf.sdk.utils {
     namespace json {
-      interface com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter.IWriter {
+      interface com.kedacom.vconf.sdk.utils.json.EnumBasicJsonAdapter.IWriter {
           {abstract} + write()
       }
     }
@@ -31,7 +31,7 @@ title __JSON's Class Diagram__\n
 
   namespace com.kedacom.vconf.sdk.utils {
     namespace json {
-      class com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter {
+      class com.kedacom.vconf.sdk.utils.json.EnumOrdinalJsonAdapter {
           + create()
       }
     }
@@ -64,10 +64,10 @@ title __JSON's Class Diagram__\n
   }
   
 
-  com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter .up.|> com.google.gson.TypeAdapterFactory
-  com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter +-down- com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter.IReader
-  com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter +-down- com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter.IWriter
-  com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter .up.|> com.google.gson.TypeAdapterFactory
+  com.kedacom.vconf.sdk.utils.json.EnumBasicJsonAdapter .up.|> com.google.gson.TypeAdapterFactory
+  com.kedacom.vconf.sdk.utils.json.EnumBasicJsonAdapter +-down- com.kedacom.vconf.sdk.utils.json.EnumBasicJsonAdapter.IReader
+  com.kedacom.vconf.sdk.utils.json.EnumBasicJsonAdapter +-down- com.kedacom.vconf.sdk.utils.json.EnumBasicJsonAdapter.IWriter
+  com.kedacom.vconf.sdk.utils.json.EnumOrdinalJsonAdapter .up.|> com.google.gson.TypeAdapterFactory
   com.kedacom.vconf.sdk.utils.json.LameJsonAdapter .up.|> com.google.gson.JsonDeserializer
 
 
