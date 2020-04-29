@@ -262,8 +262,8 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * */
     @Override
     public void snapshot(int area, int outputWidth, int outputHeight, @NonNull ISnapshotResultListener resultListener) {
-        KLog.p("area=%s, outputWidth=%s, outputHeight=%s, resultListener=%s, boardWidth=%s, boardHeight=%s",
-                area, outputWidth, outputHeight, resultListener, getWidth(), getHeight());
+        KLog.p("area=%s, outputWidth=%s, outputHeight=%s, boardWidth=%s, boardHeight=%s, resultListener=%s",
+                area, outputWidth, outputHeight, getWidth(), getHeight(), resultListener);
 
         if (AREA_WINDOW == area
                 && (getWidth()>0 && getHeight()>0)
@@ -286,16 +286,14 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }else{
             // 对于全景快照我们通过重绘所有图元的方式获得
             // 使用任务队列串行处理快照请求以防止同时生成大量bitmap导致内存溢出
-            KLog.p("snapshotTasks.size=%s", snapshotTasks.size());
-            if (snapshotTasks.isEmpty()) {
+            snapshotTasks.offerLast(new SnapshotTask(outputWidth, outputHeight, resultListener));
+            KLog.p("snapshotTasks.size=%s, isSnapshotting=%s", snapshotTasks.size(), isSnapshotting);
+            if (!isSnapshotting) {
+                isSnapshotting = true;
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
                         SnapshotTask task = snapshotTasks.pollFirst();
-                        if (null == task){
-                            KLog.p(KLog.WARN, "null == snapshotTask");
-                            return;
-                        }
                         KLog.p("process snapshotTask %s", task);
                         Runnable snapshotRunnable = this;
 
@@ -322,6 +320,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                                 if (!snapshotTasks.isEmpty()){
                                     handler.post(snapshotRunnable);
                                 }else{
+                                    isSnapshotting = false;
                                     KLog.p("process snapshotTask finished!");
                                 }
                             });
@@ -332,7 +331,6 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
             }
 
-            snapshotTasks.offerLast(new SnapshotTask(outputWidth, outputHeight, resultListener));
         }
 
     }
@@ -688,6 +686,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }
     }
     private CompatibleConcurrentLinkedDeque<SnapshotTask> snapshotTasks = new CompatibleConcurrentLinkedDeque<>();
+    private boolean isSnapshotting;
 
 
 

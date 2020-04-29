@@ -28,7 +28,7 @@ class EnumCustomValueJsonAdapterFactory implements TypeAdapterFactory {
         if (!rawType.isEnum() || !rawType.isAnnotationPresent(EnumCustomValueStrategy.class)) {
             return null;
         }
-        KLog.p("type %s use EnumBasicStrategy", rawType);
+        KLog.p("type %s use EnumCustomValueStrategy", rawType);
 
         Method getValue;
         Class<?> returnType;
@@ -42,7 +42,7 @@ class EnumCustomValueJsonAdapterFactory implements TypeAdapterFactory {
         }
         if (!PrimitiveTypeHelper.isPrimitiveType(returnType)
                 && returnType != String.class){
-            throw new RuntimeException("Enum2CustomValueJsonAdapter: unsupported type " + returnType);
+            throw new RuntimeException("EnumCustomValueStrategy: unsupported type " + returnType);
         }
 
         IWriter writer;
