@@ -1500,27 +1500,71 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     /**
-     * 获取与会方集合
-     * NOTE：该集合不可修改
+     * 获取与会方列表（不含虚拟的辅流与会方）
+     * 已排序。排序规则：自然排序；优先比对昵称，昵称若不存在则使用其e164，e164不存在则使用其邮箱。
      * */
-    public Set<Conferee> getConferees(){
-        return Collections.unmodifiableSet(conferees);
+    public List<Conferee> getConferees(){
+        List<Conferee> confereesList = new ArrayList<>();
+        for(Conferee conferee : conferees){
+            if (!conferee.bAssStream){
+                confereesList.add(conferee);
+            }
+        }
+        Collections.sort(confereesList);
+        return confereesList;
     }
+
+    /**
+     * 获取与会方列表（不含虚拟的辅流与会方和自己）
+     * 已排序。排序规则：自然排序；优先比对昵称，昵称若不存在则使用其e164，e164不存在则使用其邮箱。
+     * */
+    public List<Conferee> getConfereesExceptMyself(){
+        List<Conferee> confereesList = new ArrayList<>();
+        for(Conferee conferee : conferees){
+            if (conferee.bAssStream || null!=conferee.e164 && conferee.e164.equals(userE164)){
+                continue;
+            }
+            confereesList.add(conferee);
+        }
+        Collections.sort(confereesList);
+        return confereesList;
+    }
+
+
+    /**
+     * 获取己端与会方
+     * */
+    public Conferee getMySelf(){
+        return findMyself();
+    }
+
+    /**
+     * 获取辅流发送者
+     * */
+    public Conferee getAssStreamSender(){
+        for(Conferee conferee : conferees){
+            if (conferee.bAssStream){
+                return conferee;
+            }
+        }
+        return null;
+    }
+
 
 
     /**
      * 与会方
      */
-    public static final class Conferee implements VideoSink {
-        public String id;
-        public int mcuId;
-        public int terId;
-        public String   e164;
-        public String   alias;
-        public String   email;
+    public static final class Conferee implements VideoSink, Comparable<Conferee>{
+        private String id;
+        private int mcuId;
+        private int terId;
+        private String   e164;
+        private String   alias;
+        private String   email;
 
         // 是否为辅流与会方（针对辅流我们创建了一个虚拟的“辅流与会方”与之对应）
-        public boolean bAssStream;
+        private boolean bAssStream;
 
         // 该与会方的视频流。一个与会方只有一路视频流
         private VideoStream videoStream;
@@ -1874,6 +1918,45 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 display.onFrame(videoFrame);
             }
+        }
+
+
+        public String getId() {
+            return id;
+        }
+
+        public int getMcuId() {
+            return mcuId;
+        }
+
+        public int getTerId() {
+            return terId;
+        }
+
+        public String getE164() {
+            return e164;
+        }
+
+        public String getAlias() {
+            return alias;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public boolean isbAssStream() {
+            return bAssStream;
+        }
+
+        @Override
+        public int compareTo(Conferee o) {
+            if (null == o){
+                return 1;
+            }
+            String self = null!=alias ? alias : null!=e164 ? e164 : null!=email ? email : "";
+            String other = null!=o.alias ? o.alias : null!=o.e164 ? o.e164 : null!=o.email ? o.email : "";
+            return self.compareTo(other);
         }
 
     }
