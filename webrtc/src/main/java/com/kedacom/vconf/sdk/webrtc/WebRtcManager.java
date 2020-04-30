@@ -883,6 +883,11 @@ public class WebRtcManager extends Caster<Msg>{
                 // 对于辅流特殊处理
                 if (null != assConferee){
                     conferees.remove(assConferee);
+                    // 更新与会方辅流发送状态
+                    Conferee owner = findConfereeByConfereeId(Conferee.buildId(assConferee.mcuId, assConferee.terId, false));
+                    if (null!=owner){
+                        owner.isSendingAssStream = false;
+                    }
                     // 辅流退出意味着虚拟的辅流入会方退会
                      if (null != sessionEventListener) {
                          sessionEventListener.onConfereeLeft(assConferee);
@@ -943,6 +948,11 @@ public class WebRtcManager extends Caster<Msg>{
                 // 如果正在接收辅流，则此为抢发辅流的场景
                 // 我们先删除正在接收的辅流（目前会议中仅支持一路辅流）
                 conferees.remove(existedAssStreamConferee);
+                // 更新与会方辅流发送状态
+                Conferee owner = findConfereeByConfereeId(Conferee.buildId(existedAssStreamConferee.mcuId, existedAssStreamConferee.terId, false));
+                if (null!=owner){
+                    owner.isSendingAssStream = false;
+                }
                 if (null != sessionEventListener){
                     // 通知用户之前的辅流已退出
                     // 按说抢双流的场景平台推送消息的时序应该是：“前面的辅流退出->后面的辅流加入”，实际却是“后面的辅流加入->前面的辅流退出”。
@@ -951,6 +961,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
             // 针对辅流我们构造一个虚拟的与会方
+            assStreamSender.isSendingAssStream = true;
             Conferee assStreamConferee = new Conferee(assStreamSender.mcuId, assStreamSender.terId, assStreamSender.e164, assStreamSender.alias, assStreamSender.email, true);
             assStreamConferee.setVideoStream(new VideoStream(assStream.achStreamId, true, assStream.aemSimcastRes));
             conferees.add(assStreamConferee);
@@ -1500,28 +1511,16 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     /**
-     * 获取与会方列表（不含虚拟的辅流与会方）
-     * 已排序。排序规则：自然排序；优先比对昵称，昵称若不存在则使用其e164，e164不存在则使用其邮箱。
+     * 获取与会方列表
+     * @param exceptVirtualAssStreamConferee 是否排除虚拟的辅流与会方，true排除
+     * @param exceptSelf 是否排除自己，true排除
+     * @return 与会方列表。已排序。排序规则：自然排序；优先比对昵称，昵称若不存在则使用其e164，e164不存在则使用其邮箱。
      * */
-    public List<Conferee> getConferees(){
+    public List<Conferee> getConferees(boolean exceptVirtualAssStreamConferee, boolean exceptSelf){
         List<Conferee> confereesList = new ArrayList<>();
         for(Conferee conferee : conferees){
-            if (!conferee.bAssStream){
-                confereesList.add(conferee);
-            }
-        }
-        Collections.sort(confereesList);
-        return confereesList;
-    }
-
-    /**
-     * 获取与会方列表（不含虚拟的辅流与会方和自己）
-     * 已排序。排序规则：自然排序；优先比对昵称，昵称若不存在则使用其e164，e164不存在则使用其邮箱。
-     * */
-    public List<Conferee> getConfereesExceptMyself(){
-        List<Conferee> confereesList = new ArrayList<>();
-        for(Conferee conferee : conferees){
-            if (conferee.bAssStream || null!=conferee.e164 && conferee.e164.equals(userE164)){
+            if (exceptVirtualAssStreamConferee && conferee.isVirtualAssStreamConferee
+                    || exceptSelf && null!=conferee.e164 && conferee.e164.equals(userE164)){
                 continue;
             }
             confereesList.add(conferee);
@@ -1538,19 +1537,6 @@ public class WebRtcManager extends Caster<Msg>{
         return findMyself();
     }
 
-    /**
-     * 获取辅流发送者
-     * */
-    public Conferee getAssStreamSender(){
-        for(Conferee conferee : conferees){
-            if (conferee.bAssStream){
-                return conferee;
-            }
-        }
-        return null;
-    }
-
-
 
     /**
      * 与会方
@@ -1564,7 +1550,11 @@ public class WebRtcManager extends Caster<Msg>{
         private String   email;
 
         // 是否为辅流与会方（针对辅流我们创建了一个虚拟的“辅流与会方”与之对应）
-        private boolean bAssStream;
+        private boolean isVirtualAssStreamConferee;
+
+        // 是否正在发送辅流
+        // NOTE: 该字段仅真实与会方有效，虚拟的辅流与会方该字段恒为false。
+        private boolean isSendingAssStream;
 
         // 该与会方的视频流。一个与会方只有一路视频流
         private VideoStream videoStream;
@@ -1599,14 +1589,14 @@ public class WebRtcManager extends Caster<Msg>{
         // 语音激励使能
         private boolean bVoiceActivated;
 
-        Conferee(int mcuId, int terId, String e164, String alias, String email, boolean bAssStream) {
+        Conferee(int mcuId, int terId, String e164, String alias, String email, boolean isVirtualAssStreamConferee) {
             this.mcuId = mcuId;
             this.terId = terId;
-            this.id = buildId(mcuId, terId, bAssStream);
+            this.id = buildId(mcuId, terId, isVirtualAssStreamConferee);
             this.e164 = e164;
             this.alias = alias;
             this.email = email;
-            this.bAssStream = bAssStream;
+            this.isVirtualAssStreamConferee = isVirtualAssStreamConferee;
         }
 
         static String buildId(int mcuId, int terId, boolean bAssStream){
@@ -1945,8 +1935,12 @@ public class WebRtcManager extends Caster<Msg>{
             return email;
         }
 
-        public boolean isbAssStream() {
-            return bAssStream;
+        public boolean isVirtualAssStreamConferee() {
+            return isVirtualAssStreamConferee;
+        }
+
+        public boolean isSendingAssStream() {
+            return isSendingAssStream;
         }
 
         @Override
@@ -2617,7 +2611,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private Conferee findAssStreamConferee(){
         for (Conferee conferee : conferees){
-            if (conferee.bAssStream){
+            if (conferee.isVirtualAssStreamConferee){
                 return conferee;
             }
         }
