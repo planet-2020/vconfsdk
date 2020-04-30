@@ -126,8 +126,6 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         this.boardInfo = boardInfo;
 
-        relativeDensity = -1==correctedDensity ? context.getResources().getDisplayMetrics().density/2 : correctedDensity/2;
-
         LayoutInflater layoutInflater = LayoutInflater.from(context);
         View paintBoard = layoutInflater.inflate(R.layout.default_paintboard_layout, this);
         paintView = paintBoard.findViewById(R.id.paint_view);
@@ -492,9 +490,11 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         bInsertingPic = true;
 
         Bitmap bitmap = BitmapHelper.decode(path, bitmapSizeLimit, Bitmap.Config.RGB_565);
+        // 设定插入图片的matrix（决定了图片插入的位置以及图片的初始缩放率）
+        // 默认我们是居中插入，并且插入时展示维持图片原始尺寸
         Matrix matrix = new Matrix();
         matrix.setTranslate((getWidth()-bitmap.getWidth())/2f, (getHeight()-bitmap.getHeight())/2f);
-        matrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix(new Matrix())));
+        matrix.postConcat(MatrixHelper.invert(getBoardMatrix(new Matrix()))); // 抵消画板matrix的影响
         OpInsertPic op = assignBasicInfo(new OpInsertPic(path, bitmap, matrix));
 
         startEditPic(Sets.newHashSet(op));
@@ -577,8 +577,8 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         float boardH = getHeight()>0 ? getHeight() : boardHeight;
 
         // 根据操作边界结合当前画板缩放计算绘制操作需要的缩放及位移
-        Matrix curRelativeBoardMatrix = getDensityRelativeBoardMatrix(new Matrix());
-        curRelativeBoardMatrix.mapRect(bound);
+        Matrix boardMatrix = getBoardMatrix(new Matrix());
+        boardMatrix.mapRect(bound);
         float boundW = bound.width();
         float boundH = bound.height();
         float scale;
@@ -588,7 +588,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             scale = boardH/boundH;
         }
 
-        Matrix matrix = new Matrix(curRelativeBoardMatrix);
+        Matrix matrix = new Matrix(boardMatrix);
         if (scale > 1){ // 画板尺寸大于操作边界尺寸
             if (0<bound.left&&boundW<boardW
                     && 0<bound.right&&boundH<boardH){
@@ -690,24 +690,72 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
 
-    /* 相对于xhdpi的屏幕密度。
-    因为TL和网呈已经实现数据协作在先，他们传过来的是原始的像素值，
-    为了使得展示效果尽量在各设备上保持一致并兼顾TL和网呈已有实现，我们以TL的屏幕密度为基准算出一个相对密度，
-    以该相对密度作为缩放因子进行展示。TL的屏幕密度接近xhdpi，故以xhdpi作为基准*/
-    private float relativeDensity=1;
-    private Matrix getDensityRelativeBoardMatrix(Matrix matrix){
+    /**
+     * 标准坐标系。
+     * 不同设备有不同分辨率、宽高比，为了使得各设备上展示效果一致，我们约定一个标准化的坐标系。
+     * 各设备的实际坐标在传出前需要先转换为标准坐标系中的坐标，反之，各设备接收到传入的标准坐标后需要转换为实际坐标才能进行绘制。
+     * 定为1920*1080的理由是：
+     * 1、主流手机分辨率为1920*1080（或接近）；
+     * 2、致邻（公司windows端产品）已经实现在先，他们目前没有像我们一样进行坐标归一化处理，他们传出的是原始坐标，
+     *    获取到的坐标也是当作原始坐标处理。为了兼顾致邻，我们以他们的本地坐标系（1920*1080）作为标准坐标系，这样他们不用做转换，而能达到效果跟我们一致。
+     * */
+    private float standardWidth = 1920;
+    private float standardHeight = 1080;
+
+    /**
+     * 获取标准化matrix（本地坐标系转化为标准坐标系所需经历的matrix变换）
+     * */
+    private Matrix getNormalizedMatrix(Matrix matrix){
+        // 每次获取时实时计算以适应画板尺寸可能变化的情形
+        int boardW = getWidth()>0 ? getWidth() : boardWidth;
+        int boardH = getHeight()>0 ? getHeight() : boardHeight;
+        float scaleX = standardWidth/boardW;
+        float scaleY = standardHeight/boardH;
         matrix.reset();
-        matrix.postScale(relativeDensity, relativeDensity);
-        matrix.postConcat(opWrapper.getLastMatrixOp().getMatrix());
+        matrix.postScale(scaleX, scaleY);
         return matrix;
     }
 
-    /* 返回去掉放缩位移等matrix操作影响后的坐标*/
+    /**
+     * 获取去标准化matrix（标准坐标系转化为本地坐标系所需经历的matrix变换）
+     * */
+    private Matrix getUnnormalizedMatrix(Matrix matrix){
+        return MatrixHelper.invert(getNormalizedMatrix(matrix));
+    }
+
+    /**
+     * 获取全局matrix
+     * 全局平移缩放等操作计入该matrix（注意图片自身的平移缩放等操作计入图片操作自身的matrix，不包含于此）
+     * */
+    private Matrix getGlobalMatrix(Matrix matrix){
+        matrix.reset();
+        matrix.set(opWrapper.getLastMatrixOp().getMatrix());
+        return matrix;
+    }
+
+    private Matrix tmpMatrix = new Matrix();
+    /**
+     * 获取画板matrix
+     * BoardMatrix = UnnormalizedMatrix * GlobalMatrix
+     * 画板matrix是在绘制图元前需要先对画板进行的matrix变换。
+     * */
+    private Matrix getBoardMatrix(Matrix matrix){
+        matrix.reset();
+        getUnnormalizedMatrix(matrix);
+        matrix.postConcat(getGlobalMatrix(tmpMatrix));
+        return matrix;
+    }
+
+    /** 获取传输（给其他与会方）的坐标。
+    * 标准化并且抵消掉global matrix操作影响后的坐标。
+    * 按理说坐标和global matrix应该独立开来，坐标在传输前只需要进行标准化处理，并不需要抵消掉global matrix。
+    * 然而无奈网呈实现在先将二者混在了一起，我们传输前需要先抵消global matrix，这样网呈才能正常处理。
+    * */
     private float[] mappedPoint= new float[2];
-    private Matrix densityRelativeBoardMatrix = new Matrix();
-    private float[] getRidOfMatrix(float x, float y){
+    private Matrix tmpBoardMatrix = new Matrix();
+    private float[] getTransCoordinate(float x, float y){
         mappedPoint[0] = x; mappedPoint[1] = y;
-        MatrixHelper.invert(getDensityRelativeBoardMatrix(densityRelativeBoardMatrix)).mapPoints(mappedPoint);
+        MatrixHelper.invert(getBoardMatrix(tmpBoardMatrix)).mapPoints(mappedPoint);
         return mappedPoint;
     }
 
@@ -845,7 +893,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onDragBegin(float x, float y) {
-            float[] pos = getRidOfMatrix(x, y);
+            float[] pos = getTransCoordinate(x, y);
             startShapeOp(pos[0], pos[1]);
             publishIndex = 0;
         }
@@ -853,7 +901,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onDrag(float x, float y) {
             if (null == adjustingShapeOp) return; // 当前绘制被清掉了
-            float[] pos = getRidOfMatrix(x, y);
+            float[] pos = getTransCoordinate(x, y);
             adjustShapeOp(pos[0], pos[1]);
             publish();  // 曲线绘制要求时序以落笔时为准（不同于其他绘制以抬笔时为准）
         }
@@ -976,7 +1024,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             }
             if (null != picEditStuff){
                 handler.removeCallbacks(finishEditPicRunnable);
-                float[] pos = getRidOfMatrix(x, y);
+                float[] pos = getTransCoordinate(x, y);
                 refreshDelIconState(pos[0], pos[1]);
             }
             return true;
@@ -985,7 +1033,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onUp(float x, float y) {
             if (null != picEditStuff) {
-                float[] pos = getRidOfMatrix(x, y);
+                float[] pos = getTransCoordinate(x, y);
                 if (picEditStuff.isInDelPicIcon(pos[0], pos[1])) {
                     delEditingPic();
                 }else{
@@ -997,7 +1045,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         @Override
         public void onLongPress(float x, float y) {
-            float[] pos = getRidOfMatrix(x, y);
+            float[] pos = getTransCoordinate(x, y);
             if (null!=picEditStuff){
                 if (picEditStuff.contains(pos[0], pos[1])){
                     return;
@@ -1032,7 +1080,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onLastPointerLeft(float x, float y) {
             if (null != picEditStuff) {
-                float[] pos = getRidOfMatrix(x, y);
+                float[] pos = getTransCoordinate(x, y);
                 refreshDelIconState(pos[0], pos[1]);
             }
         }
@@ -1040,7 +1088,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onSingleTap(float x, float y) {
             if (null != picEditStuff) {
-                float[] pos = getRidOfMatrix(x, y);
+                float[] pos = getTransCoordinate(x, y);
                 if (!picEditStuff.contains(pos[0], pos[1])){
                     finishEditPic();
                 }
@@ -1052,7 +1100,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onDragBegin(float x, float y) {
             if (null != picEditStuff){
                 confirmedMatrix.set(picEditStuff.matrix);
-                float[] pos = getRidOfMatrix(x, y);
+                float[] pos = getTransCoordinate(x, y);
                 preDragX = pos[0]; preDragY = pos[1];
             }
         }
@@ -1061,7 +1109,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         public void onDrag(float x, float y) {
 //            KLog.p("onDrag tmp pic layer, x=%s. y=%s", x, y);
             if (null != picEditStuff){
-                float[] pos = getRidOfMatrix(x, y);
+                float[] pos = getTransCoordinate(x, y);
                 picEditStuff.matrix.postTranslate(pos[0]-preDragX, pos[1]-preDragY);
                 preDragX = pos[0]; preDragY = pos[1];
                 publishAdjustingOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
@@ -1086,7 +1134,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public void onScale(float factor, float focusX, float focusY) {
             if (null != picEditStuff){
-                float[] pos = getRidOfMatrix(focusX, focusY);
+                float[] pos = getTransCoordinate(focusX, focusY);
                 picEditStuff.matrix.postScale(factor, factor, pos[0], pos[1]);
                 publishAdjustingOp(createDragPicOp(picEditStuff.pics, picEditStuff.matrix));
             }
@@ -1164,6 +1212,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 opDrawLine.setStopY(y);
                 break;
             case RECT:
+            case RECT_ERASER:
                 OpDrawRect opDrawRect = (OpDrawRect) adjustingShapeOp;
                 opDrawRect.setRight(x);
                 opDrawRect.setBottom(y);
@@ -1172,11 +1221,6 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 OpDrawOval opDrawOval = (OpDrawOval) adjustingShapeOp;
                 opDrawOval.setRight(x);
                 opDrawOval.setBottom(y);
-                break;
-            case RECT_ERASER:
-                OpDrawRect opDrawRect1 = (OpDrawRect) adjustingShapeOp;
-                opDrawRect1.setRight(x);
-                opDrawRect1.setBottom(y);
                 break;
             default:
                 break;
@@ -1461,8 +1505,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
             if (bRefresh) {
                 wcRestorableOpsCount = 0;
                 ++wcRevocableOpsCount;
-                wcRevocableOpsCount = wcRevocableOpsCount > config.wcRevocableOpsCountLimit ?
-                        config.wcRevocableOpsCountLimit : wcRevocableOpsCount;
+                wcRevocableOpsCount = Math.min(wcRevocableOpsCount, config.wcRevocableOpsCountLimit);
             }
         }
 
@@ -1653,7 +1696,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     boolean[] hasEraseOp = new boolean[1];
     void paint(){
 //        KLog.p("start paint");
-        Matrix matrix = getDensityRelativeBoardMatrix(paintBoardMatrix);
+        Matrix matrix = getBoardMatrix(paintBoardMatrix);
 
         Canvas canvas = paintView.lockCanvas();
         if (null != canvas) {
