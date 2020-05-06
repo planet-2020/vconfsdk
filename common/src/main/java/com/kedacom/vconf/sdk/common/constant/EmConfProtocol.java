@@ -1,12 +1,11 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.EnumOrdinalStrategy;
 
 /**
  * 会议协议类型
  */
-@JsonAdapter(Enum2IntJsonAdapter.class)
+@EnumOrdinalStrategy
 public enum EmConfProtocol {
     emProtocolBegin,    // 起始值
     em323,              // H323

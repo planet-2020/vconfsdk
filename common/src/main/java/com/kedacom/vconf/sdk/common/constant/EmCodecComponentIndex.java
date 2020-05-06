@@ -1,10 +1,9 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.EnumOrdinalStrategy;
 
 /** 编解码器具体哪一路*/
-@JsonAdapter(Enum2IntJsonAdapter.class)
+@EnumOrdinalStrategy
 public enum EmCodecComponentIndex
 {
 	em1st_Api,         ///<第1路

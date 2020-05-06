@@ -1,12 +1,12 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter;
+
+import com.kedacom.vconf.sdk.utils.json.EnumCustomValueStrategy;
 
 /**
  * 终端类型
  * */
-@JsonAdapter(Enum2CustomValueJsonAdapter.class)
+@EnumCustomValueStrategy
 public enum EmMtType {
 	EmMt_Type_Mt(0), // /普通终端
 	EmMt_Type_PHONE(1), // /电话终端

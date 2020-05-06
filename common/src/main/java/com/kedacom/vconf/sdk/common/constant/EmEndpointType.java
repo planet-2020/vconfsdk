@@ -1,13 +1,13 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter;
+
+import com.kedacom.vconf.sdk.utils.json.EnumCustomValueStrategy;
 
 /**
   * 终端类型
   */
 
-@JsonAdapter(Enum2CustomValueJsonAdapter.class)
+@EnumCustomValueStrategy
 public enum EmEndpointType {
 	emEndpointTypeUnknown(0),
 	emEndpointTypeMT(1),

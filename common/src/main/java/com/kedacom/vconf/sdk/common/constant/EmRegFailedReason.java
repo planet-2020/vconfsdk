@@ -1,12 +1,11 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.EnumCustomValueStrategy;
 
 /**
  * 注册失败原因（对应消息RegResultNtf）
  */
-@JsonAdapter(Enum2CustomValueJsonAdapter.class)
+@EnumCustomValueStrategy
 public enum EmRegFailedReason {
 	emGKFailedBegin(0),//<起始值
 	emGKUnReachable(1),//<对端不可达

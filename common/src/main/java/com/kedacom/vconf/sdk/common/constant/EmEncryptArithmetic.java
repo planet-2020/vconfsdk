@@ -1,12 +1,11 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.EnumOrdinalStrategy;
 
 /**
  * 加密算法
  * */
-@JsonAdapter(Enum2IntJsonAdapter.class)
+@EnumOrdinalStrategy
 public enum EmEncryptArithmetic {
 	/**
 	 * 不加密

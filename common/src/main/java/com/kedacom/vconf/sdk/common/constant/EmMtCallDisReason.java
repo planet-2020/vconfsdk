@@ -1,13 +1,13 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter;
+
+import com.kedacom.vconf.sdk.utils.json.EnumCustomValueStrategy;
 
 /**
  * 呼叫断开原因
  * */
 
-@JsonAdapter(Enum2CustomValueJsonAdapter.class)
+@EnumCustomValueStrategy
 public enum EmMtCallDisReason {
 	emDisconnect_Busy(0),              // 对端忙
 	emDisconnect_Normal(1),                // 正常挂断

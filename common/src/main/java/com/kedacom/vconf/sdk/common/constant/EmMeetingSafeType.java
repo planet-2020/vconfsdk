@@ -1,12 +1,13 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter;
+
+import com.kedacom.vconf.sdk.utils.json.EnumOrdinalStrategy;
 
 /**
  * 会议类型
  */
-@JsonAdapter(Enum2IntJsonAdapter.class)
+
+@EnumOrdinalStrategy
 public enum EmMeetingSafeType {
     emRestMeetingType_Public,   // 传统媒体会议
     emRestMeetingType_Port,     // 端口会议

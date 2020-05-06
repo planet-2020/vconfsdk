@@ -1,13 +1,13 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter;
+
+import com.kedacom.vconf.sdk.utils.json.EnumCustomValueStrategy;
 
 /**
  * 终端型号
  */
 
-@JsonAdapter(Enum2CustomValueJsonAdapter.class)
+@EnumCustomValueStrategy
 public enum EmMtModel {
     emModelBegin(0),
     emSkyWindows(1), // /<桌面终端 自建

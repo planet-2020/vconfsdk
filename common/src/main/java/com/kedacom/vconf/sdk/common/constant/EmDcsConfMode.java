@@ -1,9 +1,8 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.EnumOrdinalStrategy;
 
-@JsonAdapter(Enum2IntJsonAdapter.class)
+@EnumOrdinalStrategy
 public enum EmDcsConfMode {
     // @formatter:off
     /** 关闭数据协作 */

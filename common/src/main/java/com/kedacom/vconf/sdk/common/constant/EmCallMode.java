@@ -1,12 +1,12 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.EnumOrdinalStrategy;
 
 /**
  * 呼叫模式
  */
-@JsonAdapter(Enum2IntJsonAdapter.class)
+
+@EnumOrdinalStrategy
 public enum EmCallMode {
     emMannualCall_Api,    //手动呼叫
     emResCall_Api,        //暂不启用

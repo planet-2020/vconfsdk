@@ -1,13 +1,13 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter;
+
+import com.kedacom.vconf.sdk.utils.json.EnumCustomValueStrategy;
 
 /**
   * h.264profile 
   */
 
-@JsonAdapter(Enum2CustomValueJsonAdapter.class)
+@EnumCustomValueStrategy
 public enum EmH264Profile {
 	emBaseline(1),
 	emMain(2),

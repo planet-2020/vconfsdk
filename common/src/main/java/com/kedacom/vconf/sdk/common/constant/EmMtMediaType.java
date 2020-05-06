@@ -1,12 +1,12 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2IntJsonAdapter;
+
+import com.kedacom.vconf.sdk.utils.json.EnumOrdinalStrategy;
 
 /**
  * 媒体类型
  */
-@JsonAdapter(Enum2IntJsonAdapter.class)
+@EnumOrdinalStrategy
 public enum EmMtMediaType {
 	emMediaBegin, // 非音视频
 	emMediaVideo, // 视频

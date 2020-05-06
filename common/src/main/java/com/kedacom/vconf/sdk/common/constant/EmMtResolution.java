@@ -1,12 +1,12 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter;
+
+import com.kedacom.vconf.sdk.utils.json.EnumCustomValueStrategy;
 
 /**
  * Created by Sissi on 2019/10/24
  */
-@JsonAdapter(Enum2CustomValueJsonAdapter.class)
+@EnumCustomValueStrategy
 public enum EmMtResolution {
     emMtResAuto_Api             (0),   ///<自适应
     emMtSQCIF_Api               (1),   ///<SQCIF 88x72

@@ -1,12 +1,12 @@
 package com.kedacom.vconf.sdk.common.constant;
 
-import com.google.gson.annotations.JsonAdapter;
-import com.kedacom.vconf.sdk.utils.json.Enum2CustomValueJsonAdapter;
+import com.kedacom.vconf.sdk.utils.json.EnumCustomValueStrategy;
 
 /**
  * 码流索引
  */
-@JsonAdapter(Enum2CustomValueJsonAdapter.class)
+
+@EnumCustomValueStrategy
 public enum EmBitStreamIndex {
 	emBitStream1st_Api(0),
 	emBitStream2nd_Api(1),
