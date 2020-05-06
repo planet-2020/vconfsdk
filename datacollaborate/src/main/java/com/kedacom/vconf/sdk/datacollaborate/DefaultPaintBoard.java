@@ -747,9 +747,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     }
 
     /** 获取传输（给其他与会方）的坐标。
-    * 标准化并且抵消掉global matrix操作影响后的坐标。
-    * 按理说坐标和global matrix应该独立开来，坐标在传输前只需要进行标准化处理，并不需要抵消掉global matrix。
-    * 然而无奈网呈实现在先将二者混在了一起，我们传输前需要先抵消global matrix，这样网呈才能正常处理。
+    * 标准化并且适配global matrix操作影响后的坐标
     * */
     private float[] mappedPoint= new float[2];
     private Matrix tmpBoardMatrix = new Matrix();
