@@ -284,15 +284,15 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }else{
             // 对于全景快照我们通过重绘所有图元的方式获得
             // 使用任务队列串行处理快照请求以防止同时生成大量bitmap导致内存溢出
-            snapshotTasks.offerLast(new SnapshotTask(outputWidth, outputHeight, resultListener));
-            KLog.p("snapshotTasks.size=%s, isSnapshotting=%s", snapshotTasks.size(), isSnapshotting);
+            boolean isSnapshotting = !snapshotTasks.isEmpty();
+            KLog.p("isSnapshotting=%s", isSnapshotting);
             if (!isSnapshotting) {
-                isSnapshotting = true;
+                // 启动快照任务流水线
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        SnapshotTask task = snapshotTasks.pollFirst();
-                        KLog.p("process snapshotTask %s", task);
+                        SnapshotTask task = snapshotTasks.peekFirst(); // 此处仅peek等到task结束时才从队列中删除该task以保证任务串行执行
+                        KLog.p("start processing snapshotTask %s", task);
                         Runnable snapshotRunnable = this;
 
                         boolean bLoaded = getWidth()>0 && getHeight()>0;
@@ -314,12 +314,13 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                             // XXX：此时resultListener可能已被用户销毁，但我们没有提供途径让用户告知。 TODO 考虑使用LifecycleOwner机制
                             handler.post(() -> {
                                 task.resultListener.onResult(bt);
-                                // 串行处理下一个快照请求
+                                snapshotTasks.pollFirst(); // 任务完成出队列
+                                KLog.p("finish processing snapshotTask %s", task);
                                 if (!snapshotTasks.isEmpty()){
+                                    // 串行处理下一个快照请求
                                     handler.post(snapshotRunnable);
                                 }else{
-                                    isSnapshotting = false;
-                                    KLog.p("process snapshotTask finished!");
+                                    KLog.p("finish processing all snapshotTasks");
                                 }
                             });
                         });
@@ -328,6 +329,8 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                 });
 
             }
+
+            snapshotTasks.offerLast(new SnapshotTask(outputWidth, outputHeight, resultListener));
 
         }
 
