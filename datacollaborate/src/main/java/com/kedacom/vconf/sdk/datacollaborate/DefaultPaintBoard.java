@@ -103,7 +103,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
     // 是否正在插入图片
     private boolean bInsertingPic = false;
 
-    private Handler handler = new Handler(Looper.getMainLooper());
+    private static Handler handler = new Handler(Looper.getMainLooper());
 
     private final Runnable finishEditPicRunnable = this::finishEditPic;
 
@@ -284,14 +284,13 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         }else{
             // 对于全景快照我们通过重绘所有图元的方式获得
             // 使用任务队列串行处理快照请求以防止同时生成大量bitmap导致内存溢出
-            boolean isSnapshotting = !snapshotTasks.isEmpty();
-            KLog.p("isSnapshotting=%s", isSnapshotting);
-            if (!isSnapshotting) {
+            if (snapshotTasks.isEmpty()) {
+                KLog.p("trigger processing snapshotTasks...");
                 // 启动快照任务流水线
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        SnapshotTask task = snapshotTasks.peekFirst(); // 此处仅peek等到task结束时才从队列中删除该task以保证任务串行执行
+                        SnapshotTask task = snapshotTasks.peekFirst();
                         KLog.p("start processing snapshotTask %s", task);
                         Runnable snapshotRunnable = this;
 
@@ -314,8 +313,9 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                             // XXX：此时resultListener可能已被用户销毁，但我们没有提供途径让用户告知。 TODO 考虑使用LifecycleOwner机制
                             handler.post(() -> {
                                 task.resultListener.onResult(bt);
-                                snapshotTasks.pollFirst(); // 任务完成出队列
+
                                 KLog.p("finish processing snapshotTask %s", task);
+                                snapshotTasks.pollFirst();
                                 if (!snapshotTasks.isEmpty()){
                                     // 串行处理下一个快照请求
                                     handler.post(snapshotRunnable);
@@ -688,9 +688,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                     '}';
         }
     }
-    private CompatibleConcurrentLinkedDeque<SnapshotTask> snapshotTasks = new CompatibleConcurrentLinkedDeque<>();
-    private boolean isSnapshotting;
-
+    private static CompatibleConcurrentLinkedDeque<SnapshotTask> snapshotTasks = new CompatibleConcurrentLinkedDeque<>();
 
 
     /**
