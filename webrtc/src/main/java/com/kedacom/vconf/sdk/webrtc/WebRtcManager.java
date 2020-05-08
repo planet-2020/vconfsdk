@@ -801,10 +801,12 @@ public class WebRtcManager extends Caster<Msg>{
                     conferees.add(conferee);
                     conferee.bWaitingVideoStream = true; // 正在等待与之相关的视频码流
                     HandlerHelper.sendMessageDelayed(sessionHandler, ConfereeWaitVideoStreamTimeout, conferee, 3000);
-                    if (null != sessionEventListener) {
-                        sessionEventListener.onConfereeJoined(conferee);
-                    }
                 }
+                List<Conferee> existedConferees = getConferees(true, true);
+                if (!existedConferees.isEmpty() && null != sessionEventListener) {
+                    sessionEventListener.onConfereesAppeared(existedConferees);
+                }
+
                 if (!tmpStreamInfos.isEmpty()){ // 码流先于与会方上来了
                     dealStreamAdded(tmpStreamInfos);
                     tmpStreamInfos.clear();
@@ -1484,6 +1486,18 @@ public class WebRtcManager extends Caster<Msg>{
      * 会话监听器
      * */
     public interface SessionEventListener {
+        /**
+         * （加入会议时）会议中已有会方露面
+         * 作为对比，{@link #onConfereeJoined(Conferee)}、{@link #onConfereeLeft(Conferee)}分别表示己端入会后与会方加入、离开。
+         *
+         * 一般情形下，用户收到该回调时调用{@link #createDisplay()}创建Display，
+         * 然后调用{@link Display#setConferee(Conferee)} 将Display绑定到与会方以使与会方画面展示在Display上，
+         * 如果还需要展示文字图标等deco，可调用{@link Conferee#addText(TextDecoration)}}, {@link Conferee#addPic(PicDecoration)}
+         * NOTE: 文字、图片等deco是属于Conferee的而非Display，所以调用{@link Display#swapContent(Display)}等方法时，deco也会跟着迁移。
+         *
+         * @param conferees 已有与会方列表。不包括自己，已排序，排序规则同{@link #getConferees(boolean, boolean)}
+         * */
+        void onConfereesAppeared(List<Conferee> conferees);
         /**
          * 与会方入会了。
          * 一般情形下，用户收到该回调时调用{@link #createDisplay()}创建Display，
