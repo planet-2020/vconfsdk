@@ -792,6 +792,7 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case CurrentConfereeList: // NOTE: 入会后会收到一次该通知，创会者也会收到这条消息
+                List<Conferee> existedConferees = new ArrayList<>();
                 for (TMTEntityInfo entityInfo : ((TMTEntityInfoList) ntfContent).atMtEntitiy) {
                     if (null != findConfereeByConfereeId(Conferee.buildId(entityInfo.dwMcuId, entityInfo.dwTerId, false))) {
                         // 去重
@@ -801,8 +802,9 @@ public class WebRtcManager extends Caster<Msg>{
                     conferees.add(conferee);
                     conferee.bWaitingVideoStream = true; // 正在等待与之相关的视频码流
                     HandlerHelper.sendMessageDelayed(sessionHandler, ConfereeWaitVideoStreamTimeout, conferee, 3000);
+
+                    existedConferees.add(conferee);
                 }
-                List<Conferee> existedConferees = getConferees(true, true);
                 if (!existedConferees.isEmpty() && null != sessionEventListener) {
                     sessionEventListener.onConfereesAppeared(existedConferees);
                 }
