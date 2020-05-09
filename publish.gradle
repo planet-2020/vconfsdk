@@ -60,7 +60,7 @@ publishing {
 //        }
 
         "${project.name}"(MavenPublication) {
-            logger.quiet("prject info: groupId=$project.group, artifactId=$project.name, version=$project.version")
+//            logger.quiet("prject info: groupId=$project.group, artifactId=$project.name, version=$project.version")
             artifact(sourceJar)
             artifact("$buildDir/outputs/aar/${project.name}-release.aar")
 //            artifact("$buildDir/outputs/aar/${project.name}-debug.aar")  // NOTE: 注意下面依赖assemble要同步修改

@@ -28,7 +28,7 @@ buildscript {
 
 allprojects {
     repositories {
-        mavenLocal()
+//        mavenLocal()
 
         def ALIYUN_GOOGLE = 'https://maven.aliyun.com/repository/google'
         def ALIYUN_JCENTER = 'https://maven.aliyun.com/repository/jcenter'
