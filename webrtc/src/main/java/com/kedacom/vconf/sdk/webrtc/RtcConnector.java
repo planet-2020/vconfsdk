@@ -313,7 +313,7 @@ class RtcConnector implements IRcvMsgCallback{
 			return;
 		}
 
-		KLog.p("connType=%s", connType);
+		KLog.p("[sub]<=#= connType=%s", connType);
 		handler.post(() -> {
 			if (null != signalingEvents) {
 				signalingEvents.onGetFingerPrintCmd(connType);
@@ -489,7 +489,7 @@ class RtcConnector implements IRcvMsgCallback{
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
 
-		Log.i(TAG, String.format("=#=>sendIceCandidate, sdpmid=%s, sdpline=%s, candidate=\n%s", sdpMid, sdpMLineIndex, sdp));
+		Log.i(TAG, String.format("=#=> sendIceCandidate, sdpmid=%s, sdpline=%s, candidate=\n%s", sdpMid, sdpMLineIndex, sdp));
 	}
 
 
@@ -505,7 +505,7 @@ class RtcConnector implements IRcvMsgCallback{
             KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
         }
 
-        KLog.p("sendFingerPrint connType=%s, fingerPrint=%s", connType, fingerPrint);
+        KLog.p("[sub]=#=> sendFingerPrint connType=%s, fingerPrint=%s", connType, fingerPrint);
 	}
 
 	static class TRtcMedia {
