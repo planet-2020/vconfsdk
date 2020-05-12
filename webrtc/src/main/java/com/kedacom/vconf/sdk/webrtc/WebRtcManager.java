@@ -990,6 +990,10 @@ public class WebRtcManager extends Caster<Msg>{
 
         // NOTE: 分辨率是按从小到大的顺序排列的，这点平台保证。
         List<EmMtResolution> resolutions = conferee.videoStream.supportedResolutionList;
+        if (resolutions.isEmpty()){
+            // 若发布方不是simulcast发布的则resolution会是空
+            return null;
+        }
 
         KLog.p("config.PreferredVideoQuality=%s, conferee.%s preferredVideoQuality=%s, resolutions=%s",
                 config.preferredVideoQuality, conferee.e164, conferee.preferredVideoQuality, resolutions);
