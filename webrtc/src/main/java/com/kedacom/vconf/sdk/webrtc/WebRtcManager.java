@@ -102,6 +102,8 @@ import java.util.concurrent.Executors;
 
 import com.kedacom.vconf.sdk.webrtc.bean.*;
 
+import com.kedacom.vconf.sdk.webrtc.CommonDef.*;
+
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class WebRtcManager extends Caster<Msg>{
 
@@ -456,7 +458,7 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p(KLog.WARN, "window share not started yet!");
             return;
         }
-        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_PUBLISHER);
+        PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.ASS_PUBLISHER);
         if (null != pcWrapper) {
             pcWrapper.setLocalVideoEnable(enable);
         }
@@ -494,7 +496,7 @@ public class WebRtcManager extends Caster<Msg>{
             return false;
         }
         if (bSilence != config.isSilenced) {
-            PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+            PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
             if (null == pcWrapper) {
                 KLog.p(KLog.ERROR,"null == pcWrapper");
                 return false;
@@ -525,7 +527,7 @@ public class WebRtcManager extends Caster<Msg>{
             return false;
         }
         if (bMute != config.isMuted) {
-            PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+            PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.PUBLISHER);
             if (null == pcWrapper) {
                 KLog.p(KLog.ERROR,"null == pcWrapper");
                 return false;
@@ -553,7 +555,7 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p(KLog.ERROR,"session not start");
             return false;
         }
-        PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+        PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.PUBLISHER);
         if (null == pcWrapper) {
             KLog.p(KLog.ERROR,"null == pcWrapper");
             return false;
@@ -586,7 +588,7 @@ public class WebRtcManager extends Caster<Msg>{
             return false;
         }
         if (enable != config.isLocalVideoEnabled) {
-            PeerConnectionWrapper pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_PUBLISHER);
+            PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.PUBLISHER);
             if (null == pcWrapper) {
                 KLog.p(KLog.ERROR,"null == pcWrapper");
                 return false;
@@ -868,15 +870,15 @@ public class WebRtcManager extends Caster<Msg>{
                     if (null != stream){
                         if (stream.bAss) {
                             assConferee = owner; // 对于辅流我们稍后特殊处理。我们认为只可能有一路辅流，所以此处在循环中赋值也没关系，只可能赋值一次。
-                            pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
+                            pcWrapper = getPcWrapper(ConnType.ASS_SUBSCRIBER);
                         }else{
-                            pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+                            pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
                         }
                         if (null != pcWrapper) pcWrapper.removeRemoteVideoTrack(stream.streamId);
                     }else{
                         AudioStream audioStream = findAudioStream(kdStream.achStreamId);
                         if (null != audioStream){
-                            pcWrapper = getPcWrapper(CommonDef.CONN_TYPE_SUBSCRIBER);
+                            pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
                             if (null != pcWrapper) pcWrapper.removeRemoteAudioTrack(audioStream.streamId);
                         }
                     }
@@ -1222,20 +1224,20 @@ public class WebRtcManager extends Caster<Msg>{
 
         KLog.p("creating pcWrappers...");
 
-        pubPcWrapper = new PeerConnectionWrapper(CommonDef.CONN_TYPE_PUBLISHER, new SDPObserver(CommonDef.CONN_TYPE_PUBLISHER));
-        subPcWrapper = new PeerConnectionWrapper(CommonDef.CONN_TYPE_SUBSCRIBER, new SDPObserver(CommonDef.CONN_TYPE_SUBSCRIBER));
-        assPubPcWrapper = new PeerConnectionWrapper(CommonDef.CONN_TYPE_ASS_PUBLISHER, new SDPObserver(CommonDef.CONN_TYPE_ASS_PUBLISHER));
-        assSubPcWrapper = new PeerConnectionWrapper(CommonDef.CONN_TYPE_ASS_SUBSCRIBER, new SDPObserver(CommonDef.CONN_TYPE_ASS_SUBSCRIBER));
+        pubPcWrapper = new PeerConnectionWrapper(ConnType.PUBLISHER, new SDPObserver(ConnType.PUBLISHER));
+        subPcWrapper = new PeerConnectionWrapper(ConnType.SUBSCRIBER, new SDPObserver(ConnType.SUBSCRIBER));
+        assPubPcWrapper = new PeerConnectionWrapper(ConnType.ASS_PUBLISHER, new SDPObserver(ConnType.ASS_PUBLISHER));
+        assSubPcWrapper = new PeerConnectionWrapper(ConnType.ASS_SUBSCRIBER, new SDPObserver(ConnType.ASS_SUBSCRIBER));
 
         executor.execute(() -> {
             if (null == factory){
                 throw new RuntimeException("Factory not exists!");
             }
 
-            PeerConnection pubPc = createPeerConnection(CommonDef.CONN_TYPE_PUBLISHER);
-            PeerConnection subPc = createPeerConnection(CommonDef.CONN_TYPE_SUBSCRIBER);
-            PeerConnection assPubPc = createPeerConnection(CommonDef.CONN_TYPE_ASS_PUBLISHER);
-            PeerConnection assSubPc = createPeerConnection(CommonDef.CONN_TYPE_ASS_SUBSCRIBER);
+            PeerConnection pubPc = createPeerConnection(ConnType.PUBLISHER);
+            PeerConnection subPc = createPeerConnection(ConnType.SUBSCRIBER);
+            PeerConnection assPubPc = createPeerConnection(ConnType.ASS_PUBLISHER);
+            PeerConnection assSubPc = createPeerConnection(ConnType.ASS_SUBSCRIBER);
 
             synchronized (pcWrapperLock) {
                 if (null != pubPcWrapper) pubPcWrapper.setPeerConnection(pubPc);
@@ -1251,7 +1253,7 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private PeerConnection createPeerConnection(int connType){
+    private PeerConnection createPeerConnection(ConnType connType){
         PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(new ArrayList<>());
         // TCP candidates are only useful when connecting to a server that supports
         // ICE-TCP.
@@ -1274,7 +1276,7 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private void recreatePeerConnection(int connType){
+    private void recreatePeerConnection(ConnType connType){
         KLog.p("recreating pc %s...", connType);
         synchronized (pcWrapperLock) {
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
@@ -1444,14 +1446,14 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private PeerConnectionWrapper getPcWrapper(int connType){
-        if (CommonDef.CONN_TYPE_PUBLISHER == connType){
+    private PeerConnectionWrapper getPcWrapper(ConnType connType){
+        if (ConnType.PUBLISHER == connType){
             return pubPcWrapper;
-        }else if (CommonDef.CONN_TYPE_SUBSCRIBER == connType){
+        }else if (ConnType.SUBSCRIBER == connType){
             return subPcWrapper;
-        }else if (CommonDef.CONN_TYPE_ASS_PUBLISHER == connType){
+        }else if (ConnType.ASS_PUBLISHER == connType){
             return assPubPcWrapper;
-        }else if (CommonDef.CONN_TYPE_ASS_SUBSCRIBER == connType){
+        }else if (ConnType.ASS_SUBSCRIBER == connType){
             return assSubPcWrapper;
         }
         KLog.p(KLog.ERROR, "no peerconnection to conntype %s", connType);
@@ -2638,18 +2640,23 @@ public class WebRtcManager extends Caster<Msg>{
     private class RtcConnectorEventListener implements RtcConnector.SignalingEvents{
 
         @Override
-        public void onGetOfferCmd(int connType, int mediaType) {
-            KLog.p("onGetOfferCmd: connType=%s, mediaType=%s", connType, mediaType);
+        public void onGetOfferCmd(int pcType, int mType) {
+            ConnType connType = ConnType.getInstance(pcType);
+            MediaType mediaType = MediaType.getInstance(mType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Idle)) return;
+            if (null == pcWrapper
+                    || !pcWrapper.checkSdpState(SdpState.IDLE) // 只在空闲状态下才能发布。若已经处于发布状态需先取消发布方可再次发布
+            ) {
+                return;
+            }
 
-            pcWrapper.curMediaType = mediaType;
+            pcWrapper.setMediaType(mediaType);
             VideoCapturer videoCapturer = null;
-            if ((CommonDef.MEDIA_TYPE_VIDEO == mediaType
-                    || CommonDef.MEDIA_TYPE_ASS_VIDEO == mediaType)){
-                if (CommonDef.CONN_TYPE_PUBLISHER == connType) {
+            if ((MediaType.VIDEO == mediaType
+                    || MediaType.ASS_VIDEO == mediaType)){
+                if (ConnType.PUBLISHER == connType) {
                     videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
-                }else if (CommonDef.CONN_TYPE_ASS_PUBLISHER == connType) {
+                }else if (ConnType.ASS_PUBLISHER == connType) {
 //                        videoCapturer = createScreenCapturer();
                     videoCapturer = createWindowCapturer();
                 }
@@ -2658,53 +2665,62 @@ public class WebRtcManager extends Caster<Msg>{
                 pcWrapper.createVideoTrack(videoCapturer);
             }
 
-            if ((CommonDef.MEDIA_TYPE_AUDIO == mediaType
-                    || CommonDef.MEDIA_TYPE_AV == mediaType)) {
+            if ((MediaType.AUDIO == mediaType
+                    || MediaType.AV == mediaType)) {
                 pcWrapper.createAudioTrack();
             }
 
             pcWrapper.createOffer();
 
-            if (CommonDef.MEDIA_TYPE_AV == mediaType){
+            if (MediaType.AV == mediaType){
                 // 针对多路码流的情形，我们需要一路一路地发布（平台的限制）
                 // 我们先发Audio，等到收到setAnswerCmd后再发Video
-                pcWrapper.setSdpType(pcWrapper.AudioOffer);
+                pcWrapper.setSdpType(SdpType.AUDIO_OFFER);
             }else{
-                pcWrapper.setSdpType(pcWrapper.Offer);
+                pcWrapper.setSdpType(SdpType.OFFER);
             }
 
-            pcWrapper.setSdpState(pcWrapper.Creating);
+            pcWrapper.setSdpState(SdpState.CREATING);
+
+            KLog.p(pcWrapper.toString());
 
         }
 
         @Override
-        public void onSetOfferCmd(int connType, String offerSdp, List<RtcConnector.TRtcMedia> rtcMediaList) {
-            KLog.p("connType=%s", connType);
+        public void onSetOfferCmd(int pcType, String offerSdp, List<RtcConnector.TRtcMedia> rtcMediaList) {
+            ConnType connType = ConnType.getInstance(pcType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Idle)) return;
+            if (null == pcWrapper
+                    || !pcWrapper.checkSdpState(SdpState.IDLE, SdpState.SET_LOCAL_SUCCESS) // 订阅可在空闲状态下（订阅第一路码流时）或者前面的订阅已完成状态下发起（订阅多路）
+            ) {
+                return;
+            }
             for (RtcConnector.TRtcMedia rtcMedia : rtcMediaList) {
                 KLog.p("mid=%s, kdstreamId=%s", rtcMedia.mid, rtcMedia.streamid);
                 pcWrapper.mapMid2KdStreamId(rtcMedia.mid, rtcMedia.streamid);
             }
 
-            pcWrapper.setSdpType(pcWrapper.Answer);
+            pcWrapper.setSdpType(SdpType.ANSWER);
             String sdp = modifySdp(pcWrapper, offerSdp);
             pcWrapper.setRemoteDescription(new SessionDescription(SessionDescription.Type.OFFER, sdp));
-            pcWrapper.setSdpState(pcWrapper.SettingRemote);
+            pcWrapper.setSdpState(SdpState.SETTING_REMOTE);
+            KLog.p(pcWrapper.toString());
         }
 
         @Override
-        public void onSetAnswerCmd(int connType, String answerSdp) {
-            KLog.p("connType=%s", connType);
+        public void onSetAnswerCmd(int pcType, String answerSdp) {
+            ConnType connType = ConnType.getInstance(pcType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Sending)) return;
+            if (null == pcWrapper || !pcWrapper.checkSdpState(SdpState.SENDING)) return;
             String sdp = modifySdp(pcWrapper, answerSdp);
             pcWrapper.setRemoteDescription(new SessionDescription(SessionDescription.Type.ANSWER, sdp));
-            pcWrapper.setSdpState(pcWrapper.SettingRemote);
+            pcWrapper.setSdpState(SdpState.SETTING_REMOTE);
+            KLog.p(pcWrapper.toString());
         }
 
         @Override
-        public void onSetIceCandidateCmd(int connType, String sdpMid, int sdpMLineIndex, String sdp) {
+        public void onSetIceCandidateCmd(int pcType, String sdpMid, int sdpMLineIndex, String sdp) {
+            ConnType connType = ConnType.getInstance(pcType);
             KLog.p("connType=%s, sdpMid=%s, sdpMLineIndex=%s", connType, sdpMid, sdpMLineIndex);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
             if (null == pcWrapper) return;
@@ -2713,52 +2729,79 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         @Override
-        public void onGetFingerPrintCmd(int connType) {
+        public void onGetFingerPrintCmd(int pcType) {
+            ConnType connType = ConnType.getInstance(pcType);
             KLog.p("connType=%s", connType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Idle)) return;
-;
-            pcWrapper.setSdpType(pcWrapper.FingerPrintOffer);
+            if (null == pcWrapper
+                    || !pcWrapper.checkSdpState(SdpState.IDLE, SdpState.SET_LOCAL_SUCCESS)
+            ) {
+                return;
+            }
+
+            pcWrapper.setSdpType(SdpType.FINGERPRINT_OFFER);
             pcWrapper.createAudioTrack();
             pcWrapper.createOffer();
-            pcWrapper.setSdpState(pcWrapper.Creating);
+            pcWrapper.setSdpState(SdpState.CREATING);
         }
 
         @Override
-        public void onUnPubCmd(int connType, int mediaType) {
+        public void onUnPubCmd(int pcType, int mType) {
+            ConnType connType = ConnType.getInstance(pcType);
+            MediaType mediaType = MediaType.getInstance(mType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-            if (null == pcWrapper) return;
-
-            pcWrapper.isUnpublishing = true;
-
-            // 删除取消发布的流。
-            // 取消发布己端不会收到StreamLeft消息（其他与会方会收到），
-            // 所以我们需在此删除流而非依赖收到StreamLeft后的处理逻辑
-            if (CommonDef.MEDIA_TYPE_AUDIO == mediaType
-                    || CommonDef.MEDIA_TYPE_AV == mediaType){
-                pcWrapper.removeAudioTrack();
+            if (null == pcWrapper
+//                    || !pcWrapper.checkSdpState(pcWrapper.SetRemoteSuccess) // 只有在当前已处于发布状态的情形下才可以取消发布
+            ) {
+                return;
             }
-            if(CommonDef.MEDIA_TYPE_AUDIO != mediaType){
-                pcWrapper.removeVideoTrack();
+            if (!pcWrapper.checkSdpState(SdpState.IDLE, SdpState.SET_REMOTE_SUCCESS)){
+                KLog.p(KLog.ERROR, "invalid state, try again later...");
+                // 多个终端几乎同时发双流时会出现发布双流流程尚未完成即收到取消发布双流的情况（因为接收到双流而取消正在发送的双流）
+                // 这种情况下sdp process会失败，进而导致业务那边状态紊乱，下次发双流不成功。所以此处先等一会等前面的发布流程走完，再继续往下走取消发布。
+                sessionHandler.postDelayed(() -> doUnpublish(connType, mediaType), 1000);
+                return;
             }
-            // 重新走发布
-            pcWrapper.createOffer();
-            pcWrapper.setSdpType(pcWrapper.Offer);
-            pcWrapper.setSdpState(pcWrapper.Creating);
+            doUnpublish(connType, mediaType);
         }
 
+    }
+
+    private void doUnpublish(ConnType connType, MediaType mediaType){
+        PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+        if (null == pcWrapper) {
+            return;
+        }
+
+        pcWrapper.isUnpublishing = true;
+
+        // 删除取消发布的流。
+        // 取消发布己端不会收到StreamLeft消息（其他与会方会收到），
+        // 所以我们需在此删除流而非依赖收到StreamLeft后的处理逻辑
+        if (MediaType.AUDIO == mediaType
+                || MediaType.AV == mediaType){
+            pcWrapper.removeAudioTrack();
+        }
+        if(MediaType.AUDIO != mediaType){
+            pcWrapper.removeVideoTrack();
+        }
+        // 重新走发布
+        pcWrapper.createOffer();
+        pcWrapper.setSdpType(SdpType.OFFER);
+        pcWrapper.setSdpState(SdpState.CREATING);
+        KLog.p(pcWrapper.toString());
     }
 
 
     private String modifySdp(PeerConnectionWrapper pcWrapper, String origSdp){
         // 根据音视频编码偏好修改sdp
         String sdpVideoCodecName = getSdpVideoCodecName(config.preferredVideoCodec);
-        if (pcWrapper.isSdpType(pcWrapper.Offer) || pcWrapper.isSdpType(pcWrapper.Answer)){
+        if (pcWrapper.isSdpType(SdpType.OFFER) || pcWrapper.isSdpType(SdpType.ANSWER)){
             origSdp = SdpHelper.preferCodec(origSdp, config.preferredAudioCodec, true);
             origSdp = SdpHelper.preferCodec(origSdp, sdpVideoCodecName, false);
-        }else if (pcWrapper.isSdpType(pcWrapper.AudioOffer)){
+        }else if (pcWrapper.isSdpType(SdpType.AUDIO_OFFER)){
             origSdp = SdpHelper.preferCodec(origSdp, config.preferredAudioCodec, true);
-        }else if (pcWrapper.isSdpType(pcWrapper.VideoOffer)){
+        }else if (pcWrapper.isSdpType(SdpType.VIDEO_OFFER)){
             origSdp = SdpHelper.preferCodec(origSdp, sdpVideoCodecName, false);
         }
         return origSdp;
@@ -2768,9 +2811,9 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private class SDPObserver implements SdpObserver {
-        private int connType;
+        private ConnType connType;
 
-        SDPObserver(int connType) {
+        SDPObserver(ConnType connType) {
             this.connType = connType;
         }
 
@@ -2779,20 +2822,20 @@ public class WebRtcManager extends Caster<Msg>{
             sessionHandler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 // 由于是异步，此时可能会议已经结束（如对端挂会），PeerConnectionWrapper已经销毁，所以我们此处需做非空判断
-                if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.Creating)) return;
+                if (null == pcWrapper || !pcWrapper.checkSdpState(SdpState.CREATING)) return;
 
-                KLog.p("create local sdp success: type=%s", pcWrapper.sdpType);
-                if (pcWrapper.isSdpType(pcWrapper.FingerPrintOffer)){
+                if (pcWrapper.isSdpType(SdpType.FINGERPRINT_OFFER)){
                     // 之前创建的音频流仅用于和平台交互FingerPrint没实际用处，此处交互已完成，销毁
                     pcWrapper.destoryAudioTrack();
 
-                    rtcConnector.sendFingerPrint(pcWrapper.connType, SdpHelper.getFingerPrint(origSdp.description));
-                    pcWrapper.setSdpState(pcWrapper.Idle);
+                    rtcConnector.sendFingerPrint(pcWrapper.connType.ordinal(), SdpHelper.getFingerPrint(origSdp.description));
+                    pcWrapper.setSdpState(SdpState.IDLE);
                 }else {
                     String sdp = modifySdp(pcWrapper, origSdp.description);
                     pcWrapper.setLocalDescription(new SessionDescription(origSdp.type, sdp));
-                    pcWrapper.setSdpState(pcWrapper.SettingLocal);
+                    pcWrapper.setSdpState(SdpState.SETTING_LOCAL);
                 }
+                KLog.p(pcWrapper.toString());
             });
 
         }
@@ -2801,36 +2844,32 @@ public class WebRtcManager extends Caster<Msg>{
         public void onSetSuccess() {
             sessionHandler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
-                if (null == pcWrapper || !pcWrapper.checkSdpState(pcWrapper.SettingLocal, pcWrapper.SettingRemote)) return;
+                if (null == pcWrapper || !pcWrapper.checkSdpState(SdpState.SETTING_LOCAL, SdpState.SETTING_REMOTE)) return;
 
                 PeerConnection pc = pcWrapper.pc;
-                if (pcWrapper.isSdpType(pcWrapper.Offer)) {
-                    if (pcWrapper.isSdpState(pcWrapper.SettingLocal)) {
-                        KLog.p("setLocalDescription for Offer success, sending offer...");
-                        boolean bAudio = pcWrapper.curMediaType == CommonDef.MEDIA_TYPE_AUDIO;
+                if (pcWrapper.isSdpType(SdpType.OFFER)) {
+                    if (pcWrapper.isSdpState(SdpState.SETTING_LOCAL)) {
+                        boolean bAudio = pcWrapper.isMediaType(MediaType.AUDIO);
                         RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(
                                 SdpHelper.getMid(pc.getLocalDescription().description, bAudio),
                                 bAudio ? null : createEncodingList(true) // 仅视频需要填encodings
                         );
-                        rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia);
-                        pcWrapper.setSdpState(pcWrapper.Sending);
+                        rtcConnector.sendOfferSdp(pcWrapper.connType.ordinal(), pc.getLocalDescription().description, rtcMedia);
+                        pcWrapper.setSdpState(SdpState.SENDING);
                     } else {
-                        KLog.p("setRemoteDescription for Offer success, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
-                        pcWrapper.setSdpState(pcWrapper.Idle);
+                        pcWrapper.setSdpState(SdpState.SET_REMOTE_SUCCESS);
                         if (pcWrapper.isUnpublishing) {
                             // 取消发布结束，因协议组目前实现所限我们需重建PeerConnection。解决第二次发双流失败的问题
                             pcWrapper.isUnpublishing = false;
                             recreatePeerConnection(pcWrapper.connType);
                         }
                     }
-                } else if (pcWrapper.isSdpType(pcWrapper.Answer)) {
-                    if (pcWrapper.isSdpState(pcWrapper.SettingRemote)) {
-                        KLog.p("setRemoteDescription for Answer success, create answer...");
+                } else if (pcWrapper.isSdpType(SdpType.ANSWER)) {
+                    if (pcWrapper.isSdpState(SdpState.SETTING_REMOTE)) {
                         pcWrapper.createAnswer();
-                        pcWrapper.setSdpState(pcWrapper.Creating);
+                        pcWrapper.setSdpState(SdpState.CREATING);
                     } else {
-                        KLog.p("setLocalDescription for Answer success, sending answer...");
                         List<RtcConnector.TRtcMedia> rtcMediaList = new ArrayList<>();
                         List<String> mids = SdpHelper.getAllMids(pc.getLocalDescription().description);
                         executor.execute(() -> {
@@ -2842,43 +2881,40 @@ public class WebRtcManager extends Caster<Msg>{
                                 }
                                 rtcMediaList.add(new RtcConnector.TRtcMedia(streamId, mid)); // 仅answer需要填streamId，answer不需要填encodings
                             }
-                            sessionHandler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMediaList));
+                            sessionHandler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType.ordinal(), pc.getLocalDescription().description, rtcMediaList));
                         });
-                        KLog.p("answer sent, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
-                        pcWrapper.setSdpState(pcWrapper.Idle);
+                        pcWrapper.setSdpState(SdpState.SET_LOCAL_SUCCESS);
                     }
-                } else if (pcWrapper.isSdpType(pcWrapper.AudioOffer)) {
-                    if (pcWrapper.isSdpState(pcWrapper.SettingLocal)) {
-                        KLog.p("setLocalDescription for AudioOffer success, sending offer...");
+                } else if (pcWrapper.isSdpType(SdpType.AUDIO_OFFER)) {
+                    if (pcWrapper.isSdpState(SdpState.SETTING_LOCAL)) {
                         RtcConnector.TRtcMedia rtcMedia = new RtcConnector.TRtcMedia(SdpHelper.getMid(pc.getLocalDescription().description, true));
-                        rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcMedia);
-                        pcWrapper.setSdpState(pcWrapper.Sending);
+                        rtcConnector.sendOfferSdp(pcWrapper.connType.ordinal(), pc.getLocalDescription().description, rtcMedia);
+                        pcWrapper.setSdpState(SdpState.SENDING);
                     } else {
-                        KLog.p("setRemoteDescription for AudioOffer success, we now need create video offer...");
                         VideoCapturer videoCapturer = createCameraCapturer(new Camera2Enumerator(context));
                         if (null != videoCapturer) {
                             pcWrapper.createVideoTrack(videoCapturer);
                             pcWrapper.createOffer();
                         }
                         // 不同于正常sdp流程，此时还需要再发video的offer，所以切换sdptype为videoOffer
-                        pcWrapper.setSdpType(pcWrapper.VideoOffer);
-                        pcWrapper.setSdpState(pcWrapper.Creating);
+                        pcWrapper.setSdpType(SdpType.VIDEO_OFFER);
+                        pcWrapper.setSdpState(SdpState.CREATING);
                     }
-                } else if (pcWrapper.isSdpType(pcWrapper.VideoOffer)) {
-                    if (pcWrapper.isSdpState(pcWrapper.SettingLocal)) {
-                        KLog.p("setLocalDescription for VideoOffer success, sending offer...");
+                } else if (pcWrapper.isSdpType(SdpType.VIDEO_OFFER)) {
+                    if (pcWrapper.isSdpState(SdpState.SETTING_LOCAL)) {
                         RtcConnector.TRtcMedia rtcAudio = new RtcConnector.TRtcMedia(SdpHelper.getMid(pc.getLocalDescription().description, true));
                         RtcConnector.TRtcMedia rtcVideo = new RtcConnector.TRtcMedia(SdpHelper.getMid(pc.getLocalDescription().description, false), createEncodingList(true));
-                        rtcConnector.sendOfferSdp(pcWrapper.connType, pc.getLocalDescription().description, rtcAudio, rtcVideo);
-                        pcWrapper.setSdpState(pcWrapper.Sending);
+                        rtcConnector.sendOfferSdp(pcWrapper.connType.ordinal(), pc.getLocalDescription().description, rtcAudio, rtcVideo);
+                        pcWrapper.setSdpState(SdpState.SENDING);
                     } else {
-                        KLog.p("setRemoteDescription for VideoOffer success, sdp progress FINISHED, drainCandidates");
                         pcWrapper.drainCandidates();
                         // videooffer发布完毕，整个发布结束
-                        pcWrapper.setSdpState(pcWrapper.Idle);
+                        pcWrapper.setSdpState(SdpState.SET_REMOTE_SUCCESS);
                     }
                 }
+
+                KLog.p(pcWrapper.toString());
 
             });
 
@@ -2887,14 +2923,26 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onCreateFailure(final String error) {
             sessionHandler.post(() -> {
-                KLog.p(KLog.ERROR, "error: %s", error);
+                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                if (null == pcWrapper) return;
+                KLog.p(KLog.ERROR, "create sdp failed, error info:%s. %s", error, pcWrapper);
+                if (pcWrapper.isUnpublishing) {
+                    pcWrapper.isUnpublishing = false;
+                    recreatePeerConnection(pcWrapper.connType);
+                }
             });
         }
 
         @Override
         public void onSetFailure(final String error) {
             sessionHandler.post(() -> {
-                KLog.p(KLog.ERROR, "error: %s", error);
+                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                if (null == pcWrapper) return;
+                KLog.p(KLog.ERROR, "set sdp failed, error info:%s. %s", error, pcWrapper);
+                if (pcWrapper.isUnpublishing) {
+                    pcWrapper.isUnpublishing = false;
+                    recreatePeerConnection(pcWrapper.connType);
+                }
             });
         }
 
@@ -2903,9 +2951,9 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private class PCObserver implements PeerConnection.Observer{
-        private int connType;
+        private ConnType connType;
 
-        PCObserver(int connType) {
+        PCObserver(ConnType connType) {
             this.connType = connType;
         }
 
@@ -2916,7 +2964,7 @@ public class WebRtcManager extends Caster<Msg>{
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper) return;
 
-                rtcConnector.sendIceCandidate(pcWrapper.connType, candidate.sdpMid, candidate.sdpMLineIndex, candidate.sdp);
+                rtcConnector.sendIceCandidate(pcWrapper.connType.ordinal(), candidate.sdpMid, candidate.sdpMLineIndex, candidate.sdp);
             });
         }
 
@@ -3046,30 +3094,37 @@ public class WebRtcManager extends Caster<Msg>{
     private static final String LOCAL_AUDIO_TRACK_ID = STREAM_ID+"-a";
     private static int audioTrackCnt = 0;
 
+
+    private enum SdpType{
+        UNKNOWN,
+        OFFER,
+        ANSWER,
+        AUDIO_OFFER,
+        VIDEO_OFFER,
+        FINGERPRINT_OFFER,
+    }
+
+    private enum SdpState{
+        IDLE,
+        CREATING,
+        SETTING_LOCAL,
+        SENDING,
+        SETTING_REMOTE,
+        SET_LOCAL_SUCCESS,
+        SET_REMOTE_SUCCESS,
+    }
+
     /**
      * PeerConnection包装类
      * */
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private class PeerConnectionWrapper{
 
-        int connType;
-        int curMediaType;
+        ConnType connType = ConnType.UNKNOWN;
+        MediaType mediaType = MediaType.UNKNOWN;
 
-        int sdpType;
-        final int Unknown = 0;
-        final int Offer = 1;
-        final int Answer = 2;
-        final int AudioOffer = 3;
-        final int VideoOffer = 4;
-        final int FingerPrintOffer = 5;
-
-        int sdpState;
-        final int Idle = 0;
-        final int Creating = 11;
-        final int SettingLocal = 12;
-        final int Sending = 13;
-        final int SettingRemote = 14;
-
+        SdpType sdpType = SdpType.UNKNOWN;
+        SdpState sdpState = SdpState.IDLE;
 
         PeerConnection pc;
         SDPObserver sdpObserver;
@@ -3091,12 +3146,12 @@ public class WebRtcManager extends Caster<Msg>{
         // 是否正在取消发布。由于协议组当前实现所限取消发布后我们需要重建PeerConnection
         private boolean isUnpublishing;
 
-        PeerConnectionWrapper(int connType, @NonNull SDPObserver sdpObserver) {
+        PeerConnectionWrapper(ConnType connType, @NonNull SDPObserver sdpObserver) {
             this.connType = connType;
             this.sdpObserver = sdpObserver;
         }
 
-        PeerConnectionWrapper(int connType, @NonNull PeerConnection pc, @NonNull SDPObserver sdpObserver) {
+        PeerConnectionWrapper(ConnType connType, @NonNull PeerConnection pc, @NonNull SDPObserver sdpObserver) {
             this.connType = connType;
             this.pc = pc;
             this.sdpObserver = sdpObserver;
@@ -3444,31 +3499,43 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-        void setSdpType(int sdpType) {
+        boolean isMediaType(MediaType mediaType) {
+            return this.mediaType == mediaType;
+        }
+
+        void setMediaType(MediaType mediaType) {
+            this.mediaType = mediaType;
+        }
+
+        void setSdpType(SdpType sdpType) {
 //            KLog.up("set sdp type from %s to %s", this.sdpType, sdpType);
             this.sdpType = sdpType;
         }
 
-        boolean isSdpType(int sdpType){
+        boolean isSdpType(SdpType sdpType){
             return sdpType == this.sdpType;
         }
 
-        void setSdpState(int sdpState) {
+        void setSdpState(SdpState sdpState) {
 //            KLog.up("switch sdp state from %s to %s", this.sdpState, sdpState);
             this.sdpState = sdpState;
         }
 
-        boolean isSdpState(int sdpState){
+        boolean isSdpState(SdpState sdpState){
             return sdpState == this.sdpState;
         }
 
-        boolean checkSdpState(int... sdpStates) {
-            for (int state : sdpStates){
+        boolean checkSdpState(SdpState... sdpStates) {
+            for (SdpState state : sdpStates){
                 if (state == this.sdpState){
                     return true;
                 }
             }
-            KLog.p(KLog.ERROR, "invalid sdp sate, expect "+sdpStates+" but current is "+this.sdpState);
+            StringBuilder sb=new StringBuilder();
+            for (SdpState state:sdpStates){
+                sb.append(state).append(",");
+            }
+            KLog.p(KLog.ERROR, "invalid sdp sate, expect "+sb+" but current is "+this.sdpState);
             return false;
         }
 
@@ -3543,6 +3610,8 @@ public class WebRtcManager extends Caster<Msg>{
                     surfaceTextureHelper = null;
                 }
 
+                sdpState = SdpState.IDLE;
+
                 KLog.p("pcWrapper (connType=%s) closed", connType);
             });
         }
@@ -3600,6 +3669,16 @@ public class WebRtcManager extends Caster<Msg>{
             });
         }
 
+        @Override
+        public String toString() {
+            return "PeerConnectionWrapper{" +
+                    "connType=" + connType +
+                    ", mediaType=" + mediaType +
+                    ", sdpType=" + sdpType +
+                    ", sdpState=" + sdpState +
+                    ", isUnpublishing=" + isUnpublishing +
+                    '}';
+        }
     }
 
 

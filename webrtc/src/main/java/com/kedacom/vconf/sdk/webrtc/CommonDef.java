@@ -5,14 +5,40 @@ package com.kedacom.vconf.sdk.webrtc;
  */
 class CommonDef {
     // PeerConnection类型，注意需得和业务消息中定义的一致。
-    static final int CONN_TYPE_PUBLISHER = 0; // 主流发布
-    static final int CONN_TYPE_SUBSCRIBER = 1; // 主流订阅
-    static final int CONN_TYPE_ASS_PUBLISHER = 2; // 辅流发布
-    static final int CONN_TYPE_ASS_SUBSCRIBER = 3; // 辅流订阅
+    enum ConnType{
+        PUBLISHER,
+        SUBSCRIBER,
+        ASS_PUBLISHER,
+        ASS_SUBSCRIBER,
+        UNKNOWN;
 
-    static final int MEDIA_TYPE_UNKNOWN = 0;
-    static final int MEDIA_TYPE_VIDEO = 1;
-    static final int MEDIA_TYPE_AUDIO = 2;
-    static final int MEDIA_TYPE_AV = 3;
-    static final int MEDIA_TYPE_ASS_VIDEO = 4;
+        static ConnType getInstance(int ordinal){
+            ConnType[] vals = ConnType.values();
+            for (ConnType val : vals){
+                if (val.ordinal()==ordinal){
+                    return val;
+                }
+            }
+            return UNKNOWN;
+        }
+    }
+    // 媒体类型，注意需得和业务消息中定义的一致。
+    enum MediaType{
+        UNKNOWN,
+        VIDEO,
+        AUDIO,
+        AV,
+        ASS_VIDEO;
+
+        static MediaType getInstance(int ordinal){
+            MediaType[] vals = MediaType.values();
+            for (MediaType val : vals){
+                if (val.ordinal()==ordinal){
+                    return val;
+                }
+            }
+            return UNKNOWN;
+        }
+    }
+
 }
