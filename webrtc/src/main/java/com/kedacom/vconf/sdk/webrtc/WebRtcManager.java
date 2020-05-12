@@ -1495,7 +1495,7 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public interface SessionEventListener {
         /**
-         * （加入会议时）会议中已有会方露面
+         * （加入会议时）会议中已有会方
          * 作为对比，{@link #onConfereeJoined(Conferee)}、{@link #onConfereeLeft(Conferee)}分别表示己端入会后与会方加入、离开。
          *
          * 一般情形下，用户收到该回调时调用{@link #createDisplay()}创建Display，
@@ -1503,7 +1503,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 如果还需要展示文字图标等deco，可调用{@link Conferee#addText(TextDecoration)}}, {@link Conferee#addPic(PicDecoration)}
          * NOTE: 文字、图片等deco是属于Conferee的而非Display，所以调用{@link Display#swapContent(Display)}等方法时，deco也会跟着迁移。
          *
-         * @param conferees 已有与会方列表。不包括自己，已排序，排序规则同{@link #getConferees(boolean, boolean)}
+         * @param conferees 已有与会方列表（包括自己）。
          * */
         void onConfereesAppeared(List<Conferee> conferees);
         /**
