@@ -259,6 +259,8 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
      * @param outputWidth 生成的图片的宽，若大于画板宽或者小于等于0则取值画板的宽。
      * @param outputHeight 生成的图片的高，若大于画板高或者小于等于0则取值画板的高。
      * @param resultListener 抓屏结果监听器。抓拍的图片由该监听器返回，不能为null。
+     *
+     * NOTE: 请在主线程调用该接口，内部有开子线程不用担心阻塞。（SDK所有接口，除非特别说明请在主线程调用！！！）
      * */
     @Override
     public void snapshot(int area, int outputWidth, int outputHeight, @NonNull ISnapshotResultListener resultListener) {
@@ -332,7 +334,9 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
             }
 
-            snapshotTasks.offerLast(new SnapshotTask(outputWidth, outputHeight, resultListener));
+            SnapshotTask task = new SnapshotTask(outputWidth, outputHeight, resultListener);
+            KLog.p("add snapshotTask %s", task);
+            snapshotTasks.offerLast(task);
 
         }
 
