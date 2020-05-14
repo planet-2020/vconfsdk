@@ -28,8 +28,31 @@ buildscript {
 
 allprojects {
     repositories {
+        // 本地仓库
 //        mavenLocal()
+        maven{
+            url "file://$System.env.HOME/.m2/repository"
+            content {
+                includeGroup "com.kedacom.vconf.sdk"
+            }
+        }
 
+        // 公司私服
+//        maven {
+//            url "http://172.16.6.154:9081/repository/releases/"
+//        }
+        maven {
+            url "http://172.16.6.154:9081/repository/snapshots/"
+            content {
+                includeGroup "com.kedacom.vconf.sdk"
+            }
+        }
+//        maven {
+//            url 'http://172.16.6.154:9081/repository/public/'
+//        }
+
+
+        // 阿里云仓库
         def ALIYUN_GOOGLE = 'https://maven.aliyun.com/repository/google'
         def ALIYUN_JCENTER = 'https://maven.aliyun.com/repository/jcenter'
 
@@ -40,19 +63,9 @@ allprojects {
             url ALIYUN_JCENTER
         }
 
+        //
         google()
         jcenter()
-
-        // 公司私服
-        maven {
-            url "http://172.16.6.154:9081/repository/releases/"
-        }
-        maven {
-            url "http://172.16.6.154:9081/repository/snapshots/"
-        }
-        maven {
-            url 'http://172.16.6.154:9081/repository/public/'
-        }
 
     }
 
