@@ -3146,7 +3146,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         // WebRTC的mid到平台的StreamId之间的映射。mid仅在一个PeerConnection内唯一
         // NOTE: 映射按理说该是1对1，但实际是多对1——多个mid对应同一个streamId，其中有些streamId是“死”的（但下面仍抛上来了）
-        private final Map<String, String> mid2KdStreamIdMap = new HashMap();
+        private final Map<String, String> mid2KdStreamIdMap = new HashMap<>();
 
         // 是否正在取消发布。由于协议组当前实现所限取消发布后我们需要重建PeerConnection
         private boolean isUnpublishing;
