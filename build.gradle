@@ -1,86 +1,131 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
+
+
 buildscript {
-    
-    repositories {
-        def ALIYUN_GOOGLE = 'https://maven.aliyun.com/repository/google'
-        def ALIYUN_JCENTER = 'https://maven.aliyun.com/repository/jcenter'
+    ext{
+        GOOGLE = 'https://dl.google.com/dl/android/maven2/'
+        JCENTER = 'https://jcenter.bintray.com/'
+        KEDA_GOOGLE = 'http://172.16.6.154:9081/repository/aliyun_google/'
+        KEDA_JCENTER = 'http://172.16.6.154:9081/repository/aliyun_jcenter/'
+        KEDA_ALIRELEASE = 'http://172.16.6.154:9081/repository/aliyun/' // 映射到ALI_RELEASE
+        KEDA_SNAPSHOT = 'http://172.16.6.154:9081/repository/snapshots/' // keda自己发布的artifacts，如数据协作sdk
+        ALI_GOOGLE = 'https://maven.aliyun.com/repository/google/'
+        ALI_JCENTER = 'https://maven.aliyun.com/repository/jcenter/'
+        ALI_RELEASE = 'http://maven.aliyun.com/nexus/content/repositories/releases/' // 阿里自己发布的artifacts，如阿里推送sdk
 
-        maven{
-            url ALIYUN_GOOGLE
-        }
-        maven{
-            url ALIYUN_JCENTER
-        }
+        MAVEN_LOCAL = "file://$System.env.HOME/.m2/repository"
 
-        google()
-        jcenter()
+        javaVersion = JavaVersion.VERSION_1_8
+        SOURCE_JAVA_VERSION = JavaVersion.VERSION_1_8
+        TARGET_JAVA_VERSION = SOURCE_JAVA_VERSION
+        COMPILE_SDK_VERSION = 28
+        MIN_SDK_VERSION = 19
+        TARGET_SDK_VERSION = COMPILE_SDK_VERSION
+        ABI_FILTERS = 'armeabi-v7a'
+
+        inKeda = false
     }
+
+    repositories {
+        if (inKeda) {
+            maven { url KEDA_GOOGLE }
+            maven { url KEDA_JCENTER }
+        }else {
+            maven {
+                url ALI_GOOGLE
+//                url GOOGLE
+            }
+            maven {
+                url ALI_JCENTER
+//                url JCENTER
+            }
+        }
+    }
+
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.5.3'
-
+        classpath 'com.android.tools.build:gradle:3.6.3'
         classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.11'
-
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
     }
 }
 
+
+
+
 allprojects {
-    repositories {
-        // 本地仓库
-//        mavenLocal()
-        maven{
-            url "file://$System.env.HOME/.m2/repository"
-            content {
-                includeGroup "com.kedacom.vconf.sdk"
-            }
-        }
-
-        // 公司私服
-//        maven {
-//            url "http://172.16.6.154:9081/repository/releases/"
-//        }
-        maven {
-            url "http://172.16.6.154:9081/repository/snapshots/"
-            content {
-                includeGroup "com.kedacom.vconf.sdk"
-            }
-        }
-//        maven {
-//            url 'http://172.16.6.154:9081/repository/public/'
-//        }
-
-
-        // 阿里云仓库
-        def ALIYUN_GOOGLE = 'https://maven.aliyun.com/repository/google'
-        def ALIYUN_JCENTER = 'https://maven.aliyun.com/repository/jcenter'
-
-        maven{
-            url ALIYUN_GOOGLE
-        }
-        maven{
-            url ALIYUN_JCENTER
-        }
-
-        //
-        google()
-        jcenter()
-
-    }
-
-    tasks.withType(JavaCompile) {
-        options.encoding = "UTF-8"
-        options.compilerArgs << "-Xlint:unchecked"
-    }
 
     group = 'com.kedacom.vconf.sdk'
+
+    repositories {
+        if (inKeda) {
+            maven { url KEDA_GOOGLE }
+            maven { url KEDA_JCENTER }
+            exclusiveContent {
+                forRepository {
+                    maven {
+                        url KEDA_SNAPSHOT
+                        mavenContent {
+                            snapshotsOnly()
+                        }
+                    }
+                }
+                filter {
+                    includeGroup group
+                }
+            }
+
+        }else {
+            maven {
+                url ALI_GOOGLE
+//                url GOOGLE
+            }
+            maven {
+                url ALI_JCENTER
+//                url JCENTER
+            }
+            exclusiveContent {
+                forRepository {
+                    maven{
+                        url MAVEN_LOCAL
+                    }
+                }
+                filter {
+                    includeGroup group
+                }
+            }
+        }
+
+    }
+
+    afterEvaluate {
+        if (plugins.hasPlugin(com.android.build.gradle.LibraryPlugin)
+                || plugins.hasPlugin(com.android.build.gradle.AppPlugin)){
+            configAndroid(project)
+        }
+    }
+
 }
 
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
-ext{
-    javaVersion = JavaVersion.VERSION_1_8
+
+def configAndroid(Project project){
+    project.android{
+        compileSdkVersion COMPILE_SDK_VERSION
+        defaultConfig {
+            minSdkVersion MIN_SDK_VERSION
+            targetSdkVersion TARGET_SDK_VERSION
+            ndk {
+                abiFilters ABI_FILTERS
+            }
+        }
+        compileOptions {
+            sourceCompatibility SOURCE_JAVA_VERSION
+            targetCompatibility TARGET_JAVA_VERSION
+        }
+    }
 }
