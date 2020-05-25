@@ -48,13 +48,6 @@ import androidx.annotation.Nullable;
 @SuppressWarnings({"unused", "WeakerAccess", "unchecked"})
 public final class DataCollaborateManager extends Caster<Msg> {
 
-    static {
-        KLog.p("\n========================================" +
-                        "\n======== DataCollaborateManager version=%s, timestamp=%s" +
-                        "\n========================================",
-                BuildConfig.ARTIFACT_VERSION, BuildConfig.TIMESTAMP);
-    }
-
     private static DataCollaborateManager instance;
 
     /*同步过程中缓存的操作*/

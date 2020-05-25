@@ -1,37 +1,17 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.google.protobuf'
 
-version = '1.1.4-SNAPSHOT'
+version = '1.1.5-SNAPSHOT'
 android {
-    compileSdkVersion 28
-
     defaultConfig {
-        minSdkVersion 16
-        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
-        ndk {
-            // Specifies the ABI configurations of your native
-            // libraries Gradle should build and package with your APK.
-            abiFilters  'armeabi-v7a'
-        }
     }
 
     buildTypes {
         release {
-            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-    lintOptions {
-        checkReleaseBuilds false
-        // Or, if you prefer, you can continue to check for errors in release builds,
-        // but continue the build even when errors are found:
-        abortOnError false
     }
 }
 
@@ -48,7 +28,7 @@ dependencies {
     compileOnly project(':annotation')
     annotationProcessor project(':processor')
 
-    implementation 'com.kedacom.vconf.sdk:amulet:1.3.9-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:amulet:1.3.10-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:common:1.1.1-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:utils:1.1.11-SNAPSHOT'
 }

@@ -1,9 +1,15 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 
-
 buildscript {
     ext{
+        MYGROUP = 'com.kedacom.vconf.sdk'
+
+        REPO_LOCAL = 1
+        REPO_KEDA = 2
+        REPO_INSIDE_WALL = 3
+        REPO_OUTSIDE_WALL = 4
+
         GOOGLE = 'https://dl.google.com/dl/android/maven2/'
         JCENTER = 'https://jcenter.bintray.com/'
         KEDA_GOOGLE = 'http://172.16.6.154:9081/repository/aliyun_google/'
@@ -14,9 +20,13 @@ buildscript {
         ALI_JCENTER = 'https://maven.aliyun.com/repository/jcenter/'
         ALI_RELEASE = 'http://maven.aliyun.com/nexus/content/repositories/releases/' // 阿里自己发布的artifacts，如阿里推送sdk
 
+        // 用于本地搭建nexus-repo的情形
+        LOCALHOST_GOOGLE = 'http://localhost:8081/repository/google/'
+        LOCALHOST_JCENTER = 'http://localhost:8081/repository/jcenter/'
+        LOCALHOST_SNAPSHOT = 'http://localhost:8081/repository/local-snapshot/'
+
         MAVEN_LOCAL = "file://$System.env.HOME/.m2/repository"
 
-        javaVersion = JavaVersion.VERSION_1_8
         SOURCE_JAVA_VERSION = JavaVersion.VERSION_1_8
         TARGET_JAVA_VERSION = SOURCE_JAVA_VERSION
         COMPILE_SDK_VERSION = 28
@@ -24,24 +34,77 @@ buildscript {
         TARGET_SDK_VERSION = COMPILE_SDK_VERSION
         ABI_FILTERS = 'armeabi-v7a'
 
-        inKeda = false
-    }
+        repo = REPO_INSIDE_WALL
 
-    repositories {
-        if (inKeda) {
-            maven { url KEDA_GOOGLE }
-            maven { url KEDA_JCENTER }
-        }else {
-            maven {
-                url ALI_GOOGLE
-//                url GOOGLE
-            }
-            maven {
-                url ALI_JCENTER
-//                url JCENTER
+        configRepo = {Project project, boolean forBuildscript ->
+            repoMethod = forBuildscript ? buildscript.&repositories : project.&repositories
+            repoMethod{
+                def urlGoogle
+                def urlJcenter
+                switch (repo) {
+                    case REPO_INSIDE_WALL:
+                        urlGoogle = ALI_GOOGLE
+                        urlJcenter = ALI_JCENTER
+                        break;
+                    case REPO_KEDA:
+                        urlGoogle = KEDA_GOOGLE
+                        urlJcenter = KEDA_JCENTER
+                        break;
+                    case REPO_LOCAL:
+                        urlGoogle = LOCALHOST_GOOGLE
+                        urlJcenter = LOCALHOST_JCENTER
+                        break;
+                    default:
+                        urlGoogle = GOOGLE
+                        urlJcenter = JCENTER
+                        break;
+                }
+
+//                logger.quiet("project=$project, repoType=$repoType, forBuildscript=$forBuildscript")
+
+                maven {
+                    url urlGoogle
+                }
+                maven {
+                    url urlJcenter
+                }
+
+                if (!forBuildscript){
+                    def urlKedaSdk
+                    switch (repo){
+                        case REPO_KEDA:
+                            urlKedaSdk = KEDA_SNAPSHOT
+                            break;
+                        case REPO_LOCAL:
+                            urlKedaSdk = LOCALHOST_SNAPSHOT
+                            break;
+                        default:
+                            urlKedaSdk = MAVEN_LOCAL
+                            break;
+                    }
+
+                    exclusiveContent {
+                        forRepository {
+                            maven {
+                                url urlKedaSdk
+//                                mavenContent {
+//                                    snapshotsOnly()
+//                                }
+                            }
+                        }
+                        filter {
+                            includeGroup MYGROUP
+                        }
+                    }
+
+                }
             }
         }
+
     }
+
+
+    configRepo(project, true)
 
     dependencies {
         classpath 'com.android.tools.build:gradle:3.6.3'
@@ -53,79 +116,54 @@ buildscript {
 
 
 
-
-allprojects {
-
-    group = 'com.kedacom.vconf.sdk'
-
-    repositories {
-        if (inKeda) {
-            maven { url KEDA_GOOGLE }
-            maven { url KEDA_JCENTER }
-            exclusiveContent {
-                forRepository {
-                    maven {
-                        url KEDA_SNAPSHOT
-                        mavenContent {
-                            snapshotsOnly()
-                        }
-                    }
-                }
-                filter {
-                    includeGroup group
-                }
-            }
-
-        }else {
-            maven {
-                url ALI_GOOGLE
-//                url GOOGLE
-            }
-            maven {
-                url ALI_JCENTER
-//                url JCENTER
-            }
-            exclusiveContent {
-                forRepository {
-                    maven{
-                        url MAVEN_LOCAL
-                    }
-                }
-                filter {
-                    includeGroup group
-                }
-            }
-        }
-
-    }
-
-    afterEvaluate {
-        if (plugins.hasPlugin(com.android.build.gradle.LibraryPlugin)
-                || plugins.hasPlugin(com.android.build.gradle.AppPlugin)){
-            configAndroid(project)
-        }
-    }
-
+subprojects {
+    group = MYGROUP
+    configRepo(project, false)
+    configProject(project)
 }
 
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
-
-def configAndroid(Project project){
-    project.android{
-        compileSdkVersion COMPILE_SDK_VERSION
-        defaultConfig {
-            minSdkVersion MIN_SDK_VERSION
-            targetSdkVersion TARGET_SDK_VERSION
-            ndk {
-                abiFilters ABI_FILTERS
+def configProject(Project project){
+//    logger.quiet("configProject $project")
+    project.afterEvaluate {
+//        logger.quiet("project $project, plugins=$project.plugins")
+        if (project.plugins.hasPlugin(com.android.build.gradle.LibraryPlugin)
+                || project.plugins.hasPlugin(com.android.build.gradle.AppPlugin)){
+            project.android{
+                compileSdkVersion COMPILE_SDK_VERSION
+                defaultConfig {
+                    minSdkVersion MIN_SDK_VERSION
+                    targetSdkVersion TARGET_SDK_VERSION
+                    ndk {
+                        abiFilters ABI_FILTERS
+                    }
+                    buildConfigField("String", "VERSION", "\"$project.version\"")
+                    buildConfigField("String", "TIMESTAMP", "\""+new Date().format("yyyy-MM-dd HH:mm")+"\"")
+                }
+                buildTypes {
+                    release {
+                        minifyEnabled false
+//                        proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                    }
+                }
+                compileOptions {
+                    sourceCompatibility SOURCE_JAVA_VERSION
+                    targetCompatibility TARGET_JAVA_VERSION
+                }
+                lintOptions {
+                    checkReleaseBuilds false
+                    // Or, if you prefer, you can continue to check for errors in release builds,
+                    // but continue the build even when errors are found:
+                    abortOnError false
+                }
             }
-        }
-        compileOptions {
-            sourceCompatibility SOURCE_JAVA_VERSION
-            targetCompatibility TARGET_JAVA_VERSION
+        }else if (project.plugins.hasPlugin(JavaPlugin)){
+//            logger.quiet("###############org.gradle.java, project $project")
+            project.sourceCompatibility = SOURCE_JAVA_VERSION
+            project.targetCompatibility = TARGET_JAVA_VERSION
         }
     }
 }

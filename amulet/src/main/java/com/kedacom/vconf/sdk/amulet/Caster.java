@@ -18,10 +18,10 @@ public abstract class Caster<T extends Enum<T>> implements
         IFairy.INotificationFairy.IListener{
 
     static {
-        KLog.p("\n========================================" +
+        KLog.p("\n=================================================================" +
                         "\n======== Caster version=%s, timestamp=%s" +
-                        "\n========================================",
-                BuildConfig.ARTIFACT_VERSION, BuildConfig.TIMESTAMP);
+                        "\n===============================================================",
+                BuildConfig.VERSION, BuildConfig.TIMESTAMP);
     }
 
     private IFairy.ISessionFairy sessionFairy = new SessionFairy();
@@ -54,6 +54,16 @@ public abstract class Caster<T extends Enum<T>> implements
     protected Caster(){
         enumT = (Class<T>)((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments()[0];
         try {
+            Class<?> buildConfigClz = Class.forName(getClass().getPackage().getName()+".BuildConfig");
+            Field versionField = buildConfigClz.getDeclaredField("VERSION");
+            Field timestampField = buildConfigClz.getDeclaredField("TIMESTAMP");
+            String version = (String) versionField.get(null);
+            String timestamp = (String) timestampField.get(null);
+            KLog.p("\n=================================================================" +
+                            "\n======== %s version=%s, timestamp=%s" +
+                            "\n================================================================",
+                    getClass().getSimpleName(), version, timestamp);
+
             Class<?> msgGenClz = Class.forName(enumT.getPackage().getName()+".Message$$Generated");
             MagicBook.instance().addChapter(msgGenClz);
             Field field = msgGenClz.getDeclaredField("module");
