@@ -19,24 +19,25 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.google.common.base.Function;
+import com.annimon.stream.Collectors;
+import com.annimon.stream.Stream;
 import com.google.common.collect.BiMap;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Sets;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
+import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
 import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
-import com.kedacom.vconf.sdk.utils.thread.HandlerHelper;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRegState;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
@@ -49,7 +50,6 @@ import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
 
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.Camera2Enumerator;
@@ -93,6 +93,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -109,6 +110,8 @@ public class WebRtcManager extends Caster<Msg>{
 
     private static final String TAG = WebRtcManager.class.getSimpleName();
 
+    private static WebRtcManager instance;
+
     private Application context;
 
     private RtcConnector rtcConnector = new RtcConnector();
@@ -121,16 +124,19 @@ public class WebRtcManager extends Caster<Msg>{
     private PeerConnectionWrapper assPubPcWrapper;
     private PeerConnectionWrapper assSubPcWrapper;
 
+    // 己端与会方
+    private Conferee myself;
 
-    // 与会方集合。
-    private Set<Conferee> conferees = new HashSet<>();
+    // 与会方集合（不包含己端）
+    private Set<Conferee> conferees = new LinkedHashSet<>();
 
-    // 用来展示与会方画面的Display集合。
-    private Set<Display> displaySet = new HashSet<>();
+    // 码流集合（没有己端的码流）
+    private Set<RtcStream> streams = new HashSet<>();
+
+    private Set<Display> displays = new LinkedHashSet<>();
 
     // 平台的StreamId到WebRTC的TrackId之间的映射
     private BiMap<String, String> kdStreamId2RtcTrackIdMap = HashBiMap.create();
-
 
     // 当前用户的e164
     private String userE164;
@@ -138,26 +144,13 @@ public class WebRtcManager extends Caster<Msg>{
     // RTC配置
     private RtcConfig.Config config = new RtcConfig.Config();
 
-    private static final int ConfereeWaitVideoStreamTimeout = 1;
-    private static final int RecvingAssStreamTimeout = 2;
-    private Handler sessionHandler = new Handler(Looper.getMainLooper()){
+    private Handler handler = new Handler(Looper.getMainLooper()){
         @Override
         public void handleMessage(Message msg) {
-            switch (msg.what){
-                case ConfereeWaitVideoStreamTimeout:
-                    Conferee conferee = (Conferee) msg.obj;
-                    conferee.bWaitingVideoStream = false;
-                    break;
-                case RecvingAssStreamTimeout:
-                    conferee = (Conferee) msg.obj;
-                    conferee.setState(conferee.preState);
-                    break;
-            }
+
         }
     };
 
-
-    private static WebRtcManager instance;
 
     private WebRtcManager(Application context){
         this.context = context;
@@ -223,7 +216,7 @@ public class WebRtcManager extends Caster<Msg>{
      *          失败：错误码 TODO
      * @param confEventListener 会议事件监听器
      * */
-    public void login(String e164, IResultListener resultListener, ConfEventListener confEventListener){
+    public void login(String e164, @NonNull IResultListener resultListener, @NonNull ConfEventListener confEventListener){
         TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) get(Msg.GetSvrAddr);
         if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0){
             KLog.p(KLog.ERROR, "invalid rtcSvrAddr");
@@ -262,7 +255,7 @@ public class WebRtcManager extends Caster<Msg>{
      *          失败：TODO
      * @param sessionEventListener 会话事件监听器
      * */
-    public void makeCall(String peerId, boolean bAudio, IResultListener resultListener, SessionEventListener sessionEventListener){
+    public void makeCall(String peerId, boolean bAudio, @NonNull IResultListener resultListener, @NonNull SessionEventListener sessionEventListener){
         if (!startSession(sessionEventListener)){
             reportFailed(-1, resultListener);
             return;
@@ -281,7 +274,7 @@ public class WebRtcManager extends Caster<Msg>{
      *          失败：TODO
      * @param sessionEventListener 会话事件监听器
      * */
-    public void createConf(ConfPara confPara, IResultListener resultListener, SessionEventListener sessionEventListener){
+    public void createConf(ConfPara confPara, @NonNull IResultListener resultListener, @NonNull SessionEventListener sessionEventListener){
         if (!startSession(sessionEventListener)){
             reportFailed(-1, resultListener);
             return;
@@ -325,7 +318,7 @@ public class WebRtcManager extends Caster<Msg>{
      *                             成功：{@link MakeCallResult}
      *                             失败：失败码 //TODO
      * */
-    public void acceptInvitation(boolean bAudio, IResultListener resultListener, SessionEventListener sessionEventListener){
+    public void acceptInvitation(boolean bAudio, @NonNull IResultListener resultListener, @NonNull SessionEventListener sessionEventListener){
         if (!startSession(sessionEventListener)){
             reportFailed(-1, resultListener);
             return;
@@ -369,6 +362,9 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+
+
+    //========================================================================================
 
     private Intent screenCapturePermissionData;
     /**
@@ -560,13 +556,10 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p(KLog.ERROR,"null == pcWrapper");
             return false;
         }
-        pcWrapper.switchCamera();
+        pcWrapper.switchCamera();  // FIXME 攝像頭可能不是在前後切換。下面的鏡像設置可能有誤
         config.isFrontCameraPreferred = !config.isFrontCameraPreferred;
-        Conferee conferee = findMyself();
-        if (null != conferee) {
-            for (Display display : conferee.displays){
-                display.setMirror(config.isFrontCameraPreferred); // 前置摄像头情况下需镜像显示
-            }
+        for (Display display : myself.displays){
+            display.setMirror(config.isFrontCameraPreferred); // 前置摄像头情况下需镜像显示
         }
         return true;
     }
@@ -595,10 +588,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
             pcWrapper.setLocalVideoEnable(enable);
             config.isLocalVideoEnabled = enable;
-            Conferee conferee = findMyself();
-            if (null != conferee && Conferee.VideoState_NoStream != conferee.state) {
-                conferee.setState(enable ? Conferee.VideoState_Normal : Conferee.VideoState_Disabled);
-            }
+            myself.refreshDisplays();
         }
         return true;
     }
@@ -767,14 +757,18 @@ public class WebRtcManager extends Caster<Msg>{
                 TRegState regState = (TRegState) ntfContent;
                 int resCode = RtcResultCode.fromTransfer(regState.AssParam.basetype);
                 if (RtcResultCode.OK != resCode) {
-                    if (null != confEventListener) confEventListener.onConfServerDisconnected(resCode);
+                    confEventListener.onConfServerDisconnected(resCode);
                 }
                 break;
 
             case CallIncoming:
                 TMtCallLinkSate callLinkSate = (TMtCallLinkSate) ntfContent;
                 KLog.p("CallIncoming: %s", callLinkSate);
-                if (null != confEventListener) confEventListener.onConfInvitation(ToDoConverter.callLinkSate2ConfInvitationInfo(callLinkSate));
+                confEventListener.onConfInvitation(ToDoConverter.callLinkSate2ConfInvitationInfo(callLinkSate));
+                break;
+
+            case ConfPasswordNeeded:
+                sessionEventListener.confPasswordNeeded();
                 break;
 
             case MultipartyConfEnded:
@@ -782,7 +776,7 @@ public class WebRtcManager extends Caster<Msg>{
                 BaseTypeInt reason = (BaseTypeInt) ntfContent;
                 KLog.p("MultipartyConfEnded: %s", reason.basetype);
                 resCode = RtcResultCode.fromTransfer(reason.basetype);
-                if (null != confEventListener) confEventListener.onConfFinished(resCode);
+                confEventListener.onConfFinished(resCode);
                 break;
 
             case ConfCanceled:
@@ -790,241 +784,159 @@ public class WebRtcManager extends Caster<Msg>{
                 reason = (BaseTypeInt) ntfContent;
                 KLog.p("ConfCanceled: %s", reason.basetype);
                 resCode = RtcResultCode.fromTransfer(reason.basetype);
-                if (null != confEventListener) confEventListener.onConfFinished(resCode);
+                confEventListener.onConfFinished(resCode);
                 break;
 
-            case CurrentConfereeList: // NOTE: 入会后会收到一次该通知，创会者也会收到这条消息
-                List<Conferee> existedConferees = new ArrayList<>();
-                for (TMTEntityInfo entityInfo : ((TMTEntityInfoList) ntfContent).atMtEntitiy) {
-                    if (null != findConfereeByConfereeId(Conferee.buildId(entityInfo.dwMcuId, entityInfo.dwTerId, false))) {
-                        // 去重
-                        continue;
-                    }
-                    Conferee conferee = ToDoConverter.tMTEntityInfo2ConfereeInfo(entityInfo);
-                    conferees.add(conferee);
-                    conferee.bWaitingVideoStream = true; // 正在等待与之相关的视频码流
-                    HandlerHelper.sendMessageDelayed(sessionHandler, ConfereeWaitVideoStreamTimeout, conferee, 3000);
+            case CurrentConfereeList: // NOTE: 入会后会收到一次该通知，创会者也会收到这条消息。列表中包含了自己。
+                List<Conferee> presentConferees =
+                        Stream.of(((TMTEntityInfoList) ntfContent).atMtEntitiy)
+                        .distinctBy(it -> it.dwMcuId+"-"+it.dwTerId)
+                        .map(this::tMTEntityInfo2Conferee)
+                        .filter(it-> findConferee(it.mcuId, it.terId, it.type)==null)
+                        .collect(Collectors.toList());
 
-                    existedConferees.add(conferee);
-                }
-                if (!existedConferees.isEmpty() && null != sessionEventListener) {
-                    sessionEventListener.onConfereesAppeared(existedConferees);
+                Conferee self = Stream.of(presentConferees).filter(Conferee::isMyself).findFirst().orElse(null);
+                if (self != null){
+                    // 己端我们拎出来特殊对待
+                    myself.fill(self.mcuId, self.terId, self.alias,self.email);
+                    presentConferees.remove(self);
                 }
 
-                if (!tmpStreamInfos.isEmpty()){ // 码流先于与会方上来了
-                    dealStreamAdded(tmpStreamInfos);
-                    tmpStreamInfos.clear();
+                conferees.addAll(presentConferees);
+
+                Conferee assStreamConferee = tryCreateAssStreamConferee();
+                if (null != assStreamConferee){
+                    conferees.add(assStreamConferee);
+                    presentConferees.add(assStreamConferee);
                 }
+
+                presentConferees.add(myself);
+                sessionEventListener.onConfereesAppeared(presentConferees);
                 break;
 
             case ConfereeJoined:
-                TMTEntityInfo entityInfo = (TMTEntityInfo) ntfContent;
-                if(null == findConfereeByConfereeId(Conferee.buildId(entityInfo.dwMcuId, entityInfo.dwTerId, false))) {
-                    Conferee joinedConferee = ToDoConverter.tMTEntityInfo2ConfereeInfo((TMTEntityInfo) ntfContent);
-                    conferees.add(joinedConferee);
-                    joinedConferee.bWaitingVideoStream = true; // 正在等待与之相关的码流
-                    HandlerHelper.sendMessageDelayed(sessionHandler, ConfereeWaitVideoStreamTimeout, joinedConferee, 3000);
-                    if (null != sessionEventListener) {
-                        sessionEventListener.onConfereeJoined(joinedConferee);
+                Conferee joined = tMTEntityInfo2Conferee((TMTEntityInfo) ntfContent);
+                if (findConferee(joined.mcuId, joined.terId, joined.type)==null){
+                    conferees.add(joined);
+                    sessionEventListener.onConfereeJoined(joined);
+                    assStreamConferee = tryCreateAssStreamConferee();
+                    if (null != assStreamConferee){
+                        conferees.add(assStreamConferee);
+                        sessionEventListener.onConfereeJoined(assStreamConferee);
                     }
                 }
                 break;
 
             case ConfereeLeft:
                 TMtId tMtId = (TMtId) ntfContent;
-                Conferee leftConferee = findConfereeByConfereeId(Conferee.buildId(tMtId.dwMcuId, tMtId.dwTerId, false));
+                Conferee leftConferee = findConferee(tMtId.dwMcuId, tMtId.dwTerId, Conferee.ConfereeType.Normal);
                 if (null != leftConferee){
                     conferees.remove(leftConferee);
-                    if (null != sessionEventListener) {
-                        sessionEventListener.onConfereeLeft(leftConferee);
-                    }
+                    sessionEventListener.onConfereeLeft(leftConferee);
                 }
                 break;
 
-            case CurrentStreamList: // NOTE: 创会者不会收到这条消息；CurrentStreamList和CurrentConfereeList的先后顺序不定
+            case CurrentStreamList: // NOTE: 创会者不会收到这条消息，并且CurrentStreamList和CurrentConfereeList的先后顺序不定
             case StreamJoined: // NOTE: 己端不会收到自己的流joined的消息
-                if (conferees.isEmpty()){
-                    // CurrentConfereeList 消息尚未上报，我们暂存码流信息稍后处理
-                    tmpStreamInfos.addAll(((TRtcStreamInfoList) ntfContent).atStramInfoList);
-                }else{
-                    dealStreamAdded(((TRtcStreamInfoList) ntfContent).atStramInfoList);
+                List<RtcStream> joinedStreams =
+                        Stream.of(((TRtcStreamInfoList) ntfContent).atStramInfoList)
+                        .distinctBy(it-> it.achStreamId)
+                        .map(RtcStream::new)
+                        .filter(it-> findStream(it.getStreamId())==null)
+                        .collect(Collectors.toList());
+
+                if (!joinedStreams.isEmpty()) {
+                    boolean hasAssStreamJoined = Stream.of(joinedStreams).anyMatch(RtcStream::isAss);
+                    if (hasAssStreamJoined) { // 有辅流加入
+                        // 检查是否已存在辅流，若存在则先踢掉之前的辅流。（按说我们应该依赖下层消息驱动我们做这件事，
+                        // 我们期望下层先推一个StreamLeft消息，表示前面的辅流被抢了，而后再推StreamJoined，表示新的辅流加入，但实际的时序刚好相反。
+                        // 所以，我们自己调整时序——当抢发辅流的StreamJoined到达时我们主动踢掉前面的辅流，然后前面辅流的StreamLeft抵达时我们忽略。）
+                        RtcStream preAssStream = findAssStream();
+                        if (null != preAssStream) {
+                            streams.remove(preAssStream);
+                            PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.ASS_SUBSCRIBER);
+                            if (null != pcWrapper) {
+                                pcWrapper.removeRemoteVideoTrack(preAssStream);
+                            }
+                            Conferee preAssStreamConferee = preAssStream.getOwner();
+                            if (null != preAssStreamConferee) {
+                                conferees.remove(preAssStreamConferee);
+                                sessionEventListener.onConfereeLeft(preAssStreamConferee);
+                            }
+                        }
+                    }
+
+                    streams.addAll(joinedStreams);
+
+                    if (hasAssStreamJoined){
+                        assStreamConferee = tryCreateAssStreamConferee();
+                        if (null != assStreamConferee){
+                            conferees.add(assStreamConferee);
+                            sessionEventListener.onConfereeJoined(assStreamConferee);
+                        }
+                    }
+
+                    bindStream();
                 }
                 break;
 
-            case StreamLeft: // NOTE 己端不会收到自己的流left的消息
-                Conferee assConferee = null;
-                for (TRtcStreamInfo kdStream : ((TRtcStreamInfoList) ntfContent).atStramInfoList){
-                    Conferee owner = findConfereeByStreamId(kdStream.achStreamId);
-                    if (null == owner){
-                        KLog.p(KLog.ERROR, "this stream not belong to any conferee");
-                        continue;
-                    }
+            case StreamLeft: // NOTE 己端不会收到自己的流left的消息。码流退出不需要自己setplayitem重新订阅，业务组件已经重新订阅。
+                Set<RtcStream> leftStreams = Stream.of(streams)
+                        .filter(it-> Stream.of(((TRtcStreamInfoList) ntfContent).atStramInfoList).anyMatch(s-> s.achStreamId.equals(it.getStreamId())))
+                        .collect(Collectors.toSet());
 
+                streams.removeAll(leftStreams);
+
+                Stream.of(leftStreams).forEach(stream -> {
                     // 删除track
                     // 我们在onTrack回调中createRemoteVideoTrack/createRemoteAudioTrack，
                     // 相应的我们原本期望在onRemoveStream（没有onRemoveTrack）中removeRemoteVideoTrack/removeRemoteAudioTrack，
-                    // 然而实测下来发现onRemoveStream回调上来时MediaStream的track列表为空，不得已我们只得在StreamLeft消息上来时
-                    // removeRemoteVideoTrack/removeRemoteAudioTrack，由此造成了这种不对称的现象
-                    PeerConnectionWrapper pcWrapper;
-                    VideoStream stream = findVideoStream(kdStream.achStreamId); // StreamLeft消息中只有流id有效，所以我们需本地查找到对应的流再做进一步判断
-                    if (null != stream){
-                        if (stream.bAss) {
-                            assConferee = owner; // 对于辅流我们稍后特殊处理。我们认为只可能有一路辅流，所以此处在循环中赋值也没关系，只可能赋值一次。
-                            pcWrapper = getPcWrapper(ConnType.ASS_SUBSCRIBER);
-                        }else{
-                            pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
+                    // 然而实测下来发现onRemoveStream回调上来时MediaStream的track列表为空，不得已我们只得在StreamLeft消息上来时removeRemoteVideoTrack/removeRemoteAudioTrack
+                    if (stream.isAss()){
+                        PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.ASS_SUBSCRIBER);
+                        if (null != pcWrapper) {
+                            pcWrapper.removeRemoteVideoTrack(stream);
                         }
-                        if (null != pcWrapper) pcWrapper.removeRemoteVideoTrack(stream.streamId);
-                    }else{
-                        AudioStream audioStream = findAudioStream(kdStream.achStreamId);
-                        if (null != audioStream){
-                            pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
-                            if (null != pcWrapper) pcWrapper.removeRemoteAudioTrack(audioStream.streamId);
+                        Conferee assConferee = stream.getOwner();
+                        if (null != assConferee){
+                            conferees.remove(assConferee);
+                            sessionEventListener.onConfereeLeft(assConferee);
+                        }
+                    }else {
+                        PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
+                        if (null != pcWrapper) {
+                            if (stream.isAudio()) {
+                                pcWrapper.removeRemoteAudioTrack(stream);
+                            } else {
+                                pcWrapper.removeRemoteVideoTrack(stream);
+                            }
                         }
                     }
+                });
 
-                    owner.removeStream(kdStream.achStreamId);
-                }
-
-                // 对于辅流特殊处理
-                if (null != assConferee){
-                    conferees.remove(assConferee);
-                    // 更新与会方辅流发送状态
-                    Conferee owner = findConfereeByConfereeId(Conferee.buildId(assConferee.mcuId, assConferee.terId, false));
-                    if (null!=owner){
-                        owner.isSendingAssStream = false;
-                    }
-                    // 辅流退出意味着虚拟的辅流入会方退会
-                     if (null != sessionEventListener) {
-                         sessionEventListener.onConfereeLeft(assConferee);
-                     }
-                }
-
-                // 重新订阅视频流
-                subscribeStreams();
-                break;
-
-            case ConfPasswordNeeded:
-                if (null != sessionEventListener){
-                    sessionEventListener.confPasswordNeeded();
-                }
+//                bindStream(); // 码流离开不需要重新订阅，业务组件会处理
                 break;
         }
 
     }
 
 
-    /**
-     * 临时的码流信息。
-     * 码流我们目前是绑定在Conferee里的，但是下层上报“新增码流”消息时可能尚未上报“新增Conferee消息”，
-     * 就导致码流上来了却没有Conferee可以绑定，针对这种情形我们临时保存码流信息，等Conferee上报了再做绑定。
-     * */
-    private List<TRtcStreamInfo> tmpStreamInfos = new ArrayList<>();
-
-    void dealStreamAdded(List<TRtcStreamInfo> rtcStreamInfos){
-        TRtcStreamInfo assStream = null;
-        Conferee assStreamSender = null;
-        for (TRtcStreamInfo streamInfo : rtcStreamInfos){
-            // 查找该流所属的与会方
-            Conferee owner = findConfereeByConfereeId(Conferee.buildId(streamInfo.tMtId.dwMcuId, streamInfo.tMtId.dwTerId, false));
-            if (null == owner){
-                KLog.p(KLog.ERROR, "this stream not belong to any conferee");
-                continue;
+    private Conferee tMTEntityInfo2Conferee(@NonNull TMTEntityInfo entityInfo){
+        String e164="", alias="", email="";
+        for (TMtAlias tMtAlias : entityInfo.tMtAlias.arrAlias) {
+            if (EmMtAliasType.emAliasE164 == tMtAlias.emAliasType) {
+                e164 = tMtAlias.achAlias;
+            } else if (EmMtAliasType.emAliasH323 == tMtAlias.emAliasType) {
+                alias = tMtAlias.achAlias;
+            } else if (EmMtAliasType.emAliasEmail == tMtAlias.emAliasType) {
+                email = tMtAlias.achAlias;
             }
-            if (streamInfo.bAss){
-                assStream = streamInfo;  // 对于辅流我们稍后特殊处理
-                assStreamSender = owner;
-                continue;
-            }
-
-            // 将流关联到与会方
-            if (streamInfo.bAudio){
-                owner.addAudioStream(new AudioStream(streamInfo.achStreamId));
-            }else{
-                owner.setVideoStream(new VideoStream(streamInfo.achStreamId, false, streamInfo.aemSimcastRes));
-                owner.bWaitingVideoStream = false;
-                sessionHandler.removeMessages(ConfereeWaitVideoStreamTimeout, owner);
+            if (!e164.isEmpty() && !alias.isEmpty() && !email.isEmpty()) {
+                break;
             }
         }
 
-        // 对辅流特殊处理
-        if (null != assStream){
-            Conferee existedAssStreamConferee = findAssStreamConferee();
-            if (null != existedAssStreamConferee){
-                // 如果正在接收辅流，则此为抢发辅流的场景
-                // 我们先删除正在接收的辅流（目前会议中仅支持一路辅流）
-                conferees.remove(existedAssStreamConferee);
-                // 更新与会方辅流发送状态
-                Conferee owner = findConfereeByConfereeId(Conferee.buildId(existedAssStreamConferee.mcuId, existedAssStreamConferee.terId, false));
-                if (null!=owner){
-                    owner.isSendingAssStream = false;
-                }
-                if (null != sessionEventListener){
-                    // 通知用户之前的辅流已退出
-                    // 按说抢双流的场景平台推送消息的时序应该是：“前面的辅流退出->后面的辅流加入”，实际却是“后面的辅流加入->前面的辅流退出”。
-                    // 这容易引起用户的疑惑，我们内部调整时序为“前面的辅流退出->后面的辅流加入”
-                    sessionEventListener.onConfereeLeft(existedAssStreamConferee);
-                }
-            }
-            // 针对辅流我们构造一个虚拟的与会方
-            assStreamSender.isSendingAssStream = true;
-            Conferee assStreamConferee = new Conferee(assStreamSender.mcuId, assStreamSender.terId, assStreamSender.e164, assStreamSender.alias, assStreamSender.email, true);
-            assStreamConferee.setVideoStream(new VideoStream(assStream.achStreamId, true, assStream.aemSimcastRes));
-            conferees.add(assStreamConferee);
-            if (null != sessionEventListener){
-                sessionEventListener.onConfereeJoined(assStreamConferee);
-            }
-            assStreamConferee.setState(Conferee.VideoState_RecvingAss);
-            HandlerHelper.sendMessageDelayed(sessionHandler, RecvingAssStreamTimeout, assStreamConferee, 3000);
-        }
-
-        // 订阅视频流
-        subscribeStreams();
-    }
-
-    private EmMtResolution getSubResolution(Conferee conferee){
-        if (conferee == null || conferee.videoStream == null){
-            KLog.p(KLog.ERROR, "conferee == null || conferee.videoStream == null");
-            return null;
-        }
-
-        // NOTE: 分辨率是按从小到大的顺序排列的，这点平台保证。
-        List<EmMtResolution> resolutions = conferee.videoStream.supportedResolutionList;
-        if (resolutions.isEmpty()){
-            // 若发布方不是simulcast发布的则resolution会是空
-            return null;
-        }
-
-        KLog.p("config.PreferredVideoQuality=%s, conferee.%s preferredVideoQuality=%s, resolutions=%s",
-                config.preferredVideoQuality, conferee.e164, conferee.preferredVideoQuality, resolutions);
-        int quality = Math.min(config.preferredVideoQuality, conferee.preferredVideoQuality);
-        if (RtcConfig.VideoQuality_High == quality){
-            return resolutions.get(resolutions.size()-1);
-        }else if (RtcConfig.VideoQuality_Medium == quality ){
-            if (resolutions.size()>1){
-                return resolutions.get(1);
-            }else{
-                return resolutions.get(0);
-            }
-        }else if (RtcConfig.VideoQuality_Low == quality ){
-            return resolutions.get(0);
-        }
-
-        return resolutions.get(0);
-    }
-
-
-    private void subscribeStreams(){
-        Set<VideoStream> videoStreams = getAllVideoStreamsExceptMine();
-        List<TRtcPlayItem> playItems = FluentIterable.from(videoStreams).transform(new Function<VideoStream, TRtcPlayItem>() {
-            @NullableDecl
-            @Override
-            public TRtcPlayItem apply(@NullableDecl VideoStream input) {
-                return new TRtcPlayItem(input.streamId, input.bAss, getSubResolution(findConfereeByStreamId(input.streamId)) );
-            }
-        }).toList();
-
-        set(Msg.SelectStream, new TRtcPlayParam(playItems));
+        return new Conferee(entityInfo.dwMcuId, entityInfo.dwTerId, e164, alias, email);
     }
 
 
@@ -1057,6 +969,8 @@ public class WebRtcManager extends Caster<Msg>{
         bSessionStarted = true;
         sessionEventListener = listener;
 
+        myself = new Conferee(userE164);
+
         rtcConnector.setSignalingEventsCallback(new RtcConnectorEventListener());
 
         config.copy(RtcConfig.getInstance(context).dump());
@@ -1065,13 +979,11 @@ public class WebRtcManager extends Caster<Msg>{
         createPeerConnectionWrapper();
 
         // 定时获取统计信息
-        sessionHandler.postDelayed(statsCollector, 3000);
+        handler.postDelayed(statsCollector, 3000);
         // 定时处理音频统计信息
-        sessionHandler.postDelayed(audioStatsProcesser, 3000);
+        handler.postDelayed(audioStatsProcesser, 3000);
         // 定时处理视频统计信息
-        sessionHandler.postDelayed(videoStatsProcesser, 3000);
-        // 定时检测音频与会方
-        sessionHandler.postDelayed(kdStreamStatusMonitor, 3000);
+        handler.postDelayed(videoStatsProcesser, 3000);
 
         KLog.p("session started ");
 
@@ -1094,15 +1006,18 @@ public class WebRtcManager extends Caster<Msg>{
 
         rtcConnector.setSignalingEventsCallback(null);
 
-        sessionHandler.removeCallbacksAndMessages(null);
+        handler.removeCallbacksAndMessages(null);
 
-        for (Display display : displaySet){
+        for (Display display : displays){
             display.destroy();
         }
-        displaySet.clear();
+        displays.clear();
 
+        myself = null;
         conferees.clear();
-        tmpStreamInfos.clear();
+
+        streams.clear();
+
 
         kdStreamId2RtcTrackIdMap.clear();
 
@@ -1135,6 +1050,8 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private void createPeerConnectionFactory() {
+        KLog.p("creating factory...");
+
         eglBase = EglBase.create();
 
         executor.execute(() -> {
@@ -1143,11 +1060,10 @@ public class WebRtcManager extends Caster<Msg>{
                 return;
             }
 
-            KLog.p("creating factory...");
-
             String fieldTrials = ""
 //                    +"WebRTC-H264Simulcast/Enabled/"
-                    +"WebRTC-SpsPpsIdrIsH264Keyframe/Enabled/";
+//                    +"WebRTC-SpsPpsIdrIsH264Keyframe/Enabled/"
+                    ;
 
             PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(context)
                     .setFieldTrials(fieldTrials)
@@ -1199,12 +1115,12 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private void destroyPeerConnectionFactory(){
+        KLog.p("destroying factory...");
         executor.execute(() -> {
             if (null == factory) {
                 KLog.p(KLog.ERROR, "Factory not exists!");
                 return;
             }
-            KLog.p("destroying factory...");
             if (null != eglBase) {
                 eglBase.release();
                 eglBase = null;
@@ -1495,7 +1411,7 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public interface SessionEventListener {
         /**
-         * （加入会议时）会议中已有会方
+         * 己端加入会议时，会议中已有与会方出席（包括自己）。
          * 作为对比，{@link #onConfereeJoined(Conferee)}、{@link #onConfereeLeft(Conferee)}分别表示己端入会后与会方加入、离开。
          *
          * 一般情形下，用户收到该回调时调用{@link #createDisplay()}创建Display，
@@ -1507,7 +1423,7 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         void onConfereesAppeared(List<Conferee> conferees);
         /**
-         * 与会方入会了。
+         * 与会方加入。
          * 一般情形下，用户收到该回调时调用{@link #createDisplay()}创建Display，
          * 然后调用{@link Display#setConferee(Conferee)} 将Display绑定到与会方以使与会方画面展示在Display上，
          * 如果还需要展示文字图标等deco，可调用{@link Conferee#addText(TextDecoration)}}, {@link Conferee#addPic(PicDecoration)}
@@ -1515,12 +1431,17 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         void onConfereeJoined(Conferee conferee);
         /**
-         * 与会方离会
-         * 如果该Display不需要了请调用{@link #releaseDisplay(Display)}销毁；
+         * 与会方离开。
+         * 如果该Conferee对应的Display不需要了请调用{@link #releaseDisplay(Display)}销毁；
          * 如果后续要复用则可以不销毁，可以调用{@link Display#setConferee)}参数传null清空内容；
-         * NOTE: {@link #stopSession()} 会销毁所有Display。用户不能跨Session复用Display，也不需要在stopSession时手动销毁Display。
+         * NOTE: 会议结束时会销毁所有Display。用户不能跨会议复用Display。
          * */
         void onConfereeLeft(Conferee conferee);
+
+        /**
+         * 与会方正在发言
+         * */
+        default void onConfereeSpeaking(Conferee conferee){}
 
         /**
          * 此会议需要输入密码。
@@ -1534,152 +1455,230 @@ public class WebRtcManager extends Caster<Msg>{
 
     /**
      * 获取与会方列表
-     * @param exceptVirtualAssStreamConferee 是否排除虚拟的辅流与会方，true排除
-     * @param exceptSelf 是否排除自己，true排除
-     * @return 与会方列表。已排序。排序规则：自然排序；优先比对昵称，昵称若不存在则使用其e164，e164不存在则使用其邮箱。
+     * @param excludeAssStreamConferee 是否排除辅流与会方，true排除
+     * @param excludeAssStreamConferee 是否排除己端，true排除
+     * @return 与会方列表。已排序。排序规则：
+     *                          自然排序；
+     *                          优先比对昵称，昵称若不存在则使用其e164，e164不存在则使用其邮箱；
+     *                          若包含己端则己端排最后。
      * */
-    public List<Conferee> getConferees(boolean exceptVirtualAssStreamConferee, boolean exceptSelf){
+    public List<Conferee> getConferees(boolean excludeAssStreamConferee, boolean excludeSelf){
         List<Conferee> confereesList = new ArrayList<>();
+        Conferee self =null;
         for(Conferee conferee : conferees){
-            if (exceptVirtualAssStreamConferee && conferee.isVirtualAssStreamConferee
-                    || exceptSelf && null!=conferee.e164 && conferee.e164.equals(userE164)){
+            if (excludeAssStreamConferee && conferee.isVirtualAssStreamConferee()){
                 continue;
             }
             confereesList.add(conferee);
         }
         Collections.sort(confereesList);
+        if (!excludeSelf){
+            confereesList.add(myself);
+        }
+
         return confereesList;
     }
 
 
-    /**
-     * 获取己端与会方
-     * */
-    public Conferee getMySelf(){
-        return findMyself();
-    }
-
 
     /**
-     * 与会方
+     * 与会方。
+     * 该与会方相较于需求中的与会方是更抽象的概念，包含了普通的与会方以及虚拟的辅流与会方（以及将来可能扩展的其他类型与会方）。
      */
     public static final class Conferee implements VideoSink, Comparable<Conferee>{
-        private String id;
+        private final String id;
         private int mcuId;
         private int terId;
         private String   e164;
         private String   alias;
         private String   email;
 
-        // 是否为辅流与会方（针对辅流我们创建了一个虚拟的“辅流与会方”与之对应）
-        private boolean isVirtualAssStreamConferee;
+        private final ConfereeType type;
 
-        // 是否正在发送辅流
-        // NOTE: 该字段仅真实与会方有效，虚拟的辅流与会方该字段恒为false。
-        private boolean isSendingAssStream;
+        // 音频状态
+        private AudioState audioState = AudioState.Idle;
 
-        // 该与会方的视频流。一个与会方只有一路视频流
-        private VideoStream videoStream;
-        // 该与会方的音频流。一个与会方可以有多路音频流
-        private Set<AudioStream> audioStreams = new HashSet<>();
+        // 视频状态
+        private VideoState videoState = VideoState.Idle;
 
-        // 是否在等待与之相关的码流，与会人员入会的消息上来后
-        // 可能还要等一会才上来与之对应的码流消息，该字段标记是否此种场景。
-        private boolean bWaitingVideoStream;
+        // 偏好的视频质量。
+        // 一路视频可能包含多种分辨率(simulcast)，此种情形下，可以依据偏好的视频质量选择对应的分辨率。
+        private int preferredVideoQuality = RtcConfig.VideoQuality_Low;
 
-        // 该与会方绑定的Display。与会方画面将展示在Display上。
-        // 一个与会方可以绑定多个Display，一个Display只能绑定一个与会方。
+        // 与会方画面显示器。
+        // 一个与会方可以绑定多个Display。一个Display只能绑定到一个与会方
         private Set<Display> displays = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         // 文字图片装饰。如台标，静态图片等。
-        // 与会方的画面内容由码流和装饰组成，展示在Display上。
+        // 与会方的画面内容由码流和装饰组成。
         private Set<TextDecoration> textDecorations = new HashSet<>();
         private Set<PicDecoration> picDecorations = new HashSet<>();
 
-        // 视频码流状态
-        private int state = VideoState_Normal;
-        private int preState = state; // 上一个状态
-        private static final int VideoState_Normal = 0;
-        private static final int VideoState_Disabled = 1; // 视频源被屏蔽，如摄像头关闭
-        private static final int VideoState_WeakSignal = 2; // 视频信号弱（视频通道在但没有视频帧（如对端关闭了摄像头采集，停止了发送）或者视频帧率非常低（如网络状况很差导致的低帧率））
-        private static final int VideoState_NoStream = 3; // 没有视频通道，如音频入会
-        private static final int VideoState_RecvingAss = 4; // 正在接收辅流
+        /**
+         * 语音激励状态下的装饰
+         * */
+        private RectF voiceActivatedDeco = new RectF();
+        private static Paint voiceActivatedDecoPaint = new Paint();
+        static{
+            voiceActivatedDecoPaint.setStyle(Paint.Style.STROKE);
+            voiceActivatedDecoPaint.setStrokeWidth(5);
+            voiceActivatedDecoPaint.setColor(Color.GREEN);
+        }
 
-        // 优选的视频质量
-        private int preferredVideoQuality = RtcConfig.VideoQuality_Low;
+        /**
+         * 摄像头关闭状态下的装饰
+         * */
+        private static StreamStateDecoration cameraDisabledDeco;
+        /**
+         * 视频信号弱状态下的装饰
+         * */
+        private static StreamStateDecoration weakVideoSignalDeco;
+        /**
+         * 纯音频与会方的装饰
+         * */
+        private static StreamStateDecoration audioConfereeDeco;
+        /**
+         * 正在接收辅流的装饰
+         * */
+        private static StreamStateDecoration recvingAssStreamDeco;
 
-        // 语音激励使能
-        private boolean bVoiceActivated;
 
-        Conferee(int mcuId, int terId, String e164, String alias, String email, boolean isVirtualAssStreamConferee) {
+        private Conferee(String e164) {
+            this.e164 = e164;
+            type = ConfereeType.Normal;
+            id = e164+"-"+type;
+        }
+
+        private Conferee(int mcuId, int terId, String e164, String alias, String email) {
+            this(mcuId, terId, e164, alias, email, ConfereeType.Normal);
+        }
+
+        private Conferee(int mcuId, int terId, String e164, String alias, String email, ConfereeType type) {
+            id = mcuId+"-"+terId+"-"+e164+"-"+type;
             this.mcuId = mcuId;
             this.terId = terId;
-            this.id = buildId(mcuId, terId, isVirtualAssStreamConferee);
             this.e164 = e164;
             this.alias = alias;
             this.email = email;
-            this.isVirtualAssStreamConferee = isVirtualAssStreamConferee;
+            this.type = type;
         }
 
-        static String buildId(int mcuId, int terId, boolean bAssStream){
-            String postfix = bAssStream ? "_assStream" : "";
-            return mcuId+"_"+terId+postfix;
+
+        private void fill(int mcuId, int terId, String alias, String email){
+            this.mcuId = mcuId;
+            this.terId = terId;
+            this.alias = alias;
+            this.email = email;
         }
 
-        void addDisplay(Display display) {
-            if (null != display) {
-                // 前置摄像头场景下本地回显需镜像显示
-                display.setMirror(null != e164 && e164.equals(instance.userE164) && instance.config.isFrontCameraPreferred);
 
-                KLog.p("add Display %s to conferee %s", display, id);
-                displays.add(display);
-
-                adjustVideoQuality();
-            }
+        public String getId() {
+            return id;
         }
 
-        boolean removeDisplay(Display display) {
-            KLog.p("delete Display %s from conferee %s", display, id);
-            boolean success = displays.remove(display);
-            if (success) {
-//                onFrameHandler.post(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        display.onFrame(new VideoFrame()); // TODO 构造最后一帧空帧避免画面残留
-//                    }
-//                });
-            }
-            adjustVideoQuality();
-            return success;
+        public String getE164() {
+            return e164;
         }
 
-        void addAudioStream(AudioStream audioStream){
-            if (null != audioStream){
-                audioStreams.add(audioStream);
-            }
+        public String getAlias() {
+            return alias;
         }
 
-        void setVideoStream(VideoStream videoStream){
-            this.videoStream = videoStream;
+        public String getEmail() {
+            return email;
         }
 
-        boolean removeStream(String kdStreamId){
-            boolean success = false;
-            if (null != videoStream && videoStream.streamId.equals(kdStreamId)){
-                videoStream = null;
-                success = true;
+        /**
+         * 是否为己端
+         * */
+        public boolean isMyself(){
+            return instance.userE164.equals(e164);
+        }
+
+        /**
+         * 是否为（虚拟的）辅流与会方
+         * */
+        public boolean isVirtualAssStreamConferee() {
+            return type == ConfereeType.AssStream;
+        }
+
+        /**
+         * 是否正在发送辅流
+         * */
+        public boolean isSendingAssStream() {
+            if (isMyself()){
+                return null != instance.sharedWindow;
             }else {
-                for (AudioStream audioStream : audioStreams) {
-                    if (audioStream.streamId.equals(kdStreamId)) {
-                        success = true;
-                        break;
-                    }
-                }
+                return Stream.of(instance.streams)
+                        .anyMatch(it-> it.getMcuId()==mcuId && it.getTerId()==terId && it.isAss());
             }
-
-            return success;
         }
 
+
+        /**
+         * 设置语音激励deco
+         * 当某个与会方讲话音量最大时，该装饰会展示在该与会方对应的Display。
+         * 该装饰是一个围在画面周围的边框，用户通过该接口设置该边框线条的粗细以及颜色。
+         * @param strokeWidth 线条粗细
+         * @param color 线条颜色
+         * */
+        public static void setVoiceActivatedDecoration(int strokeWidth, int color){
+            voiceActivatedDecoPaint.setStrokeWidth(strokeWidth);
+            voiceActivatedDecoPaint.setColor(color);
+        }
+
+
+        /**
+         * 设置关闭摄像头采集时己端与会方展示的deco
+         * @param winW UCD标注的deco所在窗口的宽
+         * @param winH UCD标注的deco所在窗口的高
+         * @param backgroundColor 背景色
+         * */
+        public static void setCameraDisabledDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+            cameraDisabledDeco = StreamStateDecoration.createFromPicDecoration(
+                    PicDecoration.createCenterPicDeco("cameraDisabledDeco", bitmap, winW, winH),
+                    backgroundColor
+            );
+        }
+
+        /**
+         * 设置音频入会的deco
+         * @param winW UCD标注的deco所在窗口的宽
+         * @param winH UCD标注的deco所在窗口的高
+         * @param backgroundColor 背景色
+         * */
+        public static void setAudioConfereeDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+            audioConfereeDeco = StreamStateDecoration.createFromPicDecoration(
+                    PicDecoration.createCenterPicDeco("audioConfereeDeco", bitmap, winW, winH),
+                    backgroundColor
+            );
+        }
+
+        /**
+         * 设置视频信号丢失的deco
+         * @param winW UCD标注的deco所在窗口的宽
+         * @param winH UCD标注的deco所在窗口的高
+         * @param backgroundColor 背景色
+         * */
+        public static void setWeakVideoSignalDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+            weakVideoSignalDeco = StreamStateDecoration.createFromPicDecoration(
+                    PicDecoration.createCenterPicDeco("weakVideoSignalDeco", bitmap, winW, winH),
+                    backgroundColor
+            );
+        }
+
+        /**
+         * 设置正在接收辅流时展示的deco
+         * @param winW UCD标注的deco所在窗口的宽
+         * @param winH UCD标注的deco所在窗口的高
+         * @param backgroundColor 背景色
+         * */
+        public static void setRecvingAssStreamDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+            recvingAssStreamDeco = StreamStateDecoration.createFromPicDecoration(
+                    PicDecoration.createCenterPicDeco("recvingAssStreamDeco", bitmap, winW, winH),
+                    backgroundColor
+            );
+        }
 
 
         /**
@@ -1763,150 +1762,6 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-        /**
-         * 语音激励状态下的装饰
-         * */
-        private RectF voiceActivatedDeco = new RectF();
-        private static Paint voiceActivatedDecoPaint = new Paint();
-        static{
-            voiceActivatedDecoPaint.setStyle(Paint.Style.STROKE);
-            voiceActivatedDecoPaint.setStrokeWidth(5);
-            voiceActivatedDecoPaint.setColor(Color.GREEN);
-        }
-
-        /**
-         * 摄像头关闭状态下的装饰
-         * */
-        private static StreamStateDecoration cameraDisabledDeco;
-        /**
-         * 视频信号弱状态下的装饰
-         * */
-        private static StreamStateDecoration weakVideoSignalDeco;
-        /**
-         * 纯音频与会方的装饰
-         * */
-        private static StreamStateDecoration audioConfereeDeco;
-        /**
-         * 正在接收辅流的装饰
-         * */
-        private static StreamStateDecoration recvingAssStreamDeco;
-
-
-        /**
-         * 设置语音激励装饰。
-         * 当某个与会方讲话音量最大时，该装饰会展示在该与会方对应的Display。
-         * 该装饰是一个围在画面周围的边框，用户通过该接口设置该边框线条的粗细以及颜色。
-         * @param strokeWidth 线条粗细
-         * @param color 线条颜色
-         * */
-        public static void setVoiceActivatedDecoration(int strokeWidth, int color){
-            voiceActivatedDecoPaint.setStrokeWidth(strokeWidth);
-            voiceActivatedDecoPaint.setColor(color);
-        }
-
-
-        /**
-         * 设置关闭摄像头采集时己端与会方展示的图片。
-         * @param winW UCD标注的deco所在窗口的宽
-         * @param winH UCD标注的deco所在窗口的高
-         * @param backgroundColor 背景色
-         * */
-        public static void setCameraDisabledDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
-            cameraDisabledDeco = StreamStateDecoration.createFromPicDecoration(
-                    PicDecoration.createCenterPicDeco("cameraDisabledDeco", bitmap, winW, winH),
-                    backgroundColor
-            );
-        }
-
-        /**
-         * 设置音频入会方展示的图片。
-         * @param winW UCD标注的deco所在窗口的宽
-         * @param winH UCD标注的deco所在窗口的高
-         * @param backgroundColor 背景色
-         * */
-        public static void setAudioConfereeDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
-            audioConfereeDeco = StreamStateDecoration.createFromPicDecoration(
-                    PicDecoration.createCenterPicDeco("audioConfereeDeco", bitmap, winW, winH),
-                    backgroundColor
-            );
-        }
-
-        /**
-         * 设置视频信号丢失的与会方展示的图片
-         * @param winW UCD标注的deco所在窗口的宽
-         * @param winH UCD标注的deco所在窗口的高
-         * @param backgroundColor 背景色
-         * */
-        public static void setWeakVideoSignalDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
-            weakVideoSignalDeco = StreamStateDecoration.createFromPicDecoration(
-                    PicDecoration.createCenterPicDeco("weakVideoSignalDeco", bitmap, winW, winH),
-                    backgroundColor
-            );
-        }
-
-        /**
-         * 设置辅流与会方正在接收辅流时展示的图片
-         * @param winW UCD标注的deco所在窗口的宽
-         * @param winH UCD标注的deco所在窗口的高
-         * @param backgroundColor 背景色
-         * */
-        public static void setRecvingAssStreamDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
-            recvingAssStreamDeco = StreamStateDecoration.createFromPicDecoration(
-                    PicDecoration.createCenterPicDeco("recvingAssStreamDeco", bitmap, winW, winH),
-                    backgroundColor
-            );
-        }
-
-        /**
-         * 调整视频质量。
-         * 一个与会方可能会发布多路不同质量的视频码流(simulcast)，其他与会方可以根据自己需要选择。
-         * 不同的使用场景要求展示的视频质量可能不一样，比如小窗口展示时我们不用高清用cif就够了，全屏展示时又需要切到高清，
-         * 又比如对于关联到多个Display的与会方而言若其中一个高清的Display关闭了我们可能需要重新计算需要订阅的视频质量，可能要回落到cif
-         * */
-        void adjustVideoQuality(){
-            int preferQuality = RtcConfig.VideoQuality_Low;
-            for (Display display : displays){
-                KLog.p("display %s preferredVideoQuality=%s", display.hashCode(), display.preferredVideoQuality);
-                if (display.preferredVideoQuality > preferQuality){
-                    preferQuality = display.preferredVideoQuality;
-                }
-            }
-            KLog.p("old preferredVideoQuality=%s, new preferredVideoQuality=%s", preferredVideoQuality, preferQuality);
-            if (preferQuality != preferredVideoQuality) {
-                preferredVideoQuality = preferQuality;
-                // 重新订阅
-                instance.subscribeStreams();
-            }
-        }
-
-        /**
-         * 设置码流状态
-         * */
-        void setState(int state){
-            if (this.state != state) {
-                preState = this.state;
-                this.state = state;
-                refreshDisplays();
-            }
-        }
-
-        /**
-         * 设置语音激励状态
-         * */
-        void setVoiceActivated(boolean bVoiceActivated){
-            if (this.bVoiceActivated != bVoiceActivated){
-                this.bVoiceActivated = bVoiceActivated;
-                refreshDisplays();
-            }
-        }
-
-        private void refreshDisplays(){
-            for (Display display : displays){
-                display.refresh();
-            }
-        }
-
-
         private long timestamp = System.currentTimeMillis();
         @Override
         public void onFrame(VideoFrame videoFrame) {
@@ -1914,15 +1769,15 @@ public class WebRtcManager extends Caster<Msg>{
             long ts = timestamp;
             if (curts - ts > 5000){
                 timestamp = curts;
-                KLog.p("%s onFrame ", id);
+                KLog.p(KLog.DEBUG, "%s onFrame ", getId());
             }
 
             for (Display display : displays){
                 if (curts - ts > 5000) {
                     if (display.enabled) {
-                        KLog.p("frame of conferee %s(%s) rendered onto display %s ", id, e164, display.hashCode());
+                        KLog.p(KLog.DEBUG, "frame of conferee %s rendered onto display %s ", getId(), display.hashCode());
                     }else{
-                        KLog.p("frame of conferee %s(%s) dropped off display %s because it is disabled ", id, e164, display.hashCode());
+                        KLog.p(KLog.DEBUG, "frame of conferee %s dropped off display %s because it is disabled ", getId(), display.hashCode());
                     }
                 }
                 if (!display.enabled) {
@@ -1932,38 +1787,6 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
 
-
-        public String getId() {
-            return id;
-        }
-
-        public int getMcuId() {
-            return mcuId;
-        }
-
-        public int getTerId() {
-            return terId;
-        }
-
-        public String getE164() {
-            return e164;
-        }
-
-        public String getAlias() {
-            return alias;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public boolean isVirtualAssStreamConferee() {
-            return isVirtualAssStreamConferee;
-        }
-
-        public boolean isSendingAssStream() {
-            return isSendingAssStream;
-        }
 
         @Override
         public int compareTo(Conferee o) {
@@ -1975,24 +1798,235 @@ public class WebRtcManager extends Caster<Msg>{
             return self.compareTo(other);
         }
 
+
+        private void addDisplay(@NonNull Display display) {
+            KLog.p("add Display %s to conferee %s", display, getId());
+
+            boolean firstAdded = displays.isEmpty();
+
+            displays.add(display);
+
+            boolean qualityChanged = adjustVideoQuality();
+
+            KLog.p("firstAdded? %s, qualityChanged? %s", firstAdded, qualityChanged);
+
+            if (firstAdded){
+                // Conferee在添加Display之前处于Idle状态，尚未绑定视频流，此时有Display了我们尝试绑定视频流。
+                setVideoState(VideoState.ToBind);
+            }
+
+            if (firstAdded || qualityChanged){
+                instance.bindStream();
+            }
+        }
+
+        private boolean removeDisplay(@NonNull Display display) {
+            KLog.p("try to remove Display %s from conferee %s", display, getId());
+            boolean success = displays.remove(display);
+            if (success) {
+                KLog.p("display %s removed from conferee %s", display, getId());
+//                onFrameHandler.post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        display.onFrame(new VideoFrame()); // TODO 构造最后一帧空帧避免画面残留
+//                    }
+//                });
+                boolean lastRemoved = displays.isEmpty();
+                boolean qualityChanged = adjustVideoQuality();
+                KLog.p("lastRemoved? %s, qualityChanged? %s", lastRemoved, qualityChanged);
+
+                if (lastRemoved){
+                    setVideoState(VideoState.Idle);
+                }
+                if (lastRemoved || qualityChanged){
+                    instance.bindStream();
+                }
+            }
+            return success;
+        }
+
+
+        private void setAudioState(AudioState audioState) {
+            if (audioState != this.audioState) {
+                KLog.sp(String.format("change AUDIO state(from %s to %s) for conferee %s", this.audioState, audioState, getId()));
+                this.audioState = audioState;
+                refreshDisplays();
+            }
+        }
+
+        private AudioState getAudioState() {
+            return audioState;
+        }
+
+        private void setVideoState(VideoState videoState) {
+            if (videoState != this.videoState) {
+                KLog.sp(String.format("change VIDEO state(from %s to %s) for conferee %s", this.videoState, videoState, getId()));
+                this.videoState = videoState;
+                refreshDisplays();
+            }
+        }
+
+        private VideoState getVideoState() {
+            return videoState;
+        }
+
+        private RtcStream getVideoStream(){
+            return instance.findStream(mcuId, terId, false, type==ConfereeType.AssStream);
+        }
+
+        private Set<RtcStream> getAudioStreams(){
+            return Stream.of(instance.streams)
+                    .filter(it-> it.isAudio() && it.getMcuId()==mcuId && it.getTerId()==terId)
+                    .collect(Collectors.toSet());
+        }
+
+
+        /**
+         * 调整视频质量。
+         * 一个与会方可能会发布多路不同质量的视频码流(simulcast)，其他与会方可以根据自己需要选择订阅。
+         * 不同的使用场景要求展示的视频质量可能不一样，比如小窗口展示时我们用cif就够了，全屏展示时又需要切到高清，
+         * 又比如对于关联到多个Display的与会方而言若其中一个高清的Display关闭了我们可能需要重新计算需要订阅的视频质量，可能要回落到cif
+         * @return 视频质量是否变化了。true表示变化了。
+         * */
+        private boolean adjustVideoQuality(){
+            if (displays.isEmpty()){
+                return false;
+            }
+            int preferQuality = RtcConfig.VideoQuality_Low;
+            for (Display display : displays){
+                KLog.p("display %s preferredVideoQuality=%s", display.hashCode(), display.preferredVideoQuality);
+                if (display.preferredVideoQuality > preferQuality){
+                    preferQuality = display.preferredVideoQuality;
+                }
+            }
+            KLog.p("old preferredVideoQuality=%s, new preferredVideoQuality=%s", preferredVideoQuality, preferQuality);
+            if (preferQuality != preferredVideoQuality) {
+                preferredVideoQuality = preferQuality;
+                return true;
+            }
+
+            return false;
+        }
+
+        private void refreshDisplays(){
+            for (Display display : displays){
+                display.refresh();
+            }
+        }
+
+        // 与会方类型
+        private enum ConfereeType{
+            Normal,
+            AssStream, // 辅流与会方
+        }
+
+        // 视频状态
+        private enum VideoState{
+            Idle,
+            ToBind,     // 等待订阅该与会方对应的视频码流。
+            Binding,    // 订阅中
+            Lost,       // 订阅失败。
+            Buffering,  // 正在缓冲中。用于在展示与会方画面前展示一些过渡效果（如辅流与会方展示辅流缓冲图标）
+            Normal,     // 正常画面
+            Weak,       // 视频信号弱（视频已经订阅了，但没有视频帧（如对端关闭了摄像头采集，停止了发送）或者视频帧率非常低（如网络状况很差导致的低帧率））
+        }
+
+        // 音频状态
+        private enum AudioState {
+            Idle,
+            ToBind,
+            Binding,
+            Lost,
+            Normal,
+            Activated, // 语音激励
+        }
+
     }
 
 
+    /**
+     * 码流。
+     * */
+    private class RtcStream{
+        private TRtcStreamInfo streamInfo;
+
+        private RtcStream(@NonNull TRtcStreamInfo streamInfo){
+            this.streamInfo = streamInfo;
+        }
+
+
+        private String getStreamId() {
+            return streamInfo.achStreamId;
+        }
+
+        private int getMcuId() {
+            return streamInfo.tMtId.dwMcuId;
+        }
+
+        private int getTerId() {
+            return streamInfo.tMtId.dwTerId;
+        }
+
+        private boolean isAudio() {
+            return streamInfo.bAudio;
+        }
+
+        private boolean isAss() {
+            return streamInfo.bAss;
+        }
+
+        private EmMtResolution getPreferredResolution(){
+            List<EmMtResolution> resolutions = streamInfo.aemSimcastRes;
+            KLog.p("resolutions=%s", resolutions);
+            if (resolutions.isEmpty()){
+                // 若发布方不是simulcast发布的则resolution会是空
+                return EmMtResolution.emMt480x270_Api;
+            }
+            Conferee owner = getOwner();
+            if (null == owner){
+                return EmMtResolution.emMt480x270_Api;
+            }
+
+            KLog.p("config.PreferredVideoQuality=%s, conferee %s preferredVideoQuality=%s", config.preferredVideoQuality, owner.getId(), owner.preferredVideoQuality);
+            int quality = Math.min(config.preferredVideoQuality, owner.preferredVideoQuality);
+            // NOTE: 分辨率是按从小到大的顺序排列的，这点平台保证。
+            if (RtcConfig.VideoQuality_High == quality){
+                return resolutions.get(resolutions.size()-1);
+            }else if (RtcConfig.VideoQuality_Medium == quality ){
+                if (resolutions.size()>1){
+                    return resolutions.get(1);
+                }else{
+                    return resolutions.get(0);
+                }
+            }else if (RtcConfig.VideoQuality_Low == quality ){
+                return resolutions.get(0);
+            }
+
+            return resolutions.get(0);
+        }
+
+
+        private Conferee getOwner(){
+            return findConferee(streamInfo.tMtId.dwMcuId, streamInfo.tMtId.dwTerId,
+                    streamInfo.bAss ? Conferee.ConfereeType.AssStream : Conferee.ConfereeType.Normal);
+        }
+
+    }
+
 
     /**
-     * 用于展示与会方的控件。
+     * 显示器。
+     * 一个显示器只能绑定到一个与会方，一个与会方可以绑定到多个显示器。
      * */
     public final static class Display extends SurfaceViewRenderer{
         /**
          * 是否使能。
-         * 若使能则正常显示内容，否则内容不显示。
+         * 使能则显示内容，否则不显示。
          * */
         private boolean enabled = true;
 
         /**
-         * Display对应的与会方。
-         * 一个Display只会绑定到一个与会方；
-         * 多个Display可以绑定到同一与会方；
+         * 绑定的与会方。
          * */
         private Conferee conferee;
 
@@ -2006,8 +2040,6 @@ public class WebRtcManager extends Caster<Msg>{
          * 一个与会方“可能”有高中低三种不同质量的视频流，该字段用于指定该Display“倾向于”展示哪种质量的视频流。
          * */
         private int preferredVideoQuality = RtcConfig.VideoQuality_Low;
-
-        private Handler handler = getHandler();
 
 
         private Display(Context context) {
@@ -2041,7 +2073,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         /**
-         * 设置Display绑定的与会方。
+         * 绑定与会方。
          * 一个Display只会绑定到一个与会方；
          * 多个Display可以绑定到同一与会方；
          * 若一个Display已经绑定到某个与会方，则该绑定会先被解除，然后建立新的绑定关系；
@@ -2052,11 +2084,14 @@ public class WebRtcManager extends Caster<Msg>{
          * @param conferee 与会方。若为null或一个不存在于会议中的Conferee，界面效果等同没绑定。
          * */
         public void setConferee(@Nullable Conferee conferee){
-            KLog.p("set content %s for display %s", null != conferee ? conferee.id : null, this.hashCode());
+            KLog.p("set content %s for display %s", null != conferee ? conferee.getId() : null, this.hashCode());
             if (null != this.conferee){
                 this.conferee.removeDisplay(this);
             }
             if (null != conferee) {
+                // 前置摄像头，己端回显镜像
+                setMirror(conferee.isMyself() && instance.config.isFrontCameraPreferred);
+
                 conferee.addDisplay(this);
             }
             this.conferee = conferee;
@@ -2064,48 +2099,8 @@ public class WebRtcManager extends Caster<Msg>{
             refresh();
         }
 
-        /**
-         * 获取Display内容
-         * @return  返回setContent设置的Conferee
-         * */
         public Conferee getConferee(){
             return conferee;
-        }
-
-
-        /**
-         * 设置视频质量偏好。
-         * @param quality 视频质量{@link RtcConfig#VideoQuality_High}{@link RtcConfig#VideoQuality_Medium}{@link RtcConfig#VideoQuality_Low}
-         * 越高展示的该与会方的图像质量越高。
-         * */
-        public void setPreferredVideoQuality(int quality){
-            KLog.p("display %s change preferredVideoQuality from %s to %s", this.hashCode(), preferredVideoQuality, quality);
-            if (preferredVideoQuality != quality){
-                preferredVideoQuality = quality;
-                if (null != conferee){
-                    conferee.adjustVideoQuality();
-                }
-            }
-        }
-
-
-
-        /**
-         * 设置是否展示某个deco
-         * 默认是展示。
-         * @param decoId {@link Decoration#id}
-         * @param enabled true，展示；false，屏蔽
-         * */
-        public void setDecoEnable(String decoId, boolean enabled){
-            boolean bSuccess;
-            if (enabled){
-                bSuccess = disabledDecos.remove(decoId);
-            }else{
-                bSuccess = disabledDecos.add(decoId);
-            }
-            if (bSuccess) {
-                refresh();
-            }
         }
 
 
@@ -2174,8 +2169,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         /**
-         * 清空Display。
-         * Conferee以及所有状态均被清空。
+         * 清空Display內容。（Display仍可複用）
          * */
         public void clear(){
             setConferee(null);
@@ -2193,6 +2187,44 @@ public class WebRtcManager extends Caster<Msg>{
                 conferee = null;
             }
             super.release();
+        }
+
+
+        /**
+         * 设置视频质量偏好。
+         * @param quality 视频质量{@link RtcConfig#VideoQuality_High}{@link RtcConfig#VideoQuality_Medium}{@link RtcConfig#VideoQuality_Low}
+         * 与会方“可能”发布了多种分辨率的视频流(simulcast)，此种情形下，可以依据使用场景选择对应的分辨率，如大画面以高分辨率展示，小画面以低分辨率展示。
+         * */
+        public void setPreferredVideoQuality(int quality){
+            KLog.p("display %s change preferredVideoQuality from %s to %s", this.hashCode(), preferredVideoQuality, quality);
+            if (preferredVideoQuality != quality){
+                preferredVideoQuality = quality;
+                if (null != conferee){
+                    boolean qualityChanged = conferee.adjustVideoQuality();
+                    if (qualityChanged){
+                        // 分辨率改变需重新订阅
+                        instance.bindStream();
+                    }
+                }
+            }
+        }
+
+        /**
+         * 设置是否展示某个deco
+         * 默认是展示。
+         * @param decoId {@link Decoration#id}
+         * @param enabled true，展示；false，屏蔽
+         * */
+        public void setDecoEnable(String decoId, boolean enabled){
+            boolean bSuccess;
+            if (enabled){
+                bSuccess = disabledDecos.remove(decoId);
+            }else{
+                bSuccess = disabledDecos.add(decoId);
+            }
+            if (bSuccess) {
+                refresh();
+            }
         }
 
 
@@ -2221,15 +2253,19 @@ public class WebRtcManager extends Caster<Msg>{
 
 //            KLog.p("onDraw, displayWidth=%s, displayHeight=%s", displayWidth, displayHeight);
 
+            boolean isLocalVideoEnabled = instance.config.isLocalVideoEnabled;
+            Conferee.VideoState videoState = conferee.getVideoState();
+            Conferee.AudioState audioState = conferee.getAudioState();
+
             // 绘制码流状态deco
             StreamStateDecoration stateDeco = null;
-            if (Conferee.VideoState_Disabled == conferee.state){
+            if (conferee.isMyself() && !isLocalVideoEnabled){
                 stateDeco = Conferee.cameraDisabledDeco;
-            }else if (Conferee.VideoState_NoStream == conferee.state){
+            }else if (Conferee.VideoState.Lost == videoState && Conferee.AudioState.Lost!=audioState){
                 stateDeco = Conferee.audioConfereeDeco;
-            }else if (Conferee.VideoState_WeakSignal == conferee.state){
+            }else if (Conferee.VideoState.Weak == videoState){
                 stateDeco = Conferee.weakVideoSignalDeco;
-            }else if (Conferee.VideoState_RecvingAss == conferee.state){
+            }else if (Conferee.VideoState.Buffering == videoState && conferee.isVirtualAssStreamConferee()){
                 stateDeco = Conferee.recvingAssStreamDeco;
             }
             if (null != stateDeco && stateDeco.enabled() && !disabledDecos.contains(stateDeco.id)) {
@@ -2262,7 +2298,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             // 绘制语音激励deco
-            if (conferee.bVoiceActivated){
+            if (Conferee.AudioState.Activated == audioState){
                 conferee.voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
                 canvas.drawRect(conferee.voiceActivatedDeco, Conferee.voiceActivatedDecoPaint);
             }
@@ -2273,14 +2309,114 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    private Conferee tryCreateAssStreamConferee(){
+        if (null == findAssConferee()){
+            Conferee sender = findAssStreamSender();
+            if (null != sender){
+                return new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, Conferee.ConfereeType.AssStream);
+            }
+        }
+        return null;
+    }
+
+
+    private void bindStream(){
+        List<TRtcPlayItem> playItems = Stream.of(streams)
+                .filter(it -> {
+                    if (it.isAudio()){
+                        // 音频业务组件已处理，无需订阅
+                        return false;
+                    }
+                    Conferee owner = it.getOwner();
+                    if (null == owner || owner.getVideoState() == Conferee.VideoState.Idle){
+                        return false;
+                    }
+                    if (owner.getVideoState()== Conferee.VideoState.ToBind
+                            || owner.getVideoState()== Conferee.VideoState.Lost) {
+                        owner.setVideoState(Conferee.VideoState.Binding);
+                        handler.postDelayed(() -> {
+                            if (owner.getVideoState() == Conferee.VideoState.Binding){
+                                owner.setVideoState(Conferee.VideoState.Lost);
+                            }
+                        }, 2000);
+                    }
+                    return true;
+                })
+                .map(stream -> new TRtcPlayItem(stream.getStreamId(), stream.isAss(), stream.getPreferredResolution()))
+                .collect(Collectors.toList());
+
+        if (!playItems.isEmpty()) {
+            // 因为是全量，所以可能既包含未绑定的也包含以前绑定过的。
+            // 对于绑定过的stream（即已经通过SelectStream设置过的），若分辨率参数更改了则绑定至新的分辨率，对于未绑定过的会触发PCObserver#onTrack
+            set(Msg.SelectStream, new TRtcPlayParam(playItems));
+        }
+    }
+
+
+    // 直接查找与会方。
+    // 所有其他查找与会方的方法都是先查找RtcStream，然后通过RtcStream调用本方法（保证Conferee和RtcStream之间的数据一致性）。
+    // 这一系列方法的设计原则是时间换空间（低效率换简化的逻辑）。
+    private Conferee findConferee(int mcuId, int terId, Conferee.ConfereeType type){
+        Set<Conferee> confereeSet = new LinkedHashSet<>(conferees);
+        if (null != myself){
+            confereeSet.add(myself);
+        }
+        return Stream.of(confereeSet)
+                .filter(it-> it.mcuId==mcuId && it.terId==terId && it.type==type)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Conferee findConfereeByStreamId(String streamId){
+        RtcStream stream = findStream(streamId);
+        if (null != stream){
+            return stream.getOwner();
+        }
+        return null;
+    }
+
+    private Conferee findAssConferee(){
+        RtcStream assStream = findAssStream();
+        if (null == assStream){
+            return null;
+        }
+        return assStream.getOwner();
+    }
+
+    private Conferee findAssStreamSender(){
+        if (null != sharedWindow){
+            return myself;
+        }
+        RtcStream assStream = findAssStream();
+        if (null == assStream){
+            return null;
+        }
+        return findConferee(assStream.getMcuId(), assStream.getTerId(), Conferee.ConfereeType.Normal);
+    }
+
+    private RtcStream findStream(String streamId){
+        return Stream.of(streams).filter(it-> it.getStreamId().equals(streamId)).findFirst().orElse(null);
+    }
+
+    private RtcStream findStream(int mcuId, int terId, boolean isAudio, boolean isAss){
+        return Stream.of(streams)
+                .filter(it-> it.getMcuId()==mcuId && it.getTerId()==terId && it.isAudio()==isAudio && it.isAss()==isAss)
+                .findFirst().orElse(null);
+    }
+
+    private RtcStream findAssStream(){
+        return Stream.of(streams).filter(RtcStream::isAss).findFirst().orElse(null);
+    }
+
+
 
     /**
      * 创建Display。
      * */
     public Display createDisplay(){
         Display display =  new Display(context);
-        displaySet.add(display);
-        KLog.p("create display %s", display.hashCode());
+        displays.add(display);
+        KLog.p("display %s created", display.hashCode());
         return display;
     }
 
@@ -2288,20 +2424,12 @@ public class WebRtcManager extends Caster<Msg>{
      * 销毁display
      * */
     public void releaseDisplay(Display display){
-        KLog.p("release display %s", display.hashCode());
-        if (displaySet.remove(display)){
+        if (displays.remove(display)){
             display.destroy();
+            KLog.p("display %s released", display.hashCode());
         }else{
-            KLog.p(KLog.ERROR, "wired, display %s is not created by me!", display.hashCode());
+            KLog.p(KLog.ERROR, "wired! display %s is not created by me?", display.hashCode());
         }
-    }
-
-    /**
-     * 获取Display集合
-     * NOTE：该集合不可修改
-     * */
-    public Set<Display> getDisplays(){
-        return Collections.unmodifiableSet(displaySet);
     }
 
 
@@ -2540,107 +2668,6 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
-
-    @SuppressWarnings("WeakerAccess")
-    public static class Stream {
-        public String streamId; // 平台的StreamId，概念上对应的是WebRTC中的TrackId
-
-        public Stream(String streamId) {
-            this.streamId = streamId;
-        }
-    }
-
-    public static class AudioStream extends Stream{
-        public AudioStream(String streamId) {
-            super(streamId);
-        }
-    }
-
-    public static class VideoStream extends Stream {
-        public boolean bAss;
-        public List<EmMtResolution> supportedResolutionList;       // 流支持的分辨率。仅视频有效
-
-        public VideoStream(String streamId, boolean bAss, List<EmMtResolution> supportedResolutionList) {
-            super(streamId);
-            this.bAss = bAss;
-            this.supportedResolutionList = supportedResolutionList;
-        }
-    }
-
-    private VideoStream findVideoStream(String kdStreamId){
-        for (Conferee conferee1 : conferees){
-            if (null != conferee1.videoStream && conferee1.videoStream.streamId.equals(kdStreamId)){
-                return conferee1.videoStream;
-            }
-        }
-        return null;
-    }
-
-    private AudioStream findAudioStream(String kdStreamId){
-        for (Conferee conferee1 : conferees){
-            for (AudioStream audioStream : conferee1.audioStreams){
-                if (audioStream.streamId.equals(kdStreamId)){
-                    return audioStream;
-                }
-            }
-        }
-        return null;
-    }
-
-    private Set<VideoStream> getAllVideoStreamsExceptMine(){
-        Set<VideoStream> videoStreams = new HashSet<>();
-        for (Conferee conferee : conferees){
-            if (null != conferee.e164 && conferee.e164.equals(userE164)){
-                continue;
-            }
-            if (null != conferee.videoStream) videoStreams.add(conferee.videoStream);
-        }
-        return videoStreams;
-    }
-
-    private Conferee findConfereeByConfereeId(String confereeId){
-        for (Conferee conferee : conferees){
-            if (conferee.id.equals(confereeId)){
-                return conferee;
-            }
-        }
-        return null;
-    }
-
-    private Conferee findConfereeByStreamId(String kdStreamId){
-        for (Conferee conferee1 : conferees){
-            if (null != conferee1.videoStream && conferee1.videoStream.streamId.equals(kdStreamId)){
-                return conferee1;
-            }
-            for (AudioStream audioStream : conferee1.audioStreams){
-                if (audioStream.streamId.equals(kdStreamId)){
-                    return conferee1;
-                }
-            }
-        }
-        return null;
-    }
-
-
-    private Conferee findMyself(){
-        for (Conferee conferee : conferees){
-            if (null != conferee.e164 && conferee.e164.equals(userE164)){
-                return conferee;
-            }
-        }
-        return null;
-    }
-
-    private Conferee findAssStreamConferee(){
-        for (Conferee conferee : conferees){
-            if (conferee.isVirtualAssStreamConferee){
-                return conferee;
-            }
-        }
-        return null;
-    }
-
-
     private class RtcConnectorEventListener implements RtcConnector.SignalingEvents{
 
         @Override
@@ -2763,7 +2790,7 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p(KLog.ERROR, "invalid state, try again later...");
                 // 多个终端几乎同时发双流时会出现发布双流流程尚未完成即收到取消发布双流的情况（因为接收到双流而取消正在发送的双流）
                 // 这种情况下sdp process会失败，进而导致业务那边状态紊乱，下次发双流不成功。所以此处先等一会等前面的发布流程走完，再继续往下走取消发布。
-                sessionHandler.postDelayed(() -> doUnpublish(connType, mediaType), 1000);
+                handler.postDelayed(() -> doUnpublish(connType, mediaType), 1000);
                 return;
             }
             doUnpublish(connType, mediaType);
@@ -2813,7 +2840,6 @@ public class WebRtcManager extends Caster<Msg>{
 
 
 
-
     private class SDPObserver implements SdpObserver {
         private ConnType connType;
 
@@ -2823,14 +2849,14 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onCreateSuccess(final SessionDescription origSdp) {
-            sessionHandler.post(() -> {
+            handler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 // 由于是异步，此时可能会议已经结束（如对端挂会），PeerConnectionWrapper已经销毁，所以我们此处需做非空判断
                 if (null == pcWrapper || !pcWrapper.checkSdpState(SdpState.CREATING)) return;
 
                 if (pcWrapper.isSdpType(SdpType.FINGERPRINT_OFFER)){
                     // 之前创建的音频流仅用于和平台交互FingerPrint没实际用处，此处交互已完成，销毁
-                    pcWrapper.destoryAudioTrack();
+                    pcWrapper.destroyAudioTrack();
 
                     rtcConnector.sendFingerPrint(pcWrapper.connType.ordinal(), SdpHelper.getFingerPrint(origSdp.description));
                     pcWrapper.setSdpState(SdpState.IDLE);
@@ -2846,7 +2872,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onSetSuccess() {
-            sessionHandler.post(() -> {
+            handler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper || !pcWrapper.checkSdpState(SdpState.SETTING_LOCAL, SdpState.SETTING_REMOTE)) return;
 
@@ -2885,7 +2911,7 @@ public class WebRtcManager extends Caster<Msg>{
                                 }
                                 rtcMediaList.add(new RtcConnector.TRtcMedia(streamId, mid)); // 仅answer需要填streamId，answer不需要填encodings
                             }
-                            sessionHandler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType.ordinal(), pc.getLocalDescription().description, rtcMediaList));
+                            handler.post(() -> rtcConnector.sendAnswerSdp(pcWrapper.connType.ordinal(), pc.getLocalDescription().description, rtcMediaList));
                         });
                         pcWrapper.drainCandidates();
                         pcWrapper.setSdpState(SdpState.SET_LOCAL_SUCCESS);
@@ -2926,7 +2952,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onCreateFailure(final String error) {
-            sessionHandler.post(() -> {
+            handler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper) return;
                 KLog.p(KLog.ERROR, "create sdp failed, error info:%s. %s", error, pcWrapper);
@@ -2939,7 +2965,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onSetFailure(final String error) {
-            sessionHandler.post(() -> {
+            handler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper) return;
                 KLog.p(KLog.ERROR, "set sdp failed, error info:%s. %s", error, pcWrapper);
@@ -2963,7 +2989,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onIceCandidate(final IceCandidate candidate) {
-            sessionHandler.post(() -> {
+            handler.post(() -> {
                 KLog.p("onIceCandidate, sending candidate...");
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper) return;
@@ -3044,7 +3070,7 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onTrack(RtpTransceiver transceiver) {
             MediaStreamTrack track = transceiver.getReceiver().track();
-            sessionHandler.post(() -> {
+            handler.post(() -> {
                 KLog.p("connType %s received remote track %s", connType, track != null ? track.id() : null);
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper){
@@ -3061,7 +3087,6 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
     }
-
 
 
     /**
@@ -3210,12 +3235,16 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         /**
-         * 创建视频轨道。
+         * 创建本地视频轨道。
          * */
         void createVideoTrack(@NonNull VideoCapturer videoCapturer){
             executor.execute(() -> {
                 if (null == factory){
                     KLog.p(KLog.ERROR, "factory destroyed");
+                    return;
+                }
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
                     return;
                 }
                 this.videoCapturer = videoCapturer;
@@ -3278,37 +3307,17 @@ public class WebRtcManager extends Caster<Msg>{
 
                 String kdStreamId = localVideoTrackId;
                 KLog.p("create local video track %s/%s", kdStreamId, localVideoTrackId);
-                sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, localVideoTrackId));
-
-                if (localVideoTrackId.equals(LOCAL_VIDEO_TRACK_ID)) {
-                    sessionHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            // 对于窗口共享、屏幕共享不需要回显。
-                            // 所以此处我们仅针对摄像头采集的情形处理。
-                            Conferee myself = findMyself();
-                            if (null == myself) {
-                                KLog.p(KLog.ERROR, "what's wrong? myself not join yet !?");
-                                sessionHandler.postDelayed(this, 2000);
-                                return;
-                            }
-                            executor.execute(() -> {
-                                if (null == localVideoTrack){
-                                    KLog.p(KLog.ERROR, "what's wrong? pc destroyed?");
-                                    return;
-                                }
-                                localVideoTrack.addSink(myself);  // 本地回显
-                            });
-                            // 检查摄像头是否屏蔽，若屏蔽则展示静态图片
-                            myself.setState(config.isLocalVideoEnabled ? Conferee.VideoState_Normal : Conferee.VideoState_Disabled);
-                            // 本地流不会通过StreamJoined消息报上来，所以我们需要在此处创建并设置给己端与会方，而非依赖StreamJoined消息的处理逻辑
-                            myself.videoStream = new VideoStream(kdStreamId, false,
-                                    Collections.singletonList(EmMtResolution.emMtHD1080p1920x1080_Api) // XXX 暂时写死了
-                            );
-                        }
-                    });
-                }
-
+                handler.post(() -> {
+                    kdStreamId2RtcTrackIdMap.put(kdStreamId, localVideoTrackId);
+                    if (localVideoTrackId.equals(LOCAL_VIDEO_TRACK_ID)) {
+                        // 对于己端发送窗口共享、发送屏幕共享不需要回显，也没有对应的stream以及Conferee
+                        myself.setVideoState(Conferee.VideoState.Normal);
+                        executor.execute(() -> {
+                            KLog.p("bind local video track %s to conferee %s", localVideoTrack.id(), myself.getId());
+                            localVideoTrack.addSink(myself);  // 本地回显
+                        });
+                    }
+                });
 
             });
         }
@@ -3321,63 +3330,18 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 pc.removeTrack(videoSender);
                 String trackId = localVideoTrack.id();
-                sessionHandler.post(() -> {
+                handler.post(() -> {
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
-                    // 删除流
-                    // 己端取消发布流对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流，而非依赖StreamLeft消息的处理逻辑
-                    Conferee myself = findMyself();
-                    if (null != myself) {
-                        myself.removeStream(kdStreamId);
-                        KLog.p("localVideoTrack %s removed ", kdStreamId);
-                    }else{
-                        KLog.p(KLog.ERROR, "something wrong? stream %s is not mine", kdStreamId);
-                    }
-                });
-
-            });
-        }
-
-
-        void createRemoteVideoTrack(String mid, VideoTrack track){
-            executor.execute(() -> {
-                String kdStreamId = mid2KdStreamIdMap.get(mid);
-                if (null == kdStreamId) {
-                    KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
-                    return;
-                }
-                remoteVideoTracks.put(kdStreamId, track);
-                track.setEnabled(config.isRemoteVideoEnabled);
-
-                sessionHandler.post(() -> {
-                    kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
-                    Conferee conferee = findConfereeByStreamId(kdStreamId);
-                    KLog.p("create remote video track(trackId=%s, kdStreamId=%s, mid=%s) for conferee %s", track.id(), kdStreamId, mid, conferee != null ? conferee.e164 : null);
-                    if (null == conferee) {
-                        KLog.p(KLog.ERROR, "something wrong? stream %s not belong to any conferee", kdStreamId);
-                        return;
-                    }
-                    executor.execute(() -> track.addSink(conferee));
-                });
-            });
-        }
-
-        void removeRemoteVideoTrack(String kdStreamId){
-            executor.execute(() -> {
-                for (String streamId : remoteVideoTracks.keySet()) {
-                    if (streamId.equals(kdStreamId)) {
-                        VideoTrack track = remoteVideoTracks.remove(kdStreamId);
-//                        track.dispose();
-                        KLog.p("stream %s removed", kdStreamId);
-
-                        sessionHandler.post(() -> {
-                            kdStreamId2RtcTrackIdMap.remove(kdStreamId);
+                    if(trackId.equals(LOCAL_VIDEO_TRACK_ID)){ // 仅处理主流的情形，参见createVideoTrack
+                        myself.setVideoState(Conferee.VideoState.Idle);
+                        executor.execute(() -> {
+                                KLog.p("unbind track %s from conferee %s", localVideoTrack.id(), myself.getId());
+                                localVideoTrack.removeSink(myself);
                         });
-                        return;
                     }
-                }
+                });
 
-                KLog.p(KLog.ERROR, "failed to removeRemoteVideoTrack, no such track %s", kdStreamId);
             });
         }
 
@@ -3401,19 +3365,9 @@ public class WebRtcManager extends Caster<Msg>{
 
                 String kdStreamId = localAudioTrackId;
                 KLog.p("create local audio track %s/%s", kdStreamId, localAudioTrackId);
-                sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, localAudioTrackId));
-                sessionHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Conferee myself = findMyself();
-                        if (null != myself){
-                            // 本地流不会通过StreamJoined消息报上来，所以我们需要在此处创建并设置给己端与会方，而非依赖StreamJoined消息的处理逻辑
-                            myself.addAudioStream(new AudioStream(kdStreamId));
-                        }else{
-                            KLog.p(KLog.ERROR, "what's wrong? myself not join yet !?");
-                            sessionHandler.postDelayed(this, 2000);
-                        }
-                    }
+                handler.post(() -> {
+                    kdStreamId2RtcTrackIdMap.put(kdStreamId, localAudioTrackId);
+                    myself.setAudioState(Conferee.AudioState.Normal);
                 });
             });
         }
@@ -3425,56 +3379,154 @@ public class WebRtcManager extends Caster<Msg>{
                     return;
                 }
                 pc.removeTrack(audioSender);
+                String trackId = localAudioTrack.id();
 
-                sessionHandler.post(() -> {
-                    String trackId = localAudioTrack.id();
+                KLog.p("localAudioTrack %s removed ", trackId);
+
+                handler.post(() -> {
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
-
-                    Conferee myself = findMyself();
-                    if (null != myself) {
-                        // 删除流
-                        // 己端取消发布流对端会收到StreamLeft但己端收不到，所以我们需要在此处删除流，而非依赖StreamLeft消息的处理逻辑
-                        myself.removeStream(kdStreamId);
-                        KLog.p("localVideoTrack %s removed ", kdStreamId);
-                    }else{
-                        KLog.p(KLog.ERROR, "something wrong? stream %s is not mine", kdStreamId);
-                    }
+                    myself.setAudioState(Conferee.AudioState.Idle);
                 });
 
             });
         }
 
+
+        void createRemoteVideoTrack(String mid, VideoTrack track){
+            executor.execute(() -> {
+                String kdStreamId = mid2KdStreamIdMap.get(mid);
+                if (null == kdStreamId) {
+                    throw new RuntimeException("kdStreamId related to mid "+mid+" doesn't exist? i should have got it from onSetOfferCmd()");
+                }
+                remoteVideoTracks.put(kdStreamId, track);
+                track.setEnabled(config.isRemoteVideoEnabled);
+                KLog.p("create remote video track %s/%s", kdStreamId, track.id());
+
+                handler.post(new Runnable() {
+                    int retriedCount;
+                    @Override
+                    public void run() {
+                        if (retriedCount >= 2){
+                            return;
+                        }
+                        kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
+                        RtcStream remoteStream = findStream(kdStreamId);
+                        if (null == remoteStream) {
+                            KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
+                                    "please check StreamJoined/StreamList and onSetOfferCmd to make sure they both contain kdStreamId "+kdStreamId+"\n and also " +
+                                    "make sure the stream corresponding to this kdStreamId have not left yet!");
+                            return;
+                        }
+                        Conferee owner = remoteStream.getOwner();
+                        if (null == owner){
+                            KLog.p(KLog.ERROR, "owner of stream %s has not joined yet? wait then try again...");
+                            handler.postDelayed(this, 2000);
+                            ++retriedCount;
+                            return;
+                        }
+
+                        if(owner.isVirtualAssStreamConferee()){
+                            // 接收双流先展示缓冲图标
+                            owner.setVideoState(Conferee.VideoState.Buffering);
+                            handler.postDelayed(() -> owner.setVideoState(Conferee.VideoState.Normal), 2000);
+                        }else {
+                            owner.setVideoState(Conferee.VideoState.Normal);
+                        }
+
+                        executor.execute(() -> {
+                            KLog.p("bind track %s to conferee %s", track.id(), owner.getId());
+                            track.addSink(owner);
+                        });
+                    }
+                });
+            });
+        }
+
+        void removeRemoteVideoTrack(RtcStream stream){
+            String kdStreamId = stream.getStreamId();
+            Conferee owner = stream.getOwner();
+            executor.execute(() -> {
+                for (String streamId : remoteVideoTracks.keySet()) {
+                    if (streamId.equals(kdStreamId)) {
+                        VideoTrack track = remoteVideoTracks.remove(streamId);
+//                        track.dispose();
+                        KLog.p("remote video track %s/%s removed", streamId, track.id());
+
+                        handler.post(() -> {
+                            kdStreamId2RtcTrackIdMap.remove(streamId);
+                            if (null != owner) {
+                                owner.setVideoState(Conferee.VideoState.Idle);
+                                executor.execute(() -> {
+                                    KLog.p("unbind track %s from conferee %s", track.id(), owner.getId());
+                                    track.removeSink(owner);
+                                });
+                            }
+                        });
+
+                        return;
+                    }
+                }
+
+                KLog.p(KLog.ERROR, "failed to removeRemoteVideoTrack, no such stream %s", kdStreamId);
+            });
+        }
 
 
         void createRemoteAudioTrack(String mid, AudioTrack track){
             executor.execute(() -> {
                 String kdStreamId = mid2KdStreamIdMap.get(mid);
-                KLog.p("mid=%s, streamId=%s", mid, kdStreamId);
                 if (null == kdStreamId) {
-                    KLog.p(KLog.ERROR, "no register stream for mid %s in signaling progress(see onSetOfferCmd)", mid);
-                    return;
+                    throw new RuntimeException("kdStreamId related to mid "+mid+" doesn't exist? i should have got it from onSetOfferCmd()");
                 }
                 track.setEnabled(!config.isSilenced);
                 remoteAudioTracks.put(kdStreamId, track);
-                sessionHandler.post(() -> {
-                    kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
-                    Conferee conferee = findConfereeByStreamId(kdStreamId);
-                    KLog.p("create remote audio track(trackId=%s, kdStreamId=%s, mid=%s) for conferee %s", track.id(), kdStreamId, mid, conferee != null ? conferee.e164 : null);
-                    if (null == conferee) {
-                        KLog.p(KLog.ERROR, "something wrong? stream %s not belong to any conferee", kdStreamId);
+
+                KLog.p("remote audio track %s/%s created", kdStreamId, track.id());
+
+                handler.post(new Runnable() {
+                    int retriedCount;
+                    @Override
+                    public void run() {
+                        if (retriedCount>=2){
+                            return;
+                        }
+                        kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
+                        RtcStream remoteStream = findStream(kdStreamId);
+                        if (null == remoteStream) {
+                            KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
+                                    "please check StreamJoined/StreamList and onSetOfferCmd to make sure they both contain kdStreamId "+kdStreamId+"\n and also " +
+                                    "make sure the stream corresponding to this kdStreamId have not left yet!");
+                            return;
+                        }
+                        Conferee owner = remoteStream.getOwner();
+                        if (null == owner){
+                            KLog.p(KLog.ERROR, "owner of stream %s has not joined yet? wait then try again...");
+                            handler.postDelayed(this, 2000);
+                            ++retriedCount;
+                            return;
+                        }
+
+                        owner.setAudioState(Conferee.AudioState.Normal);
                     }
                 });
             });
         }
 
-        void removeRemoteAudioTrack(String kdStreamId){
+        void removeRemoteAudioTrack(RtcStream stream){
+            String kdStreamId = stream.getStreamId();
+            Conferee owner = stream.getOwner();
             executor.execute(() -> {
                 for (String streamId : remoteAudioTracks.keySet()) {
                     if (streamId.equals(kdStreamId)) {
                         AudioTrack track = remoteAudioTracks.remove(kdStreamId);
 //                        track.dispose();
-                        sessionHandler.post(() -> kdStreamId2RtcTrackIdMap.remove(kdStreamId));
+                        handler.post(() -> {
+                            kdStreamId2RtcTrackIdMap.remove(kdStreamId);
+                            if (owner != null && owner.getAudioStreams().isEmpty()){
+                                owner.setAudioState(Conferee.AudioState.Idle);
+                            }
+                        });
                         KLog.p("stream %s removed", kdStreamId);
                         return;
                     }
@@ -3485,7 +3537,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-        void destoryAudioTrack(){
+        void destroyAudioTrack(){
             executor.execute(() -> {
                 if (null == pc){
                     KLog.p(KLog.ERROR, "peerConnection destroyed");
@@ -3687,65 +3739,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    /**
-     * RTC 统计信息
-     * */
-    public static class Stats {
-        public List<MediaStats> mediaStatsList = new ArrayList<>();
-
-        @Override
-        public String toString() {
-            return "Stats{" +
-                    "mediaStatsList=" + mediaStatsList +
-                    '}';
-        }
-    }
-    private Stats stats = new Stats();
-    public static class MediaStats {
-        public boolean bAudio; // 是否为音频
-        public boolean bLocal; // 是否本地
-        public String trackId; // 音/视轨ID
-        public String fmt;     // 音/视频格式
-
-        // 仅音频相关
-        public float audioLevel;
-
-        // 仅视频相关
-        public int width;
-        public int height;
-        public int fps; // 帧率
-        public boolean bHwa; // 是否硬编解（对于发送是编，接收是解）
-
-        @Override
-        public String toString() {
-            return "MediaStats{" +
-                    "bAudio=" + bAudio +
-                    ", bLocal=" + bLocal +
-                    ", trackId='" + trackId + '\'' +
-                    ", fmt='" + fmt + '\'' +
-                    ", audioLevel=" + audioLevel +
-                    ", width=" + width +
-                    ", height=" + height +
-                    ", fps=" + fps +
-                    ", bHwa=" + bHwa +
-                    '}';
-        }
-    }
-
-    public interface StatsListener {
-        void onRtcStats(Stats stats);
-    }
-
-
-    private StatsListener statsListener;
-    /**
-     * 设置RTC统计信息监听器
-     * */
-    public void setStatsListener(StatsListener statsListener){
-        this.statsListener = statsListener;
-    }
-
-
     // 用于定时收集统计信息
     private final StatsHelper.Stats publisherStats = new StatsHelper.Stats();
     private final StatsHelper.Stats subscriberStats = new StatsHelper.Stats();
@@ -3790,7 +3783,7 @@ public class WebRtcManager extends Caster<Msg>{
 //                });
 //            }
 
-            sessionHandler.postDelayed(this, 2000);
+            handler.postDelayed(this, 2000);
         }
     };
 
@@ -3834,15 +3827,14 @@ public class WebRtcManager extends Caster<Msg>{
                 String maxAudioLevelKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(maxAudioLevelTrackId);
                 KLog.p("preMaxAudioLevelKdStreamId=%s, maxAudioLevelKdStreamId=%s", preMaxAudioLevelKdStreamId, maxAudioLevelKdStreamId);
                 if (null != maxAudioLevelKdStreamId) {
-                    if (!maxAudioLevelKdStreamId.equals(preMaxAudioLevelKdStreamId)) {
-                        // 说话人变化了才需要刷新语音激励状态
+                    if (!maxAudioLevelKdStreamId.equals(preMaxAudioLevelKdStreamId)) { // 说话人变化了才需要刷新语音激励状态
                         Conferee conferee = findConfereeByStreamId(preMaxAudioLevelKdStreamId);
                         if (null != conferee) {
-                            conferee.setVoiceActivated(false);
+                            conferee.setAudioState(Conferee.AudioState.Normal);  // FIXME 不一定是Normal状态
                         }
                         conferee = findConfereeByStreamId(maxAudioLevelKdStreamId);
                         if (null != conferee) {
-                            conferee.setVoiceActivated(true);
+                            conferee.setAudioState(Conferee.AudioState.Activated);
                         }
                         preMaxAudioLevelKdStreamId = maxAudioLevelKdStreamId;
                     }
@@ -3854,13 +3846,12 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p("preMaxAudioLevelKdStreamId=%s", preMaxAudioLevelKdStreamId);
                 Conferee conferee = findConfereeByStreamId(preMaxAudioLevelKdStreamId);
                 if (null != conferee){
-                    conferee.setVoiceActivated(false);
+                    conferee.setAudioState(Conferee.AudioState.Normal); // FIXME 不一定是Normal状态
                 }
                 preMaxAudioLevelKdStreamId = null;
             }
 
-
-            sessionHandler.postDelayed(this, 2000);
+            handler.postDelayed(this, 2000);
         }
     };
 
@@ -3890,17 +3881,15 @@ public class WebRtcManager extends Caster<Msg>{
                 if (null != conferee){
                     long interval = curTimestamp - videoStatsTimeStamp;
                     float fps = (curReceivedFrames - preReceivedFrames) / (interval/1000f);
-                    if (!conferee.bWaitingVideoStream
+                    if (conferee.getVideoState() == Conferee.VideoState.Normal
                             && interval >= WeakSignalCheckInterval // 计算帧率的间隔时长应适度，太短则太敏感地滑入WeakSignal状态，太长则太迟钝
                             && fps < 0.2 // 可忍受的帧率下限，低于该下限则认为信号丢失
                     ){
-                        KLog.p("conferee %s setState %s", conferee.id, Conferee.VideoState_WeakSignal);
-                        conferee.setState(Conferee.VideoState_WeakSignal);
-                    }else if (fps > 1){
+                        conferee.setVideoState(Conferee.VideoState.Weak);
+                    }else if (conferee.getVideoState() == Conferee.VideoState.Weak && fps > 1){
                         // 尽管我们在帧率低于0.2时将状态设为WeakSignal但当帧率超过0.2时我们不立马设置状态为Normal
                         // 而是等帧率回复到较高水平才切回Normal以使状态切换显得平滑而不是在临界值处频繁切换
-                        KLog.p("conferee %s setState %s", conferee.id, Conferee.VideoState_Normal);
-                        conferee.setState(Conferee.VideoState_Normal);
+                        conferee.setVideoState(Conferee.VideoState.Normal);
                     }
                 }else{
                     KLog.p(KLog.ERROR, "track %s(kdstreamId=%s) not belong to any conferee?", trackIdentifier, lostSignalKdStreamId);
@@ -3912,28 +3901,7 @@ public class WebRtcManager extends Caster<Msg>{
                 videoStatsTimeStamp = curTimestamp;
             }
 
-            sessionHandler.postDelayed(this, 2000);
-        }
-    };
-
-
-    // 码流状态监视器
-    private Runnable kdStreamStatusMonitor = new Runnable() {
-
-        @Override
-        public void run() {
-            for (Conferee conferee : conferees){
-                if (null == conferee.videoStream){
-                    if (!conferee.bWaitingVideoStream) {
-                        conferee.setState(Conferee.VideoState_NoStream);
-                    }
-                }else{
-                    if (conferee.state == Conferee.VideoState_NoStream){
-                        conferee.setState(Conferee.VideoState_Normal);
-                    }
-                }
-            }
-            sessionHandler.postDelayed(this, 2000);
+            handler.postDelayed(this, 2000);
         }
     };
 

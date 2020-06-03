@@ -171,25 +171,6 @@ final class ToDoConverter {
         return to;
     }
 
-
-    static WebRtcManager.Conferee tMTEntityInfo2ConfereeInfo(@NonNull TMTEntityInfo entityInfo){
-        String e164="", alias="", email="";
-        for (TMtAlias tMtAlias : entityInfo.tMtAlias.arrAlias) {
-            if (EmMtAliasType.emAliasE164 == tMtAlias.emAliasType) {
-                e164 = tMtAlias.achAlias;
-            } else if (EmMtAliasType.emAliasH323 == tMtAlias.emAliasType) {
-                alias = tMtAlias.achAlias;
-            } else if (EmMtAliasType.emAliasEmail == tMtAlias.emAliasType) {
-                email = tMtAlias.achAlias;
-            }
-            if (!e164.isEmpty() && !alias.isEmpty() && !email.isEmpty()) {
-                break;
-            }
-        }
-
-        return new WebRtcManager.Conferee(entityInfo.dwMcuId, entityInfo.dwTerId, e164, alias, email, false);
-    }
-
     static ConfInfo tMTInstanceConferenceInfo2ConfInfo(TMTInstanceConferenceInfo ci){
         return new ConfInfo(ci.achName, ci.achConfID, ci.achStartTime, ci.achEndTime);
     }

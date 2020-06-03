@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '1.1.11-SNAPSHOT'
+version = '1.2.0-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -28,6 +28,8 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-common-java8:2.2.0"
 
     implementation 'com.google.guava:guava:27.0.1-android'
+
+    api 'com.annimon:stream:1.2.1'
 }
 
 apply from: '../publish.gradle'
