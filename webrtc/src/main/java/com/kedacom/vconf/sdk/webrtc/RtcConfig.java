@@ -44,6 +44,7 @@ public final class RtcConfig {
     private static final String key_preferredVideoQuality = "key_preferredVideoQuality";
 
     // 视频质量定义
+    static final int VideoQuality_Unknown = 0;
     public static final int VideoQuality_Low = 1;
     public static final int VideoQuality_Medium = 2;
     public static final int VideoQuality_High = 3;

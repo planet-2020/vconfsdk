@@ -876,7 +876,7 @@ public class WebRtcManager extends Caster<Msg>{
                         }
                     }
 
-                    bindStream();
+                    subscribeStream();
                 }
                 break;
 
@@ -1486,7 +1486,9 @@ public class WebRtcManager extends Caster<Msg>{
      * 该与会方相较于需求中的与会方是更抽象的概念，包含了普通的与会方以及虚拟的辅流与会方（以及将来可能扩展的其他类型与会方）。
      */
     public static final class Conferee implements VideoSink, Comparable<Conferee>{
+        // 唯一标志
         private final String id;
+
         private int mcuId;
         private int terId;
         private String   e164;
@@ -1500,10 +1502,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         // 视频状态
         private VideoState videoState = VideoState.Idle;
-
-        // 偏好的视频质量。
-        // 一路视频可能包含多种分辨率(simulcast)，此种情形下，可以依据偏好的视频质量选择对应的分辨率。
-        private int preferredVideoQuality = RtcConfig.VideoQuality_Low;
 
         // 与会方画面显示器。
         // 一个与会方可以绑定多个Display。一个Display只能绑定到一个与会方
@@ -1783,9 +1781,9 @@ public class WebRtcManager extends Caster<Msg>{
             for (Display display : displays){
                 if (curts - ts > 5000) {
                     if (display.enabled) {
-                        KLog.p(KLog.DEBUG, "frame of conferee %s rendered onto display %s ", getId(), display.hashCode());
+                        KLog.p(KLog.DEBUG, "frame of conferee %s rendered onto display %s ", getId(), display.id());
                     }else{
-                        KLog.p(KLog.DEBUG, "frame of conferee %s dropped off display %s because it is disabled ", getId(), display.hashCode());
+                        KLog.p(KLog.DEBUG, "frame of conferee %s dropped off display %s because it is disabled ", getId(), display.id());
                     }
                 }
                 if (!display.enabled) {
@@ -1806,52 +1804,6 @@ public class WebRtcManager extends Caster<Msg>{
             return self.compareTo(other);
         }
 
-
-        private void addDisplay(@NonNull Display display) {
-            KLog.p("add Display %s to conferee %s", display, getId());
-
-            boolean firstAdded = displays.isEmpty();
-
-            displays.add(display);
-
-            boolean qualityChanged = adjustVideoQuality();
-
-            KLog.p("firstAdded? %s, qualityChanged? %s", firstAdded, qualityChanged);
-
-            if (firstAdded){
-                // Conferee在添加Display之前处于Idle状态，尚未绑定视频流，此时有Display了我们尝试绑定视频流。
-                setVideoState(VideoState.ToBind);
-            }
-
-            if (firstAdded || qualityChanged){
-                instance.bindStream();
-            }
-        }
-
-        private boolean removeDisplay(@NonNull Display display) {
-            KLog.p("try to remove Display %s from conferee %s", display, getId());
-            boolean success = displays.remove(display);
-            if (success) {
-                KLog.p("display %s removed from conferee %s", display, getId());
-//                onFrameHandler.post(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        display.onFrame(new VideoFrame()); // TODO 构造最后一帧空帧避免画面残留
-//                    }
-//                });
-                boolean lastRemoved = displays.isEmpty();
-                boolean qualityChanged = adjustVideoQuality();
-                KLog.p("lastRemoved? %s, qualityChanged? %s", lastRemoved, qualityChanged);
-
-                if (lastRemoved){
-                    setVideoState(VideoState.Idle);
-                }
-                if (lastRemoved || qualityChanged){
-                    instance.bindStream();
-                }
-            }
-            return success;
-        }
 
 
         private void setAudioState(AudioState audioState) {
@@ -1888,39 +1840,117 @@ public class WebRtcManager extends Caster<Msg>{
                     .collect(Collectors.toSet());
         }
 
-
-        /**
-         * 调整视频质量。
-         * 一个与会方可能会发布多路不同质量的视频码流(simulcast)，其他与会方可以根据自己需要选择订阅。
-         * 不同的使用场景要求展示的视频质量可能不一样，比如小窗口展示时我们用cif就够了，全屏展示时又需要切到高清，
-         * 又比如对于关联到多个Display的与会方而言若其中一个高清的Display关闭了我们可能需要重新计算需要订阅的视频质量，可能要回落到cif
-         * @return 视频质量是否变化了。true表示变化了。
-         * */
-        private boolean adjustVideoQuality(){
-            if (displays.isEmpty()){
-                return false;
-            }
-            int preferQuality = RtcConfig.VideoQuality_Low;
-            for (Display display : displays){
-                KLog.p("display %s preferredVideoQuality=%s", display.hashCode(), display.preferredVideoQuality);
-                if (display.preferredVideoQuality > preferQuality){
-                    preferQuality = display.preferredVideoQuality;
-                }
-            }
-            KLog.p("old preferredVideoQuality=%s, new preferredVideoQuality=%s", preferredVideoQuality, preferQuality);
-            if (preferQuality != preferredVideoQuality) {
-                preferredVideoQuality = preferQuality;
-                return true;
-            }
-
-            return false;
+        private int getPreferredVideoQuality(){
+            return Stream.of(displays)
+                    .map(display -> display.preferredVideoQuality)
+                    .max(Integer::compareTo)
+                    .orElse(RtcConfig.VideoQuality_Unknown);
         }
 
+        private void addDisplay(@NonNull Display display) {
+            KLog.p("add Display %s to conferee %s", display.id(), getId());
+
+            int quality = getPreferredVideoQuality();
+
+            displays.add(display);
+
+            if (displays.size() == 1){
+                KLog.p("first add");
+                setVideoState(VideoState.ToBind);
+            }
+
+            if (quality < display.preferredVideoQuality){
+                KLog.p("preferredVideoQuality upgrade from %s to %s", quality, display.preferredVideoQuality);
+                instance.subscribeStream();
+            }
+        }
+
+        private boolean removeDisplay(@NonNull Display display) {
+            KLog.p("try to remove Display %s from conferee %s", display.id(), getId());
+            boolean success = displays.remove(display);
+            if (success) {
+                KLog.p("display %s removed from conferee %s", display.id(), getId());
+//                onFrameHandler.post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        display.onFrame(new VideoFrame()); // TODO 构造最后一帧空帧避免画面残留
+//                    }
+//                });
+
+                if (displays.isEmpty()){
+                    setVideoState(VideoState.Idle);
+                }
+                int quality = getPreferredVideoQuality();
+                if (quality < display.preferredVideoQuality){
+                    KLog.p("preferredVideoQuality downgrade from %s to %s", display.preferredVideoQuality, quality);
+                    instance.subscribeStream();
+                }
+            }
+            return success;
+        }
+
+
+//        /**
+//         * 调整视频质量。
+//         * 一个与会方可能会发布多路不同质量的视频码流(simulcast)，其他与会方可以根据自己需要选择订阅。
+//         * 不同的使用场景要求展示的视频质量可能不一样，比如小窗口展示时我们用cif就够了，全屏展示时又需要切到高清，
+//         * 又比如对于关联到多个Display的与会方而言若其中一个高清的Display关闭了我们可能需要重新计算需要订阅的视频质量，可能要回落到cif
+//         * @return 视频质量是否变化了。true表示变化了。
+//         * */
+//        private boolean adjustVideoQuality(){
+//            RtcStream videoStream = getVideoStream();
+//            if (null == videoStream){
+//                return false;
+//            }
+//
+//            EmMtResolution resolution = videoStream.getResolution(getPreferredVideoQuality());
+//
+//            KLog.p("display %s preferredVideoQuality=%s", display.id(), display.preferredVideoQuality);
+//            if (resolution != videoResolution){
+//                videoResolution = resolution;
+//                return true;
+//            }
+//
+//            return false;
+//
+//            if (displays.isEmpty()){
+//                return false;
+//            }
+//            int preferQuality = RtcConfig.VideoQuality_Low;
+//            for (Display display : displays){
+//                KLog.p("display %s preferredVideoQuality=%s", display.id(), display.preferredVideoQuality);
+//                if (display.preferredVideoQuality > preferQuality){
+//                    preferQuality = display.preferredVideoQuality;
+//                }
+//            }
+//            KLog.p("old preferredVideoQuality=%s, new preferredVideoQuality=%s", preferredVideoQuality, preferQuality);
+//            if (preferQuality != preferredVideoQuality) {
+//                preferredVideoQuality = preferQuality;
+//                return true;
+//            }
+//
+//            return false;
+//        }
+
         private void refreshDisplays(){
+            // 延迟刷新以防止短时间内大量重复刷新
+            instance.handler.removeCallbacks(refreshDisplaysRunnable);
+            instance.handler.postDelayed(refreshDisplaysRunnable, 100);
+        }
+
+        private Runnable refreshDisplaysRunnable = new Runnable() {
+            @Override
+            public void run() {
+                doRefreshDisplays();
+            }
+        };
+
+        private void doRefreshDisplays(){
             for (Display display : displays){
                 display.refresh();
             }
         }
+
 
         // 与会方类型
         private enum ConfereeType{
@@ -1983,20 +2013,22 @@ public class WebRtcManager extends Caster<Msg>{
             return streamInfo.bAss;
         }
 
-        private EmMtResolution getPreferredResolution(){
+        private EmMtResolution getResolution(){
             List<EmMtResolution> resolutions = streamInfo.aemSimcastRes;
-            KLog.p("resolutions=%s", resolutions);
             if (resolutions.isEmpty()){
-                // 若发布方不是simulcast发布的则resolution会是空
-                return EmMtResolution.emMt480x270_Api;
+                // 若发布方不是simulcast发布的则resolution会是空，此时随便添一个即可，业务组件会处理。
+                return EmMtResolution.emMt640x360_Api;
             }
             Conferee owner = getOwner();
             if (null == owner){
-                return EmMtResolution.emMt480x270_Api;
+                return resolutions.get(0);
             }
 
-            KLog.p("config.PreferredVideoQuality=%s, conferee %s preferredVideoQuality=%s", config.preferredVideoQuality, owner.getId(), owner.preferredVideoQuality);
-            int quality = Math.min(config.preferredVideoQuality, owner.preferredVideoQuality);
+            int ownerPreferredQuality = owner.getPreferredVideoQuality();
+            KLog.p("config.PreferredVideoQuality=%s, owner %s preferredVideoQuality=%s", config.preferredVideoQuality, owner.getId(), ownerPreferredQuality);
+            int quality = RtcConfig.VideoQuality_Unknown==ownerPreferredQuality ?
+                    config.preferredVideoQuality :
+                    Math.min(config.preferredVideoQuality, ownerPreferredQuality);
             // NOTE: 分辨率是按从小到大的顺序排列的，这点平台保证。
             if (RtcConfig.VideoQuality_High == quality){
                 return resolutions.get(resolutions.size()-1);
@@ -2013,7 +2045,6 @@ public class WebRtcManager extends Caster<Msg>{
             return resolutions.get(0);
         }
 
-
         private Conferee getOwner(){
             return findConferee(streamInfo.tMtId.dwMcuId, streamInfo.tMtId.dwTerId,
                     streamInfo.bAss ? Conferee.ConfereeType.AssStream : Conferee.ConfereeType.Normal);
@@ -2027,6 +2058,11 @@ public class WebRtcManager extends Caster<Msg>{
      * 一个显示器只能绑定到一个与会方，一个与会方可以绑定到多个显示器。
      * */
     public final static class Display extends SurfaceViewRenderer{
+        /**
+         * Display唯一标识
+         * */
+        private String id;
+
         /**
          * 是否使能。
          * 使能则显示内容，否则不显示。
@@ -2056,8 +2092,12 @@ public class WebRtcManager extends Caster<Msg>{
             setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
             setEnableHardwareScaler(true);
             setWillNotDraw(false);
+            id = getId()+"";
         }
 
+        public String id() {
+            return id;
+        }
 
         public boolean isEnable() {
             return enabled;
@@ -2068,7 +2108,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param enable false 禁用该Display，屏蔽内容展示；true正常展示内容。默认true
          * */
         public void setEnable(boolean enable){
-            KLog.p("set enable=%s for display %s", enable, this);
+            KLog.p("set enable=%s for display %s", enable, id());
             this.enabled = enable;
             refresh();
         }
@@ -2092,7 +2132,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param conferee 与会方。若为null或一个不存在于会议中的Conferee，界面效果等同没绑定。
          * */
         public void setConferee(@Nullable Conferee conferee){
-            KLog.p("set content %s for display %s", null != conferee ? conferee.getId() : null, this.hashCode());
+            KLog.p("set content %s for display %s", null != conferee ? conferee.getId() : null, id());
             if (null != this.conferee){
                 this.conferee.removeDisplay(this);
             }
@@ -2117,7 +2157,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param src 源display。
          * */
         public void copyContentFrom(@NonNull Display src){
-            KLog.p("copy content from display %s to display %s", src.hashCode(), this.hashCode());
+            KLog.p("copy content from display %s to display %s", src.id(), id());
             if (null != this.conferee){
                 this.conferee.removeDisplay(this);
             }
@@ -2138,7 +2178,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param dst 目标display。
          * */
         public void moveContentTo(@NonNull Display dst){
-            KLog.p("move content from display %s to display %s", this.hashCode(), dst.hashCode());
+            KLog.p("move content from display %s to display %s", id(), dst.id());
             dst.setConferee(conferee);
             dst.disabledDecos.clear();
             dst.disabledDecos.addAll(disabledDecos);
@@ -2160,7 +2200,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param otherDisplay 要交换的display。
          * */
         public void swapContent(@NonNull Display otherDisplay){
-            KLog.p("swap display %s with display %s", this.hashCode(), otherDisplay.hashCode());
+            KLog.p("swap display %s with display %s", id(), otherDisplay.id());
             Conferee myConferee = conferee;
             setConferee(otherDisplay.conferee);
             otherDisplay.setConferee(myConferee);
@@ -2189,7 +2229,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 销毁display
          * */
         private void destroy(){
-            KLog.p("destroy display %s ", this.hashCode());
+            KLog.p("destroy display %s ", id());
             if (null != conferee){
                 conferee.removeDisplay(this);
                 conferee = null;
@@ -2204,15 +2244,12 @@ public class WebRtcManager extends Caster<Msg>{
          * 与会方“可能”发布了多种分辨率的视频流(simulcast)，此种情形下，可以依据使用场景选择对应的分辨率，如大画面以高分辨率展示，小画面以低分辨率展示。
          * */
         public void setPreferredVideoQuality(int quality){
-            KLog.p("display %s change preferredVideoQuality from %s to %s", this.hashCode(), preferredVideoQuality, quality);
             if (preferredVideoQuality != quality){
+                boolean needResubscribe = null != conferee && conferee.getPreferredVideoQuality() < quality;
+                KLog.p("display %s change preferredVideoQuality from %s to %s", id(), preferredVideoQuality, quality);
                 preferredVideoQuality = quality;
-                if (null != conferee){
-                    boolean qualityChanged = conferee.adjustVideoQuality();
-                    if (qualityChanged){
-                        // 分辨率改变需重新订阅
-                        instance.bindStream();
-                    }
+                if (needResubscribe){
+                    instance.subscribeStream();
                 }
             }
         }
@@ -2328,7 +2365,20 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private void bindStream(){
+    private void subscribeStream(){
+        // 延迟绑定以防止短时间内大量重复绑定
+        handler.removeCallbacks(subscribeStreamRunnable);
+        handler.postDelayed(subscribeStreamRunnable, 200);
+    }
+
+    private Runnable subscribeStreamRunnable = new Runnable() {
+        @Override
+        public void run() {
+            doSubscribeStream();
+        }
+    };
+
+    private void doSubscribeStream(){
         List<TRtcPlayItem> playItems = Stream.of(streams)
                 .filter(it -> {
                     if (it.isAudio()){
@@ -2350,7 +2400,7 @@ public class WebRtcManager extends Caster<Msg>{
                     }
                     return true;
                 })
-                .map(stream -> new TRtcPlayItem(stream.getStreamId(), stream.isAss(), stream.getPreferredResolution()))
+                .map(stream -> new TRtcPlayItem(stream.getStreamId(), stream.isAss(), stream.getResolution()))
                 .collect(Collectors.toList());
 
         if (!playItems.isEmpty()) {
@@ -2424,7 +2474,7 @@ public class WebRtcManager extends Caster<Msg>{
     public Display createDisplay(){
         Display display =  new Display(context);
         displays.add(display);
-        KLog.p("display %s created", display.hashCode());
+        KLog.p("display %s created", display.id());
         return display;
     }
 
@@ -2434,9 +2484,9 @@ public class WebRtcManager extends Caster<Msg>{
     public void releaseDisplay(Display display){
         if (displays.remove(display)){
             display.destroy();
-            KLog.p("display %s released", display.hashCode());
+            KLog.p("display %s released", display.id());
         }else{
-            KLog.p(KLog.ERROR, "wired! display %s is not created by me?", display.hashCode());
+            KLog.p(KLog.ERROR, "wired! display %s is not created by me?", display.id());
         }
     }
 
@@ -3010,9 +3060,6 @@ public class WebRtcManager extends Caster<Msg>{
         public void onIceCandidatesRemoved(final IceCandidate[] candidates) {
         }
 
-        @Override
-        public void onAddStream(MediaStream mediaStream) {
-        }
 
         @Override
         public void onSignalingChange(PeerConnection.SignalingState newState) {
@@ -3051,6 +3098,21 @@ public class WebRtcManager extends Caster<Msg>{
         public void onIceConnectionReceivingChange(boolean receiving) {
         }
 
+        @Override
+        public void onAddStream(MediaStream mediaStream) {
+            handler.post(() -> {
+                KLog.p("PCObserver#onAddStream mediaStream=%s", mediaStream.hashCode());
+                Stream.of(mediaStream.videoTracks).forEach(it-> {
+                    KLog.p("videoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+                });
+                Stream.of(mediaStream.audioTracks).forEach(it-> {
+                    KLog.p("audioTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+                });
+                Stream.of(mediaStream.preservedVideoTracks).forEach(it-> {
+                    KLog.p("preservedVideoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+                });
+            });
+        }
 
         @Override
         public void onRemoveStream(final MediaStream stream) {
@@ -3058,6 +3120,18 @@ public class WebRtcManager extends Caster<Msg>{
             // 相应的我们原本期望在onRemoveStream（没有onRemoveTrack）中removeRemoteVideoTrack/removeRemoteAudioTrack，
             // 然而实测下来发现此回调上来时MediaStream的track列表为空，不得已我们只得在StreamLeft消息上来时
             // removeRemoteVideoTrack/removeRemoteAudioTrack，由此造成了这种不对称的现象
+            handler.post(() -> {
+                KLog.p("PCObserver#onRemoveStream onRemoveStream mediaStream=%s", stream.hashCode());
+                Stream.of(stream.videoTracks).forEach(it -> {
+                    KLog.p("videoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+                });
+                Stream.of(stream.audioTracks).forEach(it -> {
+                    KLog.p("audioTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+                });
+                Stream.of(stream.preservedVideoTracks).forEach(it -> {
+                    KLog.p("preservedVideoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+                });
+            });
         }
 
         @Override
@@ -3072,14 +3146,28 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
+            handler.post(() -> {
+                Stream.of(mediaStreams).forEach(stream -> {
+                    KLog.p("PCObserver#onAddTrack mediaStream=%s", stream.hashCode());
+                    Stream.of(stream.videoTracks).forEach(it -> {
+                        KLog.p("track: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+                    });
+                    Stream.of(stream.audioTracks).forEach(it -> {
+                        KLog.p("track: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+                    });
+                    Stream.of(stream.preservedVideoTracks).forEach(it -> {
+                        KLog.p("track: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+                    });
+                });
+            });
         }
 
 
         @Override
         public void onTrack(RtpTransceiver transceiver) {
             MediaStreamTrack track = transceiver.getReceiver().track();
+            KLog.p("PCObserver#onTrack connType %s received remote track %s", connType, track != null ? track.id() : null);
             handler.post(() -> {
-                KLog.p("connType %s received remote track %s", connType, track != null ? track.id() : null);
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper){
                     KLog.p(KLog.ERROR, "null == pcWrapper(connType=%s)", connType);
@@ -3289,6 +3377,10 @@ public class WebRtcManager extends Caster<Msg>{
                         Collections.singletonList(STREAM_ID),
                         encodingList
                 );
+
+                if (null != videoSender) {
+                    pc.removeTrack(videoSender);
+                }
 
                 RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
                 videoSender = transceiver.getSender();
@@ -3914,7 +4006,15 @@ public class WebRtcManager extends Caster<Msg>{
     };
 
 
+    private boolean enableStatsLog = true;
+    public void setStatsLogEnable(boolean enable){
+        enableStatsLog = enable;
+    }
+
     private void printStats(StatsHelper.Stats stats){
+        if (!enableStatsLog){
+            return;
+        }
         KLog.p(">>>>>>>>>> stats begin");
         // 因为android log一次输出有最大字符限制，所以我们分段输出
         KLog.p("---------- audio");
