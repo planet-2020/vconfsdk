@@ -1576,6 +1576,14 @@ public class WebRtcManager extends Caster<Msg>{
             return id;
         }
 
+        public int getMcuId() {
+            return mcuId;
+        }
+
+        public int getTerId() {
+            return terId;
+        }
+
         public String getE164() {
             return e164;
         }
@@ -3801,7 +3809,7 @@ public class WebRtcManager extends Caster<Msg>{
                 synchronized (publisherStats) {
                     maxAudioLevelTrackId = null != publisherStats.audioSource ? publisherStats.audioSource.trackIdentifier : null;
                     maxAudioLevel = null != publisherStats.audioSource ? publisherStats.audioSource.audioLevel : 0;
-                    KLog.p("my audioLevel= %s", maxAudioLevel);
+                    KLog.p("local audioLevel= %s", maxAudioLevel);
                 }
             }
             // 其他与会方的音量
