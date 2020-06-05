@@ -3039,6 +3039,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private class PCObserver implements PeerConnection.Observer{
+        private static final String TAG = "PCObserver";
         private ConnType connType;
 
         PCObserver(ConnType connType) {
@@ -3047,8 +3048,8 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onIceCandidate(final IceCandidate candidate) {
+            KLog.tp(TAG, KLog.INFO, "onIceCandidate, connType=%s, sending candidate...", connType);
             handler.post(() -> {
-                KLog.p("onIceCandidate, sending candidate...");
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper) return;
 
@@ -3058,15 +3059,18 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onIceCandidatesRemoved(final IceCandidate[] candidates) {
+            KLog.tp(TAG,KLog.INFO, "onIceCandidatesRemoved connType=%s", connType);
         }
 
 
         @Override
         public void onSignalingChange(PeerConnection.SignalingState newState) {
+            KLog.tp(TAG,KLog.INFO, "onSignalingChange connType=%s, newState=%s", connType, newState);
         }
 
         @Override
         public void onIceConnectionChange(final PeerConnection.IceConnectionState newState) {
+            KLog.tp(TAG,KLog.INFO, "onIceConnectionChange connType=%s, newState=%s", connType, newState);
 //                sessionHandler.post(() -> {
 //                    if (newState == PeerConnection.IceConnectionState.CONNECTED) {
 //                    } else if (newState == PeerConnection.IceConnectionState.DISCONNECTED) {
@@ -3079,6 +3083,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onConnectionChange(final PeerConnection.PeerConnectionState newState) {
+            KLog.tp(TAG,KLog.INFO, "onConnectionChange connType=%s, newState=%s", connType, newState);
 
 //                sessionHandler.post(() -> {
 //                    if (newState == PeerConnection.PeerConnectionState.CONNECTED) {
@@ -3092,26 +3097,28 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onIceGatheringChange(PeerConnection.IceGatheringState newState) {
+            KLog.tp(TAG,KLog.INFO, "onIceGatheringChange connType=%s, newState=%s", connType, newState);
         }
 
         @Override
         public void onIceConnectionReceivingChange(boolean receiving) {
+            KLog.tp(TAG,KLog.INFO, "onIceConnectionReceivingChange connType=%s receiving=%s", connType, receiving);
         }
 
         @Override
         public void onAddStream(MediaStream mediaStream) {
-            handler.post(() -> {
-                KLog.p("PCObserver#onAddStream mediaStream=%s", mediaStream.hashCode());
-                Stream.of(mediaStream.videoTracks).forEach(it-> {
-                    KLog.p("videoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
-                });
-                Stream.of(mediaStream.audioTracks).forEach(it-> {
-                    KLog.p("audioTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
-                });
-                Stream.of(mediaStream.preservedVideoTracks).forEach(it-> {
-                    KLog.p("preservedVideoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
-                });
+            KLog.tp(TAG,KLog.INFO, "onAddStream connType=%s, mediaStream.hashcode=%s, mediaStream.id=%s", connType, mediaStream.hashCode(), mediaStream.getId());
+            Stream.of(mediaStream.videoTracks).forEach(it-> {
+                KLog.tp(TAG,KLog.INFO, "onAddStream videoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
             });
+            Stream.of(mediaStream.audioTracks).forEach(it-> {
+                KLog.tp(TAG,KLog.INFO, "onAddStream audioTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+            });
+            Stream.of(mediaStream.preservedVideoTracks).forEach(it-> {
+                KLog.tp(TAG,KLog.INFO, "onAddStream preservedVideoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+            });
+//            handler.post(() -> {
+//            });
         }
 
         @Override
@@ -3120,53 +3127,60 @@ public class WebRtcManager extends Caster<Msg>{
             // 相应的我们原本期望在onRemoveStream（没有onRemoveTrack）中removeRemoteVideoTrack/removeRemoteAudioTrack，
             // 然而实测下来发现此回调上来时MediaStream的track列表为空，不得已我们只得在StreamLeft消息上来时
             // removeRemoteVideoTrack/removeRemoteAudioTrack，由此造成了这种不对称的现象
-            handler.post(() -> {
-                KLog.p("PCObserver#onRemoveStream onRemoveStream mediaStream=%s", stream.hashCode());
-                Stream.of(stream.videoTracks).forEach(it -> {
-                    KLog.p("videoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
-                });
-                Stream.of(stream.audioTracks).forEach(it -> {
-                    KLog.p("audioTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
-                });
-                Stream.of(stream.preservedVideoTracks).forEach(it -> {
-                    KLog.p("preservedVideoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
-                });
+            KLog.tp(TAG,KLog.INFO, "onRemoveStream connType=%s, mediaStream.hashcode=%s", connType, stream.hashCode());
+            Stream.of(stream.videoTracks).forEach(it -> {
+                KLog.tp(TAG,KLog.INFO, "onRemoveStream videoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
             });
+            Stream.of(stream.audioTracks).forEach(it -> {
+                KLog.tp(TAG,KLog.INFO, "onRemoveStream audioTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+            });
+            Stream.of(stream.preservedVideoTracks).forEach(it -> {
+                KLog.tp(TAG,KLog.INFO, "onRemoveStream preservedVideoTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+            });
+
+//            handler.post(() -> {
+//            });
         }
 
         @Override
         public void onDataChannel(final DataChannel dc) {
+            KLog.tp(TAG, KLog.INFO, "onDataChannel, connType=%s", connType);
         }
 
         @Override
         public void onRenegotiationNeeded() {
+            KLog.tp(TAG, KLog.INFO, "onRenegotiationNeeded, connType=%s", connType);
             // No need to do anything; AppRTC follows a pre-agreed-upon
             // signaling/negotiation protocol.
         }
 
         @Override
         public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
-            handler.post(() -> {
-                Stream.of(mediaStreams).forEach(stream -> {
-                    KLog.p("PCObserver#onAddTrack mediaStream=%s", stream.hashCode());
-                    Stream.of(stream.videoTracks).forEach(it -> {
-                        KLog.p("track: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
-                    });
-                    Stream.of(stream.audioTracks).forEach(it -> {
-                        KLog.p("track: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
-                    });
-                    Stream.of(stream.preservedVideoTracks).forEach(it -> {
-                        KLog.p("track: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
-                    });
+            Stream.of(mediaStreams).forEach(stream -> {
+                KLog.tp(TAG,KLog.INFO, "onAddTrack connType=%s, mediaStream.hashcode=%s, stream.id=%s", connType, stream.hashCode(), stream.getId());
+                Stream.of(stream.videoTracks).forEach(it -> {
+                    KLog.tp(TAG,KLog.INFO, "onAddTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+                });
+                Stream.of(stream.audioTracks).forEach(it -> {
+                    KLog.tp(TAG,KLog.INFO, "onAddTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
+                });
+                Stream.of(stream.preservedVideoTracks).forEach(it -> {
+                    KLog.tp(TAG,KLog.INFO, "onAddTrack: id=%s, type=%s, enabled=%s, state=%s", it.id(), it.kind(), it.enabled(), it.state());
                 });
             });
+
+//            handler.post(() -> {
+//            });
         }
 
 
+        /*
+        * 远端码流上来时会相继触发: onTrack, onAddTrack, onAddStream
+        * */
         @Override
         public void onTrack(RtpTransceiver transceiver) {
             MediaStreamTrack track = transceiver.getReceiver().track();
-            KLog.p("PCObserver#onTrack connType %s received remote track %s", connType, track != null ? track.id() : null);
+            KLog.tp(TAG, KLog.INFO, "onTrack connType %s ,mid=%s, received remote track %s", connType, transceiver.getMid(), track != null ? track.id() : null);
             handler.post(() -> {
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper){
@@ -3377,10 +3391,6 @@ public class WebRtcManager extends Caster<Msg>{
                         Collections.singletonList(STREAM_ID),
                         encodingList
                 );
-
-                if (null != videoSender) {
-                    pc.removeTrack(videoSender);
-                }
 
                 RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
                 videoSender = transceiver.getSender();
