@@ -137,14 +137,15 @@ public class WebRtcManager extends Caster<Msg>{
     private Handler handler = new Handler(Looper.getMainLooper()){
         @Override
         public void handleMessage(Message msg) {
-
         }
     };
+
 
 
     private WebRtcManager(Application context){
         this.context = context;
     }
+
 
     public synchronized static WebRtcManager getInstance(@NonNull Application context){
         if (null == instance){
@@ -175,6 +176,7 @@ public class WebRtcManager extends Caster<Msg>{
         }, this::onRsp);
         return processorMap;
     }
+
 
     @Override
     protected Map<Msg[], NtfProcessor<Msg>> ntfsProcessors() {
@@ -222,6 +224,7 @@ public class WebRtcManager extends Caster<Msg>{
         req(Msg.Login, resultListener, rtcSvrAddr);
     }
 
+
     /**
      * 登出rtc
      * @param resultListener 结果监听器。
@@ -234,6 +237,7 @@ public class WebRtcManager extends Caster<Msg>{
         stopSession();
         req(Msg.Logout, resultListener, new TMtRtcSvrAddr(false));
     }
+
 
     /**
      * 呼叫
@@ -254,6 +258,7 @@ public class WebRtcManager extends Caster<Msg>{
                 bAudio ? 64 : 1024*4, // 音频入会64K码率，视频入会4M
                 EmConfProtocol.emrtc);
     }
+
 
     /**
      * 创建会议
@@ -289,6 +294,7 @@ public class WebRtcManager extends Caster<Msg>{
         req(Msg.QuitConf, resultListener, disReason);
     }
 
+
     /**
      * 结束会议。
      * */
@@ -299,6 +305,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
         req(Msg.EndConf, resultListener);
     }
+
 
     /**
      * 接受会议邀请
@@ -319,6 +326,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
         req(Msg.AcceptInvitation, resultListener);
     }
+
 
     /**
      * 拒绝会议邀请
@@ -352,8 +360,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-
-
     //========================================================================================
 
     private Intent screenCapturePermissionData;
@@ -381,7 +387,6 @@ public class WebRtcManager extends Caster<Msg>{
      *     }
      * }
      * */
-
     //@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public void startScreenShare(Intent permissionData, IResultListener resultListener){
         if (null == permissionData){
@@ -397,6 +402,7 @@ public class WebRtcManager extends Caster<Msg>{
         screenCapturePermissionData = permissionData;
         req(Msg.ToggleScreenShare, resultListener, true);
     }
+
 
     /**
      * 结束桌面共享
@@ -425,12 +431,14 @@ public class WebRtcManager extends Caster<Msg>{
         req(Msg.ToggleScreenShare, resultListener, true);
     }
 
+
     /**
      * 暂停窗口共享
      * */
     public void pauseWindowShare(){
         setWindowShareEnable(false);
     }
+
 
     /**
      * 继续窗口共享
@@ -449,6 +457,7 @@ public class WebRtcManager extends Caster<Msg>{
             pcWrapper.setLocalVideoEnable(enable);
         }
     }
+
 
     /**
      * 结束窗口共享
@@ -503,6 +512,7 @@ public class WebRtcManager extends Caster<Msg>{
         return config.isMuted;
     }
 
+
     /**
      * 设置哑音。
      * @param bMute true，屏蔽自己语音；false，放开自己语音。
@@ -525,6 +535,7 @@ public class WebRtcManager extends Caster<Msg>{
         return true;
     }
 
+
     /**
      * 是否正在使用前置摄像头
      * @return true前置，false后置
@@ -532,6 +543,7 @@ public class WebRtcManager extends Caster<Msg>{
     public boolean isUsingFrontCamera(){
         return config.isFrontCameraPreferred;
     }
+
 
     /**
      * 切换摄像头
@@ -561,6 +573,7 @@ public class WebRtcManager extends Caster<Msg>{
     public boolean isCameraEnabled(){
         return config.isLocalVideoEnabled;
     }
+
 
     /**
      * 开启/关闭摄像头
@@ -604,6 +617,7 @@ public class WebRtcManager extends Caster<Msg>{
 //            pcWrapper.setRemoteVideoEnable(enable);
 //        }
 //    }
+
 
     private boolean onRsp(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas) {
         switch (rsp){
@@ -724,6 +738,7 @@ public class WebRtcManager extends Caster<Msg>{
         return true;
     }
 
+
     @Override
     protected boolean onTimeout(Msg req, IResultListener rspListener, Object[] reqPara) {
         switch (req){
@@ -738,7 +753,6 @@ public class WebRtcManager extends Caster<Msg>{
         }
         return super.onTimeout(req, rspListener, reqPara);
     }
-
 
 
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
@@ -944,9 +958,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-
-
-
     private boolean bSessionStarted;
     private synchronized boolean startSession(@NonNull SessionEventListener listener){
         if (bSessionStarted){
@@ -1035,8 +1046,6 @@ public class WebRtcManager extends Caster<Msg>{
         return true;
 
     }
-
-
 
 
     private void createPeerConnectionFactory() {
@@ -1214,7 +1223,9 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
+
     private final Object pcWrapperLock = new Object();
+
 
     private void destroyPeerConnectionWrapper(){
         KLog.p("destroying pcWrappers...");
@@ -1295,8 +1306,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-
-
     private @Nullable VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
         final String[] deviceNames = enumerator.getDeviceNames();
 
@@ -1326,6 +1335,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         return null;
     }
+
 
     private VideoCapturer createScreenCapturer() {
         if (null == screenCapturePermissionData){
@@ -1371,7 +1381,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-
     /**
      * 会议事件监听器
      * */
@@ -1395,6 +1404,7 @@ public class WebRtcManager extends Caster<Msg>{
         void onConfFinished(int resultCode);
     }
     private ConfEventListener confEventListener;
+
 
     /**
      * 会话监听器
@@ -1442,7 +1452,6 @@ public class WebRtcManager extends Caster<Msg>{
     private SessionEventListener sessionEventListener;
 
 
-
     /**
      * 获取与会方列表
      * @param excludeAssStreamConferee 是否排除辅流与会方，true排除
@@ -1468,7 +1477,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         return confereesList;
     }
-
 
 
     /**
@@ -2347,12 +2355,14 @@ public class WebRtcManager extends Caster<Msg>{
         handler.postDelayed(subscribeStreamRunnable, 200);
     }
 
+
     private Runnable subscribeStreamRunnable = new Runnable() {
         @Override
         public void run() {
             doSubscribeStream();
         }
     };
+
 
     private void doSubscribeStream(){
         List<TRtcPlayItem> playItems = Stream.of(streams)
@@ -2402,6 +2412,7 @@ public class WebRtcManager extends Caster<Msg>{
                 .orElse(null);
     }
 
+
     private Conferee findConfereeByStreamId(String streamId){
         RtcStream stream = findStream(streamId);
         if (null != stream){
@@ -2409,6 +2420,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
         return null;
     }
+
 
     private Conferee findAssConferee(){
         RtcStream assStream = findAssStream();
@@ -2418,6 +2430,7 @@ public class WebRtcManager extends Caster<Msg>{
         return assStream.getOwner();
     }
 
+
     private Conferee findAssStreamSender(){
         RtcStream assStream = findAssStream();
         if (null == assStream){
@@ -2426,9 +2439,11 @@ public class WebRtcManager extends Caster<Msg>{
         return findConferee(assStream.getMcuId(), assStream.getTerId(), Conferee.ConfereeType.Normal);
     }
 
+
     private RtcStream findStream(String streamId){
         return Stream.of(streams).filter(it-> it.getStreamId().equals(streamId)).findFirst().orElse(null);
     }
+
 
     private RtcStream findStream(int mcuId, int terId, boolean isAudio, boolean isAss){
         return Stream.of(streams)
@@ -2436,10 +2451,10 @@ public class WebRtcManager extends Caster<Msg>{
                 .findFirst().orElse(null);
     }
 
+
     private RtcStream findAssStream(){
         return Stream.of(streams).filter(RtcStream::isAss).findFirst().orElse(null);
     }
-
 
 
     /**
@@ -2451,6 +2466,7 @@ public class WebRtcManager extends Caster<Msg>{
         KLog.p("display %s created", display.id());
         return display;
     }
+
 
     /**
      * 销毁display
@@ -2563,6 +2579,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     }
 
+
     public static class PicDecoration extends Decoration{
         public Bitmap pic;
         public PicDecoration(@NonNull String id, @NonNull Bitmap pic, int w, int h, int dx, int dy, int refPos) {
@@ -2592,6 +2609,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     }
 
+
     private static class StreamStateDecoration extends PicDecoration{
         int backgroundColor;
         StreamStateDecoration(@NonNull String id, @NonNull Bitmap pic, int w, int h, int dx, int dy, int refPos, int backgroundColor) {
@@ -2603,6 +2621,7 @@ public class WebRtcManager extends Caster<Msg>{
             return new StreamStateDecoration(picDeco.id, picDeco.pic, picDeco.w, picDeco.h, picDeco.dx, picDeco.dy, picDeco.refPos, backgroundColor);
         }
     }
+
 
     public static class Decoration{
         // 相对窗体的位置
@@ -2697,7 +2716,6 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
     }
-
 
 
     private class RtcConnectorEventListener implements RtcConnector.SignalingEvents{
@@ -2830,6 +2848,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     }
 
+
     private void doUnpublish(ConnType connType, MediaType mediaType){
         PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
         if (null == pcWrapper) {
@@ -2869,7 +2888,6 @@ public class WebRtcManager extends Caster<Msg>{
         }
         return origSdp;
     }
-
 
 
     private class SDPObserver implements SdpObserver {
@@ -3009,7 +3027,6 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
     }
-
 
 
     private class PCObserver implements PeerConnection.Observer{
@@ -3198,8 +3215,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-
-
     private static final String STREAM_ID = "TT-Android-"+System.currentTimeMillis();
     private static final String LOCAL_VIDEO_TRACK_ID = STREAM_ID+"-v";
     private static final String LOCAL_WINDOW_TRACK_ID = STREAM_ID+"-window";
@@ -3217,6 +3232,7 @@ public class WebRtcManager extends Caster<Msg>{
         FINGERPRINT_OFFER,
     }
 
+
     private enum SdpState{
         IDLE,
         CREATING,
@@ -3226,6 +3242,7 @@ public class WebRtcManager extends Caster<Msg>{
         SET_LOCAL_SUCCESS,
         SET_REMOTE_SUCCESS,
     }
+
 
     /**
      * PeerConnection包装类
@@ -4005,6 +4022,7 @@ public class WebRtcManager extends Caster<Msg>{
     public void setStatsLogEnable(boolean enable){
         enableStatsLog = enable;
     }
+
 
     private void printStats(StatsHelper.Stats stats){
         if (!enableStatsLog){

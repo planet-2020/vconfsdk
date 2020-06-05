@@ -1,7 +1,5 @@
 package com.kedacom.vconf.sdk.webrtc;
 
-import androidx.annotation.NonNull;
-
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmDcsConfMode;
 import com.kedacom.vconf.sdk.common.constant.EmEndpointType;
@@ -22,13 +20,7 @@ import com.kedacom.vconf.sdk.common.type.vconf.TMTInviteMember;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTVideoFormatList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
-import com.kedacom.vconf.sdk.webrtc.bean.ConfInfo;
-import com.kedacom.vconf.sdk.webrtc.bean.ConfInvitationInfo;
-import com.kedacom.vconf.sdk.webrtc.bean.ConfMemberInfo;
-import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
-import com.kedacom.vconf.sdk.webrtc.bean.CreateConfResult;
-import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -91,8 +83,6 @@ final class ToDoConverter {
                 break;
             }
         }
-
-
 
         return new ConfInvitationInfo(e164, alias,
                 EmEndpointType.emEndpointTypeMT == tMtCallLinkSate.emEndpointType,
