@@ -2415,11 +2415,7 @@ public class WebRtcManager extends Caster<Msg>{
     // 所有其他查找与会方的方法都是先查找RtcStream，然后通过RtcStream调用本方法（保证Conferee和RtcStream之间的数据一致性）。
     // 这一系列方法的设计原则是时间换空间（低效率换简化的逻辑）。
     private Conferee findConferee(int mcuId, int terId, Conferee.ConfereeType type){
-        Set<Conferee> confereeSet = new LinkedHashSet<>(conferees);
-        if (null != myself){
-            confereeSet.add(myself);
-        }
-        return Stream.of(confereeSet)
+        return Stream.of(conferees)
                 .filter(it-> it.mcuId==mcuId && it.terId==terId && it.type==type)
                 .findFirst()
                 .orElse(null);
@@ -2442,9 +2438,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     private Conferee findAssStreamSender(){
-        if (null != sharedWindow){
-            return myself;
-        }
         RtcStream assStream = findAssStream();
         if (null == assStream){
             return null;
