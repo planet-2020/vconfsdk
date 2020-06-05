@@ -1847,20 +1847,28 @@ public class WebRtcManager extends Caster<Msg>{
                     .orElse(RtcConfig.VideoQuality_Unknown);
         }
 
+        private boolean willVideoResolutionBeChanged(int requiredVideoQuality){
+            int curPreferredQuality = getPreferredVideoQuality();
+            if (curPreferredQuality < requiredVideoQuality){
+                RtcStream videoStream = getVideoStream();
+                if (null != videoStream && videoStream.getResolution(curPreferredQuality) != videoStream.getResolution(requiredVideoQuality)){
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void addDisplay(@NonNull Display display) {
             KLog.p("add Display %s to conferee %s", display.id(), getId());
-
-            int quality = getPreferredVideoQuality();
-
+            boolean resolutionChanged = willVideoResolutionBeChanged(display.preferredVideoQuality);
             displays.add(display);
-
             if (displays.size() == 1){
                 KLog.p("first add");
-                setVideoState(VideoState.ToBind);
+                if (getVideoState() == VideoState.Idle || getVideoState() == VideoState.BindingFailed) {
+                    setVideoState(VideoState.ToBind);
+                }
             }
-
-            if (quality < display.preferredVideoQuality){
-                KLog.p("preferredVideoQuality upgrade from %s to %s", quality, display.preferredVideoQuality);
+            if (resolutionChanged){
                 instance.subscribeStream();
             }
         }
@@ -1876,61 +1884,19 @@ public class WebRtcManager extends Caster<Msg>{
 //                        display.onFrame(new VideoFrame()); // TODO 构造最后一帧空帧避免画面残留
 //                    }
 //                });
-
                 if (displays.isEmpty()){
-                    setVideoState(VideoState.Idle);
+                    KLog.p("last remove");
+                    if (getVideoState().compareTo(VideoState.BindingFailed) > 0) {
+                        setVideoState(VideoState.StreamDisabled);
+                    }
                 }
-                int quality = getPreferredVideoQuality();
-                if (quality < display.preferredVideoQuality){
-                    KLog.p("preferredVideoQuality downgrade from %s to %s", display.preferredVideoQuality, quality);
+                if (willVideoResolutionBeChanged(display.preferredVideoQuality)){
                     instance.subscribeStream();
                 }
             }
             return success;
         }
 
-
-//        /**
-//         * 调整视频质量。
-//         * 一个与会方可能会发布多路不同质量的视频码流(simulcast)，其他与会方可以根据自己需要选择订阅。
-//         * 不同的使用场景要求展示的视频质量可能不一样，比如小窗口展示时我们用cif就够了，全屏展示时又需要切到高清，
-//         * 又比如对于关联到多个Display的与会方而言若其中一个高清的Display关闭了我们可能需要重新计算需要订阅的视频质量，可能要回落到cif
-//         * @return 视频质量是否变化了。true表示变化了。
-//         * */
-//        private boolean adjustVideoQuality(){
-//            RtcStream videoStream = getVideoStream();
-//            if (null == videoStream){
-//                return false;
-//            }
-//
-//            EmMtResolution resolution = videoStream.getResolution(getPreferredVideoQuality());
-//
-//            KLog.p("display %s preferredVideoQuality=%s", display.id(), display.preferredVideoQuality);
-//            if (resolution != videoResolution){
-//                videoResolution = resolution;
-//                return true;
-//            }
-//
-//            return false;
-//
-//            if (displays.isEmpty()){
-//                return false;
-//            }
-//            int preferQuality = RtcConfig.VideoQuality_Low;
-//            for (Display display : displays){
-//                KLog.p("display %s preferredVideoQuality=%s", display.id(), display.preferredVideoQuality);
-//                if (display.preferredVideoQuality > preferQuality){
-//                    preferQuality = display.preferredVideoQuality;
-//                }
-//            }
-//            KLog.p("old preferredVideoQuality=%s, new preferredVideoQuality=%s", preferredVideoQuality, preferQuality);
-//            if (preferQuality != preferredVideoQuality) {
-//                preferredVideoQuality = preferQuality;
-//                return true;
-//            }
-//
-//            return false;
-//        }
 
         private void refreshDisplays(){
             // 延迟刷新以防止短时间内大量重复刷新
@@ -1961,9 +1927,11 @@ public class WebRtcManager extends Caster<Msg>{
         // 视频状态
         private enum VideoState{
             Idle,
-            ToBind,     // 等待订阅该与会方对应的视频码流。
-            Binding,    // 订阅中
-            Lost,       // 订阅失败。
+            ToBind,
+            Binding,
+            BindingFailed,
+
+            StreamDisabled, // 不需要码流。如没有display
             Buffering,  // 正在缓冲中。用于在展示与会方画面前展示一些过渡效果（如辅流与会方展示辅流缓冲图标）
             Normal,     // 正常画面
             Weak,       // 视频信号弱（视频已经订阅了，但没有视频帧（如对端关闭了摄像头采集，停止了发送）或者视频帧率非常低（如网络状况很差导致的低帧率））
@@ -2014,21 +1982,26 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         private EmMtResolution getResolution(){
-            List<EmMtResolution> resolutions = streamInfo.aemSimcastRes;
-            if (resolutions.isEmpty()){
-                // 若发布方不是simulcast发布的则resolution会是空，此时随便添一个即可，业务组件会处理。
-                return EmMtResolution.emMt640x360_Api;
-            }
+            int ownerPreferredQuality = RtcConfig.VideoQuality_Unknown;
             Conferee owner = getOwner();
-            if (null == owner){
-                return resolutions.get(0);
+            if (null != owner){
+                ownerPreferredQuality = owner.getPreferredVideoQuality();
             }
-
-            int ownerPreferredQuality = owner.getPreferredVideoQuality();
-            KLog.p("config.PreferredVideoQuality=%s, owner %s preferredVideoQuality=%s", config.preferredVideoQuality, owner.getId(), ownerPreferredQuality);
+            KLog.p("streamid=%s, config.PreferredVideoQuality=%s, owner preferredVideoQuality=%s",
+                    streamInfo.achStreamId, config.preferredVideoQuality, ownerPreferredQuality);
             int quality = RtcConfig.VideoQuality_Unknown==ownerPreferredQuality ?
                     config.preferredVideoQuality :
                     Math.min(config.preferredVideoQuality, ownerPreferredQuality);
+
+            return getResolution(quality);
+        }
+
+        private EmMtResolution getResolution(int quality){
+            List<EmMtResolution> resolutions = streamInfo.aemSimcastRes;
+            if (resolutions.isEmpty()){
+                // 若发布方不是simulcast发布的则resolution会是空，此时随便添一个即可，业务组件会处理。
+                return EmMtResolution.emMtResAuto_Api;
+            }
             // NOTE: 分辨率是按从小到大的顺序排列的，这点平台保证。
             if (RtcConfig.VideoQuality_High == quality){
                 return resolutions.get(resolutions.size()-1);
@@ -2083,7 +2056,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 视频质量偏好。
          * 一个与会方“可能”有高中低三种不同质量的视频流，该字段用于指定该Display“倾向于”展示哪种质量的视频流。
          * */
-        private int preferredVideoQuality = RtcConfig.VideoQuality_Low;
+        private int preferredVideoQuality = RtcConfig.VideoQuality_Unknown;
 
 
         private Display(Context context) {
@@ -2245,10 +2218,10 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         public void setPreferredVideoQuality(int quality){
             if (preferredVideoQuality != quality){
-                boolean needResubscribe = null != conferee && conferee.getPreferredVideoQuality() < quality;
+                boolean resolutionChanged = null != conferee && conferee.willVideoResolutionBeChanged(quality);
                 KLog.p("display %s change preferredVideoQuality from %s to %s", id(), preferredVideoQuality, quality);
                 preferredVideoQuality = quality;
-                if (needResubscribe){
+                if (resolutionChanged){
                     instance.subscribeStream();
                 }
             }
@@ -2306,7 +2279,7 @@ public class WebRtcManager extends Caster<Msg>{
             StreamStateDecoration stateDeco = null;
             if (conferee.isMyself() && !isLocalVideoEnabled){
                 stateDeco = Conferee.cameraDisabledDeco;
-            }else if (Conferee.VideoState.Lost == videoState && Conferee.AudioState.Lost!=audioState){
+            }else if (Conferee.VideoState.BindingFailed == videoState && Conferee.AudioState.Lost!=audioState){
                 stateDeco = Conferee.audioConfereeDeco;
             }else if (Conferee.VideoState.Weak == videoState){
                 stateDeco = Conferee.weakVideoSignalDeco;
@@ -2386,15 +2359,20 @@ public class WebRtcManager extends Caster<Msg>{
                         return false;
                     }
                     Conferee owner = it.getOwner();
-                    if (null == owner || owner.getVideoState() == Conferee.VideoState.Idle){
+                    if (null == owner){
                         return false;
                     }
-                    if (owner.getVideoState()== Conferee.VideoState.ToBind
-                            || owner.getVideoState()== Conferee.VideoState.Lost) {
+                    Conferee.VideoState videoState = owner.getVideoState();
+                    if (Conferee.VideoState.Idle == videoState || Conferee.VideoState.StreamDisabled == videoState){
+                        return false;
+                    }
+
+                    if (Conferee.VideoState.ToBind == videoState
+                            || Conferee.VideoState.BindingFailed == videoState) {
                         owner.setVideoState(Conferee.VideoState.Binding);
                         handler.postDelayed(() -> {
-                            if (owner.getVideoState() == Conferee.VideoState.Binding){
-                                owner.setVideoState(Conferee.VideoState.Lost);
+                            if (Conferee.VideoState.Binding == videoState){
+                                owner.setVideoState(Conferee.VideoState.BindingFailed);
                             }
                         }, 2000);
                     }
@@ -2414,6 +2392,7 @@ public class WebRtcManager extends Caster<Msg>{
     // 直接查找与会方。
     // 所有其他查找与会方的方法都是先查找RtcStream，然后通过RtcStream调用本方法（保证Conferee和RtcStream之间的数据一致性）。
     // 这一系列方法的设计原则是时间换空间（低效率换简化的逻辑）。
+    // NOTE： 如下一系列方法均未将己端纳入考量！！
     private Conferee findConferee(int mcuId, int terId, Conferee.ConfereeType type){
         return Stream.of(conferees)
                 .filter(it-> it.mcuId==mcuId && it.terId==terId && it.type==type)
@@ -3533,7 +3512,11 @@ public class WebRtcManager extends Caster<Msg>{
                         if(owner.isVirtualAssStreamConferee()){
                             // 接收双流先展示缓冲图标
                             owner.setVideoState(Conferee.VideoState.Buffering);
-                            handler.postDelayed(() -> owner.setVideoState(Conferee.VideoState.Normal), 2000);
+                            handler.postDelayed(() -> {
+                                if (owner.getVideoState() == Conferee.VideoState.Buffering) {
+                                    owner.setVideoState(Conferee.VideoState.Normal);
+                                }
+                            }, 2000);
                         }else {
                             owner.setVideoState(Conferee.VideoState.Normal);
                         }
