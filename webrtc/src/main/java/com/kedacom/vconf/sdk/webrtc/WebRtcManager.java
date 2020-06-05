@@ -1500,8 +1500,10 @@ public class WebRtcManager extends Caster<Msg>{
         // 音频状态
         private AudioState audioState = AudioState.Idle;
 
-        // 视频状态
-        private VideoState videoState = VideoState.Idle;
+        // 视频通道状态
+        private VideoChannelState videoChannelState = VideoChannelState.Idle;
+        // 视频信号状态
+        private VideoSignalState videoSignalState = VideoSignalState.Idle;
 
         // 与会方画面显示器。
         // 一个与会方可以绑定多个Display。一个Display只能绑定到一个与会方
@@ -1592,6 +1594,13 @@ public class WebRtcManager extends Caster<Msg>{
 
         public String getEmail() {
             return email;
+        }
+
+        /**
+         * @return 与会方对应的显示器集合。不可修改！
+         * */
+        public Set<Display> getDisplays() {
+            return Collections.unmodifiableSet(displays);
         }
 
         /**
@@ -1805,7 +1814,6 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-
         private void setAudioState(AudioState audioState) {
             if (audioState != this.audioState) {
                 KLog.sp(String.format("change AUDIO state(from %s to %s) for conferee %s", this.audioState, audioState, getId()));
@@ -1818,16 +1826,28 @@ public class WebRtcManager extends Caster<Msg>{
             return audioState;
         }
 
-        private void setVideoState(VideoState videoState) {
-            if (videoState != this.videoState) {
-                KLog.sp(String.format("change VIDEO state(from %s to %s) for conferee %s", this.videoState, videoState, getId()));
-                this.videoState = videoState;
+        private void setVideoChannelState(VideoChannelState videoChannelState) {
+            if (videoChannelState != this.videoChannelState) {
+                KLog.sp(String.format("%s change VIDEO CHANNEL state from %s to %s", getId(), this.videoChannelState, videoChannelState));
+                this.videoChannelState = videoChannelState;
                 refreshDisplays();
             }
         }
 
-        private VideoState getVideoState() {
-            return videoState;
+        private VideoChannelState getVideoChannelState() {
+            return videoChannelState;
+        }
+
+        private void setVideoSignalState(VideoSignalState videoSignalState) {
+            if (videoSignalState != this.videoSignalState) {
+                KLog.sp(String.format("%s change VIDEO SIGNAL state from %s to %s", getId(), this.videoSignalState, videoSignalState));
+                this.videoSignalState = videoSignalState;
+                refreshDisplays();
+            }
+        }
+
+        private VideoSignalState getVideoSignalState() {
+            return videoSignalState;
         }
 
         private RtcStream getVideoStream(){
@@ -1862,12 +1882,6 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p("add Display %s to conferee %s", display.id(), getId());
             boolean resolutionChanged = willVideoResolutionBeChanged(display.preferredVideoQuality);
             displays.add(display);
-            if (displays.size() == 1){
-                KLog.p("first add");
-                if (getVideoState() == VideoState.Idle || getVideoState() == VideoState.BindingFailed) {
-                    setVideoState(VideoState.ToBind);
-                }
-            }
             if (resolutionChanged){
                 instance.subscribeStream();
             }
@@ -1884,12 +1898,7 @@ public class WebRtcManager extends Caster<Msg>{
 //                        display.onFrame(new VideoFrame()); // TODO 构造最后一帧空帧避免画面残留
 //                    }
 //                });
-                if (displays.isEmpty()){
-                    KLog.p("last remove");
-                    if (getVideoState().compareTo(VideoState.BindingFailed) > 0) {
-                        setVideoState(VideoState.StreamDisabled);
-                    }
-                }
+
                 if (willVideoResolutionBeChanged(display.preferredVideoQuality)){
                     instance.subscribeStream();
                 }
@@ -1924,14 +1933,17 @@ public class WebRtcManager extends Caster<Msg>{
             AssStream, // 辅流与会方
         }
 
-        // 视频状态
-        private enum VideoState{
+        // 视频通道状态
+        private enum VideoChannelState{
             Idle,
-            ToBind,
             Binding,
             BindingFailed,
+            Bound,
+        }
 
-            StreamDisabled, // 不需要码流。如没有display
+        // 视频信号状态
+        private enum VideoSignalState{
+            Idle,
             Buffering,  // 正在缓冲中。用于在展示与会方画面前展示一些过渡效果（如辅流与会方展示辅流缓冲图标）
             Normal,     // 正常画面
             Weak,       // 视频信号弱（视频已经订阅了，但没有视频帧（如对端关闭了摄像头采集，停止了发送）或者视频帧率非常低（如网络状况很差导致的低帧率））
@@ -2272,18 +2284,19 @@ public class WebRtcManager extends Caster<Msg>{
 //            KLog.p("onDraw, displayWidth=%s, displayHeight=%s", displayWidth, displayHeight);
 
             boolean isLocalVideoEnabled = instance.config.isLocalVideoEnabled;
-            Conferee.VideoState videoState = conferee.getVideoState();
+            Conferee.VideoChannelState videoChannelState = conferee.getVideoChannelState();
+            Conferee.VideoSignalState videoSignalState = conferee.getVideoSignalState();
             Conferee.AudioState audioState = conferee.getAudioState();
 
             // 绘制码流状态deco
             StreamStateDecoration stateDeco = null;
             if (conferee.isMyself() && !isLocalVideoEnabled){
                 stateDeco = Conferee.cameraDisabledDeco;
-            }else if (Conferee.VideoState.BindingFailed == videoState && Conferee.AudioState.Lost!=audioState){
+            }else if (Conferee.VideoChannelState.BindingFailed == videoChannelState && Conferee.AudioState.Lost!=audioState){
                 stateDeco = Conferee.audioConfereeDeco;
-            }else if (Conferee.VideoState.Weak == videoState){
+            }else if (Conferee.VideoSignalState.Weak == videoSignalState){
                 stateDeco = Conferee.weakVideoSignalDeco;
-            }else if (Conferee.VideoState.Buffering == videoState && conferee.isVirtualAssStreamConferee()){
+            }else if (Conferee.VideoSignalState.Buffering == videoSignalState && conferee.isVirtualAssStreamConferee()){
                 stateDeco = Conferee.recvingAssStreamDeco;
             }
             if (null != stateDeco && stateDeco.enabled() && !disabledDecos.contains(stateDeco.id)) {
@@ -2362,17 +2375,16 @@ public class WebRtcManager extends Caster<Msg>{
                     if (null == owner){
                         return false;
                     }
-                    Conferee.VideoState videoState = owner.getVideoState();
-                    if (Conferee.VideoState.Idle == videoState || Conferee.VideoState.StreamDisabled == videoState){
+                    if (owner.displays.isEmpty()){
                         return false;
                     }
-
-                    if (Conferee.VideoState.ToBind == videoState
-                            || Conferee.VideoState.BindingFailed == videoState) {
-                        owner.setVideoState(Conferee.VideoState.Binding);
+                    Conferee.VideoChannelState videoChannelState = owner.getVideoChannelState();
+                    if (Conferee.VideoChannelState.Idle == videoChannelState
+                            || Conferee.VideoChannelState.BindingFailed == videoChannelState) {
+                        owner.setVideoChannelState(Conferee.VideoChannelState.Binding);
                         handler.postDelayed(() -> {
-                            if (Conferee.VideoState.Binding == videoState){
-                                owner.setVideoState(Conferee.VideoState.BindingFailed);
+                            if (Conferee.VideoChannelState.Binding == owner.getVideoChannelState()){
+                                owner.setVideoChannelState(Conferee.VideoChannelState.BindingFailed);
                             }
                         }, 2000);
                     }
@@ -3393,7 +3405,8 @@ public class WebRtcManager extends Caster<Msg>{
                     kdStreamId2RtcTrackIdMap.put(kdStreamId, localVideoTrackId);
                     if (localVideoTrackId.equals(LOCAL_VIDEO_TRACK_ID)) {
                         // 对于己端发送窗口共享、发送屏幕共享不需要回显，也没有对应的stream以及Conferee
-                        myself.setVideoState(Conferee.VideoState.Normal);
+                        myself.setVideoChannelState(Conferee.VideoChannelState.Bound);
+                        myself.setVideoSignalState(Conferee.VideoSignalState.Normal);
                         executor.execute(() -> {
                             KLog.p("bind local video track %s to conferee %s", localVideoTrack.id(), myself.getId());
                             localVideoTrack.addSink(myself);  // 本地回显
@@ -3416,7 +3429,8 @@ public class WebRtcManager extends Caster<Msg>{
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
                     if(trackId.equals(LOCAL_VIDEO_TRACK_ID)){ // 仅处理主流的情形，参见createVideoTrack
-                        myself.setVideoState(Conferee.VideoState.Idle);
+                        myself.setVideoChannelState(Conferee.VideoChannelState.Idle);
+                        myself.setVideoSignalState(Conferee.VideoSignalState.Idle);
                         executor.execute(() -> {
                                 KLog.p("unbind track %s from conferee %s", localVideoTrack.id(), myself.getId());
                                 localVideoTrack.removeSink(myself);
@@ -3509,16 +3523,18 @@ public class WebRtcManager extends Caster<Msg>{
                             return;
                         }
 
+                        owner.setVideoChannelState(Conferee.VideoChannelState.Bound);
+
                         if(owner.isVirtualAssStreamConferee()){
                             // 接收双流先展示缓冲图标
-                            owner.setVideoState(Conferee.VideoState.Buffering);
+                            owner.setVideoSignalState(Conferee.VideoSignalState.Buffering);
                             handler.postDelayed(() -> {
-                                if (owner.getVideoState() == Conferee.VideoState.Buffering) {
-                                    owner.setVideoState(Conferee.VideoState.Normal);
+                                if (owner.getVideoSignalState() == Conferee.VideoSignalState.Buffering) {
+                                    owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
                                 }
-                            }, 2000);
+                            }, 3000);
                         }else {
-                            owner.setVideoState(Conferee.VideoState.Normal);
+                            owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
                         }
 
                         executor.execute(() -> {
@@ -3543,7 +3559,8 @@ public class WebRtcManager extends Caster<Msg>{
                         handler.post(() -> {
                             kdStreamId2RtcTrackIdMap.remove(streamId);
                             if (null != owner) {
-                                owner.setVideoState(Conferee.VideoState.Idle);
+                                owner.setVideoChannelState(Conferee.VideoChannelState.Idle);
+                                owner.setVideoSignalState(Conferee.VideoSignalState.Idle);
                                 executor.execute(() -> {
                                     KLog.p("unbind track %s from conferee %s", track.id(), owner.getId());
                                     track.removeSink(owner);
@@ -3969,15 +3986,15 @@ public class WebRtcManager extends Caster<Msg>{
                 if (null != conferee){
                     long interval = curTimestamp - videoStatsTimeStamp;
                     float fps = (curReceivedFrames - preReceivedFrames) / (interval/1000f);
-                    if (conferee.getVideoState() == Conferee.VideoState.Normal
+                    if (conferee.getVideoSignalState() == Conferee.VideoSignalState.Normal
                             && interval >= WeakSignalCheckInterval // 计算帧率的间隔时长应适度，太短则太敏感地滑入WeakSignal状态，太长则太迟钝
                             && fps < 0.2 // 可忍受的帧率下限，低于该下限则认为信号丢失
                     ){
-                        conferee.setVideoState(Conferee.VideoState.Weak);
-                    }else if (conferee.getVideoState() == Conferee.VideoState.Weak && fps > 1){
+                        conferee.setVideoSignalState(Conferee.VideoSignalState.Weak);
+                    }else if (conferee.getVideoSignalState() == Conferee.VideoSignalState.Weak && fps > 1){
                         // 尽管我们在帧率低于0.2时将状态设为WeakSignal但当帧率超过0.2时我们不立马设置状态为Normal
                         // 而是等帧率回复到较高水平才切回Normal以使状态切换显得平滑而不是在临界值处频繁切换
-                        conferee.setVideoState(Conferee.VideoState.Normal);
+                        conferee.setVideoSignalState(Conferee.VideoSignalState.Normal);
                     }
                 }else{
                     KLog.p(KLog.ERROR, "track %s(kdstreamId=%s) not belong to any conferee?", trackIdentifier, lostSignalKdStreamId);
