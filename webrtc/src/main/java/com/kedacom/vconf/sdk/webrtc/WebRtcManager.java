@@ -3497,7 +3497,8 @@ public class WebRtcManager extends Caster<Msg>{
             executor.execute(() -> {
                 String kdStreamId = mid2KdStreamIdMap.get(mid);
                 if (null == kdStreamId) {
-                    throw new RuntimeException("kdStreamId related to mid "+mid+" doesn't exist? i should have got it from onSetOfferCmd()");
+                    KLog.p(KLog.ERROR,"kdStreamId related to mid "+mid+" doesn't exist? i should have got it from onSetOfferCmd()");
+                    return;
                 }
                 remoteVideoTracks.put(kdStreamId, track);
                 track.setEnabled(config.isRemoteVideoEnabled);
@@ -3577,7 +3578,8 @@ public class WebRtcManager extends Caster<Msg>{
             executor.execute(() -> {
                 String kdStreamId = mid2KdStreamIdMap.get(mid);
                 if (null == kdStreamId) {
-                    throw new RuntimeException("kdStreamId related to mid "+mid+" doesn't exist? i should have got it from onSetOfferCmd()");
+                    KLog.p(KLog.ERROR,"kdStreamId related to mid "+mid+" doesn't exist? i should have got it from onSetOfferCmd()");
+                    return;
                 }
                 track.setEnabled(!config.isSilenced);
                 remoteAudioTracks.put(kdStreamId, track);
