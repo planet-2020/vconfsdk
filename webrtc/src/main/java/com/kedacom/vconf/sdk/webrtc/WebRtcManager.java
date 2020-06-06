@@ -1495,8 +1495,10 @@ public class WebRtcManager extends Caster<Msg>{
 
         private final ConfereeType type;
 
-        // 音频状态
-        private AudioState audioState = AudioState.Idle;
+        // 音频通道状态
+        private AudioChannelState audioChannelState = AudioChannelState.Idle;
+        // 音频信号状态
+        private AudioSignalState audioSignalState = AudioSignalState.Idle;
 
         // 视频通道状态
         private VideoChannelState videoChannelState = VideoChannelState.Idle;
@@ -1605,7 +1607,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 是否为己端
          * */
         public boolean isMyself(){
-            return instance.userE164.equals(e164);
+            return instance.userE164.equals(e164); // XXX 可以考虑增加一个与会方类型——己端，则可以直接判断类型是否为己端。
         }
 
         /**
@@ -1614,19 +1616,6 @@ public class WebRtcManager extends Caster<Msg>{
         public boolean isVirtualAssStreamConferee() {
             return type == ConfereeType.AssStream;
         }
-
-        /**
-         * 是否正在发送辅流
-         * */
-        public boolean isSendingAssStream() {
-            if (isMyself()){
-                return null != instance.sharedWindow;
-            }else {
-                return Stream.of(instance.streams)
-                        .anyMatch(it-> it.getMcuId()==mcuId && it.getTerId()==terId && it.isAss());
-            }
-        }
-
 
         /**
          * 设置语音激励deco
@@ -1812,17 +1801,30 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-        private void setAudioState(AudioState audioState) {
-            if (audioState != this.audioState) {
-                KLog.sp(String.format("change AUDIO state(from %s to %s) for conferee %s", this.audioState, audioState, getId()));
-                this.audioState = audioState;
+        private void setAudioChannelState(AudioChannelState state) {
+            if (state != audioChannelState) {
+                KLog.sp(String.format("%s change AUDIO CHANNEL state(from %s to %s)", getId(), audioChannelState, state));
+                audioChannelState = state;
                 refreshDisplays();
             }
         }
 
-        private AudioState getAudioState() {
-            return audioState;
+        private AudioChannelState getAudioChannelState() {
+            return audioChannelState;
         }
+
+        private void setAudioSignalState(AudioSignalState state) {
+            if (state != audioSignalState) {
+                KLog.sp(String.format("%s change AUDIO SIGNAL state(from %s to %s)", getId(), audioSignalState, state));
+                audioSignalState = state;
+                refreshDisplays();
+            }
+        }
+
+        private AudioSignalState getAudioSignalState() {
+            return audioSignalState;
+        }
+
 
         private void setVideoChannelState(VideoChannelState videoChannelState) {
             if (videoChannelState != this.videoChannelState) {
@@ -1890,13 +1892,6 @@ public class WebRtcManager extends Caster<Msg>{
             boolean success = displays.remove(display);
             if (success) {
                 KLog.p("display %s removed from conferee %s", display.id(), getId());
-//                onFrameHandler.post(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        display.onFrame(new VideoFrame()); // TODO 构造最后一帧空帧避免画面残留
-//                    }
-//                });
-
                 if (willVideoResolutionBeChanged(display.preferredVideoQuality)){
                     instance.subscribeStream();
                 }
@@ -1908,7 +1903,7 @@ public class WebRtcManager extends Caster<Msg>{
         private void refreshDisplays(){
             // 延迟刷新以防止短时间内大量重复刷新
             instance.handler.removeCallbacks(refreshDisplaysRunnable);
-            instance.handler.postDelayed(refreshDisplaysRunnable, 100);
+            instance.handler.postDelayed(refreshDisplaysRunnable, 100); // TODO 增大延迟看能否改善关开摄像头时残留最后一帧的情况
         }
 
         private Runnable refreshDisplaysRunnable = new Runnable() {
@@ -1931,6 +1926,21 @@ public class WebRtcManager extends Caster<Msg>{
             AssStream, // 辅流与会方
         }
 
+        // 音频通道状态
+        private enum AudioChannelState {
+            Idle,
+            Binding,
+            BindingFailed,
+            Bound,
+        }
+
+        // 音频信号状态
+        private enum AudioSignalState {
+            Idle,
+            Normal,
+            Activated, // 语音激励
+        }
+
         // 视频通道状态
         private enum VideoChannelState{
             Idle,
@@ -1945,16 +1955,6 @@ public class WebRtcManager extends Caster<Msg>{
             Buffering,  // 正在缓冲中。用于在展示与会方画面前展示一些过渡效果（如辅流与会方展示辅流缓冲图标）
             Normal,     // 正常画面
             Weak,       // 视频信号弱（视频已经订阅了，但没有视频帧（如对端关闭了摄像头采集，停止了发送）或者视频帧率非常低（如网络状况很差导致的低帧率））
-        }
-
-        // 音频状态
-        private enum AudioState {
-            Idle,
-            ToBind,
-            Binding,
-            Lost,
-            Normal,
-            Activated, // 语音激励
         }
 
     }
@@ -2284,13 +2284,15 @@ public class WebRtcManager extends Caster<Msg>{
             boolean isLocalVideoEnabled = instance.config.isLocalVideoEnabled;
             Conferee.VideoChannelState videoChannelState = conferee.getVideoChannelState();
             Conferee.VideoSignalState videoSignalState = conferee.getVideoSignalState();
-            Conferee.AudioState audioState = conferee.getAudioState();
+            Conferee.AudioChannelState audioChannelState = conferee.getAudioChannelState();
+            Conferee.AudioSignalState audioSignalState = conferee.getAudioSignalState();
 
             // 绘制码流状态deco
             StreamStateDecoration stateDeco = null;
             if (conferee.isMyself() && !isLocalVideoEnabled){
                 stateDeco = Conferee.cameraDisabledDeco;
-            }else if (Conferee.VideoChannelState.BindingFailed == videoChannelState && Conferee.AudioState.Lost!=audioState){
+            }else if (Conferee.VideoChannelState.BindingFailed == videoChannelState
+                    && Conferee.AudioChannelState.BindingFailed != audioChannelState){
                 stateDeco = Conferee.audioConfereeDeco;
             }else if (Conferee.VideoSignalState.Weak == videoSignalState){
                 stateDeco = Conferee.weakVideoSignalDeco;
@@ -2327,7 +2329,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             // 绘制语音激励deco
-            if (Conferee.AudioState.Activated == audioState){
+            if (Conferee.AudioSignalState.Activated == audioSignalState){
                 conferee.voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
                 canvas.drawRect(conferee.voiceActivatedDeco, Conferee.voiceActivatedDecoPaint);
             }
@@ -2349,6 +2351,9 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    /**
+     * 订阅码流
+     * */
     private void subscribeStream(){
         // 延迟绑定以防止短时间内大量重复绑定
         handler.removeCallbacks(subscribeStreamRunnable);
@@ -2367,10 +2372,6 @@ public class WebRtcManager extends Caster<Msg>{
     private void doSubscribeStream(){
         List<TRtcPlayItem> playItems = Stream.of(streams)
                 .filter(it -> {
-                    if (it.isAudio()){
-                        // 音频业务组件已处理，无需订阅
-                        return false;
-                    }
                     Conferee owner = it.getOwner();
                     if (null == owner){
                         return false;
@@ -2378,32 +2379,48 @@ public class WebRtcManager extends Caster<Msg>{
                     if (owner.displays.isEmpty()){
                         return false;
                     }
-                    Conferee.VideoChannelState videoChannelState = owner.getVideoChannelState();
-                    if (Conferee.VideoChannelState.Idle == videoChannelState
-                            || Conferee.VideoChannelState.BindingFailed == videoChannelState) {
-                        owner.setVideoChannelState(Conferee.VideoChannelState.Binding);
-                        handler.postDelayed(() -> {
-                            if (Conferee.VideoChannelState.Binding == owner.getVideoChannelState()){
-                                owner.setVideoChannelState(Conferee.VideoChannelState.BindingFailed);
-                            }
-                        }, 2000);
+
+                    if (it.isAudio()){
+                        Conferee.AudioChannelState audioChannelState = owner.getAudioChannelState();
+                        if (Conferee.AudioChannelState.Idle == audioChannelState
+                                || Conferee.AudioChannelState.BindingFailed == audioChannelState) {
+                            owner.setAudioChannelState(Conferee.AudioChannelState.Binding);
+                            handler.postDelayed(() -> {
+                                if (Conferee.AudioChannelState.Binding == owner.getAudioChannelState()){
+                                    owner.setAudioChannelState(Conferee.AudioChannelState.BindingFailed);
+                                }
+                            }, 2000);
+                        }
+                        // 音频业务组件已处理，无需订阅
+                        return false;
+                    }else {
+                        Conferee.VideoChannelState videoChannelState = owner.getVideoChannelState();
+                        if (Conferee.VideoChannelState.Idle == videoChannelState
+                                || Conferee.VideoChannelState.BindingFailed == videoChannelState) {
+                            owner.setVideoChannelState(Conferee.VideoChannelState.Binding);
+                            handler.postDelayed(() -> {
+                                if (Conferee.VideoChannelState.Binding == owner.getVideoChannelState()) {
+                                    owner.setVideoChannelState(Conferee.VideoChannelState.BindingFailed);
+                                }
+                            }, 2000);
+                        }
+                        return true;
                     }
-                    return true;
+
                 })
                 .map(stream -> new TRtcPlayItem(stream.getStreamId(), stream.isAss(), stream.getResolution()))
                 .collect(Collectors.toList());
 
         if (!playItems.isEmpty()) {
-            // 因为是全量，所以可能既包含未绑定的也包含以前绑定过的。
-            // 对于绑定过的stream（即已经通过SelectStream设置过的），若分辨率参数更改了则绑定至新的分辨率，对于未绑定过的会触发PCObserver#onTrack
+            // 因为是全量，所以可能既包含未订阅的的也包含已订阅过的。
+            // 对于未订阅过的会触发PCObserver#onTrack，对于已订阅过的下层没有任何消息或者回调反馈（目前没发现）
             set(Msg.SelectStream, new TRtcPlayParam(playItems));
         }
     }
 
 
     // 直接查找与会方。
-    // 所有其他查找与会方的方法都是先查找RtcStream，然后通过RtcStream调用本方法（保证Conferee和RtcStream之间的数据一致性）。
-    // 这一系列方法的设计原则是时间换空间（低效率换简化的逻辑）。
+    // 所有其他查找与会方的方法都是先查找RtcStream，然后通过RtcStream调用本方法。（较低效率换取简化的逻辑）
     // NOTE： 如下一系列方法均未将己端纳入考量！！
     private Conferee findConferee(int mcuId, int terId, Conferee.ConfereeType type){
         return Stream.of(conferees)
@@ -3470,7 +3487,8 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p("create local audio track %s/%s", kdStreamId, localAudioTrackId);
                 handler.post(() -> {
                     kdStreamId2RtcTrackIdMap.put(kdStreamId, localAudioTrackId);
-                    myself.setAudioState(Conferee.AudioState.Normal);
+                    myself.setAudioChannelState(Conferee.AudioChannelState.Bound);
+                    myself.setAudioSignalState(Conferee.AudioSignalState.Normal); // XXX 一个与会方可能有多个音轨
                 });
             });
         }
@@ -3489,7 +3507,8 @@ public class WebRtcManager extends Caster<Msg>{
                 handler.post(() -> {
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
-                    myself.setAudioState(Conferee.AudioState.Idle);
+                    myself.setAudioChannelState(Conferee.AudioChannelState.Idle);
+                    myself.setAudioSignalState(Conferee.AudioSignalState.Idle); // XXX 一个与会方可能有多个音轨
                 });
 
             });
@@ -3619,7 +3638,8 @@ public class WebRtcManager extends Caster<Msg>{
                             return;
                         }
 
-                        owner.setAudioState(Conferee.AudioState.Normal);
+                        myself.setAudioChannelState(Conferee.AudioChannelState.Bound);
+                        myself.setAudioSignalState(Conferee.AudioSignalState.Normal); // XXX 一个与会方可能有多个音轨
                     }
                 });
             });
@@ -3636,7 +3656,8 @@ public class WebRtcManager extends Caster<Msg>{
                         handler.post(() -> {
                             kdStreamId2RtcTrackIdMap.remove(kdStreamId);
                             if (owner != null && owner.getAudioStreams().isEmpty()){
-                                owner.setAudioState(Conferee.AudioState.Idle);
+                                myself.setAudioChannelState(Conferee.AudioChannelState.Idle);
+                                myself.setAudioSignalState(Conferee.AudioSignalState.Idle); // XXX 一个与会方可能有多个音轨
                             }
                         });
                         KLog.p("stream %s removed", kdStreamId);
@@ -3941,12 +3962,12 @@ public class WebRtcManager extends Caster<Msg>{
                 if (null != maxAudioLevelKdStreamId) {
                     if (!maxAudioLevelKdStreamId.equals(preMaxAudioLevelKdStreamId)) { // 说话人变化了才需要刷新语音激励状态
                         Conferee conferee = findConfereeByStreamId(preMaxAudioLevelKdStreamId);
-                        if (null != conferee) {
-                            conferee.setAudioState(Conferee.AudioState.Normal);  // FIXME 不一定是Normal状态
+                        if (null != conferee && Conferee.AudioSignalState.Activated == conferee.getAudioSignalState()) {
+                            conferee.setAudioSignalState(Conferee.AudioSignalState.Normal);
                         }
                         conferee = findConfereeByStreamId(maxAudioLevelKdStreamId);
-                        if (null != conferee) {
-                            conferee.setAudioState(Conferee.AudioState.Activated);
+                        if (null != conferee && Conferee.AudioSignalState.Normal == conferee.getAudioSignalState()) {
+                            conferee.setAudioSignalState(Conferee.AudioSignalState.Activated);
                         }
                         preMaxAudioLevelKdStreamId = maxAudioLevelKdStreamId;
                     }
@@ -3957,8 +3978,8 @@ public class WebRtcManager extends Caster<Msg>{
                 // 当前没有人说话，原来设置的语音激励清掉
                 KLog.p("preMaxAudioLevelKdStreamId=%s", preMaxAudioLevelKdStreamId);
                 Conferee conferee = findConfereeByStreamId(preMaxAudioLevelKdStreamId);
-                if (null != conferee){
-                    conferee.setAudioState(Conferee.AudioState.Normal); // FIXME 不一定是Normal状态
+                if (null != conferee && Conferee.AudioSignalState.Activated == conferee.getAudioSignalState()){
+                    conferee.setAudioSignalState(Conferee.AudioSignalState.Normal);
                 }
                 preMaxAudioLevelKdStreamId = null;
             }
@@ -3993,12 +4014,13 @@ public class WebRtcManager extends Caster<Msg>{
                 if (null != conferee){
                     long interval = curTimestamp - videoStatsTimeStamp;
                     float fps = (curReceivedFrames - preReceivedFrames) / (interval/1000f);
-                    if (conferee.getVideoSignalState() == Conferee.VideoSignalState.Normal
+                    Conferee.VideoSignalState vidSigState = conferee.getVideoSignalState();
+                    if (Conferee.VideoSignalState.Normal == vidSigState
                             && interval >= WeakSignalCheckInterval // 计算帧率的间隔时长应适度，太短则太敏感地滑入WeakSignal状态，太长则太迟钝
                             && fps < 0.2 // 可忍受的帧率下限，低于该下限则认为信号丢失
                     ){
                         conferee.setVideoSignalState(Conferee.VideoSignalState.Weak);
-                    }else if (conferee.getVideoSignalState() == Conferee.VideoSignalState.Weak && fps > 1){
+                    }else if (Conferee.VideoSignalState.Weak == vidSigState && fps > 1){
                         // 尽管我们在帧率低于0.2时将状态设为WeakSignal但当帧率超过0.2时我们不立马设置状态为Normal
                         // 而是等帧率回复到较高水平才切回Normal以使状态切换显得平滑而不是在临界值处频繁切换
                         conferee.setVideoSignalState(Conferee.VideoSignalState.Normal);
