@@ -1714,6 +1714,26 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         /**
+         * 获取文字deco
+         * */
+        public TextDecoration getTextDeco(String decoId){
+            return Stream.of(textDecorations)
+                    .filter(it-> it.id.equals(decoId))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        /**
+         * 获取图片deco
+         * */
+        public PicDecoration getPicDeco(String decoId){
+            return Stream.of(picDecorations)
+                    .filter(it-> it.id.equals(decoId))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        /**
          * 移除deco。
          * NOTE: 移除deco后若要再展示该deco需要重新添加该deco。如果只是屏蔽展示稍后还要开启请使用{@link #setDecoEnable(String, boolean)}
          * */
@@ -2570,7 +2590,13 @@ public class WebRtcManager extends Caster<Msg>{
             this(id, text, textSize, color, w, h, dx, dy, refPos, 0);
         }
 
+        public String getText() {
+            return text;
+        }
 
+        public void setText(String text) {
+            this.text = text;
+        }
 
         protected boolean adjust(int width, int height){
             if (!super.adjust(width, height)){
@@ -2610,7 +2636,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     public static class PicDecoration extends Decoration{
-        public Bitmap pic;
+        Bitmap pic;
         public PicDecoration(@NonNull String id, @NonNull Bitmap pic, int w, int h, int dx, int dy, int refPos) {
             super(id, w, h, dx, dy, refPos);
             this.pic = pic;
@@ -2626,6 +2652,14 @@ public class WebRtcManager extends Caster<Msg>{
                 x -= picW;
                 y -= picH;
             }
+        }
+
+        public Bitmap getPic() {
+            return pic;
+        }
+
+        public void setPic(Bitmap pic) {
+            this.pic = pic;
         }
 
         static PicDecoration createCenterPicDeco(String id, Bitmap bitmap, int winW, int winH){
@@ -2652,21 +2686,21 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    public static class Decoration{
+    public abstract static class Decoration{
         // 相对窗体的位置
         public static final int POS_LEFTTOP = 1;
         public static final int POS_LEFTBOTTOM = 2;
         public static final int POS_RIGHTTOP = 3;
         public static final int POS_RIGHTBOTTOM = 4;
 
-        private boolean enabled = true; // 是否使能。使能则展示否则不展示
+        protected boolean enabled = true; // 是否使能。使能则展示否则不展示
 
-        public String id;
-        public int w;           // deco所在窗体的宽（UCD标注的）
-        public int h;           // deco所在窗体的高（UCD标注的）
-        public int dx;          // deco到窗体垂直边界的距离（参照pos）（UCD标注的）
-        public int dy;          // deco到窗体水平边界的距离（参照pos）（UCD标注的）
-        public int refPos;      // dx, dy参照的位置。如取值{@link #POS_LEFTBOTTOM}则dx表示距离窗体左边界的距离，dy表示距离窗体底部边界的距离。
+        protected String id;
+        protected int w;           // deco所在窗体的宽（UCD标注的）
+        protected int h;           // deco所在窗体的高（UCD标注的）
+        protected int dx;          // deco到窗体垂直边界的距离（参照pos）（UCD标注的）
+        protected int dy;          // deco到窗体水平边界的距离（参照pos）（UCD标注的）
+        protected int refPos;      // dx, dy参照的位置。如取值{@link #POS_LEFTBOTTOM}则dx表示距离窗体左边界的距离，dy表示距离窗体底部边界的距离。
         protected Paint paint;
         // 根据以上ucd标注计算出的deco绘制的锚点。
         // NOTE: 此锚点仅为ucd标注窗体中的锚点，并非实际绘制的锚点，实际的锚点根据该锚点结合实际窗体大小计算得出。
@@ -2706,6 +2740,10 @@ public class WebRtcManager extends Caster<Msg>{
                 y = h - dy;
             }
 
+        }
+
+        public String getId() {
+            return id;
         }
 
         protected void setEnabled(boolean enabled){
