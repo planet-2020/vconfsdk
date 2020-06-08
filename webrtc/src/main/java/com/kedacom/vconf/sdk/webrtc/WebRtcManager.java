@@ -1618,6 +1618,18 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         /**
+         * 是否正在发送辅流
+         * */
+        public boolean isSendingAssStream() {
+            if (isMyself()){
+                return null != instance.sharedWindow;
+            }else {
+                Conferee conferee = instance.findAssStreamSender();
+                return null != conferee && conferee.getId().equals(id);
+            }
+        }
+
+        /**
          * 设置语音激励deco
          * 当某个与会方讲话音量最大时，该装饰会展示在该与会方对应的Display。
          * 该装饰是一个围在画面周围的边框，用户通过该接口设置该边框线条的粗细以及颜色。
