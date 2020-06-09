@@ -135,6 +135,8 @@ class RtcConnector implements IRcvMsgCallback{
 	@Override
 	public void Callback( long nEvent, byte[] abyContent, short wLen, long nDstIId, long nDstNode, long nSrcIId, long nSrcNode ) {
 
+		KLog.p("mtrtcCallback event=%s", nEvent);
+
 		MtMsg mtMsg = new MtMsg();
 		
 		if ( nEvent == EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal() )
@@ -142,52 +144,72 @@ class RtcConnector implements IRcvMsgCallback{
 			// PB消息处理
 			boolean bRet = mtMsg.Decode( abyContent );
 			if ( !bRet ) {
-				KLog.p( TAG, " mtmsg decode failed" );
+				KLog.p(KLog.ERROR, " mtmsg decode failed" );
 				return;
 			}
 		}
-		else if ( nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageOffer.getnVal() || nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageAnswer.getnVal() )
+		else if ( nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageOffer.getnVal())
 		{
-			ByteArrayOutputStream[] buf;
-			if (nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageOffer.getnVal()){
-				buf = new ByteArrayOutputStream[]{offerBuf};
-			}else {
-				buf = new ByteArrayOutputStream[]{answerBuf};
-			}
-
-			if (null == buf[0]){
-				buf[0] = new ByteArrayOutputStream();
+			if (null == offerBuf){
+				offerBuf = new ByteArrayOutputStream();
 			}
 			try {
-				buf[0].write(abyContent);
+				offerBuf.write(abyContent);
 			} catch (IOException e) {
 				e.printStackTrace();
-				buf[0] = null;
+				offerBuf = null;
 			}
 			// 分段消息，等收齐后再处理
 			return;
 		}
-		else if ( nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageOfferEnd.getnVal() || nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageAnswerEnd.getnVal())
+		else if ( nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageOfferEnd.getnVal())
 		{
-			ByteArrayOutputStream[] buf;
-			if (nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageOfferEnd.getnVal()){
-				buf = new ByteArrayOutputStream[]{offerBuf};
-			}else {
-				buf = new ByteArrayOutputStream[]{answerBuf};
-			}
-			if (null != buf[0]){
-				byte[] offer = buf[0].toByteArray();
+			if (null != offerBuf){
+				byte[] offer = offerBuf.toByteArray();
 				try {
-					buf[0].close();
+					offerBuf.close();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}finally {
-					buf[0] = null;
+					offerBuf = null;
 				}
 				// 分段消息已收齐，可以decode了
 				boolean bRet = mtMsg.Decode(offer);
 				if ( !bRet ) {
-					KLog.p( TAG, " mtmsg decode failed" );
+					KLog.p(KLog.ERROR, " mtmsg decode failed" );
+					return;
+				}
+			}
+		}
+		else if ( nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageAnswer.getnVal() )
+		{
+			if (null == answerBuf){
+				answerBuf = new ByteArrayOutputStream();
+			}
+			try {
+				answerBuf.write(abyContent);
+			} catch (IOException e) {
+				e.printStackTrace();
+				answerBuf = null;
+			}
+			// 分段消息，等收齐后再处理
+			return;
+		}
+		else if (nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageAnswerEnd.getnVal())
+		{
+			if (null != answerBuf){
+				byte[] offer = answerBuf.toByteArray();
+				try {
+					answerBuf.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}finally {
+					answerBuf = null;
+				}
+				// 分段消息已收齐，可以decode了
+				boolean bRet = mtMsg.Decode(offer);
+				if ( !bRet ) {
+					KLog.p(KLog.ERROR, " mtmsg decode failed" );
 					return;
 				}
 			}
@@ -196,7 +218,7 @@ class RtcConnector implements IRcvMsgCallback{
 		else if ( nEvent == EmMtOspMsgSys.EV_MtOsp_OSP_DISCONNECT.getnVal() )
 		{
 			// OSP断链检测消息处理
-			KLog.p(TAG, " mtdispatch disconnected\n" );
+			KLog.p(KLog.WARN, " mtdispatch disconnected" );
 			mtMsg.SetMsgId( EmMtOspMsgSys.EV_MtOsp_OSP_DISCONNECT.name() );
 		}
 		else

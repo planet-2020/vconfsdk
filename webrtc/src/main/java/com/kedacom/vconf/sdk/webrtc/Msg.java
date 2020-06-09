@@ -19,6 +19,17 @@ import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
         module = "RTC"
 )
 enum Msg {
+
+    /**
+     * 启动业务组件服务
+     * */
+    @Request(method = "SYSStartService",
+            owner = MethodOwner.MtServiceCfgCtrl,
+            paras = StringBuffer.class,
+            userParas = String.class
+    )
+    StartMtService,
+
     /**获取Rtc服务器地址*/
     @Request(method = "GetRtcSvrCfg",
             owner = MethodOwner.ConfigCtrl,
@@ -362,6 +373,7 @@ enum Msg {
     private static class MethodOwner {
         private static final String PKG = "com.kedacom.kdv.mt.mtapi.";
 
+        private static final String MtServiceCfgCtrl = PKG + "MtServiceCfgCtrl";
         private static final String MonitorCtrl = PKG + "MonitorCtrl";
         private static final String ConfigCtrl = PKG + "ConfigCtrl";
         private static final String ConfCtrl = PKG + "ConfCtrl";

@@ -149,7 +149,8 @@ public class WebRtcManager extends Caster<Msg>{
 
     public synchronized static WebRtcManager getInstance(@NonNull Application context){
         if (null == instance){
-            return instance = new WebRtcManager(context);
+            instance = new WebRtcManager(context);
+            instance.req(Msg.StartMtService, null, "mtrtcservice");
         }
         return instance;
     }
@@ -159,6 +160,7 @@ public class WebRtcManager extends Caster<Msg>{
     protected Map<Msg[], RspProcessor<Msg>> rspsProcessors() {
         Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
         processorMap.put(new Msg[]{
+                Msg.StartMtService,
                 Msg.Login,
                 Msg.Logout,
                 Msg.Call,
