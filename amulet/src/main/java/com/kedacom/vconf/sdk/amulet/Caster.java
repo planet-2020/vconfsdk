@@ -54,15 +54,15 @@ public abstract class Caster<T extends Enum<T>> implements
     protected Caster(){
         enumT = (Class<T>)((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments()[0];
         try {
-            Class<?> buildConfigClz = Class.forName(getClass().getPackage().getName()+".BuildConfig");
-            Field versionField = buildConfigClz.getDeclaredField("VERSION");
-            Field timestampField = buildConfigClz.getDeclaredField("TIMESTAMP");
-            String version = (String) versionField.get(null);
-            String timestamp = (String) timestampField.get(null);
-            KLog.p("\n=================================================================" +
-                            "\n======== %s version=%s, timestamp=%s" +
-                            "\n================================================================",
-                    getClass().getSimpleName(), version, timestamp);
+//            Class<?> buildConfigClz = Class.forName(getClass().getPackage().getName()+".BuildConfig"); //XXX BuildConfig在AndroidManifest所定义的package下，而非当前对象所在package。
+//            Field versionField = buildConfigClz.getDeclaredField("VERSION");
+//            Field timestampField = buildConfigClz.getDeclaredField("TIMESTAMP");
+//            String version = (String) versionField.get(null);
+//            String timestamp = (String) timestampField.get(null);
+//            KLog.p("\n=================================================================" +
+//                            "\n======== %s version=%s, timestamp=%s" +
+//                            "\n================================================================",
+//                    getClass().getSimpleName(), version, timestamp);
 
             Class<?> msgGenClz = Class.forName(enumT.getPackage().getName()+".Message$$Generated");
             MagicBook.instance().addChapter(msgGenClz);
@@ -137,7 +137,6 @@ public abstract class Caster<T extends Enum<T>> implements
         }
 
     }
-
 
 
     /**注册请求对应的响应处理器*/
