@@ -1,0 +1,20 @@
+package com.kedacom.vconf.sdk.base.startup.bean;
+
+/**
+* 终端类型
+* */
+public enum TerminalType {
+    Sky("SKY for Android Phone"),
+    TT("TrueTouch for android"),
+    Unknown("unknown");
+
+    String val;
+
+    TerminalType(String val){
+        this.val = val;
+    }
+
+    public String getVal() {
+        return val;
+    }
+}

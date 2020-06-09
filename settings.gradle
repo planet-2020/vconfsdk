@@ -1,2 +1,2 @@
-include  ':processor', ':annotation', ':amulet', ':datacollaborate', ':utils', ':common', ':main', ':webrtc'
+include  ':processor', ':annotation', ':amulet', ':datacollaborate', ':utils', ':common', ':base', ':webrtc'
 include ':alirtc'
