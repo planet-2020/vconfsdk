@@ -62,7 +62,14 @@ public class StartupManager extends Caster<Msg> {
         Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
 
         processorMap.put(new Msg[]{
+                Msg.SetMtWorkspace,
+                Msg.StartMtBase,
+                Msg.SetCallback,
+                Msg.StartMtSdk,
                 Msg.StartMtService,
+                Msg.ToggleMtFileLog,
+                Msg.SetNetWorkCfg,
+                Msg.LoginAps,
         }, this::onRsps);
 
         return processorMap;
@@ -185,6 +192,8 @@ public class StartupManager extends Caster<Msg> {
                         listener.onFailed(-1);
                     }
                 }
+                break;
+            case LoginApsRsp:
                 break;
         }
         return true;
