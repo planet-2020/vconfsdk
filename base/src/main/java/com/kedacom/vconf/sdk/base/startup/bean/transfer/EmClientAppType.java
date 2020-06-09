@@ -24,8 +24,7 @@ public enum EmClientAppType
 	    this.value = value;
 	}
 
-	public int getVal() {
+	public int getValue() {
 		return value;
 	}
-
 }

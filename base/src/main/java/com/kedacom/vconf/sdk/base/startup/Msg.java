@@ -32,7 +32,7 @@ enum Msg {
 
     /**启动业务组件基础模块*/
     @Request(method = "MtStart",
-            owner = MethodOwner.KernalCtrl,
+            owner = MethodOwner.MtcLib,
             paras = {int.class,
                     StringBuffer.class,
                     StringBuffer.class,
@@ -43,9 +43,16 @@ enum Msg {
                     // 我们平时所提及的“终端型号”指此处的）
                     String.class, // 终端型号名称（有型号为啥还要型号名称？）
                     String.class, // 终端软件版本号
-            }
+            },
+            rspSeq = "StartMtBaseRsp",
+            timeout = 2
             )
     StartMtBase,
+
+    /**启动业务组件基础模块响应*/
+    @Response(id = "StartMtBaseRsp",        // XXX TODO 下层没有这样的消息
+            clz = TSrvStartResult.class)
+    StartMtBaseRsp,
 
 
     /**设置业务组件层回调*/

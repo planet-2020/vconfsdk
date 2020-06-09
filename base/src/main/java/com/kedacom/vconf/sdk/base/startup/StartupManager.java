@@ -19,6 +19,7 @@ import com.kedacom.vconf.sdk.utils.net.NetworkHelper;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -33,11 +34,11 @@ public class StartupManager extends Caster<Msg> {
 
     private boolean started;
     private boolean bMtSdkStarted;
-    private List<String> services = Arrays.asList(
+    private List<String> services = new ArrayList<>(Arrays.asList(
             "rest"         // 包含了接入功能如登录aps
 //            "upgrade",      // 升级服务
 //            "record"        // 会议记录
-    );
+    ));
     private boolean hasServiceStartFailed = false;
 
 
@@ -45,13 +46,9 @@ public class StartupManager extends Caster<Msg> {
         context = ctx;
     }
 
-    public static StartupManager getInstance(Application ctx) {
+    public synchronized static StartupManager getInstance(Application ctx) {
         if (instance == null) {
-            synchronized (StartupManager.class) {
-                if (instance == null) {
-                    instance = new StartupManager(ctx);
-                }
-            }
+            instance = new StartupManager(ctx);
         }
         return instance;
     }
@@ -104,7 +101,32 @@ public class StartupManager extends Caster<Msg> {
 
         // 启动业务组件基础模块
         EmMtModel model = ToDoConverter.toTransferObj(type);
-        req(Msg.StartMtBase, null, model, type.getVal(), "v0.1.0");
+        req(Msg.StartMtBase, new IResultListener() {
+            @Override
+            public void onArrive(boolean bSuccess) {
+                // 启动其他模块
+                Stream.of(services).forEach(it-> {
+                    req(Msg.StartMtService, new IResultListener() {
+                        @Override
+                        public void onArrive(boolean bSuccess) {
+                            services.remove(it);
+                            if (!bSuccess){
+                                KLog.p(KLog.ERROR, "service %s start failed!", it);
+                                hasServiceStartFailed = true;
+                            }
+                            if (services.isEmpty()){
+                                if (!hasServiceStartFailed) {
+                                    resultListener.onSuccess(null);
+                                }else{
+                                    resultListener.onFailed(-1);
+                                }
+                            }
+                        }
+                    }, it);
+                });
+
+            }
+        }, model, type.getVal(), "v0.1.0");
 
         // 设置业务组件回调
         set(Msg.SetCallback, new IMtcCallback() {
@@ -135,26 +157,6 @@ public class StartupManager extends Caster<Msg> {
                 )
         );
 
-        // 启动其他模块
-        Stream.of(services).forEach(it-> {
-            req(Msg.StartMtService, new IResultListener() {
-                @Override
-                public void onArrive(boolean bSuccess) {
-                    services.remove(it);
-                    if (!bSuccess){
-                        KLog.p(KLog.ERROR, "service %s start failed!", it);
-                        hasServiceStartFailed = true;
-                    }
-                    if (services.isEmpty()){
-                        if (!hasServiceStartFailed) {
-                            resultListener.onSuccess(null);
-                        }else{
-                            resultListener.onFailed(-1);
-                        }
-                    }
-                }
-            }, it);
-        });
 
         // 设置是否将业务组件日志写入日志文件
 //        req(Msg.ToggleMtFileLog, null, true);
