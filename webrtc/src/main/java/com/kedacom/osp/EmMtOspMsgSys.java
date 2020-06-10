@@ -13,8 +13,8 @@ public enum EmMtOspMsgSys {
 	EV_MtOsp_InstanceInit(29303),
 	EV_MtOsp_InstanceExit(29304),
 
-	Ev_MtOsp_SubPackageOffer(29307),
-	Ev_MtOsp_SubPackageAnswer(29308),
+	Ev_MtOsp_SubPackageOffer(29307), // Ev_MT_SetOffer_Cmd的分段消息
+	Ev_MtOsp_SubPackageAnswer(29308), // Ev_MT_GetAnswer_Ntf的分段消息
 	Ev_MtOsp_SubPackageOfferEnd(29309),
 	Ev_MtOsp_SubPackageAnswerEnd(29310),
 

@@ -181,40 +181,6 @@ class RtcConnector implements IRcvMsgCallback{
 				}
 			}
 		}
-		else if ( nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageAnswer.getnVal() )
-		{
-			if (null == answerBuf){
-				answerBuf = new ByteArrayOutputStream();
-			}
-			try {
-				answerBuf.write(abyContent);
-			} catch (IOException e) {
-				e.printStackTrace();
-				answerBuf = null;
-			}
-			// 分段消息，等收齐后再处理
-			return;
-		}
-		else if (nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageAnswerEnd.getnVal())
-		{
-			if (null != answerBuf){
-				byte[] offer = answerBuf.toByteArray();
-				try {
-					answerBuf.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}finally {
-					answerBuf = null;
-				}
-				// 分段消息已收齐，可以decode了
-				boolean bRet = mtMsg.Decode(offer);
-				if ( !bRet ) {
-					KLog.p(KLog.ERROR, " mtmsg decode failed" );
-					return;
-				}
-			}
-		}
-
 		else if ( nEvent == EmMtOspMsgSys.EV_MtOsp_OSP_DISCONNECT.getnVal() )
 		{
 			// OSP断链检测消息处理
@@ -512,7 +478,11 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(builder.build());
 
 		byte[] abyContent = msg.Encode();
-		bufSend(abyContent, EmMtOspMsgSys.Ev_MtOsp_SubPackageOffer, EmMtOspMsgSys.Ev_MtOsp_SubPackageOfferEnd, mtrtcserviceId, mtrtcserviceNode);
+		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+				dispatchId, dispatchNode, myId, myNode, 5000 );
+		if (0 != ret){
+			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
+		}
 
 		Log.i(TAG, String.format("[PUB]=#=> sendOfferSdp, connType=%s, offerSdp=", connType));
 		KLog.p(offerSdp);
