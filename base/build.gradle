@@ -9,7 +9,7 @@ android {
 }
 
 dependencies {
-//    compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+//    implementation fileTree(dir: 'libs', include: ['*.jar'])
     compileOnly files('libs/mtapi.jar') //NOTE: 我们只是编译时使用mtapi.jar，因为用户会引入mtcapi-jni.jar包含了所有的native接口定义。
 
     compileOnly project(':annotation')
