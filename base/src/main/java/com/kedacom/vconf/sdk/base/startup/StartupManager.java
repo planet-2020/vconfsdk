@@ -6,6 +6,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 
 import com.annimon.stream.Stream;
+import com.annimon.stream.function.Consumer;
 import com.kedacom.kdv.mt.mtapi.IMtcCallback;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.CrystalBall;
@@ -13,6 +14,7 @@ import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.base.startup.bean.*;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.*;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
+import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetworkHelper;
 
@@ -40,6 +42,10 @@ public class StartupManager extends Caster<Msg> {
 //            "record"        // 会议记录
     ));
     private boolean hasServiceStartFailed = false;
+
+    static {
+        System.loadLibrary("mtcapidll-jni");
+    }
 
 
     private StartupManager(Context ctx) {
@@ -104,58 +110,62 @@ public class StartupManager extends Caster<Msg> {
         req(Msg.StartMtBase, new IResultListener() {
             @Override
             public void onArrive(boolean bSuccess) {
-                // 启动其他模块
-                Stream.of(services).forEach(it-> {
-                    req(Msg.StartMtService, new IResultListener() {
-                        @Override
-                        public void onArrive(boolean bSuccess) {
-                            services.remove(it);
-                            if (!bSuccess){
-                                KLog.p(KLog.ERROR, "service %s start failed!", it);
-                                hasServiceStartFailed = true;
+                // 设置业务组件回调
+                req(Msg.SetCallback, null, new IMtcCallback() {
+                    @Override
+                    public void Callback(String msg) {
+                        try {
+                            JSONObject mtapi = new JSONObject(msg).getJSONObject("mtapi");
+                            String msgId = mtapi.getJSONObject("head").getString("eventname");
+                            String body = mtapi.getString("body");
+                            if (null == msgId || null == body) {
+                                KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
+                                return;
                             }
-                            if (services.isEmpty()){
-                                if (!hasServiceStartFailed) {
-                                    resultListener.onSuccess(null);
-                                }else{
-                                    resultListener.onFailed(-1);
+
+                            CrystalBall.instance().onAppear(msgId, body);
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+
+                // 启动业务组件sdk
+                bMtSdkStarted = false;
+                req(Msg.StartMtSdk, null, false, false, new MtLoginMtParam(
+                                EmClientAppType.emClientAppSkyAndroid_Api, EmAuthType.emInnerPwdAuth_Api,
+                                "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001
+                        )
+                );
+
+                // 启动其他模块
+                Stream.of(services).forEach(new Consumer<String>() {  // NOTE: 此处不要使用lambda，否则amulet绑定生命周期对象会有问题（待完善）
+                    @Override
+                    public void accept(String s) {
+                        req(Msg.StartMtService, new IResultListener() {
+                            @Override
+                            public void onArrive(boolean bSuccess) {
+                                services.remove(s);
+                                if (!bSuccess){
+                                    KLog.p(KLog.ERROR, "service %s start failed!", s);
+                                    hasServiceStartFailed = true;
+                                }
+                                if (services.isEmpty()){
+                                    if (!hasServiceStartFailed) {
+                                        reportSuccess(null, resultListener);
+                                    }else{
+                                        reportFailed(-1, resultListener);
+                                    }
                                 }
                             }
-                        }
-                    }, it);
+                        }, s);
+                    }
                 });
 
             }
         }, model, type.getVal(), "v0.1.0");
 
-        // 设置业务组件回调
-        set(Msg.SetCallback, new IMtcCallback() {
-            @Override
-            public void Callback(String msg) {
-                try {
-                    JSONObject mtapi = new JSONObject(msg).getJSONObject("mtapi");
-                    String msgId = mtapi.getJSONObject("head").getString("eventname");
-                    String body = mtapi.getString("body");
-                    if (null == msgId || null == body) {
-                        KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
-                        return;
-                    }
-
-                    CrystalBall.instance().onAppear(msgId, body);
-
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-
-        // 启动业务组件sdk
-        bMtSdkStarted = false;
-        req(Msg.StartMtSdk, null, false, false, new MtLoginMtParam(
-                EmClientAppType.emClientAppSkyAndroid_Api, EmAuthType.emInnerPwdAuth_Api,
-                "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001
-                )
-        );
 
 
         // 设置是否将业务组件日志写入日志文件
@@ -176,6 +186,15 @@ public class StartupManager extends Caster<Msg> {
 
         started = true;
 
+    }
+
+    /**
+     * 设置是否启用telnet调试
+     * */
+    public void setTelnetDebugEnable(boolean enable){
+        BaseTypeBool baseTypeBool = new BaseTypeBool();
+        baseTypeBool.basetype = enable;
+        set(Msg.SetTelnetDebugEnable, baseTypeBool);
     }
 
 

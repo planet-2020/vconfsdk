@@ -7,6 +7,7 @@ import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.*;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
+import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 
 import static com.kedacom.vconf.sdk.annotation.Request.SET;
 
@@ -58,8 +59,8 @@ enum Msg {
     /**设置业务组件层回调*/
     @Request(method = "Setcallback",
             owner = MethodOwner.MtcLib,
-            paras = IMtcCallback.class, // 业务组件回调接口
-            type = SET)
+            paras = IMtcCallback.class // 业务组件回调接口
+            )
     SetCallback,
 
 
@@ -107,6 +108,16 @@ enum Msg {
             userParas = TNetWorkInfo.class
     )
     SetNetWorkCfg,
+
+
+    /**设置是否启用telnet调试*/
+    @Request(method = "SetUseOspTelnetCfgCmd",
+            owner = MethodOwner.ConfigCtrl,
+            paras = StringBuffer.class,
+            userParas = BaseTypeBool.class, // true启用
+            type = SET
+    )
+    SetTelnetDebugEnable,
 
 
     /**登录APS*/

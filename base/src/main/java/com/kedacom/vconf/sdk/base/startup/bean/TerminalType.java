@@ -6,6 +6,7 @@ package com.kedacom.vconf.sdk.base.startup.bean;
 public enum TerminalType {
     Sky("SKY for Android Phone"),
     TT("TrueTouch for android"),
+    Movision("Movision Meetings for Android"),
     Unknown("unknown");
 
     String val;

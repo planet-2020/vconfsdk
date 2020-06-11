@@ -33,6 +33,8 @@ final class ToDoConverter {
                 return EmMtModel.emTrueTouchAndroidPhone;
 //            case SkyAndroidPad:
 //                return EmMtModel.emTrueTouchAndroidPad;
+            case Movision:
+                return EmMtModel.emSkyAndroidPhone;
             default:
                 return EmMtModel.emModelBegin;
         }
