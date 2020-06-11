@@ -227,7 +227,8 @@ final class MagicBook {
             KLog.p(KLog.DEBUG,"userPara[%s].class=%s, methodPara[%s].class=%s", i, null==userPara? null : userPara.getClass(), i, methodParaType);
             if (null == userPara){
                 methodParas[i] = methodParaType.isPrimitive() ? PrimitiveTypeHelper.getDefaultValue(methodParaType) : null;
-            }else if (userPara.getClass() == methodParaType){
+            }else if (userPara.getClass() == methodParaType
+                    || methodParaType.isAssignableFrom(userPara.getClass())){
                 methodParas[i] = userPara;
             }else {
                 if (StringHelper.isStringCompatible(methodParaType)) {
