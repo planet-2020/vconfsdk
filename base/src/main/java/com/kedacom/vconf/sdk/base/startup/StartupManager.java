@@ -16,6 +16,7 @@ import com.kedacom.vconf.sdk.base.startup.bean.transfer.*;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.utils.log.KLog;
+import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 import com.kedacom.vconf.sdk.utils.net.NetworkHelper;
 
 import org.json.JSONException;
@@ -23,6 +24,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,9 +45,9 @@ public class StartupManager extends Caster<Msg> {
     ));
     private boolean hasServiceStartFailed = false;
 
-    static {
-        System.loadLibrary("mtcapidll-jni");
-    }
+//    static {
+//        System.loadLibrary("mtcapidll-jni");  // 业务组件会在MtcLib中加载就是我们startSdk时
+//    }
 
 
     private StartupManager(Context ctx) {
@@ -72,6 +74,7 @@ public class StartupManager extends Caster<Msg> {
                 Msg.StartMtService,
                 Msg.ToggleMtFileLog,
                 Msg.SetNetWorkCfg,
+                Msg.SetApsServerCfg,
                 Msg.LoginAps,
         }, this::onRsps);
 
@@ -110,6 +113,15 @@ public class StartupManager extends Caster<Msg> {
         req(Msg.StartMtBase, new IResultListener() {
             @Override
             public void onArrive(boolean bSuccess) {
+
+                // 启动业务组件sdk
+                bMtSdkStarted = false;
+                req(Msg.StartMtSdk, null, false, false, new MtLoginMtParam(
+                                EmClientAppType.emClientAppSkyAndroid_Api, EmAuthType.emInnerPwdAuth_Api,
+                                "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001
+                        )
+                );
+
                 // 设置业务组件回调
                 req(Msg.SetCallback, null, new IMtcCallback() {
                     @Override
@@ -130,14 +142,6 @@ public class StartupManager extends Caster<Msg> {
                         }
                     }
                 });
-
-                // 启动业务组件sdk
-                bMtSdkStarted = false;
-                req(Msg.StartMtSdk, null, false, false, new MtLoginMtParam(
-                                EmClientAppType.emClientAppSkyAndroid_Api, EmAuthType.emInnerPwdAuth_Api,
-                                "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001
-                        )
-                );
 
                 // 启动其他模块
                 Stream.of(services).forEach(new Consumer<String>() {  // NOTE: 此处不要使用lambda，否则amulet绑定生命周期对象会有问题（待完善）
@@ -198,6 +202,42 @@ public class StartupManager extends Caster<Msg> {
     }
 
 
+    /**
+     * 登录Aps服务器
+     * */
+    public void loginAps(String ip, String account, String pwd, IResultListener resultListener){
+        long ipLong;
+        try {
+            ipLong = NetAddrHelper.ipStr2Long(ip);
+        } catch (NetAddrHelper.InvalidIpv4Exception e) {
+            e.printStackTrace();
+            reportFailed(-1, resultListener);
+            return;
+        }
+
+        MtXAPSvrCfg mtXAPSvrCfg = new MtXAPSvrCfg(
+                EmServerAddrType.emSrvAddrTypeCustom.ordinal(),
+                ip,
+                "",
+                ipLong,
+                true,
+                60090   // 端口暂时写死
+        );
+
+        req(Msg.SetApsServerCfg, null, new MtXAPSvrListCfg(0, Collections.singletonList(mtXAPSvrCfg)) );
+
+        req(Msg.LoginAps, resultListener, new TMTApsLoginParam(account, pwd, "", "Skywalker_Ali", ""));
+
+    }
+
+    /**
+     * 登出Aps服务器
+     * */
+    public void logoutAps(){
+
+    }
+
+
     private boolean onRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
 //            case StartMtSdkRsp:
@@ -214,7 +254,14 @@ public class StartupManager extends Caster<Msg> {
                     }
                 }
                 break;
+
             case LoginApsRsp:
+                TApsLoginResult apsLoginResult = (TApsLoginResult) rspContent;
+                if (apsLoginResult.bSucess){
+                    reportSuccess(null, listener);
+                }else{
+                    reportFailed(-1, listener);
+                }
                 break;
         }
         return true;

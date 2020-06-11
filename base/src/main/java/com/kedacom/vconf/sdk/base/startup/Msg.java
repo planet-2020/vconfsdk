@@ -119,18 +119,39 @@ enum Msg {
     )
     SetTelnetDebugEnable,
 
+    /**配置Aps*/
+    @Request(method = "SetAPSListCfgCmd",
+            owner = MethodOwner.ConfigCtrl,
+            paras = StringBuffer.class,
+            userParas = MtXAPSvrListCfg.class)
+    SetApsServerCfg,
+
 
     /**登录APS*/
     @Request(method = "LoginApsServerCmd",
             owner = MethodOwner.LoginCtrl,
             paras = StringBuffer.class,
-            userParas = TMTApsLoginParam.class)
+            userParas = TMTApsLoginParam.class,
+            rspSeq = "LoginApsRsp")
     LoginAps,
 
     /**登录APS响应*/
     @Response(id = "ApsLoginResultNtf",
             clz = TApsLoginResult.class)
     LoginApsRsp,
+
+    /**注销APS*/
+//    @Request(method = "LogoutApsServerCmd",
+//            owner = MethodOwner.LoginCtrl,
+//            paras = StringBuffer.class,
+//            userParas = TMTApsLoginParam.class)
+//    LogoutAps,
+//
+//    /**注销APS响应*/
+//    @Response(id = "ApsLoginResultNtf",
+//            clz = TApsLoginResult.class)
+//    LogoutApsRsp,
+
 
     END;
 
