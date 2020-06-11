@@ -21,8 +21,6 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import org.webrtc.RtpParameters;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,9 +31,8 @@ class RtcConnector implements IRcvMsgCallback{
 
 	private static final String TAG = "RtcConnector";
 	private static final String WEBRTC_NAME = "WEBRTC_NAME";
-	private static final short WEBRTC_ID = 144;
+	private static final short WEBRTC_ID = 142;
 	private static final short MTDISPATCH_ID = 107;
-	private static final short MTRTCSERVICE_ID = 145;
 	private final Map<String, ICbMsgHandler> cbMsgHandlerMap = new HashMap<>();
 
 	private final long myId =Connector.MAKEIID(WEBRTC_ID, (short)1 );
@@ -43,15 +40,8 @@ class RtcConnector implements IRcvMsgCallback{
     private final long dispatchId = Connector.MAKEIID(MTDISPATCH_ID, (short)1 );
 	private final long dispatchNode = 0;
 
-	private final long mtrtcserviceId = Connector.MAKEIID(MTRTCSERVICE_ID, (short)1 );
-	private final long mtrtcserviceNode = 0;
-
 	private Handler handler = new Handler(Looper.getMainLooper());
 
-	// 因受osp单次可发送数据长度的限制，sdp可能需要分段发送，需要先缓存下来后拼接，拼接完成后decode。
-	private ByteArrayOutputStream offerBuf;
-	private ByteArrayOutputStream answerBuf;
-	private static final int SegLengthLimit = 50000; // 每段的长度上限。
 
 	private SignalingEvents signalingEvents;
 	void setSignalingEventsCallback(SignalingEvents signalingEvents){
@@ -135,8 +125,6 @@ class RtcConnector implements IRcvMsgCallback{
 	@Override
 	public void Callback( long nEvent, byte[] abyContent, short wLen, long nDstIId, long nDstNode, long nSrcIId, long nSrcNode ) {
 
-		KLog.p("mtrtcCallback event=%s", nEvent);
-
 		MtMsg mtMsg = new MtMsg();
 		
 		if ( nEvent == EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal() )
@@ -144,47 +132,14 @@ class RtcConnector implements IRcvMsgCallback{
 			// PB消息处理
 			boolean bRet = mtMsg.Decode( abyContent );
 			if ( !bRet ) {
-				KLog.p(KLog.ERROR, " mtmsg decode failed" );
+				KLog.p( TAG, " mtmsg decode failed" );
 				return;
-			}
-		}
-		else if ( nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageOffer.getnVal())
-		{
-			if (null == offerBuf){
-				offerBuf = new ByteArrayOutputStream();
-			}
-			try {
-				offerBuf.write(abyContent);
-			} catch (IOException e) {
-				e.printStackTrace();
-				offerBuf = null;
-			}
-			// 分段消息，等收齐后再处理
-			return;
-		}
-		else if ( nEvent == EmMtOspMsgSys.Ev_MtOsp_SubPackageOfferEnd.getnVal())
-		{
-			if (null != offerBuf){
-				byte[] offer = offerBuf.toByteArray();
-				try {
-					offerBuf.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}finally {
-					offerBuf = null;
-				}
-				// 分段消息已收齐，可以decode了
-				boolean bRet = mtMsg.Decode(offer);
-				if ( !bRet ) {
-					KLog.p(KLog.ERROR, " mtmsg decode failed" );
-					return;
-				}
 			}
 		}
 		else if ( nEvent == EmMtOspMsgSys.EV_MtOsp_OSP_DISCONNECT.getnVal() )
 		{
 			// OSP断链检测消息处理
-			KLog.p(KLog.WARN, " mtdispatch disconnected" );
+			KLog.p(TAG, " mtdispatch disconnected\n" );
 			mtMsg.SetMsgId( EmMtOspMsgSys.EV_MtOsp_OSP_DISCONNECT.name() );
 		}
 		else
@@ -476,7 +431,6 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
 		msg.addMsg(BasePB.TString.newBuilder().setValue(offerSdp).build());
 		msg.addMsg(builder.build());
-
 		byte[] abyContent = msg.Encode();
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
 				dispatchId, dispatchNode, myId, myNode, 5000 );
@@ -498,33 +452,16 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
 		msg.addMsg(BasePB.TString.newBuilder().setValue(answerSdp).build());
 		msg.addMsg(builder.build());
-
 		byte[] abyContent = msg.Encode();
-		bufSend(abyContent, EmMtOspMsgSys.Ev_MtOsp_SubPackageAnswer, EmMtOspMsgSys.Ev_MtOsp_SubPackageAnswerEnd, mtrtcserviceId, mtrtcserviceNode);
+		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+				dispatchId, dispatchNode, myId, myNode, 5000 );
 
 		Log.i(TAG, String.format("[sub]=#=> sendAnswerSdp, connType=%s, answerSdp=", connType));
 		KLog.p(answerSdp);
-	}
+        if (0 != ret){
+            KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
+        }
 
-	private void bufSend(byte[] buf, EmMtOspMsgSys segId, EmMtOspMsgSys finalId, long peerId, long peerNode){
-		KLog.p("buf.len=%s, segId=%s, finalId=%s, peerId=%s, peerNode=%s", buf.length, segId, finalId, peerId, peerNode);
-		int sentLen = 0;
-		do{
-			int segLen = Math.min(buf.length-sentLen, SegLengthLimit);
-			byte[] seg = new byte[segLen];
-			System.arraycopy(buf, sentLen, seg, 0, segLen);
-			int ret = Connector.PostOspMsg(segId.getnVal(), seg, segLen, peerId, peerNode, myId, myNode, 5000 );
-			if (0 != ret){
-				KLog.p(KLog.ERROR, "PostOspMsg %s failed", segId);
-				return;
-			}
-			sentLen += segLen;
-		}while (sentLen < buf.length);
-
-		int ret = Connector.PostOspMsg(finalId.getnVal(), new byte[]{}, 0, peerId, peerNode, myId, myNode, 5000 );
-		if (0 != ret){
-			KLog.p(KLog.ERROR, "PostOspMsg %s failed", segId);
-		}
 	}
 
 
