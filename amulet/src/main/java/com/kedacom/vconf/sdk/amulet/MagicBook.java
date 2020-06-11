@@ -202,7 +202,8 @@ final class MagicBook {
                 continue;
             }
             Class reqParaClz = userParas[i].getClass();
-            if (reqParaClz==classes[i]
+            if (reqParaClz==classes[i] // 同类
+                    || classes[i].isAssignableFrom(reqParaClz) // 实参是形参的子类
                     || classes[i].isPrimitive() && reqParaClz==PrimitiveTypeHelper.getWrapperClass(classes[i])){
                 continue;
             }
