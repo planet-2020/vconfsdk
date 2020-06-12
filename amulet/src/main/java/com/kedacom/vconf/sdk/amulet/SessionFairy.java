@@ -181,9 +181,13 @@ final class SessionFairy implements IFairy.ISessionFairy{
     @Override
     public boolean onMsg(String msgId, String msgContent) {
         String msgName = magicBook.getRspName(msgId);
+        if (null == msgName){
+            KLog.p(KLog.ERROR, "msg %s not enrolled", msgId);
+            return false;
+        }
 
         if (!magicBook.isResponse(msgName)){
-            KLog.p(KLog.ERROR, "Unknown response %s", msgName);
+            KLog.p(KLog.ERROR, "%s is not an enrolled response", msgName);
             return false;
         }
 

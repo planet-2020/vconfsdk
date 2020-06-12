@@ -71,10 +71,15 @@ final class NotificationFairy implements IFairy.INotificationFairy{
     @Override
     public boolean onMsg(String msgId, String msgContent) {
         String msgName = magicBook.getRspName(msgId);
-        if (!magicBook.isNotification(msgName)){
-            KLog.p(KLog.ERROR, "Unknown notification %s", msgName);
+        if (null == msgName){
+            KLog.p(KLog.ERROR, "msg %s not enrolled", msgId);
             return false;
         }
+        if (!magicBook.isNotification(msgName)){
+            KLog.p(KLog.ERROR, "%s is not an enrolled notification", msgName);
+            return false;
+        }
+
         LinkedHashSet<IListener> subs = subscribers.get(msgName);
         if (null == subs || 0==subs.size()){
             KLog.p(KLog.ERROR, "no subscriber for %s", msgName);
