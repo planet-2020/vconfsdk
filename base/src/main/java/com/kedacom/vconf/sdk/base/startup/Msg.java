@@ -31,7 +31,9 @@ enum Msg {
     )
     SetMtWorkspace,
 
-    /**启动业务组件基础模块*/
+    /**启动业务组件基础模块
+     * NOTE：调用所有其他业务组件接口前需先等该接口“完成”！
+     * */
     @Request(method = "MtStart",
             owner = MethodOwner.MtcLib,
             paras = {int.class,
@@ -45,23 +47,17 @@ enum Msg {
                     String.class, // 终端型号名称（有型号为啥还要型号名称？）
                     String.class, // 终端软件版本号
             },
-            rspSeq = "StartMtBaseRsp",
-            timeout = 2
+            rspSeq = "StartMtBaseRsp", // 下层实际并不会抛消息上来，超时是必然。
+            timeout = 2 // 等待2s等下层完全起来。
             )
     StartMtBase,
 
-    /**启动业务组件基础模块响应*/
-    @Response(id = "StartMtBaseRsp",        // XXX TODO 下层没有这样的消息
-            clz = TSrvStartResult.class)
+    /**启动业务组件基础模块响应
+     * NOTE: 下层并不会抛这样一条消息上来
+     * */
+    @Response(id = "StartMtBaseRsp",
+            clz = Void.class)
     StartMtBaseRsp,
-
-
-    /**设置业务组件层回调*/
-    @Request(method = "Setcallback",
-            owner = MethodOwner.MtcLib,
-            paras = IMtcCallback.class // 业务组件回调接口
-            )
-    SetCallback,
 
 
     /**启动业务组件sdk*/
@@ -74,8 +70,23 @@ enum Msg {
             userParas = {boolean.class, // 是否为mtc终端（业务组件将jni层分为两种使用模式：本地和远程，其中远程模式即对应mtc），移动软终端目前始终为非mtc终端。
                     boolean.class, // 是否使用单独的日志文件。NOTE: 仅当终端为mtc模式时，该字段才有效，非mtc模式始终不使用独立日志，不论该字段如何设置。
                     MtLoginMtParam.class // 连接业务组件的access模块，用于跟service模块通信。（业务组件的内部细节）
-            })
+            },
+            rspSeq = "StartMtSdkRsp")
     StartMtSdk,
+
+    /**启动业务组件sdk响应
+     * */
+    @Response(id = "MTCLoginRsp",
+            clz = TMTLoginMtResult.class)
+    StartMtSdkRsp,
+
+
+    /**设置业务组件层回调*/
+    @Request(method = "Setcallback",
+            owner = MethodOwner.MtcLib,
+            paras = IMtcCallback.class // 业务组件回调接口
+    )
+    SetCallback,
 
 
     /**启动业务组件（可选）服务。
@@ -119,12 +130,24 @@ enum Msg {
     )
     SetTelnetDebugEnable,
 
+    /**设置是否启用telnet调试响应*/
+    @Response(id = "SetUseOspTelnetCfg_Ntf",
+            clz = BaseTypeBool.class)
+    SetTelnetDebugEnableRsp,
+
+
     /**配置Aps*/
     @Request(method = "SetAPSListCfgCmd",
             owner = MethodOwner.ConfigCtrl,
             paras = StringBuffer.class,
-            userParas = MtXAPSvrListCfg.class)
+            userParas = MtXAPSvrListCfg.class,
+            rspSeq = "SetApsServerCfgRsp")
     SetApsServerCfg,
+
+    /**配置Aps响应*/
+    @Response(id = "SetXAPListCfgNtf",
+            clz = MtXAPSvrListCfg.class)
+    SetApsServerCfgRsp,
 
 
     /**登录APS*/
@@ -132,7 +155,8 @@ enum Msg {
             owner = MethodOwner.LoginCtrl,
             paras = StringBuffer.class,
             userParas = TMTApsLoginParam.class,
-            rspSeq = "LoginApsRsp")
+            rspSeq = "LoginApsRsp",
+            timeout = 10)
     LoginAps,
 
     /**登录APS响应*/

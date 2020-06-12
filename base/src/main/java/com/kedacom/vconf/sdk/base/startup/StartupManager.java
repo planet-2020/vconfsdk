@@ -37,7 +37,6 @@ public class StartupManager extends Caster<Msg> {
     private Context context;
 
     private boolean started;
-    private boolean bMtSdkStarted;
     private List<String> services = new ArrayList<>(Arrays.asList(
             "rest"         // 包含了接入功能如登录aps
 //            "upgrade",      // 升级服务
@@ -46,7 +45,7 @@ public class StartupManager extends Caster<Msg> {
     private boolean hasServiceStartFailed = false;
 
 //    static {
-//        System.loadLibrary("mtcapidll-jni");  // 业务组件会在MtcLib中加载就是我们startSdk时
+//        System.loadLibrary("mtcapidll-jni");  // 业务组件会在MtcLib中加载
 //    }
 
 
@@ -69,9 +68,10 @@ public class StartupManager extends Caster<Msg> {
         processorMap.put(new Msg[]{
                 Msg.SetMtWorkspace,
                 Msg.StartMtBase,
-                Msg.SetCallback,
                 Msg.StartMtSdk,
+                Msg.SetCallback,
                 Msg.StartMtService,
+                Msg.SetTelnetDebugEnable,
                 Msg.ToggleMtFileLog,
                 Msg.SetNetWorkCfg,
                 Msg.SetApsServerCfg,
@@ -113,10 +113,51 @@ public class StartupManager extends Caster<Msg> {
         req(Msg.StartMtBase, new IResultListener() {
             @Override
             public void onArrive(boolean bSuccess) {
+                // StartMtBase并不会给响应，此处我们是等待超时了。
+                // 我们利用超时机制做延时以保证此刻业务组件基础模块已经完全起来了，在此之前我们不能调用业务组件任何其他接口！
 
                 // 启动业务组件sdk
-                bMtSdkStarted = false;
-                req(Msg.StartMtSdk, null, false, false, new MtLoginMtParam(
+                req(Msg.StartMtSdk, new IResultListener() {
+                            @Override
+                            public void onSuccess(Object result) {
+
+                                // 启动业务组件其他模块
+                                Stream.of(services).forEach(new Consumer<String>() {  // NOTE: 此处不要使用lambda，否则amulet绑定生命周期对象会有问题（待完善）
+                                    @Override
+                                    public void accept(String s) {
+                                        req(Msg.StartMtService, new IResultListener() {
+                                            @Override
+                                            public void onArrive(boolean bSuccess) {
+                                                services.remove(s);
+                                                if (!bSuccess){
+                                                    KLog.p(KLog.ERROR, "service %s start failed!", s);
+                                                    hasServiceStartFailed = true;
+                                                }
+                                                if (services.isEmpty()){
+                                                    if (!hasServiceStartFailed) {
+                                                        reportSuccess(null, resultListener);
+                                                    }else{
+                                                        reportFailed(-1, resultListener);
+                                                    }
+                                                }
+                                            }
+                                        }, s);
+                                    }
+                                });
+
+                            }
+
+                            @Override
+                            public void onFailed(int errorCode) {
+                                reportFailed(errorCode, resultListener);
+                            }
+
+                            @Override
+                            public void onTimeout() {
+                                reportFailed(-1, resultListener);
+                            }
+                        },
+                        false, false, new MtLoginMtParam(
                                 EmClientAppType.emClientAppSkyAndroid_Api, EmAuthType.emInnerPwdAuth_Api,
                                 "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001
                         )
@@ -141,30 +182,6 @@ public class StartupManager extends Caster<Msg> {
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
-                    }
-                });
-
-                // 启动其他模块
-                Stream.of(services).forEach(new Consumer<String>() {  // NOTE: 此处不要使用lambda，否则amulet绑定生命周期对象会有问题（待完善）
-                    @Override
-                    public void accept(String s) {
-                        req(Msg.StartMtService, new IResultListener() {
-                            @Override
-                            public void onArrive(boolean bSuccess) {
-                                services.remove(s);
-                                if (!bSuccess){
-                                    KLog.p(KLog.ERROR, "service %s start failed!", s);
-                                    hasServiceStartFailed = true;
-                                }
-                                if (services.isEmpty()){
-                                    if (!hasServiceStartFailed) {
-                                        reportSuccess(null, resultListener);
-                                    }else{
-                                        reportFailed(-1, resultListener);
-                                    }
-                                }
-                            }
-                        }, s);
                     }
                 });
 
@@ -196,10 +213,10 @@ public class StartupManager extends Caster<Msg> {
     /**
      * 设置是否启用telnet调试
      * */
-    public void setTelnetDebugEnable(boolean enable){
+    public void setTelnetDebugEnable(boolean enable, IResultListener listener){
         BaseTypeBool baseTypeBool = new BaseTypeBool();
         baseTypeBool.basetype = enable;
-        set(Msg.SetTelnetDebugEnable, baseTypeBool);
+        req(Msg.SetTelnetDebugEnable, listener, baseTypeBool);
     }
 
 
@@ -209,7 +226,7 @@ public class StartupManager extends Caster<Msg> {
     public void loginAps(String ip, String account, String pwd, IResultListener resultListener){
         long ipLong;
         try {
-            ipLong = NetAddrHelper.ipStr2Long(ip);
+            ipLong = NetAddrHelper.ipStr2LongLittleEndian(ip);
         } catch (NetAddrHelper.InvalidIpv4Exception e) {
             e.printStackTrace();
             reportFailed(-1, resultListener);
@@ -225,11 +242,15 @@ public class StartupManager extends Caster<Msg> {
                 60090   // 端口暂时写死
         );
 
-        req(Msg.SetApsServerCfg, null, new MtXAPSvrListCfg(0, Collections.singletonList(mtXAPSvrCfg)) );
-
-        req(Msg.LoginAps, resultListener, new TMTApsLoginParam(account, pwd, "", "Skywalker_Ali", ""));
+        req(Msg.SetApsServerCfg, new IResultListener() {
+            @Override
+            public void onArrive(boolean bSuccess) {
+                req(Msg.LoginAps, resultListener, new TMTApsLoginParam(account, pwd, "", "Skywalker_Ali", ""));
+            }
+        }, new MtXAPSvrListCfg(0, Collections.singletonList(mtXAPSvrCfg)));
 
     }
+
 
     /**
      * 登出Aps服务器
@@ -241,19 +262,35 @@ public class StartupManager extends Caster<Msg> {
 
     private boolean onRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
-//            case StartMtSdkRsp:
-//                break;
+            case StartMtSdkRsp:
+                TMTLoginMtResult startSdkResult = (TMTLoginMtResult) rspContent;
+                if (startSdkResult.bLogin){
+                    reportSuccess(null, listener);
+                }else{
+                    reportFailed(-1, listener);
+                }
+                break;
+
             case StartMtServiceRsp:
                 TSrvStartResult result = (TSrvStartResult) rspContent;
                 if (result.MainParam.basetype && result.AssParam.achSysalias.equals(reqParas[0])){
-                    if(null != listener) {
-                        listener.onSuccess(null);
-                    }
+                    reportSuccess(null, listener);
                 }else{
-                    if(null != listener) {
-                        listener.onFailed(-1);
-                    }
+                    reportFailed(-1, listener);
                 }
+                break;
+
+            case SetTelnetDebugEnableRsp:
+                BaseTypeBool enabled = (BaseTypeBool) rspContent;
+                if (enabled.basetype){
+                    reportSuccess(null, listener);
+                }else{
+                    reportFailed(-1, listener);
+                }
+                break;
+
+            case SetApsServerCfgRsp:
+                reportSuccess(null, listener);
                 break;
 
             case LoginApsRsp:

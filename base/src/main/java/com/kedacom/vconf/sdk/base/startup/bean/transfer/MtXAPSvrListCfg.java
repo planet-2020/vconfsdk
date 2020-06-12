@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.base.startup.bean.transfer;
 import java.util.List;
 
 public class MtXAPSvrListCfg {
+    public boolean bAutoSelect;
     public int                 byCurIndex;      ///< 当前生效的地址索引
     public List<MtXAPSvrCfg> arrMtXAPSvr;     ///< XAP登录列表
     public int                 byCnt;           ///< 实际个数
@@ -11,5 +12,6 @@ public class MtXAPSvrListCfg {
         this.byCurIndex = byCurIndex;
         this.arrMtXAPSvr = arrMtXAPSvr;
         byCnt = arrMtXAPSvr.size();
+        bAutoSelect = false;
     }
 }
