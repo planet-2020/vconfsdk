@@ -25,9 +25,8 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by Sissi on 2019/7/19
@@ -60,33 +59,10 @@ public class StartupManager extends Caster<Msg> {
         return instance;
     }
 
-
     @Override
-    protected Map<Msg[], RspProcessor<Msg>> rspsProcessors() {
-        Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
-
-        processorMap.put(new Msg[]{
-                Msg.SetMtWorkspace,
-                Msg.StartMtBase,
-                Msg.StartMtSdk,
-                Msg.SetCallback,
-                Msg.StartMtService,
-                Msg.SetTelnetDebugEnable,
-                Msg.ToggleMtFileLog,
-                Msg.SetNetWorkCfg,
-                Msg.SetApsServerCfg,
-                Msg.LoginAps,
-        }, this::onRsps);
-
-        return processorMap;
+    protected Set<Msg> subscribeNtfs() {
+        return null;
     }
-
-    @Override
-    protected Map<Msg[], NtfProcessor<Msg>> ntfsProcessors() {
-        Map<Msg[], NtfProcessor<Msg>> processorMap = new HashMap<>();
-        return processorMap;
-    }
-
 
     /**
      * 启动，完成一些初始化的工作。
@@ -260,7 +236,8 @@ public class StartupManager extends Caster<Msg> {
     }
 
 
-    private boolean onRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
+    @Override
+    protected boolean onRsp(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
         switch (rspId){
             case StartMtSdkRsp:
                 TMTLoginMtResult startSdkResult = (TMTLoginMtResult) rspContent;
@@ -303,6 +280,17 @@ public class StartupManager extends Caster<Msg> {
                 break;
         }
         return true;
+    }
+
+
+    @Override
+    protected void onNtf(Msg ntf, Object ntfContent) {
+
+    }
+
+    @Override
+    protected boolean onTimeout(Msg req, IResultListener listener, Object[] reqParas) {
+        return super.onTimeout(req, listener, reqParas);
     }
 
     private EmNetTransportType convertTransType(int type){

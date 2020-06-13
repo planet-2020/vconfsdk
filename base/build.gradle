@@ -14,9 +14,9 @@ dependencies {
 
     compileOnly project(':annotation')
     annotationProcessor project(':processor')
-    implementation 'com.kedacom.vconf.sdk:amulet:1.4.0-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:amulet:2.0.0-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:common:1.1.1-SNAPSHOT'
-    implementation 'com.kedacom.vconf.sdk:utils:1.2.0-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:utils:1.2.1-SNAPSHOT'
 
 //    implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"
 //    implementation 'com.google.code.gson:gson:2.8.2'
