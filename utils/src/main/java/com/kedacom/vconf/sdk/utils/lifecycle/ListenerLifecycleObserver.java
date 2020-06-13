@@ -238,13 +238,13 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
 
     @Override
     public void onDestroy(@NonNull LifecycleOwner owner) {
-        if (null != cb){
-            notify(lifecycleOwnerBindListeners.get(owner), cb::onListenerDestroy);
-        }
         Set<Object> listeners = lifecycleOwnerBindListeners.remove(owner);
         if (null != listeners) {
             for (Object listener : listeners) {
                 KLog.p(KLog.DEBUG, "unbind %s's lifecycle from %s", listener, owner);
+            }
+            if (null != cb){
+                notify(listeners, cb::onListenerDestroy);
             }
         }
         KLog.p(KLog.DEBUG, "unobserve %s's lifecycle", owner);
