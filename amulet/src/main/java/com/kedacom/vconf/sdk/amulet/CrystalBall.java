@@ -144,6 +144,7 @@ public class CrystalBall implements ICrystalBall {
                         return;
                     }
                 }
+                KLog.p(KLog.WARN,"<-x- %s, dropped, no consumer. \n%s", msgName, msgBody);
             }
         };
 
