@@ -47,12 +47,12 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 Session s = (Session) msg.obj;
                 s.state = Session.END;
                 sessions.remove(s);
-                Log.d(TAG, String.format("%s <-~- timeout", s.id));
+                Log.d(TAG, String.format("%s <-~-o timeout", s.id));
                 s.listener.onTimeout(s.reqName, s.reqSn, s.reqPara);
             }else if (msg.what == MSG_ID_FinDueToNoRsp) {
                 Session s = (Session) msg.obj;
                 sessions.remove(s);
-                Log.d(TAG, String.format("%s <-~- no response", s.id));
+                Log.d(TAG, String.format("%s <-~-o no response", s.id));
                 s.listener.onFinDueToNoRsp(s.reqName, s.reqSn, s.reqPara);
             }
         }
