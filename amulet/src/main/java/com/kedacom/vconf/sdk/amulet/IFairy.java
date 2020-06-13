@@ -12,7 +12,7 @@ public interface IFairy {
 
     interface ISessionFairy extends IFairy, ICrystalBall.IListener{
         boolean req(IListener listener, String reqName, int reqSn, Object... reqPara);
-        void cancelReq(int reqSn);
+        boolean cancelReq(int reqSn);
 
         /**
          * 会话监听器。

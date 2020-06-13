@@ -95,7 +95,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
 
     @Override
-    public void cancelReq(int reqSn) {
+    public boolean cancelReq(int reqSn) {
         synchronized (sessionsLock) {
             for (Session s : sessions) {
                 if (reqSn == s.reqSn) {
@@ -115,9 +115,11 @@ final class SessionFairy implements IFairy.ISessionFairy{
                             }
                         }
                     });
-                    return;
+                    return true;
                 }
             }
+
+            return false;
         }
     }
 
