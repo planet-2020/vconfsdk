@@ -41,17 +41,14 @@ public class CrystalBall implements ICrystalBall {
 
     @Override
     public int spell(String methodOwner, String methodName, Object[] para, Class[] paraType) {
-//        Log.d(TAG, "####=yell methodOwner="+methodOwner+" methodName="+methodName+" paras="+para);
         Method method = cachedMethods.get(methodName);
         if (null != method){
             try {
+                KLog.p(KLog.DEBUG, "try invoke method %s", method);
                 method.invoke(null, para);
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InvocationTargetException e) {
+            } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
             }
-//            Log.d(TAG, "####call cached method: "+method);
             return 0;
         }
 
@@ -59,20 +56,12 @@ public class CrystalBall implements ICrystalBall {
             Class<?> clz = Class.forName(methodOwner);
             method = clz.getDeclaredMethod(methodName, paraType);
             method.setAccessible(true);
+            KLog.p(KLog.DEBUG, "try invoke method %s", method);
             method.invoke(null, para);
             cachedMethods.put(methodName, method);
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
+        } catch (NoSuchMethodException | ClassNotFoundException | InvocationTargetException | IllegalAccessException e) {
             e.printStackTrace();
         }
-        catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
-
-//        Log.d(TAG, "####call method: "+method);
 
         return 0;
     }
@@ -92,7 +81,7 @@ public class CrystalBall implements ICrystalBall {
     @Override
     public void addListener(IListener listener, int priority) {
         if (priority<0){
-            KLog.p(KLog.ERROR, "priority can not be <0, but got %s", priority);
+            KLog.p(KLog.ERROR, "priority(%s) can not be < 0", priority);
             return;
         }
         for (PriorityListener priorityListener : listeners){
@@ -144,7 +133,7 @@ public class CrystalBall implements ICrystalBall {
                         return;
                     }
                 }
-                KLog.p(KLog.WARN,"<-x- %s, dropped, no consumer. \n%s", msgName, msgBody);
+                KLog.p(KLog.DEBUG, "<-x- %s, dropped, no consumer. \n%s", msgName, msgBody);
             }
         };
 
