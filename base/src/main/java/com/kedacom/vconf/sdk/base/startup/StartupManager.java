@@ -167,7 +167,6 @@ public class StartupManager extends Caster<Msg> {
                 req(Msg.SetCallback, null, new IMtcCallback() {
                     @Override
                     public void Callback(String msg) {
-                        KLog.p(KLog.DEBUG, "CALLBACK: %s", msg);
                         try {
                             JSONObject mtapi = new JSONObject(msg);
                             String msgId = mtapi.getJSONObject("head").getString("eventname");
@@ -186,6 +185,7 @@ public class StartupManager extends Caster<Msg> {
                 });
 
             }
+
         }, model, type.getVal(), "v0.1.0");
 
 

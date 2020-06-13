@@ -126,7 +126,7 @@ enum Msg {
             owner = MethodOwner.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = BaseTypeBool.class, // true启用
-            type = SET
+            rspSeq = "SetTelnetDebugEnableRsp"
     )
     SetTelnetDebugEnable,
 
