@@ -72,11 +72,9 @@ final class NotificationFairy implements IFairy.INotificationFairy{
     public boolean onMsg(String msgId, String msgContent) {
         String msgName = magicBook.getRspName(msgId);
         if (null == msgName){
-            KLog.p(KLog.ERROR, "msg %s not enrolled", msgId);
             return false;
         }
         if (!magicBook.isNotification(msgName)){
-            KLog.p(KLog.ERROR, "%s is not an enrolled notification", msgName);
             return false;
         }
 
