@@ -20,8 +20,18 @@ public interface IFairy {
          * */
         interface IListener{
             /**
-             * 响应。
-             * @param bLast 是否为响应序列中的最后一条响应。一个请求可对应多个响应序列，一个响应序列至少包含一个响应。
+             * 请求已发出
+             * @param hasRsp 该请求是否有对应的响应，若有则后续会回调onRsp或onTimeout。
+             * @param reqName 请求ID。由{@link #req(IListener, String, int, Object...)}传入
+             * @param reqSn 请求序号。由{@link #req(IListener, String, int, Object...)}传入
+             * @param reqParas 请求参数。由{@link #req(IListener, String, int, Object...)}传入
+             * */
+            void onReqSent(boolean hasRsp, String reqName, int reqSn, Object[] reqParas);
+
+            /**
+             * 收到响应
+             * @param bLast 是否为响应序列中的最后一条响应。
+             *              一个请求可对应多个候选响应序列（但一次请求最终只匹配一个响应序列），一个响应序列可以包含多个响应。
              * @param rspName 响应ID
              * @param rspContent 响应内容
              * @param reqName 请求ID。由{@link #req(IListener, String, int, Object...)}传入
@@ -39,12 +49,6 @@ public interface IFairy {
              * 等待响应超时。
              * */
             void onTimeout(String reqName, int reqSn, Object[] reqParas);
-
-            /**
-             * 请求没有对应的响应序列，会话结束。
-             * */
-            void onFinDueToNoRsp(String reqName, int reqSn, Object[] reqParas);
-
         }
 
     }
@@ -66,7 +70,7 @@ public interface IFairy {
          * */
         interface IListener{
             /**
-             * 通知。
+             * 收到通知
              * @param ntfName 通知ID
              * @param ntfContent 通知内容 */
             void onNtf(String ntfName, Object ntfContent);

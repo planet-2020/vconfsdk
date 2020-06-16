@@ -58,14 +58,14 @@ title __AMULET's Class Diagram__\n
   
 
   namespace com.kedacom.vconf.sdk.amulet {
-    class com.kedacom.vconf.sdk.amulet.Caster.ReqBundle {
+    class com.kedacom.vconf.sdk.amulet.Caster.Session {
         + ReqBundle()
     }
   }
   
 
   namespace com.kedacom.vconf.sdk.amulet {
-    interface com.kedacom.vconf.sdk.amulet.Caster.RspProcessor {
+    interface com.kedacom.vconf.sdk.amulet.Caster.SessionProcessor {
         {abstract} + process()
     }
   }
@@ -331,10 +331,10 @@ title __AMULET's Class Diagram__\n
   com.kedacom.vconf.sdk.amulet.Caster o-- com.kedacom.vconf.sdk.amulet.IFairy.INotificationFairy : notificationFairy
   com.kedacom.vconf.sdk.amulet.Caster o-- com.kedacom.vconf.sdk.amulet.IFairy.ISessionFairy : sessionFairy
   com.kedacom.vconf.sdk.amulet.Caster +-down- com.kedacom.vconf.sdk.amulet.Caster.NtfProcessor
-  com.kedacom.vconf.sdk.amulet.Caster +-down- com.kedacom.vconf.sdk.amulet.Caster.ReqBundle
-  com.kedacom.vconf.sdk.amulet.Caster +-down- com.kedacom.vconf.sdk.amulet.Caster.RspProcessor
-  com.kedacom.vconf.sdk.amulet.Caster.ReqBundle o-- com.kedacom.vconf.sdk.amulet.IResultListener : listener
-  com.kedacom.vconf.sdk.amulet.Caster.ReqBundle o-- T : req
+  com.kedacom.vconf.sdk.amulet.Caster +-down- com.kedacom.vconf.sdk.amulet.Caster.Session
+  com.kedacom.vconf.sdk.amulet.Caster +-down- com.kedacom.vconf.sdk.amulet.Caster.SessionProcessor
+  com.kedacom.vconf.sdk.amulet.Caster.Session o-- com.kedacom.vconf.sdk.amulet.IResultListener : listener
+  com.kedacom.vconf.sdk.amulet.Caster.Session o-- T : req
   com.kedacom.vconf.sdk.amulet.CommandFairy .up.|> com.kedacom.vconf.sdk.amulet.IFairy.ICommandFairy
   com.kedacom.vconf.sdk.amulet.CommandFairy o-- com.kedacom.vconf.sdk.amulet.ICrystalBall : crystalBall
   com.kedacom.vconf.sdk.amulet.CrystalBall .up.|> com.kedacom.vconf.sdk.amulet.ICrystalBall

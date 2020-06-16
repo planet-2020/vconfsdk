@@ -77,9 +77,7 @@ final class MagicBook {
             field = chapter.getDeclaredField("rspMap");
             field.setAccessible(true);
             rspMap.putAll((Table<String, String, Object>) field.get(null));
-        } catch (NoSuchFieldException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
+        } catch (NoSuchFieldException | IllegalAccessException e) {
             e.printStackTrace();
         }
 
