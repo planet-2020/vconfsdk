@@ -15,6 +15,7 @@ import com.kedacom.vconf.sdk.base.startup.bean.*;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.*;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
+import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 import com.kedacom.vconf.sdk.utils.net.NetworkHelper;
@@ -26,7 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 /**
  * Created by Sissi on 2019/7/19
@@ -41,12 +42,6 @@ public class StartupManager extends Caster<Msg> {
 //            "upgrade",      // 升级服务
 //            "record"        // 会议记录
     ));
-    private boolean hasServiceStartFailed = false;
-
-//    static {
-//        System.loadLibrary("mtcapidll-jni");  // 业务组件会在MtcLib中加载
-//    }
-
 
     private StartupManager(Context ctx) {
         context = ctx;
@@ -60,13 +55,12 @@ public class StartupManager extends Caster<Msg> {
     }
 
     @Override
-    protected Set<Msg> subscribeNtfs() {
+    protected Map<Msg[], NtfProcessor<Msg>> subscribeNtfs() {
         return null;
     }
 
     /**
      * 启动，完成一些初始化的工作。
-     * (启动过程中一般展示欢迎界面)
      * @param type 终端类型
      * @param resultListener 启动结果监听器
      * */
@@ -86,90 +80,69 @@ public class StartupManager extends Caster<Msg> {
 
         // 启动业务组件基础模块
         EmMtModel model = ToDoConverter.toTransferObj(type);
-        req(Msg.StartMtBase, new IResultListener() {
+        req(Msg.StartMtBase, new SessionProcessor<Msg>() {
+            // StartMtBase并不会给响应，我们必定是等待超时。
+            // 我们利用超时机制做延时以保证此刻业务组件基础模块已经完全起来了，在此之前我们不能调用业务组件任何其他接口！
             @Override
-            public void onArrive(boolean bSuccess) {
-                // StartMtBase并不会给响应，此处我们是等待超时了。
-                // 我们利用超时机制做延时以保证此刻业务组件基础模块已经完全起来了，在此之前我们不能调用业务组件任何其他接口！
-
+            public boolean onTimeout(IResultListener resultListener, Msg req, Object[] reqParas) {
                 // 启动业务组件sdk
-                req(Msg.StartMtSdk, new IResultListener() {
-                            @Override
-                            public void onSuccess(Object result) {
+                req(Msg.StartMtSdk, new SessionProcessor<Msg>() {
+                    boolean hasServiceStartFailed = false;
+                    @Override
+                    public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                        boolean startSdkSuccess = ((TMTLoginMtResult) rspContent).bLogin;
+                        if (startSdkSuccess){
+                            // 设置sdk回调
+                            set(Msg.SetMtSdkCallback, new IMtcCallback() {
+                                @Override
+                                public void Callback(String msg) {
+                                    try {
+                                        JSONObject mtapi = new JSONObject(msg);
+                                        String msgId = mtapi.getJSONObject("head").getString("eventname");
+                                        String body = mtapi.getString("body");
+                                        if (null == msgId || null == body) {
+                                            KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
+                                            return;
+                                        }
 
-                                // 启动业务组件其他模块
-                                Stream.of(services).forEach(new Consumer<String>() {  // NOTE: 此处不要使用lambda，否则amulet绑定生命周期对象会有问题（待完善）
-                                    @Override
-                                    public void accept(String s) {
-                                        req(Msg.StartMtService, new IResultListener() {
-                                            @Override
-                                            public void onArrive(boolean bSuccess) {
-                                                services.remove(s);
-                                                if (!bSuccess){
-                                                    KLog.p(KLog.ERROR, "service %s start failed!", s);
-                                                    hasServiceStartFailed = true;
-                                                }
-                                                if (services.isEmpty()){
-                                                    if (!hasServiceStartFailed) {
-                                                        reportSuccess(null, resultListener);
-                                                    }else{
-                                                        reportFailed(-1, resultListener);
-                                                    }
+                                        CrystalBall.instance().onAppear(msgId, body);
+
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            });
+
+                            // 启动业务组件其他模块
+                            Stream.of(services).forEach(new Consumer<String>() {  // NOTE: 此处不要使用lambda，否则amulet绑定生命周期对象会有问题（待完善）
+                                @Override
+                                public void accept(String s) {
+                                    req(Msg.StartMtService, new SessionProcessor<Msg>() {
+                                        @Override
+                                        public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                                            services.remove(s);
+                                            TSrvStartResult result = (TSrvStartResult) rspContent;
+                                            boolean success = result.MainParam.basetype && result.AssParam.achSysalias.equals(reqParas[0]);
+                                            if (!success){
+                                                KLog.p(KLog.ERROR, "service %s start failed!", s);
+                                                hasServiceStartFailed = true;
+                                            }
+                                            if (services.isEmpty()){
+                                                if (!hasServiceStartFailed) {
+                                                    reportSuccess(null, resultListener);
+                                                }else{
+                                                    reportFailed(-1, resultListener);
                                                 }
                                             }
-                                        }, s);
-                                    }
-                                });
+                                            return true;
+                                        }
+                                    }, resultListener , s);
+                                }
+                            });
 
-                            }
-
-                            @Override
-                            public void onFailed(int errorCode) {
-                                reportFailed(errorCode, resultListener);
-                            }
-
-                            @Override
-                            public void onTimeout() {
-                                reportFailed(-1, resultListener);
-                            }
-                        },
-                        false, false, new MtLoginMtParam(
-                                EmClientAppType.emClientAppSkyAndroid_Api, EmAuthType.emInnerPwdAuth_Api,
-                                "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001
-                        )
-                );
-
-                // 设置业务组件回调
-                req(Msg.SetCallback, null, new IMtcCallback() {
-                    @Override
-                    public void Callback(String msg) {
-                        try {
-                            JSONObject mtapi = new JSONObject(msg);
-                            String msgId = mtapi.getJSONObject("head").getString("eventname");
-                            String body = mtapi.getString("body");
-                            if (null == msgId || null == body) {
-                                KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
-                                return;
-                            }
-
-                            CrystalBall.instance().onAppear(msgId, body);
-
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                });
-
-            }
-
-        }, model, type.getVal(), "v0.1.0");
-
-
-
-        // 设置是否将业务组件日志写入日志文件
-//        req(Msg.ToggleMtFileLog, null, true);
-
-//        try {
+                            // 设置是否将业务组件日志写入日志文件
+                            //        req(Msg.ToggleMtFileLog, null, true);
+                            //        try {
 //            req(Msg.SetNetWorkCfg, null,
 //                    new TNetWorkInfo(convertTransType(NetworkHelper.getTransType()),
 //                            NetAddrHelper.ipStr2Int(NetworkHelper.getAddr()),
@@ -182,17 +155,45 @@ public class StartupManager extends Caster<Msg> {
 //            reportFailed(-1, resultListener);
 //        }
 
-        started = true;
+                        }else{
+                            reportFailed(-1, resultListener);
+                        }
+                        return true;
+                    }
+                },
+                        resultListener,
+                        false,
+                        false,
+                        new MtLoginMtParam(EmClientAppType.emClientAppSkyAndroid_Api, EmAuthType.emInnerPwdAuth_Api,
+                        "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001)
+                );
 
+                return true;
+            }
+
+        }, resultListener, model, type.getVal(), "v0.1.0");
+
+        started = true;
     }
 
     /**
      * 设置是否启用telnet调试
      * */
-    public void setTelnetDebugEnable(boolean enable, IResultListener listener){
+    public void setTelnetDebugEnable(boolean enable, IResultListener resultListener){
         BaseTypeBool baseTypeBool = new BaseTypeBool();
         baseTypeBool.basetype = enable;
-        req(Msg.SetTelnetDebugEnable, listener, baseTypeBool);
+        req(Msg.SetTelnetDebugEnable, new SessionProcessor<Msg>() {
+            @Override
+            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                boolean enabled = ((BaseTypeBool) rspContent).basetype;
+                if (enabled){
+                    reportSuccess(null, resultListener);
+                }else{
+                    reportFailed(-1, resultListener);
+                }
+                return true;
+            }
+        }, resultListener, baseTypeBool);
     }
 
 
@@ -208,7 +209,6 @@ public class StartupManager extends Caster<Msg> {
             reportFailed(-1, resultListener);
             return;
         }
-
         MtXAPSvrCfg mtXAPSvrCfg = new MtXAPSvrCfg(
                 EmServerAddrType.emSrvAddrTypeCustom.ordinal(),
                 ip,
@@ -218,12 +218,54 @@ public class StartupManager extends Caster<Msg> {
                 60090   // 端口暂时写死
         );
 
-        req(Msg.SetApsServerCfg, new IResultListener() {
-            @Override
-            public void onArrive(boolean bSuccess) {
-                req(Msg.LoginAps, resultListener, new TMTApsLoginParam(account, pwd, "", "Skywalker_Ali", ""));
-            }
-        }, new MtXAPSvrListCfg(0, Collections.singletonList(mtXAPSvrCfg)));
+        // 配置Aps
+        req(Msg.SetApsServerCfg, new SessionProcessor<Msg>() {
+                @Override
+                public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas) {
+                    // 登录Aps
+                    req(Msg.LoginAps, new SessionProcessor<Msg>() {
+                            @Override
+                            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                                TApsLoginResult apsLoginResult = (TApsLoginResult) rspContent;
+                                if (apsLoginResult.bSucess){
+                                    // 获取平台分配的token
+                                    req(Msg.QueryAccountToken, new SessionProcessor<Msg>() {
+                                        @Override
+                                        public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                                            TRestErrorInfo restErrorInfo = (TRestErrorInfo) rspContent;
+                                            if (restErrorInfo.dwErrorID == 1000){
+                                                // 登录platform
+                                                req(Msg.LoginPlatform, new SessionProcessor<Msg>() {
+                                                    @Override
+                                                    public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                                                        TRestErrorInfo restErrorInfo = (TRestErrorInfo) rspContent;
+                                                        if (restErrorInfo.dwErrorID == 1000){
+                                                            reportSuccess(null, resultListener);
+                                                        }else{
+                                                            reportFailed(-1, resultListener);
+                                                        }
+                                                        return true;
+                                                    }
+                                                }, resultListener, new TMTWeiboLogin(account, pwd));
+                                            }else{
+                                                reportFailed(-1, resultListener);
+                                            }
+                                            return true;
+                                        }
+                                    }, resultListener, NetAddrHelper.ipLong2Str(apsLoginResult.dwIP));
+                                    reportSuccess(null, resultListener);
+                                }else{
+                                    reportFailed(-1, resultListener);
+                                }
+                                return true;
+                            }
+                        },
+                        resultListener, new TMTApsLoginParam(account, pwd, "", "Skywalker_Ali", "")
+                    );
+                }
+            },
+            resultListener, new MtXAPSvrListCfg(0, Collections.singletonList(mtXAPSvrCfg))
+        );
 
     }
 
@@ -235,63 +277,6 @@ public class StartupManager extends Caster<Msg> {
 
     }
 
-
-    @Override
-    protected boolean onRsp(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
-        switch (rspId){
-            case StartMtSdkRsp:
-                TMTLoginMtResult startSdkResult = (TMTLoginMtResult) rspContent;
-                if (startSdkResult.bLogin){
-                    reportSuccess(null, listener);
-                }else{
-                    reportFailed(-1, listener);
-                }
-                break;
-
-            case StartMtServiceRsp:
-                TSrvStartResult result = (TSrvStartResult) rspContent;
-                if (result.MainParam.basetype && result.AssParam.achSysalias.equals(reqParas[0])){
-                    reportSuccess(null, listener);
-                }else{
-                    reportFailed(-1, listener);
-                }
-                break;
-
-            case SetTelnetDebugEnableRsp:
-                BaseTypeBool enabled = (BaseTypeBool) rspContent;
-                if (enabled.basetype){
-                    reportSuccess(null, listener);
-                }else{
-                    reportFailed(-1, listener);
-                }
-                break;
-
-            case SetApsServerCfgRsp:
-                reportSuccess(null, listener);
-                break;
-
-            case LoginApsRsp:
-                TApsLoginResult apsLoginResult = (TApsLoginResult) rspContent;
-                if (apsLoginResult.bSucess){
-                    reportSuccess(null, listener);
-                }else{
-                    reportFailed(-1, listener);
-                }
-                break;
-        }
-        return true;
-    }
-
-
-    @Override
-    protected void onNtf(Msg ntf, Object ntfContent) {
-
-    }
-
-    @Override
-    protected boolean onTimeout(Msg req, IResultListener listener, Object[] reqParas) {
-        return super.onTimeout(req, listener, reqParas);
-    }
 
     private EmNetTransportType convertTransType(int type){
         switch (type){

@@ -49,7 +49,7 @@ enum Msg {
                     String.class, // 终端软件版本号
             },
             rspSeq = "StartMtBaseRsp", // 下层实际并不会抛消息上来，超时是必然。
-            timeout = 2 // 等待2s等下层完全起来。
+            timeout = 6 // 等待2s等下层完全起来。
             )
     StartMtBase,
 
@@ -85,9 +85,10 @@ enum Msg {
     /**设置业务组件层回调*/
     @Request(method = "Setcallback",
             owner = MethodOwner.MtcLib,
-            paras = IMtcCallback.class // 业务组件回调接口
+            paras = IMtcCallback.class, // 回调接口
+            type = SET
     )
-    SetCallback,
+    SetMtSdkCallback,
 
 
     /**启动业务组件（可选）服务。
