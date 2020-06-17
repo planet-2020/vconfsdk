@@ -233,7 +233,7 @@ public class StartupManager extends Caster<Msg> {
                             @Override
                             public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
                                 TApsLoginResult apsLoginResult = (TApsLoginResult) rspContent;
-                                if (apsLoginResult.bSucess){
+                                if (apsLoginResult.MainParam.bSucess){
                                     // 获取平台分配的token
                                     req(Msg.QueryAccountToken, new SessionProcessor<Msg>() {
                                         @Override
@@ -244,8 +244,8 @@ public class StartupManager extends Caster<Msg> {
                                                 req(Msg.LoginPlatform, new SessionProcessor<Msg>() {
                                                     @Override
                                                     public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
-                                                        TRestErrorInfo restErrorInfo = (TRestErrorInfo) rspContent;
-                                                        if (restErrorInfo.dwErrorID == 1000){
+                                                        TLoginPlatformRsp res = (TLoginPlatformRsp) rspContent;
+                                                        if (res.MainParam.dwErrorID == 1000){
                                                             reportSuccess(null, resultListener);
                                                         }else{
                                                             reportFailed(-1, resultListener);
@@ -258,8 +258,8 @@ public class StartupManager extends Caster<Msg> {
                                             }
                                             return true;
                                         }
-                                    }, resultListener, NetAddrHelper.ipLong2Str(apsLoginResult.dwIP));
-                                    reportSuccess(null, resultListener);
+                                    }, resultListener, NetAddrHelper.ipLongLittleEndian2Str(apsLoginResult.AssParam.dwIP));
+
                                 }else{
                                     reportFailed(-1, resultListener);
                                 }
