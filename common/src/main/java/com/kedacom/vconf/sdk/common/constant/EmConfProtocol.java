@@ -12,5 +12,6 @@ public enum EmConfProtocol {
     emsip,              // SIP
     emsat,              // SAT
     emtip,              // TIP
-    emrtc               // webrtc
+    emrtc,               // webrtc
+    emaliyun,
 }

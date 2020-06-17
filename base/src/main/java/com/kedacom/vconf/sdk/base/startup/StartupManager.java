@@ -13,6 +13,7 @@ import com.kedacom.vconf.sdk.amulet.CrystalBall;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.base.startup.bean.*;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.*;
+import com.kedacom.vconf.sdk.common.bean.TerminalType;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
