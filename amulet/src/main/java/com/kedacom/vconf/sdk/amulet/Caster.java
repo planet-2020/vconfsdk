@@ -228,7 +228,7 @@ public abstract class Caster<T extends Enum<T>> implements
         }
         sessions.add(s);
         listenerLifecycleObserver.tryObserve(resultListener);
-        KLog.p(KLog.DEBUG,"req=%s, sid=%s, \nsessionProcessor=%s, resultListener=%s", req, s.id, sessionProcessor, resultListener);
+        KLog.p(KLog.DEBUG,"req=%s, sid=%s, sessionProcessor=%s, resultListener=%s", req, s.id, sessionProcessor, resultListener);
     }
 
     /**
@@ -242,7 +242,7 @@ public abstract class Caster<T extends Enum<T>> implements
             Session s = it.next();
             if (req == s.req
                     && (null==resultListener || resultListener==s.resultListener)){
-                KLog.p(KLog.DEBUG,"cancel req=%s, sid=%s, \nsessionProcessor=%s, listener=%s", req, s.id, s.processor, s.resultListener);
+                KLog.p(KLog.DEBUG,"cancel req=%s, sid=%s, sessionProcessor=%s, listener=%s", req, s.id, s.processor, s.resultListener);
                 it.remove();
                 sessionFairy.cancelReq(s.id);
             }
