@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.webrtc;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
+import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
@@ -62,7 +63,7 @@ enum Msg {
     /**
      * 登录状态变更通知
      */
-    @Response(clz = TRegState.class,
+    @Response(clz = TRegResultNtf.class,
             id = "RegResultNtf")
     LoginStateChanged,
 

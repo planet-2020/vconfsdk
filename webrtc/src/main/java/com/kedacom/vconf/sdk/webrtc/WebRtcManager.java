@@ -76,6 +76,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.webrtc.bean.*;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.*;
@@ -624,9 +625,8 @@ public class WebRtcManager extends Caster<Msg>{
     private boolean onRsp(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas) {
         switch (rsp){
             case LoginStateChanged:
-                TRegState loginResult = (TRegState) rspContent;
-                KLog.p("loginResult: %s", loginResult.AssParam.basetype);
-                int resCode = RtcResultCode.fromTransfer(loginResult.AssParam.basetype);
+                TRegResultNtf loginResult = (TRegResultNtf) rspContent;
+                int resCode = RtcResultCode.fromTransfer(loginResult.AssParam.getValue());
                 if (Msg.Login == req) { // 登录
                     if (RtcResultCode.OK == resCode) {
                         reportSuccess(null, listener);
@@ -760,8 +760,8 @@ public class WebRtcManager extends Caster<Msg>{
     private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
         switch (ntfId){
             case LoginStateChanged:
-                TRegState regState = (TRegState) ntfContent;
-                int resCode = RtcResultCode.fromTransfer(regState.AssParam.basetype);
+                TRegResultNtf regState = (TRegResultNtf) ntfContent;
+                int resCode = RtcResultCode.fromTransfer(regState.AssParam.getValue());
                 if (RtcResultCode.OK != resCode) {
                     confEventListener.onConfServerDisconnected(resCode);
                 }
