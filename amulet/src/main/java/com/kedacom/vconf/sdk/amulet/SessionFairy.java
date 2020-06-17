@@ -81,41 +81,35 @@ final class SessionFairy implements IFairy.ISessionFairy{
         Session s = new Session(listener, reqSn, reqName, reqPara,magicBook.getTimeout(reqName) * 1000, magicBook.getRspSeqs(reqName));
         sessions.add(s);
 
-        // 用户参数转换为底层方法需要的参数
-        Object[] paras = magicBook.userPara2MethodPara(s.reqPara, magicBook.getParaClasses(s.reqName));
-        StringBuilder sb = new StringBuilder();
-        for (Object para : paras) {
-            sb.append(para).append(", ");
-        }
-        String methodName = magicBook.getMethod(s.reqName);
-
-        Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqName, methodName, sb));
-
-        if(!s.transState(Session.IDLE, Session.READY)){
-            return false;
-        }
-        // 启动超时
-        Message msg = Message.obtain();
-        msg.what = MsgId_Timeout;
-        msg.obj = s;
-        uiHandler.sendMessageDelayed(msg, s.timeoutVal);
-
         reqHandler.post(() -> {
-            if(!s.transState(Session.READY, Session.SENDING)){
+            if(!s.transState(Session.IDLE, Session.SENDING)){
                 return;
             }
-            long nativeCallCostTime = 0;
-            if (null != crystalBall) {
-                // 调用native接口
-                long timestamp = System.currentTimeMillis();
-                crystalBall.spell(magicBook.getMethodOwner(s.reqName),
-                        methodName,
-                        paras,
-                        magicBook.getParaClasses(s.reqName));
-                nativeCallCostTime = System.currentTimeMillis() - timestamp;
-            }else{
-                KLog.p(KLog.ERROR, "crystalBall is null!");
+
+            // 用户参数转换为底层方法需要的参数
+            Object[] paras = magicBook.userPara2MethodPara(s.reqPara, magicBook.getParaClasses(s.reqName));
+            StringBuilder sb = new StringBuilder();
+            for (Object para : paras) {
+                sb.append(para).append(", ");
             }
+            String methodName = magicBook.getMethod(s.reqName);
+            uiHandler.post(() -> Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqName, methodName, sb)));
+
+            // 启动超时
+            Message msg = Message.obtain();
+            msg.what = MsgId_Timeout;
+            msg.obj = s;
+            uiHandler.sendMessageDelayed(msg, s.timeoutVal);
+
+            // 调用native接口
+            long nativeCallCostTime = 0;
+            long timestamp = System.currentTimeMillis();
+            crystalBall.spell(magicBook.getMethodOwner(s.reqName),
+                    methodName,
+                    paras,
+                    magicBook.getParaClasses(s.reqName));
+            nativeCallCostTime = System.currentTimeMillis() - timestamp;
+
             KLog.p(KLog.DEBUG,"native method %s cost time: %s", magicBook.getMethodOwner(s.reqName)+"#"+methodName, nativeCallCostTime);
             if(!s.transState(Session.SENDING, Session.SENT)){
                 return;
@@ -251,7 +245,6 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
         private int state = IDLE;  // 会话状态
         private static final int IDLE = 0;  // 空闲。初始状态
-        private static final int READY = 1; // 已准备待发送。
         private static final int SENDING = 2; // 正在发送请求。
         private static final int SENT = 3; // 请求已发出。
         private static final int WAITING = 4; // 正在等待响应。请求发送以后，收到第一条响应之前。
