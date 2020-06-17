@@ -77,7 +77,7 @@ public class StartupManager extends Caster<Msg> {
 //                throw new RuntimeException("try to create dir "+dir.getAbsolutePath()+" failed");
 //            }
 //        }
-//        req(Msg.SetMtWorkspace, null, dir.getAbsolutePath()); // FIXME mtcapi-jni中没有SetSysWorkPathPrefix
+//        req(Msg.SetMtWorkspace, null, dir.getAbsolutePath()); // TODO mtcapi-jni中没有SetSysWorkPathPrefix
 
         // 启动业务组件基础模块
         EmMtModel model = ToDoConverter.toTransferObj(type);
@@ -86,34 +86,39 @@ public class StartupManager extends Caster<Msg> {
             // 我们利用超时机制做延时以保证此刻业务组件基础模块已经完全起来了，在此之前我们不能调用业务组件任何其他接口！
             @Override
             public boolean onTimeout(IResultListener resultListener, Msg req, Object[] reqParas) {
+
                 // 启动业务组件sdk
                 req(Msg.StartMtSdk, new SessionProcessor<Msg>() {
                     boolean hasServiceStartFailed = false;
+
+                    @Override
+                    public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas) {
+                        // 设置业务组件sdk回调
+                        set(Msg.SetMtSdkCallback, new IMtcCallback() {
+                            @Override
+                            public void Callback(String msg) {
+                                try {
+                                    JSONObject mtapi = new JSONObject(msg);
+                                    String msgId = mtapi.getJSONObject("head").getString("eventname");
+                                    String body = mtapi.getString("body");
+                                    if (null == msgId || null == body) {
+                                        KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
+                                        return;
+                                    }
+
+                                    CrystalBall.instance().onAppear(msgId, body);
+
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        });
+                    }
+
                     @Override
                     public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
                         boolean startSdkSuccess = ((TMTLoginMtResult) rspContent).bLogin;
                         if (startSdkSuccess){
-                            // 设置sdk回调
-                            set(Msg.SetMtSdkCallback, new IMtcCallback() {
-                                @Override
-                                public void Callback(String msg) {
-                                    try {
-                                        JSONObject mtapi = new JSONObject(msg);
-                                        String msgId = mtapi.getJSONObject("head").getString("eventname");
-                                        String body = mtapi.getString("body");
-                                        if (null == msgId || null == body) {
-                                            KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
-                                            return;
-                                        }
-
-                                        CrystalBall.instance().onAppear(msgId, body);
-
-                                    } catch (JSONException e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            });
-
                             // 启动业务组件其他模块
                             Stream.of(services).forEach(new Consumer<String>() {  // NOTE: 此处不要使用lambda，否则amulet绑定生命周期对象会有问题（待完善）
                                 @Override
@@ -222,7 +227,7 @@ public class StartupManager extends Caster<Msg> {
         // 配置Aps
         req(Msg.SetApsServerCfg, new SessionProcessor<Msg>() {
                 @Override
-                public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas) {
+                public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
                     // 登录Aps
                     req(Msg.LoginAps, new SessionProcessor<Msg>() {
                             @Override
@@ -263,7 +268,10 @@ public class StartupManager extends Caster<Msg> {
                         },
                         resultListener, new TMTApsLoginParam(account, pwd, "", "Skywalker_Ali", "")
                     );
+
+                    return true;
                 }
+
             },
             resultListener, new MtXAPSvrListCfg(0, Collections.singletonList(mtXAPSvrCfg))
         );
