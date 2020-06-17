@@ -178,6 +178,18 @@ public final class NetAddrHelper {
         return sb.toString();
     }
 
+    /**
+     * 整型ip（小端模式）转点分十进制ip字符串
+     * */
+    public static String ipIntLittleEndian2Str(long ip){
+        final StringBuilder sb = new StringBuilder();
+        sb.insert(0, ip>>>24).insert(0, ".")
+                .insert(0, ip>>>16 & 0xff).insert(0, ".")
+                .insert(0, ip>>>8 & 0xff).insert(0, ".")
+                .insert(0, ip & 0xff);
+        return sb.toString();
+    }
+
 
     /**
      * 点分十进制ip字符串转长整型
@@ -205,6 +217,17 @@ public final class NetAddrHelper {
         return sb.toString();
     }
 
+    /**
+     * 长整型ip（小端模式）转点分十进制ip字符串
+     * */
+    public static String ipLongLittleEndian2Str(long ip){
+        final StringBuilder sb = new StringBuilder();
+        sb.insert(0, ip>>>24).insert(0, ".")
+                .insert(0, ip>>>16 & 0xff).insert(0, ".")
+                .insert(0, ip>>>8 & 0xff).insert(0, ".")
+                .insert(0, ip & 0xff);
+        return sb.toString();
+    }
 
 
     /**
