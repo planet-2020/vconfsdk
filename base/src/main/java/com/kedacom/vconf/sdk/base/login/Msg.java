@@ -8,6 +8,8 @@ import com.kedacom.vconf.sdk.base.login.bean.transfer.*;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
 
+import static com.kedacom.vconf.sdk.annotation.Request.GET;
+
 
 @Message(
         module = "LI"
@@ -90,6 +92,30 @@ enum Msg {
             clz = TLoginPlatformRsp.class)
     LoginPlatformRsp,
 
+    /**获取用户简短信息
+     * */
+    @Request(method = "GetUserInfoFromApsCfg",
+            owner = MethodOwner.ConfigCtrl,
+            paras = StringBuffer.class,
+            userParas = TMTUserInfoFromAps.class,
+            type = GET
+    )
+    GetUserBrief,
+
+    /**查询用户详情
+     * */
+    @Request(method = "GetAccountInfoReq",
+            owner = MethodOwner.RmtContactCtrl,
+            paras = StringBuffer.class,
+            userParas = TMTAccountManagerSystem.class,
+            rspSeq = "QueryUserDetailsRsp"
+    )
+    QueryUserDetails,
+
+    @Response(id = "RestGetAccountInfo_Rsp",
+            clz = TQueryUserDetailsRsp.class)
+    QueryUserDetailsRsp,
+
 
     END;
 
@@ -104,5 +130,6 @@ enum Msg {
         private static final String ConfigCtrl = PKG+"ConfigCtrl";
         private static final String MtServiceCfgCtrl = PKG+"MtServiceCfgCtrl";
         private static final String MeetingCtrl = PKG+"MeetingCtrl";
+        private static final String RmtContactCtrl = PKG+"RmtContactCtrl";
     }
 }

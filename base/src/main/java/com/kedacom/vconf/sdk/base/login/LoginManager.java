@@ -2,12 +2,12 @@ package com.kedacom.vconf.sdk.base.login;
 
 import android.app.Application;
 import android.content.Context;
-import android.os.Handler;
 
 import androidx.annotation.NonNull;
 
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
+import com.kedacom.vconf.sdk.base.login.bean.UserDetails;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.*;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
@@ -15,7 +15,6 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 
 import java.util.Collections;
-import java.util.Map;
 
 /**
  * Created by Sissi on 2019/7/19
@@ -36,11 +35,6 @@ public class LoginManager extends Caster<Msg> {
         return instance;
     }
 
-    @Override
-    protected Map<Msg[], NtfProcessor<Msg>> subscribeNtfs() { // TODO Msg改为Startup的看能否编译报错
-        return super.subscribeNtfs();
-    }
-
     // 启动业务组件接入服务
     private void startService(){
         String serviceName = "rest";
@@ -57,13 +51,15 @@ public class LoginManager extends Caster<Msg> {
         }, null , serviceName);
     }
 
+
     /**
-     * 登录Aps服务器
+     * 登录APS
+     * NOTE: APS为接入服务器，登录APS后才能登录其他服务器如会议、IM、升级等。
      * */
-    public void loginAps(@NonNull String ip, @NonNull String account, @NonNull String pwd, IResultListener resultListener){
+    public void loginAps(@NonNull String apsIp, @NonNull String username, @NonNull String password, IResultListener resultListener){
         long ipLong;
         try {
-            ipLong = NetAddrHelper.ipStr2LongLittleEndian(ip);
+            ipLong = NetAddrHelper.ipStr2LongLittleEndian(apsIp);
         } catch (NetAddrHelper.InvalidIpv4Exception e) {
             e.printStackTrace();
             reportFailed(-1, resultListener);
@@ -71,7 +67,7 @@ public class LoginManager extends Caster<Msg> {
         }
         MtXAPSvrCfg mtXAPSvrCfg = new MtXAPSvrCfg(
                 EmServerAddrType.emSrvAddrTypeCustom.ordinal(),
-                ip,
+                apsIp,
                 "",
                 ipLong,
                 true,
@@ -106,7 +102,7 @@ public class LoginManager extends Caster<Msg> {
                                                         }
                                                         return true;
                                                     }
-                                                }, resultListener, new TMTWeiboLogin(account, pwd));
+                                                }, resultListener, new TMTWeiboLogin(username, password));
                                             }else{
                                                 reportFailed(-1, resultListener);
                                             }
@@ -120,7 +116,7 @@ public class LoginManager extends Caster<Msg> {
                                 return true;
                             }
                         },
-                        resultListener, new TMTApsLoginParam(account, pwd, "", "Skywalker_Ali", "")
+                        resultListener, new TMTApsLoginParam(username, password, "", "Skywalker_Ali", "")
                     );
 
                     return true;
@@ -134,11 +130,39 @@ public class LoginManager extends Caster<Msg> {
 
 
     /**
-     * 登出Aps服务器
+     * 注销APS
      * */
     public void logoutAps(){
 
     }
 
+
+    /**
+     * 查询用户详情
+     * @param resultListener
+     *          成功反馈：{@link UserDetails}
+     *          失败反馈 errorcode
+     * */
+    public void queryUserDetails(@NonNull IResultListener resultListener){
+        TMTUserInfoFromAps userBrief = (TMTUserInfoFromAps) get(Msg.GetUserBrief);
+        if (null == userBrief){
+            reportFailed(-1, resultListener);
+            return;
+        }
+        String username = userBrief.achE164;
+        req(Msg.QueryUserDetails, new SessionProcessor<Msg>() {
+            @Override
+            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                TQueryUserDetailsRsp detailsRsp = (TQueryUserDetailsRsp) rspContent;
+                if (1000 == detailsRsp.MainParam.dwErrorID){
+                    UserDetails userDetails = ToDoConverter.fromTransferObj(detailsRsp.AssParam);
+                    reportSuccess(userDetails, resultListener);
+                }else{
+                    reportFailed(-1, resultListener);
+                }
+                return true;
+            }
+        }, resultListener, new TMTAccountManagerSystem(username));
+    }
 
 }
