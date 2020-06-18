@@ -1,9 +1,8 @@
 package com.kedacom.vconf.sdk.common.bean.transfer;
 
-import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
-import com.kedacom.vconf.sdk.common.constant.EmRegFailedReason;
+import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 
 public final class TRegResultNtf {
-    public EmConfProtocol MainParam;
-    public EmRegFailedReason AssParam;
+    public BaseTypeInt MainParam;   // EmConfProtocol
+    public BaseTypeInt AssParam; // EmRegFailedReason
 }

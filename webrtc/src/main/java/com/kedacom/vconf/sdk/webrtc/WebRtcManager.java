@@ -626,7 +626,7 @@ public class WebRtcManager extends Caster<Msg>{
         switch (rsp){
             case LoginStateChanged:
                 TRegResultNtf loginResult = (TRegResultNtf) rspContent;
-                int resCode = RtcResultCode.fromTransfer(loginResult.AssParam.getValue());
+                int resCode = RtcResultCode.fromTransfer(loginResult.AssParam.basetype);
                 if (Msg.Login == req) { // 登录
                     if (RtcResultCode.OK == resCode) {
                         reportSuccess(null, listener);
@@ -761,7 +761,7 @@ public class WebRtcManager extends Caster<Msg>{
         switch (ntfId){
             case LoginStateChanged:
                 TRegResultNtf regState = (TRegResultNtf) ntfContent;
-                int resCode = RtcResultCode.fromTransfer(regState.AssParam.getValue());
+                int resCode = RtcResultCode.fromTransfer(regState.AssParam.basetype);
                 if (RtcResultCode.OK != resCode) {
                     confEventListener.onConfServerDisconnected(resCode);
                 }
