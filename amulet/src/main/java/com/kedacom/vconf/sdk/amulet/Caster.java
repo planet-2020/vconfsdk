@@ -139,8 +139,10 @@ public abstract class Caster<T extends Enum<T>> implements
         void process(T ntf, Object ntfContent, Set<Object> ntfListeners);
     }
 
-    /**订阅通知*/
-    protected abstract Map<T[], NtfProcessor<T>> subscribeNtfs();
+    /**订阅通知
+     * 若要订阅通知需override此方法。
+     * */
+    protected Map<T[], NtfProcessor<T>> subscribeNtfs(){return null;}
 
 
     /**
