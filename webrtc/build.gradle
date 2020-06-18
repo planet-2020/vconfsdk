@@ -95,4 +95,3 @@ protobuf {
 //android.registerTransform(new PatchXWalkTransform(logger))
 
 
-apply from: '../publish.gradle'

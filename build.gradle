@@ -160,6 +160,9 @@ def configProject(Project project){
                     abortOnError false
                 }
             }
+            if(project.plugins.hasPlugin(com.android.build.gradle.LibraryPlugin)){
+                project.apply from : '../publish.gradle'
+            }
         }else if (project.plugins.hasPlugin(JavaPlugin)){
 //            logger.quiet("###############org.gradle.java, project $project")
             project.sourceCompatibility = SOURCE_JAVA_VERSION

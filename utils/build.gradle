@@ -24,5 +24,3 @@ dependencies {
 
     api 'com.annimon:stream:1.2.1'
 }
-
-apply from: '../publish.gradle'

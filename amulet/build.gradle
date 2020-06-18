@@ -14,5 +14,3 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-common-java8:2.2.0"
     implementation 'com.google.guava:guava:27.0.1-android'
 }
-
-apply from: '../publish.gradle'
