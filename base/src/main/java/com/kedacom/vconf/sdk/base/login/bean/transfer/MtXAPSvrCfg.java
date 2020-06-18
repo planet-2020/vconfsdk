@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.base.startup.bean.transfer;
+package com.kedacom.vconf.sdk.base.login.bean.transfer;
 
 public class MtXAPSvrCfg {
     public int emAddrType;   ///<地址类型

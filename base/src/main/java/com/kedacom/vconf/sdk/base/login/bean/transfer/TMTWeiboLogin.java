@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.base.startup.bean.transfer;
+package com.kedacom.vconf.sdk.base.login.bean.transfer;
 
 public class TMTWeiboLogin {
 	public String achUserName;

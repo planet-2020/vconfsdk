@@ -8,7 +8,6 @@ import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.*;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
-import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
 
 import static com.kedacom.vconf.sdk.annotation.Request.SET;
 
@@ -91,22 +90,6 @@ enum Msg {
     SetMtSdkCallback,
 
 
-    /**启动业务组件（可选）服务。
-     * 服务是一些可选的模块化的功能，如即时聊天、会议、数据协作等。依据不同的业务需求选取相应的模块启动。
-     * */
-    @Request(method = "SYSStartService",
-            owner = MethodOwner.MtServiceCfgCtrl,
-            paras = StringBuffer.class, // 服务名称
-            userParas = String.class,
-            rspSeq = "StartMtServiceRsp"
-            )
-    StartMtService,
-
-    /**启动业务组件服务响应*/
-    @Response(id = "SrvStartResultNtf",
-            clz = TSrvStartResult.class)
-    StartMtServiceRsp,
-
     /**启用/停用业务组件日志文件功能*/
     @Request(method = "SetLogCfgCmd",
             owner = MethodOwner.ConfigCtrl,
@@ -136,73 +119,6 @@ enum Msg {
     @Response(id = "SetUseOspTelnetCfg_Ntf",
             clz = BaseTypeBool.class)
     SetTelnetDebugEnableRsp,
-
-
-    /**配置Aps*/
-    @Request(method = "SetAPSListCfgCmd",
-            owner = MethodOwner.ConfigCtrl,
-            paras = StringBuffer.class,
-            userParas = MtXAPSvrListCfg.class,
-            rspSeq = "SetApsServerCfgRsp")
-    SetApsServerCfg,
-
-    /**配置Aps响应*/
-    @Response(id = "SetXAPListCfgNtf",
-            clz = MtXAPSvrListCfg.class)
-    SetApsServerCfgRsp,
-
-
-    /**登录APS*/
-    @Request(method = "LoginApsServerCmd",
-            owner = MethodOwner.LoginCtrl,
-            paras = StringBuffer.class,
-            userParas = TMTApsLoginParam.class,
-            rspSeq = "LoginApsRsp",
-            timeout = 10)
-    LoginAps,
-
-    /**登录APS响应*/
-    @Response(id = "ApsLoginResultNtf",
-            clz = TApsLoginResult.class)
-    LoginApsRsp,
-
-    /**注销APS*/
-//    @Request(method = "LogoutApsServerCmd",
-//            owner = MethodOwner.LoginCtrl,
-//            paras = StringBuffer.class,
-//            userParas = TMTApsLoginParam.class)
-//    LogoutAps,
-//
-//    /**注销APS响应*/
-//    @Response(id = "ApsLoginResultNtf",
-//            clz = TApsLoginResult.class)
-//    LogoutApsRsp,
-
-    /**获取平台为用户分配的token*/
-    @Request(method = "MGRestGetPlatformAccountTokenReq",
-            owner = MethodOwner.MeetingCtrl,
-            paras = StringBuffer.class,
-            userParas = String.class, // 点分十进制形式平台ip，从TApsLoginResult.dwIP字段转换而来
-            rspSeq = "QueryAccountTokenRsp")
-    QueryAccountToken,
-
-    /**获取平台为用户分配的token响应*/
-    @Response(id = "RestGetPlatformAccountTokenRsp",
-            clz = TRestErrorInfo.class)
-    QueryAccountTokenRsp,
-
-    /**登录platform*/
-    @Request(method = "LoginPlatformServerReq",
-            owner = MethodOwner.LoginCtrl,
-            paras = StringBuffer.class,
-            userParas = TMTWeiboLogin.class, // LoginAps时的用户名密码
-            rspSeq = "LoginPlatformRsp")
-    LoginPlatform,
-
-    /**登录platform响应*/
-    @Response(id = "RestPlatformAPILoginRsp",
-            clz = TLoginPlatformRsp.class)
-    LoginPlatformRsp,
 
 
     END;

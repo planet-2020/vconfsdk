@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.base.startup.bean.transfer;
+package com.kedacom.vconf.sdk.base.login.bean.transfer;
 
 import com.kedacom.vconf.sdk.common.bean.transfer.TMtApsLoginErrcode;
 import com.kedacom.vconf.sdk.common.bean.transfer.TPlatformInfo;
