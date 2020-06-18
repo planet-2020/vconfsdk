@@ -52,11 +52,11 @@ public class AlirtcManager extends Caster<Msg> {
             @Override
             public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
                 TRegResultNtf result = (TRegResultNtf) rspContent;
-                if (EmConfProtocol.emaliyun != result.MainParam){
+                if (EmConfProtocol.emaliyun.ordinal() != result.MainParam.basetype){
                     return false;
                 }
                 if (Msg.Login == req) { // 登录
-                    if (EmRegFailedReason.emRegSuccess == result.AssParam) {
+                    if (EmRegFailedReason.emRegSuccess.getValue() == result.AssParam.basetype) {
                         reportSuccess(null, resultListener);
                     } else {
                         reportFailed(-1, resultListener);
