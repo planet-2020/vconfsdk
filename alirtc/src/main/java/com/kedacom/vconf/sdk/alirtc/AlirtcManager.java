@@ -2,13 +2,11 @@ package com.kedacom.vconf.sdk.alirtc;
 
 import android.app.Application;
 import android.content.Context;
-import android.view.View;
 
 import androidx.annotation.NonNull;
-import androidx.fragment.app.FragmentActivity;
 
-import com.alibaba.alimeeting.uisdk.AliMeetingBrief;
-import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
@@ -17,9 +15,6 @@ import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmRegFailedReason;
 import com.kedacom.vconf.sdk.common.type.TNetAddr;
-import com.kedacom.vconf.sdk.utils.log.KLog;
-
-import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 
@@ -78,15 +73,38 @@ public class AlirtcManager extends Caster<Msg> {
     }
 
 
+    /**
+     * 创建会议
+     * @param confName 会议名称
+     * @param duration 会议时长。单位：分钟
+     * @param resultListener
+     *          成功返回： {@link CreateConfResult}
+     *          失败返回：错误码
+     * */
+    public void createConf(@NonNull String confName, int duration, IResultListener resultListener){
+        req(Msg.CreateConf, new SessionProcessor<Msg>() {
+            @Override
+            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                TCreateAliConfResult result = (TCreateAliConfResult) rspContent;
+                if (1000 == result.MainParam.dwErrorID){
+                    reportSuccess(new CreateConfResult(confName, result.AssParam.basetype), resultListener);
+                }else{
+                    reportFailed(-1, resultListener);
+                }
+                return true;
+            }
+        }, resultListener, new TCreateAliConfParam(2, confName, duration, true));
+    }
+
     private void initAliRtcSDK() {
         //初始化分为两部分，
         //2. UI配置，目前仅支持邀请人定制，如果不设置AliMeetingUIManager.uiController， 则没有参会人列表不会有邀请人选项
-        AliMeetingUIManager.setUiController(new AliMeetingUIManager.AliMeetingUiController() {
-            @Override
-            public void onInviteAction(@NotNull View view, @NotNull FragmentActivity fragmentActivity, @NotNull AliMeetingBrief aliMeetingBrief) {
-                KLog.p("view =%s, frag=%s, userId=%s, meetingCode=%s", view, fragmentActivity, aliMeetingBrief.getUserId(), aliMeetingBrief.getMeetingCode());
-            }
-        });
+//        AliMeetingUIManager.setUiController(new AliMeetingUIManager.AliMeetingUiController() {
+//            @Override
+//            public void onInviteAction(@NotNull View view, @NotNull FragmentActivity fragmentActivity, @NotNull AliMeetingBrief aliMeetingBrief) {
+//                KLog.p("view =%s, frag=%s, userId=%s, meetingCode=%s", view, fragmentActivity, aliMeetingBrief.getUserId(), aliMeetingBrief.getMeetingCode());
+//            }
+//        });
 
 //        AliMeetingUIManager.uiController = object : AliMeetingUIManager.AliMeetingUiController {
 //            override fun onInviteAction(

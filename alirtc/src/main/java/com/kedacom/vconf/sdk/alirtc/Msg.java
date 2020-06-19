@@ -1,5 +1,7 @@
 package com.kedacom.vconf.sdk.alirtc;
 
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
@@ -46,6 +48,21 @@ enum Msg {
     @Response(id = "RegResultNtf",
             clz = TRegResultNtf.class)
     LoginRsp,
+
+
+    /** 创会
+     * */
+    @Request(method = "MGCreateAliConfCmd",
+            owner = MethodOwner.MeetingCtrl,
+            paras = StringBuffer.class,
+            userParas = TCreateAliConfParam.class,
+            rspSeq = "CreateConfRsp"
+    )
+    CreateConf,
+
+    @Response(id = "RestCreateConference_Rsp",
+            clz = TCreateAliConfResult.class)
+    CreateConfRsp,
 
 
     END;
