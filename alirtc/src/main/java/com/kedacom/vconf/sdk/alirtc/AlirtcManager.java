@@ -5,8 +5,12 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
+import com.alibaba.alimeeting.uisdk.AliMeetingJoinConfig;
+import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.AliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
@@ -87,13 +91,53 @@ public class AlirtcManager extends Caster<Msg> {
             public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
                 TCreateAliConfResult result = (TCreateAliConfResult) rspContent;
                 if (1000 == result.MainParam.dwErrorID){
-                    reportSuccess(new CreateConfResult(confName, result.AssParam.basetype), resultListener);
+                    String confNum = result.AssParam.basetype;
+                    reportSuccess(new CreateConfResult(confName, confNum), resultListener);
                 }else{
                     reportFailed(-1, resultListener);
                 }
                 return true;
             }
         }, resultListener, new TCreateAliConfParam(2, confName, duration, true));
+    }
+
+
+    /**
+     * 加入会议
+     * @param confNum 会议号码
+     * @param resultListener
+     *          成功返回： null
+     *          失败返回：错误码
+     * */
+    public void joinConf(String confNum, IResultListener resultListener){
+        req(Msg.JoinConf, new SessionProcessor<Msg>() {
+            @Override
+            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                TJoinConfResult joinConfResult = (TJoinConfResult) rspContent;
+                if (joinConfResult.bSuccess){
+                    AliConfParam para = joinConfResult.tAliJoinConfParam;
+                    AliMeetingJoinConfig aliMeetingJoinConfig = new AliMeetingJoinConfig.Builder()
+                            .userId(para.achUsrId)
+                            .securityTransport(false)
+                            .openCameraDefault(true)
+                            .muteAudioDefault(false)
+                            .onlyMasterCanHangUp(true)
+                            .onlyMasterCanMuteAudio(true)
+                            .meetingCode(para.achConfCode)
+                            .meetingDetailConfig(para.achConfAppid, para.achConfToken, para.achConfDomain,
+                                    para.achConfCode, para.achConfuuid, para.achMemuuid, null)
+                            .builder();
+
+                    AliMeetingUIManager.joinMeeting(context, aliMeetingJoinConfig);
+
+                    reportSuccess(null, resultListener); // TODO 等joinMeeting成功后再上报
+
+                }else{
+                    reportFailed(-1, resultListener);
+                }
+                return true;
+            }
+        }, resultListener, confNum);
     }
 
     private void initAliRtcSDK() {

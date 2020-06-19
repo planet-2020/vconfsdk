@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.alirtc;
 
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
@@ -63,6 +64,21 @@ enum Msg {
     @Response(id = "RestCreateConference_Rsp",
             clz = TCreateAliConfResult.class)
     CreateConfRsp,
+
+
+    /** 加入会议
+     * */
+    @Request(method = "JoinAliConfCmd",
+            owner = MethodOwner.ConfCtrl,
+            paras = StringBuffer.class,
+            userParas = String.class,  // 会议号
+            rspSeq = "JoinConfRsp"
+    )
+    JoinConf,
+
+    @Response(id = "JoinAliConfParam_Ntf",
+            clz = TJoinConfResult.class)
+    JoinConfRsp,
 
 
     END;
