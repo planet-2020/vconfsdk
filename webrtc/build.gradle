@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.google.protobuf'
 
-version = '1.4.0-rc.2'
+version = '1.4.0-rc.3'
 android {
     defaultConfig {
         versionCode 1
