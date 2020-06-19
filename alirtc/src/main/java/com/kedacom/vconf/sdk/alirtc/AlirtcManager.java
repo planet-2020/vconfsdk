@@ -2,9 +2,12 @@ package com.kedacom.vconf.sdk.alirtc;
 
 import android.app.Application;
 import android.content.Context;
+import android.view.View;
 
 import androidx.annotation.NonNull;
+import androidx.fragment.app.FragmentActivity;
 
+import com.alibaba.alimeeting.uisdk.AliMeetingBrief;
 import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
 import com.kedacom.vconf.sdk.amulet.Caster;
@@ -14,6 +17,9 @@ import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmRegFailedReason;
 import com.kedacom.vconf.sdk.common.type.TNetAddr;
+import com.kedacom.vconf.sdk.utils.log.KLog;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 
@@ -28,6 +34,7 @@ public class AlirtcManager extends Caster<Msg> {
     public synchronized static AlirtcManager getInstance(Application ctx) {
         if (instance == null) {
             instance = new AlirtcManager(ctx);
+            instance.initAliRtcSDK();
         }
         return instance;
     }
@@ -74,6 +81,13 @@ public class AlirtcManager extends Caster<Msg> {
     private void initAliRtcSDK() {
         //初始化分为两部分，
         //2. UI配置，目前仅支持邀请人定制，如果不设置AliMeetingUIManager.uiController， 则没有参会人列表不会有邀请人选项
+        AliMeetingUIManager.setUiController(new AliMeetingUIManager.AliMeetingUiController() {
+            @Override
+            public void onInviteAction(@NotNull View view, @NotNull FragmentActivity fragmentActivity, @NotNull AliMeetingBrief aliMeetingBrief) {
+                KLog.p("view =%s, frag=%s, userId=%s, meetingCode=%s", view, fragmentActivity, aliMeetingBrief.getUserId(), aliMeetingBrief.getMeetingCode());
+            }
+        });
+
 //        AliMeetingUIManager.uiController = object : AliMeetingUIManager.AliMeetingUiController {
 //            override fun onInviteAction(
 //                    view: View, activity: FragmentActivity, meetingBrief: AliMeetingBrief
