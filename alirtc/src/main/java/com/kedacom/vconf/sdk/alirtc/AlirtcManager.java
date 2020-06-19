@@ -5,6 +5,7 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
+import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
@@ -67,6 +68,36 @@ public class AlirtcManager extends Caster<Msg> {
                 return true;
             }
         }, resultListener, addr, new TMtRegistCsvInfo(type.getVal(), version, true));
+    }
+
+
+    private void initAliRtcSDK() {
+        //初始化分为两部分，
+        //2. UI配置，目前仅支持邀请人定制，如果不设置AliMeetingUIManager.uiController， 则没有参会人列表不会有邀请人选项
+//        AliMeetingUIManager.uiController = object : AliMeetingUIManager.AliMeetingUiController {
+//            override fun onInviteAction(
+//                    view: View, activity: FragmentActivity, meetingBrief: AliMeetingBrief
+//            ) {
+//                MaterialDialog.Builder(activity)
+//                        .items("分享到钉钉", "复制邀请信息")
+//                        .itemsCallback { _, _, which, _ ->
+//                        when (which) {
+//                    0 -> {
+//                        // 分享到钉钉
+//                        Toast.makeText(activity, "分享到钉钉", Toast.LENGTH_SHORT).show()
+//                    }
+//                    1 -> {
+//                        // 复制邀请信息
+//                        Toast.makeText(activity, "复制邀请信息", Toast.LENGTH_SHORT).show()
+//                    }
+//                            else -> {
+//                    }
+//                }
+//                }
+//                    .show()
+//            }
+//
+//        }
     }
 
 }
