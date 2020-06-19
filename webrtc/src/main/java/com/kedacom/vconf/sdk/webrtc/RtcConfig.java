@@ -184,7 +184,7 @@ public final class RtcConfig {
 
     /**
      * 设置最大视频码率
-     * @param bitrate 码率。单位：KB
+     * @param bitrate 码率。单位：kbps
      * */
     public RtcConfig setVideoMaxBitrate(int bitrate){
         editor.putInt(key_videoMaxBitrate, bitrate).apply();
@@ -192,7 +192,7 @@ public final class RtcConfig {
     }
 
     public int getVideoMaxBitrate(){
-        return rtcUserConfig.getInt(key_videoMaxBitrate, 1024*4);
+        return rtcUserConfig.getInt(key_videoMaxBitrate, 1024*4*8);
     }
 
     /**
