@@ -192,7 +192,7 @@ public final class RtcConfig {
     }
 
     public int getVideoMaxBitrate(){
-        return rtcUserConfig.getInt(key_videoMaxBitrate, 1024*4*8);
+        return rtcUserConfig.getInt(key_videoMaxBitrate, 1024*4);
     }
 
     /**
