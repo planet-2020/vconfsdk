@@ -3462,15 +3462,15 @@ public class WebRtcManager extends Caster<Msg>{
                         if (encoding.rid.equals("h")){
                             encoding.scaleResolutionDownBy = 1.0;
                             encoding.maxFramerate = config.videoFps;
-                            encoding.maxBitrateBps = config.videoMaxBitrate;
+                            encoding.maxBitrateBps = config.videoMaxBitrate*1000;
                         }else if (encoding.rid.equals("m")){
                             encoding.scaleResolutionDownBy = 0.5;
                             encoding.maxFramerate = config.videoFps;
-                            encoding.maxBitrateBps = config.videoMaxBitrate/2;
+                            encoding.maxBitrateBps = config.videoMaxBitrate*1000/4;
                         }else if (encoding.rid.equals("l")){
                             encoding.scaleResolutionDownBy = 0.25;
                             encoding.maxFramerate = config.videoFps;
-                            encoding.maxBitrateBps = config.videoMaxBitrate/4;
+                            encoding.maxBitrateBps = config.videoMaxBitrate*1000/16;
                         }
                     }
                 }
