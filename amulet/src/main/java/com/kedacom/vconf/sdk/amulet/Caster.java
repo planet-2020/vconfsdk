@@ -449,7 +449,7 @@ public abstract class Caster<T extends Enum<T>> implements
         sessions.remove(s);
         IResultListener resultListener = s.resultListener;
         listenerLifecycleObserver.unobserve(resultListener);
-        KLog.p(KLog.DEBUG,"req=%s, reqSn=%s, resultListener=%s", req, reqSn, resultListener);
+        KLog.p(KLog.DEBUG,"req=%s, sid=%s, resultListener=%s", req, s.id, resultListener);
         SessionProcessor<T> processor = s.processor;
         boolean bConsumed = false;
         if (null != processor){
