@@ -143,6 +143,8 @@ public class LoginManager extends Caster<Msg> {
                             && EmServerState.emSrvIdle == state.emSvrState){
                         reportSuccess(null, resultListener);
                         return true;
+                    }else{
+                        return false;
                     }
                 }
                 reportFailed(-1, resultListener);
