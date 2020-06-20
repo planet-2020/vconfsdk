@@ -115,22 +115,23 @@ public class AlirtcManager extends Caster<Msg> {
             public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
                 TJoinConfResult joinConfResult = (TJoinConfResult) rspContent;
                 if (joinConfResult.bSuccess){
-                    AliConfParam para = joinConfResult.tAliJoinConfParam;
-                    AliMeetingJoinConfig aliMeetingJoinConfig = new AliMeetingJoinConfig.Builder()
-                            .userId(para.achUsrId)
-                            .securityTransport(false)
-                            .openCameraDefault(true)
-                            .muteAudioDefault(false)
-                            .onlyMasterCanHangUp(true)
-                            .onlyMasterCanMuteAudio(true)
-                            .meetingCode(para.achConfCode)
-                            .meetingDetailConfig(para.achConfAppid, para.achConfToken, para.achConfDomain,
-                                    para.achConfCode, para.achConfuuid, para.achMemuuid, null)
-                            .builder();
+//                    AliConfParam para = joinConfResult.tAliJoinConfParam;
+//                    AliMeetingJoinConfig aliMeetingJoinConfig = new AliMeetingJoinConfig.Builder()
+//                            .userId(para.achUsrId)
+//                            .securityTransport(false)
+//                            .openCameraDefault(true)
+//                            .muteAudioDefault(false)
+//                            .onlyMasterCanHangUp(true)
+//                            .onlyMasterCanMuteAudio(true)
+//                            .meetingCode(para.achConfCode)
+//                            .meetingDetailConfig(para.achConfAppid, para.achConfToken, para.achConfDomain,
+//                                    para.achConfCode, para.achConfuuid, para.achMemuuid, null)
+//                            .builder();
+//
+//                    AliMeetingUIManager.joinMeeting(context, aliMeetingJoinConfig);
 
-                    AliMeetingUIManager.joinMeeting(context, aliMeetingJoinConfig);
-
-                    reportSuccess(null, resultListener); // TODO 等joinMeeting成功后再上报
+                    reportSuccess(null, resultListener); // FIXME 等joinMeeting加入阿里会议成功后再上报
+                    req(Msg.ReportConfStateToCSV, null,null, confNum, true); // FIXME 等加入阿里会议成功后再上报
 
                 }else{
                     reportFailed(-1, resultListener);
@@ -139,6 +140,16 @@ public class AlirtcManager extends Caster<Msg> {
             }
         }, resultListener, confNum);
     }
+
+
+    /**
+     * 退出会议
+     * */
+    public void quitConf(String confNum, IResultListener resultListener){
+        // TODO 调用阿里接口退出会议
+        req(Msg.ReportConfStateToCSV, null, null, confNum, false); // FIXME 等退出阿里会议成功后再上报
+    }
+
 
     private void initAliRtcSDK() {
         //初始化分为两部分，

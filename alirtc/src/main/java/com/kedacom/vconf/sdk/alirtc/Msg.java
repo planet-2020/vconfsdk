@@ -80,6 +80,20 @@ enum Msg {
             clz = TJoinConfResult.class)
     JoinConfRsp,
 
+    /**通知keda平台会议状态。
+     * 入会退会时均需通知keda平台。
+     * NOTE: keda平台和ali平台不通，keda平台无法感知终端的ali会议状态。
+     *      终端在ali平台上入会成功后需要主动上报自身会议状态给keda平台。
+     * */
+    @Request(method = "NotifyCsvConfState",
+            owner = MethodOwner.ConfCtrl,
+            paras = {StringBuffer.class,
+                    boolean.class},
+            userParas = {String.class, // 会议号
+                    boolean.class   // 是否在会议中。入会后true，退会后false
+            }
+    )
+    ReportConfStateToCSV,
 
     END;
 
