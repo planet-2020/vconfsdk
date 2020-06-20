@@ -56,17 +56,16 @@ enum Msg {
             clz = TApsLoginResult.class)
     LoginApsRsp,
 
+
     /**注销APS*/
-//    @Request(method = "LogoutApsServerCmd",
-//            owner = MethodOwner.LoginCtrl,
-//            paras = StringBuffer.class,
-//            userParas = TMTApsLoginParam.class)
-//    LogoutAps,
-//
-//    /**注销APS响应*/
-//    @Response(id = "ApsLoginResultNtf",
-//            clz = TApsLoginResult.class)
-//    LogoutApsRsp,
+    @Request(method = "LogoutApsServerCmd",
+            owner = MethodOwner.LoginCtrl,
+            rspSeq = "LogoutApsRsp")
+    LogoutAps,
+
+    @Response(id = "SetSvrLoginStatusRtNtf",
+            clz = TMtSvrStateList.class)
+    LogoutApsRsp,
 
     /**获取平台为用户分配的token*/
     @Request(method = "MGRestGetPlatformAccountTokenReq",

@@ -132,8 +132,23 @@ public class LoginManager extends Caster<Msg> {
     /**
      * 注销APS
      * */
-    public void logoutAps(){
-
+    public void logoutAps(IResultListener resultListener){
+        req(Msg.LogoutAps, new SessionProcessor<Msg>() {
+            @Override
+            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                TMtSvrState[] states = ((TMtSvrStateList) rspContent).arrSvrState;
+                for (TMtSvrState state : states){
+                    KLog.p("type=%s, state=%s", state.emSvrType, state.emSvrState);
+                    if (EmServerType.emAPS == state.emSvrType
+                            && EmServerState.emSrvIdle == state.emSvrState){
+                        reportSuccess(null, resultListener);
+                        return true;
+                    }
+                }
+                reportFailed(-1, resultListener);
+                return true;
+            }
+        }, resultListener);
     }
 
 
