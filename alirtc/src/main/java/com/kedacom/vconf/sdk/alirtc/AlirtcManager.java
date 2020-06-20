@@ -5,9 +5,6 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
-import com.alibaba.alimeeting.uisdk.AliMeetingJoinConfig;
-import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
-import com.kedacom.vconf.sdk.alirtc.bean.transfer.AliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfResult;
@@ -158,7 +155,8 @@ public class AlirtcManager extends Caster<Msg> {
 //                    AliMeetingUIManager.joinMeeting(context, aliMeetingJoinConfig);
 
                     reportSuccess(null, resultListener); // FIXME 等joinMeeting加入阿里会议成功后再上报
-                    req(Msg.ReportConfStateToCSV, null,null, confNum, true); // FIXME 等加入阿里会议成功后再上报
+                    req(Msg.ReportConfState, null,null, confNum, true); // FIXME 等加入阿里会议成功后再上报
+                    req(Msg.ReportVoiceState, null,null, confNum, false, false); // FIXME 等加入阿里会议成功后再上报
 
                 }else{
                     reportFailed(-1, resultListener);
@@ -174,7 +172,7 @@ public class AlirtcManager extends Caster<Msg> {
      * */
     public void quitConf(String confNum, IResultListener resultListener){
         // TODO 调用阿里接口退出会议
-        req(Msg.ReportConfStateToCSV, null, null, confNum, false); // FIXME 等退出阿里会议成功后再上报
+        req(Msg.ReportConfState, null, null, confNum, false); // FIXME 等退出阿里会议成功后再上报
     }
 
 
