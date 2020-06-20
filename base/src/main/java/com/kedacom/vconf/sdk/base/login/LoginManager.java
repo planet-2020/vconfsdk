@@ -42,7 +42,7 @@ public class LoginManager extends Caster<Msg> {
             @Override
             public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
                 TSrvStartResult result = (TSrvStartResult) rspContent;
-                boolean success = result.MainParam.basetype && result.AssParam.achSysalias.equals(reqParas[0]);
+                boolean success = result.MainParam.basetype && result.AssParam.achSysalias.equals(serviceName);
                 if (success){
                     KLog.p("start %s service success!", serviceName);
                 }
