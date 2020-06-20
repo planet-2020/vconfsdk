@@ -80,7 +80,6 @@ final class NotificationFairy implements IFairy.INotificationFairy{
 
         LinkedHashSet<IListener> subs = subscribers.get(msgName);
         if (null == subs || 0==subs.size()){
-            KLog.p(KLog.ERROR, "no subscriber for %s", msgName);
             return false;
         }
 
