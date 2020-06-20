@@ -48,6 +48,8 @@ public class AlirtcManager extends Caster<Msg> {
      * 登录
      * @param type 终端类型
      * @param version 终端软件版本
+     * @param resultListener 成功返回null；
+     *                       失败返回错误码。
      * */
     public void login(@NonNull TerminalType type, @NonNull String version, IResultListener resultListener){
         TNetAddr addr = (TNetAddr) get(Msg.GetServerAddr);
@@ -62,18 +64,43 @@ public class AlirtcManager extends Caster<Msg> {
                 if (EmConfProtocol.emaliyun.ordinal() != result.MainParam.basetype){
                     return false;
                 }
-                if (Msg.Login == req) { // 登录
-                    if (EmRegFailedReason.emRegSuccess.getValue() == result.AssParam.basetype) {
-                        reportSuccess(null, resultListener);
-                    } else {
-                        reportFailed(-1, resultListener);
-                    }
-                }else{ // 注销
+                if (EmRegFailedReason.emRegSuccess.getValue() == result.AssParam.basetype) {
                     reportSuccess(null, resultListener);
+                } else {
+                    reportFailed(-1, resultListener);
                 }
                 return true;
             }
         }, resultListener, addr, new TMtRegistCsvInfo(type.getVal(), version, true));
+    }
+
+
+    /**
+     * 注销
+     * @param resultListener 成功返回null；
+     *                       失败返回错误码。
+     * */
+    public void logout(IResultListener resultListener){
+        TNetAddr addr = (TNetAddr) get(Msg.GetServerAddr);
+        if (null == addr){
+            reportFailed(-1, resultListener);
+            return;
+        }
+        req(Msg.Logout, new SessionProcessor<Msg>() {
+            @Override
+            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                TRegResultNtf result = (TRegResultNtf) rspContent;
+                if (EmConfProtocol.emaliyun.ordinal() != result.MainParam.basetype){
+                    return false;
+                }
+                if (EmRegFailedReason.emUnRegSuc.getValue() == result.AssParam.basetype) {
+                    reportSuccess(null, resultListener);
+                } else {
+                    reportFailed(-1, resultListener);
+                }
+                return true;
+            }
+        }, resultListener, addr);
     }
 
 

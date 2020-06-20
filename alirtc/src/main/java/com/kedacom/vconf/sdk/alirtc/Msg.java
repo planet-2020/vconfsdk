@@ -23,7 +23,7 @@ import static com.kedacom.vconf.sdk.annotation.Request.GET;
 )
 enum Msg {
 
-    /**获取用于对接alirtc的平台服务器地址
+    /**获取CSV服务器（用于对接alirtc的平台服务器）地址
      * */
     @Request(method = "GetCsvAddr",
             owner = MethodOwner.ConfigCtrl,
@@ -34,7 +34,7 @@ enum Msg {
     GetServerAddr,
 
     /**
-     * 登录用于对接alirtc的平台服务器
+     * 登录CSV
      * */
     @Request(method = "LoginCsvCmd",
             owner = MethodOwner.ConfCtrl,
@@ -42,13 +42,27 @@ enum Msg {
                     StringBuffer.class},
             userParas = {TNetAddr.class,
                     TMtRegistCsvInfo.class},
-            rspSeq = "LoginRsp"
+            rspSeq = "LoginStateChanged"
             )
     Login,
 
+    /**
+     * 登录状态变更
+     * */
     @Response(id = "RegResultNtf",
             clz = TRegResultNtf.class)
-    LoginRsp,
+    LoginStateChanged,
+
+    /**
+     * 注销CSV
+     * */
+    @Request(method = "LogoutCsvCmd",
+            owner = MethodOwner.ConfCtrl,
+            paras = StringBuffer.class,
+            userParas = TNetAddr.class,
+            rspSeq = "LoginStateChanged"
+    )
+    Logout,
 
 
     /** 创会
