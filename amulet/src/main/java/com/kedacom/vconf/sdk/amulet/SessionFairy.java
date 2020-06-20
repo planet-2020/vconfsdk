@@ -39,7 +39,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 Session s = (Session) msg.obj;
                 s.setState(Session.TIMEOUT);
                 sessions.remove(s);
-                Log.d(TAG, String.format("%s <-~-o timeout", s.id));
+                Log.d(TAG, String.format("%s <-~-o TIMEOUT", s.id));
                 s.listener.onTimeout(s.reqName, s.reqSn, s.reqPara);
             }
         }
@@ -124,7 +124,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                     s.setState(Session.END);
                     sessions.remove(s);
                     uiHandler.removeMessages(MsgId_Timeout, s);
-                    Log.d(TAG, String.format("%s <-~-o no response", s.id));
+                    Log.d(TAG, String.format("%s <-~-o NO RESPONSE", s.id));
                 }
                 s.listener.onReqSent(hasRsp, s.reqName, s.reqSn, s.reqPara);
             });
@@ -142,7 +142,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 s.setState(Session.CANCELED);
                 uiHandler.removeMessages(MsgId_Timeout, s);
 
-                Log.d(TAG, String.format("%s -~-x %s", s.id, s.reqName));
+                Log.d(TAG, String.format("%s x-~-> %s", s.id, s.reqName));
                 // 用户很有可能在onMsg回调中调用cancelReq（onMsg回调到上层的onRsp然后用户在onRsp中cancelReq），
                 // 然而onMsg中我们正在遍历sessions，所以我们延迟删除
                 uiHandler.post(() -> {
