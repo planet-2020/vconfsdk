@@ -41,8 +41,6 @@ import javax.lang.model.type.MirroredTypesException;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
 
-import static com.kedacom.vconf.sdk.annotation.Request.GET;
-
 
 /**
  * Created by Sissi on 2018/9/3.
@@ -72,7 +70,7 @@ public class MessageProcessor extends AbstractProcessor {
     private static String COL_OWNER = "owner";
     private static String COL_PARAS = "paras";
     private static String COL_USERPARAS = "userParas";
-    private static String COL_TYPE = "type";
+    private static String COL_ISGET = "isGet";
     private static String COL_RSPSEQ = "rspSeq";
     private static String COL_TIMEOUT = "timeout";
     private static String COL_CLZ = "clz";
@@ -146,7 +144,7 @@ public class MessageProcessor extends AbstractProcessor {
                 }
                 reqMap.put(name, COL_USERPARAS, paraClzNames);
 
-                reqMap.put(name, COL_TYPE, request.type());
+                reqMap.put(name, COL_ISGET, request.isGet());
 
                 // 获取响应序列
                 List<String[]> rspSeqList = new ArrayList<>();
@@ -294,7 +292,7 @@ public class MessageProcessor extends AbstractProcessor {
                 }
                 staticCodeBlockBuilder.addStatement("$L.put($S, $S, new String[][]{$L})", fieldReqMap, row, col, value);
             }else if (col.equals(COL_TIMEOUT)
-                    || col.equals(COL_TYPE)){
+                    || col.equals(COL_ISGET)){
                 staticCodeBlockBuilder.addStatement("$L.put($S, $S, $L)", fieldReqMap, row, col, cell.getValue());
             }
         }
@@ -333,8 +331,8 @@ public class MessageProcessor extends AbstractProcessor {
                 .returns(boolean.class)
                 .addCode("Object val = $L.row($L).get($S);\n" +
                                 "if (null == val) return false;\n" +
-                        "return $L == (int)val;\n",
-                        fieldReqMap, fieldReqName, COL_TYPE, GET)
+                        "return (boolean)val;\n",
+                        fieldReqMap, fieldReqName, COL_ISGET)
                 .build();
         methodSpecs.add(isReqTypeGet);
 

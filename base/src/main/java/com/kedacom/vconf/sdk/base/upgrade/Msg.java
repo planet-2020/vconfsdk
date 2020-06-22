@@ -9,8 +9,6 @@ import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeClientInfo;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeVersionInfoList;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 
-import static com.kedacom.vconf.sdk.annotation.Request.GET;
-
 
 @Message(
         module = "UG"
@@ -36,7 +34,7 @@ enum Msg {
             owner = MethodOwner.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMTSUSAddr.class,
-            type = GET
+            isGet = true
     )
     GetServerAddr,
 

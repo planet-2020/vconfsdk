@@ -10,8 +10,6 @@ import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.type.TNetAddr;
 
-import static com.kedacom.vconf.sdk.annotation.Request.GET;
-
 
 @Message(
         module = "ALIRTC"
@@ -24,7 +22,7 @@ enum Msg {
             owner = MethodOwner.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TNetAddr.class,
-            type = GET
+            isGet = true
     )
     GetServerAddr,
 

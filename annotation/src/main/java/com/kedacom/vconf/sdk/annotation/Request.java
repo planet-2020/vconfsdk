@@ -51,7 +51,7 @@ public @interface Request {
      则paras和userParas的赋值分别为paras={StringBuffer.class, StringBuffer.class}, userParas={LoginPara1.class, LoginPara2.class}
      框架在调用native方法前自动将LoginPara对象转为StringBuffer类型json字符串。
 
-     NOTE: 对于{@link #type()}为{@link #GET}的情形，约定{@link #paras()}最后一个值为传出参数类型，userParas最后一个值为返回值类型，作为结果返回给用户。
+     NOTE: 对于{@link #isGet()}为true的情形，约定{@link #paras()}最后一个值为传出参数类型，userParas最后一个值接收该传出参数并作为结果返回给用户。
      如有如下native方法和用户方法定义：
      public static native void DcsGetServerCfg(String serverId, StringBuffer outpara); // NOTE:最后一个参数为传出参数，native方法使用传出参数反馈请求结果。
      public DCServerCfg getServerCfg(String serverId); // NOTE: 用户接口比native方法少一个传出参数，而通过返回值接受结果。
@@ -72,12 +72,10 @@ public @interface Request {
     Class[] userParas() default {};
 
     /**
-     * 请求类型。
+     * 是否为GET请求。
+     * GET请求不同于普通请求，最后一个userParas为请求结果，详见{@link #userParas()}说明
      * */
-    int SESSION = 0; // “请求——响应”，异步。
-    int GET = 1; // 如获取配置，同步。
-    int SET = 2; // 如设置配置，同步。
-    int type() default SESSION;
+    boolean isGet() default false;
 
     /**
      * 请求对应的响应序列。{@link Response}

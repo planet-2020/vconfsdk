@@ -9,8 +9,6 @@ import com.kedacom.vconf.sdk.base.startup.bean.transfer.*;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 
-import static com.kedacom.vconf.sdk.annotation.Request.SET;
-
 
 /**
  * Created by Sissi on 2019/7/19.
@@ -84,8 +82,7 @@ enum Msg {
     /**设置业务组件层回调*/
     @Request(method = "Setcallback",
             owner = MethodOwner.MtcLib,
-            paras = IMtcCallback.class, // 回调接口
-            type = SET
+            paras = IMtcCallback.class // 回调接口
     )
     SetMtSdkCallback,
 

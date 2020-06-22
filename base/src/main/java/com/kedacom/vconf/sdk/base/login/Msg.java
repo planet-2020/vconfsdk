@@ -8,8 +8,6 @@ import com.kedacom.vconf.sdk.base.login.bean.transfer.*;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
 
-import static com.kedacom.vconf.sdk.annotation.Request.GET;
-
 
 @Message(
         module = "LI"
@@ -97,7 +95,7 @@ enum Msg {
             owner = MethodOwner.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMTUserInfoFromAps.class,
-            type = GET
+            isGet = true
     )
     GetUserBrief,
 
