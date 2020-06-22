@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.base.login;
 
 
+import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
@@ -17,7 +18,7 @@ enum Msg {
     /**启动业务组件功能模块
      * */
     @Request(method = "SYSStartService",
-            owner = MethodOwner.MtServiceCfgCtrl,
+            owner = Atlas.MtServiceCfgCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 模块名称，如"rest"接入模块、"upgrade"升级模块
             rspSeq = "StartMtServiceRsp"
@@ -30,7 +31,7 @@ enum Msg {
 
     /**配置Aps*/
     @Request(method = "SetAPSListCfgCmd",
-            owner = MethodOwner.ConfigCtrl,
+            owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = MtXAPSvrListCfg.class,
             rspSeq = "SetApsServerCfgRsp")
@@ -43,7 +44,7 @@ enum Msg {
 
     /**登录APS*/
     @Request(method = "LoginApsServerCmd",
-            owner = MethodOwner.LoginCtrl,
+            owner = Atlas.LoginCtrl,
             paras = StringBuffer.class,
             userParas = TMTApsLoginParam.class,
             rspSeq = "LoginApsRsp",
@@ -57,7 +58,7 @@ enum Msg {
 
     /**注销APS*/
     @Request(method = "LogoutApsServerCmd",
-            owner = MethodOwner.LoginCtrl,
+            owner = Atlas.LoginCtrl,
             rspSeq = "LogoutApsRsp")
     LogoutAps,
 
@@ -67,7 +68,7 @@ enum Msg {
 
     /**获取平台为用户分配的token*/
     @Request(method = "MGRestGetPlatformAccountTokenReq",
-            owner = MethodOwner.MeetingCtrl,
+            owner = Atlas.MeetingCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 点分十进制形式平台ip，从TApsLoginResult.dwIP字段转换而来
             rspSeq = "QueryAccountTokenRsp")
@@ -79,7 +80,7 @@ enum Msg {
 
     /**登录platform*/
     @Request(method = "LoginPlatformServerReq",
-            owner = MethodOwner.LoginCtrl,
+            owner = Atlas.LoginCtrl,
             paras = StringBuffer.class,
             userParas = TMTWeiboLogin.class, // LoginAps时的用户名密码
             rspSeq = "LoginPlatformRsp")
@@ -92,7 +93,7 @@ enum Msg {
     /**获取用户简短信息
      * */
     @Request(method = "GetUserInfoFromApsCfg",
-            owner = MethodOwner.ConfigCtrl,
+            owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMTUserInfoFromAps.class,
             isGet = true
@@ -102,7 +103,7 @@ enum Msg {
     /**查询用户详情
      * */
     @Request(method = "GetAccountInfoReq",
-            owner = MethodOwner.RmtContactCtrl,
+            owner = Atlas.RmtContactCtrl,
             paras = StringBuffer.class,
             userParas = TMTAccountManagerSystem.class,
             rspSeq = "QueryUserDetailsRsp"
@@ -116,17 +117,4 @@ enum Msg {
 
     END;
 
-    private static class MethodOwner {
-        private static final String PKG = "com.kedacom.kdv.mt.mtapi.";
-
-        private static final String KernalCtrl = PKG+"KernalCtrl";
-        private static final String MtcLib = PKG+"MtcLib";
-        private static final String LoginCtrl = PKG+"LoginCtrl";
-        private static final String MonitorCtrl = PKG+"MonitorCtrl";
-        private static final String CommonCtrl = PKG+"CommonCtrl";
-        private static final String ConfigCtrl = PKG+"ConfigCtrl";
-        private static final String MtServiceCfgCtrl = PKG+"MtServiceCfgCtrl";
-        private static final String MeetingCtrl = PKG+"MeetingCtrl";
-        private static final String RmtContactCtrl = PKG+"RmtContactCtrl";
-    }
 }

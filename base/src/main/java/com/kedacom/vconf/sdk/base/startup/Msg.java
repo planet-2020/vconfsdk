@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.base.startup;
 
 
 import com.kedacom.kdv.mt.mtapi.IMtcCallback;
+import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
@@ -23,7 +24,7 @@ enum Msg {
     /**设置业务组件工作空间。
      * 其创建的一些配置文件以及日志文件均在该路径下*/
     @Request(method = "SetSysWorkPathPrefix",
-            owner = MethodOwner.KernalCtrl,
+            owner = Atlas.KernalCtrl,
             paras = StringBuffer.class,
             userParas = String.class  // 工作空间完整路径
     )
@@ -33,7 +34,7 @@ enum Msg {
      * NOTE：调用所有其他业务组件接口前需先等该接口“完成”！
      * */
     @Request(method = "MtStart",
-            owner = MethodOwner.MtcLib,
+            owner = Atlas.MtcLib,
             paras = {int.class,
                     StringBuffer.class,
                     StringBuffer.class,
@@ -60,7 +61,7 @@ enum Msg {
 
     /**启动业务组件sdk*/
     @Request(method = "Start",
-            owner = MethodOwner.MtcLib,
+            owner = Atlas.MtcLib,
             paras = {boolean.class,
                     boolean.class,
                     StringBuffer.class
@@ -81,7 +82,7 @@ enum Msg {
 
     /**设置业务组件层回调*/
     @Request(method = "Setcallback",
-            owner = MethodOwner.MtcLib,
+            owner = Atlas.MtcLib,
             paras = IMtcCallback.class // 回调接口
     )
     SetMtSdkCallback,
@@ -89,14 +90,14 @@ enum Msg {
 
     /**启用/停用业务组件日志文件功能*/
     @Request(method = "SetLogCfgCmd",
-            owner = MethodOwner.ConfigCtrl,
+            owner = Atlas.ConfigCtrl,
             paras = boolean.class // true启用，false停用
     )
     ToggleMtFileLog,
 
     /**设置网络配置*/
     @Request(method = "SendUsedNetInfoNtf",
-            owner = MethodOwner.CommonCtrl,
+            owner = Atlas.CommonCtrl,
             paras = StringBuffer.class,
             userParas = TNetWorkInfo.class
     )
@@ -105,7 +106,7 @@ enum Msg {
 
     /**设置是否启用telnet调试*/
     @Request(method = "SetUseOspTelnetCfgCmd",
-            owner = MethodOwner.ConfigCtrl,
+            owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = BaseTypeBool.class, // true启用
             rspSeq = "SetTelnetDebugEnableRsp"
@@ -120,16 +121,4 @@ enum Msg {
 
     END;
 
-    private static class MethodOwner {
-        private static final String PKG = "com.kedacom.kdv.mt.mtapi.";
-
-        private static final String KernalCtrl = PKG+"KernalCtrl";
-        private static final String MtcLib = PKG+"MtcLib";
-        private static final String LoginCtrl = PKG+"LoginCtrl";
-        private static final String MonitorCtrl = PKG+"MonitorCtrl";
-        private static final String CommonCtrl = PKG+"CommonCtrl";
-        private static final String ConfigCtrl = PKG+"ConfigCtrl";
-        private static final String MtServiceCfgCtrl = PKG+"MtServiceCfgCtrl";
-        private static final String MeetingCtrl = PKG+"MeetingCtrl";
-    }
 }

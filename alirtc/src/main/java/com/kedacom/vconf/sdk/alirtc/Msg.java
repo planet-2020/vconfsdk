@@ -4,6 +4,7 @@ import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
+import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
@@ -19,7 +20,7 @@ enum Msg {
     /**获取CSV服务器（用于对接alirtc的平台服务器）地址
      * */
     @Request(method = "GetCsvAddr",
-            owner = MethodOwner.ConfigCtrl,
+            owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TNetAddr.class,
             isGet = true
@@ -30,7 +31,7 @@ enum Msg {
      * 登录CSV
      * */
     @Request(method = "LoginCsvCmd",
-            owner = MethodOwner.ConfCtrl,
+            owner = Atlas.ConfCtrl,
             paras = {StringBuffer.class,
                     StringBuffer.class},
             userParas = {TNetAddr.class,
@@ -47,7 +48,7 @@ enum Msg {
      * 注销CSV
      * */
     @Request(method = "LogoutCsvCmd",
-            owner = MethodOwner.ConfCtrl,
+            owner = Atlas.ConfCtrl,
             paras = StringBuffer.class,
             userParas = TNetAddr.class,
             rspSeq = "LogoutRsp"
@@ -62,7 +63,7 @@ enum Msg {
     /** 创会
      * */
     @Request(method = "MGCreateAliConfCmd",
-            owner = MethodOwner.MeetingCtrl,
+            owner = Atlas.MeetingCtrl,
             paras = StringBuffer.class,
             userParas = TCreateAliConfParam.class,
             rspSeq = "CreateConfRsp"
@@ -77,7 +78,7 @@ enum Msg {
     /** 加入会议
      * */
     @Request(method = "JoinAliConfCmd",
-            owner = MethodOwner.ConfCtrl,
+            owner = Atlas.ConfCtrl,
             paras = StringBuffer.class,
             userParas = String.class,  // 会议号
             rspSeq = "JoinConfRsp"
@@ -93,7 +94,7 @@ enum Msg {
      *      终端在ali平台上入会成功后需要主动上报自身会议状态给keda平台。
      * */
     @Request(method = "NotifyCsvConfState",
-            owner = MethodOwner.ConfCtrl,
+            owner = Atlas.ConfCtrl,
             paras = {StringBuffer.class,
                     boolean.class},
             userParas = {String.class, // 会议号
@@ -105,7 +106,7 @@ enum Msg {
     /**上报静音哑音状态。
      * */
     @Request(method = "NotifyCsvVoiceState",
-            owner = MethodOwner.ConfCtrl,
+            owner = Atlas.ConfCtrl,
             paras = {StringBuffer.class,
                     boolean.class,
                     boolean.class
@@ -120,17 +121,4 @@ enum Msg {
 
     END;
 
-    private static class MethodOwner {
-        private static final String PKG = "com.kedacom.kdv.mt.mtapi.";
-
-        private static final String KernalCtrl = PKG+"KernalCtrl";
-        private static final String MtcLib = PKG+"MtcLib";
-        private static final String LoginCtrl = PKG+"LoginCtrl";
-        private static final String MonitorCtrl = PKG+"MonitorCtrl";
-        private static final String CommonCtrl = PKG+"CommonCtrl";
-        private static final String ConfigCtrl = PKG+"ConfigCtrl";
-        private static final String ConfCtrl = PKG+"ConfCtrl";
-        private static final String MtServiceCfgCtrl = PKG+"MtServiceCfgCtrl";
-        private static final String MeetingCtrl = PKG+"MeetingCtrl";
-    }
 }

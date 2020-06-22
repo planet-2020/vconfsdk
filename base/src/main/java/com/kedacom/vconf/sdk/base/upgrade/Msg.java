@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.base.upgrade;
 
 
+import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
@@ -17,7 +18,7 @@ enum Msg {
     /**启动（升级）服务
      * */
     @Request(method = "SYSStartService",
-            owner = MethodOwner.MtServiceCfgCtrl,
+            owner = Atlas.MtServiceCfgCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 服务名称，如"rest"接入、"upgrade"升级
             rspSeq = "StartMtServiceRsp"
@@ -31,7 +32,7 @@ enum Msg {
     /**获取升级服务器地址
      * */
     @Request(method = "GetSUSCfg",
-            owner = MethodOwner.ConfigCtrl,
+            owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMTSUSAddr.class,
             isGet = true
@@ -41,7 +42,7 @@ enum Msg {
     /**检查更新
      * */
     @Request(method = "MTCheckUpgradeCmd",
-            owner = MethodOwner.MtEntityCtrl,
+            owner = Atlas.MtEntityCtrl,
             paras = StringBuffer.class,
             userParas = TMTUpgradeClientInfo.class,
             rspSeq = "CheckUpgradeRsp"
@@ -56,7 +57,7 @@ enum Msg {
     /**下载升级包
      * */
     @Request(method = "MTStartDownloadUpgradeFileCmd",
-            owner = MethodOwner.MtEntityCtrl,
+            owner = Atlas.MtEntityCtrl,
             paras = {StringBuffer.class,
                     int.class
             },
@@ -70,23 +71,10 @@ enum Msg {
     /**取消升级
      * */
     @Request(method = "MTCancelUpgradeCmd",
-            owner = MethodOwner.MtEntityCtrl)
+            owner = Atlas.MtEntityCtrl)
     CancelUpgrade,
 
 
     END;
 
-    private static class MethodOwner {
-        private static final String PKG = "com.kedacom.kdv.mt.mtapi.";
-
-        private static final String KernalCtrl = PKG+"KernalCtrl";
-        private static final String MtcLib = PKG+"MtcLib";
-        private static final String LoginCtrl = PKG+"LoginCtrl";
-        private static final String MonitorCtrl = PKG+"MonitorCtrl";
-        private static final String CommonCtrl = PKG+"CommonCtrl";
-        private static final String ConfigCtrl = PKG+"ConfigCtrl";
-        private static final String MtServiceCfgCtrl = PKG+"MtServiceCfgCtrl";
-        private static final String MeetingCtrl = PKG+"MeetingCtrl";
-        private static final String MtEntityCtrl = PKG+"MtEntityCtrl";
-    }
 }
