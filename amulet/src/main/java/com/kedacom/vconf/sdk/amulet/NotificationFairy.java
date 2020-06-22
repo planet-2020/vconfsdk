@@ -1,7 +1,5 @@
 package com.kedacom.vconf.sdk.amulet;
 
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 import com.kedacom.vconf.sdk.utils.json.Kson;
@@ -9,12 +7,13 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 
 
 final class NotificationFairy implements IFairy.INotificationFairy{
 
-    private static MagicBook magicBook = MagicBook.instance();
+    private IMagicBook magicBook;
 
     private Map<String, LinkedHashSet<IListener>> subscribers = new LinkedHashMap<>();
 
@@ -25,12 +24,15 @@ final class NotificationFairy implements IFairy.INotificationFairy{
 
     @Override
     public boolean subscribe(IListener subscriber, String ntfName) {
+        if (null == magicBook){
+            KLog.p(KLog.ERROR, "no magicBook ");
+            return false;
+        }
         if (null == subscriber){
             KLog.p(KLog.ERROR, "null subscriber ");
             return false;
         }
-
-        if (!magicBook.isNotification(ntfName)){
+        if (null == magicBook.getRspId(ntfName)){
             KLog.p(KLog.ERROR, "Unknown notification %s", ntfName);
             return false;
         }
@@ -48,12 +50,15 @@ final class NotificationFairy implements IFairy.INotificationFairy{
 
     @Override
     public void unsubscribe(IListener subscriber, String ntfName) {
+        if (null == magicBook){
+            KLog.p(KLog.ERROR, "no magicBook ");
+            return;
+        }
         if (null == subscriber){
             KLog.p(KLog.ERROR, "null subscriber ");
             return;
         }
-
-        if (!magicBook.isNotification(ntfName)){
+        if (null == magicBook.getRspId(ntfName)){
             KLog.p(KLog.ERROR, "Unknown notification %s", ntfName);
             return;
         }
@@ -70,28 +75,30 @@ final class NotificationFairy implements IFairy.INotificationFairy{
 
     @Override
     public boolean onMsg(String msgId, String msgContent) {
-        String msgName = magicBook.getRspName(msgId);
-        if (null == msgName){
+        if (null == magicBook){
+            KLog.p(KLog.ERROR, "no magicBook ");
             return false;
         }
-        if (!magicBook.isNotification(msgName)){
+        List<String> rspNames = magicBook.getRspNames(msgId);
+        if (rspNames==null || rspNames.isEmpty()){
             return false;
         }
+        for (String rspName : rspNames) {
+            LinkedHashSet<IListener> subs = subscribers.get(rspName);
+            if (null == subs || 0 == subs.size()) {
+                return false;
+            }
 
-        LinkedHashSet<IListener> subs = subscribers.get(msgName);
-        if (null == subs || 0==subs.size()){
-            return false;
+            Log.d(TAG, String.format("<-~- %s(%s)\n%s", rspName, msgId, msgContent));
+
+            Object ntfContent = Kson.fromJson(msgContent, magicBook.getRspClazz(rspName));
+
+            for (IListener sub : subs) {
+                sub.onNtf(rspName, ntfContent);
+            }
         }
 
-        Log.d(TAG, String.format("<-~- %s(%s)\n%s", msgName, msgId, msgContent));
-
-        Object ntfContent = Kson.fromJson(msgContent, magicBook.getRspClazz(msgName));
-
-        for (IListener sub : subs){
-            sub.onNtf(msgName, ntfContent);
-        }
-
-        return false;
+        return false;  // 始终返回false，通知可共享。
     }
 
 
@@ -100,15 +107,10 @@ final class NotificationFairy implements IFairy.INotificationFairy{
 //        this.crystalBall = crystalBall;
     }
 
-
     @Override
-    public void emit(String ntfName, Object ntfContent) {
-        String ntfId = magicBook.getRspId(ntfName);
-        String ntfCont = Kson.toJson(ntfContent);
-        int delay = magicBook.getRspDelay(ntfName);
-        handler.postDelayed(() -> onMsg(ntfId, ntfCont), delay);
+    public void setMagicBook(IMagicBook magicBook) {
+        this.magicBook = magicBook;
     }
 
-    private static Handler handler = new Handler(Looper.getMainLooper());
 
 }

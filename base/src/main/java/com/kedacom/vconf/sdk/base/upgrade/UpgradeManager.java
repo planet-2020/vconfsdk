@@ -25,6 +25,7 @@ public class UpgradeManager extends Caster<Msg> {
     public synchronized static UpgradeManager getInstance(Application ctx) {
         if (instance == null) {
             instance = new UpgradeManager(ctx);
+            instance.startService();
         }
         return instance;
     }
@@ -70,11 +71,12 @@ public class UpgradeManager extends Caster<Msg> {
         req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
             @Override
             public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
-                TMTUpgradeVersionInfo[] remoteVersionList = ((TMTUpgradeVersionInfoList)resultListener).tVerList;
-                for (TMTUpgradeVersionInfo version : remoteVersionList){
-
+                TMTUpgradeVersionInfo[] remoteVersionList = ((TMTUpgradeVersionInfoList)rspContent).tVerList;
+                if (null != remoteVersionList && remoteVersionList.length>0){
+                    reportSuccess(null, resultListener);
+                }else{
+                    reportFailed(-1, resultListener);
                 }
-                reportSuccess(null, resultListener);
                 return true;
             }
         }, resultListener, checkUpgradePara);

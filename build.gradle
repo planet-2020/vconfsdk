@@ -134,7 +134,8 @@ def configProject(Project project){
     project.afterEvaluate {
 //        logger.quiet("project $project, plugins=$project.plugins")
         if (project.plugins.hasPlugin(com.android.build.gradle.LibraryPlugin)
-                || project.plugins.hasPlugin(com.android.build.gradle.AppPlugin)){
+//                || project.plugins.hasPlugin(com.android.build.gradle.AppPlugin)
+        ){
             project.android{
                 compileSdkVersion COMPILE_SDK_VERSION
                 defaultConfig {
@@ -163,9 +164,13 @@ def configProject(Project project){
                     abortOnError false
                 }
             }
-            if(project.plugins.hasPlugin(com.android.build.gradle.LibraryPlugin)){
-                project.apply from : '../publish.gradle'
-            }
+
+//            DependencyHandler dependencyHandler = project.getDependencies();
+//            dependencyHandler.add('compileOnly', dependencyHandler.project('path' : ':annotation'))
+//            dependencyHandler.add('annotationProcessor', dependencyHandler.project('path' : ':processor'))
+
+            project.apply from : '../publish.gradle'
+
         }else if (project.plugins.hasPlugin(JavaPlugin)){
 //            logger.quiet("###############org.gradle.java, project $project")
             project.sourceCompatibility = SOURCE_JAVA_VERSION

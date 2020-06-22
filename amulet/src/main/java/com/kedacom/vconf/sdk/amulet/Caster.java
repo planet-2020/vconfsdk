@@ -6,7 +6,8 @@ import androidx.annotation.Nullable;
 import com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
-import java.lang.reflect.Field;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -25,8 +26,8 @@ public abstract class Caster<T extends Enum<T>> implements
     private ICrystalBall crystalBall = CrystalBall.instance();
 
     /**
-     * 会话和通知处理的优先级定义，越小优先级越高。
-     * 保证会话先于通知处理。
+     * 设置ICrystalBall#IListener优先级，越小优先级越高。
+     * 让IFairy.ISessionFairy优先级高于IFairy.INotificationFairy以保证ISessionFairy优先消费上报的消息。
      * */
     private static int count = 0;
     private static final int SESSION_FAIRY_BASE_PRIORITY = 0;
@@ -40,28 +41,33 @@ public abstract class Caster<T extends Enum<T>> implements
 
     private Class<T> enumT;
 
-    private String moduleName;
+    private String msgPrefix;
 
     @SuppressWarnings("ConstantConditions")
     protected Caster(){
+        IMagicBook magicBook = null;
         enumT = (Class<T>)((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments()[0];
         try {
-            Class<?> msgGenClz = Class.forName(enumT.getPackage().getName()+".Message$$Generated");
-            MagicBook.instance().addChapter(msgGenClz);
-            Field field = msgGenClz.getDeclaredField("module");
-            field.setAccessible(true);
-            moduleName = field.get(null).toString();
-        } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException e) {
+            Class<?> magicBookClz = Class.forName(enumT.getPackage().getName()+".Msg$$Generated");
+            Constructor<?> ctor = magicBookClz.getDeclaredConstructor();
+            ctor.setAccessible(true);
+            magicBook = (IMagicBook) ctor.newInstance();
+            msgPrefix = magicBook.getChapter()+"_";
+        } catch (ClassNotFoundException | IllegalAccessException | NoSuchMethodException | InvocationTargetException | InstantiationException e) {
             e.printStackTrace();
         }
-        if (null == moduleName){
-            throw new RuntimeException("null == moduleName");
+        if (null == magicBook){
+            throw new RuntimeException("no magicBook!?");
         }
+
+        sessionFairy.setMagicBook(magicBook);
+        sessionFairy.setCrystalBall(crystalBall);
+        commandFairy.setMagicBook(magicBook);
+        commandFairy.setCrystalBall(crystalBall);
+        notificationFairy.setMagicBook(magicBook);
 
         crystalBall.addListener(sessionFairy, SESSION_FAIRY_BASE_PRIORITY+count);
         crystalBall.addListener(notificationFairy, NOTIFICATION_FAIRY_BASE_PRIORITY+count);
-        sessionFairy.setCrystalBall(crystalBall);
-        commandFairy.setCrystalBall(crystalBall);
         ++count;
 
         listenerLifecycleObserver = new ListenerLifecycleObserver(new ListenerLifecycleObserver.Callback(){
@@ -378,11 +384,11 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
     private String prefixMsg(String msg){
-        return moduleName+"_"+msg;
+        return msgPrefix +msg;
     }
 
     private String unprefixMsg(String prefixedMsg){
-        return prefixedMsg.substring((moduleName+"_").length());
+        return prefixedMsg.substring((msgPrefix).length());
     }
 
     private Session getSession(int sid){
@@ -523,87 +529,5 @@ public abstract class Caster<T extends Enum<T>> implements
             this.resultListener = resultListener;
         }
     }
-
-
-
-    //========= 以下为模拟模式相关接口，仅用于本地调试，正式产品中请勿使用=========
-
-    /**
-     * 启用/停用模拟器。
-     * 若启用则本模块的请求都交由模拟器处理，模拟器会反馈用户模拟的响应/通知；
-     * 若停用则恢复正常模式，正常模式下请求通过底层组件发给平台平台反馈消息。
-     * NOTE: 仅用于本地调试，正式产品中请勿启用。
-     * @param bEnable true：启用，false：停用。
-     * */
-    public void enableSimulator(boolean bEnable){
-        int sessionFairyPriority = crystalBall.getPriority(sessionFairy);
-        int notificationFairyPriority = crystalBall.getPriority(notificationFairy);
-
-        crystalBall.delListener(sessionFairy);
-        crystalBall.delListener(notificationFairy);
-        sessionFairy.setCrystalBall(null);
-        commandFairy.setCrystalBall(null);
-
-        if (bEnable){
-            crystalBall = FakeCrystalBall.instance();
-        }else{
-            crystalBall = CrystalBall.instance();
-        }
-
-        crystalBall.addListener(sessionFairy, sessionFairyPriority);
-        crystalBall.addListener(notificationFairy, notificationFairyPriority);
-        sessionFairy.setCrystalBall(crystalBall);
-        commandFairy.setCrystalBall(crystalBall);
-    }
-
-
-    /**
-     * 填充模拟数据。仅用于模拟模式
-     * @param key 数据对应的键，约定为方法名。
-     * @param data 用户期望的数据。
-     * */
-    public void feedSimulatedData(String key, Object data){
-        if (!(crystalBall instanceof FakeCrystalBall)){
-            KLog.p(KLog.ERROR, "simulator not enable yet!");
-            return;
-        }
-        Object[] datas = genSimulatedData(new String[]{key}, data);
-        if (null == datas) {
-            KLog.p(KLog.ERROR, "genSimulatedData for (%s, %s) failed", key, data);
-            return;
-        }
-        for (Object o : datas) {
-            if (null != o) SimulatedDataRepository.put(o);
-        }
-    }
-
-    /**
-     * （驱使下层）发射通知。仅用于模拟模式。
-     * */
-    public void eject(String key, Object data){
-        if (!(crystalBall instanceof FakeCrystalBall)){
-            KLog.p(KLog.ERROR, "simulator not enable yet!");
-            return;
-        }
-        String[] keys = new String[]{key};
-        Object[] simulatedData = genSimulatedData(keys, data);
-        notificationFairy.emit(keys[0], simulatedData[0]);
-    }
-
-    public void eject(String[] keys, Object[] datas){
-        for (int i=0; i<keys.length; ++i){
-            eject(keys[i], datas[i]);
-        }
-    }
-
-
-    /**
-     * 生成模拟数据
-     * @param key 数据对应的键（约定为方法名），定义为数组因为可能为出参。
-     * @param data 用户期望的数据。
-     * @return 底层消息对应的数据。
-     * */
-    protected Object[] genSimulatedData(String[] key, Object data){return null;}
-
 
 }

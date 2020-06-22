@@ -7,4 +7,5 @@ dependencies {
     implementation 'com.google.guava:guava:27.0.1-jre'
 
     implementation project(':annotation')
+    implementation 'com.kedacom.vconf.sdk:amulet:5.0.0-SNAPSHOT'
 }

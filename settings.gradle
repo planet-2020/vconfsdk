@@ -1,2 +1,15 @@
-include  ':processor', ':annotation', ':amulet', ':datacollaborate', ':utils', ':common', ':base', ':webrtc'
-include ':alirtc'
+
+rootProject.name = 'vconfsdk'
+//
+//ext.frameworkDir = 'framework'
+//ext.frameworkModules = ['annotation', 'processor', 'amulet']
+//
+//frameworkModules.each {
+//    String modulePath = ":$it"
+//    include modulePath
+//    project(modulePath).setProjectDir(new File("./$frameworkDir/$it"))
+//}
+
+include ':annotation', ':processor', ':amulet'
+include ':utils', ':common', ':base', ':datacollaborate', ':webrtc', ':alirtc'
+

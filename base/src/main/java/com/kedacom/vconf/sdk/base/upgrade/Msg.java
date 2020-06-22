@@ -26,7 +26,7 @@ enum Msg {
     @Request(method = "SYSStartService",
             owner = MethodOwner.MtServiceCfgCtrl,
             paras = StringBuffer.class,
-            userParas = String.class, // 模块名称，如"rest"接入模块、"upgrade"升级模块
+            userParas = String.class, // 服务名称，如"rest"接入、"upgrade"升级
             rspSeq = "StartMtServiceRsp"
     )
     StartMtService,

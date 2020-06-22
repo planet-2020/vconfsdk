@@ -12,12 +12,13 @@ import com.kedacom.vconf.sdk.utils.json.Kson;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 
 final class SessionFairy implements IFairy.ISessionFairy{
 
-    private static MagicBook magicBook = MagicBook.instance();
+    private IMagicBook magicBook;
 
     private ICrystalBall crystalBall;
 
@@ -51,34 +52,39 @@ final class SessionFairy implements IFairy.ISessionFairy{
         this.crystalBall = crystalBall;
     }
 
+    @Override
+    public void setMagicBook(IMagicBook magicBook) {
+        this.magicBook = magicBook;
+    }
 
     @Override
-    public boolean req(IListener listener, String reqName, int reqSn, Object... reqPara) {
-
+    public boolean req(IListener listener, String reqName, int reqSn, Object... reqParas) {
         if (null == crystalBall){
             KLog.p(KLog.ERROR, "no crystalBall");
+            return false;
+        }
+        if (null == magicBook){
+            KLog.p(KLog.ERROR, "no magicBook");
             return false;
         }
         if (null == listener){
             KLog.p(KLog.ERROR, "listener is null");
             return false;
         }
-        if (null == reqPara){
-            KLog.p(KLog.ERROR, "reqPara is null");
+        if (magicBook.isReqTypeGet(reqName)){
+            KLog.p(KLog.ERROR, "session fairy can not handle GET req %s", reqName);
+            return false;
+        }
+        if (null == reqParas){
+            KLog.p(KLog.ERROR, "reqParas is null");
             return false;
         }
 
-        if (!magicBook.isSession(reqName)){
-            KLog.p(KLog.ERROR, "no such session request: %s", reqName);
+        if (!Helper.checkUserPara(reqName, reqParas, magicBook)){
             return false;
         }
 
-        if (!magicBook.checkUserPara(reqName, reqPara)){
-            KLog.p(KLog.ERROR,"checkUserPara not pass");
-            return false;
-        }
-
-        Session s = new Session(listener, reqSn, reqName, reqPara,magicBook.getTimeout(reqName) * 1000, magicBook.getRspSeqs(reqName));
+        Session s = new Session(listener, reqSn, reqName, reqParas,magicBook.getTimeout(reqName) * 1000, magicBook.getRspSeqs(reqName));
         sessions.add(s);
 
         reqHandler.post(() -> {
@@ -87,12 +93,13 @@ final class SessionFairy implements IFairy.ISessionFairy{
             }
 
             // 用户参数转换为底层方法需要的参数
-            Object[] paras = magicBook.userPara2MethodPara(s.reqPara, magicBook.getParaClasses(s.reqName));
+            Class<?>[] nativeParaClasses = magicBook.getNativeParaClasses(s.reqName);
+            Object[] paras = Helper.convertUserPara2NativePara(s.reqPara, nativeParaClasses);
             StringBuilder sb = new StringBuilder();
             for (Object para : paras) {
                 sb.append(para).append(", ");
             }
-            String methodName = magicBook.getMethod(s.reqName);
+            String methodName = magicBook.getReqId(s.reqName);
             uiHandler.post(() -> Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqName, methodName, sb)));
 
             // 启动超时
@@ -102,15 +109,15 @@ final class SessionFairy implements IFairy.ISessionFairy{
             uiHandler.sendMessageDelayed(msg, s.timeoutVal);
 
             // 调用native接口
+            String nativeMethodOwner = magicBook.getNativeMethodOwner(s.reqName);
             long nativeCallCostTime = 0;
             long timestamp = System.currentTimeMillis();
-            crystalBall.spell(magicBook.getMethodOwner(s.reqName),
-                    methodName,
-                    paras,
-                    magicBook.getParaClasses(s.reqName));
+            if (null != crystalBall) {
+                crystalBall.spell(nativeMethodOwner, methodName, paras, nativeParaClasses);
+            }
             nativeCallCostTime = System.currentTimeMillis() - timestamp;
 
-            KLog.p(KLog.DEBUG,"native method %s cost time: %s", magicBook.getMethodOwner(s.reqName)+"#"+methodName, nativeCallCostTime);
+            KLog.p(KLog.DEBUG,"native method %s cost time: %s", nativeMethodOwner+"#"+methodName, nativeCallCostTime);
             if(!s.transState(Session.SENDING, Session.SENT)){
                 return;
             }
@@ -162,70 +169,74 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
     @Override
     public boolean onMsg(String msgId, String msgContent) {
-        String msgName = magicBook.getRspName(msgId);
-        if (null == msgName){
+        if (null == magicBook){
+            return false;
+        }
+        List<String> rspNames = magicBook.getRspNames(msgId);
+        if (rspNames==null || rspNames.isEmpty()){
             return false;
         }
 
-        if (!magicBook.isResponse(msgName)){
-            return false;
+        boolean bConsumed = false;
+        tryConsume:
+        for (String rspName : rspNames) {
+
+            for (final Session s : sessions) { // 查找期望该响应的会话
+                if (!s.isState(Session.WAITING, Session.RECVING)) {
+                    continue;
+                }
+
+                SparseIntArray candidates = new SparseIntArray();
+                boolean gotLast = false; // 是否匹配到会话的最后一条响应
+
+                for (int i = 0; i < s.candidates.size(); ++i) { // 在候选序列中查找所有能处理该响应的序列。
+                    int rspSeqIndx = s.candidates.keyAt(i);
+                    int rspIndx = s.candidates.get(rspSeqIndx);
+                    String[] candidateRspSeq = s.rspSeqs[rspSeqIndx];
+                    String candidateRsp = candidateRspSeq[rspIndx];
+                    if (rspName.equals(candidateRsp)) { // 找到了一路匹配的序列
+                        candidates.put(rspSeqIndx, rspIndx + 1); // 记录该序列下一个可匹配的响应
+                        if (candidateRspSeq.length == rspIndx + 1) { // 该响应为该匹配序列中的最后一条响应
+                            gotLast = true;
+                        }
+                    }
+
+                    if (gotLast) {
+                        break;
+                    }
+                }
+
+                if (0 == candidates.size()) { // 候选响应序列中未找到该响应
+                    continue; // 该响应不是该会话所期望的，继续寻找期望该响应的会话
+                }
+
+                bConsumed = s.listener.onRsp(gotLast, rspName,
+                        Kson.fromJson(msgContent, magicBook.getRspClazz(rspName)),
+                        s.reqName, s.reqSn, s.reqPara);
+
+                if (bConsumed) {
+                    s.candidates = candidates; // 更新候选序列
+                    if (gotLast) {  // 已集齐会话期望的所有响应，该会话结束。
+                        if (!s.isState(Session.CANCELED)) {
+                            uiHandler.removeMessages(MsgId_Timeout, s);
+                            s.setState(Session.END);
+                            sessions.remove(s);
+                        }
+                        Log.d(TAG, String.format("%s <-~-o %s(%s) \n%s", s.id, rspName, msgId, msgContent));
+                    } else {
+                        if (!s.isState(Session.CANCELED)) {
+                            s.setState(Session.RECVING);
+                        }
+                        Log.d(TAG, String.format("%s <-~- %s(%s) \n%s", s.id, rspName, msgId, msgContent));
+                    }
+
+                    break tryConsume;
+                }
+            }
+
         }
 
-        for (final Session s : sessions) { // 查找期望该响应的会话
-            if (!s.isState(Session.WAITING, Session.RECVING)) {
-                continue;
-            }
-
-            SparseIntArray candidates = new SparseIntArray();
-            boolean gotLast = false; // 是否匹配到会话的最后一条响应
-
-            for (int i = 0; i < s.candidates.size(); ++i) { // 在候选序列中查找所有能处理该响应的序列。
-                int rspSeqIndx = s.candidates.keyAt(i);
-                int rspIndx = s.candidates.get(rspSeqIndx);
-                String[] candidateRspSeq = s.rspSeqs[rspSeqIndx];
-                String candidateRsp = candidateRspSeq[rspIndx];
-                if (msgName.equals(candidateRsp)) { // 找到了一路匹配的序列
-                    candidates.put(rspSeqIndx, rspIndx + 1); // 记录该序列下一个可匹配的响应
-                    if (candidateRspSeq.length == rspIndx + 1) { // 该响应为该匹配序列中的最后一条响应
-                        gotLast = true;
-                    }
-                }
-
-                if (gotLast) {
-                    break;
-                }
-            }
-
-            if (0 == candidates.size()) { // 候选响应序列中未找到该响应
-                continue; // 该响应不是该会话所期望的，继续寻找期望该响应的会话
-            }
-
-            @SuppressWarnings("ConstantConditions")
-            boolean bConsumed = s.listener.onRsp(gotLast, msgName,
-                    Kson.fromJson(msgContent, magicBook.getRspClazz(msgName)),
-                    s.reqName, s.reqSn, s.reqPara);
-
-            if (bConsumed) {
-                s.candidates = candidates; // 更新候选序列
-                if (gotLast) {  // 已集齐会话期望的所有响应，该会话结束。
-                    if (!s.isState(Session.CANCELED)) {
-                        uiHandler.removeMessages(MsgId_Timeout, s);
-                        s.setState(Session.END);
-                        sessions.remove(s);
-                    }
-                    Log.d(TAG, String.format("%s <-~-o %s(%s) \n%s", s.id, msgName, msgId, msgContent));
-                } else {
-                    if (!s.isState(Session.CANCELED)) {
-                        s.setState(Session.RECVING);
-                    }
-                    Log.d(TAG, String.format("%s <-~- %s(%s) \n%s", s.id, msgName, msgId, msgContent));
-                }
-            }
-
-            return bConsumed;
-        }
-
-        return false;
+        return bConsumed;
     }
 
 

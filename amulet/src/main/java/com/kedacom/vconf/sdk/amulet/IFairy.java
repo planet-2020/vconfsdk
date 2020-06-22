@@ -11,7 +11,7 @@ public interface IFairy {
     }
 
     interface ISessionFairy extends IFairy, ICrystalBall.IListener{
-        boolean req(IListener listener, String reqName, int reqSn, Object... reqPara);
+        boolean req(IListener listener, String reqName, int reqSn, Object... reqParas);
         boolean cancelReq(int reqSn);
 
         /**
@@ -58,12 +58,6 @@ public interface IFairy {
         boolean subscribe(IListener subscriber, String ntfName);
         void unsubscribe(IListener subscriber, String ntfName);
 
-       /**
-        * 主动触发通知。
-        * FORDEBUG 仅用于模拟模式
-        * */
-       default void emit(String ntfName, Object ntfContent){}
-
         /**
          * 通知监听器。
          * NOTE: 不要在该监听器中做耗时操作
@@ -79,5 +73,7 @@ public interface IFairy {
     }
 
     void setCrystalBall(ICrystalBall crystalBall);
+
+    void setMagicBook(IMagicBook magicBook);
 
 }
