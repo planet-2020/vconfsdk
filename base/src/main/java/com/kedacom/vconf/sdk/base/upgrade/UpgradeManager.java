@@ -35,13 +35,12 @@ public class UpgradeManager extends Caster<Msg> {
         String serviceName = "upgrade";
         req(Msg.StartMtService, new SessionProcessor<Msg>() {
             @Override
-            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TSrvStartResult result = (TSrvStartResult) rspContent;
                 boolean success = result.MainParam.basetype && result.AssParam.achSysalias.equals(serviceName);
                 if (success){
                     KLog.p("start %s service success!", serviceName);
                 }
-                return true;
             }
         }, null , serviceName);
     }
@@ -70,14 +69,13 @@ public class UpgradeManager extends Caster<Msg> {
         );
         req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
             @Override
-            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TMTUpgradeVersionInfo[] remoteVersionList = ((TMTUpgradeVersionInfoList)rspContent).tVerList;
                 if (null != remoteVersionList && remoteVersionList.length>0){
                     reportSuccess(null, resultListener);
                 }else{
                     reportFailed(-1, resultListener);
                 }
-                return true;
             }
         }, resultListener, checkUpgradePara);
     }

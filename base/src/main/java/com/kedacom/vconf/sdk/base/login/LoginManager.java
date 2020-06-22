@@ -40,13 +40,12 @@ public class LoginManager extends Caster<Msg> {
         String serviceName = "rest";
         req(Msg.StartMtService, new SessionProcessor<Msg>() {
             @Override
-            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TSrvStartResult result = (TSrvStartResult) rspContent;
                 boolean success = result.MainParam.basetype && result.AssParam.achSysalias.equals(serviceName);
                 if (success){
                     KLog.p("start %s service success!", serviceName);
                 }
-                return true;
             }
         }, null , serviceName);
     }
@@ -77,49 +76,44 @@ public class LoginManager extends Caster<Msg> {
         // 配置Aps
         req(Msg.SetApsServerCfg, new SessionProcessor<Msg>() {
                 @Override
-                public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                     // 登录Aps
                     req(Msg.LoginAps, new SessionProcessor<Msg>() {
                             @Override
-                            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                                 TApsLoginResult apsLoginResult = (TApsLoginResult) rspContent;
                                 if (apsLoginResult.MainParam.bSucess){
                                     // 获取平台分配的token
                                     req(Msg.QueryAccountToken, new SessionProcessor<Msg>() {
                                         @Override
-                                        public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                                        public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                                             TRestErrorInfo restErrorInfo = (TRestErrorInfo) rspContent;
                                             if (restErrorInfo.dwErrorID == 1000){
                                                 // 登录platform
                                                 req(Msg.LoginPlatform, new SessionProcessor<Msg>() {
                                                     @Override
-                                                    public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                                                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                                                         TLoginPlatformRsp res = (TLoginPlatformRsp) rspContent;
                                                         if (res.MainParam.dwErrorID == 1000){
                                                             reportSuccess(null, resultListener);
                                                         }else{
                                                             reportFailed(-1, resultListener);
                                                         }
-                                                        return true;
                                                     }
                                                 }, resultListener, new TMTWeiboLogin(username, password));
                                             }else{
                                                 reportFailed(-1, resultListener);
                                             }
-                                            return true;
                                         }
                                     }, resultListener, NetAddrHelper.ipLongLittleEndian2Str(apsLoginResult.AssParam.dwIP));
 
                                 }else{
                                     reportFailed(-1, resultListener);
                                 }
-                                return true;
                             }
                         },
                         resultListener, new TMTApsLoginParam(username, password, "", "Skywalker_Ali", "")
                     );
-
-                    return true;
                 }
 
             },
@@ -135,20 +129,21 @@ public class LoginManager extends Caster<Msg> {
     public void logoutAps(IResultListener resultListener){
         req(Msg.LogoutAps, new SessionProcessor<Msg>() {
             @Override
-            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TMtSvrState[] states = ((TMtSvrStateList) rspContent).arrSvrState;
+                boolean got = false;
                 for (TMtSvrState state : states){
-                    KLog.p("type=%s, state=%s", state.emSvrType, state.emSvrState);
                     if (EmServerType.emAPS == state.emSvrType
                             && EmServerState.emSrvIdle == state.emSvrState){
-                        reportSuccess(null, resultListener);
-                        return true;
-                    }else{
-                        return false;
+                        got = true;
+                        break;
                     }
                 }
-                reportFailed(-1, resultListener);
-                return true;
+                if (got) {
+                    reportSuccess(null, resultListener);
+                }else {
+                    isConsumed[0] = false; // 该条消息不是我们期望的，继续等待后续消息
+                }
             }
         }, resultListener);
     }
@@ -169,7 +164,7 @@ public class LoginManager extends Caster<Msg> {
         String username = userBrief.achE164;
         req(Msg.QueryUserDetails, new SessionProcessor<Msg>() {
             @Override
-            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TQueryUserDetailsRsp detailsRsp = (TQueryUserDetailsRsp) rspContent;
                 if (1000 == detailsRsp.MainParam.dwErrorID){
                     UserDetails userDetails = ToDoConverter.fromTransferObj(detailsRsp.AssParam);
@@ -177,7 +172,6 @@ public class LoginManager extends Caster<Msg> {
                 }else{
                     reportFailed(-1, resultListener);
                 }
-                return true;
             }
         }, resultListener, new TMTAccountManagerSystem(username));
     }

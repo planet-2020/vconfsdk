@@ -71,11 +71,10 @@ public class StartupManager extends Caster<Msg> {
             // StartMtBase并不会给响应，我们必定是等待超时。
             // 我们利用超时机制做延时以保证此刻业务组件基础模块已经完全起来了，在此之前我们不能调用业务组件任何其他接口！
             @Override
-            public boolean onTimeout(IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
 
                 // 启动业务组件sdk
                 req(Msg.StartMtSdk, new SessionProcessor<Msg>() {
-                    boolean hasServiceStartFailed = false;
 
                     @Override
                     public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas) {
@@ -102,7 +101,7 @@ public class StartupManager extends Caster<Msg> {
                     }
 
                     @Override
-                    public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                         boolean startSdkSuccess = ((TMTLoginMtResult) rspContent).bLogin;
                         if (startSdkSuccess){
                             reportSuccess(null, resultListener);
@@ -125,7 +124,6 @@ public class StartupManager extends Caster<Msg> {
                         }else{
                             reportFailed(-1, resultListener);
                         }
-                        return true;
                     }
                 },
                         resultListener,
@@ -135,7 +133,6 @@ public class StartupManager extends Caster<Msg> {
                         "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001)
                 );
 
-                return true;
             }
 
         }, resultListener, model, type.getVal(), "v0.1.0");
@@ -151,14 +148,13 @@ public class StartupManager extends Caster<Msg> {
         baseTypeBool.basetype = enable;
         req(Msg.SetTelnetDebugEnable, new SessionProcessor<Msg>() {
             @Override
-            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 boolean enabled = ((BaseTypeBool) rspContent).basetype;
                 if (enabled){
                     reportSuccess(null, resultListener);
                 }else{
                     reportFailed(-1, resultListener);
                 }
-                return true;
             }
         }, resultListener, baseTypeBool);
     }

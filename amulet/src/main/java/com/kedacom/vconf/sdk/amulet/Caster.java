@@ -124,15 +124,15 @@ public abstract class Caster<T extends Enum<T>> implements
          * 收到响应
          * @param rsp 响应ID
          * @param rspContent 响应内容，具体类型由响应ID决定。
-         * @return 是否已消费该响应。true已消费。若未消费则该响应会被传递给其他期待该响应的会话或者订阅了该响应（通知）消息的通知处理器。
-         * */
-        default boolean onRsp(T rsp, Object rspContent, IResultListener resultListener, T req, Object[] reqParas){return true;};
+         * @param isConsumed 是否已被消费。出参。默认是已消费。 */
+        default void onRsp(T rsp, Object rspContent, IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
 
         /**
          * 会话超时
+         * @param isConsumed 是否已被消费。出参。默认是已消费。
          * @return 是否已消费。true已消费。若未消费则Caster会接管处理——上报用户已超时。
          * */
-        default boolean onTimeout(IResultListener resultListener, T req, Object[] reqParas){return false;}
+        default void onTimeout(IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
     }
 
     /**通知处理器*/
@@ -435,14 +435,15 @@ public abstract class Caster<T extends Enum<T>> implements
         SessionProcessor<T> processor = s.processor;
         KLog.p(KLog.DEBUG,"req=%s, sid=%s, rsp=%s, resultListener=%s, \nrspContent=%s", req, s.id, rsp, resultListener, rspContent);
         if (null != processor){
-            boolean bConsumed = processor.onRsp(rsp, rspContent, resultListener, req, reqParas);
-            if (bConsumed){
+            boolean[] isConsumed = new boolean[]{true};
+            processor.onRsp(rsp, rspContent, resultListener, req, reqParas, isConsumed);
+            if (isConsumed[0]){
                 if (bLast){
                     sessions.remove(s);
                     listenerLifecycleObserver.unobserve(resultListener);
                 }
             }
-            return bConsumed;
+            return isConsumed[0];
         }
 
         return false;
@@ -457,11 +458,11 @@ public abstract class Caster<T extends Enum<T>> implements
         listenerLifecycleObserver.unobserve(resultListener);
         KLog.p(KLog.DEBUG,"req=%s, sid=%s, resultListener=%s", req, s.id, resultListener);
         SessionProcessor<T> processor = s.processor;
-        boolean bConsumed = false;
+        boolean[] isConsumed = new boolean[]{true};
         if (null != processor){
-            bConsumed = processor.onTimeout(resultListener, req, reqParas);
+            processor.onTimeout(resultListener, req, reqParas, isConsumed);
         }
-        if (!bConsumed){
+        if (!isConsumed[0]){
             // 超时未被消费则此处通知用户超时
             reportTimeout(resultListener);
         }

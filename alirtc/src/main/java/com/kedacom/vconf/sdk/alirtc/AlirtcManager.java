@@ -56,17 +56,17 @@ public class AlirtcManager extends Caster<Msg> {
         }
         req(Msg.Login, new SessionProcessor<Msg>() {
             @Override
-            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TRegResultNtf result = (TRegResultNtf) rspContent;
                 if (EmConfProtocol.emaliyun.ordinal() != result.MainParam.basetype){
-                    return false;
+                    isConsumed[0] = false;
+                    return;
                 }
                 if (EmRegFailedReason.emRegSuccess.getValue() == result.AssParam.basetype) {
                     reportSuccess(null, resultListener);
                 } else {
                     reportFailed(-1, resultListener);
                 }
-                return true;
             }
         }, resultListener, addr, new TMtRegistCsvInfo(type.getVal(), version, true));
     }
@@ -85,17 +85,17 @@ public class AlirtcManager extends Caster<Msg> {
         }
         req(Msg.Logout, new SessionProcessor<Msg>() {
             @Override
-            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TRegResultNtf result = (TRegResultNtf) rspContent;
                 if (EmConfProtocol.emaliyun.ordinal() != result.MainParam.basetype){
-                    return false;
+                    isConsumed[0] = false;
+                    return;
                 }
                 if (EmRegFailedReason.emUnRegSuc.getValue() == result.AssParam.basetype) {
                     reportSuccess(null, resultListener);
                 } else {
                     reportFailed(-1, resultListener);
                 }
-                return true;
             }
         }, resultListener, addr);
     }
@@ -112,7 +112,7 @@ public class AlirtcManager extends Caster<Msg> {
     public void createConf(@NonNull String confName, int duration, IResultListener resultListener){
         req(Msg.CreateConf, new SessionProcessor<Msg>() {
             @Override
-            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TCreateAliConfResult result = (TCreateAliConfResult) rspContent;
                 if (1000 == result.MainParam.dwErrorID){
                     String confNum = result.AssParam.basetype;
@@ -120,7 +120,6 @@ public class AlirtcManager extends Caster<Msg> {
                 }else{
                     reportFailed(-1, resultListener);
                 }
-                return true;
             }
         }, resultListener, new TCreateAliConfParam(2, confName, duration, true));
     }
@@ -136,7 +135,7 @@ public class AlirtcManager extends Caster<Msg> {
     public void joinConf(String confNum, IResultListener resultListener){
         req(Msg.JoinConf, new SessionProcessor<Msg>() {
             @Override
-            public boolean onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TJoinConfResult joinConfResult = (TJoinConfResult) rspContent;
                 if (joinConfResult.bSuccess){
 //                    AliConfParam para = joinConfResult.tAliJoinConfParam;
@@ -161,7 +160,6 @@ public class AlirtcManager extends Caster<Msg> {
                 }else{
                     reportFailed(-1, resultListener);
                 }
-                return true;
             }
         }, resultListener, confNum);
     }
