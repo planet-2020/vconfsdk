@@ -95,6 +95,10 @@ final class ToDoConverter {
         to.achName = confPara.confName;
         to.dwDuration = confPara.duration;
         to.dwBitrate = confPara.bAudio ? 64 : 4 * 1024;
+
+        // 最大与会方数填0，由平台决定实际与会方数。（需求要求的）
+        to.dwMaxJoinMt = 0;
+
         // 数据协作
         TMTDCSAttribute tDCSAttr = new TMTDCSAttribute();
         tDCSAttr.emDCSMode = confPara.enableDC ? EmDcsConfMode.emConfModeAuto : EmDcsConfMode.emConfModeStop;
