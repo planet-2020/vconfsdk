@@ -12,16 +12,11 @@ import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import static com.kedacom.vconf.sdk.annotation.Request.GET;
 
 
-/**
- * Created by Sissi on 2019/7/19.
- * 启动模块消息定义。
- */
-
 @Message(
         module = "UG"
 )
 enum Msg {
-    /**启动业务组件功能模块
+    /**启动（升级）服务
      * */
     @Request(method = "SYSStartService",
             owner = MethodOwner.MtServiceCfgCtrl,

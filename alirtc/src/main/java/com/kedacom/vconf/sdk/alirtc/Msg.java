@@ -13,11 +13,6 @@ import com.kedacom.vconf.sdk.common.type.TNetAddr;
 import static com.kedacom.vconf.sdk.annotation.Request.GET;
 
 
-/**
- * Created by Sissi on 2019/7/19.
- * 启动模块消息定义。
- */
-
 @Message(
         module = "ALIRTC"
 )
@@ -42,16 +37,13 @@ enum Msg {
                     StringBuffer.class},
             userParas = {TNetAddr.class,
                     TMtRegistCsvInfo.class},
-            rspSeq = "LoginStateChanged"
+            rspSeq = "LoginRsp"
             )
     Login,
 
-    /**
-     * 登录状态变更
-     * */
     @Response(id = "RegResultNtf",
             clz = TRegResultNtf.class)
-    LoginStateChanged,
+    LoginRsp,
 
     /**
      * 注销CSV
@@ -60,9 +52,13 @@ enum Msg {
             owner = MethodOwner.ConfCtrl,
             paras = StringBuffer.class,
             userParas = TNetAddr.class,
-            rspSeq = "LoginStateChanged"
+            rspSeq = "LogoutRsp"
     )
     Logout,
+
+    @Response(id = "RegResultNtf",
+            clz = TRegResultNtf.class)
+    LogoutRsp,
 
 
     /** 创会
