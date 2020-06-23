@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '1.2.0-SNAPSHOT'
+version = '1.2.1-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -9,5 +9,5 @@ android {
 }
 
 dependencies {
-    implementation 'com.kedacom.vconf.sdk:utils:1.2.0-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:utils:1.2.2-SNAPSHOT'
 }
