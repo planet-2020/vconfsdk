@@ -1,10 +1,12 @@
 package com.kedacom.vconf.sdk.alirtc;
 
 import android.app.Application;
-import android.content.Context;
 
 import androidx.annotation.NonNull;
 
+import com.alibaba.alimeeting.uisdk.AMUIMeetingJoinConfig;
+import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.AliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfResult;
@@ -16,14 +18,15 @@ import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmRegFailedReason;
 import com.kedacom.vconf.sdk.common.type.TNetAddr;
-
 import java.util.Map;
+
+import okhttp3.internal.platform.Platform;
 
 public class AlirtcManager extends Caster<Msg> {
     private static AlirtcManager instance = null;
-    private Context context;
+    private Application context;
 
-    private AlirtcManager(Context ctx) {
+    private AlirtcManager(Application ctx) {
         context = ctx;
     }
 
@@ -138,20 +141,51 @@ public class AlirtcManager extends Caster<Msg> {
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TJoinConfResult joinConfResult = (TJoinConfResult) rspContent;
                 if (joinConfResult.bSuccess){
-//                    AliConfParam para = joinConfResult.tAliJoinConfParam;
+                    AliConfParam para = joinConfResult.tAliJoinConfParam;
+
+
+                    AMUIMeetingJoinConfig.Builder builder = new AMUIMeetingJoinConfig.Builder()
+                            .setMeetingCode(para.achConfCode)
+                            .setUserId(para.achUsrId)
+                            .setUserName("userName")
+//                            .setMeetingDetailConfig(
+//                                    AMUIMeetingDetailConfig(meetingInfo.clientAppId, meetingInfo.meetingToken,meetingInfo.meetingDomain, meetingInfo.meetingCode,meetingInfo.meetingUUID, meetingInfo.memberUUID)
+//                            )
+                            .setOpenBeautifyDefault(true)
+                            .setAppIdentifier("appTag")
+                            .setAppVersion("0.1.0")
+                            .setAppNotifyIconRes(R.drawable.notification_icon)
+                            .setOpenCameraDefault(true)
+                            .setMuteAudioDefault(false);
+//                            .setMeetingDetail(detail);
+
+
 //                    AliMeetingJoinConfig aliMeetingJoinConfig = new AliMeetingJoinConfig.Builder()
-//                            .userId(para.achUsrId)
-//                            .securityTransport(false)
-//                            .openCameraDefault(true)
-//                            .muteAudioDefault(false)
-//                            .onlyMasterCanHangUp(true)
-//                            .onlyMasterCanMuteAudio(true)
-//                            .meetingCode(para.achConfCode)
-//                            .meetingDetailConfig(para.achConfAppid, para.achConfToken, para.achConfDomain,
-//                                    para.achConfCode, para.achConfuuid, para.achMemuuid, null)
-//                            .builder();
+//                            .setAppResName(R.string.appName)
+//                            .setAppNotifyIconRes(R.drawable.notification_icon)
+//                            .setUserId(para.achUsrId)
+//                            .setMeetingCode(para.achConfCode)
+//                            .setEnableVideo(true)
+//                            .setOpenCameraDefault(true)
+//                            .setMuteAudioDefault(false)
+//                            .setOpenSpeakerDefault(true)
+//                            .setOpenBeautifyDefault(true)
+//                            .setOnlyMasterCanMuteAudio(true)
+//                            .setOnlyMasterCanHangUp(true)
 //
-//                    AliMeetingUIManager.joinMeeting(context, aliMeetingJoinConfig);
+////                            .userId(para.achUsrId)
+////                            .securityTransport(false)
+////                            .openCameraDefault(true)
+////                            .muteAudioDefault(false)
+////                            .onlyMasterCanHangUp(true)
+////                            .onlyMasterCanMuteAudio(true)
+////                            .meetingCode(para.achConfCode)
+////                            .meetingDetailConfig(para.achConfAppid, para.achConfToken, para.achConfDomain,
+////                                    para.achConfCode, para.achConfuuid, para.achMemuuid, null)
+//
+//                            .builder();
+
+                    AliMeetingUIManager.joinMeeting(context, builder.builder());
 
                     reportSuccess(null, resultListener); // FIXME 等joinMeeting加入阿里会议成功后再上报
                     req(Msg.ReportConfState, null,null, confNum, true); // FIXME 等加入阿里会议成功后再上报
@@ -162,6 +196,7 @@ public class AlirtcManager extends Caster<Msg> {
                 }
             }
         }, resultListener, confNum);
+
     }
 
 
@@ -177,6 +212,9 @@ public class AlirtcManager extends Caster<Msg> {
     private void initAliRtcSDK() {
         //初始化分为两部分，
         //2. UI配置，目前仅支持邀请人定制，如果不设置AliMeetingUIManager.uiController， 则没有参会人列表不会有邀请人选项
+        AliMeetingUIManager.initManager(context);
+
+
 //        AliMeetingUIManager.setUiController(new AliMeetingUIManager.AliMeetingUiController() {
 //            @Override
 //            public void onInviteAction(@NotNull View view, @NotNull FragmentActivity fragmentActivity, @NotNull AliMeetingBrief aliMeetingBrief) {

@@ -80,4 +80,33 @@ public class UpgradeManager extends Caster<Msg> {
         }, resultListener, checkUpgradePara);
     }
 
+
+    /**
+     * 下载升级包
+     * @param saveDir 升级包存放目录
+     * @param versionId 版本id，由checkUpgrade的返回结果中获取。
+     * */
+    public void downloadUpgrade(String saveDir, int versionId, IResultListener resultListener){
+        req(Msg.DownloadUpgrade, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+
+            }
+        }, resultListener, saveDir, versionId);
+    }
+
+
+    /**
+     * 取消升级
+     * */
+    public void cancelUpgrade(IResultListener resultListener){
+        req(Msg.CancelUpgrade, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                reportSuccess(null, resultListener);
+            }
+        }, resultListener);
+    }
+
+
 }
