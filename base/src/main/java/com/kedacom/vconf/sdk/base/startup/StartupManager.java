@@ -9,10 +9,13 @@ import com.kedacom.kdv.mt.mtapi.IMtcCallback;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.CrystalBall;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
-import com.kedacom.vconf.sdk.base.startup.bean.transfer.*;
+import com.kedacom.vconf.sdk.base.startup.bean.transfer.EmAuthType;
+import com.kedacom.vconf.sdk.base.startup.bean.transfer.EmClientAppType;
+import com.kedacom.vconf.sdk.base.startup.bean.transfer.EmNetTransportType;
+import com.kedacom.vconf.sdk.base.startup.bean.transfer.MtLoginMtParam;
+import com.kedacom.vconf.sdk.base.startup.bean.transfer.TMTLoginMtResult;
 import com.kedacom.vconf.sdk.common.bean.TerminalType;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
-import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetworkHelper;
 
@@ -21,9 +24,7 @@ import org.json.JSONObject;
 
 import java.util.Map;
 
-/**
- * Created by Sissi on 2019/7/19
- */
+
 public class StartupManager extends Caster<Msg> {
     private static StartupManager instance = null;
     private Context context;
@@ -139,25 +140,6 @@ public class StartupManager extends Caster<Msg> {
 
         started = true;
     }
-
-    /**
-     * 设置是否启用telnet调试
-     * */
-    public void enableTelnet(boolean enable, IResultListener resultListener){
-        BaseTypeBool baseTypeBool = new BaseTypeBool(enable);
-        req(Msg.SetTelnetDebugEnable, new SessionProcessor<Msg>() {
-            @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                boolean enabled = ((BaseTypeBool) rspContent).basetype;
-                if (enabled){
-                    reportSuccess(null, resultListener);
-                }else{
-                    reportFailed(-1, resultListener);
-                }
-            }
-        }, resultListener, baseTypeBool);
-    }
-
 
 
     private EmNetTransportType convertTransType(int type){

@@ -6,15 +6,11 @@ import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
-import com.kedacom.vconf.sdk.base.startup.bean.transfer.*;
+import com.kedacom.vconf.sdk.base.startup.bean.transfer.MtLoginMtParam;
+import com.kedacom.vconf.sdk.base.startup.bean.transfer.TMTLoginMtResult;
+import com.kedacom.vconf.sdk.base.startup.bean.transfer.TNetWorkInfo;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
-import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 
-
-/**
- * Created by Sissi on 2019/7/19.
- * 启动模块消息定义。
- */
 
 @Message(
         module = "SU"
@@ -102,22 +98,6 @@ enum Msg {
             userParas = TNetWorkInfo.class
     )
     SetNetWorkCfg,
-
-
-    /**设置是否启用telnet调试*/
-    @Request(method = "SetUseOspTelnetCfgCmd",
-            owner = Atlas.ConfigCtrl,
-            paras = StringBuffer.class,
-            userParas = BaseTypeBool.class, // true启用
-            rspSeq = "SetTelnetDebugEnableRsp"
-    )
-    SetTelnetDebugEnable,
-
-    /**设置是否启用telnet调试响应*/
-    @Response(id = "SetUseOspTelnetCfg_Ntf",
-            clz = BaseTypeBool.class)
-    SetTelnetDebugEnableRsp,
-
 
     END;
 

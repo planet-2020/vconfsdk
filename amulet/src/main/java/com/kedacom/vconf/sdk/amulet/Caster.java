@@ -124,13 +124,14 @@ public abstract class Caster<T extends Enum<T>> implements
          * 收到响应
          * @param rsp 响应ID
          * @param rspContent 响应内容，具体类型由响应ID决定。
-         * @param isConsumed 是否已被消费。出参。默认是已消费。 */
+         * @param isConsumed 是否已被消费。出参。true已消费，默认是true。 若未消费该消息继续向下流转到其他会话或通知处理器
+         * */
         default void onRsp(T rsp, Object rspContent, IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
 
         /**
          * 会话超时
          * @param isConsumed 是否已被消费。出参。默认是已消费。
-         * @return 是否已消费。true已消费。若未消费则Caster会接管处理——上报用户已超时。
+         * @return 是否已被消费。出参。true已消费，默认是true。若未消费则Caster会接管处理——上报用户已超时。
          * */
         default void onTimeout(IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
     }
@@ -152,9 +153,10 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
     /**
-     * 会话请求。
+     * 会话请求（异步请求）
      * NOTE: 不同于{@link #set(Enum, Object...)}和{@link #get(Enum, Object...)}，
-     * 该接口是异步的，响应通过rspProcessor反馈。
+     * 该接口是异步的不会阻塞调用者；
+     * 该接口返回不代表请求已执行，请求结果通过rspProcessor反馈。
      * @param req 请求Id
      * @param sessionProcessor 会话处理器。为null则表示不关注响应或没有响应。
      * @param reqParas 请求参数列表，可以没有。
@@ -262,19 +264,19 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
     /**
-     * 设置请求。
-     * 用于设置配置，或者其它需要同步执行native方法的场景。
-     * 该接口是同步的，若下层natiev方法实现耗时则调用者被阻塞，设置结果在方法返回时即生效。
+     * 同步请求（一般用于设置配置）
+     * 该接口是同步的，若下层native方法实现耗时则调用者被阻塞。接口返回请求完成。
      * @param set 请求消息。
      * @param paras 参数。
+     * @see #req(Enum, SessionProcessor, IResultListener, Object...)
      * */
     protected void set(T set, Object... paras){
         commandFairy.set(prefixMsg(set.name()), paras);
     }
 
     /**
-     * 获取（配置）请求
-     * 该接口是同步的，若下层natiev方法实现耗时则调用者被阻塞，请求结果通过返回值反馈给调用者。
+     * 获取配置请求
+     * 该接口是同步的，若下层native方法实现耗时则调用者被阻塞。接口返回请求完成。
      * @param get 请求消息。
      * @param paras 参数。可以为空。
      * @return 请求结果。
