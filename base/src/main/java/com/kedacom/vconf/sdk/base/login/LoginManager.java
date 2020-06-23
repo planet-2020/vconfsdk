@@ -97,11 +97,13 @@ public class LoginManager extends Caster<Msg> {
                                                         if (res.MainParam.dwErrorID == 1000){
                                                             reportSuccess(null, resultListener);
                                                         }else{
+                                                            logoutAps(null);
                                                             reportFailed(-1, resultListener);
                                                         }
                                                     }
                                                 }, resultListener, new TMTWeiboLogin(username, password));
                                             }else{
+                                                logoutAps(null);
                                                 reportFailed(-1, resultListener);
                                             }
                                         }
