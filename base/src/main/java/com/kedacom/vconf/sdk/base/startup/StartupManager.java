@@ -144,8 +144,7 @@ public class StartupManager extends Caster<Msg> {
      * 设置是否启用telnet调试
      * */
     public void enableTelnet(boolean enable, IResultListener resultListener){
-        BaseTypeBool baseTypeBool = new BaseTypeBool();
-        baseTypeBool.basetype = enable;
+        BaseTypeBool baseTypeBool = new BaseTypeBool(enable);
         req(Msg.SetTelnetDebugEnable, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
