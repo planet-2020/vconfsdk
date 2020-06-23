@@ -39,7 +39,7 @@ final class CommandFairy implements IFairy.ICommandFairy{
             sb.append(methodParas[i]).append(", ");
         }
         String methodName = magicBook.getReqId(reqName);
-        Log.d(TAG, String.format("-=->| %s(%s) \nparas={%s}", reqName, methodName, sb));
+        Log.d(TAG, String.format(" -=->| %s(%s) \nparas={%s}", reqName, methodName, sb));
         crystalBall.spell(magicBook.getNativeMethodOwner(reqName), methodName, methodParas, nativeParaClasses);
     }
 
@@ -77,9 +77,9 @@ final class CommandFairy implements IFairy.ICommandFairy{
             sb.append(nativeParas[i]).append(", ");
         }
         String methodName = magicBook.getReqId(reqName);
-        Log.d(TAG, String.format("-=-> %s(%s) \nparas={%s}", reqName, methodName, sb));
+        Log.d(TAG, String.format(" -=-> %s(%s) \nparas={%s}", reqName, methodName, sb));
         crystalBall.spell(magicBook.getNativeMethodOwner(reqName), methodName, nativeParas, nativeParaClasses);
-        Log.d(TAG, String.format("<-=- %s \nresult=%s", reqName, nativeParas[nativeParas.length-1]));
+        Log.d(TAG, String.format(" <-=- %s \nresult=%s", reqName, nativeParas[nativeParas.length-1]));
 
         Class<?>[] userParaTypes = magicBook.getUserParaClasses(reqName);
         return Kson.fromJson(nativeParas[nativeParas.length-1].toString(), userParaTypes[userParaTypes.length-1]); // NOTE: 最后一个参数为出参！下层通过该参数反馈用户结果，必须遵守这个约定
