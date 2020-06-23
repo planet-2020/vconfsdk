@@ -28,7 +28,7 @@ public class SettingsManager extends Caster<Msg> {
      * */
     public void enableTelnet(boolean enable, IResultListener resultListener){
         BaseTypeBool baseTypeBool = new BaseTypeBool(enable);
-        req(Msg.SetTelnetDebugEnable, new SessionProcessor<Msg>() {
+        req(Msg.EnableTelnet, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 boolean enabled = ((BaseTypeBool) rspContent).basetype;
@@ -39,6 +39,16 @@ public class SettingsManager extends Caster<Msg> {
                 }
             }
         }, resultListener, baseTypeBool);
+    }
+
+
+    /**
+     * telnet调试是否已开启
+     * */
+    public boolean isTelnetEnabled(){
+        BaseTypeBool baseTypeBool = (BaseTypeBool) get(Msg.IsTelnetEnabled);
+        if (baseTypeBool==null) return false;
+        return baseTypeBool.basetype;
     }
 
 }

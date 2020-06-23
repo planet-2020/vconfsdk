@@ -18,13 +18,22 @@ enum Msg {
             owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = BaseTypeBool.class, // true启用
-            rspSeq = "SetTelnetDebugEnableRsp"
+            rspSeq = "EnableTelnetRsp"
     )
-    SetTelnetDebugEnable,
+    EnableTelnet,
 
     @Response(id = "SetUseOspTelnetCfg_Ntf",
             clz = BaseTypeBool.class)
-    SetTelnetDebugEnableRsp,
+    EnableTelnetRsp,
+
+    /**判断telnet调试是否已启用*/
+    @Request(method = "GetUseOspTelnetCfg",
+            owner = Atlas.ConfigCtrl,
+            paras = StringBuffer.class,
+            userParas = BaseTypeBool.class, // true已启用
+            isGet = true
+    )
+    IsTelnetEnabled,
 
 
     END;
