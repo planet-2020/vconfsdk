@@ -4,8 +4,14 @@ import android.app.Application;
 
 import androidx.annotation.NonNull;
 
+import com.alibaba.alimeeting.uisdk.AMUIClientStatusEvent;
+import com.alibaba.alimeeting.uisdk.AMUIErrorCode;
+import com.alibaba.alimeeting.uisdk.AMUIFinishCode;
+import com.alibaba.alimeeting.uisdk.AMUIMeetingCallBack;
+import com.alibaba.alimeeting.uisdk.AMUIMeetingDetailConfig;
 import com.alibaba.alimeeting.uisdk.AMUIMeetingJoinConfig;
 import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
+import com.aliwork.meeting.api.member.AMSDKMeetingClient;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.AliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
@@ -18,9 +24,12 @@ import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmRegFailedReason;
 import com.kedacom.vconf.sdk.common.type.TNetAddr;
-import java.util.Map;
+import com.kedacom.vconf.sdk.utils.log.KLog;
 
-import okhttp3.internal.platform.Platform;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Map;
 
 public class AlirtcManager extends Caster<Msg> {
     private static AlirtcManager instance = null;
@@ -143,49 +152,53 @@ public class AlirtcManager extends Caster<Msg> {
                 if (joinConfResult.bSuccess){
                     AliConfParam para = joinConfResult.tAliJoinConfParam;
 
-
                     AMUIMeetingJoinConfig.Builder builder = new AMUIMeetingJoinConfig.Builder()
                             .setMeetingCode(para.achConfCode)
                             .setUserId(para.achUsrId)
                             .setUserName("userName")
-//                            .setMeetingDetailConfig(
-//                                    AMUIMeetingDetailConfig(meetingInfo.clientAppId, meetingInfo.meetingToken,meetingInfo.meetingDomain, meetingInfo.meetingCode,meetingInfo.meetingUUID, meetingInfo.memberUUID)
-//                            )
+                            .setMeetingDetailConfig(
+                                    new AMUIMeetingDetailConfig(
+                                            para.achClientAppid,
+                                            para.achConfToken,
+                                            para.achConfDomain,
+                                            para.achConfCode,
+                                            para.achConfuuid,
+                                            para.achMemuuid
+                                    )
+                            )
                             .setOpenBeautifyDefault(true)
                             .setAppIdentifier("appTag")
                             .setAppVersion("0.1.0")
                             .setAppNotifyIconRes(R.drawable.notification_icon)
                             .setOpenCameraDefault(true)
-                            .setMuteAudioDefault(false);
-//                            .setMeetingDetail(detail);
+                            .setMuteAudioDefault(false)
+//                            .setMeetingDetail(detail)
+                            .setMeetingCallBack(new AMUIMeetingCallBack() {
+                                @Override
+                                public void onClientStatusChanged(@NotNull AMSDKMeetingClient amsdkMeetingClient, @NotNull AMUIClientStatusEvent amuiClientStatusEvent) {
+                                    KLog.p("#####onClientStatusChanged %s", amuiClientStatusEvent);
+                                }
 
+                                @Override
+                                public void onMeetingJoined() {
+                                    KLog.p("#####onMeetingJoined");
+                                }
 
-//                    AliMeetingJoinConfig aliMeetingJoinConfig = new AliMeetingJoinConfig.Builder()
-//                            .setAppResName(R.string.appName)
-//                            .setAppNotifyIconRes(R.drawable.notification_icon)
-//                            .setUserId(para.achUsrId)
-//                            .setMeetingCode(para.achConfCode)
-//                            .setEnableVideo(true)
-//                            .setOpenCameraDefault(true)
-//                            .setMuteAudioDefault(false)
-//                            .setOpenSpeakerDefault(true)
-//                            .setOpenBeautifyDefault(true)
-//                            .setOnlyMasterCanMuteAudio(true)
-//                            .setOnlyMasterCanHangUp(true)
-//
-////                            .userId(para.achUsrId)
-////                            .securityTransport(false)
-////                            .openCameraDefault(true)
-////                            .muteAudioDefault(false)
-////                            .onlyMasterCanHangUp(true)
-////                            .onlyMasterCanMuteAudio(true)
-////                            .meetingCode(para.achConfCode)
-////                            .meetingDetailConfig(para.achConfAppid, para.achConfToken, para.achConfDomain,
-////                                    para.achConfCode, para.achConfuuid, para.achMemuuid, null)
-//
-//                            .builder();
+                                @Override
+                                public void onMeetingFinished(@NotNull AMUIFinishCode amuiFinishCode, @Nullable String s) {
+                                    KLog.p("#####onMeetingFinished %s, %s", amuiFinishCode, s);
+                                }
 
-                    AliMeetingUIManager.joinMeeting(context, builder.builder());
+                                @Override
+                                public void onJoinMeetingError(@NotNull AMUIErrorCode amuiErrorCode, @Nullable String s) {
+                                    KLog.p("#####onJoinMeetingError %s, %s", amuiErrorCode, s);
+                                }
+                            });
+
+                    AMUIMeetingJoinConfig joinConfig = builder.builder();
+                    KLog.p("joinConfig=%s", joinConfig);
+
+                    AliMeetingUIManager.joinMeeting(context, joinConfig);
 
                     reportSuccess(null, resultListener); // FIXME 等joinMeeting加入阿里会议成功后再上报
                     req(Msg.ReportConfState, null,null, confNum, true); // FIXME 等加入阿里会议成功后再上报
