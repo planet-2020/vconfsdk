@@ -9,31 +9,31 @@ import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 
 
 @Message(
-        module = "SET"
+        module = "ST"
 )
 enum Msg {
 
-    /**设置是否启用telnet调试*/
+    /**设置是否开启交互式调试*/
     @Request(method = "SetUseOspTelnetCfgCmd",
             owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = BaseTypeBool.class, // true启用
-            rspSeq = "EnableTelnetRsp"
+            rspSeq = "EnableInteractiveDebugRsp"
     )
-    EnableTelnet,
+    SetEnableInteractiveDebug,
 
     @Response(id = "SetUseOspTelnetCfg_Ntf",
             clz = BaseTypeBool.class)
-    EnableTelnetRsp,
+    SetEnableInteractiveDebugRsp,
 
-    /**判断telnet调试是否已启用*/
+    /**判断交互式调试是否已开启*/
     @Request(method = "GetUseOspTelnetCfg",
             owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = BaseTypeBool.class, // true已启用
             isGet = true
     )
-    IsTelnetEnabled,
+    HasEnabledInteractiveDebug,
 
 
     END;

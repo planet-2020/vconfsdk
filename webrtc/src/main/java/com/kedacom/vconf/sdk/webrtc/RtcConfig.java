@@ -65,7 +65,7 @@ public final class RtcConfig {
     private static RtcConfig instance;
 
     private RtcConfig(Context context){
-        rtcUserConfig = context.getSharedPreferences("Config", Context.MODE_PRIVATE);
+        rtcUserConfig = context.getSharedPreferences("WebRTCConfig", Context.MODE_PRIVATE);
         editor = rtcUserConfig.edit();
     }
 
