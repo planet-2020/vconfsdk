@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.base.settings;
+package com.kedacom.vconf.sdk.base.security;
 
 
 import com.kedacom.vconf.sdk.amulet.Atlas;
@@ -9,7 +9,7 @@ import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 
 
 @Message(
-        module = "ST"
+        module = "SEC"
 )
 enum Msg {
 
