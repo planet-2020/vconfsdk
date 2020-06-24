@@ -16,9 +16,7 @@ import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 
 import java.util.Collections;
 
-/**
- * Created by Sissi on 2019/7/19
- */
+
 public class LoginManager extends Caster<Msg> {
     private static LoginManager instance = null;
     private Context context;
