@@ -35,7 +35,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     private final Set<Session> sessions = new LinkedHashSet<>();
     private final Map<T, NtfProcessor<T>> ntfProcessorMap = new LinkedHashMap<>();
-    private final Map<T, LinkedHashSet<Object>> ntfListenersMap = new LinkedHashMap<>();
+    private final Map<T, Set<Object>> ntfListenersMap = new LinkedHashMap<>();
 
     private ListenerLifecycleObserver listenerLifecycleObserver;
 
@@ -297,6 +297,7 @@ public abstract class Caster<T extends Enum<T>> implements
         Set<Object> listeners = ntfListenersMap.get(ntfId);
         if (null == listeners){
             listeners = new LinkedHashSet<>();
+            ntfListenersMap.put(ntfId, listeners);
         }
         listeners.add(ntfListener);
         listenerLifecycleObserver.tryObserve(ntfListener);
@@ -322,6 +323,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 删除监听器。
+     * NOTE：该接口会删除该listener注册的所有监听器，包括各个请求结果监听器，通知监听器。
      * */
     public void delListener(@NonNull Object listener){
         delResultListener(listener);
