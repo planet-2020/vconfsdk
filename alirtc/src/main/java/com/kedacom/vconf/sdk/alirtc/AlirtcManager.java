@@ -182,27 +182,25 @@ public class AlirtcManager extends Caster<Msg> {
                                 @Override
                                 public void onMeetingJoined() {
                                     KLog.p("#####onMeetingJoined");
+                                    req(Msg.ReportConfState, null,null, confNum, true);
+                                    req(Msg.ReportVoiceState, null,null, confNum, false, false);  // FIXME 根据配置填
+                                    reportSuccess(null, resultListener);  // FIXME resultListener此时可能已销毁
                                 }
 
                                 @Override
                                 public void onMeetingFinished(@NotNull AMUIFinishCode amuiFinishCode, @Nullable String s) {
                                     KLog.p("#####onMeetingFinished %s, %s", amuiFinishCode, s);
+                                    req(Msg.ReportConfState, null,null, confNum, false);
                                 }
 
                                 @Override
                                 public void onJoinMeetingError(@NotNull AMUIErrorCode amuiErrorCode, @Nullable String s) {
                                     KLog.p("#####onJoinMeetingError %s, %s", amuiErrorCode, s);
+                                    reportFailed(-1, resultListener); // FIXME resultListener此时可能已销毁
                                 }
                             });
 
-                    AMUIMeetingJoinConfig joinConfig = builder.builder();
-                    KLog.p("joinConfig=%s", joinConfig);
-
-                    AliMeetingUIManager.joinMeeting(context, joinConfig);
-
-                    reportSuccess(null, resultListener); // FIXME 等joinMeeting加入阿里会议成功后再上报
-                    req(Msg.ReportConfState, null,null, confNum, true); // FIXME 等加入阿里会议成功后再上报
-                    req(Msg.ReportVoiceState, null,null, confNum, false, false); // FIXME 等加入阿里会议成功后再上报
+                    AliMeetingUIManager.joinMeeting(context, builder.builder());
 
                 }else{
                     reportFailed(-1, resultListener);
