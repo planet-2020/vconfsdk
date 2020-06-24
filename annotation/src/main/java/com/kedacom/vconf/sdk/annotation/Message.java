@@ -7,10 +7,10 @@ import java.lang.annotation.Target;
 
 /**
  * 用来标记消息定义枚举类.
+ * 消息包括请求{@link Request}、响应{@link Response}、通知{@link Notification}
  *
  * Created by Sissi on 2018/9/5.
  */
-
 
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.CLASS)

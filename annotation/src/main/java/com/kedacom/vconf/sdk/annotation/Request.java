@@ -6,20 +6,16 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 用来标记请求.
- *
- * 请求可以是同步的，也可以是异步的。
- * 同步请求即为普通的方法调用，方法调用结束请求结果产生请求结束，如设置/获取配置。同步请求没有响应。
- * 异步请求是消息交互模式，方法调用结束后请求发出等待响应，收齐请求对应的响应后，请求结束。异步请求也可以没有响应。
- *
- * Created by Sissi on 2018/9/3.
+ * 用来标记一条请求.
+ * 请求的结果往往通过响应{@link Response}反馈。
+ * 请求也可能没有响应，常见的如直接获取本地配置。
  */
 
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
 public @interface Request {
 
-    /** 对应的native方法名称
+    /** 请求对应的native方法名称，请求最终通过该方法被执行。
      * 如LoginManager.java中定义如下方法：
      * public static native void login(String jsonLoginPara);
      * 则method为"login"
@@ -36,8 +32,8 @@ public @interface Request {
 
     /** 对应的native方法所需参数类型
      * 如LoginManager.java中定义如下方法：
-     * public static native void login(String jsonLoginPara， String jsonLoginPara2);
-     * 则paras={String.class, String.class}
+     * public static native void login(String jsonLoginPara， String jsonLoginPara2, int para3);
+     * 则paras={String.class, String.class, int.class}
      * */
     Class[] paras() default {};
 
@@ -51,22 +47,23 @@ public @interface Request {
      则paras和userParas的赋值分别为paras={StringBuffer.class, StringBuffer.class}, userParas={LoginPara1.class, LoginPara2.class}
      框架在调用native方法前自动将LoginPara对象转为StringBuffer类型json字符串。
 
-     NOTE: 对于{@link #isGet()}为true的情形，约定{@link #paras()}最后一个值为传出参数类型，userParas最后一个值接收该传出参数并作为结果返回给用户。
-     如有如下native方法和用户方法定义：
-     public static native void DcsGetServerCfg(String serverId, StringBuffer outpara); // NOTE:最后一个参数为传出参数，native方法使用传出参数反馈请求结果。
+     NOTE: 对于{@link #isGet()}为true的情形，约定{@link #paras()}最后一个值为传出参数类型，userParas最后一个值接收该传出参数json转换后的结果返回给用户。
+     如有如下native方法：
+     public static native void DcsGetServerCfg(String serverId, StringBuffer outPara); // NOTE:最后一个参数为传出参数，native方法使用传出参数反馈请求结果。
+     对应的用户接口：
      public DCServerCfg getServerCfg(String serverId); // NOTE: 用户接口比native方法少一个传出参数，而通过返回值接受结果。
      则paras和userParas的赋值分别为
      paras={String.class, StringBuffer.class},
      userParas={String.class,
      DCServerCfg.class // NOTE: 用户接口并不需要传入该参数，而是通过返回值接受请求结果，此为用户接口的返回值类型。
      }
-     框架在反馈用户结果前自动将StringBuffer类型json字符串outpara转为DCServerCfg对象。
+     框架在反馈用户结果前自动将StringBuffer类型json字符串outPara转为DCServerCfg对象。
 
      userPara到para转换规则按优先级从高到低如下：
      1、若userPara为基本类型包装类型，para为对应的基本类型，则将包装类型解包；
      2、若userPara为String，para为StringBuffer则将String转为StringBuffer；
      3、若para为String或StringBuffer，则将userPara转为String或StringBuffer类型的json字符串；
-     4、若para为int且userPara为枚举则将该枚举转为json字符串再转为整型（NOTE：这种情况下用户需保证枚举到json的转换已定制化为转为整型）；
+     4、若para为int且userPara为枚举则尝试使用已注册的json转换器将该枚举转为int；
      5、其余情形不做转换；
      */
     Class[] userParas() default {};

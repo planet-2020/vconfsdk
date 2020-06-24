@@ -51,30 +51,30 @@ class Helper {
         Object[] nativeParas = new Object[nativeParaTypes.length];
         for (int i=0; i<nativeParaTypes.length; ++i){
             Object userPara = userParas[i];
-            Class<?> methodParaType = nativeParaTypes[i];
-            KLog.p(KLog.DEBUG,"userPara[%s].class=%s, methodPara[%s].class=%s", i, null==userPara? null : userPara.getClass(), i, methodParaType);
+            Class<?> nativeParaType = nativeParaTypes[i];
+            KLog.p(KLog.DEBUG,"userPara[%s].class=%s, methodPara[%s].class=%s", i, null==userPara? null : userPara.getClass(), i, nativeParaType);
             if (null == userPara){
-                nativeParas[i] = methodParaType.isPrimitive() ? PrimitiveTypeHelper.getDefaultValue(methodParaType) : null;
-            }else if (userPara.getClass() == methodParaType
-                    || methodParaType.isAssignableFrom(userPara.getClass())){
+                nativeParas[i] = nativeParaType.isPrimitive() ? PrimitiveTypeHelper.getDefaultValue(nativeParaType) : null;
+            }else if (userPara.getClass() == nativeParaType
+                    || nativeParaType.isAssignableFrom(userPara.getClass())){
                 nativeParas[i] = userPara;
             }else {
-                if (StringHelper.isStringCompatible(methodParaType)) {
+                if (StringHelper.isStringCompatible(nativeParaType)) {
                     if (StringHelper.isStringCompatible(userPara.getClass())) {
-                        nativeParas[i] = StringHelper.convert2CompatibleType(methodParaType, userPara);
+                        nativeParas[i] = StringHelper.convert2CompatibleType(nativeParaType, userPara);
                     }else {
-                        nativeParas[i] = StringHelper.convert2CompatibleType(methodParaType, Kson.toJson(userPara));
+                        nativeParas[i] = StringHelper.convert2CompatibleType(nativeParaType, Kson.toJson(userPara));
                     }
-                } else if (methodParaType.isPrimitive()) {
-                    if (userPara.getClass() == PrimitiveTypeHelper.getWrapperClass(methodParaType)){
+                } else if (nativeParaType.isPrimitive()) {
+                    if (userPara.getClass() == PrimitiveTypeHelper.getWrapperClass(nativeParaType)){
                         nativeParas[i] = userPara;
-                    }else if (userPara.getClass().isEnum() && methodParaType==int.class) {
+                    }else if (userPara.getClass().isEnum() && nativeParaType==int.class) {
                         nativeParas[i] = Integer.valueOf(Kson.toJson(userPara));
                     }else{
-                        throw new ClassCastException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+methodParaType);
+                        throw new ClassCastException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+nativeParaType);
                     }
                 } else {
-                    throw new ClassCastException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+methodParaType);
+                    throw new ClassCastException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+nativeParaType);
                 }
             }
 
