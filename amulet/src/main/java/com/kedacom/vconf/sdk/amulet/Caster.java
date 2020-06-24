@@ -48,7 +48,7 @@ public abstract class Caster<T extends Enum<T>> implements
         IMagicBook magicBook = null;
         enumT = (Class<T>)((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments()[0];
         try {
-            Class<?> magicBookClz = Class.forName(enumT.getPackage().getName()+".Msg$$Generated");
+            Class<?> magicBookClz = Class.forName(enumT.getPackage().getName()+".MagicBook$$Impl");
             Constructor<?> ctor = magicBookClz.getDeclaredConstructor();
             ctor.setAccessible(true);
             magicBook = (IMagicBook) ctor.newInstance();

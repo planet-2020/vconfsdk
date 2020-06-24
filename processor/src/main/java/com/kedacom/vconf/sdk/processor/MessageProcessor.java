@@ -62,7 +62,7 @@ public class MessageProcessor extends AbstractProcessor {
 
     private String packageName;
 
-    private String className = "Msg$$Generated";
+    private String className = "MagicBook$$Impl";
 
     private Messager messager;
 
