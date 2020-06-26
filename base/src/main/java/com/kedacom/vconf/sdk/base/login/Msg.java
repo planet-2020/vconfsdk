@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.base.login;
 
 import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Module;
+import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.*;
@@ -116,7 +117,7 @@ enum Msg {
     /**
      * 被抢登通知
      * */
-    @Response(name = "RcvUserAnomaly_Ntf",
+    @Notification(name = "RcvUserAnomaly_Ntf",
             clz = BaseTypeInt.class)
     KickedOff,
 

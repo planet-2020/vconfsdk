@@ -15,6 +15,7 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 
 import java.util.Collections;
+import java.util.Set;
 
 
 public class LoginManager extends Caster<Msg> {
@@ -176,4 +177,12 @@ public class LoginManager extends Caster<Msg> {
         }, resultListener, new TMTAccountManagerSystem(username));
     }
 
+    @Override
+    protected void onNotification(Msg ntf, Object ntfContent, Set<Object> ntfListeners) {
+        switch (ntf){
+            case KickedOff:
+                break;
+        }
+    }
+    
 }
