@@ -305,15 +305,15 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 删除通知监听器
+     * @param ntf 监听器监听的通知（一个监听器可能监听多个通知）。若为null则表示任意通知。
+     * @param listener 通知监听器。要删除的监听器对象
      * */
-    protected void delNtfListener(@Nullable T[] ntfIds, Object listener){
-        if (null != ntfIds) {
-            for (T ntfId : ntfIds) {
-                Set<Object> listeners = ntfListenersMap.get(ntfId);
-                if (null != listeners) {
-                    KLog.p(KLog.DEBUG,"delete ntfListener, ntfId=%s, listener=%s", ntfId, listener);
-                    listeners.remove(listener);
-                }
+    protected void delNtfListener(@Nullable T ntf, @NonNull Object listener){
+        if (null != ntf) {
+            Set<Object> listeners = ntfListenersMap.get(ntf);
+            if (null != listeners) {
+                KLog.p(KLog.DEBUG,"delete ntfListener, ntf=%s, listener=%s", ntf, listener);
+                listeners.remove(listener);
             }
         }else{
             for (Set<Object> ntfListeners : ntfListenersMap.values()) {
