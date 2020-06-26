@@ -11,6 +11,7 @@ import com.kedacom.vconf.sdk.base.login.bean.UserDetails;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.*;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
+import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 
@@ -183,6 +184,25 @@ public class LoginManager extends Caster<Msg> {
             case KickedOff:
                 break;
         }
+    }
+
+    /**
+     * 被抢登监听器
+     * */
+    public interface OnKickedOffListener extends ILifecycleOwner {
+        void onKickedOff();
+    }
+    /**
+     * 添加被抢登监听器
+     * */
+    public void addOnKickedOffListener(OnKickedOffListener listener){
+        addNtfListener(Msg.KickedOff, listener);
+    }
+    /**
+     * 删除被抢登监听器
+     * */
+    public void delOnKickedOffListener(OnKickedOffListener listener){
+        delNtfListener(Msg.KickedOff, listener);
     }
 
 }
