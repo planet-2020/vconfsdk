@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.base.startup;
 
 import com.kedacom.kdv.mt.mtapi.IMtcCallback;
 import com.kedacom.vconf.sdk.amulet.Atlas;
+import com.kedacom.vconf.sdk.annotation.Module;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.MtLoginMtParam;
@@ -10,7 +11,7 @@ import com.kedacom.vconf.sdk.base.startup.bean.transfer.TMTLoginMtResult;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.TNetWorkInfo;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
 
-
+@Module(name = "SU")
 enum Msg {
 
     /**设置业务组件工作空间。
