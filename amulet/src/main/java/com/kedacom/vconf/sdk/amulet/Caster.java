@@ -262,9 +262,9 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
     /**
-     * 添加通知监听器
+     * 批量添加通知监听器
      * */
-    protected void addNtfListener(@NonNull T[] ntfIds, @NonNull Object ntfListener){
+    protected void addNtfListeners(@NonNull T[] ntfIds, @NonNull Object ntfListener){
         for (T ntfId : ntfIds){
             addNtfListener(ntfId, ntfListener);
         }
@@ -272,10 +272,42 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
     /**
-     * 获取通知监听器
+     * 删除通知监听器
+     * @param ntf 监听器监听的通知（一个监听器可能监听多个通知）。若为null则表示任意通知。
+     * @param listener 通知监听器。要删除的监听器对象
      * */
-    protected Set<Object> getNtfListeners(T ntfId){
-        return ntfListenersMap.get(ntfId.name());
+    protected void delNtfListener(@NonNull T ntf, @NonNull Object listener){
+        Set<Object> listeners = ntfListenersMap.get(ntf);
+        if (null != listeners) {
+            KLog.p(KLog.DEBUG,"delete ntfListener, ntf=%s, listener=%s", ntf, listener);
+            listeners.remove(listener);
+            if(!containsListener(listener)){
+                listenerLifecycleObserver.unobserve(listener);
+            }
+        }
+    }
+
+
+    /**
+     * 批量删除通知监听器
+     * @param ntf 监听器监听的通知（一个监听器可能监听多个通知）。若为null则表示任意通知。
+     * @param listener 通知监听器。要删除的监听器对象
+     * */
+    protected void delNtfListeners(@Nullable T[] ntf, @NonNull Object listener){
+        if (null != ntf) {
+            Set<Object> listeners = ntfListenersMap.get(ntf);
+            if (null != listeners) {
+                KLog.p(KLog.DEBUG,"delete ntfListener, ntf=%s, listener=%s", ntf, listener);
+                listeners.remove(listener);
+            }
+        }else{
+            for (Set<Object> ntfListeners : ntfListenersMap.values()) {
+                ntfListeners.remove(listener);
+            }
+        }
+        if(!containsListener(listener)){
+            listenerLifecycleObserver.unobserve(listener);
+        }
     }
 
 
@@ -285,7 +317,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * */
     public void delListener(@NonNull Object listener){
         delResultListener(listener);
-        delNtfListener(null, listener);
+        delNtfListeners(null, listener);
     }
 
     /**
@@ -296,28 +328,6 @@ public abstract class Caster<T extends Enum<T>> implements
             if (listener == s.resultListener) {
                 KLog.p(KLog.DEBUG, "delete result listener, req=%s, sid=%s, listener=%s", s.req, s.id, s.resultListener);
                 s.resultListener = null; // 保留会话，仅删除监听器
-            }
-        }
-        if(!containsListener(listener)){
-            listenerLifecycleObserver.unobserve(listener);
-        }
-    }
-
-    /**
-     * 删除通知监听器
-     * @param ntf 监听器监听的通知（一个监听器可能监听多个通知）。若为null则表示任意通知。
-     * @param listener 通知监听器。要删除的监听器对象
-     * */
-    protected void delNtfListener(@Nullable T ntf, @NonNull Object listener){
-        if (null != ntf) {
-            Set<Object> listeners = ntfListenersMap.get(ntf);
-            if (null != listeners) {
-                KLog.p(KLog.DEBUG,"delete ntfListener, ntf=%s, listener=%s", ntf, listener);
-                listeners.remove(listener);
-            }
-        }else{
-            for (Set<Object> ntfListeners : ntfListenersMap.values()) {
-                ntfListeners.remove(listener);
             }
         }
         if(!containsListener(listener)){
