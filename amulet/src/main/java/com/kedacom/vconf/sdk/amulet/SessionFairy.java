@@ -12,7 +12,6 @@ import com.kedacom.vconf.sdk.utils.json.Kson;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 
 
@@ -41,7 +40,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 s.setState(Session.TIMEOUT);
                 sessions.remove(s);
                 Log.d(TAG, String.format("%s <-~-o TIMEOUT", s.id));
-                s.listener.onTimeout(s.reqName, s.reqSn, s.reqPara);
+                s.listener.onTimeout(s.reqId, s.reqSn, s.reqPara);
             }
         }
     };
@@ -58,7 +57,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
     }
 
     @Override
-    public boolean req(IListener listener, String reqName, int reqSn, Object... reqParas) {
+    public boolean req(IListener listener, String reqId, int reqSn, Object... reqParas) {
         if (null == crystalBall){
             KLog.p(KLog.ERROR, "no crystalBall");
             return false;
@@ -71,8 +70,8 @@ final class SessionFairy implements IFairy.ISessionFairy{
             KLog.p(KLog.ERROR, "listener is null");
             return false;
         }
-        if (magicBook.isReqTypeGet(reqName)){
-            KLog.p(KLog.ERROR, "session fairy can not handle GET req %s", reqName);
+        if (magicBook.isGet(reqId)){
+            KLog.p(KLog.ERROR, "session fairy can not handle GET req %s", reqId);
             return false;
         }
         if (null == reqParas){
@@ -80,11 +79,11 @@ final class SessionFairy implements IFairy.ISessionFairy{
             return false;
         }
 
-        if (!Helper.checkUserPara(reqName, reqParas, magicBook)){
+        if (!Helper.checkUserPara(reqId, reqParas, magicBook)){
             return false;
         }
 
-        Session s = new Session(listener, reqSn, reqName, reqParas,magicBook.getTimeout(reqName) * 1000, magicBook.getRspSeqs(reqName));
+        Session s = new Session(listener, reqSn, reqId, reqParas,magicBook.timeout(reqId) * 1000, magicBook.rspSeqs(reqId));
         sessions.add(s);
 
         reqHandler.post(() -> {
@@ -93,14 +92,14 @@ final class SessionFairy implements IFairy.ISessionFairy{
             }
 
             // 用户参数转换为底层方法需要的参数
-            Class<?>[] nativeParaClasses = magicBook.getNativeParaClasses(s.reqName);
+            Class<?>[] nativeParaClasses = magicBook.nativeParaClasses(s.reqId);
             Object[] paras = Helper.convertUserPara2NativePara(s.reqPara, nativeParaClasses);
             StringBuilder sb = new StringBuilder();
             for (Object para : paras) {
                 sb.append(para).append(", ");
             }
-            String methodName = magicBook.getReqId(s.reqName);
-            uiHandler.post(() -> Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqName, methodName, sb)));
+            String methodName = magicBook.reqName(s.reqId);
+            uiHandler.post(() -> Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqId, methodName, sb)));
 
             // 启动超时
             Message msg = Message.obtain();
@@ -109,7 +108,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
             uiHandler.sendMessageDelayed(msg, s.timeoutVal);
 
             // 调用native接口
-            String nativeMethodOwner = magicBook.getNativeMethodOwner(s.reqName);
+            String nativeMethodOwner = magicBook.nativeMethodOwner(s.reqId);
             long nativeCallCostTime = 0;
             long timestamp = System.currentTimeMillis();
             if (null != crystalBall) {
@@ -133,7 +132,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                     uiHandler.removeMessages(MsgId_Timeout, s);
                     Log.d(TAG, String.format("%s <-~-o NO RESPONSE", s.id));
                 }
-                s.listener.onReqSent(hasRsp, s.reqName, s.reqSn, s.reqPara);
+                s.listener.onReqSent(hasRsp, s.reqId, s.reqSn, s.reqPara);
             });
 
         });
@@ -149,7 +148,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 s.setState(Session.CANCELED);
                 uiHandler.removeMessages(MsgId_Timeout, s);
 
-                Log.d(TAG, String.format("%s x-~-> %s", s.id, s.reqName));
+                Log.d(TAG, String.format("%s x-~-> %s", s.id, s.reqId));
                 // 用户很有可能在onMsg回调中调用cancelReq（onMsg回调到上层的onRsp然后用户在onRsp中cancelReq），
                 // 然而onMsg中我们正在遍历sessions，所以我们延迟删除
                 uiHandler.post(() -> {
@@ -168,18 +167,22 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
 
     @Override
-    public boolean onMsg(String msgId, String msgContent) {
+    public boolean onMsg(String msgName, String msgContent) {
         if (null == magicBook){
             return false;
         }
-        List<String> rspNames = magicBook.getRspNames(msgId);
-        if (rspNames==null || rspNames.isEmpty()){
+        Set<String> rspIds = magicBook.rspIds(msgName);
+        if (rspIds==null || rspIds.isEmpty()){
             return false;
         }
 
         boolean bConsumed = false;
         tryConsume:
-        for (String rspName : rspNames) {
+        for (String rspName : rspIds) {
+            Class<?> rspClass = magicBook.rspClass(rspName);
+            if (rspClass == null){
+                continue;
+            }
 
             for (final Session s : sessions) { // 查找期望该响应的会话
                 if (!s.isState(Session.WAITING, Session.RECVING)) {
@@ -211,8 +214,8 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 }
 
                 bConsumed = s.listener.onRsp(gotLast, rspName,
-                        Kson.fromJson(msgContent, magicBook.getRspClazz(rspName)),
-                        s.reqName, s.reqSn, s.reqPara);
+                        Kson.fromJson(msgContent, rspClass),
+                        s.reqId, s.reqSn, s.reqPara);
 
                 if (bConsumed) {
                     s.candidates = candidates; // 更新候选序列
@@ -222,12 +225,12 @@ final class SessionFairy implements IFairy.ISessionFairy{
                             s.setState(Session.END);
                             sessions.remove(s);
                         }
-                        Log.d(TAG, String.format("%s <-~-o %s(%s) \n%s", s.id, rspName, msgId, msgContent));
+                        Log.d(TAG, String.format("%s <-~-o %s(%s) \n%s", s.id, rspName, msgName, msgContent));
                     } else {
                         if (!s.isState(Session.CANCELED)) {
                             s.setState(Session.RECVING);
                         }
-                        Log.d(TAG, String.format("%s <-~- %s(%s) \n%s", s.id, rspName, msgId, msgContent));
+                        Log.d(TAG, String.format("%s <-~- %s(%s) \n%s", s.id, rspName, msgName, msgContent));
                     }
 
                     break tryConsume;
@@ -248,7 +251,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
         private final int id;   // 会话ID
         private final IListener listener;// 会话监听器
         private final int reqSn;        // 请求序列号。上层用来唯一标识一次请求，会话不使用不处理该字段，上报响应时带回给请求者。
-        private final String reqName;   // 请求名称。
+        private final String reqId;   // 请求ID。
         private final Object[] reqPara;   // 请求参数。
         private final int timeoutVal;   // 超时时限。单位：毫秒
         private final String[][] rspSeqs;  // 响应名称序列组。一条请求可能对应多条响应序列，如reqXX——{{rsp1, rsp2},{rsp1,rsp3}}，一次会话只能匹配其中一条序列。
@@ -264,11 +267,11 @@ final class SessionFairy implements IFairy.ISessionFairy{
         private static final int TIMEOUT = 7; // 已超时。最终状态。
         private static final int END = 8;   // 正常结束。最终状态。
 
-        private Session(IListener listener, int reqSn, String reqName, Object[] reqPara, int timeoutVal, String[][] rspSeqs){
+        private Session(IListener listener, int reqSn, String reqId, Object[] reqPara, int timeoutVal, String[][] rspSeqs){
             this.id = count++;
             this.listener = listener;
             this.reqSn = reqSn;
-            this.reqName = reqName;
+            this.reqId = reqId;
             this.reqPara = reqPara;
             this.timeoutVal = timeoutVal>0 ? timeoutVal : 5*1000;
             this.rspSeqs = rspSeqs;

@@ -12,6 +12,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.CLASS)
 public @interface Notification {
-    String id();  // 通知ID
-    Class clz();  // 通知内容（对应的类）
+    String name();  // 通知名称
+    Class clz();    // 通知内容
 }

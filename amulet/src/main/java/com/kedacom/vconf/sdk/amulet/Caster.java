@@ -9,6 +9,7 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -41,6 +42,8 @@ public abstract class Caster<T extends Enum<T>> implements
 
     private Class<T> enumT;
 
+    private static Set<String> modules = new HashSet<>();
+    private String module;
     private String msgPrefix;
 
     @SuppressWarnings("ConstantConditions")
@@ -52,7 +55,11 @@ public abstract class Caster<T extends Enum<T>> implements
             Constructor<?> ctor = magicBookClz.getDeclaredConstructor();
             ctor.setAccessible(true);
             magicBook = (IMagicBook) ctor.newInstance();
-            msgPrefix = magicBook.getChapter()+"_";
+            module = magicBook.name();
+            if(!modules.add(module)){
+                throw new RuntimeException(String.format("module %s has existed already!", module));
+            }
+            msgPrefix = module +"_";
         } catch (ClassNotFoundException | IllegalAccessException | NoSuchMethodException | InvocationTargetException | InstantiationException e) {
             e.printStackTrace();
         }
@@ -115,15 +122,15 @@ public abstract class Caster<T extends Enum<T>> implements
          * 请求已发出。（业务组件接口已返回）
          * @param resultListener 结果监听器,req()传入。
          *                 NOTE: 可能为null。如用户传入即为null，或者会话过程中监听器被销毁，
-         * @param req 请求ID，req()传入。
+         * @param req 请求消息，req()传入。
          * @param reqParas 请求参数列表，req()传入，顺序同传入时的
          * */
         default void onReqSent(IResultListener resultListener, T req, Object[] reqParas){}
 
         /**
          * 收到响应
-         * @param rsp 响应ID
-         * @param rspContent 响应内容，具体类型由响应ID决定。
+         * @param rsp 响应消息
+         * @param rspContent 响应内容，具体类型由响应消息决定。
          * @param isConsumed 是否已被消费。出参。true已消费，默认是true。 若未消费该消息继续向下流转到其他会话或通知处理器
          * */
         default void onRsp(T rsp, Object rspContent, IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
@@ -139,8 +146,8 @@ public abstract class Caster<T extends Enum<T>> implements
     /**通知处理器*/
     protected interface NtfProcessor<T>{
         /**
-         * @param ntf 通知ID
-         * @param ntfContent 通知内容，具体类型由通知ID决定
+         * @param ntf 通知消息
+         * @param ntfContent 通知内容，具体类型由通知消息决定
          * @param ntfListeners 通知监听器集合
          * */
         void process(T ntf, Object ntfContent, Set<Object> ntfListeners);
@@ -157,7 +164,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * NOTE: 不同于{@link #set(Enum, Object...)}和{@link #get(Enum, Object...)}，
      * 该接口是异步的不会阻塞调用者；
      * 该接口返回不代表请求已执行，请求结果通过rspProcessor反馈。
-     * @param req 请求Id
+     * @param req 请求消息
      * @param sessionProcessor 会话处理器。为null则表示不关注响应或没有响应。
      * @param reqParas 请求参数列表，可以没有。
      * @param resultListener 请求结果监听器。
@@ -243,8 +250,8 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 取消会话请求。
-     * @param req 请求id
-     * @param resultListener 结果监听器，为null则取消所有请求id为req的会话。
+     * @param req 请求消息
+     * @param resultListener 结果监听器，为null则取消所有请求消息为req的会话。
      * */
     protected void cancelReq(@NonNull T req, IResultListener resultListener){
         Iterator<Session> it = sessions.iterator();

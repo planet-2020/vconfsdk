@@ -23,7 +23,7 @@ public interface ICrystalBall {
         /**
          * @return 返回true若消息被消费，否则返回false。
          * */
-        boolean onMsg(String msgId, String msgContent);
+        boolean onMsg(String msgName, String msgContent);
     }
     /**
      * 添加消息监听器

@@ -3,7 +3,8 @@ package com.kedacom.vconf.sdk.processor;
 import com.google.auto.service.AutoService;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
-import com.kedacom.vconf.sdk.annotation.Message;
+import com.kedacom.vconf.sdk.annotation.Module;
+import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.squareup.javapoet.ArrayTypeName;
@@ -19,6 +20,7 @@ import com.squareup.javapoet.WildcardTypeName;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -48,17 +50,19 @@ import javax.lang.model.type.TypeMirror;
 
 @AutoService(Processor.class)
 @SupportedAnnotationTypes({
-        "com.kedacom.vconf.sdk.annotation.Message",
+        "com.kedacom.vconf.sdk.annotation.Module",
         "com.kedacom.vconf.sdk.annotation.Request",
         "com.kedacom.vconf.sdk.annotation.Response",
+        "com.kedacom.vconf.sdk.annotation.Notification",
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class MessageProcessor extends AbstractProcessor {
     private boolean bDone = false;
 
-    private String module;
+    private String moduleName;
     private Table<String, String, Object> reqMap = HashBasedTable.create();
     private Table<String, String, Object> rspMap = HashBasedTable.create();
+    private Table<String, String, Object> ntfMap = HashBasedTable.create();
 
     private String packageName;
 
@@ -66,7 +70,7 @@ public class MessageProcessor extends AbstractProcessor {
 
     private Messager messager;
 
-    private static String COL_ID = "id";
+    private static String COL_NAME = "name";
     private static String COL_OWNER = "owner";
     private static String COL_PARAS = "paras";
     private static String COL_USERPARAS = "userParas";
@@ -74,7 +78,6 @@ public class MessageProcessor extends AbstractProcessor {
     private static String COL_RSPSEQ = "rspSeq";
     private static String COL_TIMEOUT = "timeout";
     private static String COL_CLZ = "clz";
-    private static String COL_DELAY = "delay";
 
     @Override
     public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
@@ -88,7 +91,7 @@ public class MessageProcessor extends AbstractProcessor {
 
 //        messager.printMessage(Diagnostic.Kind.NOTE, "START to generate msg file ... ");
 
-        Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Message.class);
+        Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Module.class);
         for (Element element : msgSet) {
             if (ElementKind.ENUM != element.getKind()){
                 continue;
@@ -103,31 +106,25 @@ public class MessageProcessor extends AbstractProcessor {
 
 
     private void parseMessage(TypeElement msgDefClass){
-        packageName = ((PackageElement) msgDefClass.getEnclosingElement()).getQualifiedName().toString();
-        module = msgDefClass.getAnnotation(Message.class).module();
-        if (module.trim().isEmpty()){
+        moduleName = msgDefClass.getAnnotation(Module.class).name();
+        if (moduleName.trim().isEmpty()){
             throw new IllegalArgumentException(msgDefClass+": module name can not be empty!");
         }
+        packageName = ((PackageElement) msgDefClass.getEnclosingElement()).getQualifiedName().toString();
         reqMap.clear();
         rspMap.clear();
         List<? extends Element> msgElements = msgDefClass.getEnclosedElements();
-        Request request;
-        Response response;
-        String name;
         for (Element element : msgElements){
             if (ElementKind.ENUM_CONSTANT != element.getKind()){
                 continue;
             }
+            String enumName = element.getSimpleName().toString();
+            String msgId = moduleName +"_"+enumName;
+            Request request = element.getAnnotation(Request.class);
+            if (null != request){
+                reqMap.put(msgId, COL_NAME, !request.name().isEmpty() ? request.name() : enumName);
 
-            if (null != (request = element.getAnnotation(Request.class))){
-                name = module+"_"+element.getSimpleName().toString();
-                String method = request.method();
-                method = !method.isEmpty() ? method : element.getSimpleName().toString();
-
-                reqMap.put(name, COL_ID, method);
-
-                String owner = request.owner();
-                reqMap.put(name, COL_OWNER, owner);
+                reqMap.put(msgId, COL_OWNER, request.owner());
 
                 String[] paraClzNames = null;
                 try {
@@ -135,18 +132,17 @@ public class MessageProcessor extends AbstractProcessor {
                 }catch (MirroredTypesException mte) {
                     paraClzNames = parseClassNameFromMirroredTypesException(mte);
                 }
-                reqMap.put(name, COL_PARAS, paraClzNames);
+                reqMap.put(msgId, COL_PARAS, paraClzNames);
 
                 try {
                     Class[] paraClasses = request.userParas();
                 }catch (MirroredTypesException mte) {
                     paraClzNames = parseClassNameFromMirroredTypesException(mte);
                 }
-                reqMap.put(name, COL_USERPARAS, paraClzNames);
+                reqMap.put(msgId, COL_USERPARAS, paraClzNames);
 
-                reqMap.put(name, COL_ISGET, request.isGet());
+                reqMap.put(msgId, COL_ISGET, request.isGet());
 
-                // 获取响应序列
                 List<String[]> rspSeqList = new ArrayList<>();
                 processRspSeqs(rspSeqList,
                         request.rspSeq(),
@@ -154,39 +150,38 @@ public class MessageProcessor extends AbstractProcessor {
                         request.rspSeq3(),
                         request.rspSeq4()
                 );
-                reqMap.put(name, COL_RSPSEQ, rspSeqList.toArray(new String[][]{}));
+                reqMap.put(msgId, COL_RSPSEQ, rspSeqList.toArray(new String[][]{}));
 
-                // 获取超时时长
-                reqMap.put(name, COL_TIMEOUT, request.timeout());
+                reqMap.put(msgId, COL_TIMEOUT, request.timeout());
 
-//                messager.printMessage(Diagnostic.Kind.NOTE, "request: "+reqName
-//                        + " reqParaFullName: "+reqParaFullName
-//                        + " rspSeq: "+request.rspSeq()
-//                        + " timeout: "+request.timeout());
+            } else {
+                Response response  = element.getAnnotation(Response.class);
+                if (null != response) {
+                    rspMap.put(msgId, COL_NAME, !response.name().isEmpty() ? response.name() : enumName);
 
-            }
-            else if (null != (response = element.getAnnotation(Response.class))){
-                name = module+"_"+element.getSimpleName().toString();
-                String id = response.id();
-                id = !id.isEmpty() ? id : element.getSimpleName().toString();
-
-                rspMap.put(name, COL_ID, id);
-
-                // 获取响应对应的消息体类型
-                String rspClazzFullName;
-                try {
-                    Class clz = response.clz();
-                    rspClazzFullName = clz.getCanonicalName();
-                }catch (MirroredTypeException mte) {
-                    rspClazzFullName = parseClassNameFromMirroredTypeException(mte);
+                    String clzFullName;
+                    try {
+                        Class clz = response.clz();
+                        clzFullName = clz.getCanonicalName();
+                    } catch (MirroredTypeException mte) {
+                        clzFullName = parseClassNameFromMirroredTypeException(mte);
+                    }
+                    rspMap.put(msgId, COL_CLZ, clzFullName);
                 }
-//                messager.printMessage(Diagnostic.Kind.NOTE, "response: "+rspName
-//                        + " rspClazzFullName: "+rspClazzFullName);
 
-                rspMap.put(name, COL_CLZ, rspClazzFullName);
+                Notification notification  = element.getAnnotation(Notification.class);
+                if (null != notification) {
+                    ntfMap.put(msgId, COL_NAME, !notification.name().isEmpty() ? notification.name() : enumName);
 
-                rspMap.put(name, COL_DELAY, response.delay());
-
+                    String clzFullName;
+                    try {
+                        Class clz = notification.clz();
+                        clzFullName = clz.getCanonicalName();
+                    } catch (MirroredTypeException mte) {
+                        clzFullName = parseClassNameFromMirroredTypeException(mte);
+                    }
+                    ntfMap.put(msgId, COL_CLZ, clzFullName);
+                }
             }
         }
     }
@@ -195,7 +190,7 @@ public class MessageProcessor extends AbstractProcessor {
     private void processRspSeqs(List<String[]> rspSeqList, String[]... rspSeqs){
         for (String[] rspSeq : rspSeqs){
             for (int i=0; i<rspSeq.length; ++i){
-                rspSeq[i] = module+"_"+rspSeq[i];
+                rspSeq[i] = moduleName +"_"+rspSeq[i];
             }
             if (rspSeq.length>0){
                 rspSeqList.add(rspSeq);
@@ -248,30 +243,35 @@ public class MessageProcessor extends AbstractProcessor {
 
 
     private void generateFile(){
-        String fieldModule = "module";
-        String fieldReqMap = "reqMap";
-        String fieldRspMap = "rspMap";
-        String fieldReqName = "reqName";
-        String fieldRspName = "rspName";
-        String fieldRspNames = "rspNames";
-        String fieldRspId = "rspId";
+        String module = "module";
+        String reqMap = "reqMap";
+        String rspMap = "rspMap";
+        String ntfMap = "ntfMap";
+        String reqId = "reqId";
+        String rspName = "rspName";
+        String ntfName = "ntfName";
+        String rspIds = "rspIds";
+        String ntfIds = "ntfIds";
 
+        // 构造函数私有化
+        // 我们不希望通过常规方式实例化该对象
         MethodSpec.Builder constructor = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PRIVATE);
 
-        // 构建代码块
+        // 构建静态代码块
         CodeBlock.Builder staticCodeBlockBuilder = CodeBlock.builder()
-                .addStatement("$L = $S", fieldModule, module)
-                .addStatement("$L = $T.create()", fieldReqMap, HashBasedTable.class)
-                .addStatement("$L = $T.create()", fieldRspMap, HashBasedTable.class)
+                .addStatement("$L = $S", module, moduleName)
+                .addStatement("$L = $T.create()", reqMap, HashBasedTable.class)
+                .addStatement("$L = $T.create()", rspMap, HashBasedTable.class)
+                .addStatement("$L = $T.create()", ntfMap, HashBasedTable.class)
                 ;
 
-        for(Table.Cell cell : reqMap.cellSet()){
+        for(Table.Cell cell : this.reqMap.cellSet()){
             String row = (String) cell.getRowKey();
             String col = (String) cell.getColumnKey();
-            if (col.equals(COL_ID)
+            if (col.equals(COL_NAME)
                     || col.equals(COL_OWNER)) {
-                staticCodeBlockBuilder.addStatement("$L.put($S, $S, $S)", fieldReqMap, row, col, cell.getValue());
+                staticCodeBlockBuilder.addStatement("$L.put($S, $S, $S)", reqMap, row, col, cell.getValue());
             }else if (col.equals(COL_PARAS)
                     || col.equals(COL_USERPARAS)){
                 StringBuffer value = new StringBuffer();
@@ -279,7 +279,7 @@ public class MessageProcessor extends AbstractProcessor {
                 for (String para : paras){
                     value.append(para).append(".class, ");
                 }
-                staticCodeBlockBuilder.addStatement("$L.put($S, $S, new Class[]{$L})", fieldReqMap, row, col, value);
+                staticCodeBlockBuilder.addStatement("$L.put($S, $S, new Class[]{$L})", reqMap, row, col, value);
             }else if (col.equals(COL_RSPSEQ)){
                 StringBuffer value = new StringBuffer();
                 String[][] rspSeq = (String[][]) cell.getValue();
@@ -290,135 +290,147 @@ public class MessageProcessor extends AbstractProcessor {
                     }
                     value.append("}, ");
                 }
-                staticCodeBlockBuilder.addStatement("$L.put($S, $S, new String[][]{$L})", fieldReqMap, row, col, value);
+                staticCodeBlockBuilder.addStatement("$L.put($S, $S, new String[][]{$L})", reqMap, row, col, value);
             }else if (col.equals(COL_TIMEOUT)
                     || col.equals(COL_ISGET)){
-                staticCodeBlockBuilder.addStatement("$L.put($S, $S, $L)", fieldReqMap, row, col, cell.getValue());
+                staticCodeBlockBuilder.addStatement("$L.put($S, $S, $L)", reqMap, row, col, cell.getValue());
             }
         }
 
-        for(Table.Cell cell : rspMap.cellSet()){
+        for(Table.Cell cell : this.rspMap.cellSet()){
             String row = (String) cell.getRowKey();
             String col = (String) cell.getColumnKey();
-            if (col.equals(COL_ID)) {
-                staticCodeBlockBuilder.addStatement("$L.put($S, $S, $S)", fieldRspMap, row, col, cell.getValue());
-            }else if (col.equals(COL_CLZ)){
-                staticCodeBlockBuilder.addStatement("$L.put($S, $S, $L.class)", fieldRspMap, row, col, cell.getValue());
-            }else if (col.equals(COL_DELAY)){
-                staticCodeBlockBuilder.addStatement("$L.put($S, $S, $L)", fieldRspMap, row, col, cell.getValue());
+            if (COL_NAME.equals(col)) {
+                staticCodeBlockBuilder.addStatement("$L.put($S, $S, $S)", rspMap, row, col, cell.getValue());
+            }else if (COL_CLZ.equals(col)){
+                staticCodeBlockBuilder.addStatement("$L.put($S, $S, $L.class)", rspMap, row, col, cell.getValue());
+            }
+        }
+
+        for(Table.Cell cell : this.ntfMap.cellSet()){
+            String row = (String) cell.getRowKey();
+            String col = (String) cell.getColumnKey();
+            if (COL_NAME.equals(col)) {
+                staticCodeBlockBuilder.addStatement("$L.put($S, $S, $S)", ntfMap, row, col, cell.getValue());
+            }else if (COL_CLZ.equals(col)){
+                staticCodeBlockBuilder.addStatement("$L.put($S, $S, $L.class)", ntfMap, row, col, cell.getValue());
             }
         }
 
         // 实现IMagicBook
         List<MethodSpec> methodSpecs = new ArrayList<>();
-        MethodSpec getName = MethodSpec.methodBuilder("getName")
+        MethodSpec name = MethodSpec.methodBuilder("name")
                 .addModifiers(Modifier.PUBLIC)
                 .returns(String.class)
-                .addStatement("return $S", className)
+                .addStatement("return $S", moduleName)
                 .build();
-        methodSpecs.add(getName);
+        methodSpecs.add(name);
 
-        MethodSpec getChapter = MethodSpec.methodBuilder("getChapter")
+        MethodSpec isGet = MethodSpec.methodBuilder("isGet")
                 .addModifiers(Modifier.PUBLIC)
-                .returns(String.class)
-                .addCode("return $S;\n", module)
-                .build();
-        methodSpecs.add(getChapter);
-
-        MethodSpec isReqTypeGet = MethodSpec.methodBuilder("isReqTypeGet")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, fieldReqName).build())
+                .addParameter(ParameterSpec.builder(String.class, reqId).build())
                 .returns(boolean.class)
                 .addCode("Object val = $L.row($L).get($S);\n" +
                                 "if (null == val) return false;\n" +
                         "return (boolean)val;\n",
-                        fieldReqMap, fieldReqName, COL_ISGET)
+                        reqMap, reqId, COL_ISGET)
                 .build();
-        methodSpecs.add(isReqTypeGet);
+        methodSpecs.add(isGet);
 
-        MethodSpec getReqId = MethodSpec.methodBuilder("getReqId")
+        MethodSpec reqName = MethodSpec.methodBuilder("reqName")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, fieldReqName).build())
+                .addParameter(ParameterSpec.builder(String.class, reqId).build())
                 .returns(String.class)
-                .addCode("return (String)$L.row($L).get($S);\n", fieldReqMap, fieldReqName, COL_ID)
+                .addCode("return (String)$L.row($L).get($S);\n", reqMap, reqId, COL_NAME)
                 .build();
-        methodSpecs.add(getReqId);
+        methodSpecs.add(reqName);
 
-        MethodSpec getNativeMethodOwner = MethodSpec.methodBuilder("getNativeMethodOwner")
+        MethodSpec nativeMethodOwner = MethodSpec.methodBuilder("nativeMethodOwner")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, fieldReqName).build())
+                .addParameter(ParameterSpec.builder(String.class, reqId).build())
                 .returns(String.class)
-                .addCode("return (String)$L.row($L).get($S);\n", fieldReqMap, fieldReqName, COL_OWNER)
+                .addCode("return (String)$L.row($L).get($S);\n", reqMap, reqId, COL_OWNER)
                 .build();
-        methodSpecs.add(getNativeMethodOwner);
+        methodSpecs.add(nativeMethodOwner);
 
-        MethodSpec getNativeParaClasses = MethodSpec.methodBuilder("getNativeParaClasses")
+        MethodSpec nativeParaClasses = MethodSpec.methodBuilder("nativeParaClasses")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, fieldReqName).build())
+                .addParameter(ParameterSpec.builder(String.class, reqId).build())
                 .returns(ArrayTypeName.of(ParameterizedTypeName.get(ClassName.get(Class.class), WildcardTypeName.subtypeOf(Object.class))))
-                .addCode("return (Class<?>[])$L.row($L).get($S);\n", fieldReqMap, fieldReqName, COL_PARAS)
+                .addCode("return (Class<?>[])$L.row($L).get($S);\n", reqMap, reqId, COL_PARAS)
                 .build();
-        methodSpecs.add(getNativeParaClasses);
+        methodSpecs.add(nativeParaClasses);
 
-        MethodSpec getUserParaClasses = MethodSpec.methodBuilder("getUserParaClasses")
+        MethodSpec userParaClasses = MethodSpec.methodBuilder("userParaClasses")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, fieldReqName).build())
+                .addParameter(ParameterSpec.builder(String.class, reqId).build())
                 .returns(ArrayTypeName.of(ParameterizedTypeName.get(ClassName.get(Class.class), WildcardTypeName.subtypeOf(Object.class))))
-                .addCode("return (Class<?>[])$L.row($L).get($S);\n", fieldReqMap, fieldReqName, COL_USERPARAS)
+                .addCode("return (Class<?>[])$L.row($L).get($S);\n", reqMap, reqId, COL_USERPARAS)
                 .build();
-        methodSpecs.add(getUserParaClasses);
+        methodSpecs.add(userParaClasses);
 
-        MethodSpec getTimeout = MethodSpec.methodBuilder("getTimeout")
+        MethodSpec timeout = MethodSpec.methodBuilder("timeout")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, fieldReqName).build())
+                .addParameter(ParameterSpec.builder(String.class, reqId).build())
                 .returns(int.class)
                 .addCode("Object val = $L.row($L).get($S);\n" +
                                 "if (null == val) return 5;\n" +
                                 "return (int)val;\n",
-                        fieldReqMap, fieldReqName, COL_TIMEOUT)
+                        reqMap, reqId, COL_TIMEOUT)
                 .build();
-        methodSpecs.add(getTimeout);
+        methodSpecs.add(timeout);
 
-        MethodSpec getRspSeqs = MethodSpec.methodBuilder("getRspSeqs")
+        MethodSpec rspSeqs = MethodSpec.methodBuilder("rspSeqs")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, fieldReqName).build())
+                .addParameter(ParameterSpec.builder(String.class, reqId).build())
                 .returns(String[][].class)
-                .addCode("return (String[][])$L.row($L).get($S);\n", fieldReqMap, fieldReqName, COL_RSPSEQ)
+                .addCode("return (String[][])$L.row($L).get($S);\n", reqMap, reqId, COL_RSPSEQ)
                 .build();
-        methodSpecs.add(getRspSeqs);
+        methodSpecs.add(rspSeqs);
 
-        MethodSpec getRspId = MethodSpec.methodBuilder("getRspId")
+        MethodSpec rspClass = MethodSpec.methodBuilder("rspClass")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, fieldRspName).build())
-                .returns(String.class)
-                .addCode("return (String)$L.row($L).get($S);\n", fieldRspMap, fieldRspName, COL_ID)
-                .build();
-        methodSpecs.add(getRspId);
-
-        MethodSpec getRspClazz = MethodSpec.methodBuilder("getRspClazz")
-                .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, fieldRspName).build())
+                .addParameter(ParameterSpec.builder(String.class, rspName).build())
                 .returns(ParameterizedTypeName.get(ClassName.get(Class.class), WildcardTypeName.subtypeOf(Object.class)))
-                .addCode("return (Class<?>)$L.row($L).get($S);\n", fieldRspMap, fieldRspName, COL_CLZ)
+                .addCode("return (Class<?>)$L.row($L).get($S);\n", rspMap, rspName, COL_CLZ)
                 .build();
-        methodSpecs.add(getRspClazz);
+        methodSpecs.add(rspClass);
 
-        MethodSpec getRspNames = MethodSpec.methodBuilder("getRspNames")
+        MethodSpec methodRspIds = MethodSpec.methodBuilder("rspIds")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, fieldRspId).build())
-                .returns(ParameterizedTypeName.get(List.class, String.class))
-                .addStatement("$T<$T> $L = new $T<>()", List.class, String.class, fieldRspNames, ArrayList.class)
-                .beginControlFlow("for ($T<$T, $T, Object> cell: $L.cellSet())", Table.Cell.class, String.class, String.class, fieldRspMap)
-                .beginControlFlow("if ($S.equals(cell.getColumnKey()) && $L.equals(cell.getValue()))", COL_ID, fieldRspId)
-                .addStatement("$L.add(cell.getRowKey())", fieldRspNames)
+                .addParameter(ParameterSpec.builder(String.class, rspName).build())
+                .returns(ParameterizedTypeName.get(Set.class, String.class))
+                .addStatement("$T<$T> $L = new $T<>()", Set.class, String.class, rspIds, HashSet.class)
+                .beginControlFlow("for ($T<$T, $T, Object> cell: $L.cellSet())", Table.Cell.class, String.class, String.class, rspMap)
+                .beginControlFlow("if ($S.equals(cell.getColumnKey()) && $L.equals(cell.getValue()))", COL_NAME, rspName)
+                .addStatement("$L.add(cell.getRowKey())", rspIds)
                 .endControlFlow()
                 .endControlFlow()
-                .addStatement("return $L", fieldRspNames)
+                .addStatement("return $L", rspIds)
                 .build();
-        methodSpecs.add(getRspNames);
+        methodSpecs.add(methodRspIds);
 
-        //        if (null == reqMap.row(reqName)) return null;
-//        return (Class[]) reqMap.row(reqName).get(COL_PARAS);
+        MethodSpec ntfClass = MethodSpec.methodBuilder("ntfClass")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(ParameterSpec.builder(String.class, ntfName).build())
+                .returns(ParameterizedTypeName.get(ClassName.get(Class.class), WildcardTypeName.subtypeOf(Object.class)))
+                .addCode("return (Class<?>)$L.row($L).get($S);\n", ntfMap, ntfName, COL_CLZ)
+                .build();
+        methodSpecs.add(ntfClass);
+
+        MethodSpec methodNtfIds = MethodSpec.methodBuilder("ntfIds")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(ParameterSpec.builder(String.class, ntfName).build())
+                .returns(ParameterizedTypeName.get(Set.class, String.class))
+                .addStatement("$T<$T> $L = new $T<>()", Set.class, String.class, ntfIds, HashSet.class)
+                .beginControlFlow("for ($T<$T, $T, Object> cell: $L.cellSet())", Table.Cell.class, String.class, String.class, ntfMap)
+                .beginControlFlow("if ($S.equals(cell.getColumnKey()) && $L.equals(cell.getValue()))", COL_NAME, ntfName)
+                .addStatement("$L.add(cell.getRowKey())", ntfIds)
+                .endControlFlow()
+                .endControlFlow()
+                .addStatement("return $L", ntfIds)
+                .build();
+        methodSpecs.add(methodNtfIds);
 
         /*构建Class
         * 对于生成的类，我们不希望能通过常规手段访问，只允许通过反射访问（只让框架知道访问方式），
@@ -427,13 +439,16 @@ public class MessageProcessor extends AbstractProcessor {
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.FINAL)
                 .addField(FieldSpec.builder(String.class,
-                        fieldModule, Modifier.PRIVATE, Modifier.STATIC)
+                        module, Modifier.PRIVATE, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Table.class, String.class, String.class, Object.class),
-                        fieldReqMap, Modifier.PRIVATE, Modifier.STATIC)
+                        reqMap, Modifier.PRIVATE, Modifier.STATIC)
                         .build())
                 .addField(FieldSpec.builder(ParameterizedTypeName.get(Table.class, String.class, String.class, Object.class),
-                        fieldRspMap, Modifier.PRIVATE, Modifier.STATIC)
+                        rspMap, Modifier.PRIVATE, Modifier.STATIC)
+                        .build())
+                .addField(FieldSpec.builder(ParameterizedTypeName.get(Table.class, String.class, String.class, Object.class),
+                        ntfMap, Modifier.PRIVATE, Modifier.STATIC)
                         .build())
                 .addMethod(constructor.build())
                 .addStaticBlock(staticCodeBlockBuilder.build())

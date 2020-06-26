@@ -3,7 +3,6 @@ package com.kedacom.vconf.sdk.base.startup;
 
 import com.kedacom.kdv.mt.mtapi.IMtcCallback;
 import com.kedacom.vconf.sdk.amulet.Atlas;
-import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.MtLoginMtParam;
@@ -12,14 +11,11 @@ import com.kedacom.vconf.sdk.base.startup.bean.transfer.TNetWorkInfo;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
 
 
-@Message(
-        module = "SU"
-)
 enum Msg {
 
     /**设置业务组件工作空间。
      * 其创建的一些配置文件以及日志文件均在该路径下*/
-    @Request(method = "SetSysWorkPathPrefix",
+    @Request(name = "SetSysWorkPathPrefix",
             owner = Atlas.KernalCtrl,
             paras = StringBuffer.class,
             userParas = String.class  // 工作空间完整路径
@@ -29,7 +25,7 @@ enum Msg {
     /**启动业务组件基础模块
      * NOTE：调用所有其他业务组件接口前需先等该接口“完成”！
      * */
-    @Request(method = "MtStart",
+    @Request(name = "MtStart",
             owner = Atlas.MtcLib,
             paras = {int.class,
                     StringBuffer.class,
@@ -50,13 +46,13 @@ enum Msg {
     /**启动业务组件基础模块响应
      * NOTE: 下层并不会抛这样一条消息上来
      * */
-    @Response(id = "StartMtBaseRsp",
+    @Response(name = "StartMtBaseRsp",
             clz = Void.class)
     StartMtBaseRsp,
 
 
     /**启动业务组件sdk*/
-    @Request(method = "Start",
+    @Request(name = "Start",
             owner = Atlas.MtcLib,
             paras = {boolean.class,
                     boolean.class,
@@ -71,13 +67,13 @@ enum Msg {
 
     /**启动业务组件sdk响应
      * */
-    @Response(id = "MTCLoginRsp",
+    @Response(name = "MTCLoginRsp",
             clz = TMTLoginMtResult.class)
     StartMtSdkRsp,
 
 
     /**设置业务组件层回调*/
-    @Request(method = "Setcallback",
+    @Request(name = "Setcallback",
             owner = Atlas.MtcLib,
             paras = IMtcCallback.class // 回调接口
     )
@@ -85,14 +81,14 @@ enum Msg {
 
 
     /**启用/停用业务组件日志文件功能*/
-    @Request(method = "SetLogCfgCmd",
+    @Request(name = "SetLogCfgCmd",
             owner = Atlas.ConfigCtrl,
             paras = boolean.class // true启用，false停用
     )
     ToggleMtFileLog,
 
     /**设置网络配置*/
-    @Request(method = "SendUsedNetInfoNtf",
+    @Request(name = "SendUsedNetInfoNtf",
             owner = Atlas.CommonCtrl,
             paras = StringBuffer.class,
             userParas = TNetWorkInfo.class

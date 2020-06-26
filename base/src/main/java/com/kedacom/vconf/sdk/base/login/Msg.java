@@ -2,7 +2,7 @@ package com.kedacom.vconf.sdk.base.login;
 
 
 import com.kedacom.vconf.sdk.amulet.Atlas;
-import com.kedacom.vconf.sdk.annotation.Message;
+import com.kedacom.vconf.sdk.annotation.Module;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.*;
@@ -10,15 +10,12 @@ import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
 
-
-@Message(
-        module = "LI"
-)
+@Module(name = "LI")
 enum Msg {
 
     /**启动业务组件功能模块
      * */
-    @Request(method = "SYSStartService",
+    @Request(name = "SYSStartService",
             owner = Atlas.MtServiceCfgCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 模块名称，如"rest"接入模块、"upgrade"升级模块
@@ -26,25 +23,25 @@ enum Msg {
     )
     StartMtService,
 
-    @Response(id = "SrvStartResultNtf",
+    @Response(name = "SrvStartResultNtf",
             clz = TSrvStartResult.class)
     StartMtServiceRsp,
 
     /**配置Aps*/
-    @Request(method = "SetAPSListCfgCmd",
+    @Request(name = "SetAPSListCfgCmd",
             owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = MtXAPSvrListCfg.class,
             rspSeq = "SetApsServerCfgRsp")
     SetApsServerCfg,
 
-    @Response(id = "SetXAPListCfgNtf",
+    @Response(name = "SetXAPListCfgNtf",
             clz = MtXAPSvrListCfg.class)
     SetApsServerCfgRsp,
 
 
     /**登录APS*/
-    @Request(method = "LoginApsServerCmd",
+    @Request(name = "LoginApsServerCmd",
             owner = Atlas.LoginCtrl,
             paras = StringBuffer.class,
             userParas = TMTApsLoginParam.class,
@@ -52,48 +49,48 @@ enum Msg {
             timeout = 10)
     LoginAps,
 
-    @Response(id = "ApsLoginResultNtf",
+    @Response(name = "ApsLoginResultNtf",
             clz = TApsLoginResult.class)
     LoginApsRsp,
 
 
     /**注销APS*/
-    @Request(method = "LogoutApsServerCmd",
+    @Request(name = "LogoutApsServerCmd",
             owner = Atlas.LoginCtrl,
             rspSeq = "LogoutApsRsp")
     LogoutAps,
 
-    @Response(id = "SetSvrLoginStatusRtNtf",
+    @Response(name = "SetSvrLoginStatusRtNtf",
             clz = TMtSvrStateList.class)
     LogoutApsRsp,
 
     /**获取平台为用户分配的token*/
-    @Request(method = "MGRestGetPlatformAccountTokenReq",
+    @Request(name = "MGRestGetPlatformAccountTokenReq",
             owner = Atlas.MeetingCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 点分十进制形式平台ip，从TApsLoginResult.dwIP字段转换而来
             rspSeq = "QueryAccountTokenRsp")
     QueryAccountToken,
 
-    @Response(id = "RestGetPlatformAccountTokenRsp",
+    @Response(name = "RestGetPlatformAccountTokenRsp",
             clz = TRestErrorInfo.class)
     QueryAccountTokenRsp,
 
     /**登录platform*/
-    @Request(method = "LoginPlatformServerReq",
+    @Request(name = "LoginPlatformServerReq",
             owner = Atlas.LoginCtrl,
             paras = StringBuffer.class,
             userParas = TMTWeiboLogin.class, // LoginAps时的用户名密码
             rspSeq = "LoginPlatformRsp")
     LoginPlatform,
 
-    @Response(id = "RestPlatformAPILoginRsp",
+    @Response(name = "RestPlatformAPILoginRsp",
             clz = TLoginPlatformRsp.class)
     LoginPlatformRsp,
 
     /**获取用户简短信息
      * */
-    @Request(method = "GetUserInfoFromApsCfg",
+    @Request(name = "GetUserInfoFromApsCfg",
             owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMTUserInfoFromAps.class,
@@ -103,7 +100,7 @@ enum Msg {
 
     /**查询用户详情
      * */
-    @Request(method = "GetAccountInfoReq",
+    @Request(name = "GetAccountInfoReq",
             owner = Atlas.RmtContactCtrl,
             paras = StringBuffer.class,
             userParas = TMTAccountManagerSystem.class,
@@ -111,7 +108,7 @@ enum Msg {
     )
     QueryUserDetails,
 
-    @Response(id = "RestGetAccountInfo_Rsp",
+    @Response(name = "RestGetAccountInfo_Rsp",
             clz = TQueryUserDetailsRsp.class)
     QueryUserDetailsRsp,
 
@@ -119,7 +116,7 @@ enum Msg {
     /**
      * 被抢登通知
      * */
-    @Response(id = "RcvUserAnomaly_Ntf",
+    @Response(name = "RcvUserAnomaly_Ntf",
             clz = BaseTypeInt.class)
     KickedOff,
 

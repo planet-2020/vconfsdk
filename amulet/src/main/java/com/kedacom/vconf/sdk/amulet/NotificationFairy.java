@@ -7,8 +7,8 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 final class NotificationFairy implements IFairy.INotificationFairy{
@@ -23,7 +23,7 @@ final class NotificationFairy implements IFairy.INotificationFairy{
 
 
     @Override
-    public boolean subscribe(IListener subscriber, String ntfName) {
+    public boolean subscribe(IListener subscriber, String ntfId) {
         if (null == magicBook){
             KLog.p(KLog.ERROR, "no magicBook ");
             return false;
@@ -32,15 +32,15 @@ final class NotificationFairy implements IFairy.INotificationFairy{
             KLog.p(KLog.ERROR, "null subscriber ");
             return false;
         }
-        if (null == magicBook.getRspId(ntfName)){
-            KLog.p(KLog.ERROR, "Unknown notification %s", ntfName);
+        if (null == magicBook.ntfClass(ntfId)){
+            KLog.p(KLog.ERROR, "Unknown notification %s", ntfId);
             return false;
         }
 
-        LinkedHashSet<IListener> subs = subscribers.get(ntfName);
+        LinkedHashSet<IListener> subs = subscribers.get(ntfId);
         if (null == subs){
             subs = new LinkedHashSet<>();
-            subscribers.put(ntfName, subs);
+            subscribers.put(ntfId, subs);
         }
 
         subs.add(subscriber);
@@ -49,7 +49,7 @@ final class NotificationFairy implements IFairy.INotificationFairy{
     }
 
     @Override
-    public void unsubscribe(IListener subscriber, String ntfName) {
+    public void unsubscribe(IListener subscriber, String ntfId) {
         if (null == magicBook){
             KLog.p(KLog.ERROR, "no magicBook ");
             return;
@@ -58,43 +58,47 @@ final class NotificationFairy implements IFairy.INotificationFairy{
             KLog.p(KLog.ERROR, "null subscriber ");
             return;
         }
-        if (null == magicBook.getRspId(ntfName)){
-            KLog.p(KLog.ERROR, "Unknown notification %s", ntfName);
+        if (null == magicBook.ntfClass(ntfId)){
+            KLog.p(KLog.ERROR, "Unknown notification %s", ntfId);
             return;
         }
 
-        LinkedHashSet<IListener> subs = subscribers.get(ntfName);
+        LinkedHashSet<IListener> subs = subscribers.get(ntfId);
         if (null != subs){
             subs.remove(subscriber);
             if (subs.isEmpty()){
-                subscribers.remove(ntfName);
+                subscribers.remove(ntfId);
             }
         }
     }
 
 
     @Override
-    public boolean onMsg(String msgId, String msgContent) {
+    public boolean onMsg(String msgName, String msgContent) {
         if (null == magicBook){
             KLog.p(KLog.ERROR, "no magicBook ");
             return false;
         }
-        List<String> rspNames = magicBook.getRspNames(msgId);
-        if (rspNames==null || rspNames.isEmpty()){
+        Set<String> ntfIds = magicBook.ntfIds(msgName);
+        if (ntfIds==null || ntfIds.isEmpty()){
             return false;
         }
-        for (String rspName : rspNames) {
-            LinkedHashSet<IListener> subs = subscribers.get(rspName);
+        for (String ntfId : ntfIds) {
+            Class<?> ntfClass = magicBook.ntfClass(ntfId);
+            if (ntfClass == null){
+                continue;
+            }
+            LinkedHashSet<IListener> subs = subscribers.get(ntfId);
             if (null == subs || 0 == subs.size()) {
                 return false;
             }
 
-            Log.d(TAG, String.format("<-~- %s(%s)\n%s", rspName, msgId, msgContent));
+            Log.d(TAG, String.format("<-~- %s(%s)\n%s", ntfId, msgName, msgContent));
 
-            Object ntfContent = Kson.fromJson(msgContent, magicBook.getRspClazz(rspName));
+            Object ntfContent = Kson.fromJson(msgContent, ntfClass);
 
             for (IListener sub : subs) {
-                sub.onNtf(rspName, ntfContent);
+                sub.onNtf(ntfId, ntfContent);
             }
         }
 

@@ -8,19 +8,19 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 
 class Helper {
 
-    static boolean checkUserPara(String reqName, Object[] reqParas, IMagicBook magicBook){
-        Class[] userParaClasses = magicBook.getUserParaClasses(reqName);
+    static boolean checkUserPara(String reqId, Object[] reqParas, IMagicBook magicBook){
+        Class[] userParaClasses = magicBook.userParaClasses(reqId);
         if (null==userParaClasses || 0 == userParaClasses.length){
-            userParaClasses = magicBook.getNativeParaClasses(reqName);// 如果没有指定用户参数类型，则用户参数类型同native方法参数类型
+            userParaClasses = magicBook.nativeParaClasses(reqId);// 如果没有指定用户参数类型，则用户参数类型同native方法参数类型
         }
         if (null==userParaClasses){
-            KLog.p(KLog.ERROR, "user para types for %s have not registered yet!", reqName);
+            KLog.p(KLog.ERROR, "user para types for %s have not registered yet!", reqId);
             return false;
         }
-        boolean isGet = magicBook.isReqTypeGet(reqName);
+        boolean isGet = magicBook.isGet(reqId);
         int parasNum = isGet ? userParaClasses.length-1 : userParaClasses.length;
         if (reqParas.length < parasNum){
-            KLog.p(KLog.ERROR, "invalid req para nums for %s, #%s expected but #%s got", reqName, parasNum, reqParas.length);
+            KLog.p(KLog.ERROR, "invalid req para nums for %s, #%s expected but #%s got", reqId, parasNum, reqParas.length);
             return false;
         }
         for(int i=0; i<parasNum; ++i){
@@ -32,7 +32,7 @@ class Helper {
             ){
                 continue;
             }
-            KLog.p(KLog.ERROR, "invalid user para type for %s, %s expected but %s got", reqName, userParaClz, reqParaClz);
+            KLog.p(KLog.ERROR, "invalid user para type for %s, %s expected but %s got", reqId, userParaClz, reqParaClz);
             return false;
         }
 

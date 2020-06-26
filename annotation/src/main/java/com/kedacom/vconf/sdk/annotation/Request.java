@@ -15,12 +15,14 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 public @interface Request {
 
-    /** 请求对应的native方法名称，请求最终通过该方法被执行。
+    /**
+     * 请求名称
+     * 目前实现为请求对应的native方法名称，请求最终通过该方法被执行。
      * 如LoginManager.java中定义如下方法：
      * public static native void login(String jsonLoginPara);
-     * 则method为"login"
+     * 则该字段值为"login"
      * */
-    String method();
+    String name();
 
     /**
      * 对应的native方法所属类
