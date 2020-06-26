@@ -5,12 +5,15 @@ import android.content.Context;
 
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
-import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.*;
+import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTSUSAddr;
+import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeClientInfo;
+import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeDeviceInfo;
+import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeNetParam;
+import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeVersionInfo;
+import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeVersionInfoList;
 import com.kedacom.vconf.sdk.common.bean.TerminalType;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.utils.log.KLog;
-
-import java.util.Map;
 
 
 public class UpgradeManager extends Caster<Msg> {
@@ -43,11 +46,6 @@ public class UpgradeManager extends Caster<Msg> {
                 }
             }
         }, null , serviceName);
-    }
-
-    @Override
-    protected Map<Msg[], NtfProcessor<Msg>> subscribeNtfs() {
-        return null;
     }
 
 
@@ -107,6 +105,5 @@ public class UpgradeManager extends Caster<Msg> {
             }
         }, resultListener);
     }
-
 
 }

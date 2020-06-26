@@ -22,8 +22,6 @@ import com.kedacom.vconf.sdk.utils.net.NetworkHelper;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Map;
-
 
 public class StartupManager extends Caster<Msg> {
     private static StartupManager instance = null;
@@ -42,10 +40,6 @@ public class StartupManager extends Caster<Msg> {
         return instance;
     }
 
-    @Override
-    protected Map<Msg[], NtfProcessor<Msg>> subscribeNtfs() {
-        return null;
-    }
 
     /**
      * 启动，完成一些初始化的工作。

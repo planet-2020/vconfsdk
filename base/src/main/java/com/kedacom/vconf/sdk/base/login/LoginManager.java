@@ -184,5 +184,5 @@ public class LoginManager extends Caster<Msg> {
                 break;
         }
     }
-    
+
 }

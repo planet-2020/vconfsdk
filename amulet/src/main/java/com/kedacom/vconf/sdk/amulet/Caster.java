@@ -472,11 +472,12 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 通知抵达
+     * 若要处理通知需override此方法。
      * @param ntf 通知
      * @param ntfContent 通知内容，具体类型由通知消息决定
      * @param ntfListeners 通知监听器集合
      * */
-    protected abstract void onNotification(T ntf, Object ntfContent, Set<Object> ntfListeners);
+    protected void onNotification(T ntf, Object ntfContent, Set<Object> ntfListeners){}
 
 
     /**会话处理器*/
