@@ -35,7 +35,6 @@ public abstract class Caster<T extends Enum<T>> implements
     private static final int NOTIFICATION_FAIRY_BASE_PRIORITY = SESSION_FAIRY_BASE_PRIORITY+10000;
 
     private final Set<Session> sessions = new LinkedHashSet<>();
-    private final Map<T, NtfProcessor<T>> ntfProcessorMap = new LinkedHashMap<>();
     private final Map<T, Set<Object>> ntfListenersMap = new LinkedHashMap<>();
 
     private ListenerLifecycleObserver listenerLifecycleObserver;
@@ -77,6 +76,13 @@ public abstract class Caster<T extends Enum<T>> implements
         crystalBall.addListener(notificationFairy, NOTIFICATION_FAIRY_BASE_PRIORITY+count);
         ++count;
 
+        Set<String> ntfIds = magicBook.ntfIds(null);
+        if (null != ntfIds){
+            for (String ntfId : ntfIds){
+                notificationFairy.subscribe(this, ntfId);
+            }
+        }
+
         listenerLifecycleObserver = new ListenerLifecycleObserver(new ListenerLifecycleObserver.Callback(){
             @Override
             public void onListenerResumed(Object listener) {
@@ -101,62 +107,7 @@ public abstract class Caster<T extends Enum<T>> implements
             }
         });
 
-        Map<T[], NtfProcessor<T>> ntfsProcessors = subscribeNtfs();
-        if (null != ntfsProcessors){
-            for (T[] ntfs : ntfsProcessors.keySet()){
-                NtfProcessor<T> ntfProcessor = ntfsProcessors.get(ntfs);
-                for (T ntf : ntfs){
-                    if (notificationFairy.subscribe(this, prefixMsg(ntf.name()))) {
-                        ntfProcessorMap.put(ntf, ntfProcessor);
-                    }
-                }
-            }
-        }
-
     }
-
-
-    /**会话处理器*/
-    protected interface SessionProcessor<T>{
-        /**
-         * 请求已发出。（业务组件接口已返回）
-         * @param resultListener 结果监听器,req()传入。
-         *                 NOTE: 可能为null。如用户传入即为null，或者会话过程中监听器被销毁，
-         * @param req 请求消息，req()传入。
-         * @param reqParas 请求参数列表，req()传入，顺序同传入时的
-         * */
-        default void onReqSent(IResultListener resultListener, T req, Object[] reqParas){}
-
-        /**
-         * 收到响应
-         * @param rsp 响应消息
-         * @param rspContent 响应内容，具体类型由响应消息决定。
-         * @param isConsumed 是否已被消费。出参。true已消费，默认是true。 若未消费该消息继续向下流转到其他会话或通知处理器
-         * */
-        default void onRsp(T rsp, Object rspContent, IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
-
-        /**
-         * 会话超时
-         * @param isConsumed 是否已被消费。出参。默认是已消费。
-         * @return 是否已被消费。出参。true已消费，默认是true。若未消费则Caster会接管处理——上报用户已超时。
-         * */
-        default void onTimeout(IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
-    }
-
-    /**通知处理器*/
-    protected interface NtfProcessor<T>{
-        /**
-         * @param ntf 通知消息
-         * @param ntfContent 通知内容，具体类型由通知消息决定
-         * @param ntfListeners 通知监听器集合
-         * */
-        void process(T ntf, Object ntfContent, Set<Object> ntfListeners);
-    }
-
-    /**订阅通知
-     * 若要订阅通知需override此方法。
-     * */
-    protected Map<T[], NtfProcessor<T>> subscribeNtfs(){return null;}
 
 
     /**
@@ -411,15 +362,6 @@ public abstract class Caster<T extends Enum<T>> implements
         throw new RuntimeException("no such session "+sid);
     }
 
-    private NtfProcessor<T> getNtfProcessor(T ntf){
-        NtfProcessor<T> processor = ntfProcessorMap.get(ntf);
-        if (null == processor){
-            throw new RuntimeException("no processor for "+ntf);
-        }
-        return processor;
-    }
-
-
     @Override
     public void onReqSent(boolean hasRsp, String reqName, int reqSn, Object[] reqParas) {
         T req = T.valueOf(enumT, unprefixMsg(reqName));
@@ -492,8 +434,8 @@ public abstract class Caster<T extends Enum<T>> implements
             }
         }
         KLog.p(KLog.DEBUG,"ntf=%s, ntfContent=%s\nlisteners=%s", ntf, ntfContent, sb.toString());
-        NtfProcessor<T> processor = getNtfProcessor(ntf);
-        processor.process(ntf, ntfContent, ntfListenersMap.get(ntf));
+
+        onNotification(ntf, ntfContent, ntfListenersMap.get(ntf));
     }
 
 
@@ -526,6 +468,44 @@ public abstract class Caster<T extends Enum<T>> implements
             listener.onTimeout();
         }
     }
+
+
+    /**
+     * 通知抵达
+     * @param ntf 通知
+     * @param ntfContent 通知内容，具体类型由通知消息决定
+     * @param ntfListeners 通知监听器集合
+     * */
+    protected abstract void onNotification(T ntf, Object ntfContent, Set<Object> ntfListeners);
+
+
+    /**会话处理器*/
+    protected interface SessionProcessor<T>{
+        /**
+         * 请求已发出。（业务组件接口已返回）
+         * @param resultListener 结果监听器,req()传入。
+         *                 NOTE: 可能为null。如用户传入即为null，或者会话过程中监听器被销毁，
+         * @param req 请求消息，req()传入。
+         * @param reqParas 请求参数列表，req()传入，顺序同传入时的
+         * */
+        default void onReqSent(IResultListener resultListener, T req, Object[] reqParas){}
+
+        /**
+         * 收到响应
+         * @param rsp 响应消息
+         * @param rspContent 响应内容，具体类型由响应消息决定。
+         * @param isConsumed 是否已被消费。出参。true已消费，默认是true。 若未消费该消息继续向下流转到其他会话或通知处理器
+         * */
+        default void onRsp(T rsp, Object rspContent, IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
+
+        /**
+         * 会话超时
+         * @param isConsumed 是否已被消费。出参。默认是已消费。
+         * @return 是否已被消费。出参。true已消费，默认是true。若未消费则Caster会接管处理——上报用户已超时。
+         * */
+        default void onTimeout(IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
+    }
+
 
     private static int sessionCount;
     private class Session {
