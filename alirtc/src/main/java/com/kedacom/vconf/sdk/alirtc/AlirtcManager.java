@@ -30,6 +30,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.Set;
 
 public class AlirtcManager extends Caster<Msg> {
     private static AlirtcManager instance = null;
@@ -49,8 +50,8 @@ public class AlirtcManager extends Caster<Msg> {
 
 
     @Override
-    protected Map<Msg[], NtfProcessor<Msg>> subscribeNtfs() {
-        return null;
+    protected void onNotification(Msg ntf, Object ntfContent, Set<Object> ntfListeners) {
+
     }
 
     /**
