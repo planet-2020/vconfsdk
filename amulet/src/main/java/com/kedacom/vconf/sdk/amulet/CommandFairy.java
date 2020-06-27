@@ -33,14 +33,14 @@ final class CommandFairy implements IFairy.ICommandFairy{
         }
 
         Class<?>[] nativeParaClasses = magicBook.nativeParaClasses(reqId);
-        Object[] methodParas = Helper.convertUserPara2NativePara(paras, nativeParaClasses);
+        Object[] nativeParas = Helper.convertUserPara2NativePara(paras, nativeParaClasses);
         StringBuffer sb = new StringBuffer();
-        for (int i=0; i<methodParas.length; ++i){
-            sb.append(methodParas[i]).append(", ");
+        for (int i=0; i<nativeParas.length; ++i){
+            sb.append(nativeParas[i]).append(", ");
         }
         String methodName = magicBook.reqName(reqId);
         Log.d(TAG, String.format(" -=->| %s(%s) \nparas={%s}", reqId, methodName, sb));
-        crystalBall.spell(magicBook.nativeMethodOwner(reqId), methodName, methodParas, nativeParaClasses);
+        crystalBall.spell(magicBook.nativeMethodOwner(reqId), methodName, nativeParas, nativeParaClasses);
     }
 
     @Override

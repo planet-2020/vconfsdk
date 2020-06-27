@@ -99,13 +99,17 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 sb.append(para).append(", ");
             }
             String methodName = magicBook.reqName(s.reqId);
-            uiHandler.post(() -> Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqId, methodName, sb)));
-
-            // 启动超时
-            Message msg = Message.obtain();
-            msg.what = MsgId_Timeout;
-            msg.obj = s;
-            uiHandler.sendMessageDelayed(msg, s.timeoutVal);
+            boolean hasRsp = null != s.rspSeqs && 0 != s.rspSeqs.length;
+            if (hasRsp) {
+                uiHandler.post(() -> Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqId, methodName, sb)));
+                // 启动超时
+                Message msg = Message.obtain();
+                msg.what = MsgId_Timeout;
+                msg.obj = s;
+                uiHandler.sendMessageDelayed(msg, s.timeoutVal);
+            }else {
+                uiHandler.post(() -> Log.d(TAG, String.format(" -~-> %s(%s) \nparas={%s}", s.reqId, methodName, sb)));
+            }
 
             // 调用native接口
             String nativeMethodOwner = magicBook.nativeMethodOwner(s.reqId);
@@ -125,12 +129,9 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 if(!s.transState(Session.SENT, Session.WAITING)){
                     return;
                 }
-                boolean hasRsp = null != s.rspSeqs && 0 != s.rspSeqs.length;
                 if (!hasRsp){
                     s.setState(Session.END);
                     sessions.remove(s);
-                    uiHandler.removeMessages(MsgId_Timeout, s);
-                    Log.d(TAG, String.format("%s <-~-o NO RESPONSE", s.id));
                 }
                 s.listener.onReqSent(hasRsp, s.reqId, s.reqSn, s.reqPara);
             });
@@ -148,7 +149,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 s.setState(Session.CANCELED);
                 uiHandler.removeMessages(MsgId_Timeout, s);
 
-                Log.d(TAG, String.format("%s x-~-> %s", s.id, s.reqId));
+                Log.d(TAG, String.format("%s -~->x %s", s.id, s.reqId));
                 // 用户很有可能在onMsg回调中调用cancelReq（onMsg回调到上层的onRsp然后用户在onRsp中cancelReq），
                 // 然而onMsg中我们正在遍历sessions，所以我们延迟删除
                 uiHandler.post(() -> {
