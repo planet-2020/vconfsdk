@@ -179,7 +179,7 @@ public class LoginManager extends Caster<Msg> {
     }
 
     @Override
-    protected void onNotification(Msg ntf, Object ntfContent, Set<Object> ntfListeners) {
+    protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
         switch (ntf){
             case KickedOff:
                 break;

@@ -24,6 +24,7 @@ import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmRegFailedReason;
 import com.kedacom.vconf.sdk.common.type.TNetAddr;
+import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import org.jetbrains.annotations.NotNull;
@@ -50,7 +51,7 @@ public class AlirtcManager extends Caster<Msg> {
 
 
     @Override
-    protected void onNotification(Msg ntf, Object ntfContent, Set<Object> ntfListeners) {
+    protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
 
     }
 

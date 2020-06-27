@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.amulet;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
 import com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
@@ -35,7 +36,7 @@ public abstract class Caster<T extends Enum<T>> implements
     private static final int NOTIFICATION_FAIRY_BASE_PRIORITY = SESSION_FAIRY_BASE_PRIORITY+10000;
 
     private final Set<Session> sessions = new LinkedHashSet<>();
-    private final Map<T, Set<Object>> ntfListenersMap = new LinkedHashMap<>();
+    private final Map<T, Set<ILifecycleOwner>> ntfListenersMap = new LinkedHashMap<>();
 
     private ListenerLifecycleObserver listenerLifecycleObserver;
 
@@ -103,7 +104,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
             @Override
             public void onListenerDestroy(Object listener) {
-                delListener(listener);
+                delListener((ILifecycleOwner) listener);
             }
         });
 
@@ -122,8 +123,8 @@ public abstract class Caster<T extends Enum<T>> implements
      *                       NOTE: 会话持有了resultListener的引用，而resultListener可能为生命周期对象如Activity，
      *                       若resultListener生命周期结束于会话之前则会话需要及时释放resultListener引用以避免内存泄漏以及不被用户期望的请求结果回调。
      *                       释放引用有两种方式：手动释放和自动释放。
-     *                       手动释放指用户通过调用{@link #delListener(Object)}释放，自动释放则由Caster自动管理，目前实现是在resultListener生命周期结束时释放。
-     *                       手动释放很很繁琐且易遗漏出错，所以最好由Caster自动释放。
+     *                       手动释放指用户通过调用{@link #delListener(ILifecycleOwner)}释放，自动释放则由Caster自动管理，目前实现是在resultListener生命周期结束时释放。
+     *                       手动释放很繁琐且易遗漏出错，所以最好由Caster自动释放。
      *
      *                       在调用本接口时，Caster会尝试监控resultListener的生命周期，进而实现自动释放，但是成功的前提是——
      *                       resultListener需得是生命周期拥有者{@link androidx.lifecycle.LifecycleOwner}或者绑定了某个LifecycleOwner，
@@ -183,7 +184,7 @@ public abstract class Caster<T extends Enum<T>> implements
      *                       绑定的优先级按从高到低： getLifecycleOwner > 自身即为LifecycleOwner > 直接外部类是LifecycleOwner或绑定了LifecycleOwner；
      *                       如果用户的监听器本身就是一个长寿对象（如一个全局单例），肯定长过session的生命周期，则无需关注生命周期问题；
      *                       当session结束时（session一定会结束，有超时机制），Caster会自动释放监听器引用，所以多数情况下即使不做任何处理现象上也不会表现出问题，但逻辑上是有问题的，在某些极端场景下会表现异常；
-     *                       IResultListener定义不要使用lambada，否则绑定可能失效（取决于java编译器具体实现），AS会提示转换为lambada，请suppress；
+     *                       IResultListener的外部类定义不要使用lambada，否则绑定可能失败（取决于java编译器具体实现），AS会提示转换为lambada，请suppress；
      *                       建议用户尽量参考例一例二；
      *
      * */
@@ -250,9 +251,9 @@ public abstract class Caster<T extends Enum<T>> implements
      *                    NOTE: Caster会尝试监测该监听器的生命周期，并做相应处理，
      *                    参见{@link #req(Enum, SessionProcessor, IResultListener, Object...)}}对IResultListener的处理
      * */
-    protected void addNtfListener(@NonNull T ntfId, @NonNull Object ntfListener){
+    protected void addNtfListener(@NonNull T ntfId, @NonNull ILifecycleOwner ntfListener){
         KLog.p(KLog.DEBUG,"ntfId=%s, ntfListener=%s", ntfId, ntfListener);
-        Set<Object> listeners = ntfListenersMap.get(ntfId);
+        Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntfId);
         if (null == listeners){
             listeners = new LinkedHashSet<>();
             ntfListenersMap.put(ntfId, listeners);
@@ -264,7 +265,7 @@ public abstract class Caster<T extends Enum<T>> implements
     /**
      * 批量添加通知监听器
      * */
-    protected void addNtfListeners(@NonNull T[] ntfIds, @NonNull Object ntfListener){
+    protected void addNtfListeners(@NonNull T[] ntfIds, @NonNull ILifecycleOwner ntfListener){
         for (T ntfId : ntfIds){
             addNtfListener(ntfId, ntfListener);
         }
@@ -274,10 +275,9 @@ public abstract class Caster<T extends Enum<T>> implements
     /**
      * 删除通知监听器
      * @param ntf 监听器监听的通知（一个监听器可能监听多个通知）。若为null则表示任意通知。
-     * @param listener 通知监听器。要删除的监听器对象
-     * */
-    protected void delNtfListener(@NonNull T ntf, @NonNull Object listener){
-        Set<Object> listeners = ntfListenersMap.get(ntf);
+     * @param listener 通知监听器。要删除的监听器对象 */
+    protected void delNtfListener(@NonNull T ntf, @NonNull ILifecycleOwner listener){
+        Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntf);
         if (null != listeners) {
             KLog.p(KLog.DEBUG,"delete ntfListener, ntf=%s, listener=%s", ntf, listener);
             listeners.remove(listener);
@@ -291,17 +291,16 @@ public abstract class Caster<T extends Enum<T>> implements
     /**
      * 批量删除通知监听器
      * @param ntf 监听器监听的通知（一个监听器可能监听多个通知）。若为null则表示任意通知。
-     * @param listener 通知监听器。要删除的监听器对象
-     * */
-    protected void delNtfListeners(@Nullable T[] ntf, @NonNull Object listener){
+     * @param listener 通知监听器。要删除的监听器对象 */
+    protected void delNtfListeners(@Nullable T[] ntf, @NonNull ILifecycleOwner listener){
         if (null != ntf) {
-            Set<Object> listeners = ntfListenersMap.get(ntf);
+            Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntf);
             if (null != listeners) {
                 KLog.p(KLog.DEBUG,"delete ntfListener, ntf=%s, listener=%s", ntf, listener);
                 listeners.remove(listener);
             }
         }else{
-            for (Set<Object> ntfListeners : ntfListenersMap.values()) {
+            for (Set<ILifecycleOwner> ntfListeners : ntfListenersMap.values()) {
                 ntfListeners.remove(listener);
             }
         }
@@ -314,16 +313,18 @@ public abstract class Caster<T extends Enum<T>> implements
     /**
      * 删除监听器。
      * NOTE：该接口会删除该listener注册的所有监听器，包括各个请求结果监听器，通知监听器。
-     * */
-    public void delListener(@NonNull Object listener){
+     *
+     * @param listener*/
+    public void delListener(@NonNull ILifecycleOwner listener){
         delResultListener(listener);
         delNtfListeners(null, listener);
     }
 
     /**
      * 删除结果监听器
-     * */
-    protected void delResultListener(@NonNull Object listener){
+     *
+     * @param listener*/
+    protected void delResultListener(@NonNull ILifecycleOwner listener){
         for (Session s : sessions) {
             if (listener == s.resultListener) {
                 KLog.p(KLog.DEBUG, "delete result listener, req=%s, sid=%s, listener=%s", s.req, s.id, s.resultListener);
@@ -336,9 +337,9 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
 
-    protected boolean containsListener(Object listener){
+    protected boolean containsListener(ILifecycleOwner listener){
         boolean got = false;
-        for (Set<Object> listeners : ntfListenersMap.values()){
+        for (Set<ILifecycleOwner> listeners : ntfListenersMap.values()){
             if (listeners.contains(listener)){
                 got = true;
                 break;
@@ -436,7 +437,7 @@ public abstract class Caster<T extends Enum<T>> implements
     public void onNtf(String ntfName, Object ntfContent) {
         String unPrefixedNtfName = unprefixMsg(ntfName);
         T ntf = T.valueOf(enumT, unPrefixedNtfName);
-        Set<Object> listeners = ntfListenersMap.get(ntf);
+        Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntf);
         StringBuilder sb = new StringBuilder();
         if (null != listeners) {
             for (Object listener : listeners) {
@@ -487,7 +488,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * @param ntfContent 通知内容，具体类型由通知消息决定
      * @param ntfListeners 通知监听器集合
      * */
-    protected void onNotification(T ntf, Object ntfContent, Set<Object> ntfListeners){}
+    protected void onNotification(T ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners){}
 
 
     /**会话处理器*/
