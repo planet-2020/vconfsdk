@@ -86,29 +86,30 @@ final class SessionFairy implements IFairy.ISessionFairy{
         Session s = new Session(listener, reqSn, reqId, reqParas,magicBook.timeout(reqId) * 1000, magicBook.rspSeqs(reqId));
         sessions.add(s);
 
-        reqHandler.post(() -> {
-            if(!s.transState(Session.IDLE, Session.SENDING)){
-                return;
-            }
+        // 用户参数转换为底层方法需要的参数
+        Class<?>[] nativeParaClasses = magicBook.nativeParaClasses(s.reqId);
+        Object[] paras = Helper.convertUserPara2NativePara(s.reqPara, nativeParaClasses);
+        StringBuilder sb = new StringBuilder();
+        for (Object para : paras) {
+            sb.append(para).append(", ");
+        }
+        String methodName = magicBook.reqName(s.reqId);
+        boolean hasRsp = null != s.rspSeqs && 0 != s.rspSeqs.length;
+        if (hasRsp) {
+            // 启动超时
+            Message msg = Message.obtain();
+            msg.what = MsgId_Timeout;
+            msg.obj = s;
+            uiHandler.sendMessageDelayed(msg, s.timeoutVal);
+            Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqId, methodName, sb));
+        }else {
+            Log.d(TAG, String.format(" -~-> %s(%s) \nparas={%s}", s.reqId, methodName, sb));
+        }
+        s.setState(Session.READY);
 
-            // 用户参数转换为底层方法需要的参数
-            Class<?>[] nativeParaClasses = magicBook.nativeParaClasses(s.reqId);
-            Object[] paras = Helper.convertUserPara2NativePara(s.reqPara, nativeParaClasses);
-            StringBuilder sb = new StringBuilder();
-            for (Object para : paras) {
-                sb.append(para).append(", ");
-            }
-            String methodName = magicBook.reqName(s.reqId);
-            boolean hasRsp = null != s.rspSeqs && 0 != s.rspSeqs.length;
-            if (hasRsp) {
-                uiHandler.post(() -> Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqId, methodName, sb)));
-                // 启动超时
-                Message msg = Message.obtain();
-                msg.what = MsgId_Timeout;
-                msg.obj = s;
-                uiHandler.sendMessageDelayed(msg, s.timeoutVal);
-            }else {
-                uiHandler.post(() -> Log.d(TAG, String.format(" -~-> %s(%s) \nparas={%s}", s.reqId, methodName, sb)));
+        reqHandler.post(() -> {
+            if(!s.transState(Session.READY, Session.SENDING)){
+                return;
             }
 
             // 调用native接口
@@ -260,6 +261,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
         private int state = IDLE;  // 会话状态
         private static final int IDLE = 0;  // 空闲。初始状态
+        private static final int READY = 1;  // 已准备，待执行。
         private static final int SENDING = 2; // 正在发送请求。
         private static final int SENT = 3; // 请求已发出。
         private static final int WAITING = 4; // 正在等待响应。请求发送以后，收到第一条响应之前。
