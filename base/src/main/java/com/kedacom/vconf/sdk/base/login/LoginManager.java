@@ -101,11 +101,22 @@ public class LoginManager extends Caster<Msg> {
                                                             reportFailed(-1, resultListener);
                                                         }
                                                     }
+                                                    @Override
+                                                    public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                                        logoutAps(null);
+                                                        reportFailed(-1, resultListener);
+                                                    }
                                                 }, resultListener, new TMTWeiboLogin(username, password));
                                             }else{
                                                 logoutAps(null);
                                                 reportFailed(-1, resultListener);
                                             }
+                                        }
+
+                                        @Override
+                                        public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                            logoutAps(null);
+                                            reportFailed(-1, resultListener);
                                         }
                                     }, resultListener, NetAddrHelper.ipLongLittleEndian2Str(apsLoginResult.AssParam.dwIP));
 
@@ -198,11 +209,11 @@ public class LoginManager extends Caster<Msg> {
     public void addOnKickedOffListener(OnKickedOffListener listener){
         addNtfListener(Msg.KickedOff, listener);
     }
-    /**
-     * 删除被抢登监听器
-     * */
-    public void delOnKickedOffListener(OnKickedOffListener listener){
-        delNtfListener(Msg.KickedOff, listener);
-    }
+//    /**
+//     * 删除被抢登监听器
+//     * */
+//    public void delOnKickedOffListener(OnKickedOffListener listener){
+//        delNtfListener(Msg.KickedOff, listener);
+//    }
 
 }
