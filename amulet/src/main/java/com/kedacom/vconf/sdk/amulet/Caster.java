@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.amulet;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.Lifecycle;
 
 import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
 import com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver;
@@ -38,13 +39,44 @@ public abstract class Caster<T extends Enum<T>> implements
     private final Set<Session> sessions = new LinkedHashSet<>();
     private final Map<T, Set<ILifecycleOwner>> ntfListenersMap = new LinkedHashMap<>();
 
-    private ListenerLifecycleObserver listenerLifecycleObserver;
-
     private Class<T> enumT;
 
     private static Set<String> modules = new HashSet<>();
     private String module;
     private String msgPrefix;
+
+    private ListenerLifecycleObserver listenerLifecycleObserver = ListenerLifecycleObserver.getInstance();
+    private ListenerLifecycleObserver.Callback ListenerLifecycleObserverCb = new ListenerLifecycleObserver.Callback(){
+        @Override
+        public void onListenerResumed(Object listener) {
+            // 该事件是粘滞的，即便activity已经resume很久了然后才注册生命周期观察者也会收到该事件。
+            if (((ILifecycleOwner) listener).destroyWhenLifecycleOwner() == Lifecycle.Event.ON_RESUME){
+                delListener((ILifecycleOwner) listener);
+            }
+        }
+
+        @Override
+        public void onListenerPause(Object listener) {
+            if (((ILifecycleOwner) listener).destroyWhenLifecycleOwner() == Lifecycle.Event.ON_PAUSE){
+                delListener((ILifecycleOwner) listener);
+            }
+        }
+
+        @Override
+        public void onListenerStop(Object listener) {
+            if (((ILifecycleOwner) listener).destroyWhenLifecycleOwner() == Lifecycle.Event.ON_STOP){
+                delListener((ILifecycleOwner) listener);
+            }
+        }
+
+        @Override
+        public void onListenerDestroy(Object listener) {
+            if (((ILifecycleOwner) listener).destroyWhenLifecycleOwner() == Lifecycle.Event.ON_DESTROY){
+                delListener((ILifecycleOwner) listener);
+            }
+        }
+    };
+
 
     @SuppressWarnings("ConstantConditions")
     protected Caster(){
@@ -83,31 +115,6 @@ public abstract class Caster<T extends Enum<T>> implements
                 notificationFairy.subscribe(this, ntfId);
             }
         }
-
-        listenerLifecycleObserver = new ListenerLifecycleObserver(new ListenerLifecycleObserver.Callback(){
-            @Override
-            public void onListenerResumed(Object listener) {
-                // 该事件是粘滞的，即便activity已经resume很久了然后才注册生命周期观察者也会收到该事件。
-//            KLog.p(""+ listener);
-            }
-
-            @Override
-            public void onListenerPause(Object listener) {
-//            KLog.p(""+ listener);
-//            delListener(listener);
-            }
-
-            @Override
-            public void onListenerStop(Object listener) {
-
-            }
-
-            @Override
-            public void onListenerDestroy(Object listener) {
-                delListener((ILifecycleOwner) listener);
-            }
-        });
-
     }
 
 
@@ -196,7 +203,7 @@ public abstract class Caster<T extends Enum<T>> implements
             return;
         }
         sessions.add(s);
-        listenerLifecycleObserver.tryObserve(resultListener);
+        listenerLifecycleObserver.tryObserve(resultListener, ListenerLifecycleObserverCb);
         KLog.p(KLog.DEBUG,"req=%s, sid=%s, sessionProcessor=%s, resultListener=%s", req, s.id, sessionProcessor, resultListener);
     }
 
@@ -259,7 +266,7 @@ public abstract class Caster<T extends Enum<T>> implements
             ntfListenersMap.put(ntfId, listeners);
         }
         listeners.add(ntfListener);
-        listenerLifecycleObserver.tryObserve(ntfListener);
+        listenerLifecycleObserver.tryObserve(ntfListener, ListenerLifecycleObserverCb);
     }
 
     /**
