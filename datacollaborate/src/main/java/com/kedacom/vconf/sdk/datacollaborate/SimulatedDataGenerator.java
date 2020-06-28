@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
-import com.kedacom.vconf.sdk.annotation.Message;
 import com.kedacom.vconf.sdk.common.type.SimulatedError;
 import com.kedacom.vconf.sdk.common.type.SimulatedTimeout;
 import com.kedacom.vconf.sdk.datacollaborate.bean.*;
@@ -16,7 +15,7 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.*;
 final class SimulatedDataGenerator {
 
     /**
-     * 模块名{@link Msg}&{@link Message#module()}
+     * 模块名{@link Msg}&{@link com.kedacom.vconf.sdk.annotation.Module#name()}
      * */
     private static String MODULE_NAME="DC";
     /**
