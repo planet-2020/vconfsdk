@@ -4,16 +4,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
-import androidx.annotation.NonNull;
-
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -26,7 +23,8 @@ public class CrystalBall implements ICrystalBall {
 
     private final Map<String, Method> cachedMethods = new ConcurrentHashMap<>();
 
-    private final List<PriorityListener> listeners = new ArrayList<>();
+    private final Set<IListener> rspListeners = new LinkedHashSet<>();
+    private final Set<IListener> ntfListeners = new LinkedHashSet<>();
 
     protected CrystalBall(){
     }
@@ -77,48 +75,26 @@ public class CrystalBall implements ICrystalBall {
         handler.sendMessage(msg);
     }
 
+    @Override
+    public void addRspListener(IListener listener) {
+        rspListeners.add(listener);
+    }
 
     @Override
-    public void addListener(IListener listener, int priority) {
-        if (priority<0){
-            KLog.p(KLog.ERROR, "priority(%s) can not be < 0", priority);
-            return;
-        }
-        for (PriorityListener priorityListener : listeners){
-            if (listener == priorityListener.listener){
-                priorityListener.priority = priority;
-                Collections.sort(listeners);
-                return;
-            }
-        }
-
-        listeners.add(new PriorityListener(listener, priority));
-        Collections.sort(listeners);
+    public void addNtfListener(IListener listener) {
+        ntfListeners.add(listener);
     }
 
     @Override
     public void delListener(IListener listener) {
-        for (PriorityListener priorityListener : listeners){
-            if (listener == priorityListener.listener){
-                listeners.remove(priorityListener);
-                return;
-            }
-        }
+        rspListeners.remove(listener);
+        ntfListeners.remove(listener);
     }
 
     @Override
     public void clearListeners() {
-        listeners.clear();
-    }
-
-    @Override
-    public int getPriority(IListener listener) {
-        for (PriorityListener priorityListener : listeners){
-            if (listener == priorityListener.listener){
-                return priorityListener.priority;
-            }
-        }
-        return -1;
+        rspListeners.clear();
+        ntfListeners.clear();
     }
 
 
@@ -128,34 +104,27 @@ public class CrystalBall implements ICrystalBall {
                 MsgWrapper msgWrapper = (MsgWrapper) msg.obj;
                 String msgName = msgWrapper.msgName;
                 String msgBody = msgWrapper.msgBody;
-                for (PriorityListener priorityListener : listeners){
-                    if (priorityListener.listener.onMsg(msgName, msgBody)){
+                for (IListener listener : rspListeners){
+                    if (listener.onMsg(msgName, msgBody)){
                         return;
                     }
                 }
-                KLog.p(KLog.DEBUG, "<-x- %s, dropped, no consumer. \n%s", msgName, msgBody);
+                boolean consumed = false;
+                for (IListener listener : ntfListeners) {
+                    if (listener.onMsg(msgName, msgBody)) {
+                        consumed = true;
+                    }
+                }
+                if (!consumed) {
+                    KLog.p(KLog.DEBUG, "<-x- %s, dropped, no consumer. \n%s", msgName, msgBody);
+                }
             }
         };
 
-    private class MsgWrapper {
+    private static class MsgWrapper {
         String msgName;
         String msgBody;
         MsgWrapper(String msgName, String msgBody){this.msgName =msgName; this.msgBody=msgBody;}
-    }
-
-    private class PriorityListener implements Comparable<PriorityListener>{
-        IListener listener;
-        int priority;
-
-        PriorityListener(IListener listener, int priority) {
-            this.listener = listener;
-            this.priority = priority;
-        }
-
-        @Override
-        public int compareTo(@NonNull PriorityListener o) {
-            return priority - o.priority;
-        }
     }
 
 }

@@ -28,14 +28,6 @@ public abstract class Caster<T extends Enum<T>> implements
     private IFairy.ICommandFairy commandFairy = new CommandFairy();
     private ICrystalBall crystalBall = CrystalBall.instance();
 
-    /**
-     * 设置ICrystalBall#IListener优先级，越小优先级越高。
-     * 让IFairy.ISessionFairy优先级高于IFairy.INotificationFairy以保证ISessionFairy优先消费上报的消息。
-     * */
-    private static int count = 0;
-    private static final int SESSION_FAIRY_BASE_PRIORITY = 0;
-    private static final int NOTIFICATION_FAIRY_BASE_PRIORITY = SESSION_FAIRY_BASE_PRIORITY+10000;
-
     private final Set<Session> sessions = new LinkedHashSet<>();
     private final Map<T, Set<ILifecycleOwner>> ntfListenersMap = new LinkedHashMap<>();
 
@@ -105,9 +97,8 @@ public abstract class Caster<T extends Enum<T>> implements
         commandFairy.setCrystalBall(crystalBall);
         notificationFairy.setMagicBook(magicBook);
 
-        crystalBall.addListener(sessionFairy, SESSION_FAIRY_BASE_PRIORITY+count);
-        crystalBall.addListener(notificationFairy, NOTIFICATION_FAIRY_BASE_PRIORITY+count);
-        ++count;
+        crystalBall.addRspListener(sessionFairy);
+        crystalBall.addNtfListener(notificationFairy);
 
         Set<String> ntfIds = magicBook.ntfIds(null);
         if (null != ntfIds){

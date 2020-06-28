@@ -83,6 +83,7 @@ final class NotificationFairy implements IFairy.INotificationFairy{
         if (ntfIds==null || ntfIds.isEmpty()){
             return false;
         }
+        boolean consumed = false;
         for (String ntfId : ntfIds) {
             Class<?> ntfClass = magicBook.ntfClass(ntfId);
             if (ntfClass == null){
@@ -90,9 +91,10 @@ final class NotificationFairy implements IFairy.INotificationFairy{
             }
             LinkedHashSet<IListener> subs = subscribers.get(ntfId);
             if (null == subs || 0 == subs.size()) {
-                return false;
+                continue;
             }
 
+            consumed = true;
             Log.d(TAG, String.format("<-~- %s(%s)\n%s", ntfId, msgName, msgContent));
 
             Object ntfContent = Kson.fromJson(msgContent, ntfClass);
@@ -102,7 +104,7 @@ final class NotificationFairy implements IFairy.INotificationFairy{
             }
         }
 
-        return false;  // 始终返回false，通知可共享。
+        return consumed;
     }
 
 
