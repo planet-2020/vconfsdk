@@ -211,6 +211,9 @@ public class LoginManager extends Caster<Msg> {
     protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
         switch (ntf){
             case KickedOff:
+                for (ILifecycleOwner listener : ntfListeners){
+                    ((OnKickedOffListener) listener).onKickedOff();
+                }
                 break;
         }
     }
