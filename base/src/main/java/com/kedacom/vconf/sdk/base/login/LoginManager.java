@@ -16,24 +16,22 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 
 public class LoginManager extends Caster<Msg> {
     private static LoginManager instance = null;
     private Context context;
-    private boolean hasServiceStarted;
 
     private LoginManager(Context ctx) {
         context = ctx;
+        startService();
     }
 
     public synchronized static LoginManager getInstance(Application ctx) {
         if (instance == null) {
             instance = new LoginManager(ctx);
-        }
-        if (!instance.hasServiceStarted){
-            instance.startService();
         }
         return instance;
     }
@@ -49,7 +47,6 @@ public class LoginManager extends Caster<Msg> {
                 if (success){
                     KLog.p("start %s service success!", serviceName);
                 }
-                hasServiceStarted = success;
             }
         }, null , serviceName);
     }
@@ -58,15 +55,28 @@ public class LoginManager extends Caster<Msg> {
     /**
      * 登录APS
      * NOTE: APS为接入服务器，登录APS后才能登录其他服务器如会议、IM、升级等。
+     * @param apsAddr APS服务器地址。可以为domain或者IP。
+     * @param username 用户名
+     * @param password 密码
+     * @param resultListener 结果监听器
+     *                       成功返回null，
+     *                       失败返回错误码。
      * */
-    public void loginAps(@NonNull String apsIp, @NonNull String username, @NonNull String password, IResultListener resultListener){
-        if (!hasServiceStarted){
-            startService();
+    public void loginAps(@NonNull String apsAddr, @NonNull String username, @NonNull String password, IResultListener resultListener){
+        String apsIP = apsAddr;
+        if (!NetAddrHelper.isValidIp(apsAddr)){
+            // 尝试域名解析
+            List<String> ips = NetAddrHelper.parseDomain(apsAddr);
+            if (ips.isEmpty()){
+                reportFailed(-1, resultListener);
+                return;
+            }
+            apsIP = ips.get(0);
         }
 
         long ipLong;
         try {
-            ipLong = NetAddrHelper.ipStr2LongLittleEndian(apsIp);
+            ipLong = NetAddrHelper.ipStr2LongLittleEndian(apsIP);
         } catch (NetAddrHelper.InvalidIpv4Exception e) {
             e.printStackTrace();
             reportFailed(-1, resultListener);
@@ -74,7 +84,7 @@ public class LoginManager extends Caster<Msg> {
         }
         MtXAPSvrCfg mtXAPSvrCfg = new MtXAPSvrCfg(
                 EmServerAddrType.emSrvAddrTypeCustom.ordinal(),
-                apsIp,
+                apsIP,
                 "",
                 ipLong,
                 true,

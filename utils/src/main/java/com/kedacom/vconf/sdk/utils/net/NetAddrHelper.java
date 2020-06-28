@@ -1,6 +1,13 @@
 package com.kedacom.vconf.sdk.utils.net;
 
+import androidx.annotation.NonNull;
+
 import com.google.common.base.Splitter;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -14,10 +21,7 @@ public final class NetAddrHelper {
      * 是否为有效的点分十进制ipv4地址。
      * NOTE: 只做语法格式检查。实际中有些地址是不能作为主机ip地址的，此种因素不考虑在内。
      * */
-    public static boolean isValidIp(String ip){
-        if (null == ip){
-            return false;
-        }
+    public static boolean isValidIp(@NonNull String ip){
         for (int i = 0; i < ip.length(); i++) {
             char c = ip.charAt(i);
             if ( !(Character.isDigit(c) || '.' == c) ){
@@ -48,7 +52,7 @@ public final class NetAddrHelper {
     /**
      * 是否为有效的ipv4掩码。
      * */
-    public static boolean isValidMask(String mask){
+    public static boolean isValidMask(@NonNull String mask){
         if (!isValidIp(mask)){
             return false;
         }
@@ -67,7 +71,7 @@ public final class NetAddrHelper {
      * 是否为有效的主机ipv4地址。
      * @return true，主机ip是合法ip且主机位不是全0或全1。
      * */
-    public static boolean isValidHost(String ip, String mask){
+    public static boolean isValidHost(@NonNull String ip, @NonNull String mask){
         try {
             int intIp = ipStr2Int(ip);
             int intMask = ipStr2Int(mask);
@@ -80,7 +84,7 @@ public final class NetAddrHelper {
         }
     }
 
-    public static boolean isValidHost(String ip){
+    public static boolean isValidHost(@NonNull String ip){
         return !"0.0.0.0".equals(ip) && !"255.255.255.255".equals(ip);
     }
 
@@ -93,7 +97,7 @@ public final class NetAddrHelper {
      *
      * @return true, hostIp和gatewayIp均为有效的主机ip且在同一网段。
      * */
-    public static boolean isValidNetConfig(String hostIp, String gatewayIp, String mask){
+    public static boolean isValidNetConfig(@NonNull String hostIp, @NonNull String gatewayIp, @NonNull String mask){
         try {
             int intHostIp = ipStr2Int(hostIp);
             int intGatewayIp = ipStr2Int(gatewayIp);
@@ -155,7 +159,7 @@ public final class NetAddrHelper {
     /**
      * 点分十进制ip字符串转整型
      * */
-    public static int ipStr2Int(String ip) throws InvalidIpv4Exception {
+    public static int ipStr2Int(@NonNull String ip) throws InvalidIpv4Exception {
         if (!isValidIp(ip)){
             throw new InvalidIpv4Exception(ip);
         }
@@ -194,7 +198,7 @@ public final class NetAddrHelper {
     /**
      * 点分十进制ip字符串转长整型
      * */
-    public static long ipStr2Long(String ip) throws InvalidIpv4Exception {
+    public static long ipStr2Long(@NonNull String ip) throws InvalidIpv4Exception {
         if (!isValidIp(ip)){
             throw new InvalidIpv4Exception(ip);
         }
@@ -233,7 +237,7 @@ public final class NetAddrHelper {
     /**
      * 点分十进制ip字符串转整型（小端模式）
      * */
-    public static int ipStr2IntLittleEndian(String ip) throws InvalidIpv4Exception {
+    public static int ipStr2IntLittleEndian(@NonNull String ip) throws InvalidIpv4Exception {
         if (!isValidIp(ip)){
             throw new InvalidIpv4Exception(ip);
         }
@@ -248,7 +252,7 @@ public final class NetAddrHelper {
     /**
      * 点分十进制ip字符串转长整型（小端模式）
      * */
-    public static long ipStr2LongLittleEndian(String ip) throws InvalidIpv4Exception {
+    public static long ipStr2LongLittleEndian(@NonNull String ip) throws InvalidIpv4Exception {
         if (!isValidIp(ip)){
             throw new InvalidIpv4Exception(ip);
         }
@@ -264,7 +268,7 @@ public final class NetAddrHelper {
      * 如ip格式掩码255.255.255.0，转为位长形式后为24位。
      * @return 掩码长度，或者-1若掩码非法。
      * */
-    public static int maskIp2Len(String maskIp){
+    public static int maskIp2Len(@NonNull String maskIp){
         try {
             int intMask = ipStr2Int(maskIp);
             if (!isIpValidMask(intMask)){
@@ -293,6 +297,25 @@ public final class NetAddrHelper {
         return ipInt2Str(0xffffffff << 32-maskLen);
     }
 
+    /**
+     * 解析域名
+     * @param domain 域名
+     * @return 域名对应的Ip地址列表。
+     * */
+    @NonNull public static List<String> parseDomain(@NonNull String domain){
+        List<String> ips = new ArrayList<>();
+        InetAddress[] addresses = null;
+        try {
+            addresses = InetAddress.getAllByName(domain);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+            return ips;
+        }
+        for (InetAddress address : addresses) {
+            ips.add(address.getHostAddress());
+        }
+        return ips;
+    }
 
     public static class InvalidIpv4Exception extends Exception{
 

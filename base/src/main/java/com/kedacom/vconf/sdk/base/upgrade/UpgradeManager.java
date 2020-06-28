@@ -63,7 +63,7 @@ public class UpgradeManager extends Caster<Msg> {
         }
         TMTUpgradeClientInfo checkUpgradePara = new TMTUpgradeClientInfo(
                 new TMTUpgradeNetParam(addr.dwIP),
-                new TMTUpgradeDeviceInfo(terminalType.getVal(), e164, version, addr.dwIP)
+                new TMTUpgradeDeviceInfo(terminalType.getVal(), e164, version, addr.dwIP, "kedacom")
         );
         req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
             @Override

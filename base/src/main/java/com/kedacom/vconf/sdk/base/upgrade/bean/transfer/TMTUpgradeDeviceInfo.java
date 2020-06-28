@@ -8,10 +8,11 @@ public class TMTUpgradeDeviceInfo {
 	public long dwDevIp; // 终端IP (网络序)
 	public String achIPv6; // IPv6地址
 
-	public TMTUpgradeDeviceInfo(String achDevType, String achE164, String achCurSoftVer, long dwDevIp) {
+	public TMTUpgradeDeviceInfo(String achDevType, String achE164, String achCurSoftVer, long dwDevIp, String oemMark) {
 		this.achDevType = achDevType;
 		this.achE164 = achE164;
 		this.achCurSoftVer = achCurSoftVer;
 		this.dwDevIp = dwDevIp;
+		achOemMark = oemMark;
 	}
 }
