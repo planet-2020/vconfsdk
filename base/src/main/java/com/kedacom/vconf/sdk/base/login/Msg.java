@@ -20,7 +20,8 @@ enum Msg {
             owner = Atlas.MtServiceCfgCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 模块名称，如"rest"接入模块、"upgrade"升级模块
-            rspSeq = "StartMtServiceRsp"
+            rspSeq = "StartMtServiceRsp",
+            timeout = 1
     )
     StartMtService,
 

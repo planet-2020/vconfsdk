@@ -22,6 +22,7 @@ import java.util.Set;
 public class LoginManager extends Caster<Msg> {
     private static LoginManager instance = null;
     private Context context;
+    private boolean hasServiceStarted;
 
     private LoginManager(Context ctx) {
         context = ctx;
@@ -30,6 +31,8 @@ public class LoginManager extends Caster<Msg> {
     public synchronized static LoginManager getInstance(Application ctx) {
         if (instance == null) {
             instance = new LoginManager(ctx);
+        }
+        if (!instance.hasServiceStarted){
             instance.startService();
         }
         return instance;
@@ -46,6 +49,7 @@ public class LoginManager extends Caster<Msg> {
                 if (success){
                     KLog.p("start %s service success!", serviceName);
                 }
+                hasServiceStarted = success;
             }
         }, null , serviceName);
     }
@@ -56,6 +60,10 @@ public class LoginManager extends Caster<Msg> {
      * NOTE: APS为接入服务器，登录APS后才能登录其他服务器如会议、IM、升级等。
      * */
     public void loginAps(@NonNull String apsIp, @NonNull String username, @NonNull String password, IResultListener resultListener){
+        if (!hasServiceStarted){
+            startService();
+        }
+
         long ipLong;
         try {
             ipLong = NetAddrHelper.ipStr2LongLittleEndian(apsIp);
