@@ -26,12 +26,12 @@ public class LoginManager extends Caster<Msg> {
 
     private LoginManager(Context ctx) {
         context = ctx;
-        startService();
     }
 
     public synchronized static LoginManager getInstance(Application ctx) {
         if (instance == null) {
             instance = new LoginManager(ctx);
+            instance.startService();
         }
         return instance;
     }

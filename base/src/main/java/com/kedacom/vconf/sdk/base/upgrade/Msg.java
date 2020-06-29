@@ -5,9 +5,9 @@ import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Module;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
+import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TCheckUpgradeRsp;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTSUSAddr;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeClientInfo;
-import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeVersionInfoList;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 
 @Module(name = "UG")
@@ -47,7 +47,7 @@ enum Msg {
     CheckUpgrade,
 
     @Response(name = "UpgradeVersionInfoNtf",
-            clz = TMTUpgradeVersionInfoList.class)
+            clz = TCheckUpgradeRsp.class)
     CheckUpgradeRsp,
 
 

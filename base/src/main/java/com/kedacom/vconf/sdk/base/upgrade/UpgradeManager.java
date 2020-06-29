@@ -3,17 +3,22 @@ package com.kedacom.vconf.sdk.base.upgrade;
 import android.app.Application;
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
+import com.kedacom.vconf.sdk.base.upgrade.bean.UpgradePkgInfo;
+import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TCheckUpgradeRsp;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTSUSAddr;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeClientInfo;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeDeviceInfo;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeNetParam;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeVersionInfo;
-import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeVersionInfoList;
 import com.kedacom.vconf.sdk.common.bean.TerminalType;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.utils.log.KLog;
+
+import static com.kedacom.vconf.sdk.base.upgrade.UpgradeResultCode.*;
 
 
 public class UpgradeManager extends Caster<Msg> {
@@ -54,8 +59,12 @@ public class UpgradeManager extends Caster<Msg> {
      * @param terminalType 终端类型
      * @param version 软件版本
      * @param e164
+     * @param resultListener 成功返回{@link UpgradePkgInfo}；
+     *                       失败返回错误码：
+     *                       {@link UpgradeResultCode#NO_UPGRADE_PACKAGE} 升级服务器上没有升级包
+     *                       {@link UpgradeResultCode#ALREADY_NEWEST} 升级服务器上有升级包，但不比本地的版本新。
      * */
-    public void checkUpgrade(TerminalType terminalType, String version, String e164, IResultListener resultListener){
+    public void checkUpgrade(@NonNull TerminalType terminalType, @NonNull String version, @NonNull String e164, @NonNull IResultListener resultListener){
         TMTSUSAddr addr = (TMTSUSAddr) get(Msg.GetServerAddr);
         if (null == addr){
             reportFailed(-1, resultListener);
@@ -68,11 +77,16 @@ public class UpgradeManager extends Caster<Msg> {
         req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                TMTUpgradeVersionInfo[] remoteVersionList = ((TMTUpgradeVersionInfoList)rspContent).tVerList;
+                TMTUpgradeVersionInfo[] remoteVersionList = ((TCheckUpgradeRsp)rspContent).AssParam.tVerList;
                 if (null != remoteVersionList && remoteVersionList.length>0){
-                    reportSuccess(null, resultListener);
+                    UpgradePkgInfo upgradePkgInfo = ToDoConverter.TMTUpgradeVersionInfo2UpgradePkgInfo(remoteVersionList[0]);
+                    if (version.compareToIgnoreCase(upgradePkgInfo.versionNum) < 0) {
+                        reportSuccess(upgradePkgInfo, resultListener);
+                    }else{
+                        reportFailed(ALREADY_NEWEST, resultListener);
+                    }
                 }else{
-                    reportFailed(-1, resultListener);
+                    reportFailed(NO_UPGRADE_PACKAGE, resultListener);
                 }
             }
         }, resultListener, checkUpgradePara);
