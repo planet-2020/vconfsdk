@@ -199,6 +199,7 @@ public class LoginManager extends Caster<Msg> {
                 TQueryUserDetailsRsp detailsRsp = (TQueryUserDetailsRsp) rspContent;
                 if (1000 == detailsRsp.MainParam.dwErrorID){
                     UserDetails userDetails = ToDoConverter.fromTransferObj(detailsRsp.AssParam);
+                    userDetails.aliroomId = userBrief.achVirtualRoomId;
                     reportSuccess(userDetails, resultListener);
                 }else{
                     reportFailed(-1, resultListener);

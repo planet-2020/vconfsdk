@@ -29,6 +29,8 @@ public class UserDetails {
 
     public Map<DepartmentInfo, String> positions;  // 职位（可能身处多个部门多个职位）
 
+    public String aliroomId; // 阿里会议室ID。每个帐号都绑定有一个阿里会议室ID。
+
     @Override
     public String toString() {
         return "UserDetails{" +
