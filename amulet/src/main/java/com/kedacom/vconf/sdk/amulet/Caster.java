@@ -420,7 +420,7 @@ public abstract class Caster<T extends Enum<T>> implements
         listenerLifecycleObserver.unobserve(resultListener);
         KLog.p(KLog.DEBUG,"req=%s, sid=%s, resultListener=%s", req, s.id, resultListener);
         SessionProcessor<T> processor = s.processor;
-        boolean[] isConsumed = new boolean[]{true};
+        boolean[] isConsumed = new boolean[]{false};
         if (null != processor){
             processor.onTimeout(resultListener, req, reqParas, isConsumed);
         }
@@ -445,6 +445,15 @@ public abstract class Caster<T extends Enum<T>> implements
         KLog.p(KLog.DEBUG,"ntf=%s, ntfContent=%s\nlisteners=%s", ntf, ntfContent, sb.toString());
 
         onNotification(ntf, ntfContent, ntfListenersMap.get(ntf));
+    }
+
+    /**
+     * 上报用户请求进度
+     * */
+    protected void reportProgress(Object progress, IResultListener listener){
+        if (null != listener){
+            listener.onProgress(progress);
+        }
     }
 
 
@@ -511,7 +520,7 @@ public abstract class Caster<T extends Enum<T>> implements
         /**
          * 会话超时
          * @param isConsumed 是否已被消费。出参。默认是已消费。
-         * @return 是否已被消费。出参。true已消费，默认是true。若未消费则Caster会接管处理——上报用户已超时。
+         * @return 是否已被消费。出参。true已消费，默认是false。若未消费则Caster会接管处理——上报用户已超时。
          * */
         default void onTimeout(IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
     }
