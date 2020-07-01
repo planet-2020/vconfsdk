@@ -101,7 +101,7 @@ public class UpgradeManager extends Caster<Msg> {
      * @param saveDir 升级包存放目录
      * @param resultListener onProgress {@link DownloadProgressInfo}
      *                       onSuccess  null
-     *                       onFailed   errorCode
+     *                       onFailed   {@link UpgradeResultCode#SERVER_DISCONNECTED}
      * */
     public void downloadUpgrade(int versionId, String saveDir, IResultListener resultListener){
         if (FileHelper.createDir(saveDir) == null){
@@ -113,7 +113,7 @@ public class UpgradeManager extends Caster<Msg> {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 if (Msg.ServerDisconnected == rsp){
-                    reportFailed(-1, resultListener);
+                    reportFailed(SERVER_DISCONNECTED, resultListener);
                 } else {
                     TMTUpgradeDownloadInfo downloadInfo = (TMTUpgradeDownloadInfo) rspContent;
                     if (downloadInfo.dwErrcode == 0) {
