@@ -15,7 +15,7 @@ enum Msg {
             owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = BaseTypeBool.class, // true启用
-            rspSeq = "EnableInteractiveDebugRsp"
+            rspSeq = "SetEnableInteractiveDebugRsp"
     )
     SetEnableInteractiveDebug,
 

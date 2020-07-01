@@ -111,9 +111,47 @@ public class MessageProcessor extends AbstractProcessor {
             throw new IllegalArgumentException(msgDefClass+": module name can not be empty!");
         }
         packageName = ((PackageElement) msgDefClass.getEnclosingElement()).getQualifiedName().toString();
+        // 清除掉前一个Msg的残留数据
         reqMap.clear();
         rspMap.clear();
+        ntfMap.clear();
+
         List<? extends Element> msgElements = msgDefClass.getEnclosedElements();
+        for (Element element : msgElements) {
+            if (ElementKind.ENUM_CONSTANT != element.getKind()) {
+                continue;
+            }
+            String enumName = element.getSimpleName().toString();
+            String msgId = moduleName +"_"+enumName;
+            Response response  = element.getAnnotation(Response.class);
+            if (null != response) {
+                rspMap.put(msgId, COL_NAME, !response.name().isEmpty() ? response.name() : enumName);
+
+                String clzFullName;
+                try {
+                    Class clz = response.clz();
+                    clzFullName = clz.getCanonicalName();
+                } catch (MirroredTypeException mte) {
+                    clzFullName = parseClassNameFromMirroredTypeException(mte);
+                }
+                rspMap.put(msgId, COL_CLZ, clzFullName);
+            }
+
+            Notification notification  = element.getAnnotation(Notification.class);
+            if (null != notification) {
+                ntfMap.put(msgId, COL_NAME, !notification.name().isEmpty() ? notification.name() : enumName);
+
+                String clzFullName;
+                try {
+                    Class clz = notification.clz();
+                    clzFullName = clz.getCanonicalName();
+                } catch (MirroredTypeException mte) {
+                    clzFullName = parseClassNameFromMirroredTypeException(mte);
+                }
+                ntfMap.put(msgId, COL_CLZ, clzFullName);
+            }
+        }
+
         for (Element element : msgElements){
             if (ElementKind.ENUM_CONSTANT != element.getKind()){
                 continue;
@@ -152,36 +190,8 @@ public class MessageProcessor extends AbstractProcessor {
                 );
 
                 reqMap.put(msgId, COL_TIMEOUT, request.timeout());
-
-            } else {
-                Response response  = element.getAnnotation(Response.class);
-                if (null != response) {
-                    rspMap.put(msgId, COL_NAME, !response.name().isEmpty() ? response.name() : enumName);
-
-                    String clzFullName;
-                    try {
-                        Class clz = response.clz();
-                        clzFullName = clz.getCanonicalName();
-                    } catch (MirroredTypeException mte) {
-                        clzFullName = parseClassNameFromMirroredTypeException(mte);
-                    }
-                    rspMap.put(msgId, COL_CLZ, clzFullName);
-                }
-
-                Notification notification  = element.getAnnotation(Notification.class);
-                if (null != notification) {
-                    ntfMap.put(msgId, COL_NAME, !notification.name().isEmpty() ? notification.name() : enumName);
-
-                    String clzFullName;
-                    try {
-                        Class clz = notification.clz();
-                        clzFullName = clz.getCanonicalName();
-                    } catch (MirroredTypeException mte) {
-                        clzFullName = parseClassNameFromMirroredTypeException(mte);
-                    }
-                    ntfMap.put(msgId, COL_CLZ, clzFullName);
-                }
             }
+
         }
     }
 
@@ -191,12 +201,28 @@ public class MessageProcessor extends AbstractProcessor {
         for (String[] rspSeq : rspSeqs){
             List<String> modRspSeq = new ArrayList<>();
             for (int i=0; i<rspSeq.length; ++i){
-                boolean isGreedyNote = Request.GREEDY.equals(rspSeq[i]);
+                String rspId = rspSeq[i];
+                boolean isGreedyNote = Request.GREEDY.equals(rspId);
                 if (isGreedyNote && (modRspSeq.isEmpty() || Request.GREEDY.equals(modRspSeq.get(modRspSeq.size()-1)))){
                     //剔除掉序列首部的以及重复的greedy note
                     continue;
                 }
-                modRspSeq.add(isGreedyNote ? rspSeq[i] : moduleName +"_"+rspSeq[i]);
+                String completeRspId = moduleName +"_"+rspId;
+                if (!isGreedyNote){
+                    // 检查请求的响应序列中的响应是否已注册为响应
+                    boolean matched = false;
+                    for (String registeredRspId : rspMap.rowKeySet()){
+                        if (registeredRspId.equals(completeRspId)){
+                            matched = true;
+                            break;
+                        }
+                    }
+                    if (!matched){
+                        // 该响应未注册！
+                        throw new RuntimeException(String.format("\"%s\" has not registered as a rsp yet!", rspId));
+                    }
+                }
+                modRspSeq.add(isGreedyNote ? rspId : completeRspId);
             }
             if (!modRspSeq.isEmpty()) {
                 rspSeqList.add(modRspSeq.toArray(new String[]{}));
