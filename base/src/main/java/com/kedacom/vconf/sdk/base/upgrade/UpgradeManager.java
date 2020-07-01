@@ -140,6 +140,7 @@ public class UpgradeManager extends Caster<Msg> {
 
     /**
      * 取消升级
+     * @param resultListener onSuccess null
      * */
     public void cancelUpgrade(IResultListener resultListener){
         req(Msg.CancelUpgrade, new SessionProcessor<Msg>() {
