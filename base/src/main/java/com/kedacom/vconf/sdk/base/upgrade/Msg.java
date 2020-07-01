@@ -3,6 +3,7 @@ package com.kedacom.vconf.sdk.base.upgrade;
 
 import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Module;
+import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TCheckUpgradeRsp;
@@ -65,7 +66,9 @@ enum Msg {
                     int.class // CheckUpgradeRsp消息体中的TMTUpgradeVersionInfo#dwVer_id
             },
             rspSeq = {"DownloadUpgradeRsp", GREEDY},
-            timeout = 15
+            rspSeq2 = {"DownloadUpgradeRsp", GREEDY, "ServerDisconnected"}, // 失败的情形
+            rspSeq3 = {"ServerDisconnected"}, // 失败的情形
+            timeout = 300
     )
     DownloadUpgrade,
 
@@ -79,6 +82,14 @@ enum Msg {
     @Request(name = "MTCancelUpgradeCmd",
             owner = Atlas.MtEntityCtrl)
     CancelUpgrade,
+
+    /**
+     * 升级服务器已断开
+     * 例如升级过程中CancelUpgrade会收到该消息（非升级状态下CancelUpgrade则不会收到该消息）
+     * */
+    @Notification(name = "UpgradeDisconnectServerNtf",
+            clz = Void.class)
+    ServerDisconnected,
 
 
     END;

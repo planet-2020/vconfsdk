@@ -62,10 +62,9 @@ public class UpgradeManager extends Caster<Msg> {
      * @param terminalType 终端类型
      * @param version 当前软件版本
      * @param e164 用户e164
-     * @param resultListener 成功返回{@link UpgradePkgInfo}；
-     *                       失败返回错误码：
-     *                       {@link UpgradeResultCode#NO_UPGRADE_PACKAGE} 升级服务器上没有升级包
-     *                       {@link UpgradeResultCode#ALREADY_NEWEST} 升级服务器上有升级包，但不比本地的版本新。
+     * @param resultListener onSuccess {@link UpgradePkgInfo}；
+     *                       onFailed  {@link UpgradeResultCode#NO_UPGRADE_PACKAGE}
+     *                                 {@link UpgradeResultCode#ALREADY_NEWEST}
      * */
     public void checkUpgrade(@NonNull TerminalType terminalType, @NonNull String version, @NonNull String e164, @NonNull IResultListener resultListener){
         TMTSUSAddr addr = (TMTSUSAddr) get(Msg.GetServerAddr);
@@ -100,6 +99,9 @@ public class UpgradeManager extends Caster<Msg> {
      * 下载升级包
      * @param versionId 目标版本id（由checkUpgrade的返回结果中获取）。
      * @param saveDir 升级包存放目录
+     * @param resultListener onProgress {@link DownloadProgressInfo}
+     *                       onSuccess  null
+     *                       onFailed   errorCode
      * */
     public void downloadUpgrade(int versionId, String saveDir, IResultListener resultListener){
         if (FileHelper.createDir(saveDir) == null){
@@ -110,15 +112,27 @@ public class UpgradeManager extends Caster<Msg> {
         req(Msg.DownloadUpgrade, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                TMTUpgradeDownloadInfo downloadInfo = (TMTUpgradeDownloadInfo) rspContent;
-                if (downloadInfo.dwErrcode == 0){
-                    new DownloadProgressInfo(downloadInfo.dwCurPercent);
-                    if (downloadInfo.dwCurPercent == 100){
-                        reportSuccess(null, resultListener);
-                    }
-                }else{
+                if (Msg.ServerDisconnected == rsp){
                     reportFailed(-1, resultListener);
+                } else {
+                    TMTUpgradeDownloadInfo downloadInfo = (TMTUpgradeDownloadInfo) rspContent;
+                    if (downloadInfo.dwErrcode == 0) {
+                        reportProgress(new DownloadProgressInfo(downloadInfo.dwCurPercent), resultListener);
+                        if (downloadInfo.dwCurPercent == 100) {
+                            cancelReq(Msg.DownloadUpgrade, resultListener); // 已下载完毕，取消会话，否则会话会等待超时。
+                            reportSuccess(null, resultListener);
+                        }
+                    } else {
+                        reportFailed(-1, resultListener);
+                    }
                 }
+            }
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                req(Msg.CancelUpgrade, null, null);
+                isConsumed[0] = true;
+                reportTimeout(resultListener);
             }
         }, resultListener, saveDir, versionId);
     }
