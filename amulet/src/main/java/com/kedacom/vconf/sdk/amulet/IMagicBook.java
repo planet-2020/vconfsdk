@@ -79,6 +79,11 @@ public interface IMagicBook {
     @Nullable Class<?> rspClass(@NonNull String rspId);
 
     /**
+     * 是否为贪婪标记。
+     * */
+    boolean isGreedyNote(@NonNull String rspId);
+
+    /**
      * 通知名称对应的通知ID集合
      * 通知名称是面向native层的，通知ID是面向用户层的。
      * 通知ID跟通知名称的映射关系是多对1（绝大大部分情形下是一对一）

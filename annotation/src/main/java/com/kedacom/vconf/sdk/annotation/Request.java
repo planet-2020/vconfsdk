@@ -102,4 +102,23 @@ public @interface Request {
      * NOTE: 若无响应序列此超时时长无用。
      * */
     int timeout() default 5;
+
+
+    /**
+     * 贪婪模式标记。
+     * 贪婪模式的使用场景：
+     * 假设有req，接受的响应序列为：
+     * rspA, rspA, ..., rspA。 // 接受不定次数的rspA。
+     * rsp1, rsp1, ..., rsp1, rsp2, rsp2,..., rsp2； // 接受不定次数的rsp1，然后不定次数的rsp2。
+     * rspX, rspX, ..., rspX, rspY。 // 接受不定次数rspX, 然后一个rspY
+     * 可以看到响应序列中有的响应可以接受不定次数，或者数字庞大的次数，此种情形下，如何注册该响应序列呢？
+     * 逐条注册行不通，此时则可以使用贪婪模式标记如下注册：
+     * rspSeq={rspA, GREEDY},
+     * rspSeq2={rsp1, GREEDY, rsp2, GREEDY},
+     * rspSeq3={rspX, GREEDY, rspY},
+     * GREEDY必须跟在一个响应后面，表示可以接受不定次数的该响应。
+     * 注意：此例中的rspSeq，rspSeq2永远无法匹配结束，因为它始终在等无尽的“最后一条响应”，若不加干预会话最终将超时，
+     * 这通常不是用户期望的，所以此种情形下用户需要根据接收到的响应内容判断是否需要手动结束会话以避免超时。
+     * */
+    String GREEDY = "...";
 }

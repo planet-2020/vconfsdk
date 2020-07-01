@@ -101,9 +101,9 @@ final class SessionFairy implements IFairy.ISessionFairy{
             msg.what = MsgId_Timeout;
             msg.obj = s;
             uiHandler.sendMessageDelayed(msg, s.timeoutVal);
-            Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqId, methodName, sb));
+            uiHandler.post(() -> Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqId, methodName, sb)));
         }else {
-            Log.d(TAG, String.format(" -~-> %s(%s) \nparas={%s}", s.reqId, methodName, sb));
+            uiHandler.post(() -> Log.d(TAG, String.format(" -~-> %s(%s) \nparas={%s}", s.reqId, methodName, sb)));
         }
         s.setState(Session.READY);
 
@@ -150,10 +150,10 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 s.setState(Session.CANCELED);
                 uiHandler.removeMessages(MsgId_Timeout, s);
 
-                Log.d(TAG, String.format("%s -~->x %s", s.id, s.reqId));
                 // 用户很有可能在onMsg回调中调用cancelReq（onMsg回调到上层的onRsp然后用户在onRsp中cancelReq），
                 // 然而onMsg中我们正在遍历sessions，所以我们延迟删除
                 uiHandler.post(() -> {
+                    Log.d(TAG, String.format("%s -~->x %s", s.id, s.reqId));
                     if (s.isState(Session.CANCELED)) {
                         sessions.remove(s);
                     }else{
@@ -180,8 +180,8 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
         boolean bConsumed = false;
         tryConsume:
-        for (String rspName : rspIds) {
-            Class<?> rspClass = magicBook.rspClass(rspName);
+        for (String rspId : rspIds) {
+            Class<?> rspClass = magicBook.rspClass(rspId);
             if (rspClass == null){
                 continue;
             }
@@ -194,28 +194,46 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 SparseIntArray candidates = new SparseIntArray();
                 boolean gotLast = false; // 是否匹配到会话的最后一条响应
 
-                for (int i = 0; i < s.candidates.size(); ++i) { // 在候选序列中查找所有能处理该响应的序列。
-                    int rspSeqIndx = s.candidates.keyAt(i);
-                    int rspIndx = s.candidates.get(rspSeqIndx);
-                    String[] candidateRspSeq = s.rspSeqs[rspSeqIndx];
-                    String candidateRsp = candidateRspSeq[rspIndx];
-                    if (rspName.equals(candidateRsp)) { // 找到了一路匹配的序列
-                        candidates.put(rspSeqIndx, rspIndx + 1); // 记录该序列下一个可匹配的响应
-                        if (candidateRspSeq.length == rspIndx + 1) { // 该响应为该匹配序列中的最后一条响应
-                            gotLast = true;
+                for (int i = 0; i < s.candidates.size(); ++i) { // 在候选响应序列中查找所有能处理该响应的序列。
+                    int rspSeqIdx = s.candidates.keyAt(i); // 挑出第i路响应序列
+                    int expectedRspIdx = s.candidates.get(rspSeqIdx); // 定位到第i路响应序列当前期望匹配的rsp的位置
+                    String[] candidateRspSeq = s.rspSeqs[rspSeqIdx];
+                    String expectedRspId = candidateRspSeq[expectedRspIdx]; // 找到第i路响应序列当前期望匹配的rspId
+                    
+                    if (rspId.equals(expectedRspId)) { // 成功匹配
+                        ++expectedRspIdx; // 期待下一条响应
+
+                    }else{ // 未匹配成功，我们还需判断当前期望的rspId是否为GreedyNote，针对GreedyNote的情形我们需特殊处理
+
+                        if (!magicBook.isGreedyNote(expectedRspId)){
+                            continue;
+                        }
+                        // 若当前期望的rspId是GreedyNote则尝试匹配其前后的rspId
+                        if(rspId.equals(candidateRspSeq[expectedRspIdx-1])){
+                            // 若匹配到GreedyNote前面的rspId，则expectedRspIdx不变，表明我们依然可以接收GreedyNote前面或后面的rspId
+                            // Nothing to do
+                        }else if (expectedRspIdx < candidateRspSeq.length-1 && rspId.equals(candidateRspSeq[expectedRspIdx+1])){
+                            // 若匹配到GreedyNote后面的rspId，则expectedRspIdx+2
+                            expectedRspIdx += 2;
+                        }else{
+                            continue;
                         }
                     }
 
-                    if (gotLast) {
-                        break;
+                    candidates.put(rspSeqIdx, expectedRspIdx); //添加该响应序列到新的候选序列，并记录该序列下一个期望被匹配的响应
+
+                    if(expectedRspIdx == candidateRspSeq.length){ // 已匹配到该候选响应序列的最后一条响应
+                        gotLast = true;
+                        break; // 已匹配到该候选响应序列的最后一条响应。则该候选响应序列被认为最终匹配的响应序列，无需再尝试匹配其他候选序列。
                     }
+
                 }
 
-                if (0 == candidates.size()) { // 候选响应序列中未找到该响应
+                if (0 == candidates.size()) { // 未匹配到任何响应序列
                     continue; // 该响应不是该会话所期望的，继续寻找期望该响应的会话
                 }
 
-                bConsumed = s.listener.onRsp(gotLast, rspName,
+                bConsumed = s.listener.onRsp(gotLast, rspId,
                         Kson.fromJson(msgContent, rspClass),
                         s.reqId, s.reqSn, s.reqPara);
 
@@ -227,12 +245,12 @@ final class SessionFairy implements IFairy.ISessionFairy{
                             s.setState(Session.END);
                             sessions.remove(s);
                         }
-                        Log.d(TAG, String.format("%s <-~-o %s(%s) \n%s", s.id, rspName, msgName, msgContent));
+                        Log.d(TAG, String.format("%s <-~-o %s(%s) \n%s", s.id, rspId, msgName, msgContent));
                     } else {
                         if (!s.isState(Session.CANCELED)) {
                             s.setState(Session.RECVING);
                         }
-                        Log.d(TAG, String.format("%s <-~- %s(%s) \n%s", s.id, rspName, msgName, msgContent));
+                        Log.d(TAG, String.format("%s <-~- %s(%s) \n%s", s.id, rspId, msgName, msgContent));
                     }
 
                     break tryConsume;

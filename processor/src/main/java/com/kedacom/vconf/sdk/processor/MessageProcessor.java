@@ -143,14 +143,13 @@ public class MessageProcessor extends AbstractProcessor {
 
                 reqMap.put(msgId, COL_ISGET, request.isGet());
 
-                List<String[]> rspSeqList = new ArrayList<>();
-                processRspSeqs(rspSeqList,
+                reqMap.put(msgId, COL_RSPSEQ, processRspSeqs(
                         request.rspSeq(),
                         request.rspSeq2(),
                         request.rspSeq3(),
                         request.rspSeq4()
+                        )
                 );
-                reqMap.put(msgId, COL_RSPSEQ, rspSeqList.toArray(new String[][]{}));
 
                 reqMap.put(msgId, COL_TIMEOUT, request.timeout());
 
@@ -187,15 +186,24 @@ public class MessageProcessor extends AbstractProcessor {
     }
 
 
-    private void processRspSeqs(List<String[]> rspSeqList, String[]... rspSeqs){
+    private String[][] processRspSeqs(String[]... rspSeqs){
+        List<String[]> rspSeqList = new ArrayList<>();
         for (String[] rspSeq : rspSeqs){
+            List<String> modRspSeq = new ArrayList<>();
             for (int i=0; i<rspSeq.length; ++i){
-                rspSeq[i] = moduleName +"_"+rspSeq[i];
+                boolean isGreedyNote = Request.GREEDY.equals(rspSeq[i]);
+                if (isGreedyNote && (modRspSeq.isEmpty() || Request.GREEDY.equals(modRspSeq.get(modRspSeq.size()-1)))){
+                    //剔除掉序列首部的以及重复的greedy note
+                    continue;
+                }
+                modRspSeq.add(isGreedyNote ? rspSeq[i] : moduleName +"_"+rspSeq[i]);
             }
-            if (rspSeq.length>0){
-                rspSeqList.add(rspSeq);
+            if (!modRspSeq.isEmpty()) {
+                rspSeqList.add(modRspSeq.toArray(new String[]{}));
             }
         }
+
+        return rspSeqList.toArray(new String[][]{});
     }
 
 
@@ -250,6 +258,8 @@ public class MessageProcessor extends AbstractProcessor {
         String reqId = "reqId";
         String rspName = "rspName";
         String ntfName = "ntfName";
+        String rspId = "rspId";
+        String ntfId = "ntfId";
         String rspIds = "rspIds";
         String ntfIds = "ntfIds";
 
@@ -390,11 +400,20 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec rspClass = MethodSpec.methodBuilder("rspClass")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, rspName).build())
+                .addParameter(ParameterSpec.builder(String.class, rspId).build())
                 .returns(ParameterizedTypeName.get(ClassName.get(Class.class), WildcardTypeName.subtypeOf(Object.class)))
-                .addCode("return (Class<?>)$L.row($L).get($S);\n", rspMap, rspName, COL_CLZ)
+                .addCode("return (Class<?>)$L.row($L).get($S);\n", rspMap, rspId, COL_CLZ)
                 .build();
         methodSpecs.add(rspClass);
+
+        MethodSpec isGreedyNote = MethodSpec.methodBuilder("isGreedyNote")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(ParameterSpec.builder(String.class, rspId).build())
+                .returns(boolean.class)
+                .addStatement("return $S.equals($L)", Request.GREEDY, rspId)
+                .build();
+        methodSpecs.add(isGreedyNote);
+
 
         MethodSpec methodRspIds = MethodSpec.methodBuilder("rspIds")
                 .addModifiers(Modifier.PUBLIC)
@@ -412,9 +431,9 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec ntfClass = MethodSpec.methodBuilder("ntfClass")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, ntfName).build())
+                .addParameter(ParameterSpec.builder(String.class, ntfId).build())
                 .returns(ParameterizedTypeName.get(ClassName.get(Class.class), WildcardTypeName.subtypeOf(Object.class)))
-                .addCode("return (Class<?>)$L.row($L).get($S);\n", ntfMap, ntfName, COL_CLZ)
+                .addCode("return (Class<?>)$L.row($L).get($S);\n", ntfMap, ntfId, COL_CLZ)
                 .build();
         methodSpecs.add(ntfClass);
 

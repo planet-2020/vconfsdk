@@ -8,7 +8,10 @@ import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TCheckUpgradeRsp;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTSUSAddr;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeClientInfo;
+import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeDownloadInfo;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
+
+import static com.kedacom.vconf.sdk.annotation.Request.GREEDY;
 
 @Module(name = "UG")
 enum Msg {
@@ -60,9 +63,15 @@ enum Msg {
             },
             userParas = {String.class, // 升级包本地存放路径
                     int.class // CheckUpgradeRsp消息体中的TMTUpgradeVersionInfo#dwVer_id
-            }
+            },
+            rspSeq = {"DownloadUpgradeRsp", GREEDY},
+            timeout = 15
     )
     DownloadUpgrade,
+
+    @Response(name = "UpgradeFileDownloadInfoNtf",
+            clz = TMTUpgradeDownloadInfo.class)
+    DownloadUpgradeRsp,
 
 
     /**取消升级
