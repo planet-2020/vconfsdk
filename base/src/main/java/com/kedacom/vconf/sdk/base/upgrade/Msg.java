@@ -6,6 +6,7 @@ import com.kedacom.vconf.sdk.annotation.Module;
 import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtSvrStateList;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TCheckUpgradeRsp;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTSUSAddr;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeClientInfo;
@@ -84,8 +85,14 @@ enum Msg {
     /**取消升级
      * */
     @Request(name = "MTCancelUpgradeCmd",
-            owner = Atlas.MtEntityCtrl)
+            owner = Atlas.MtEntityCtrl,
+            rspSeq = "CancelUpgradeRsp"
+    )
     CancelUpgrade,
+
+    @Response(name = "SetSvrLoginStatusRtNtf",
+            clz = TMtSvrStateList.class)
+    CancelUpgradeRsp,
 
     /**
      * 升级服务器已断开

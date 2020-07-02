@@ -7,6 +7,10 @@ import androidx.annotation.NonNull;
 
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.EmServerState;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.EmServerType;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtSvrState;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtSvrStateList;
 import com.kedacom.vconf.sdk.base.upgrade.bean.DownloadProgressInfo;
 import com.kedacom.vconf.sdk.base.upgrade.bean.UpgradePkgInfo;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TCheckUpgradeRsp;
@@ -146,7 +150,20 @@ public class UpgradeManager extends Caster<Msg> {
         req(Msg.CancelUpgrade, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                reportSuccess(null, resultListener);
+                TMtSvrState[] states = ((TMtSvrStateList) rspContent).arrSvrState;
+                boolean got = false;
+                for (TMtSvrState state : states){
+                    if (EmServerType.emSUS == state.emSvrType
+                            && EmServerState.emSrvIdle == state.emSvrState){
+                        got = true;
+                        break;
+                    }
+                }
+                if (got) {
+                    reportSuccess(null, resultListener);
+                }else {
+                    isConsumed[0] = false; // 该条消息不是我们期望的，继续等待后续消息
+                }
             }
         }, resultListener);
     }
