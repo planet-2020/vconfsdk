@@ -76,6 +76,10 @@ enum Msg {
             clz = TMTUpgradeDownloadInfo.class)
     DownloadUpgradeRsp,
 
+    @Response(name = "UpgradeFileDownloadOkNtf",
+            clz = Void.class)
+    DownloadUpgradeFin,
+
 
     /**取消升级
      * */

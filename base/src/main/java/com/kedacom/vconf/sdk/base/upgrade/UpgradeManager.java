@@ -112,9 +112,7 @@ public class UpgradeManager extends Caster<Msg> {
         req(Msg.DownloadUpgrade, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                if (Msg.ServerDisconnected == rsp){
-                    reportFailed(SERVER_DISCONNECTED, resultListener);
-                } else {
+                if (Msg.DownloadUpgradeRsp == rsp){
                     TMTUpgradeDownloadInfo downloadInfo = (TMTUpgradeDownloadInfo) rspContent;
                     if (downloadInfo.dwErrcode == 0) {
                         reportProgress(new DownloadProgressInfo(downloadInfo.dwCurPercent), resultListener);
@@ -125,6 +123,8 @@ public class UpgradeManager extends Caster<Msg> {
                     } else {
                         reportFailed(-1, resultListener);
                     }
+                }else if (Msg.ServerDisconnected == rsp){
+                    reportFailed(SERVER_DISCONNECTED, resultListener);
                 }
             }
 
