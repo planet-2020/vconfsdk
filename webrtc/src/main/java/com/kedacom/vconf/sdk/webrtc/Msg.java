@@ -1,9 +1,12 @@
 package com.kedacom.vconf.sdk.webrtc;
 
+import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Module;
+import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
+import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
@@ -25,15 +28,19 @@ enum Msg {
      * 启动业务组件服务
      * */
     @Request(name = "SYSStartService",
-            owner = MethodOwner.MtServiceCfgCtrl,
+            owner = Atlas.MtServiceCfgCtrl,
             paras = StringBuffer.class,
             userParas = String.class
     )
     StartMtService,
 
+    @Response(name = "SrvStartResultNtf",
+            clz = TSrvStartResult.class)
+    StartMtServiceRsp,
+
     /**获取Rtc服务器地址*/
     @Request(name = "GetRtcSvrCfg",
-            owner = MethodOwner.ConfigCtrl,
+            owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMtRtcSvrAddr.class,
             isGet = true)
@@ -43,7 +50,7 @@ enum Msg {
      * 登录Rtc服务器
      */
     @Request(name = "SetRtcSvrCfgCmd",
-            owner = MethodOwner.ConfigCtrl,
+            owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMtRtcSvrAddr.class, // 登录：TMtRtcSvrAddr.bUsedRtc==true，登出：=false
             timeout = 30,
@@ -54,17 +61,17 @@ enum Msg {
      * 注销Rtc服务器
      */
     @Request(name = "SetRtcSvrCfgCmd",
-            owner = MethodOwner.ConfigCtrl,
+            owner = Atlas.ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMtRtcSvrAddr.class, // 登录：TMtRtcSvrAddr.bUsedRtc==true，登出：=false
             rspSeq = "LoginStateChanged")
     Logout,
 
     /**
-     * 登录状态变更通知
+     * 登录状态变更
      */
-    @Response(clz = TRegResultNtf.class,
-            name = "RegResultNtf")
+    @Notification(name = "RegResultNtf", clz = TRegResultNtf.class)
+    @Response(name = "RegResultNtf", clz = TRegResultNtf.class)
     LoginStateChanged,
 
 
@@ -72,7 +79,7 @@ enum Msg {
      * 呼出
      * */
     @Request(name = "ConfMakeCallCmd",
-            owner = MethodOwner.ConfCtrl,
+            owner = Atlas.ConfCtrl,
             paras = {StringBuffer.class, int.class, int.class},
             userParas = {
                     String.class, // 对端e164（点对点）/ 会议号（多点）
@@ -95,29 +102,31 @@ enum Msg {
     /**
      * 多方会议已开始
      * */
-    @Response(clz = TMtCallLinkSate.class,
-            name = "MulConfStartedNtf")
+    @Response(clz = TMtCallLinkSate.class, name = "MulConfStartedNtf")
     MultipartyConfStarted,
 
     /**
      * 多方会议已结束
      * */
-    @Response(clz = BaseTypeInt.class,
+    @Response(clz = BaseTypeInt.class, // EmMtCallDisReason
+            name = "MulConfEndedNtf")
+    @Notification(clz = BaseTypeInt.class, // EmMtCallDisReason
             name = "MulConfEndedNtf")
     MultipartyConfEnded,
 
     /**
-     * 会议取消
+     * 会议已取消
      * */
-    @Response(clz = BaseTypeInt.class,
+    @Response(clz = BaseTypeInt.class, // EmMtCallDisReason
+            name = "ConfCanceledNtf")
+    @Notification(clz = BaseTypeInt.class, // EmMtCallDisReason
             name = "ConfCanceledNtf")
     ConfCanceled,
 
     /**
      * 呼入通知
      * */
-    @Response(clz = TMtCallLinkSate.class,
-            name = "ConfInComingNtf")
+    @Notification(clz = TMtCallLinkSate.class, name = "ConfInComingNtf")
     CallIncoming,
 
 
@@ -125,7 +134,7 @@ enum Msg {
      * 创建会议
      * */
     @Request(name = "MGRestCreateConferenceReq",
-            owner = MethodOwner.MeetingCtrl,
+            owner = Atlas.MeetingCtrl,
             paras = StringBuffer.class,
             userParas = TMTInstanceCreateConference.class,
             timeout = 60,
@@ -146,7 +155,7 @@ enum Msg {
      * 退出会议
      * */
     @Request(name = "ConfHangupConfCmd",
-            owner = MethodOwner.ConfCtrl,
+            owner = Atlas.ConfCtrl,
             paras = int.class,
             userParas = EmMtCallDisReason.class,
             rspSeq = "MultipartyConfEnded"
@@ -157,7 +166,7 @@ enum Msg {
      * 结束会议
      * */
     @Request(name = "ConfEndConfCmd",
-            owner = MethodOwner.ConfCtrl,
+            owner = Atlas.ConfCtrl,
             rspSeq = "MultipartyConfEnded"
     )
     EndConf,
@@ -166,7 +175,7 @@ enum Msg {
      * 接受入会邀请
      * */
     @Request(name = "ConfAcceptCmd",
-            owner = MethodOwner.ConfCtrl,
+            owner = Atlas.ConfCtrl,
             timeout = 60,
             rspSeq = "MultipartyConfStarted"
     )
@@ -176,7 +185,7 @@ enum Msg {
      * 拒绝入会邀请
      * */
     @Request(name = "ConfRejectConfCmd",
-            owner = MethodOwner.ConfCtrl,
+            owner = Atlas.ConfCtrl,
             rspSeq = {} //TODO
     )
     DeclineInvitation,
@@ -195,7 +204,7 @@ enum Msg {
      * 当前会议中已有与会成员列表通知
      * NOTE: 入会后会收到一次该通知，创会者也会收到这条消息。
      * */
-    @Response(clz = TMTEntityInfoList.class,
+    @Notification(clz = TMTEntityInfoList.class,
             name = "OnLineTerListNtf")
     CurrentConfereeList,
 
@@ -203,7 +212,7 @@ enum Msg {
      * 与会方加入通知
      * 入会以后，会议中有其他与会方加入则会收到该通知。
      * */
-    @Response(clz = TMTEntityInfo.class,
+    @Notification(clz = TMTEntityInfo.class,
             name = "TerJoin_Ntf")
     ConfereeJoined,
 
@@ -211,7 +220,7 @@ enum Msg {
      * 与会方退出通知
      * 入会以后，会议中有其他与会方离会则会收到该通知
      * */
-    @Response(clz = TMtId.class,
+    @Notification(clz = TMtId.class,
             name = "TerLeft_Ntf")
     ConfereeLeft,
 
@@ -224,7 +233,7 @@ enum Msg {
      * 创会者不会收到这条消息。
      * 平台过来的Stream概念上对应的是WebRTC里面的Track
      * */
-    @Response(clz = TRtcStreamInfoList.class,
+    @Notification(clz = TRtcStreamInfoList.class,
             name = "RtcStreamList_Ntf")
     CurrentStreamList,
 
@@ -233,7 +242,7 @@ enum Msg {
      * 入会以后，会议中有其他与会方的流加入则会收到该通知。
      * NOTE: 己端不会收到自己的流joined的消息。
      * */
-    @Response(clz = TRtcStreamInfoList.class,
+    @Notification(clz = TRtcStreamInfoList.class,
             name = "RtcStreamAdd_Ntf")
     StreamJoined,
 
@@ -246,7 +255,7 @@ enum Msg {
      * 比如某个与会方关闭了摄像头停止了视频发布，则其他与会方会收到StreamLeft，但不会收到ConfereeLeft。
      * 如果某个与会方退会了则其他与会方会收到ConfereeLeft和StreamLeft。
      * */
-    @Response(clz = TRtcStreamInfoList.class,
+    @Notification(clz = TRtcStreamInfoList.class,
             name = "RtcStreamLeft_Ntf")
     StreamLeft,
 
@@ -254,7 +263,7 @@ enum Msg {
      * 选择想要订阅的视频码流
      */
     @Request(name = "SetRtcPlayCmd",
-            owner = MethodOwner.MonitorCtrl,
+            owner = Atlas.MonitorCtrl,
             paras = StringBuffer.class,
             userParas = TRtcPlayParam.class)
     SelectStream,
@@ -263,7 +272,7 @@ enum Msg {
 
     /**获取流列表*/
     @Request(name = "GetRtcStreamList",
-            owner = MethodOwner.MonitorCtrl,
+            owner = Atlas.MonitorCtrl,
             paras = StringBuffer.class,
             userParas = TRtcStreamInfoList.class,
             isGet = true)
@@ -273,7 +282,7 @@ enum Msg {
      * 获取流数量
      */
     @Request(name = "GetRtcStreamListNum",
-            owner = MethodOwner.MonitorCtrl,
+            owner = Atlas.MonitorCtrl,
             paras = StringBuffer.class,
             userParas = int.class,
             isGet = true)
@@ -285,7 +294,7 @@ enum Msg {
      * 静音
      */
     @Request(name = "AudQuiteLocalSpeakerCmd",
-            owner = MethodOwner.AudioCtrl,
+            owner = Atlas.AudioCtrl,
             paras = boolean.class)
     SetSilence,
 
@@ -294,7 +303,7 @@ enum Msg {
      * 哑音
      */
     @Request(name = "AudMuteLocalMicCmd",
-            owner = MethodOwner.AudioCtrl,
+            owner = Atlas.AudioCtrl,
             paras = boolean.class)
     SetMute,
 
@@ -305,7 +314,7 @@ enum Msg {
      * */
     @Request(name = "VideoAssStreamCmd",
             paras = boolean.class,
-            owner = MethodOwner.MonitorCtrl,
+            owner = Atlas.MonitorCtrl,
             timeout = 30,
             rspSeq = "ToggleScreenShareRsp"
     )
@@ -324,7 +333,7 @@ enum Msg {
      * 查询会议详情
      * */
     @Request(name = "MGRestGetInstantConfInfoByIDReq",
-            owner = MethodOwner.MeetingCtrl,
+            owner = Atlas.MeetingCtrl,
             paras = StringBuffer.class,  // 会议e164号
             userParas = String.class,
             timeout = 10,
@@ -342,15 +351,15 @@ enum Msg {
     /**
      * 此会议需要密码
      * */
-    @Response(clz = Void.class,
-            name = "McReqTerPwdNtf")
+    @Response(clz = Void.class, name = "McReqTerPwdNtf")
+    @Notification(clz = Void.class, name = "McReqTerPwdNtf")
     ConfPasswordNeeded,
 
     /**
      * 验证会议密码
      * */
     @Request(name = "ConfVerifyConfPwdCmd",
-            owner = MethodOwner.ConfCtrl,
+            owner = Atlas.ConfCtrl,
             paras = StringBuffer.class,  // 会议密码
             userParas = String.class,
             timeout = 10,
@@ -363,22 +372,11 @@ enum Msg {
      * 关闭己端主流
      * */
     @Request(name = "MainVideoOff",
-            owner = MethodOwner.ConfCtrl
+            owner = Atlas.ConfCtrl
     )
     CloseMyMainVideoChannel,
 
 
     END;
-
-    private static class MethodOwner {
-        private static final String PKG = "com.kedacom.kdv.mt.mtapi.";
-
-        private static final String MtServiceCfgCtrl = PKG + "MtServiceCfgCtrl";
-        private static final String MonitorCtrl = PKG + "MonitorCtrl";
-        private static final String ConfigCtrl = PKG + "ConfigCtrl";
-        private static final String ConfCtrl = PKG + "ConfCtrl";
-        private static final String MeetingCtrl = PKG + "MeetingCtrl";
-        private static final String AudioCtrl = PKG + "AudioCtrl";
-    }
 
 }

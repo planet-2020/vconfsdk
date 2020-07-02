@@ -23,7 +23,40 @@ import com.annimon.stream.Collectors;
 import com.annimon.stream.Stream;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
-import com.google.common.collect.Sets;
+import com.kedacom.vconf.sdk.amulet.Caster;
+import com.kedacom.vconf.sdk.amulet.IResultListener;
+import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
+import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
+import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
+import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
+import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
+import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
+import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
+import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
+import com.kedacom.vconf.sdk.utils.log.KLog;
+import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
+import com.kedacom.vconf.sdk.webrtc.CommonDef.ConnType;
+import com.kedacom.vconf.sdk.webrtc.CommonDef.MediaType;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfInvitationInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
+import com.kedacom.vconf.sdk.webrtc.bean.CreateConfResult;
+import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtId;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TQueryConfInfoResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayItem;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
 
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
@@ -75,25 +108,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
-import com.kedacom.vconf.sdk.webrtc.bean.*;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
-import com.kedacom.vconf.sdk.webrtc.CommonDef.*;
-import com.kedacom.vconf.sdk.amulet.Caster;
-import com.kedacom.vconf.sdk.amulet.IResultListener;
-import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
-import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
-import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
-import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
-import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
-import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
-import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
-import com.kedacom.vconf.sdk.utils.log.KLog;
-import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
 
 
 @SuppressWarnings({"unused", "WeakerAccess"})
@@ -151,54 +165,28 @@ public class WebRtcManager extends Caster<Msg>{
     public synchronized static WebRtcManager getInstance(@NonNull Application context){
         if (null == instance){
             instance = new WebRtcManager(context);
-            instance.req(Msg.StartMtService, null, "mtrtcservice");
+            instance.startService();
         }
         return instance;
     }
 
-
-    @Override
-    protected Map<Msg[], RspProcessor<Msg>> rspsProcessors() {
-        Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
-        processorMap.put(new Msg[]{
-                Msg.StartMtService,
-                Msg.Login,
-                Msg.Logout,
-                Msg.Call,
-                Msg.CreateConf,
-                Msg.QuitConf,
-                Msg.EndConf,
-                Msg.AcceptInvitation,
-                Msg.DeclineInvitation,
-                Msg.SetSilence,
-                Msg.SetMute,
-                Msg.ToggleScreenShare,
-                Msg.QueryConfInfo,
-                Msg.VerifyConfPassword,
-                Msg.CloseMyMainVideoChannel,
-        }, this::onRsp);
-        return processorMap;
-    }
-
-
-    @Override
-    protected Map<Msg[], NtfProcessor<Msg>> ntfsProcessors() {
-        Map<Msg[], NtfProcessor<Msg>> processorMap = new HashMap<>();
-        processorMap.put(new Msg[]{
-                Msg.LoginStateChanged,
-                Msg.CallIncoming,
-                Msg.ConfCanceled,
-                Msg.MultipartyConfEnded,
-                Msg.CurrentConfereeList,
-                Msg.ConfereeJoined,
-                Msg.ConfereeLeft,
-                Msg.CurrentStreamList,
-                Msg.StreamJoined,
-                Msg.StreamLeft,
-                Msg.ConfPasswordNeeded,
-        }, this::onNtfs);
-
-        return processorMap;
+    // 启动业务组件webrtc服务
+    private void startService(){
+        String serviceName = "mtrtcservice";
+        req(Msg.StartMtService, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TSrvStartResult result = (TSrvStartResult) rspContent;
+                if (!result.AssParam.achSysalias.equals(serviceName)){
+                    isConsumed[0] = false;
+                    return;
+                }
+                boolean success = result.MainParam.basetype;
+                if (success){
+                    KLog.p("start %s service success!", serviceName);
+                }
+            }
+        }, null , serviceName);
     }
 
 
@@ -206,12 +194,13 @@ public class WebRtcManager extends Caster<Msg>{
      * 登录rtc
      * 注意，需先登录aps成功。
      * @param e164 用户e164号
-     * @param resultListener 登陆结果监听器。
-     *          成功: null;
-     *          失败：错误码 TODO
+     * @param resultListener onSuccess null
+     *                       onFailed {@link RtcResultCode#NetworkUnreachable}
+     *                                {@link RtcResultCode#UnknownServerAddress}
+     *                                {@link RtcResultCode#MultipleRegistration}
      * @param confEventListener 会议事件监听器
      * */
-    public void login(String e164, @NonNull IResultListener resultListener, @NonNull ConfEventListener confEventListener){
+    public void login(@NonNull String e164, @NonNull IResultListener resultListener, @NonNull ConfEventListener confEventListener){
         TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) get(Msg.GetSvrAddr);
         if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0){
             KLog.p(KLog.ERROR, "invalid rtcSvrAddr");
@@ -224,21 +213,42 @@ public class WebRtcManager extends Caster<Msg>{
         rtcSvrAddr.achNumber = e164;
 
         this.confEventListener = confEventListener;
-        req(Msg.Login, resultListener, rtcSvrAddr);
+        req(Msg.Login, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TRegResultNtf loginResult = (TRegResultNtf) rspContent;
+                int resCode = RtcResultCode.trans(Msg.Login, loginResult.AssParam.basetype);
+                if (RtcResultCode.OK == resCode) {
+                    reportSuccess(null, resultListener);
+                } else {
+                    reportFailed(resCode, resultListener);
+                }
+            }
+        }, resultListener, rtcSvrAddr);
     }
 
 
     /**
-     * 登出rtc
-     * @param resultListener 结果监听器。
-     *          成功: null;
-     *          失败：错误码 TODO
+     * 注销rtc
+     * @param resultListener onSuccess null
+     *                       onFailed errorCode // TODO
      * */
     public void logout(IResultListener resultListener){
         this.confEventListener = null;
         userE164 = null;
         stopSession();
-        req(Msg.Logout, resultListener, new TMtRtcSvrAddr(false));
+        req(Msg.Logout, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TRegResultNtf loginResult = (TRegResultNtf) rspContent;
+                int resCode = RtcResultCode.trans(Msg.Logout, loginResult.AssParam.basetype);
+                if (RtcResultCode.OK == resCode) {
+                    reportSuccess(null, resultListener);
+                } else {
+                    reportFailed(resCode, resultListener);
+                }
+            }
+        }, resultListener, new TMtRtcSvrAddr(false));
     }
 
 
@@ -247,9 +257,9 @@ public class WebRtcManager extends Caster<Msg>{
      * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
      * @param peerId 对于点对点而言是对端e164，对于多方会议而言是会议e164
      * @param bAudio 是否音频方式入会
-     **@param resultListener 结果监听器。
-     *          成功: {@link MakeCallResult};
-     *          失败：TODO
+     * @param resultListener onSuccess {@link MakeCallResult}
+     *                       onFailed {@link RtcResultCode#NotLoginedYet}
+     *                                {@link RtcResultCode#ReachConfereeNumLimit}
      * @param sessionEventListener 会话事件监听器
      * */
     public void makeCall(String peerId, boolean bAudio, @NonNull IResultListener resultListener, @NonNull SessionEventListener sessionEventListener){
@@ -257,9 +267,34 @@ public class WebRtcManager extends Caster<Msg>{
             reportFailed(-1, resultListener);
             return;
         }
-        req(Msg.Call, resultListener, peerId,
-                bAudio ? 64 : 1024*4, // 音频入会64K码率，视频入会4M
-                EmConfProtocol.emrtc);
+        req(Msg.Call, new SessionProcessor<Msg>() {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        switch (rsp){
+                            case Calling:
+                                if (EmConfProtocol.emrtc != ((TMtCallLinkSate) rspContent).emConfProtocol){
+                                    isConsumed[0] = false;
+                                }
+                                break;
+                            case MultipartyConfStarted:
+                                reportSuccess(ToDoConverter.callLinkState2MakeCallResult((TMtCallLinkSate) rspContent), resultListener);
+                                break;
+                            case ConfCanceled:
+                                stopSession();
+                                reportFailed(RtcResultCode.trans(Msg.Call, ((BaseTypeInt) rspContent).basetype), resultListener);
+                                break;
+                        }
+                    }
+
+                    @Override
+                    public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        stopSession();
+                    }
+                },
+                resultListener, peerId,
+                bAudio ? 64 : 1024 * 4, // 音频入会64K码率，视频入会4M
+                EmConfProtocol.emrtc
+        );
     }
 
 
@@ -267,9 +302,8 @@ public class WebRtcManager extends Caster<Msg>{
      * 创建会议
      * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
      * @param confPara 创会参数
-     **@param resultListener 结果监听器。
-     *          成功: {@link CreateConfResult};
-     *          失败：TODO
+     * @param resultListener onSuccess {@link CreateConfResult}
+     *                       onFailed {@link RtcResultCode#InstantConfDenied}
      * @param sessionEventListener 会话事件监听器
      * */
     public void createConf(ConfPara confPara, @NonNull IResultListener resultListener, @NonNull SessionEventListener sessionEventListener){
@@ -279,34 +313,75 @@ public class WebRtcManager extends Caster<Msg>{
         }
         if (confPara.bSelfAudioMannerJoin){
             // 音频入会则关闭己端主视频通道。底层上报onGetOfferCmd时带的媒体类型就为Audio了。
-            req(Msg.CloseMyMainVideoChannel, resultListener);
+            req(Msg.CloseMyMainVideoChannel, null, null);
         }
-        req(Msg.CreateConf, resultListener, ToDoConverter.confPara2CreateConference(confPara), EmConfProtocol.emrtc);
+        req(Msg.CreateConf, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case CreateConfRsp:
+                        TCreateConfResult tCreateConfResult = (TCreateConfResult) rspContent;
+                        int resCode = RtcResultCode.trans(Msg.CreateConf, tCreateConfResult.MainParam.dwErrorID);
+                        if (RtcResultCode.OK != resCode){
+                            stopSession();
+                            cancelReq(req, resultListener);
+                            reportFailed(resCode, resultListener);
+                        }
+                        break;
+                    case MultipartyConfStarted:
+                        reportSuccess(ToDoConverter.callLinkState2CreateConfResult( (TMtCallLinkSate) rspContent), resultListener);
+                        break;
+                }
+            }
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                stopSession();
+            }
+        }, resultListener, ToDoConverter.confPara2CreateConference(confPara), EmConfProtocol.emrtc);
     }
 
 
     /**
      * 退出会议。
      * @param disReason 原因码
+     * @param resultListener onSuccess null
+     *                       onFailed // TODO
      * */
     public void quitConf(EmMtCallDisReason disReason, IResultListener resultListener){
         if (!stopSession()){
             reportFailed(-1, resultListener);
             return;
         }
-        req(Msg.QuitConf, resultListener, disReason);
+        req(Msg.QuitConf, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                BaseTypeInt reason = (BaseTypeInt) rspContent;
+                int resCode = RtcResultCode.trans(Msg.QuitConf, reason.basetype);
+                // TODO 判断resCode
+                reportSuccess(null, resultListener);
+            }
+        }, resultListener, disReason);
     }
 
 
     /**
      * 结束会议。
+     * @param resultListener onSuccess null
+     *                       onFailed // TODO
      * */
     public void endConf(IResultListener resultListener){
         if (!stopSession()){
             reportFailed(-1, resultListener);
             return;
         }
-        req(Msg.EndConf, resultListener);
+        req(Msg.EndConf, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                // TODO 判断resCode
+                reportSuccess(null, resultListener);
+            }
+        }, resultListener);
     }
 
 
@@ -314,9 +389,8 @@ public class WebRtcManager extends Caster<Msg>{
      * 接受会议邀请
      * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
      * @param bAudio 是否音频方式入会
-     * @param sessionEventListener 会话事件监听器
-     *                             成功：{@link MakeCallResult}
-     *                             失败：失败码 //TODO
+     * @param resultListener onSuccess {@link MakeCallResult}
+     *                       onFailed NEVER
      * */
     public void acceptInvitation(boolean bAudio, @NonNull IResultListener resultListener, @NonNull SessionEventListener sessionEventListener){
         if (!startSession(sessionEventListener)){
@@ -325,9 +399,19 @@ public class WebRtcManager extends Caster<Msg>{
         }
         if (bAudio) {
             // 音频入会则关闭己端主视频通道。底层上报onGetOfferCmd时带的媒体类型就为Audio了。
-            req(Msg.CloseMyMainVideoChannel, resultListener);
+            req(Msg.CloseMyMainVideoChannel, null, null);
         }
-        req(Msg.AcceptInvitation, resultListener);
+        req(Msg.AcceptInvitation, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                reportSuccess(ToDoConverter.callLinkState2MakeCallResult((TMtCallLinkSate) rspContent), resultListener);
+            }
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                stopSession();
+            }
+        }, resultListener);
     }
 
 
@@ -335,31 +419,52 @@ public class WebRtcManager extends Caster<Msg>{
      * 拒绝会议邀请
      * */
     public void declineInvitation(){
-        req(Msg.DeclineInvitation, null);
+        req(Msg.DeclineInvitation, null, null);
     }
 
 
     /**
      * 查询会议详情
      * @param confE164 会议e164号
-     * @param resultListener 结果监听器。
-     *          成功: {@link ConfInfo};
-     *          失败：TODO
+     * @param resultListener onSuccess {@link ConfInfo}
+     *                       onFailed // TODO
      * */
     public void queryConfInfo(String confE164, IResultListener resultListener){
-        req(Msg.QueryConfInfo, resultListener, confE164);
+        req(Msg.QueryConfInfo, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TQueryConfInfoResult queryConfInfoResult = (TQueryConfInfoResult) rspContent;
+                int resCode = RtcResultCode.trans(Msg.QueryConfInfo, queryConfInfoResult.MainParam.dwErrorID);
+                if (RtcResultCode.OK == resCode){
+                    reportSuccess(ToDoConverter.tMTInstanceConferenceInfo2ConfInfo(queryConfInfoResult.AssParam), resultListener);
+                }else{
+                    reportFailed(resCode, resultListener);
+                }
+            }
+        }, resultListener, confE164);
     }
 
 
     /**
      * 验证会议密码
      * @param passwd 会议密码
-     * @param resultListener 结果监听器。
-     *          成功: null;
-     *          失败：{@link RtcResultCode#IncorrectConfPassword}
+     * @param resultListener onSuccess null
+     *                       onFailed {@link RtcResultCode#IncorrectConfPassword}
      * */
     public void verifyConfPassword(String passwd, IResultListener resultListener){
-        req(Msg.VerifyConfPassword, resultListener, passwd);
+        req(Msg.VerifyConfPassword, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case MyLabelAssigned:
+                        reportSuccess(null, resultListener);
+                        break;
+                    case ConfPasswordNeeded:
+                        reportFailed(RtcResultCode.IncorrectConfPassword, resultListener);
+                        break;
+                }
+            }
+        }, resultListener, passwd);
     }
 
 
@@ -403,7 +508,28 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
         screenCapturePermissionData = permissionData;
-        req(Msg.ToggleScreenShare, resultListener, true);
+        req(Msg.ToggleScreenShare, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TMtAssVidStatusList assVidStatusList = (TMtAssVidStatusList) rspContent;
+                if (assVidStatusList.arrTAssVidStatus.length == 0){
+                    reportFailed(-1, resultListener);
+                }else{
+                    TAssVidStatus assVidStatus = assVidStatusList.arrTAssVidStatus[0]; // 目前仅支持一路
+                    if (EmMtChanState.emChanConnected == assVidStatus.emChanState){
+                        reportSuccess(null, resultListener);
+                    }else{
+                        screenCapturePermissionData = null;
+                        reportFailed(-1, resultListener);
+                    }
+                }
+            }
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                screenCapturePermissionData = null;
+            }
+        }, resultListener, true);
     }
 
 
@@ -417,13 +543,16 @@ public class WebRtcManager extends Caster<Msg>{
         }
         screenCapturePermissionData = null;
 
-        req(Msg.ToggleScreenShare, null, false);
+        req(Msg.ToggleScreenShare, null, null, false);
     }
 
 
     private View sharedWindow;
     /**
      * 开启窗口共享
+     * @param window 需要共享的窗口
+     * @param resultListener onSuccess null
+     *                       onFailed // TODO
      * */
     public void startWindowShare(@NonNull View window, IResultListener resultListener){
         if (null != sharedWindow){
@@ -431,7 +560,28 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
         sharedWindow = window;
-        req(Msg.ToggleScreenShare, resultListener, true);
+        req(Msg.ToggleScreenShare, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TMtAssVidStatusList assVidStatusList = (TMtAssVidStatusList) rspContent;
+                if (assVidStatusList.arrTAssVidStatus.length == 0){
+                    reportFailed(-1, resultListener);
+                }else{
+                    TAssVidStatus assVidStatus = assVidStatusList.arrTAssVidStatus[0]; // 目前仅支持一路
+                    if (EmMtChanState.emChanConnected == assVidStatus.emChanState){
+                        reportSuccess(null, resultListener);
+                    }else{
+                        sharedWindow = null;
+                        reportFailed(-1, resultListener);
+                    }
+                }
+            }
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                sharedWindow = null;
+            }
+        }, resultListener, true);
     }
 
 
@@ -471,7 +621,7 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
         sharedWindow = null;
-        req(Msg.ToggleScreenShare, null, false);
+        req(Msg.ToggleScreenShare, null, null, false);
     }
 
 
@@ -502,7 +652,7 @@ public class WebRtcManager extends Caster<Msg>{
             pcWrapper.setRemoteAudioEnable(!bSilence);
             config.isSilenced = bSilence;
         }
-        req(Msg.SetSilence, null, bSilence);
+        req(Msg.SetSilence, null, null, bSilence);
 
         return true;
     }
@@ -534,7 +684,7 @@ public class WebRtcManager extends Caster<Msg>{
             pcWrapper.setLocalAudioEnable(!bMute);
             config.isMuted = bMute;
         }
-        req(Msg.SetMute, null, bMute);
+        req(Msg.SetMute, null, null, bMute);
         return true;
     }
 
@@ -622,155 +772,20 @@ public class WebRtcManager extends Caster<Msg>{
 //    }
 
 
-    private boolean onRsp(Msg rsp, Object rspContent, IResultListener listener, Msg req, Object[] reqParas) {
-        switch (rsp){
-            case LoginStateChanged:
-                TRegResultNtf loginResult = (TRegResultNtf) rspContent;
-                int resCode = RtcResultCode.fromTransfer(loginResult.AssParam.basetype);
-                if (Msg.Login == req) { // 登录
-                    if (RtcResultCode.OK == resCode) {
-                        reportSuccess(null, listener);
-                    } else {
-                        reportFailed(resCode, listener);
-                    }
-                }else{ // 注销
-                    reportSuccess(null, listener);
-                }
-                break;
-
-            case Calling:
-                TMtCallLinkSate callLinkSate = (TMtCallLinkSate) rspContent;
-                KLog.p("Calling: %s", callLinkSate);
-                if (EmConfProtocol.emrtc != callLinkSate.emConfProtocol){
-                    return false;
-                }
-                break;
-
-            case MultipartyConfStarted:
-                callLinkSate = (TMtCallLinkSate) rspContent;
-                KLog.p("P2pConfStarted: %s", callLinkSate);
-                if (Msg.Call == req || Msg.AcceptInvitation == req) {
-                    reportSuccess(ToDoConverter.callLinkState2MakeCallResult(callLinkSate), listener);
-                }else if (Msg.CreateConf == req){
-                    reportSuccess(ToDoConverter.callLinkState2CreateConfResult(callLinkSate), listener);
-                }
-                break;
-
-            case MultipartyConfEnded:
-                BaseTypeInt reason = (BaseTypeInt) rspContent;
-                KLog.p("MultipartyConfEnded: %s", reason.basetype);
-                resCode = RtcResultCode.fromTransfer(reason.basetype);
-                if (Msg.QuitConf == req || Msg.EndConf == req) {
-                    reportSuccess(null, listener);
-                }else{
-                    reportFailed(resCode, listener);
-                }
-                break;
-
-            case ConfCanceled:
-                stopSession();
-                reason = (BaseTypeInt) rspContent;
-                KLog.p("ConfCanceled: %s", reason.basetype);
-                resCode = RtcResultCode.fromTransfer(reason.basetype);
-                reportFailed(resCode, listener);
-                break;
-
-            case ToggleScreenShareRsp:
-                boolean bOpen = (boolean) reqParas[0];
-                TMtAssVidStatusList assVidStatusList = (TMtAssVidStatusList) rspContent;
-                if (assVidStatusList.arrTAssVidStatus.length == 0){
-                    reportFailed(-1, listener);
-                }else{
-                    TAssVidStatus assVidStatus = assVidStatusList.arrTAssVidStatus[0]; // 目前仅支持一路
-                    if (bOpen){
-                        // 开启双流对应的响应
-                        if (EmMtChanState.emChanConnected == assVidStatus.emChanState){
-                            reportSuccess(null, listener);
-                        }else{
-                            sharedWindow = null;
-                            reportFailed(-1, listener);
-                        }
-                    }else{
-                        // 关闭双流对应的响应
-                        if (EmMtChanState.emChanConnected != assVidStatus.emChanState){
-                            reportSuccess(null, listener);
-                        }else{
-                            reportFailed(-1, listener);
-                        }
-                    }
-                }
-                break;
-
-            case CreateConfRsp:
-                TCreateConfResult tCreateConfResult = (TCreateConfResult) rspContent;
-                resCode = RtcResultCode.fromTransfer(tCreateConfResult.MainParam.dwErrorID);
-                if (RtcResultCode.ConfOK != resCode){
-                    stopSession();
-                    cancelReq(req, listener);
-                    reportFailed(resCode, listener);
-                }
-                break;
-
-            case QueryConfInfoRsp:
-                TQueryConfInfoResult queryConfInfoResult = (TQueryConfInfoResult) rspContent;
-                resCode = RtcResultCode.fromTransfer(queryConfInfoResult.MainParam.dwErrorID);
-                if (RtcResultCode.ConfOK != resCode){
-                    reportFailed(resCode, listener);
-                }else{
-                    reportSuccess(ToDoConverter.tMTInstanceConferenceInfo2ConfInfo(queryConfInfoResult.AssParam), listener);
-                }
-                break;
-
-            case MyLabelAssigned:
-                if (Msg.VerifyConfPassword == req) {
-                    reportSuccess(null, listener);
-                }
-                break;
-
-            case ConfPasswordNeeded:
-                if (Msg.VerifyConfPassword == req) {
-                    reportFailed(RtcResultCode.IncorrectConfPassword, listener);
-                }
-                break;
-
-            default:
-                return false;
-        }
-
-        return true;
-    }
-
-
     @Override
-    protected boolean onTimeout(Msg req, IResultListener rspListener, Object[] reqPara) {
-        switch (req){
-            case Call:
-            case CreateConf:
-            case AcceptInvitation:
-                stopSession();
-                break;
-            case ToggleScreenShare:
-                sharedWindow = null;
-                break;
-        }
-        return super.onTimeout(req, rspListener, reqPara);
-    }
+    protected void onNotification(Msg ntf, java.lang.Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
 
-
-    private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
-        switch (ntfId){
+        switch (ntf){
             case LoginStateChanged:
                 TRegResultNtf regState = (TRegResultNtf) ntfContent;
-                int resCode = RtcResultCode.fromTransfer(regState.AssParam.basetype);
+                int resCode = RtcResultCode.trans(Msg.LoginStateChanged, regState.AssParam.basetype);
                 if (RtcResultCode.OK != resCode) {
                     confEventListener.onConfServerDisconnected(resCode);
                 }
                 break;
 
             case CallIncoming:
-                TMtCallLinkSate callLinkSate = (TMtCallLinkSate) ntfContent;
-                KLog.p("CallIncoming: %s", callLinkSate);
-                confEventListener.onConfInvitation(ToDoConverter.callLinkSate2ConfInvitationInfo(callLinkSate));
+                confEventListener.onConfInvitation(ToDoConverter.callLinkSate2ConfInvitationInfo((TMtCallLinkSate) ntfContent));
                 break;
 
             case ConfPasswordNeeded:
@@ -779,18 +794,12 @@ public class WebRtcManager extends Caster<Msg>{
 
             case MultipartyConfEnded:
                 stopSession();
-                BaseTypeInt reason = (BaseTypeInt) ntfContent;
-                KLog.p("MultipartyConfEnded: %s", reason.basetype);
-                resCode = RtcResultCode.fromTransfer(reason.basetype);
-                confEventListener.onConfFinished(resCode);
+                confEventListener.onConfFinished(RtcResultCode.trans(Msg.MultipartyConfEnded, ((BaseTypeInt) ntfContent).basetype));
                 break;
 
             case ConfCanceled:
                 stopSession();
-                reason = (BaseTypeInt) ntfContent;
-                KLog.p("ConfCanceled: %s", reason.basetype);
-                resCode = RtcResultCode.fromTransfer(reason.basetype);
-                confEventListener.onConfFinished(resCode);
+                confEventListener.onConfFinished(RtcResultCode.trans(Msg.ConfCanceled, ((BaseTypeInt) ntfContent).basetype));
                 break;
 
             case CurrentConfereeList: // NOTE: 入会后会收到一次该通知，创会者也会收到这条消息。列表中包含了自己。
@@ -1041,7 +1050,7 @@ public class WebRtcManager extends Caster<Msg>{
         // 其次当连续3次验证密码失败，第3次不会回响应，而是直接上报会议结束的通知。此时我们再次加入该会议，由于第三次验证请求仍可能存在，
         // 则当“需要输入密码（ConfPasswordNeeded）”的通知上来时，会被第三次的请求当作它期望的响应给消费掉（原本应该作为通知上报用户输入密码），
         // 所以我们在会议结束时取消掉可能进行中的密码验证请求以解决该问题。
-        cancelReq(Sets.newHashSet(Msg.VerifyConfPassword));
+        cancelReq(Msg.VerifyConfPassword, null);
 
         KLog.p("session stopped ");
 
