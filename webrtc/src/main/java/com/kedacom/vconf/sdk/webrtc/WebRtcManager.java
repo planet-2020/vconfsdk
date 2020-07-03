@@ -331,6 +331,10 @@ public class WebRtcManager extends Caster<Msg>{
                     case MultipartyConfStarted:
                         reportSuccess(ToDoConverter.callLinkState2CreateConfResult( (TMtCallLinkSate) rspContent), resultListener);
                         break;
+                    case ConfCanceled:
+                        stopSession();
+                        reportFailed(RtcResultCode.trans(req, ((BaseTypeInt) rspContent).basetype), resultListener);
+                        break;
                 }
             }
 
@@ -346,7 +350,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 退出会议。
      * @param disReason 原因码
      * @param resultListener onSuccess null
-     *                       onFailed // TODO
+     *                       onFailed
      * */
     public void quitConf(EmMtCallDisReason disReason, IResultListener resultListener){
         if (!stopSession()){
@@ -368,7 +372,7 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 结束会议。
      * @param resultListener onSuccess null
-     *                       onFailed // TODO
+     *                       onFailed
      * */
     public void endConf(IResultListener resultListener){
         if (!stopSession()){
@@ -390,7 +394,6 @@ public class WebRtcManager extends Caster<Msg>{
      * NOTE：目前只支持同时开一个会。如果呼叫中/创建中或会议中状态，则返回失败，需要先退出会议状态。
      * @param bAudio 是否音频方式入会
      * @param resultListener onSuccess {@link MakeCallResult}
-     *                       onFailed NEVER
      * */
     public void acceptInvitation(boolean bAudio, @NonNull IResultListener resultListener, @NonNull SessionEventListener sessionEventListener){
         if (!startSession(sessionEventListener)){
@@ -427,7 +430,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 查询会议详情
      * @param confE164 会议e164号
      * @param resultListener onSuccess {@link ConfInfo}
-     *                       onFailed // TODO
+     *                       onFailed
      * */
     public void queryConfInfo(String confE164, IResultListener resultListener){
         req(Msg.QueryConfInfo, new SessionProcessor<Msg>() {

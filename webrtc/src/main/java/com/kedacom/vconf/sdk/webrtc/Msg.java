@@ -140,6 +140,9 @@ enum Msg {
             timeout = 60,
             rspSeq = {"CreateConfRsp", // 创会成功与否。创会成功后平台会拉终端入会
                     "MultipartyConfStarted",  // 终端（己端）被成功拉入会议
+            },
+            rspSeq2 = {"CreateConfRsp",
+                    "ConfCanceled",
             }
     )
     CreateConf,
