@@ -199,7 +199,7 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
     /**
-     * 取消会话请求。
+     * 取消会话。
      * @param req 请求消息
      * @param resultListener 结果监听器，为null则取消所有请求消息为req的会话。
      * */
@@ -219,6 +219,18 @@ public abstract class Caster<T extends Enum<T>> implements
         }
     }
 
+    /**
+     * 取消所有会话。
+     * */
+    protected void cancelAllReqs(){
+        for (Session s : sessions) {
+            sessionFairy.cancelReq(s.id);
+            if (!containsNtfListener(s.resultListener)){
+                listenerLifecycleObserver.unobserve(s.resultListener);
+            }
+        }
+        sessions.clear();
+    }
 
     /**
      * 同步请求（一般用于设置配置）
@@ -335,23 +347,26 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
 
-    protected boolean containsListener(ILifecycleOwner listener){
-        boolean got = false;
+    private boolean containsListener(ILifecycleOwner listener){
+        return containsRspListener(listener) || containsNtfListener(listener);
+    }
+
+    private boolean containsRspListener(ILifecycleOwner listener){
+        for (Session s : sessions){
+            if (s.resultListener == listener){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean containsNtfListener(ILifecycleOwner listener){
         for (Set<ILifecycleOwner> listeners : ntfListenersMap.values()){
             if (listeners.contains(listener)){
-                got = true;
-                break;
+                return true;
             }
         }
-        if (!got){
-            for (Session s : sessions){
-                if (s.resultListener == listener){
-                    got = true;
-                    break;
-                }
-            }
-        }
-        return got;
+        return false;
     }
 
     private String prefixMsg(String msg){
@@ -451,40 +466,44 @@ public abstract class Caster<T extends Enum<T>> implements
      * 上报用户请求进度
      * */
     protected void reportProgress(Object progress, IResultListener listener){
-        if (null != listener){
-            listener.onProgress(progress);
+        if (null == listener || !containsRspListener(listener)){
+            return;
         }
+        listener.onProgress(progress);
     }
 
 
     /**
-     * 上报用户请求成功结果
+     * 上报用户请求成功
      * */
     protected void reportSuccess(Object result, IResultListener listener){
-        if (null != listener){
-            listener.onArrive(true);
-            listener.onSuccess(result);
+        if (null == listener || !containsRspListener(listener)){
+            return;
         }
+        listener.onArrive(true);
+        listener.onSuccess(result);
     }
 
     /**
      * 上报用户请求失败
      * */
     protected void reportFailed(int errorCode, IResultListener listener){
-        if (null != listener){
-            listener.onArrive(false);
-            listener.onFailed(errorCode);
+        if (null == listener || !containsRspListener(listener)){
+            return;
         }
+        listener.onArrive(false);
+        listener.onFailed(errorCode);
     }
 
     /**
      * 上报用户请求超时
      * */
     protected void reportTimeout(IResultListener listener){
-        if (null != listener){
-            listener.onArrive(false);
-            listener.onTimeout();
+        if (null == listener || !containsRspListener(listener)){
+            return;
         }
+        listener.onArrive(false);
+        listener.onTimeout();
     }
 
 

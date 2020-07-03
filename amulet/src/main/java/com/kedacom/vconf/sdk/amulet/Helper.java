@@ -54,7 +54,8 @@ class Helper {
             Class<?> nativeParaType = nativeParaTypes[i];
             KLog.p(KLog.DEBUG,"userPara[%s].class=%s, methodPara[%s].class=%s", i, null==userPara? null : userPara.getClass(), i, nativeParaType);
             if (null == userPara){
-                nativeParas[i] = nativeParaType.isPrimitive() ? PrimitiveTypeHelper.getDefaultValue(nativeParaType) : null;
+                nativeParas[i] = nativeParaType.isPrimitive() ? PrimitiveTypeHelper.getDefaultValue(nativeParaType) :
+                        StringHelper.isStringCompatible(nativeParaType) ? "" : null;
             }else if (userPara.getClass() == nativeParaType
                     || nativeParaType.isAssignableFrom(userPara.getClass())){
                 nativeParas[i] = userPara;
