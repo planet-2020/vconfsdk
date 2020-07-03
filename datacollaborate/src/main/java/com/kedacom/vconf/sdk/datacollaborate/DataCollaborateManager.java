@@ -1,12 +1,13 @@
 package com.kedacom.vconf.sdk.datacollaborate;
 
 import android.app.Application;
-import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+
+import androidx.annotation.Nullable;
 
 import com.google.common.io.Files;
 import com.google.common.net.InetAddresses;
@@ -14,17 +15,57 @@ import com.google.common.primitives.Ints;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.type.BaseTypeString;
+import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
+import com.kedacom.vconf.sdk.datacollaborate.bean.DcConfInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EConfType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EDcMode;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.ETerminalType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsDownloadImageRsp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetAllWhiteBoardRsp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetConfAddrRsp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetUserListRsp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsGetWhiteBoardRsp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsNewWhiteBoardRsp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSetConfInfoRsp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsSwitchRsp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.DcsUploadImageRsp;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmServerState;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSBoardResult;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConfInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConfUserInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSConnectResult;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSCreateConf;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSCreateConfResult;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSDelWhiteBoardInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSFileInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSFileLoadResult;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSImageUrl;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSNewWhiteBoard;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSOperator;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSRegInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSResult;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSrvState;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSvrAddr;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSwitchReq;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSUserInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSUserInfos;
 import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
 import com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver;
 import com.kedacom.vconf.sdk.utils.log.KLog;
-import com.kedacom.vconf.sdk.datacollaborate.bean.*;
-import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.*;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -33,8 +74,6 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.UUID;
-
-import androidx.annotation.Nullable;
 
 /**
  * 数据协作管理模块。
@@ -49,6 +88,1229 @@ import androidx.annotation.Nullable;
 public final class DataCollaborateManager extends Caster<Msg> {
 
     private static DataCollaborateManager instance;
+
+    // 当前会议e164号
+    private String curDcConfE164;
+
+    // 当前终端类型
+    private EmDcsType curTerminalType;
+
+    private Handler assHandler;
+
+
+    // 通知监听器
+    private IOnDcCreatedListener onDcCreatedListener;
+    private IOnSynchronizeProgressListener onSynchronizeProgressListener;
+    private IOnSessionEventListener onSessionEventListener;
+    private IOnOperatorEventListener onOperatorEventListener;
+    private IOnBoardOpListener onBoardOpListener;
+    private IOnPaintOpListener onPaintOpListener;
+
+    private ListenerLifecycleObserver listenerLifecycleObserver = ListenerLifecycleObserver.getInstance();
+    private ListenerLifecycleObserver.Callback lifecycleObserverCb = new ListenerLifecycleObserver.Callback(){
+                @Override
+                public void onListenerDestroy(Object listener) {
+                    if (listener == onDcCreatedListener){
+                        onDcCreatedListener = null;
+                    }else if (listener == onSynchronizeProgressListener){
+                        onSynchronizeProgressListener = null;
+                    }else if (listener == onSessionEventListener){
+                        onSessionEventListener = null;
+                    }else if (listener == onOperatorEventListener){
+                        onOperatorEventListener = null;
+                    }else if (listener == onBoardOpListener){
+                        onBoardOpListener = null;
+                    }else if (listener == onPaintOpListener){
+                        onPaintOpListener = null;
+                    }
+                }
+            };
+
+
+
+
+    private static String PIC_SAVE_DIR;
+    private Application context;
+
+    private DataCollaborateManager(Application ctx){
+        if (null == context
+                && null != ctx){
+            context = ctx;
+            File dir = new File(ctx.getFilesDir(), "dc_pic");
+            if (!dir.exists()){
+                dir.mkdir();
+            }
+            PIC_SAVE_DIR = dir.getAbsolutePath();
+
+            // 检查图片缓存文件夹是否已超出大小上限，若超出则清空
+            long size = 0;
+            for (File file : dir.listFiles()) {
+                size += file.length();
+            }
+            long LIMIT = 50*1024*1024;
+            KLog.p("pic cache dir=%s, size=%s, limit=%s", PIC_SAVE_DIR, size, LIMIT);
+            if (size > LIMIT){
+                KLog.p(KLog.WARN, "clean cached pics");
+                for (File file : dir.listFiles()) {
+                    file.delete();
+                }
+            }
+        }
+
+        HandlerThread handlerThread = new HandlerThread("DcAss", Process.THREAD_PRIORITY_BACKGROUND);
+        handlerThread.start();
+        assHandler = new Handler(handlerThread.getLooper()){
+            @Override
+            public void handleMessage(Message msg) {
+            }
+        };
+    }
+    /**
+     * 获取数据协作管理类实例
+     * @param ctx 应用上下文
+     * */
+    public static DataCollaborateManager getInstance(Application ctx) {
+        if (null == instance) {
+            instance = new DataCollaborateManager(ctx);
+        }
+
+        return instance;
+    }
+
+    private Set<Msg> operatorNtfs = new HashSet<>(Arrays.asList(
+            Msg.UserJoined,
+            Msg.OperatorAdded,
+            Msg.OperatorDeleted,
+            Msg.ApplyOperatorNtf,
+            Msg.ApplyOperatorRejected
+    ));
+
+    private Set<Msg> boardNtfs = new HashSet<>(Arrays.asList(
+            Msg.BoardCreated,
+            Msg.BoardSwitched,
+            Msg.BoardDeleted,
+            Msg.AllBoardDeleted
+    ));
+
+    private Set<Msg> paintNtfs = new HashSet<>(Arrays.asList(
+//            Msg.DCElementBeginNtf,
+            Msg.LineDrawn,
+            Msg.OvalDrawn,
+            Msg.RectDrawn,
+            Msg.PathDrawn,
+            Msg.PicInserted,
+            Msg.PicDragged,
+            Msg.PicDeleted,
+            Msg.Erased,
+            Msg.RectErased,
+            Msg.Matrixed,
+            Msg.Undone,
+            Msg.Redone,
+            Msg.ScreenCleared
+//            Msg.DCElementEndNtf,
+    ));
+
+    private Set<Msg> sessionNtfs = new HashSet<>(Arrays.asList(
+            Msg.LinkStateChanged,
+            Msg.CollaborateStarted,
+            Msg.CollaborateFinished,
+            Msg.ConfigModified
+    ));
+
+
+    /**登录数据协作
+     * @param terminalType 己端终端类型
+     * @param resultListener 登陆结果监听器。
+     *                       成功： resultListener.onSuccess(null);
+     *
+     *                       失败： resultListener.onFailed(int errorCode);
+     *                              {@link DcErrorCode#BuildLink4LoginFailed}
+     *                              {@link DcErrorCode#Failed}
+     *
+     * NOTE: 请务必在登录APS成功后登录数据协作！（登录APS的接口在其他模块）
+     **/
+    public void login(ETerminalType terminalType, IResultListener resultListener){
+        TDCSSrvState srvState = (TDCSSrvState) get(Msg.GetState);
+        if (null != srvState && EmServerState.emSrvLogin_Succ == srvState.emState){
+            KLog.p(KLog.WARN, "already logined!");
+            // 已登录状态则直接返回成功（若此状态下直接请求登录下层不会有任何响应 (─.─||| ）
+            if (null != resultListener) reportSuccess(null, resultListener);
+            return;
+        }
+        TDCSSvrAddr svrAddr = (TDCSSvrAddr) get(Msg.GetServerAddr);
+        if (null == svrAddr){
+            KLog.p(KLog.ERROR, "can not fetch DCS server address, have you logined APS yet? ");
+            if (null != resultListener) reportFailed(DcErrorCode.GetServerAddrFailed, resultListener);
+            return;
+        }
+        curTerminalType = ToDoConverter.toTransferObj(terminalType);
+        String ip = null;
+        try {
+            // 将整型ip转为点分十进制
+            ip = InetAddresses.fromLittleEndianByteArray(Ints.toByteArray((int) svrAddr.dwIp)).getHostAddress();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+
+        req(Msg.Login, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case LoginLinkStateChanged:
+                        TDCSConnectResult result = (TDCSConnectResult) rspContent;
+                        if (!result.bSuccess) { // 链路建立失败
+                            cancelReq(Msg.Login, resultListener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
+                            reportFailed(DcErrorCode.BuildLink4LoginFailed, resultListener);
+                        }
+                        break;
+                    case LoginRsp:
+                        TDCSResult loginRes = (TDCSResult) rspContent;
+                        if (loginRes.bSuccess) {
+                            reportSuccess(null, resultListener);
+                        }else{
+                            reportFailed(DcErrorCode.fromTransfer(loginRes.dwErrorCode), resultListener);
+                        }
+                        break;
+                }
+            }
+        }, resultListener, new TDCSRegInfo(ip, svrAddr.dwPort, curTerminalType));
+    }
+
+    /**注销数据协作
+     * @param resultListener 注销结果监听器。可以为null，若为null表示不关注注销结果（所有的结果监听器均可为null表示不关注请求结果）。
+     *                        成功：null;
+     *                        失败：{@link DcErrorCode#Failed}
+     * */
+    public void logout(@Nullable IResultListener resultListener){
+        req(Msg.Logout, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case LogoutRsp:
+                        TDCSResult logoutRes = (TDCSResult) rspContent;
+                        if (!logoutRes.bSuccess){
+                            cancelReq(Msg.Logout, resultListener);  // 后续不会有DCBuildLink4LoginRsp上来，取消该请求以防等待超时。
+                            reportFailed(DcErrorCode.fromTransfer(logoutRes.dwErrorCode), resultListener);
+                        }
+                        break;
+
+                    case LoginLinkStateChanged:
+                        TDCSConnectResult result = (TDCSConnectResult) rspContent;
+                        if (!result.bSuccess) { // 链路已断开
+                            reportSuccess(null, resultListener);
+                        }else{
+                            // 链路处于连接状态，该消息不是该请求期望的
+                            isConsumed[0] = false;
+                        }
+                        break;
+                }
+            }
+        }, resultListener);
+    }
+
+
+    /**
+     * 查询会议中是否存在数据协作（数据协作目前依附于会议）
+     * @param confE164 会议号
+     * @param resultListener 结果监听器。
+     *                       始终成功：boolean bExists，true表示存在。
+     * */
+    public void queryCollaborateExistsOrNot(String confE164, IResultListener resultListener){
+        req(Msg.QueryAddr, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                reportSuccess(((DcsGetConfAddrRsp) rspContent).MainParam.bSuccess, resultListener);
+            }
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                reportSuccess(false, resultListener);
+            }
+        }, resultListener, confE164);
+    }
+
+    /**
+     * 当前用户是否正在协作中。
+     * */
+    public boolean isCollaborating(){
+        TDCSSrvState srvState = (TDCSSrvState) get(Msg.GetState);
+        return null != srvState && srvState.bInConference;
+    }
+
+
+    /**开启数据协作
+     * 若数据协作已存在于会议中则直接加入，否则创建数据协作。
+     *
+     * 可通过{@link #queryCollaborateExistsOrNot(String, IResultListener)}查询会议中是否存在协作。
+     *
+     * @param confE164 会议e164（数据协作目前依附于会议——只能在会议中开启数据协作）
+     * @param confName 会议名称
+     * @param dcMode 数据协作模式
+     * @param confType 会议类型
+     * @param adminE164 主席e164
+     * @param members 与会成员
+     * @param resultListener 结果监听器。
+     *                       成功: {@link DcConfInfo};
+     *                       失败：{@link DcErrorCode#Failed}
+     *                             {@link DcErrorCode#BuildLink4ConfFailed}
+     *                             {@link DcErrorCode#DcAmountReachLimit}
+     *                       NOTE:开启协作成功后SDK内部会去同步协作内容，并通过synchronizeProgressListener上报用户同步进度。
+     *                       用户应该在同步结束后才去执行添加画板操作，否则可能导致新添加的画板被纳入同步的范畴（取决于平台下发的当前协作中已存在的画板列表是否包含了该新添加的画板），
+     *                       进而导致用户有画板重复——一个是自己刚新建的，一个是SDK同步过程中推的。
+     *
+     * @param synchronizeProgressListener 同步进度监听器（开启协作成功后会同步协作中已有内容）
+     * @param sessionEventListener 数据协作会话事件监听器
+     * @param operatorEventListener 协作权相关通知监听器
+     * @param boardOpListener 画板操作通知监听器
+     * @param paintOpListener 绘制操作通知监听器
+     * */
+    public void startCollaborate(String confE164, String confName, EDcMode dcMode, EConfType confType, String adminE164, List<DCMember> members,
+                                 IResultListener resultListener,
+                                 IOnSynchronizeProgressListener synchronizeProgressListener,
+                                 IOnSessionEventListener sessionEventListener,
+                                 IOnOperatorEventListener operatorEventListener,
+                                 IOnBoardOpListener boardOpListener,
+                                 IOnPaintOpListener paintOpListener ){
+
+        clearSession();
+
+        curDcConfE164 = null;
+        req(Msg.StartCollaborate, new SessionProcessor<Msg>() {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        switch (rsp){
+                            case LinkStateChanged:
+                                if (!((TDCSConnectResult) rspContent).bSuccess) { // 开启数据协作失败（链路建立失败）
+                                    cancelReq(Msg.StartCollaborate, resultListener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
+                                    reportFailed(DcErrorCode.BuildLink4ConfFailed, resultListener);
+                                    curDcConfE164 = null;
+                                }
+                                break;
+                            case CollaborateStarted:
+                                TDCSCreateConfResult createConfResult = (TDCSCreateConfResult) rspContent;
+                                if (createConfResult.bSuccess) { // 开启数据协作成功
+                                    curDcConfE164 = createConfResult.achConfE164;
+                                    reportSuccess(ToDoConverter.fromTransferObj(createConfResult), resultListener);
+
+                                    //准备同步协作内容
+                                    //NOTE: 此时若用户newboard会导致该board在同步的过程中重复上报给用户（newboard的result listener中已经上报了），
+                                    //规范用户的行为，不要在同步过程中newboard，用户可通过IOnSynchronizeProgressListener监听同步进度。
+                                    handler.postDelayed(() -> {
+
+                                        unsubscribeNtfListeners();
+
+                                        // 注册通知监听器
+                                        subscribeNtfListeners((IOnSynchronizeProgressListener) reqParas[1],
+                                                (IOnSessionEventListener) reqParas[2],
+                                                (IOnOperatorEventListener) reqParas[3],
+                                                (IOnBoardOpListener) reqParas[4],
+                                                (IOnPaintOpListener) reqParas[5]);
+
+                                        // 同步协作中已有内容
+                                        synchronizeCachedStuff(createConfResult);
+
+                                    }, 500);
+
+                                }else{
+                                    reportFailed(DcErrorCode.fromTransfer(createConfResult.dwErrorCode), resultListener);
+                                }
+                                break;
+                        }
+                    }
+
+                    @Override
+                    public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        clearSession();
+                    }
+                }, resultListener,
+                new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
+                        confE164, confName, ToDoConverter.toTransferObj(dcMode),
+                        ToDoConverter.toDcUserList(members), adminE164, curTerminalType),
+                synchronizeProgressListener, sessionEventListener, operatorEventListener, boardOpListener, paintOpListener
+        );
+    }
+
+    /**结束数据协作
+     * @param resultListener 结果监听器。
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     **/
+    public void finishCollaborate(IResultListener resultListener){
+        clearSession();
+        req(Msg.FinishCollaborate, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case FinishCollaborateRsp:
+                        break;
+                    case CollaborateFinished:
+                        break;
+                    case LinkStateChanged:
+                        if (!((TDCSConnectResult) rspContent).bSuccess) { // 链路已断开，结束协作成功
+                            reportSuccess(null, resultListener);
+                            curDcConfE164 = null;
+                        }else{ // 链路未断开，该消息不是期望的
+                            isConsumed[0] = false;
+                        }
+                        break;
+                }
+            }
+        }, resultListener, curDcConfE164);
+    }
+
+    /**退出数据协作。
+     * 注：仅自己退出，协作仍存在，不影响其他人继续
+     * @param bQuitConf 是否同时退出会议
+     * @param resultListener 结果监听器。
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     **/
+    public void quitCollaborate(boolean bQuitConf, IResultListener resultListener){
+        clearSession();
+        req(Msg.QuitCollaborate, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case QuitCollaborateRsp:
+                        TDCSResult quitRes = (TDCSResult) rspContent;
+                        if (!quitRes.bSuccess){
+                            cancelReq(Msg.QuitCollaborate, resultListener);
+                            reportFailed(DcErrorCode.fromTransfer(quitRes.dwErrorCode), resultListener);
+                        }
+                        break;
+                    case LinkStateChanged:
+                        if (!((TDCSConnectResult) rspContent).bSuccess) { // 链路已断开，退出协作成功
+                            reportSuccess(null, resultListener);
+                            curDcConfE164 = null;
+                        }else{ // 链路未断开，该消息不是期望的
+                            isConsumed[0] = false;
+                        }
+                        break;
+                }
+            }
+        }, resultListener, curDcConfE164, bQuitConf ? 0 : 1);
+    }
+
+    /**
+     * 查询协作会议信息
+     * @param resultListener 结果监听器。
+     *                       成功：{@link DcConfInfo}
+     *                       失败：{@link DcErrorCode#Failed}
+     * */
+    public void queryDcConfInfo(IResultListener resultListener){
+        req(Msg.QueryConfig, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TDCSCreateConfResult dcConfig = (TDCSCreateConfResult) rspContent;
+                if (dcConfig.bSuccess) {
+                    reportSuccess(ToDoConverter.fromTransferObj(dcConfig), resultListener);
+                }else{
+                    reportFailed(DcErrorCode.fromTransfer(dcConfig.dwErrorCode), resultListener);
+                }
+            }
+        }, resultListener);
+    }
+
+    /** 修改协作模式
+     * @param mode 协作模式
+     * @param resultListener 结果监听器。
+     *                       成功：DcConfInfo
+     *                       失败：{@link DcErrorCode#Failed}
+     **/
+    public void modifyCollaborateMode(EDcMode mode, IResultListener resultListener){
+        String confE164 = curDcConfE164;
+        queryDcConfInfo(new IResultListener() {
+            @Override
+            public void onSuccess(Object result) {
+                DcConfInfo confInfo = (DcConfInfo) result;
+                confInfo.setConfMode(mode); // 修改协作模式
+                req(Msg.ModifyConfig, new SessionProcessor<Msg>() {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        switch (rsp){
+                            case ModifyConfigRsp:
+                                DcsSetConfInfoRsp setConfInfoRsp = (DcsSetConfInfoRsp) rspContent;
+                                if (!setConfInfoRsp.bSuccess) {
+                                    cancelReq(Msg.ModifyConfig, resultListener);
+                                    reportFailed(DcErrorCode.fromTransfer(setConfInfoRsp.dwErrorCode), resultListener);
+                                }
+                                break;
+                            case ConfigModified:
+                                if (((TDCSConfInfo)rspContent).achConfE164.equals(confE164)){
+                                    reportSuccess(ToDoConverter.fromTransferObj((TDCSConfInfo)rspContent), resultListener);
+                                }else {
+                                    isConsumed[0] = false;
+                                }
+                                break;
+                        }
+                    }
+                }, resultListener, ToDoConverter.toTransferObj(confInfo)); // 下设配置
+            }
+
+            @Override
+            public void onFailed(int errorCode) {
+                reportFailed(errorCode, resultListener);
+            }
+
+            @Override
+            public void onTimeout() {
+                reportTimeout(resultListener);
+            }
+        });
+    }
+
+
+
+    /**（管理方）添加协作方
+     * @param memberE164 待添加对象e164
+     * @param resultListener 结果监听器。
+     *                       成功：null：
+     *                       失败： {@link DcErrorCode#Failed}
+     *                              {@link DcErrorCode#OperatorAmountReachLimit}
+     */
+    public void addOperator(String memberE164, IResultListener resultListener){
+        addOperator(Collections.singletonList(memberE164), resultListener);
+    }
+
+    /**（管理方）批量添加协作方
+     * @param memberE164List 待添加对象e164列表
+     * @param resultListener 结果监听器。
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     *                             {@link DcErrorCode#OperatorAmountReachLimit}
+     **/
+    public void addOperator(List<String> memberE164List, IResultListener resultListener){
+        String confE164 = curDcConfE164;
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        for (String e164 : memberE164List){
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", curTerminalType, true, true, false));
+        }
+        req(Msg.AddOperator, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case AddOperatorRsp:
+                        TDCSResult result = (TDCSResult) rspContent;
+                        if (!result.bSuccess){
+                            cancelReq(req, resultListener);
+                            reportFailed(DcErrorCode.fromTransfer(result.dwErrorCode), resultListener);
+                        }
+                        break;
+                    case OperatorAdded:
+                        break;
+                }
+            }
+        }, resultListener, new TDCSOperator(confE164, tdcsConfUserInfos));
+    }
+
+    /**（管理方）删除协作方
+     * @param memberE164 待删除对象e164
+     * @param resultListener 结果监听器。
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     */
+    public void delOperator(String memberE164, IResultListener resultListener){
+        delOperator(Collections.singletonList(memberE164), resultListener);
+    }
+
+    /**（管理方）批量删除协作方
+     * @param memberE164List 待删除对象e164列表
+     * @param resultListener 结果监听器。
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     */
+    public void delOperator(List<String> memberE164List, IResultListener resultListener){
+        String confE164 = curDcConfE164;
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        for (String e164 : memberE164List){
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", curTerminalType, true, true, false));
+        }
+        req(Msg.DelOperator, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case DelOperatorRsp:
+                        if (!((TDCSResult) rspContent).bSuccess){
+                            cancelReq(req, resultListener);
+                            reportFailed(DcErrorCode.fromTransfer(((TDCSResult) rspContent).dwErrorCode), resultListener);
+                        }
+                        break;
+                    case OperatorDeleted:
+                        TDCSOperator para = (TDCSOperator) reqParas[0];
+                        if (para.atOperList.equals(((TDCSUserInfos)rspContent).atUserInfoList)){
+                            reportSuccess(null, resultListener);
+                        }else {
+                            isConsumed[0] = false;
+                        }
+                        break;
+                }
+            }
+        }, resultListener, new TDCSOperator(confE164, tdcsConfUserInfos));
+    }
+    /**
+     * （管理方）拒绝协作权申请
+     * @param memberE164 被拒绝对象的e164
+     * */
+    public void rejectApplyOperator(String memberE164){
+        rejectApplyOperator(Collections.singletonList(memberE164));
+    }
+    /**
+     * （管理方）批量拒绝协作权申请
+     * @param memberE164List 被拒绝对象的e164列表
+     * */
+    public void rejectApplyOperator(List<String> memberE164List){
+        String confE164 = curDcConfE164;
+        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
+        for (String memberE164 : memberE164List) {
+            tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, false, false));
+        }
+        req(Msg.RejectApplyOperator, null, null, new TDCSOperator(confE164, tdcsConfUserInfos));
+    }
+
+
+    /**（普通方）申请协作权
+     * @param e164 申请者e164
+     * @param resultListener 结果监听器。
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     *                             {@link DcErrorCode#ApplyOperatorRejected}
+     *
+     *                       NOTE：申请协作权需等管理方审批，很可能出现等待超时然后管理方才审批的场景。
+     *                       此场景下该监听器会回onTimeout，然后待管理方审批通过后会上报通知{@link IOnOperatorEventListener#onOperatorAdded(List)}。
+     */
+    public void applyForOperator(String e164, IResultListener resultListener){
+        req(Msg.ApplyOperator, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case ApplyOperatorRsp:
+                        TDCSResult result = (TDCSResult) rspContent;
+                        if (!result.bSuccess){
+                            cancelReq(req, resultListener);
+                            reportFailed(DcErrorCode.fromTransfer(result.dwErrorCode), resultListener);
+                        }
+                        break;
+                    case OperatorAdded:
+                        List<TDCSConfUserInfo> userInfos = ((TDCSUserInfos) rspContent).atUserInfoList;
+                        if (e164.equals(userInfos.get(0).achE164)){
+                            reportSuccess(null, resultListener);
+                        }else {
+                            isConsumed[0] = false;
+                        }
+                        break;
+                    case ApplyOperatorRejected:
+                        TDCSUserInfo userInfo = (TDCSUserInfo)rspContent;
+                        if (e164.equals(userInfo.tUserInfo.achE164)){
+                            reportFailed(DcErrorCode.ApplyOperatorRejected, resultListener);
+                        }else {
+                            isConsumed[0] = false;
+                        }
+                        break;
+                }
+            }
+        }, resultListener, e164);
+    }
+    /**（协作方）释放协作权
+     * @param e164 申请者e164
+     * @param resultListener 结果监听器。
+     *                       成功：null
+     *                       失败：{@link DcErrorCode#Failed}
+     */
+    public void cancelOperator(String e164, IResultListener resultListener){
+        req(Msg.CancelOperator, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TDCSResult result = (TDCSResult) rspContent;
+                if (result.bSuccess){
+                    reportSuccess(null, resultListener);
+                }else{
+                    reportFailed(-1, resultListener);
+                }
+            }
+        }, resultListener, e164);
+    }
+
+    /**获取所有成员
+     * @param dcConfE164 协作所在会议e164
+     * @param resultListener 结果监听器。
+     *                       成功：List<{@link DCMember}>
+     *                       失败：{@link DcErrorCode#Failed}
+     */
+    public void queryAllMembers(String dcConfE164, IResultListener resultListener){
+        req(Msg.QueryAllMembers, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                DcsGetUserListRsp userListRsp = (DcsGetUserListRsp) rspContent;
+                if (userListRsp.MainParam.bSuccess){
+                    List<DCMember> dcMembers = new ArrayList<>();
+                    for (TDCSConfUserInfo user : userListRsp.AssParam.atUserList){
+                        dcMembers.add(ToDoConverter.fromTransferObj(user));
+                    }
+                    reportSuccess(dcMembers, resultListener);
+                }else{
+                    reportFailed(DcErrorCode.fromTransfer(userListRsp.MainParam.dwErrorCode), resultListener);
+                }
+            }
+        }, resultListener, dcConfE164);
+    }
+
+
+
+    /**
+     * 查询当前画板
+     * @param resultListener onSuccess {@link BoardInfo}
+     *                       onFailed errorCode
+     * */
+    public void queryCurrentBoard(IResultListener resultListener){
+        String confE164 = curDcConfE164;
+        req(Msg.QueryCurBoard, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                DcsGetWhiteBoardRsp queryBoardsResult = (DcsGetWhiteBoardRsp) rspContent;
+                if (queryBoardsResult.MainParam.bSuccess){
+                    reportSuccess(ToDoConverter.fromTransferObj(queryBoardsResult.AssParam, confE164), resultListener);
+                }else{
+                    reportFailed(DcErrorCode.fromTransfer(queryBoardsResult.MainParam.dwErrorCode), resultListener);
+                }
+            }
+        }, resultListener, confE164);
+    }
+
+
+    /**
+     * 查询所有画板
+     * @param resultListener onSuccess List<{@link BoardInfo}>
+     *                       onFailed errorCode
+     * */
+    public void queryAllBoards(IResultListener resultListener){
+        String confE164 = curDcConfE164;
+        req(Msg.QueryAllBoards, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                DcsGetAllWhiteBoardRsp queryAllBoardsResult = (DcsGetAllWhiteBoardRsp) rspContent;
+                if (!queryAllBoardsResult.MainParam.bSuccess){
+                    reportFailed(DcErrorCode.fromTransfer(queryAllBoardsResult.MainParam.dwErrorCode), resultListener);
+                    return;
+                }
+
+                PriorityQueue<TDCSBoardInfo> priorityQueue = new PriorityQueue<>();
+                priorityQueue.addAll(queryAllBoardsResult.AssParam.atBoardInfo); // 将board按annoyId升序排序
+                List<TDCSBoardInfo> tdcsBoardInfos = new ArrayList<>();
+                while (!priorityQueue.isEmpty()){
+                    tdcsBoardInfos.add(priorityQueue.poll());
+                }
+                List<BoardInfo> boardInfos = new ArrayList<>();
+                for (TDCSBoardInfo tdcsBoardInfo : tdcsBoardInfos) {
+                    boardInfos.add(ToDoConverter.fromTransferObj(tdcsBoardInfo, confE164));
+                }
+                reportSuccess(boardInfos, resultListener);
+            }
+        }, resultListener, confE164);
+    }
+
+
+    /**
+     * 新建普通画板
+     * @param creatorE164 创建者E164
+     * @param listener 新建画板结果监听器
+     *                  成功：{@link BoardInfo}
+     *                  失败：{@link DcErrorCode#Failed}
+     *                        {@link DcErrorCode#BoardAmountReachLimit}
+     * */
+    public void newBoard(String creatorE164, IResultListener listener){
+        String confE164 = curDcConfE164;
+        req(Msg.NewBoard, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case NewBoardRsp:
+                        DcsNewWhiteBoardRsp newWhiteBoardRsp = (DcsNewWhiteBoardRsp) rspContent;
+                        if (!newWhiteBoardRsp.MainParam.bSuccess) {
+                            cancelReq(req, resultListener); // 后续不会有DCBoardCreatedNtf，取消以防等待超时
+                            reportFailed(DcErrorCode.fromTransfer(newWhiteBoardRsp.MainParam.dwErrorCode), resultListener);
+                        }
+                        break;
+                    case BoardCreated:
+                        TDCSBoardInfo tdcsBoardInfo = (TDCSBoardInfo) rspContent;
+                        TDCSNewWhiteBoard newWhiteBoard = (TDCSNewWhiteBoard) reqParas[0];
+                        if (newWhiteBoard.tBoardinfo.achWbCreatorE164.equals(tdcsBoardInfo.achWbCreatorE164)) {
+                            reportSuccess(ToDoConverter.fromTransferObj(tdcsBoardInfo, confE164), resultListener);
+                        }else{
+                            isConsumed[0] = false;
+                        }
+                        break;
+                }
+            }
+        }, listener, new TDCSNewWhiteBoard(confE164, new TDCSBoardInfo(UUID.randomUUID().toString(), creatorE164)));
+    }
+
+
+    /**
+     * 删除画板
+     * @param boardId 待删除画板Id
+     * @param resultListener 删除画板结果监听器
+     *                  成功： string boardId（画板id）
+     *                  失败：{@link DcErrorCode#Failed}
+     * */
+    public void delBoard(String boardId, IResultListener resultListener){
+        String confE164 = curDcConfE164;
+        req(Msg.DelBoard, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case DelBoardRsp:
+                        TDCSBoardResult boardResult = (TDCSBoardResult) rspContent;
+                        if (!boardResult.bSuccess){
+                            cancelReq(req, resultListener);
+                            reportFailed(DcErrorCode.fromTransfer(boardResult.dwErrorCode), resultListener);
+                        }
+                        break;
+                    case BoardDeleted:
+                        TDCSDelWhiteBoardInfo boardInfo = (TDCSDelWhiteBoardInfo) rspContent;
+                        String boardId = (String) reqParas[1];
+                        if (boardId.equals(boardInfo.strIndex)){
+                            reportSuccess(boardInfo.strIndex, resultListener);
+                        }else{
+                            isConsumed[0] = false;
+                        }
+                        break;
+                }
+            }
+        }, resultListener, confE164, boardId);
+    }
+
+
+    /**
+     * 删除所有画板
+     * @param resultListener 结果监听器
+     *                  成功：String e164（会议e164号）
+     *                  失败：{@link DcErrorCode#Failed}
+     * */
+    public void delAllBoard(IResultListener resultListener){
+        String confE164 = curDcConfE164;
+        req(Msg.DelAllBoards, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case DelAllBoardsRsp:
+                        TDCSBoardResult allBoardRes = (TDCSBoardResult) rspContent;
+                        if (!allBoardRes.bSuccess){
+                            cancelReq(req, resultListener);
+                            reportFailed(DcErrorCode.fromTransfer(allBoardRes.dwErrorCode), resultListener);
+                        }
+                        break;
+                    case AllBoardDeleted:
+                        TDCSDelWhiteBoardInfo delWhiteBoardInfo = (TDCSDelWhiteBoardInfo) rspContent;
+                        reportSuccess(delWhiteBoardInfo.strConfE164, resultListener);
+                        break;
+                }
+            }
+        }, resultListener, confE164);
+    }
+
+    /**
+     * 切换画板
+     * @param boardId 目标画板Id
+     * @param resultListener 切换画板结果监听器
+     *                  成功：string boardId，画板Id
+     *                  失败：{@link DcErrorCode#Failed}
+     * */
+    public void switchBoard(String boardId, IResultListener resultListener){
+        String confE164 = curDcConfE164;
+        req(Msg.SwitchBoard, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case SwitchBoardRsp:
+                        DcsSwitchRsp switchRsp = (DcsSwitchRsp) rspContent;
+                        if (!switchRsp.MainParam.bSuccess){
+                            cancelReq(req, resultListener);
+                            reportFailed(DcErrorCode.fromTransfer(switchRsp.MainParam.dwErrorCode), resultListener);
+                        }
+                        break;
+                    case BoardSwitched:
+                        TDCSBoardInfo boardInfo1 = (TDCSBoardInfo) rspContent;
+                        TDCSSwitchReq para = (TDCSSwitchReq) reqParas[0];
+                        if (para.achTabId.equals(boardInfo1.achTabId)){
+                            reportSuccess(boardInfo1.achTabId, resultListener);
+                        }else{
+                            isConsumed[0] = false;
+                        }
+                        break;
+                }
+            }
+        }, resultListener, new TDCSSwitchReq(confE164, boardId));
+    }
+
+
+
+    /**发布绘制操作
+     * @param op 绘制操作
+     * @param resultListener onSuccess 已发布的OpPaint
+     *                       onFailed errorCode // TODO
+     * */
+    public void publishPaintOp(OpPaint op, IResultListener resultListener){
+        Object to = ToDoConverter.toPaintTransferObj(op);
+        Object[] paras;
+        if (null != to) {
+            paras = new Object[]{ToDoConverter.toCommonPaintTransferObj(op), to};
+        }else{
+            paras = new Object[]{ToDoConverter.toCommonPaintTransferObj(op)};
+        }
+        req(ToDoConverter.opTypeToReqMsg(op.getType()), new SessionProcessor<Msg>() {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        OpPaint opPaint = ToDoConverter.fromPaintTransferObj(rspContent);
+                        if (null==opPaint || !opPaint.getAuthorE164().equals(op.getAuthorE164())){
+                            isConsumed[0] = false;
+                            return;
+                        }
+                        if (EOpType.INSERT_PICTURE != op.getType()) { // 对于图片插入操作还需上传图片。
+                            reportSuccess(op, resultListener);
+                        }
+                    }
+                }, resultListener, paras
+        );
+
+        // 对于图片插入操作还需上传图片。
+        if (EOpType.INSERT_PICTURE == op.getType()){
+            // 查询上传地址
+            queryPicUploadUrl(new TDCSImageUrl(op.getConfE164(), op.getBoardId(), op.getPageId(), ((OpInsertPic) op).getPicId()), new IResultListener() {
+                @Override
+                public void onSuccess(Object result) {
+                    TDCSImageUrl picUploadUrl = (TDCSImageUrl) result;
+                    // 上传
+                    uploadPic(picUploadUrl.achPicUrl,
+                            new TDCSFileInfo(((OpInsertPic) op).getPicPath(), picUploadUrl.achWbPicentityId, picUploadUrl.achTabId, false, (int) new File(((OpInsertPic) op).getPicPath()).length()),
+                            new IResultListener() {
+                                @Override
+                                public void onSuccess(Object result) { // 上传成功
+                                    OpInsertPic insertPic = (OpInsertPic) op;
+                                    assHandler.post(() ->
+                                            {
+                                                try {
+                                                    // 插入图片成功后我们把图片拷贝到本地图片缓存目录，这样下次加入协作时能直接从本地加载图片。
+                                                    Files.copy(new File(insertPic.getPicPath()), new File(getPicSavePath(insertPic.getPicId())) );
+                                                } catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                    );
+                                    reportSuccess(op, resultListener);
+                                }
+
+                                @Override
+                                public void onFailed(int errorCode) {
+                                    reportFailed(-1, resultListener);
+                                }
+
+                                @Override
+                                public void onTimeout() {
+                                    reportTimeout(resultListener);
+                                }
+                            });
+
+                }
+
+                @Override
+                public void onFailed(int errorCode) {
+                    reportFailed(-1, resultListener);
+                }
+
+                @Override
+                public void onTimeout() {
+                    reportTimeout(resultListener);
+                }
+            });
+
+        }
+    }
+
+
+    /**
+     * 查询图片上传地址
+     * */
+    private void queryPicUploadUrl(TDCSImageUrl tdcsImageUrl, IResultListener resultListener){
+        req(Msg.QueryPicUploadUrl, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                DcsUploadImageRsp queryPicUploadUrlResult = (DcsUploadImageRsp) rspContent;
+                if (queryPicUploadUrlResult.MainParam.bSuccess){
+                    reportSuccess(queryPicUploadUrlResult.AssParam, resultListener);
+                }else{
+                    reportFailed(DcErrorCode.fromTransfer(queryPicUploadUrlResult.MainParam.dwErrorCode), resultListener);
+                }
+            }
+        }, resultListener, tdcsImageUrl);
+    }
+
+    /**
+     * 上传图片
+     * */
+    private void uploadPic(String uploadUrl, TDCSFileInfo fileInfo, IResultListener resultListener){
+        req(Msg.Upload, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                switch (rsp){
+                    case UploadRsp:
+                        if (!((TDCSFileLoadResult) rspContent).bSuccess){
+                            cancelReq(req, resultListener);
+                            reportFailed(DcErrorCode.Failed, resultListener);
+                        }
+                        break;
+                    case PicDownloadable:
+                        TDCSFileInfo uploadFileInfo = (TDCSFileInfo) reqParas[1];
+                        TDCSImageUrl downloadableFileInfo = (TDCSImageUrl) rspContent;
+                        if (uploadFileInfo.achWbPicentityId.equals(downloadableFileInfo.achWbPicentityId)) {
+                            reportSuccess(rspContent, resultListener);
+                        }else{
+                            isConsumed[0] = false;
+                        }
+                        break;
+                }
+            }
+        }, resultListener, new BaseTypeString(uploadUrl), fileInfo);
+    }
+
+
+    /**
+     * 查询图片下载地址
+     * */
+    private void queryPicDownloadUrl(TDCSImageUrl tdcsImageUrl, IResultListener resultListener){
+        req(Msg.QueryPicUrl, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                DcsDownloadImageRsp queryPicUrlResult = (DcsDownloadImageRsp) rspContent;
+                if (!tdcsImageUrl.achWbPicentityId.equals(queryPicUrlResult.AssParam.achWbPicentityId)) {
+                    isConsumed[0] = false;
+                    return;
+                }
+                if (queryPicUrlResult.MainParam.bSuccess){
+                    reportSuccess(queryPicUrlResult.AssParam, resultListener);
+                }else{
+                    reportFailed(DcErrorCode.fromTransfer(queryPicUrlResult.MainParam.dwErrorCode), resultListener);
+                }
+            }
+        }, resultListener, tdcsImageUrl);
+    }
+
+
+    private String getCachedOpsBoardId(String boardId){
+        for (String id : cachedPaintOps.keySet()){
+            if (id.equals(boardId)){
+                return id;
+            }
+        }
+        return null;
+    }
+
+    // 同步数据协作中已有内容
+    private void synchronizeCachedStuff(TDCSCreateConfResult dcConfInfo){
+        if (null == onBoardOpListener) {
+            KLog.p(KLog.ERROR, "null == onBoardOpListener");
+            return;
+        }
+
+        KLog.p("starting synchronizeCachedStuff...");
+
+        String curConfE164 = curDcConfE164;
+
+        // 查询当前画板
+        queryCurrentBoard(new IResultListener() {
+            @Override
+            public void onSuccess(Object result) {
+                if (null == onBoardOpListener) {
+                    KLog.p(KLog.WARN, "null == onBoardOpListener");
+                    return;
+                }
+                final String curBoardId = ((BoardInfo) result).getId();
+
+                // 入会成功后准备同步会议中已有的图元。
+                bPreparingSync = true;
+                cachedPaintOps.clear();
+
+                // 查询所有画板
+                queryAllBoards(new IResultListener() {
+                    @Override
+                    public void onArrive(boolean bSuccess) {
+                        bPreparingSync = false;
+                    }
+
+                    @Override
+                    public void onSuccess(Object result) {
+                        if (null == onBoardOpListener) {
+                            KLog.p(KLog.WARN, "null == onBoardOpListener");
+                            return;
+                        }
+                        List<BoardInfo> dcBoards = (List<BoardInfo>) result;
+                        // 检查准备阶段缓存的图元所在画板是否仍存在，若不存在则删除之。
+                        Iterator it = cachedPaintOps.keySet().iterator();
+                        while (it.hasNext()) {
+                            boolean bMatched = false;
+                            String tmpId = (String) it.next();
+                            for (BoardInfo board : dcBoards) {
+                                if (tmpId.equals(board.getId())) {
+                                    bMatched = true;
+                                    break;
+                                }
+                            }
+                            if (!bMatched) {
+                                it.remove();
+                            }
+                        }
+
+                        // 上报用户协作中所有画板
+                        for (BoardInfo board : dcBoards) {
+                            onBoardOpListener.onBoardCreated(board);
+                        }
+
+                        if (null != curBoardId) {
+                            for (BoardInfo board : dcBoards) {
+                                if (board.getId().equals(curBoardId)) {
+                                    // 上报用户切换到当前画板
+                                    onBoardOpListener.onBoardSwitched(curBoardId);
+
+                                    // 将当前画板放置在列表首位以优先同步
+                                    dcBoards.remove(board);
+                                    dcBoards.add(0, board);
+                                    break;
+                                }
+                            }
+                        }
+
+                        // 同步画板中已有内容
+                        totalSynBoardCount = dcBoards.size();
+                        syncTimestamps.clear();
+                        synProgress.clear();
+                        synchronizeBoards(dcBoards);
+                    }
+
+                });
+            }
+
+        });
+
+        if (null != onOperatorEventListener) {
+            // 同步人员列表
+            queryAllMembers(curConfE164, new IResultListener() {
+                @Override
+                public void onSuccess(Object result) {
+                    if (null == onOperatorEventListener) {
+                        KLog.p(KLog.WARN, "null == onOperatorEventListener");
+                        return;
+                    }
+                    List<DCMember> members = (List<DCMember>) result;
+                    List<DCMember> operators = new ArrayList<>();
+                    for (DCMember member : members) {
+                        onOperatorEventListener.onUserJoined(member);
+                        if (member.isbOperator()) {
+                            operators.add(member);
+                        }
+                    }
+                    onOperatorEventListener.onOperatorAdded(operators);
+                }
+            });
+        }
+
+    }
+
+
+    private void synchronizeBoards(List<BoardInfo> dcBoards){
+        if (null == onPaintOpListener){
+            KLog.p(KLog.WARN, "null == onPaintOpListener");
+            return;
+        }
+        if (dcBoards.isEmpty()){
+            return;
+        }
+        for (BoardInfo boardInfo : dcBoards){
+            KLog.p("to synchronize board %s", boardInfo.getId());
+        }
+
+        BoardInfo board = dcBoards.remove(0);
+        String boardId = board.getId();
+
+        // “逐个”画板同步（下层不支持一次性同步，会有问题）
+        download(board.getElementUrl(), new TDCSFileInfo(null, null, boardId, true, 0), new IResultListener() {
+            @Override
+            public void onArrive(boolean bSuccess) {
+                // 同步下一个画板
+                synchronizeBoards(dcBoards);
+            }
+
+            @Override
+            public void onSuccess(Object result) {
+                // 上报同步进度
+                reportSynProgress(boardId, 20, false);
+
+                PriorityQueue<OpPaint> ops = cachedPaintOps.get(boardId);
+                if (null == ops) { // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
+                    ops = new PriorityQueue<>();
+                    cachedPaintOps.put(boardId, ops);
+                }
+                /* 后续会收到画板缓存的图元。
+                 * 由于下层的begin-final消息不可靠，我们定时检查当前是否仍在同步图元，若同步结束则上报用户*/
+                String id = getCachedOpsBoardId(boardId);
+                Message msg = Message.obtain();
+                msg.what = MsgID_CheckSynchronizing;
+                msg.obj = id;
+                handler.sendMessageDelayed(msg, 2000);
+                KLog.p("start synchronizing ops for board %s", id);
+                syncTimestamps.put(id, System.currentTimeMillis());
+            }
+
+            @Override
+            public void onFailed(int errorCode) {
+                // 上报同步进度
+                reportSynProgress(board.getId(), 0, true);
+            }
+
+            @Override
+            public void onTimeout() {
+                // 上报同步进度
+                reportSynProgress(board.getId(), 0, true);
+            }
+        });
+
+    }
+
+
+    private void download(String downloadUrl, TDCSFileInfo fileInfo, IResultListener resultListener){
+        req(Msg.Download, new SessionProcessor<Msg>() {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        TDCSFileLoadResult result = (TDCSFileLoadResult) rspContent;
+                        TDCSFileInfo para1 = (TDCSFileInfo) reqParas[1];
+                        if (null != para1.achWbPicentityId && !para1.achWbPicentityId.equals(result.achWbPicentityId)) {
+                            isConsumed[0] = false; // 这是下载图片的响应且不是我请求的图片的结果。（下层消息不可靠，可能乱序、重复，故需做这样的过滤）
+                            return;
+                        }
+                        if (result.bSuccess){
+                            reportSuccess(result, resultListener);
+                        }else{
+                            reportFailed(DcErrorCode.Failed, resultListener);
+                        }
+                    }
+                },
+                resultListener,
+                new BaseTypeString(downloadUrl),
+                fileInfo
+        );
+    }
+
+
+    private void reportSynProgress(String boardId, int boardProgress, boolean bBoardFin){
+        synProgress.put(boardId, boardProgress);
+        if (null != onSynchronizeProgressListener) {
+            KLog.p("onProgress(%s, %s, %s)", boardId, boardProgress, bBoardFin);
+            onSynchronizeProgressListener.onProgress(boardId, boardProgress, bBoardFin);
+            int synBoardCount = synProgress.size();
+            int totalProgress = (int) (100f*(synBoardCount-1)/ totalSynBoardCount + 1.0f/ totalSynBoardCount *boardProgress);
+            KLog.p("onOverallProgress(%s, %s, %s, %s)", synBoardCount, totalSynBoardCount, totalProgress, bBoardFin && synBoardCount==totalSynBoardCount);
+            onSynchronizeProgressListener.onOverallProgress(synBoardCount, totalSynBoardCount, totalProgress, bBoardFin && synBoardCount==totalSynBoardCount);
+        }
+    }
+
 
     /*同步过程中缓存的操作*/
     private Map<String, PriorityQueue<OpPaint>> cachedPaintOps = new HashMap<>();
@@ -111,774 +1373,53 @@ public final class DataCollaborateManager extends Caster<Msg> {
         }
     };
 
-    // 当前会议e164号
-    private String curDcConfE164;
 
-    // 当前终端类型
-    private EmDcsType curTerminalType;
-
-    private Handler assHandler;
-
-
-    // 通知监听器
-    private IOnDcCreatedListener onDcCreatedListener;
-    private IOnSynchronizeProgressListener onSynchronizeProgressListener;
-    private IOnSessionEventListener onSessionEventListener;
-    private IOnOperatorEventListener onOperatorEventListener;
-    private IOnBoardOpListener onBoardOpListener;
-    private IOnPaintOpListener onPaintOpListener;
-
-    private ListenerLifecycleObserver listenerLifecycleObserver = new ListenerLifecycleObserver(
-            new ListenerLifecycleObserver.Callback(){
-                @Override
-                public void onListenerDestroy(Object listener) {
-                    if (listener == onDcCreatedListener){
-                        onDcCreatedListener = null;
-                    }else if (listener == onSynchronizeProgressListener){
-                        onSynchronizeProgressListener = null;
-                    }else if (listener == onSessionEventListener){
-                        onSessionEventListener = null;
-                    }else if (listener == onOperatorEventListener){
-                        onOperatorEventListener = null;
-                    }else if (listener == onBoardOpListener){
-                        onBoardOpListener = null;
-                    }else if (listener == onPaintOpListener){
-                        onPaintOpListener = null;
-                    }
-                }
-            }
-            );
-
-
-
-    private static String PIC_SAVE_DIR;
-    private Context context;
-
-    private DataCollaborateManager(Context ctx){
-        if (null == context
-                && null != ctx){
-            context = ctx;
-            File dir = new File(ctx.getFilesDir(), "dc_pic");
-            if (!dir.exists()){
-                dir.mkdir();
-            }
-            PIC_SAVE_DIR = dir.getAbsolutePath();
-
-            // 检查图片缓存文件夹是否已超出大小上限，若超出则清空
-            long size = 0;
-            for (File file : dir.listFiles()) {
-                size += file.length();
-            }
-            long LIMIT = 50*1024*1024;
-            KLog.p("pic cache dir=%s, size=%s, limit=%s", PIC_SAVE_DIR, size, LIMIT);
-            if (size > LIMIT){
-                KLog.p(KLog.WARN, "clean cached pics");
-                for (File file : dir.listFiles()) {
-                    file.delete();
-                }
-            }
-        }
-
-        HandlerThread handlerThread = new HandlerThread("DcAss", Process.THREAD_PRIORITY_BACKGROUND);
-        handlerThread.start();
-        assHandler = new Handler(handlerThread.getLooper()){
-            @Override
-            public void handleMessage(Message msg) {
-            }
-        };
-    }
-    /**
-     * 获取数据协作管理类实例
-     * @param ctx 应用上下文
-     * */
-    public static DataCollaborateManager getInstance(Application ctx) {
-        if (null == instance) {
-            instance = new DataCollaborateManager(ctx);
-        }
-
-        return instance;
-    }
-
-    private static Msg[] logReqs = new Msg[]{
-            Msg.Login,
-            Msg.Logout,
-    };
-
-    private static Msg[] sessionReqs = new Msg[]{
-            Msg.StartCollaborate,
-            Msg.QuitCollaborate,
-            Msg.FinishCollaborate,
-            Msg.ModifyConfig,
-            Msg.QueryConfig,
-    };
-
-    private static Msg[] boardReqs = new Msg[]{
-            Msg.QueryCurBoard,
-            Msg.QueryBoard,
-            Msg.QueryAllBoards,
-            Msg.NewBoard,
-            Msg.DelBoard,
-            Msg.DelAllBoards,
-            Msg.SwitchBoard,
-    };
-
-    private static Msg[] operatorReqs = new Msg[]{
-            Msg.AddOperator,
-            Msg.DelOperator,
-            Msg.RejectApplyOperator,
-            Msg.ApplyOperator,
-            Msg.CancelOperator,
-            Msg.QueryAllMembers,
-    };
-
-    private static Msg[] loadReqs = new Msg[]{
-            Msg.QueryPicUrl,
-            Msg.Download,
-            Msg.QueryPicUploadUrl,
-            Msg.Upload,
-    };
-
-    private static Msg[] drawReqs = new Msg[]{
-            Msg.DrawLine,
-            Msg.DrawOval,
-            Msg.DrawRect,
-            Msg.DrawPath,
-            Msg.Undo,
-            Msg.Redo,
-            Msg.ClearScreen,
-            Msg.Erase,
-            Msg.RectErase,
-//        Msg.DCZoom,
-//        Msg.RotateLeft,
-//        Msg.RotateRight,
-//        Msg.DCScrollScreen,
-            Msg.Matrix,
-            Msg.InsertPic,
-            Msg.DelPic,
-            Msg.DragPic,
-    };
 
     @Override
-    protected Map<Msg[], RspProcessor<Msg>> rspsProcessors() {
-        Map<Msg[], RspProcessor<Msg>> processorMap = new HashMap<>();
+    protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
 
-        processorMap.put(new Msg[]{
-                Msg.QueryAddr
-        }, this::onRsp);
-        processorMap.put(logReqs, this::onSessionRsps);
-        processorMap.put(sessionReqs, this::onSessionRsps);
-        processorMap.put(boardReqs, this::onBoardOpRsps);
-        processorMap.put(operatorReqs, this::onOperatorRsps);
-        processorMap.put(loadReqs, this::onDownUpLoadRsps);
-        processorMap.put(drawReqs, this::onPublishPaintOpRsps);
+        if (paintNtfs.contains(ntf)){
+            onPaintNtfs(ntf, ntfContent);
+        }else if (boardNtfs.contains(ntf)){
+            onBoardNtfs(ntf, ntfContent);
+        }else if (operatorNtfs.contains(ntf)){
+            onOperatorNtfs(ntf, ntfContent);
+        }else if (sessionNtfs.contains(ntf)){
+            onSessionNtfs(ntf, ntfContent);
+        }else if (ntf == Msg.PicDownloadable){ // 图片可下载通知
+            /*己端展示图片的过程：
+            协作方发出“插入图片”的操作并将图片上传服务器；
+            己端先收到“插入图片”的通知，然后需等待“图片可下载”通知；
+            一会后图片上传成功，平台广播各与会方“图片可下载”通知；
+            己端收到该通知后主动去下载图片到本地；
+            己端下载图片完成后结合此前收到的“插入图片”通知内的信息方可展示该图片。
+            NOTE：有例外。己端刚加入数据协作时，平台不会给己端发送该通知，己端需要先拉取协作中已有的图元操作
+            并针对其中的“插入图片”操作主动查询图片下载地址再根据下载地址下载图片。
+            */
+            TDCSImageUrl dcPicUrl = (TDCSImageUrl) ntfContent;
+            if (!new File(getPicSavePath(dcPicUrl.achWbPicentityId)).exists()){ // 图片尚未下载到本地
+                // 下载图片
+                download(dcPicUrl.achPicUrl,
+                        new TDCSFileInfo(getPicSavePath(dcPicUrl.achWbPicentityId), dcPicUrl.achWbPicentityId, dcPicUrl.achTabId, false, 0),
+                        new IResultListener() {
+                            @Override
+                            public void onSuccess(Object result) {
+                                TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
+                                updateInsertPicOp(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName);
+                            }
+                        });
 
-        return processorMap;
-    }
-
-    @Override
-    protected Map<Msg[], NtfProcessor<Msg>> ntfsProcessors() {
-        Map<Msg[], NtfProcessor<Msg>> processorMap = new HashMap<>();
-        processorMap.put(new Msg[]{
-                Msg.PicDownloadable
-        }, this::onNtfs);
-        processorMap.put(new Msg[]{
-                Msg.LinkStateChanged,
-                Msg.CollaborateStarted,
-                Msg.CollaborateFinished,
-                Msg.ConfigModified,
-        }, this::onSessionNtfs);
-        processorMap.put(new Msg[]{
-                Msg.UserJoined,
-                Msg.OperatorAdded,
-                Msg.OperatorDeleted,
-                Msg.ApplyOperatorNtf,
-                Msg.ApplyOperatorRejected,
-        }, this::onOperatorNtfs);
-        processorMap.put(new Msg[]{
-                Msg.BoardCreated,
-                Msg.BoardSwitched,
-                Msg.BoardDeleted,
-                Msg.AllBoardDeleted,
-        }, this::onBoardNtfs);
-        processorMap.put(new Msg[]{
-//            Msg.DCElementBeginNtf,
-                Msg.LineDrawn,
-                Msg.OvalDrawn,
-                Msg.RectDrawn,
-                Msg.PathDrawn,
-                Msg.PicInserted,
-                Msg.PicDragged,
-                Msg.PicDeleted,
-                Msg.Erased,
-                Msg.RectErased,
-                Msg.Matrixed,
-                Msg.Undone,
-                Msg.Redone,
-                Msg.ScreenCleared,
-//            Msg.DCElementEndNtf,
-        }, this::onPaintNtfs);
-
-        return processorMap;
-    }
-
-
-
-    /**登录数据协作
-     * @param terminalType 己端终端类型
-     * @param resultListener 登陆结果监听器。
-     *                       成功： resultListener.onSuccess(null); // 成功走onSuccess回调，失败走onFailed。
-     *
-     *                       失败： resultListener.onFailed(int errorCode);
-     *                              {@link DcErrorCode#BuildLink4LoginFailed}
-     *                              {@link DcErrorCode#Failed}
-     *
-     * NOTE: 请务必在登录APS成功后登录数据协作！（登录APS的接口在其他模块）
-     **/
-    public void login(ETerminalType terminalType, IResultListener resultListener){
-        TDCSSrvState srvState = (TDCSSrvState) get(Msg.GetState);
-        if (null != srvState && EmServerState.emSrvLogin_Succ == srvState.emState){
-            KLog.p(KLog.WARN, "already logined!");
-            // 已登录状态则直接返回成功（若此状态下直接请求登录下层不会有任何响应 (─.─||| ）
-            if (null != resultListener) reportSuccess(null, resultListener);
-            return;
-        }
-        TDCSSvrAddr svrAddr = (TDCSSvrAddr) get(Msg.GetServerAddr);
-        if (null == svrAddr){
-            KLog.p(KLog.ERROR, "can not fetch DCS server address, have you logined APS yet? ");
-            if (null != resultListener) reportFailed(DcErrorCode.GetServerAddrFailed, resultListener);
-            return;
-        }
-        curTerminalType = ToDoConverter.toTransferObj(terminalType);
-        String ip = null;
-        try {
-            // 将整型ip转为点分十进制
-            ip = InetAddresses.fromLittleEndianByteArray(Ints.toByteArray((int) svrAddr.dwIp)).getHostAddress();
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        }
-
-        req(Msg.Login, resultListener, new TDCSRegInfo(ip, svrAddr.dwPort, curTerminalType));
-    }
-
-    /**注销数据协作
-     * @param resultListener 注销结果监听器。可以为null，若为null表示不关注注销结果（所有的结果监听器均可为null表示不关注请求结果）。
-     *                        成功：null;
-     *                        失败：{@link DcErrorCode#Failed}
-     * */
-    public void logout(@Nullable IResultListener resultListener){
-        req(Msg.Logout, resultListener);
-    }
-
-
-    /**
-     * 查询会议中是否存在数据协作（数据协作目前依附于会议）
-     * @param confE164 会议号
-     * @param resultListener 结果监听器。
-     *                       始终成功：boolean bExists，true表示存在。
-     * */
-    public void queryCollaborateExistsOrNot(String confE164, IResultListener resultListener){
-        req(Msg.QueryAddr, resultListener, confE164);
-    }
-
-    /**
-     * 当前用户是否正在协作中。
-     * */
-    public boolean isCollaborating(){
-        TDCSSrvState srvState = (TDCSSrvState) get(Msg.GetState);
-        return null != srvState && srvState.bInConference;
-    }
-
-
-    /**开启数据协作
-     * 若数据协作已存在于会议中则直接加入，否则创建数据协作。
-     *
-     * 可通过{@link #queryCollaborateExistsOrNot(String, IResultListener)}查询会议中是否存在协作。
-     *
-     * @param confE164 会议e164（数据协作目前依附于会议——只能在会议中开启数据协作）
-     * @param confName 会议名称
-     * @param dcMode 数据协作模式
-     * @param confType 会议类型
-     * @param adminE164 主席e164
-     * @param members 与会成员
-     * @param resultListener 结果监听器。
-     *                       成功: {@link DcConfInfo};
-     *                       失败：{@link DcErrorCode#Failed}
-     *                             {@link DcErrorCode#BuildLink4ConfFailed}
-     *                             {@link DcErrorCode#DcAmountReachLimit}
-     *                       NOTE:开启协作成功后SDK内部会去同步协作内容，并通过synchronizeProgressListener上报用户同步进度。
-     *                       用户应该在同步结束后才去执行添加画板操作，否则可能导致新添加的画板被纳入同步的范畴（取决于平台下发的当前协作中已存在的画板列表是否包含了该新添加的画板），
-     *                       进而导致用户有画板重复——一个是自己刚新建的，一个是SDK同步过程中推的。
-     *
-     * @param synchronizeProgressListener 同步进度监听器（开启协作成功后会同步协作中已有内容）
-     * @param sessionEventListener 数据协作会话事件监听器
-     * @param operatorEventListener 协作权相关通知监听器
-     * @param boardOpListener 画板操作通知监听器
-     * @param paintOpListener 绘制操作通知监听器
-     * */
-    public void startCollaborate(String confE164, String confName, EDcMode dcMode, EConfType confType, String adminE164, List<DCMember> members,
-                                 IResultListener resultListener,
-                                 IOnSynchronizeProgressListener synchronizeProgressListener,
-                                 IOnSessionEventListener sessionEventListener,
-                                 IOnOperatorEventListener operatorEventListener,
-                                 IOnBoardOpListener boardOpListener,
-                                 IOnPaintOpListener paintOpListener ){
-
-        clearSession();
-
-        curDcConfE164 = null;
-        req(Msg.StartCollaborate, resultListener,
-                new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
-                        confE164, confName, ToDoConverter.toTransferObj(dcMode),
-                        ToDoConverter.toDcUserList(members), adminE164, curTerminalType),
-                synchronizeProgressListener, sessionEventListener, operatorEventListener, boardOpListener, paintOpListener
-        );
-    }
-
-    /**结束数据协作
-     * @param resultListener 结果监听器。
-     *                       成功：null
-     *                       失败：{@link DcErrorCode#Failed}
-     **/
-    public void finishCollaborate(IResultListener resultListener){
-        clearSession();
-        req(Msg.FinishCollaborate, resultListener, curDcConfE164);
-    }
-
-    /**退出数据协作。
-     * 注：仅自己退出，协作仍存在，不影响其他人继续
-     * @param bQuitConf 是否同时退出会议
-     * @param resultListener 结果监听器。
-     *                       成功：null
-     *                       失败：{@link DcErrorCode#Failed}
-     **/
-    public void quitCollaborate(boolean bQuitConf, IResultListener resultListener){
-        clearSession();
-        req(Msg.QuitCollaborate, resultListener, curDcConfE164, bQuitConf?0:1);
-    }
-
-    /**
-     * 查询协作会议信息
-     * @param resultListener 结果监听器。
-     *                       成功：{@link DcConfInfo}
-     *                       失败：{@link DcErrorCode#Failed}
-     * */
-    public void queryDcConfInfo(IResultListener resultListener){
-        req(Msg.QueryConfig, resultListener);
-    }
-
-    /** 修改协作模式
-     * @param mode 协作模式
-     * @param resultListener 结果监听器。
-     *                       成功：DcConfInfo
-     *                       失败：{@link DcErrorCode#Failed}
-     **/
-    public void modifyCollaborateMode(EDcMode mode, IResultListener resultListener){
-        // 获取已有的配置
-        req(Msg.QueryConfig, new IResultListener() {
-            @Override
-            public void onSuccess(Object result) {
-                DcConfInfo confInfo = (DcConfInfo) result;
-                confInfo.setConfMode(mode); // 修改协作模式
-                req(Msg.ModifyConfig, resultListener, ToDoConverter.toTransferObj(confInfo)); // 下设配置
+            }else{
+                KLog.p("pic already exists: %s", getPicSavePath(dcPicUrl.achWbPicentityId));
             }
-
-            @Override
-            public void onFailed(int errorCode) {
-                if (null != resultListener) reportFailed(errorCode, resultListener);
-            }
-
-            @Override
-            public void onTimeout() {
-                if (null != resultListener) reportTimeout(resultListener);
-            }
-        });
-    }
-
-
-
-    /**（管理方）添加协作方
-     * @param memberE164 待添加对象e164
-     * @param resultListener 结果监听器。
-     *                       成功：null：
-     *                       失败： {@link DcErrorCode#Failed}
-     *                              {@link DcErrorCode#OperatorAmountReachLimit}
-     */
-    public void addOperator(String memberE164, IResultListener resultListener){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
-        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, true, false));
-        req(Msg.AddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-    /**（管理方）批量添加协作方
-     * @param memberE164List 待添加对象e164列表
-     * @param resultListener 结果监听器。
-     *                       成功：null
-     *                       失败：{@link DcErrorCode#Failed}
-     *                             {@link DcErrorCode#OperatorAmountReachLimit}
-     **/
-    public void addOperator(List<String> memberE164List, IResultListener resultListener){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        for (String e164 : memberE164List){
-            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", curTerminalType, true, true, false));
-        }
-        req(Msg.AddOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-
-    /**（管理方）删除协作方
-     * @param memberE164 待删除对象e164
-     * @param resultListener 结果监听器。
-     *                       成功：null
-     *                       失败：{@link DcErrorCode#Failed}
-     */
-    public void delOperator(String memberE164, IResultListener resultListener){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>(1);
-        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, true, false));
-        req(Msg.DelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-
-    /**（管理方）批量删除协作方
-     * @param memberE164List 待删除对象e164列表
-     * @param resultListener 结果监听器。
-     *                       成功：null
-     *                       失败：{@link DcErrorCode#Failed}
-     */
-    public void delOperator(List<String> memberE164List, IResultListener resultListener){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        for (String e164 : memberE164List){
-            tdcsConfUserInfos.add(new TDCSConfUserInfo(e164, "", curTerminalType, true, true, false));
-        }
-        req(Msg.DelOperator, resultListener, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-    /**
-     * （管理方）拒绝协作权申请
-     * @param memberE164 被拒绝对象的e164
-     * */
-    public void rejectApplyOperator(String memberE164){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, false, false));
-        req(Msg.RejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-    /**
-     * （管理方）批量拒绝协作权申请
-     * @param memberE164List 被拒绝对象的e164列表
-     * */
-    public void rejectApplyOperator(List<String> memberE164List){
-        List<TDCSConfUserInfo> tdcsConfUserInfos = new ArrayList<>();
-        for (String memberE164 : memberE164List) {
-            tdcsConfUserInfos.add(new TDCSConfUserInfo(memberE164, "", curTerminalType, true, false, false));
-        }
-        req(Msg.RejectApplyOperator, null, new TDCSOperator(curDcConfE164, tdcsConfUserInfos));
-    }
-
-
-    /**（普通方）申请协作权
-     * @param e164 申请者e164
-     * @param resultListener 结果监听器。
-     *                       成功：null
-     *                       失败：{@link DcErrorCode#Failed}
-     *                             {@link DcErrorCode#ApplyOperatorRejected}
-     *
-     *                       NOTE：申请协作权需等管理方审批，很可能出现等待超时然后管理方才审批的场景。
-     *                       此场景下该监听器会回onTimeout，然后待管理方审批通过后会上报通知{@link IOnOperatorEventListener#onOperatorAdded(List)}。
-     */
-    public void applyForOperator(String e164, IResultListener resultListener){
-        req(Msg.ApplyOperator, resultListener, e164);
-    }
-    /**（协作方）释放协作权
-     * @param e164 申请者e164
-     * @param resultListener 结果监听器。
-     *                       成功：null
-     *                       失败：{@link DcErrorCode#Failed}
-     */
-    public void cancelOperator(String e164, IResultListener resultListener){
-        req(Msg.CancelOperator, resultListener, e164);
-    }
-
-    /**获取所有成员
-     * @param dcConfE164 协作所在会议e164
-     * @param resultListener 结果监听器。
-     *                       成功：List<{@link DCMember}>
-     *                       失败：{@link DcErrorCode#Failed}
-     */
-    public void queryAllMembers(String dcConfE164, IResultListener resultListener){
-        req(Msg.QueryAllMembers, resultListener, dcConfE164);
-    }
-
-
-
-    /**
-     * 新建普通画板
-     * @param creatorE164 创建者E164
-     * @param listener 新建画板结果监听器
-     *                  成功：{@link BoardInfo}
-     *                  失败：{@link DcErrorCode#Failed}
-     *                        {@link DcErrorCode#BoardAmountReachLimit}
-     * */
-    public void newBoard(String creatorE164, IResultListener listener){
-        req(Msg.NewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164, new TDCSBoardInfo(UUID.randomUUID().toString(), creatorE164)));
-    }
-
-    /**
-     * 新建文档模式画板
-     * @param boardName 画板名
-     * @param pageCount 文档总页数
-     * @param curPageIndex 当前文档页
-     * @param creatorE164 创建者E164
-     * @param listener 新建画板结果监听器
-     *                  成功：{@link BoardInfo}
-     *                  失败：{@link DcErrorCode#Failed}
-     * */
-    public void newDocBoard(String boardName, int pageCount, int curPageIndex, String creatorE164, IResultListener listener){
-        req(Msg.NewBoard, listener, new TDCSNewWhiteBoard(curDcConfE164,
-                new TDCSBoardInfo(EmDcsWbMode.emWBModeDOC, boardName, pageCount, UUID.randomUUID().toString(), curPageIndex, creatorE164)));
-    }
-
-    /**
-     * 删除画板
-     * @param boardId 待删除画板Id
-     * @param listener 删除画板结果监听器
-     *                  成功： string boardId（画板id）
-     *                  失败：{@link DcErrorCode#Failed}
-     * */
-    public void delBoard(String boardId, IResultListener listener){
-        req(Msg.DelBoard, listener, curDcConfE164, boardId);
-    }
-
-
-    /**
-     * 删除所有画板
-     * @param listener 结果监听器
-     *                  成功：String e164（会议e164号）
-     *                  失败：{@link DcErrorCode#Failed}
-     * */
-    public void delAllBoard(IResultListener listener){
-        req(Msg.DelAllBoards, listener, curDcConfE164);
-    }
-
-    /**
-     * 切换画板
-     * @param boardId 目标画板Id
-     * @param listener 切换画板结果监听器
-     *                  成功：string boardId，画板Id
-     *                  失败：{@link DcErrorCode#Failed}
-     * */
-    public void switchBoard(String boardId, IResultListener listener){
-        req(Msg.SwitchBoard, listener, new TDCSSwitchReq(curDcConfE164, boardId));
-    }
-
-
-
-    /**发布绘制操作
-     * @param op 绘制操作
-     * @param resultListener 结果监听器
-     *                       成功返回发布成功的op，否则返回超时
-     * */
-    public void publishPaintOp(OpPaint op, IResultListener resultListener){
-        Object to = ToDoConverter.toPaintTransferObj(op);
-        if (null != to) {
-            req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
-                    ToDoConverter.toCommonPaintTransferObj(op), to,
-                    op.getAuthorE164() /* NOTE: 这个参数并非请求真正需要的（查看Msg中的消息参数定义可发现并没有这个参数），
-                    传入的目的是想框架替我们缓存（虽然Msg中定义不需该参数，但框架能接受多余的参数并缓存下来在响应抵达时上报用户），
-                    在响应抵达时我们需要使用该参数判断响应的合法性*/
-            );
-        }else{
-            req(ToDoConverter.opTypeToReqMsg(op.getType()), resultListener,
-                    ToDoConverter.toCommonPaintTransferObj(op), op.getAuthorE164());
-        }
-
-        // 对于图片插入操作还需上传图片。
-        if (EOpType.INSERT_PICTURE == op.getType()){
-            req(Msg.QueryPicUploadUrl, new IResultListener() {
-                @Override
-                public void onSuccess(Object result) {
-                    TDCSImageUrl picUploadUrl = (TDCSImageUrl) result;
-                    req(Msg.Upload, new IResultListener() {
-                                @Override
-                                public void onSuccess(Object result) {
-                                    OpInsertPic insertPic = (OpInsertPic) op;
-                                    assHandler.post(() ->
-                                            {
-                                                try {
-                                                    // 插入图片成功后我们把图片拷贝到本地图片缓存目录，这样下次加入协作时能直接从本地加载图片。
-                                                    Files.copy(new File(insertPic.getPicPath()), new File(getPicSavePath(insertPic.getPicId())) );
-                                                } catch (IOException e) {
-                                                    e.printStackTrace();
-                                                }
-                                            }
-                                    );
-                                }
-
-                                @Override
-                                public void onFailed(int errorCode) {
-                                    KLog.p(KLog.ERROR, "upload pic %s for board %s failed, errorCode=%s", ((OpInsertPic) op).getPicId(), op.getBoardId(), errorCode);
-                                }
-
-                                @Override
-                                public void onTimeout() {
-                                    KLog.p(KLog.ERROR, "upload pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
-                                }
-                            },
-                            new BaseTypeString(picUploadUrl.achPicUrl),
-                            new TDCSFileInfo(((OpInsertPic) op).getPicPath(), picUploadUrl.achWbPicentityId,
-                                    picUploadUrl.achTabId, false, (int) new File(((OpInsertPic) op).getPicPath()).length()));
-                }
-
-                @Override
-                public void onFailed(int errorCode) {
-                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s failed, errorCode=%s", ((OpInsertPic) op).getPicId(), op.getBoardId(), errorCode);
-                }
-
-                @Override
-                public void onTimeout() {
-                    KLog.p(KLog.ERROR, "query upload url of pic %s for board %s timeout!", ((OpInsertPic) op).getPicId(), op.getBoardId());
-                }
-            }, new TDCSImageUrl(op.getConfE164(), op.getBoardId(), op.getPageId(), ((OpInsertPic) op).getPicId()));
         }
     }
 
 
-
-
     /**
-     * 会话响应处理
-     * @param rspId 响应消息Id
-     * @param rspContent 响应内容
-     * @param listener 结果监听器（为请求时传下的）
+     * 会话相关通知处理器
      * */
-    private boolean onSessionRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
-        switch (rspId){
-            case LoginLinkStateChanged:
-                TDCSConnectResult result = (TDCSConnectResult) rspContent;
-                if (Msg.Login == reqId) {
-                    if (!result.bSuccess) { // 链路建立失败
-                        cancelReq(Msg.Login, listener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
-                        reportFailed(DcErrorCode.BuildLink4LoginFailed, listener);
-                    }
-                }else if (Msg.Logout == reqId){
-                    if (!result.bSuccess) { // 链路已断开
-                        reportSuccess(null, listener);
-                    }else{
-                        // 链路处于连接状态，该消息不是该请求期望的
-                        return false;
-                    }
-                }else{
-                    return false;
-                }
-                break;
-
-            case LoginRsp:
-                TDCSResult loginRes = (TDCSResult) rspContent;
-                if (loginRes.bSuccess) {
-                    reportSuccess(null, listener);
-                }else{
-                    reportFailed(DcErrorCode.fromTransfer(loginRes.dwErrorCode), listener);
-                }
-                break;
-
-            case LogoutRsp:
-                TDCSResult logoutRes = (TDCSResult) rspContent;
-                if (!logoutRes.bSuccess){
-                    cancelReq(Msg.Logout, listener);  // 后续不会有DCBuildLink4LoginRsp上来，取消该请求以防等待超时。
-                    reportFailed(DcErrorCode.fromTransfer(logoutRes.dwErrorCode), listener);
-                }
-                break;
-
-
-            case LinkStateChanged:
-                result = (TDCSConnectResult) rspContent;
-                if (Msg.StartCollaborate == reqId) {
-                    if (!result.bSuccess) { // 开启数据协作失败（链路建立失败）
-                        cancelReq(Msg.StartCollaborate, listener);  // 后续不会有DCConfCreated上来，取消该请求以防等待超时。
-                        reportFailed(DcErrorCode.BuildLink4ConfFailed, listener);
-                        curDcConfE164 = null;
-                    }
-                }else if (Msg.QuitCollaborate == reqId
-                        || Msg.FinishCollaborate == reqId){
-                    if (!result.bSuccess) { // 链路已断开，退出/结束协作成功
-                        reportSuccess(null, listener);
-                        curDcConfE164 = null;
-                    }else{ // 链路未断开，该消息不是期望的
-                        return false;
-                    }
-                }else{
-                    return false;
-                }
-                break;
-            case CollaborateStarted:
-                TDCSCreateConfResult createConfResult = (TDCSCreateConfResult) rspContent;
-                if (createConfResult.bSuccess) { // 开启数据协作成功
-                    curDcConfE164 = createConfResult.achConfE164;
-                    reportSuccess(ToDoConverter.fromTransferObj(createConfResult), listener);
-
-                    //准备同步协作内容
-                    //NOTE: 此时若用户newboard会导致该board在同步的过程中重复上报给用户（newboard的result listener中已经上报了），
-                    //规范用户的行为，不要在同步过程中newboard，用户可通过IOnSynchronizeProgressListener监听同步进度。
-                    handler.postDelayed(() -> {
-
-                        unsubscribeNtfListeners();
-
-                        // 注册通知监听器
-                        subscribeNtfListeners((IOnSynchronizeProgressListener) reqParas[1],
-                                (IOnSessionEventListener) reqParas[2],
-                                (IOnOperatorEventListener) reqParas[3],
-                                (IOnBoardOpListener) reqParas[4],
-                                (IOnPaintOpListener) reqParas[5]);
-
-                        // 同步协作中已有内容
-                        synchronizeCachedStuff(createConfResult);
-
-                    }, 500);
-
-                }else{
-                    reportFailed(DcErrorCode.fromTransfer(createConfResult.dwErrorCode), listener);
-                }
-                break;
-
-            case FinishCollaborateRsp:
-            case CollaborateFinished:
-                break;
-            case QuitCollaborateRsp:
-                TDCSResult quitRes = (TDCSResult) rspContent;
-                if (!quitRes.bSuccess){
-                    cancelReq(Msg.QuitCollaborate, listener);
-                    reportFailed(DcErrorCode.fromTransfer(quitRes.dwErrorCode), listener);
-                }
-                break;
-
-            case QueryConfigRsp:
-                TDCSCreateConfResult dcConfig = (TDCSCreateConfResult) rspContent;
-                if (dcConfig.bSuccess) {
-                    reportSuccess(ToDoConverter.fromTransferObj(dcConfig), listener);
-                }else{
-                    reportFailed(DcErrorCode.fromTransfer(dcConfig.dwErrorCode), listener);
-                }
-                break;
-
-            case ModifyConfigRsp:
-                DcsSetConfInfoRsp setConfInfoRsp = (DcsSetConfInfoRsp) rspContent;
-                if (!setConfInfoRsp.bSuccess) {
-                    cancelReq(Msg.ModifyConfig, listener);
-                    reportFailed(DcErrorCode.fromTransfer(setConfInfoRsp.dwErrorCode), listener);
-                }
-                break;
-
-            case ConfigModified:
-                if (((TDCSConfInfo)rspContent).achConfE164.equals(curDcConfE164)){
-                    reportSuccess(ToDoConverter.fromTransferObj((TDCSConfInfo)rspContent), listener);
-                }else {
-                    return false;
-                }
-                break;
-
-            default:
-                return false;
-        }
-
-        return true;
-
-    }
-
-    private void onSessionNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
+    private void onSessionNtfs(Msg ntfId, Object ntfContent){
         switch (ntfId){
             case LinkStateChanged:
                 TDCSConnectResult tdcsConnectResult = (TDCSConnectResult) ntfContent;
@@ -910,323 +1451,10 @@ public final class DataCollaborateManager extends Caster<Msg> {
     }
 
 
-    private String getCachedOpsBoardId(String boardId){
-        for (String id : cachedPaintOps.keySet()){
-            if (id.equals(boardId)){
-                return id;
-            }
-        }
-        return null;
-    }
-
-    // 同步数据协作中已有内容
-    private void synchronizeCachedStuff(TDCSCreateConfResult dcConfInfo){
-        if (null == onBoardOpListener) {
-            KLog.p(KLog.ERROR, "null == onBoardOpListener");
-            return;
-        }
-
-        KLog.p("starting synchronizeCachedStuff...");
-
-        String curConfE164 = curDcConfE164;
-
-        // 查询当前画板
-        req(Msg.QueryCurBoard, new IResultListener() {
-            @Override
-            public void onSuccess(Object result) {
-                if (null == onBoardOpListener) {
-                    KLog.p(KLog.WARN, "null == onBoardOpListener");
-                    return;
-                }
-                final String curBoardId = ((BoardInfo) result).getId();
-
-                // 入会成功后准备同步会议中已有的图元。
-                bPreparingSync = true;
-                cachedPaintOps.clear();
-
-                // 同步所有画板内容
-                req(Msg.QueryAllBoards, new QueryAllBoardsInnerListener() {
-                            @Override
-                            public void onArrive(boolean bSuccess) {
-                                /* 获取所有画板结束，准备阶段结束*/
-                                bPreparingSync = false;
-                            }
-
-                            @Override
-                            public void onSuccess(Object result) {
-                                if (null == onBoardOpListener) {
-                                    KLog.p(KLog.WARN, "null == onBoardOpListener");
-                                    return;
-                                }
-                                List<TDCSBoardInfo> dcBoards = (List<TDCSBoardInfo>) result;
-                                // 检查准备阶段缓存的图元所在画板是否仍存在，若不存在则删除之。
-                                Iterator it = cachedPaintOps.keySet().iterator();
-                                while (it.hasNext()) {
-                                    boolean bMatched = false;
-                                    String tmpId = (String) it.next();
-                                    for (TDCSBoardInfo board : dcBoards) {
-                                        if (tmpId.equals(board.achTabId)) {
-                                            bMatched = true;
-                                            break;
-                                        }
-                                    }
-                                    if (!bMatched) {
-                                        it.remove();
-                                    }
-                                }
-
-                                // 上报用户协作中所有画板
-                                for (TDCSBoardInfo board : dcBoards) {
-                                    onBoardOpListener.onBoardCreated(ToDoConverter.fromTransferObj(board, curConfE164));
-                                }
-
-                                if (null != curBoardId) {
-                                    for (TDCSBoardInfo board : dcBoards) {
-                                        if (board.achTabId.equals(curBoardId)) {
-                                            // 上报用户切换到当前画板
-                                            onBoardOpListener.onBoardSwitched(curBoardId);
-
-                                            // 将当前画板放置在列表首位以优先同步
-                                            dcBoards.remove(board);
-                                            dcBoards.add(0, board);
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                // 同步画板中已有内容
-                                totalSynBoardCount = dcBoards.size();
-                                syncTimestamps.clear();
-                                synProgress.clear();
-                                synchronizeBoards(dcBoards);
-                            }
-
-                            @Override
-                            public void onFailed(int errorCode) {
-                                KLog.p(KLog.ERROR, "QueryAllBoards for conf %s failed, errorCode=%s", dcConfInfo.achConfE164, errorCode);
-                            }
-
-                            @Override
-                            public void onTimeout() {
-                                KLog.p(KLog.ERROR, "QueryAllBoards for conf %s timeout!", dcConfInfo.achConfE164);
-                            }
-                        },
-
-                        dcConfInfo.achConfE164
-                );
-
-            }
-        }, curConfE164);
-
-
-        if (null != onOperatorEventListener) {
-            // 同步人员列表
-            req(Msg.QueryAllMembers, new IResultListener() {
-                @Override
-                public void onSuccess(Object result) {
-                    if (null == onOperatorEventListener) {
-                        KLog.p(KLog.WARN, "null == onOperatorEventListener");
-                        return;
-                    }
-                    List<DCMember> members = (List<DCMember>) result;
-                    List<DCMember> operators = new ArrayList<>();
-                    for (DCMember member : members) {
-                        onOperatorEventListener.onUserJoined(member);
-                        if (member.isbOperator()) {
-                            operators.add(member);
-                        }
-                    }
-                    onOperatorEventListener.onOperatorAdded(operators);
-                }
-            }, curConfE164);
-        }
-
-    }
-
-
-    private void reportSynProgress(String boardId, int boardProgress, boolean bBoardFin){
-        synProgress.put(boardId, boardProgress);
-        if (null != onSynchronizeProgressListener) {
-            KLog.p("onProgress(%s, %s, %s)", boardId, boardProgress, bBoardFin);
-            onSynchronizeProgressListener.onProgress(boardId, boardProgress, bBoardFin);
-            int synBoardCount = synProgress.size();
-            int totalProgress = (int) (100f*(synBoardCount-1)/ totalSynBoardCount + 1.0f/ totalSynBoardCount *boardProgress);
-            KLog.p("onOverallProgress(%s, %s, %s, %s)", synBoardCount, totalSynBoardCount, totalProgress, bBoardFin && synBoardCount==totalSynBoardCount);
-            onSynchronizeProgressListener.onOverallProgress(synBoardCount, totalSynBoardCount, totalProgress, bBoardFin && synBoardCount==totalSynBoardCount);
-        }
-    }
-
-    private void synchronizeBoards(List<TDCSBoardInfo> dcBoards){
-        if (null == onPaintOpListener){
-            KLog.p(KLog.WARN, "null == onPaintOpListener");
-            return;
-        }
-        if (dcBoards.isEmpty()){
-            return;
-        }
-        for (TDCSBoardInfo boardInfo : dcBoards){
-            KLog.p("to synchronize board %s", boardInfo.achTabId);
-        }
-
-        TDCSBoardInfo board = dcBoards.remove(0);
-
-        // 上报同步进度
-        reportSynProgress(board.achTabId, 0, false);
-
-        // “逐个”画板同步（下层不支持一次性同步，会有问题）
-        req(Msg.Download, new IResultListener() {
-
-                    @Override
-                    public void onSuccess(Object result) {
-
-                        // 上报同步进度
-                        reportSynProgress(board.achTabId, 20, false);
-                        // 同步下一个画板
-                        synchronizeBoards(dcBoards);
-
-                        PriorityQueue<OpPaint> ops = cachedPaintOps.get(board.achTabId);
-                        if (null == ops) { // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
-                            ops = new PriorityQueue<>();
-                            cachedPaintOps.put(board.achTabId, ops);
-                        }
-                        /* 后续会收到画板缓存的图元。
-                         * 由于下层的begin-final消息不可靠，我们定时检查当前是否仍在同步图元，若同步结束则上报用户*/
-                        String boardId = getCachedOpsBoardId(board.achTabId);
-                        Message msg = Message.obtain();
-                        msg.what = MsgID_CheckSynchronizing;
-                        msg.obj = boardId;
-                        handler.sendMessageDelayed(msg, 2000);
-                        KLog.p("start synchronizing ops for board %s", boardId);
-                        syncTimestamps.put(boardId, System.currentTimeMillis());
-                    }
-
-                    @Override
-                    public void onFailed(int errorCode) {
-                        KLog.p(KLog.ERROR, "download paint element for board %s failed, errorCode=%s", board.achTabId, errorCode);
-                        // 上报同步进度
-                        reportSynProgress(board.achTabId, 0, true);
-                        // 同步下一个画板
-                        synchronizeBoards(dcBoards);
-                    }
-
-                    @Override
-                    public void onTimeout() {
-                        KLog.p(KLog.ERROR, "download paint element for board %s timeout!", board.achTabId);
-                        // 上报同步进度
-                        reportSynProgress(board.achTabId, 0, true);
-                        // 同步下一个画板
-                        synchronizeBoards(dcBoards);
-                    }
-                },
-
-                new BaseTypeString(board.achElementUrl),
-                new TDCSFileInfo(null, null, board.achTabId, true, 0)
-        );
-
-    }
-
-
     /**
-     * 协作方变更（添加/删除/申请/取消）响应处理
+     * 协作方相关通知处理。
      * */
-    private boolean onOperatorRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
-        switch (rspId){
-            case AddOperatorRsp:
-                TDCSResult result = (TDCSResult) rspContent;
-                if (!result.bSuccess){
-                    KLog.p(KLog.ERROR, "add operator failed, errorCode=%s", result.dwErrorCode);
-                    cancelReq(reqId, listener);
-                    reportFailed(DcErrorCode.fromTransfer(result.dwErrorCode), listener);
-                }
-                break;
-            case OperatorAdded:
-                List<TDCSConfUserInfo> userInfos = ((TDCSUserInfos) rspContent).atUserInfoList;
-                if (Msg.AddOperator == reqId) {
-                    TDCSOperator para = (TDCSOperator) reqParas[0];
-                    if (para.atOperList.equals(userInfos)) {
-                        reportSuccess(null, listener);
-                    } else {
-                        return false;
-                    }
-                }else if (Msg.ApplyOperator == reqId){
-                    String e164 = (String) reqParas[0];
-                    if (e164.equals(userInfos.get(0).achE164)){
-                        reportSuccess(null, listener);
-                    }else {
-                        return false;
-                    }
-                }else {
-                    return false;
-                }
-                break;
-
-            case DelOperatorRsp:
-                result = (TDCSResult) rspContent;
-                if (!result.bSuccess){
-                    KLog.p(KLog.ERROR, "del operator failed, errorCode=%s", result.dwErrorCode);
-                    cancelReq(reqId, listener);
-                    reportFailed(DcErrorCode.fromTransfer(result.dwErrorCode), listener);
-                }
-                break;
-            case OperatorDeleted:
-                userInfos = ((TDCSUserInfos)rspContent).atUserInfoList;
-                TDCSOperator para = (TDCSOperator) reqParas[0];
-                if (para.atOperList.equals(userInfos)){
-                    reportSuccess(null, listener);
-                }else {
-                    return false;
-                }
-                break;
-
-            case ApplyOperatorRsp:
-                result = (TDCSResult) rspContent;
-                if (!result.bSuccess){
-                    KLog.p(KLog.ERROR, "applying operator failed, errorCode=%s", result.dwErrorCode);
-                    cancelReq(reqId, listener);
-                    reportFailed(DcErrorCode.fromTransfer(result.dwErrorCode), listener);
-                }
-                break;
-            case ApplyOperatorRejected:
-                TDCSUserInfo userInfo = (TDCSUserInfo)rspContent;
-                String e164 = (String) reqParas[0];
-                if (e164.equals(userInfo.tUserInfo.achE164)){
-                    reportFailed(DcErrorCode.ApplyOperatorRejected, listener);
-                }else {
-                    return false;
-                }
-                break;
-
-            case CancelOperatorRsp:
-                result = (TDCSResult) rspContent;
-                if (result.bSuccess){
-                    reportSuccess(null, listener);
-                }else{
-                    reportFailed(DcErrorCode.fromTransfer(result.dwErrorCode), listener);
-                }
-                break;
-
-            case QueryAllMembersRsp:
-                DcsGetUserListRsp userListRsp = (DcsGetUserListRsp) rspContent;
-                if (userListRsp.MainParam.bSuccess){
-                    List<DCMember> dcMembers = new ArrayList<>();
-                    for (TDCSConfUserInfo user : userListRsp.AssParam.atUserList){
-                        dcMembers.add(ToDoConverter.fromTransferObj(user));
-                    }
-                    reportSuccess(dcMembers, listener);
-                }else{
-                    reportFailed(DcErrorCode.fromTransfer(userListRsp.MainParam.dwErrorCode), listener);
-                }
-                break;
-
-            default:
-                return false;
-        }
-
-        return true;
-
-    }
-
-    private void onOperatorNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
+    private void onOperatorNtfs(Msg ntfId, Object ntfContent){
         if (null == onOperatorEventListener){
             KLog.p(KLog.ERROR, "null == onOperatorEventListener");
             return;
@@ -1247,134 +1475,10 @@ public final class DataCollaborateManager extends Caster<Msg> {
         }
     }
 
-
-
-    /**
-     *  画板操作（增/删/切/查）响应处理
-     * */
-    private boolean onBoardOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
-        switch (rspId){
-            case QueryCurBoardRsp:
-            case QueryBoardRsp:
-                DcsGetWhiteBoardRsp queryBoardsResult = (DcsGetWhiteBoardRsp) rspContent;
-                if (queryBoardsResult.MainParam.bSuccess){
-                    reportSuccess(ToDoConverter.fromTransferObj(queryBoardsResult.AssParam, curDcConfE164), listener);
-                }else{
-                    KLog.p(KLog.ERROR, "QueryBoard failed, errorCode=%s", queryBoardsResult.MainParam.dwErrorCode);
-                    reportFailed(DcErrorCode.fromTransfer(queryBoardsResult.MainParam.dwErrorCode), listener);
-                }
-                break;
-
-            case QueryAllBoardsRsp:
-                DcsGetAllWhiteBoardRsp queryAllBoardsResult = (DcsGetAllWhiteBoardRsp) rspContent;
-                if (!queryAllBoardsResult.MainParam.bSuccess){
-                    KLog.p(KLog.ERROR, "QueryAllBoards failed, errorCode=%s", queryAllBoardsResult.MainParam.dwErrorCode);
-                    reportFailed(DcErrorCode.fromTransfer(queryAllBoardsResult.MainParam.dwErrorCode), listener);
-                    return true;
-                }
-
-                if (null != listener) {
-                    PriorityQueue<TDCSBoardInfo> priorityQueue = new PriorityQueue<>();
-                    priorityQueue.addAll(queryAllBoardsResult.AssParam.atBoardInfo); // 将board按annoyId升序排序
-                    List<TDCSBoardInfo> tdcsBoardInfos = new ArrayList<>();
-                    while (!priorityQueue.isEmpty()){
-                        tdcsBoardInfos.add(priorityQueue.poll());
-                    }
-
-                    Object result;
-                    if (listener instanceof QueryAllBoardsInnerListener) {
-                        result = tdcsBoardInfos;
-                    } else {
-                        List<BoardInfo> boardInfos = new ArrayList<>();
-                        for (TDCSBoardInfo tdcsBoardInfo : tdcsBoardInfos) {
-                            boardInfos.add(ToDoConverter.fromTransferObj(tdcsBoardInfo, curDcConfE164));
-                        }
-                        result = boardInfos;
-                    }
-
-                    reportSuccess(result, listener);
-                }
-
-                break;
-
-            case NewBoardRsp:
-                DcsNewWhiteBoardRsp newWhiteBoardRsp = (DcsNewWhiteBoardRsp) rspContent;
-                if (!newWhiteBoardRsp.MainParam.bSuccess) {
-                    cancelReq(reqId, listener); // 后续不会有DCBoardCreatedNtf，取消以防等待超时
-                    reportFailed(DcErrorCode.fromTransfer(newWhiteBoardRsp.MainParam.dwErrorCode), listener);
-                }
-                break;
-            case BoardCreated:
-                TDCSBoardInfo tdcsBoardInfo = (TDCSBoardInfo) rspContent;
-                TDCSNewWhiteBoard newWhiteBoard = (TDCSNewWhiteBoard) reqParas[0];
-                if (newWhiteBoard.tBoardinfo.achWbCreatorE164.equals(tdcsBoardInfo.achWbCreatorE164)) {
-                    reportSuccess(ToDoConverter.fromTransferObj(tdcsBoardInfo, curDcConfE164), listener);
-                }else{
-                    return false; // 返回false表示未消费该条消息
-                }
-                break;
-
-            case DelBoardRsp:
-                TDCSBoardResult boardResult = (TDCSBoardResult) rspContent;
-                if (!boardResult.bSuccess){
-                    KLog.p(KLog.ERROR, "del board failed, errorCode=%s", boardResult.dwErrorCode);
-                    cancelReq(reqId, listener);
-                    reportFailed(DcErrorCode.fromTransfer(boardResult.dwErrorCode), listener);
-                }
-                break;
-            case BoardDeleted:
-                TDCSDelWhiteBoardInfo boardInfo = (TDCSDelWhiteBoardInfo) rspContent;
-                String boardId = (String) reqParas[1];
-                if (boardId.equals(boardInfo.strIndex)){
-                    reportSuccess(boardInfo.strIndex, listener);
-                }else{
-                    return false;
-                }
-                break;
-
-            case DelAllBoardsRsp:
-                TDCSBoardResult allBoardRes = (TDCSBoardResult) rspContent;
-                if (!allBoardRes.bSuccess){
-                    KLog.p(KLog.ERROR, "del all board failed, errorCode=%s", allBoardRes.dwErrorCode);
-                    cancelReq(reqId, listener);
-                    reportFailed(DcErrorCode.fromTransfer(allBoardRes.dwErrorCode), listener);
-                }
-                break;
-            case AllBoardDeleted:
-                TDCSDelWhiteBoardInfo delWhiteBoardInfo = (TDCSDelWhiteBoardInfo) rspContent;
-                reportSuccess(delWhiteBoardInfo.strConfE164, listener);
-                break;
-
-            case SwitchBoardRsp:
-                DcsSwitchRsp switchRsp = (DcsSwitchRsp) rspContent;
-                if (!switchRsp.MainParam.bSuccess){
-                    KLog.p(KLog.ERROR, "switch board failed, errorCode=%s", switchRsp.MainParam.dwErrorCode);
-                    cancelReq(reqId, listener);
-                    reportFailed(DcErrorCode.fromTransfer(switchRsp.MainParam.dwErrorCode), listener);
-                }
-                break;
-            case BoardSwitched:
-                TDCSBoardInfo boardInfo1 = (TDCSBoardInfo) rspContent;
-                TDCSSwitchReq para = (TDCSSwitchReq) reqParas[0];
-                if (para.achTabId.equals(boardInfo1.achTabId)){
-                    reportSuccess(boardInfo1.achTabId, listener);
-                }else{
-                    return false;
-                }
-                break;
-
-            default:
-                return false;
-        }
-
-        return true;
-    }
-
-
     /**
      * （其他与会者）画板操作通知处理。
      * */
-    private void onBoardNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
+    private void onBoardNtfs(Msg ntfId, Object ntfContent){
         if (null == onBoardOpListener){
             KLog.p(KLog.ERROR, "null == onBoardOpListener");
             return;
@@ -1391,107 +1495,10 @@ public final class DataCollaborateManager extends Caster<Msg> {
 
     }
 
-
-    private boolean onDownUpLoadRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
-        switch (rspId){
-            case QueryPicUrlRsp:
-                DcsDownloadImageRsp queryPicUrlResult = (DcsDownloadImageRsp) rspContent;
-                TDCSImageUrl para0 = (TDCSImageUrl) reqParas[0];
-                if (!para0.achWbPicentityId.equals(queryPicUrlResult.AssParam.achWbPicentityId)) {
-                    return false; // 不是我请求的图片的结果。（下层消息不可靠，可能乱序、重复，故需做这样的过滤）
-                }
-                if (queryPicUrlResult.MainParam.bSuccess){
-                    reportSuccess(queryPicUrlResult.AssParam, listener);
-                }else{
-                    reportFailed(DcErrorCode.fromTransfer(queryPicUrlResult.MainParam.dwErrorCode), listener);
-                }
-                break;
-
-            case DownloadRsp:
-                TDCSFileLoadResult result = (TDCSFileLoadResult) rspContent;
-                TDCSFileInfo para1 = (TDCSFileInfo) reqParas[1];
-                if (null != para1.achWbPicentityId && !para1.achWbPicentityId.equals(result.achWbPicentityId)) {
-                    return false; // 这是下载图片的响应且不是我请求的图片的结果。（下层消息不可靠，可能乱序、重复，故需做这样的过滤）
-                }
-                if (result.bSuccess){
-                    reportSuccess(result, listener);
-                }else{
-                    reportFailed(DcErrorCode.Failed, listener);
-                }
-                break;
-
-            case QueryPicUploadUrlRsp:
-                DcsUploadImageRsp queryPicUploadUrlResult = (DcsUploadImageRsp) rspContent;
-                if (queryPicUploadUrlResult.MainParam.bSuccess){
-                    reportSuccess(queryPicUploadUrlResult.AssParam, listener);
-                }else{
-                    reportFailed(DcErrorCode.fromTransfer(queryPicUploadUrlResult.MainParam.dwErrorCode), listener);
-                }
-                break;
-
-            case UploadRsp:
-                result = (TDCSFileLoadResult) rspContent;
-                if (!result.bSuccess){
-                    KLog.p(KLog.ERROR, "upload file %s failed!", result.achWbPicentityId);
-                    cancelReq(reqId, listener);
-                    reportFailed(DcErrorCode.Failed, listener);
-                }
-                break;
-            case PicDownloadable:
-                TDCSFileInfo uploadFileInfo = (TDCSFileInfo) reqParas[1];
-                TDCSImageUrl downloadableFileInfo = (TDCSImageUrl) rspContent;
-                if (uploadFileInfo.achWbPicentityId.equals(downloadableFileInfo.achWbPicentityId)) {
-                    reportSuccess(rspContent, listener);
-                }else{
-                    return false;
-                }
-                break;
-
-            default:
-                return false;
-        }
-
-        return true;
-    }
-
-
-    private String getPicSavePath(String picId){
-        return PIC_SAVE_DIR +"/"+ picId + ".jpg";
-    }
-
-
-
-    private boolean onPublishPaintOpRsps(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
-
-        OpPaint opPaint = ToDoConverter.fromPaintTransferObj(rspContent);
-        String authorE164 = (String) reqParas[reqParas.length-1];
-        if (null==opPaint || !opPaint.getAuthorE164().equals(authorE164)){
-            return false;
-        }
-
-        reportSuccess(opPaint, listener);
-
-        return true;
-    }
-
-
-    private boolean onRsp(Msg rspId, Object rspContent, IResultListener listener, Msg reqId, Object[] reqParas){
-        switch (rspId){
-            case QueryAddrRsp:
-                reportSuccess(((DcsGetConfAddrRsp) rspContent).MainParam.bSuccess, listener);
-                break;
-
-            default:
-                return false;
-        }
-        return true;
-    }
-
-
     /**
      * 收到绘制操作通知处理
      * */
-    private void onPaintNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners){
+    private void onPaintNtfs(Msg ntfId, Object ntfContent){
         if (null == onPaintOpListener){
             KLog.p(KLog.ERROR, "null == onPaintOpListener");
             return;
@@ -1526,13 +1533,13 @@ public final class DataCollaborateManager extends Caster<Msg> {
                     * NOTE: 仅在同步图元阶段需要如下这样操作——获取图片的url，然后下载。其他情形均在收到“图片可下载”通知后开始下载图片。
                      之所以要分情形而无法统一处理是因为：一方面刚入会同步过程中不会收到“图片可下载”通知所以需要主动获取下载url然后下载；
                      另一方面除了刚入会同步的场景其它场景下主动获取图片下载url均可能失败，因为图片可能尚未上传到服务器，所以需要等到“图片可下载通知”方可下载*/
-                    req(Msg.QueryPicUrl,
-                        new IResultListener() {
-                            @Override
-                            public void onSuccess(Object result) {
-                                TDCSImageUrl picUrl = (TDCSImageUrl) result;
-                                // 下载图片
-                                req(Msg.Download,
+                    queryPicDownloadUrl(new TDCSImageUrl(confE164, boardId, pageId, picId), new IResultListener() {
+                        @Override
+                        public void onSuccess(Object result) {
+                            TDCSImageUrl picUrl = (TDCSImageUrl) result;
+                            // 下载图片
+                            download(picUrl.achPicUrl,
+                                    new TDCSFileInfo(getPicSavePath(picUrl.achWbPicentityId), picUrl.achWbPicentityId, picUrl.achTabId, false, 0),
                                     new IResultListener() {
                                         @Override
                                         public void onSuccess(Object result) {
@@ -1540,37 +1547,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
                                             TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
                                             updateInsertPicOp(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName);
                                         }
-
-                                        @Override
-                                        public void onFailed(int errorCode) {
-                                            KLog.p(KLog.ERROR, "download pic %s for board %s failed, errorCode=%s", picUrl.achWbPicentityId, picUrl.achTabId, errorCode);
-                                        }
-
-                                        @Override
-                                        public void onTimeout() {
-                                            KLog.p(KLog.ERROR, "download pic %s for board %s timeout!", picUrl.achWbPicentityId, picUrl.achTabId);
-                                        }
-                                    },
-
-                                    new BaseTypeString(picUrl.achPicUrl),
-                                    new TDCSFileInfo(getPicSavePath(picUrl.achWbPicentityId), picUrl.achWbPicentityId, picUrl.achTabId, false, 0)
-                                );
-                            }
-
-                            @Override
-                            public void onFailed(int errorCode) {
-                                KLog.p(KLog.ERROR, "query url of pic %s for board %s failed, errorCode=%s", picId, boardId, errorCode);
-                            }
-
-                            @Override
-                            public void onTimeout() {
-                                KLog.p(KLog.ERROR, "query url of pic %s for board %s timeout!", picId, boardId);
-                            }
-                        },
-
-                        new TDCSImageUrl(confE164, boardId, pageId, picId)
-                    );
-
+                                    });
+                        }
+                    });
                 }
 
                 cacheOrReportPaintOp(opInsertPic);
@@ -1584,6 +1563,11 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 break;
         }
 
+    }
+
+
+    private String getPicSavePath(String picId){
+        return PIC_SAVE_DIR +"/"+ picId + ".jpg";
     }
 
 
@@ -1648,65 +1632,6 @@ public final class DataCollaborateManager extends Caster<Msg> {
 
 
 
-    private void onNtfs(Msg ntfId, Object ntfContent, Set<Object> listeners) {
-        switch (ntfId){
-
-            // 图片可下载通知。
-            /*己端展示图片的过程：
-            协作方发出“插入图片”的操作并将图片上传服务器；
-            己端先收到“插入图片”的通知，然后需等待“图片可下载”通知；
-            一会后图片上传成功，平台广播各与会方“图片可下载”通知；
-            己端收到该通知后主动去下载图片到本地；
-            己端下载图片完成后结合此前收到的“插入图片”通知内的信息方可展示该图片。
-            NOTE：有例外。己端刚加入数据协作时，平台不会给己端发送该通知，己端需要先拉取协作中已有的图元操作
-            并针对其中的“插入图片”操作主动查询图片下载地址再根据下载地址下载图片。*/
-            case PicDownloadable:
-                TDCSImageUrl dcPicUrl = (TDCSImageUrl) ntfContent;
-                if (!new File(getPicSavePath(dcPicUrl.achWbPicentityId)).exists()){ // 图片尚未下载到本地
-                    // 下载图片
-                    req(Msg.Download,
-                        new IResultListener() {
-                            @Override
-                            public void onSuccess(Object result) {
-                                TDCSFileLoadResult downRst = (TDCSFileLoadResult) result;
-                                updateInsertPicOp(downRst.achTabid, downRst.achWbPicentityId, downRst.achFilePathName);
-                            }
-
-                            @Override
-                            public void onFailed(int errorCode) {
-                                KLog.p(KLog.ERROR,"download pic %s for board %s failed, errorCode=%s",dcPicUrl.achWbPicentityId, dcPicUrl.achTabId, errorCode);
-                            }
-
-                            @Override
-                            public void onTimeout() {
-                                KLog.p(KLog.ERROR,"download pic %s for board %s timeout",dcPicUrl.achWbPicentityId, dcPicUrl.achTabId);
-                            }
-                        },
-                        new BaseTypeString(dcPicUrl.achPicUrl),
-                        new TDCSFileInfo(getPicSavePath(dcPicUrl.achWbPicentityId), dcPicUrl.achWbPicentityId, dcPicUrl.achTabId, false, 0)
-                    );
-                }else{
-                    KLog.p("pic already exists: %s", getPicSavePath(dcPicUrl.achWbPicentityId));
-                }
-                break;
-        }
-    }
-
-
-    @Override
-    protected boolean onTimeout(Msg req, IResultListener rspListener, Object[] reqPara) {
-        switch (req){
-            case QueryAddr:
-                reportSuccess(false, rspListener);
-                return true;
-            case StartCollaborate:
-                clearSession();
-                return false;
-            default:
-                return false;
-        }
-    }
-
     private void subscribeNtfListeners(
             IOnSynchronizeProgressListener onSynchronizeProgressListener,
             IOnSessionEventListener onSessionEventListener,
@@ -1718,11 +1643,11 @@ public final class DataCollaborateManager extends Caster<Msg> {
         this.onOperatorEventListener = onOperatorEventListener;
         this.onBoardOpListener = onBoardOpListener;
         this.onPaintOpListener = onPaintOpListener;
-        listenerLifecycleObserver.tryObserve(onSynchronizeProgressListener);
-        listenerLifecycleObserver.tryObserve(onSessionEventListener);
-        listenerLifecycleObserver.tryObserve(onOperatorEventListener);
-        listenerLifecycleObserver.tryObserve(onBoardOpListener);
-        listenerLifecycleObserver.tryObserve(onPaintOpListener);
+        listenerLifecycleObserver.tryObserve(onSynchronizeProgressListener, lifecycleObserverCb);
+        listenerLifecycleObserver.tryObserve(onSessionEventListener, lifecycleObserverCb);
+        listenerLifecycleObserver.tryObserve(onOperatorEventListener, lifecycleObserverCb);
+        listenerLifecycleObserver.tryObserve(onBoardOpListener, lifecycleObserverCb);
+        listenerLifecycleObserver.tryObserve(onPaintOpListener, lifecycleObserverCb);
     }
 
     private void unsubscribeNtfListeners(){
@@ -1742,12 +1667,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
         unsubscribeNtfListeners();
         handler.removeCallbacksAndMessages(null);
         assHandler.removeCallbacksAndMessages(null);
-        Set<Msg> cancelMsgs = new HashSet<>();
-        cancelMsgs.addAll(Arrays.asList(sessionReqs));
-        cancelMsgs.addAll(Arrays.asList(boardReqs));
-        cancelMsgs.addAll(Arrays.asList(operatorReqs));
-        cancelMsgs.addAll(Arrays.asList(loadReqs));
-        cancelReq(cancelMsgs);
+        cancelAllReqs();
     }
 
     /**
@@ -1788,7 +1708,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
     public void setOnDcCreatedListener(IOnDcCreatedListener onDcCreatedListener){
         if (null != this.onDcCreatedListener) listenerLifecycleObserver.unobserve(this.onDcCreatedListener);
         this.onDcCreatedListener = onDcCreatedListener;
-        if (null != this.onDcCreatedListener) listenerLifecycleObserver.tryObserve(this.onDcCreatedListener);
+        if (null != this.onDcCreatedListener) listenerLifecycleObserver.tryObserve(this.onDcCreatedListener, lifecycleObserverCb);
     }
 
 
@@ -1874,15 +1794,6 @@ public final class DataCollaborateManager extends Caster<Msg> {
          * @param members 被删除的协作方信息
          * */
         void onOperatorDeleted(List<DCMember> members);
-    }
-
-    private class QueryAllBoardsInnerListener implements IResultListener{
-    }
-
-
-    @Override
-    protected Object[] genSimulatedData(String[] key, Object data) {
-        return SimulatedDataGenerator.generate(key, data);
     }
 
 }

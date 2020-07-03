@@ -15,11 +15,12 @@ public class BoardInfo {
     private int pageNum;         // 总页数（限文档）——以TDCSWbAddSubPageInfo中的dwSubPageCount为准。
     private int pageId;            // 文档页id，平台成功响应后，平台填写（限文档）
     private int anonyId;         // 平台成功响应后，平台填写（限白板），白板1白板2后面的数字，平台裁决后分配的。
+    private String elementUrl;  // 图元Url，*.json格式，由业务层负责解析，上层接收业务层推送的各图元通知即可（如：DcsOperLineOperInfo_Ntf）
 
     public BoardInfo() {
     }
 
-    public BoardInfo(String id, String name, String confE164, String creatorE164, int createTime, EBoardMode mode, int pageNum, int pageId, int anonyId) {
+    public BoardInfo(String id, String name, String confE164, String creatorE164, int createTime, EBoardMode mode, int pageNum, int pageId, int anonyId, String elementUrl) {
         this.id = id;
         this.name = name;
         this.confE164 = confE164;
@@ -29,6 +30,7 @@ public class BoardInfo {
         this.pageNum = pageNum;
         this.pageId = pageId;
         this.anonyId = anonyId;
+        this.elementUrl = elementUrl;
     }
 
 
@@ -111,5 +113,9 @@ public class BoardInfo {
 
     public void setAnonyId(int anonyId) {
         this.anonyId = anonyId;
+    }
+
+    public String getElementUrl() {
+        return elementUrl;
     }
 }

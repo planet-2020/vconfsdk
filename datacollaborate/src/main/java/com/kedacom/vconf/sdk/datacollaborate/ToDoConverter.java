@@ -493,7 +493,7 @@ final class ToDoConverter {
 
     public static BoardInfo fromTransferObj(TDCSBoardInfo dcBoard, String confE164) {
         return new BoardInfo(dcBoard.achTabId, dcBoard.achWbName, confE164, dcBoard.achWbCreatorE164, dcBoard.dwWbCreateTime,
-                fromTransferObj(dcBoard.emWbMode), dcBoard.dwWbPageNum, dcBoard.dwPageId, dcBoard.dwWbAnonyId);
+                fromTransferObj(dcBoard.emWbMode), dcBoard.dwWbPageNum, dcBoard.dwPageId, dcBoard.dwWbAnonyId, dcBoard.achElementUrl);
     }
 
     public static DcConfInfo fromTransferObj(TDCSCreateConfResult to) {
