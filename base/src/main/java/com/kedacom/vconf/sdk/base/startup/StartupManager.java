@@ -44,11 +44,13 @@ public class StartupManager extends Caster<Msg> {
     /**
      * 启动，完成一些初始化的工作。
      * @param type 终端类型
-     * @param resultListener 启动结果监听器
+     * @param resultListener onSuccess null
+     *                       onFailed
      * */
     public void start(TerminalType type, @NonNull IResultListener resultListener){
         if (started) {
-            KLog.p(KLog.ERROR, "started yet!");
+            KLog.p(KLog.WARN, "started yet!");
+            reportSuccess(null, resultListener);
             return;
         }
         // 设置业务组件工作空间
@@ -67,6 +69,8 @@ public class StartupManager extends Caster<Msg> {
             // 我们利用超时机制做延时以保证此刻业务组件基础模块已经完全起来了，在此之前我们不能调用业务组件任何其他接口！
             @Override
             public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+
+                isConsumed[0] = true;
 
                 // 启动业务组件sdk
                 req(Msg.StartMtSdk, new SessionProcessor<Msg>() {
