@@ -15,4 +15,5 @@ public class Atlas {
     public static final String RmtContactCtrl = PKG+"RmtContactCtrl";
     public static final String ConfCtrl = PKG+"ConfCtrl";
     public static final String AudioCtrl = PKG+"ConfCtrl";
+    public static final String DcsCtrl = PKG+"DcsCtrl";
 }
