@@ -114,7 +114,7 @@ public final class RtcConfig {
     }
 
     public boolean isSimulcastEnabled(){
-        return rtcUserConfig.getBoolean(key_isSimulcastEnabled, true);
+        return rtcUserConfig.getBoolean(key_isSimulcastEnabled, false);
     }
 
     /**

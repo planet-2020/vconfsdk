@@ -3274,20 +3274,28 @@ public class WebRtcManager extends Caster<Msg>{
     private List<RtpParameters.Encoding> createEncodingList(boolean bTrackAdded){
         List<RtpParameters.Encoding> encodings = new ArrayList<>();
         if (!bTrackAdded) {
-           /* NOTE
-            track被添加之前scaleResolutionDownBy必须设置为null否则会崩溃，提示
-            "Fatal error: C++ addTransceiver failed"。
-            等到track被添加之后，sdp被创建之前，
-            通过sender.getParameters()获取encodings列表，然后给scaleResolutionDownBy赋予真实的值。
-            */
-            encodings.add(new RtpParameters.Encoding("l", true,null));
-            encodings.add(new RtpParameters.Encoding("m", true, null));
-            encodings.add(new RtpParameters.Encoding("h", true, null));
+            /* NOTE
+             track被添加之前scaleResolutionDownBy必须设置为null否则会崩溃，提示
+             "Fatal error: C++ addTransceiver failed"。
+             等到track被添加之后，sdp被创建之前，
+             通过sender.getParameters()获取encodings列表，然后给scaleResolutionDownBy赋予真实的值。
+             */
+            if (config.isSimulcastEnabled) {
+                encodings.add(new RtpParameters.Encoding("l", true, null));
+                encodings.add(new RtpParameters.Encoding("m", true, null));
+                encodings.add(new RtpParameters.Encoding("h", true, null));
+            }else{
+                encodings.add(new RtpParameters.Encoding("h", true, null));
+            }
         }else{
-            //XXX 暂时写死，具体根据需求来
-            encodings.add(new RtpParameters.Encoding("l", true,0.25));
-            encodings.add(new RtpParameters.Encoding("m", true, 0.5));
-            encodings.add(new RtpParameters.Encoding("h", true, 1.0));
+            if (config.isSimulcastEnabled) {
+                // 从低到高，平台要求的。
+                encodings.add(new RtpParameters.Encoding("l", true, 0.25));
+                encodings.add(new RtpParameters.Encoding("m", true, 0.5));
+                encodings.add(new RtpParameters.Encoding("h", true, 1.0));
+            }else{
+                encodings.add(new RtpParameters.Encoding("h", true, 1.0));
+            }
         }
         return encodings;
     }
@@ -3447,14 +3455,7 @@ public class WebRtcManager extends Caster<Msg>{
                 localVideoTrack = factory.createVideoTrack(localVideoTrackId, videoSource);
                 localVideoTrack.setEnabled(bTrackEnable);
 
-                boolean bSimulcast = config.isSimulcastEnabled;
-                List<RtpParameters.Encoding> encodingList;
-                if (bSimulcast){
-                    encodingList = createEncodingList(false);
-                }else{
-                    encodingList = new ArrayList<>();
-                }
-
+                List<RtpParameters.Encoding> encodingList = createEncodingList(false);
                 RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
                         RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
                         Collections.singletonList(STREAM_ID),
@@ -3464,24 +3465,29 @@ public class WebRtcManager extends Caster<Msg>{
                 RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
                 videoSender = transceiver.getSender();
 
-                if (bSimulcast){
-                    // 在添加track之后才去设置encoding参数。XXX  暂时写死，具体根据需求来。
-                    // NOTE：注意和sendOffer时传给业务组件的参数一致。
-                    for (RtpParameters.Encoding encoding : videoSender.getParameters().encodings){
-                        if (encoding.rid.equals("h")){
+                // 在添加track之后才去设置encoding参数。
+                // NOTE：注意和sendOffer时传给业务组件的参数一致。
+                if (config.isSimulcastEnabled) {
+                    for (RtpParameters.Encoding encoding : videoSender.getParameters().encodings) {
+                        if (encoding.rid.equals("h")) {
                             encoding.scaleResolutionDownBy = 1.0;
                             encoding.maxFramerate = config.videoFps;
-                            encoding.maxBitrateBps = config.videoMaxBitrate*1000;
-                        }else if (encoding.rid.equals("m")){
+                            encoding.maxBitrateBps = config.videoMaxBitrate * 1000;
+                        } else if (encoding.rid.equals("m")) {
                             encoding.scaleResolutionDownBy = 0.5;
                             encoding.maxFramerate = config.videoFps;
-                            encoding.maxBitrateBps = config.videoMaxBitrate*1000/4;
-                        }else if (encoding.rid.equals("l")){
+                            encoding.maxBitrateBps = config.videoMaxBitrate * 1000 / 4;
+                        } else if (encoding.rid.equals("l")) {
                             encoding.scaleResolutionDownBy = 0.25;
                             encoding.maxFramerate = config.videoFps;
-                            encoding.maxBitrateBps = config.videoMaxBitrate*1000/16;
+                            encoding.maxBitrateBps = config.videoMaxBitrate * 1000 / 16;
                         }
                     }
+                }else {
+                    RtpParameters.Encoding encoding = videoSender.getParameters().encodings.get(0);
+                    encoding.scaleResolutionDownBy = 1.0;
+                    encoding.maxFramerate = config.videoFps;
+                    encoding.maxBitrateBps = config.videoMaxBitrate * 1000;
                 }
 
                 String kdStreamId = localVideoTrackId;
