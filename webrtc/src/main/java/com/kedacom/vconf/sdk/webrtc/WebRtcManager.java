@@ -2118,7 +2118,7 @@ public class WebRtcManager extends Caster<Msg>{
             setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
             setEnableHardwareScaler(true);
             setWillNotDraw(false);
-            id = getId()+"";
+            id = hashCode()+"";
         }
 
         public String id() {
@@ -3273,12 +3273,12 @@ public class WebRtcManager extends Caster<Msg>{
         List<RtpParameters.Encoding> encodings = new ArrayList<>();
         if (config.isSimulcastEnabled) {
             // 从低到高，平台要求的。
-            RtpParameters.Encoding low = new RtpParameters.Encoding("l", true, 0.25);
+            RtpParameters.Encoding low = new RtpParameters.Encoding("l", true, 4.0);
             low.maxFramerate = config.videoFps;
-            low.maxBitrateBps = config.videoMaxBitrate * 1000 / 16;
-            RtpParameters.Encoding medium = new RtpParameters.Encoding("m", true, 0.5);
+            low.maxBitrateBps = config.videoMaxBitrate * 1000;
+            RtpParameters.Encoding medium = new RtpParameters.Encoding("m", true, 2.0);
             medium.maxFramerate = config.videoFps;
-            medium.maxBitrateBps = config.videoMaxBitrate * 1000 / 4;
+            medium.maxBitrateBps = config.videoMaxBitrate * 1000;
             encodings.add(low);
             encodings.add(medium);
         }
@@ -3297,18 +3297,18 @@ public class WebRtcManager extends Caster<Msg>{
             // NOTE：注意和sendOffer时传给业务组件的参数一致。
             if (config.isSimulcastEnabled) {
                 for (RtpParameters.Encoding encoding : encodings) {
-                    if (encoding.rid.equals("h")) {
-                        encoding.scaleResolutionDownBy = 1.0;
+                    if (encoding.rid.equals("l")) {
+                        encoding.scaleResolutionDownBy = 4.0;
                         encoding.maxFramerate = config.videoFps;
                         encoding.maxBitrateBps = config.videoMaxBitrate * 1000;
                     } else if (encoding.rid.equals("m")) {
-                        encoding.scaleResolutionDownBy = 0.5;
+                        encoding.scaleResolutionDownBy = 2.0;
                         encoding.maxFramerate = config.videoFps;
-                        encoding.maxBitrateBps = config.videoMaxBitrate * 1000 / 4;
-                    } else if (encoding.rid.equals("l")) {
-                        encoding.scaleResolutionDownBy = 0.25;
+                        encoding.maxBitrateBps = config.videoMaxBitrate * 1000;
+                    } else if (encoding.rid.equals("h")) {
+                        encoding.scaleResolutionDownBy = 1.0;
                         encoding.maxFramerate = config.videoFps;
-                        encoding.maxBitrateBps = config.videoMaxBitrate * 1000 / 16;
+                        encoding.maxBitrateBps = config.videoMaxBitrate * 1000;
                     }
                     KLog.p("encoding: rid=%s, scaleResolutionDownBy=%s, maxFramerate=%s, maxBitrateBps=%s",
                             encoding.rid, encoding.scaleResolutionDownBy, encoding.maxFramerate, encoding.maxBitrateBps);
@@ -3492,21 +3492,31 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 if (bTrackEnable) {
                     // 仅本地摄像头开启状态下开启采集
+                    KLog.p("capture videoWidth=%s, videoHeight=%s, videoFps=%s", config.videoWidth, config.videoHeight, config.videoFps);
                     videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
                 }
                 localVideoTrack = factory.createVideoTrack(localVideoTrackId, videoSource);
                 localVideoTrack.setEnabled(bTrackEnable);
 
-                RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
-                        RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
-                        Collections.singletonList(STREAM_ID),
-                        createEncodingList(null)
-                );
+                if (config.isSimulcastEnabled) {
+                    RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
+                            RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
+                            Collections.singletonList(STREAM_ID),
+                            createEncodingList(null)
+                    );
 
-                RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
-                videoSender = transceiver.getSender();
+                    RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
+                    videoSender = transceiver.getSender();
+                    createEncodingList(videoSender.getParameters().encodings);
+                }else {
+                    videoSender = pc.addTrack(localVideoTrack);
+                    int maxBitrate = config.videoMaxBitrate * 1024;
+                    int curBitrate = maxBitrate/2;
+                    int minBitrate = Math.min(100 * 1024, curBitrate);
+                    pc.setBitrate(minBitrate, curBitrate, maxBitrate);
 
-                createEncodingList(videoSender.getParameters().encodings);
+                    KLog.p("pc.setBitrate min=%s, cur=%s, max=%s", minBitrate, curBitrate, maxBitrate);
+                }
 
                 String kdStreamId = localVideoTrackId;
                 KLog.p("create local video track %s/%s", kdStreamId, localVideoTrackId);

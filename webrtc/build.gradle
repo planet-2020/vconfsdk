@@ -12,8 +12,10 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.aar', "*.jar"])
 
-    implementation 'com.google.protobuf:protobuf-java:3.9.2'
+    compileOnly fileTree(dir: 'libs/rtc', include: ['*.aar', "*.jar"])
 //    implementation 'org.webrtc:google-webrtc:1.0.+'
+
+    implementation 'com.google.protobuf:protobuf-java:3.9.2'
 
     compileOnly project(':annotation')
     annotationProcessor project(':processor')
