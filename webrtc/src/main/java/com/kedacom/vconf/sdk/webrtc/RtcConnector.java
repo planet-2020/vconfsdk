@@ -394,16 +394,14 @@ class RtcConnector implements IRcvMsgCallback{
 
 
 	private EnumPB.EmMtResolution convertRes(double scale){
-		if (0< scale && scale <= 0.25){
-			return EnumPB.EmMtResolution.emMt480x270;
-		}else if (0.25< scale && scale <= 0.5){
+		if (scale < 0.5){
+			return EnumPB.EmMtResolution.emMt320x180;
+		}else if (0.5 <= scale && scale < 0.75){
+			return EnumPB.EmMtResolution.emMt640x360;
+		}else if (0.75 <= scale && scale < 1){
 			return EnumPB.EmMtResolution.emMt960x540;
-		}else if (0.5< scale && scale <= 0.75){
-			return EnumPB.EmMtResolution.emMtV1440x816;
-		}else if (0.75< scale && scale < 1){
-			return EnumPB.EmMtResolution.emMtHD720p1280x720;
 		}else{
-			return EnumPB.EmMtResolution.emMtHD1080p1920x1080;
+			return EnumPB.EmMtResolution.emMt1280x720;
 		}
 	}
 
@@ -424,7 +422,8 @@ class RtcConnector implements IRcvMsgCallback{
 			for (RtpParameters.Encoding encoding : rtcMedia.encodings){
 				StructConfPB.TRtcRid.Builder ridBuider = StructConfPB.TRtcRid.newBuilder();
 				ridBuider.setRid(encoding.rid)
-						.setEmres(convertRes(encoding.scaleResolutionDownBy));
+						.setEmres(convertRes(encoding.scaleResolutionDownBy))
+						.setBitrate(encoding.maxBitrateBps);
 				rtcMediaBuilder.addRidlist(ridBuider.build());
 			}
 		}

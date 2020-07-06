@@ -12,7 +12,7 @@ message  TRtcRid
 {
 	optional string rid=1;
 	optional EmMtResolution emres =2;
-
+	optional uint32 bitrate = 3;
 }
 
 message  TRtcMedia
