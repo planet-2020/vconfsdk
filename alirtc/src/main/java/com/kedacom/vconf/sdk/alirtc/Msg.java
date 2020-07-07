@@ -36,13 +36,9 @@ enum Msg {
                     StringBuffer.class},
             userParas = {TNetAddr.class,
                     TMtRegistCsvInfo.class},
-            rspSeq = "LoginRsp"
+            rspSeq = "LoginStateChanged"
             )
     Login,
-
-    @Response(name = "RegResultNtf",
-            clz = TRegResultNtf.class)
-    LoginRsp,
 
     /**
      * 注销CSV
@@ -51,14 +47,16 @@ enum Msg {
             owner = Atlas.ConfCtrl,
             paras = StringBuffer.class,
             userParas = TNetAddr.class,
-            rspSeq = "LogoutRsp"
+            rspSeq = "LoginStateChanged"
     )
     Logout,
 
-    @Response(name = "RegResultNtf",
-            clz = TRegResultNtf.class)
-    LogoutRsp,
-
+    /**
+     * 登录状态变更
+     */
+    @Notification(name = "RegResultNtf", clz = TRegResultNtf.class)
+    @Response(name = "RegResultNtf", clz = TRegResultNtf.class)
+    LoginStateChanged,
 
     /** 创会
      * */

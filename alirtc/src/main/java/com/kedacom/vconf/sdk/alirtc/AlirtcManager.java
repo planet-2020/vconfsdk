@@ -1,6 +1,8 @@
 package com.kedacom.vconf.sdk.alirtc;
 
 import android.app.Application;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.annotation.NonNull;
 
@@ -12,6 +14,7 @@ import com.alibaba.alimeeting.uisdk.AMUIMeetingDetailConfig;
 import com.alibaba.alimeeting.uisdk.AMUIMeetingJoinConfig;
 import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
 import com.aliwork.meeting.api.member.AMSDKMeetingClient;
+import com.annimon.stream.Stream;
 import com.kedacom.vconf.sdk.alirtc.bean.ConfInvitationInfo;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.AliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TConfInvitation;
@@ -25,7 +28,6 @@ import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.bean.TerminalType;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
-import com.kedacom.vconf.sdk.common.constant.EmRegFailedReason;
 import com.kedacom.vconf.sdk.common.type.TNetAddr;
 import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
 import com.kedacom.vconf.sdk.utils.log.KLog;
@@ -33,12 +35,13 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Map;
 import java.util.Set;
 
 public class AlirtcManager extends Caster<Msg> {
     private static AlirtcManager instance = null;
     private Application context;
+    private int loginState = AliRtcResultCode.Failed;
+    private static Handler loginStateChangedHandler = new Handler(Looper.getMainLooper());
 
     private AlirtcManager(Application ctx) {
         context = ctx;
@@ -52,6 +55,13 @@ public class AlirtcManager extends Caster<Msg> {
         return instance;
     }
 
+    /**
+     * 当前登录状态
+     * @return {@link AliRtcResultCode#LoginSuccess}已成功登录，{@link AliRtcResultCode#LogoutSuccess} 已成功注销，其他登录失败。
+     * */
+    public int loginState(){
+        return loginState;
+    }
 
     /**
      * 登录
@@ -74,10 +84,11 @@ public class AlirtcManager extends Caster<Msg> {
                     isConsumed[0] = false;
                     return;
                 }
-                if (EmRegFailedReason.emRegSuccess.getValue() == result.AssParam.basetype) {
+                loginState = AliRtcResultCode.trans(Msg.LoginStateChanged, result.AssParam.basetype);
+                if (loginState == AliRtcResultCode.LoginSuccess) {
                     reportSuccess(null, resultListener);
                 } else {
-                    reportFailed(-1, resultListener);
+                    reportFailed(loginState, resultListener);
                 }
             }
         }, resultListener, addr, new TMtRegistCsvInfo(type.getVal(), version, true));
@@ -103,11 +114,17 @@ public class AlirtcManager extends Caster<Msg> {
                     isConsumed[0] = false;
                     return;
                 }
-                if (EmRegFailedReason.emUnRegSuc.getValue() == result.AssParam.basetype) {
+                loginState = AliRtcResultCode.trans(Msg.LoginStateChanged, result.AssParam.basetype);
+                if (loginState == AliRtcResultCode.LogoutSuccess) {
                     reportSuccess(null, resultListener);
                 } else {
-                    reportFailed(-1, resultListener);
+                    reportFailed(loginState, resultListener);
                 }
+            }
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                loginState = AliRtcResultCode.LogoutSuccess;
             }
         }, resultListener, addr);
     }
@@ -264,13 +281,48 @@ public class AlirtcManager extends Caster<Msg> {
     @Override
     protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
         switch (ntf){
-            case ConfInviting:
-                for (ILifecycleOwner listener : ntfListeners){
-                    ((OnConfInvitingListener)listener).onConfInviting(ToDoConverter.TConfInvitation2ConfInvitationInfo((TConfInvitation) ntfContent));
+            case LoginStateChanged:
+                TRegResultNtf regResultNtf = (TRegResultNtf) ntfContent;
+                if(regResultNtf.MainParam.basetype == 6){ // alirtc服务器
+                    int state = AliRtcResultCode.trans(Msg.LoginStateChanged, regResultNtf.AssParam.basetype);
+                    if (loginState != state){ // 登录状态有变
+                        loginState = state;
+                        loginStateChangedHandler.removeCallbacksAndMessages(null);
+                        // 延迟处理避免频繁上报用户
+                        loginStateChangedHandler.postDelayed(() -> Stream.of(ntfListeners).forEach(it -> {
+                            if (containsNtfListener(it)) { // 因为是延迟通知，可能在延迟的时间段内监听器已销毁了，所以需判断该监听器是否仍存在
+                                ((OnLoginStateChangedListener) it).onLoginStateChanged(loginState);
+                            }
+                        }), 3000);
+                    }
                 }
+                break;
+            case ConfInviting:
+                Stream.of(ntfListeners).forEach(it ->
+                        ((OnConfInvitingListener)it).onConfInviting(ToDoConverter.TConfInvitation2ConfInvitationInfo((TConfInvitation) ntfContent))
+                );
                 break;
         }
     }
+
+
+    /**
+     * 登录状态变更监听器
+     * */
+    public interface OnLoginStateChangedListener extends ILifecycleOwner{
+        /**
+         * 登录状态变更
+         * @param state 当前登录状态。{@link AliRtcResultCode#OK}已登录，其他：未登录。
+         * */
+        void onLoginStateChanged(int state);
+    }
+    /**
+     * 添加会议邀请通知监听器
+     * */
+    public void addOnLoginStateChangedListener(OnLoginStateChangedListener listener){
+        addNtfListener(Msg.LoginStateChanged, listener);
+    }
+
 
     /**
      * 会议邀请通知监听器

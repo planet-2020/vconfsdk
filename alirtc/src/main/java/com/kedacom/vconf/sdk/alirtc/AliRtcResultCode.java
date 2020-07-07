@@ -6,13 +6,13 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
 public final class AliRtcResultCode {
-    // 内部结果码。<100
-    static final int Failed = -1; // 未知错误
-    static final int OK = 0; // 成功
+    public static final int Failed = -1; // 未知错误
+    public static final int OK = 0; // 成功
 
-    static final int InnerCodeUpperBound = 100; // 内部结果码上边界
+    static final int InnerCodeUpperBound = 100;
 
-    // 外部结果码（用户可见）>100
+    public static final int LoginSuccess = 10; // 登录成功
+    public static final int LogoutSuccess = 11; // 注销成功
     public static final int IncorrectConfPassword = InnerCodeUpperBound+1;  // 会议密码错误
     public static final int ReachConfereeNumLimit = InnerCodeUpperBound+2;  // 与会方人数达上限（RTC最多8方）
     public static final int InstantConfDenied = InnerCodeUpperBound+3;      // 平台会议审批功能已开启，不能创建即时会议，只能预约创会。
@@ -37,13 +37,15 @@ public final class AliRtcResultCode {
 //        resultCodes.put(Msg.CreateConf, 99997, InstantConfDenied);
         resultCodes.put(Msg.JoinConf, 30337, IncorrectConfPassword); // 密码为空时报这个
         resultCodes.put(Msg.JoinConf, 30327, IncorrectConfPassword);
+        resultCodes.put(Msg.LoginStateChanged, 100, LoginSuccess);
+        resultCodes.put(Msg.LoginStateChanged, 90, LogoutSuccess);
 //        resultCodes.put(Msg.JoinConf, 39, ReachConfereeNumLimit);
 //        resultCodes.put(Msg.AcceptInvitation, 39, ReachConfereeNumLimit);
 //        resultCodes.put(Msg.QueryConfInfo, 1000, OK);
 //        resultCodes.put(Msg.LoginStateChanged, 100, OK);
     }
 
-    static int trans(@NonNull Msg msg, int rawResultCode){
+    static int trans(@NonNull Msg msg, Object rawResultCode){
         Object localResultCode = resultCodes.row(msg).get(rawResultCode);
         if (null == localResultCode) return Failed;
         return (int)localResultCode;
