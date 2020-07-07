@@ -35,8 +35,8 @@ public final class AliRtcResultCode {
 //        resultCodes.put(Msg.Logout, 90, OK);
 //        resultCodes.put(Msg.CreateConf, 1000, OK);
 //        resultCodes.put(Msg.CreateConf, 99997, InstantConfDenied);
+        resultCodes.put(Msg.JoinConf, 30337, IncorrectConfPassword); // 密码为空时报这个
         resultCodes.put(Msg.JoinConf, 30327, IncorrectConfPassword);
-        resultCodes.put(Msg.JoinConf, 30337, IncorrectConfPassword);
 //        resultCodes.put(Msg.JoinConf, 39, ReachConfereeNumLimit);
 //        resultCodes.put(Msg.AcceptInvitation, 39, ReachConfereeNumLimit);
 //        resultCodes.put(Msg.QueryConfInfo, 1000, OK);

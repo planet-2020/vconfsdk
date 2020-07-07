@@ -326,15 +326,17 @@ public abstract class Caster<T extends Enum<T>> implements
      *
      * @param listener*/
     public void delListener(@NonNull ILifecycleOwner listener){
-        delResultListener(listener);
         delNtfListeners(null, listener);
+        if (listener instanceof IResultListener){
+            delResultListener((IResultListener) listener);
+        }
     }
 
     /**
      * 删除结果监听器
      *
      * @param listener*/
-    protected void delResultListener(@NonNull ILifecycleOwner listener){
+    protected void delResultListener(@NonNull IResultListener listener){
         for (Session s : sessions) {
             if (listener == s.resultListener) {
                 KLog.p(KLog.DEBUG, "delete result listener, req=%s, sid=%s, listener=%s", s.req, s.id, s.resultListener);
@@ -348,10 +350,10 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
     private boolean containsListener(ILifecycleOwner listener){
-        return containsRspListener(listener) || containsNtfListener(listener);
+        return containsNtfListener(listener) || ((listener instanceof IResultListener) && containsRspListener((IResultListener) listener));
     }
 
-    private boolean containsRspListener(ILifecycleOwner listener){
+    private boolean containsRspListener(IResultListener listener){
         for (Session s : sessions){
             if (s.resultListener == listener){
                 return true;
