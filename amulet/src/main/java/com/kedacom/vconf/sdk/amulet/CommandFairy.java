@@ -44,7 +44,7 @@ final class CommandFairy implements IFairy.ICommandFairy{
     }
 
     @Override
-    public Object get(String reqName, Object... paras) {
+    public Object get(String reqId, Object... paras) {
         if (null == crystalBall){
             KLog.p(KLog.ERROR, "no crystalBall ");
             return null;
@@ -54,12 +54,12 @@ final class CommandFairy implements IFairy.ICommandFairy{
             return null;
         }
 
-        if (!magicBook.isGet(reqName)){
-            KLog.p(KLog.ERROR, "Unknown GET req %s", reqName);
+        if (!magicBook.isGet(reqId)){
+            KLog.p(KLog.ERROR, "Unknown GET req %s", reqId);
             return null;
         }
 
-        if (!Helper.checkUserPara(reqName, paras, magicBook)){
+        if (!Helper.checkUserPara(reqId, paras, magicBook)){
             KLog.p(KLog.ERROR,"checkUserPara not pass");
             return null;
         }
@@ -70,18 +70,18 @@ final class CommandFairy implements IFairy.ICommandFairy{
         // NOTE：native方法的传出参数总是StringBuffer类型，并且总是参数列表的最后一个，这点跟业务组件约定好。
         paras = Arrays.copyOf(paras, paras.length+1);
         paras[paras.length-1] = new StringBuffer();
-        Class<?>[] nativeParaClasses = magicBook.nativeParaClasses(reqName);
+        Class<?>[] nativeParaClasses = magicBook.nativeParaClasses(reqId);
         Object[] nativeParas = Helper.convertUserPara2NativePara(paras, nativeParaClasses);
         StringBuilder sb = new StringBuilder();
         for (int i=0; i<nativeParas.length; ++i){
             sb.append(nativeParas[i]).append(", ");
         }
-        String methodName = magicBook.reqName(reqName);
-        Log.d(TAG, String.format(" -=-> %s(%s) \nparas={%s}", reqName, methodName, sb));
-        crystalBall.spell(magicBook.nativeMethodOwner(reqName), methodName, nativeParas, nativeParaClasses);
-        Log.d(TAG, String.format(" <-=- %s \nresult=%s", reqName, nativeParas[nativeParas.length-1]));
+        String methodName = magicBook.reqName(reqId);
+        Log.d(TAG, String.format(" -=-> %s(%s) \nparas={%s}", reqId, methodName, sb));
+        crystalBall.spell(magicBook.nativeMethodOwner(reqId), methodName, nativeParas, nativeParaClasses);
+        Log.d(TAG, String.format(" <-=- %s \nresult=%s", reqId, nativeParas[nativeParas.length-1]));
 
-        Class<?>[] userParaTypes = magicBook.userParaClasses(reqName);
+        Class<?>[] userParaTypes = magicBook.userParaClasses(reqId);
         return Kson.fromJson(nativeParas[nativeParas.length-1].toString(), userParaTypes[userParaTypes.length-1]); // NOTE: 最后一个参数为出参！下层通过该参数反馈用户结果，必须遵守这个约定
     }
 

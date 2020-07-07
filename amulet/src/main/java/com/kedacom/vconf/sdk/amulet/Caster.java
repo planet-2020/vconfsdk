@@ -103,7 +103,11 @@ public abstract class Caster<T extends Enum<T>> implements
         Set<String> ntfIds = magicBook.ntfIds(null);
         if (null != ntfIds){
             for (String ntfId : ntfIds){
-                notificationFairy.subscribe(this, ntfId);
+                if (notificationFairy.subscribe(this, ntfId)){
+                    String val = unprefix(ntfId);
+                    T ntf = T.valueOf(enumT, val);
+                    ntfListenersMap.put(ntf, new HashSet<>());
+                }
             }
         }
     }
@@ -187,9 +191,9 @@ public abstract class Caster<T extends Enum<T>> implements
      *
      * */
     protected void req(@NonNull T req, SessionProcessor<T> sessionProcessor, IResultListener resultListener, Object... reqParas){
-        String prefixedReq = prefixMsg(req.name());
+        String reqId = prefix(req.name());
         Session s = new Session(req, sessionProcessor, resultListener);
-        if (!sessionFairy.req(this, prefixedReq, s.id, reqParas)){
+        if (!sessionFairy.req(this, reqId, s.id, reqParas)){
             KLog.p(KLog.ERROR, "%s failed", req);
             return;
         }
@@ -240,7 +244,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * @see #req(Enum, SessionProcessor, IResultListener, Object...)
      * */
     protected void set(T set, Object... paras){
-        commandFairy.set(prefixMsg(set.name()), paras);
+        commandFairy.set(prefix(set.name()), paras);
     }
 
     /**
@@ -251,7 +255,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * @return 请求结果。
      * */
     protected Object get(T get, Object... paras){
-        return commandFairy.get(prefixMsg(get.name()), paras);
+        return commandFairy.get(prefix(get.name()), paras);
     }
 
 
@@ -262,12 +266,12 @@ public abstract class Caster<T extends Enum<T>> implements
      *                    参见{@link #req(Enum, SessionProcessor, IResultListener, Object...)}}对IResultListener的处理
      * */
     protected void addNtfListener(@NonNull T ntfId, @NonNull ILifecycleOwner ntfListener){
-        KLog.p(KLog.DEBUG,"ntfId=%s, ntfListener=%s", ntfId, ntfListener);
         Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntfId);
         if (null == listeners){
-            listeners = new LinkedHashSet<>();
-            ntfListenersMap.put(ntfId, listeners);
+            KLog.p(KLog.ERROR, "no such ntf %s", ntfId);
+            return;
         }
+        KLog.p(KLog.DEBUG,"ntfId=%s, ntfListener=%s", ntfId, ntfListener);
         listeners.add(ntfListener);
         listenerLifecycleObserver.tryObserve(ntfListener, ListenerLifecycleObserverCb);
     }
@@ -284,30 +288,34 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 删除通知监听器
-     * @param ntf 监听器监听的通知（一个监听器可能监听多个通知）。若为null则表示任意通知。
+     * @param ntf 监听器监听的通知
      * @param listener 通知监听器。要删除的监听器对象 */
     protected void delNtfListener(@NonNull T ntf, @NonNull ILifecycleOwner listener){
         Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntf);
-        if (null != listeners) {
-            KLog.p(KLog.DEBUG,"delete ntfListener, ntf=%s, listener=%s", ntf, listener);
-            listeners.remove(listener);
-            if(!containsListener(listener)){
-                listenerLifecycleObserver.unobserve(listener);
-            }
+        if (null == listeners) {
+            KLog.p(KLog.ERROR, "no such ntf %s", ntf);
+            return;
+        }
+        KLog.p(KLog.DEBUG,"delete ntfListener, ntf=%s, listener=%s", ntf, listener);
+        listeners.remove(listener);
+        if(!containsListener(listener)){
+            listenerLifecycleObserver.unobserve(listener);
         }
     }
 
 
     /**
      * 批量删除通知监听器
-     * @param ntf 监听器监听的通知（一个监听器可能监听多个通知）。若为null则表示任意通知。
+     * @param ntfs 监听器监听的通知（一个监听器可能监听多个通知）。若为null则表示任意通知。
      * @param listener 通知监听器。要删除的监听器对象 */
-    protected void delNtfListeners(@Nullable T[] ntf, @NonNull ILifecycleOwner listener){
-        if (null != ntf) {
-            Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntf);
-            if (null != listeners) {
-                KLog.p(KLog.DEBUG,"delete ntfListener, ntf=%s, listener=%s", ntf, listener);
-                listeners.remove(listener);
+    protected void delNtfListeners(@Nullable T[] ntfs, @NonNull ILifecycleOwner listener){
+        if (null != ntfs) {
+            for (T ntf : ntfs) {
+                Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntf);
+                if (null != listeners) {
+                    KLog.p(KLog.DEBUG, "delete ntfListener, ntf=%s, listener=%s", ntf, listener);
+                    listeners.remove(listener);
+                }
             }
         }else{
             for (Set<ILifecycleOwner> ntfListeners : ntfListenersMap.values()) {
@@ -362,7 +370,7 @@ public abstract class Caster<T extends Enum<T>> implements
         return false;
     }
 
-    private boolean containsNtfListener(ILifecycleOwner listener){
+    protected boolean containsNtfListener(ILifecycleOwner listener){
         for (Set<ILifecycleOwner> listeners : ntfListenersMap.values()){
             if (listeners.contains(listener)){
                 return true;
@@ -371,11 +379,11 @@ public abstract class Caster<T extends Enum<T>> implements
         return false;
     }
 
-    private String prefixMsg(String msg){
+    private String prefix(String msg){
         return msgPrefix +msg;
     }
 
-    private String unprefixMsg(String prefixedMsg){
+    private String unprefix(String prefixedMsg){
         return prefixedMsg.substring((msgPrefix).length());
     }
 
@@ -389,8 +397,8 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
     @Override
-    public void onReqSent(boolean hasRsp, String reqName, int reqSn, Object[] reqParas) {
-        T req = T.valueOf(enumT, unprefixMsg(reqName));
+    public void onReqSent(boolean hasRsp, String reqId, int reqSn, Object[] reqParas) {
+        T req = T.valueOf(enumT, unprefix(reqId));
         Session s = getSession(reqSn);
         IResultListener resultListener = s.resultListener;
         if (!hasRsp){
@@ -406,9 +414,9 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
     @Override
-    public boolean onRsp(boolean bLast, String rspName, Object rspContent, String reqName, int reqSn, Object[] reqParas) {
-        T req = T.valueOf(enumT, unprefixMsg(reqName));
-        T rsp = T.valueOf(enumT, unprefixMsg(rspName));
+    public boolean onRsp(boolean bLast, String rspId, Object rspContent, String reqId, int reqSn, Object[] reqParas) {
+        T req = T.valueOf(enumT, unprefix(reqId));
+        T rsp = T.valueOf(enumT, unprefix(rspId));
         Session s = getSession(reqSn);
         IResultListener resultListener = s.resultListener;
         SessionProcessor<T> processor = s.processor;
@@ -429,8 +437,8 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
     @Override
-    public void onTimeout(String reqName, int reqSn, Object[] reqParas) {
-        T req = T.valueOf(enumT, unprefixMsg(reqName));
+    public void onTimeout(String reqId, int reqSn, Object[] reqParas) {
+        T req = T.valueOf(enumT, unprefix(reqId));
         Session s = getSession(reqSn);
         sessions.remove(s);
         IResultListener resultListener = s.resultListener;
@@ -449,19 +457,16 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
     @Override
-    public void onNtf(String ntfName, Object ntfContent) {
-        String unPrefixedNtfName = unprefixMsg(ntfName);
-        T ntf = T.valueOf(enumT, unPrefixedNtfName);
+    public void onNtf(String ntfId, Object ntfContent) {
+        T ntf = T.valueOf(enumT, unprefix(ntfId));
         Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntf);
         StringBuilder sb = new StringBuilder();
-        if (null != listeners) {
-            for (Object listener : listeners) {
-                sb.append(listener).append("\n");
-            }
+        for (Object listener : listeners) {
+            sb.append(listener).append("\n");
         }
         KLog.p(KLog.DEBUG,"ntf=%s, ntfContent=%s\nlisteners=%s", ntf, ntfContent, sb.toString());
 
-        onNotification(ntf, ntfContent, ntfListenersMap.get(ntf));
+        onNotification(ntf, ntfContent, listeners);
     }
 
     /**
