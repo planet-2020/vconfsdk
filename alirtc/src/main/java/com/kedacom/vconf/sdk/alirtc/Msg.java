@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.alirtc;
 
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TConfInvitation;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfPara;
@@ -116,6 +117,13 @@ enum Msg {
             }
     )
     ReportVoiceState,
+
+    /**
+     * 会议邀请通知
+     * */
+    @Notification(name = "RcvInvitedFromCsv_Ntf",
+            clz = TConfInvitation.class)
+    ConfInviting,
 
 
     END;

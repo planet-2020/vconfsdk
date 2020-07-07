@@ -12,7 +12,9 @@ import com.alibaba.alimeeting.uisdk.AMUIMeetingDetailConfig;
 import com.alibaba.alimeeting.uisdk.AMUIMeetingJoinConfig;
 import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
 import com.aliwork.meeting.api.member.AMSDKMeetingClient;
+import com.kedacom.vconf.sdk.alirtc.bean.ConfInvitationInfo;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.AliConfParam;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TConfInvitation;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfPara;
@@ -50,11 +52,6 @@ public class AlirtcManager extends Caster<Msg> {
         return instance;
     }
 
-
-    @Override
-    protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
-
-    }
 
     /**
      * 登录
@@ -261,6 +258,36 @@ public class AlirtcManager extends Caster<Msg> {
 //            }
 //
 //        }
+    }
+
+
+    @Override
+    protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
+        switch (ntf){
+            case ConfInviting:
+                for (ILifecycleOwner listener : ntfListeners){
+                    ((OnConfInvitingListener)listener).onConfInviting(ToDoConverter.TConfInvitation2ConfInvitationInfo((TConfInvitation) ntfContent));
+                }
+                break;
+        }
+    }
+
+    /**
+     * 会议邀请通知监听器
+     * */
+    public interface OnConfInvitingListener extends ILifecycleOwner{
+        /**
+         * 会议邀请。
+         * 收到邀请后可调用{@link #joinConf(String, String, IResultListener)}加入会议，
+         * 或者忽略表示拒绝邀请。
+         * */
+        void onConfInviting(ConfInvitationInfo confInvitationInfo);
+    }
+    /**
+     * 添加会议邀请通知监听器
+     * */
+    public void addOnConfInvitingListener(OnConfInvitingListener listener){
+        addNtfListener(Msg.ConfInviting, listener);
     }
 
 }
