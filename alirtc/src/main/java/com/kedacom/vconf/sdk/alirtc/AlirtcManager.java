@@ -15,6 +15,7 @@ import com.aliwork.meeting.api.member.AMSDKMeetingClient;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.AliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfPara;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
 import com.kedacom.vconf.sdk.amulet.Caster;
@@ -142,11 +143,12 @@ public class AlirtcManager extends Caster<Msg> {
     /**
      * 加入会议
      * @param confNum 会议号码
+     * @param password 会议密码。没有密码则置空
      * @param resultListener
      *          成功返回： null
      *          失败返回：错误码
      * */
-    public void joinConf(String confNum, IResultListener resultListener){
+    public void joinConf(@NonNull String confNum, String password, IResultListener resultListener){
         req(Msg.JoinConf, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
@@ -205,10 +207,10 @@ public class AlirtcManager extends Caster<Msg> {
                     AliMeetingUIManager.joinMeeting(context, builder.builder());
 
                 }else{
-                    reportFailed(-1, resultListener);
+                    reportFailed(AliRtcResultCode.trans(req, joinConfResult.dwErrorCode), resultListener);
                 }
             }
-        }, resultListener, confNum);
+        }, resultListener, new TJoinConfPara(confNum, password));
 
     }
 

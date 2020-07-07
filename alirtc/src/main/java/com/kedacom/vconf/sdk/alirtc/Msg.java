@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.alirtc;
 
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfPara;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
 import com.kedacom.vconf.sdk.amulet.Atlas;
@@ -78,7 +79,7 @@ enum Msg {
     @Request(name = "JoinAliConfCmd",
             owner = Atlas.ConfCtrl,
             paras = StringBuffer.class,
-            userParas = String.class,  // 会议号
+            userParas = TJoinConfPara.class,
             rspSeq = "JoinConfRsp"
     )
     JoinConf,

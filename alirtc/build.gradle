@@ -3,7 +3,7 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 
-version = '0.2.5-SNAPSHOT'
+version = '0.2.6-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
