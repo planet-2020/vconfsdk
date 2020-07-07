@@ -3,7 +3,7 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 
-version = '0.2.6-SNAPSHOT'
+version = '0.2.7-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -23,9 +23,9 @@ dependencies {
 
     compileOnly project(':annotation')
     annotationProcessor project(':processor')
-    implementation 'com.kedacom.vconf.sdk:amulet:5.2.0-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:amulet:5.2.2-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:common:1.2.1-SNAPSHOT'
-    implementation 'com.kedacom.vconf.sdk:utils:1.2.4-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:utils:1.2.7-SNAPSHOT'
 
     //-> 阿里sdk引入
     compileOnly fileTree(dir: 'libs/alisdk', include: ['*.jar', '*.aar'])

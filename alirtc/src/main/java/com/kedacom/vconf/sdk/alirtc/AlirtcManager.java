@@ -188,7 +188,7 @@ public class AlirtcManager extends Caster<Msg> {
                                     KLog.p("#####onMeetingJoined");
                                     req(Msg.ReportConfState, null,null, confNum, true);
                                     req(Msg.ReportVoiceState, null,null, confNum, false, false);  // FIXME 根据配置填
-                                    reportSuccess(null, resultListener);  // FIXME resultListener此时可能已销毁
+                                    reportSuccess(null, resultListener);
                                 }
 
                                 @Override
@@ -200,7 +200,7 @@ public class AlirtcManager extends Caster<Msg> {
                                 @Override
                                 public void onJoinMeetingError(@NotNull AMUIErrorCode amuiErrorCode, @Nullable String s) {
                                     KLog.p("#####onJoinMeetingError %s, %s", amuiErrorCode, s);
-                                    reportFailed(-1, resultListener); // FIXME resultListener此时可能已销毁
+                                    reportFailed(-1, resultListener);
                                 }
                             });
 
