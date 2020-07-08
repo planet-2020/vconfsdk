@@ -46,6 +46,7 @@ public class CrystalBall implements ICrystalBall {
                 method.invoke(null, para);
             } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
+                throw new RuntimeException(String.format("invoke %s failed!", method));
             }
             return 0;
         }
@@ -59,6 +60,7 @@ public class CrystalBall implements ICrystalBall {
             cachedMethods.put(methodName, method);
         } catch (NoSuchMethodException | ClassNotFoundException | InvocationTargetException | IllegalAccessException e) {
             e.printStackTrace();
+            throw new RuntimeException(String.format("invoke %s failed!", method));
         }
 
         return 0;
