@@ -25,6 +25,7 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
+import com.kedacom.vconf.sdk.common.bean.transfer.TMtEntityStatus;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
@@ -32,6 +33,7 @@ import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
 import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
+import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
@@ -639,27 +641,62 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 设置静音。
      * @param bSilence true，屏蔽对方语音；false，放开对方语音。
-     * @return true成功，false失败。
      * */
-    public boolean setSilence(boolean bSilence){
+    public void setSilence(boolean bSilence, IResultListener resultListener){
         if(!bSessionStarted){
             KLog.p(KLog.ERROR,"session not start");
+            reportFailed(-1, resultListener);
+            return;
+        }
+        boolean hasChange = bSilence != config.isSilenced;
+        if (hasChange && !doSetSilence(bSilence)) { // 立即设置而非等到响应返回，因为我们希望用户的操作能立即展现出效果，若最终设置失败我们会回滚该设置。
+            reportFailed(-1, resultListener);
+            return;
+        }
+        req(Msg.SetSilence, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                BaseTypeBool result = (BaseTypeBool) rspContent;
+                if (result.basetype == bSilence){ // 设置成功
+                    reportSuccess(null, resultListener);
+                }else{
+                    if (hasChange) {
+                        doSetSilence(!bSilence); // 设置失败，回滚
+                    }
+                    reportFailed(-1, resultListener);
+                }
+            }
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                if (hasChange) {
+                    doSetSilence(!bSilence); // 设置失败，回滚
+                }
+            }
+        }, resultListener, bSilence);
+    }
+
+    private boolean doSetSilence(boolean silence){
+        PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
+        if (null == pcWrapper) {
+            KLog.p(KLog.ERROR,"null == pcWrapper");
             return false;
         }
-        if (bSilence != config.isSilenced) {
-            PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
-            if (null == pcWrapper) {
-                KLog.p(KLog.ERROR,"null == pcWrapper");
-                return false;
-            }
-            pcWrapper.setRemoteAudioEnable(!bSilence);
-            config.isSilenced = bSilence;
-        }
-        req(Msg.SetSilence, null, null, bSilence);
-
+        pcWrapper.setRemoteAudioEnable(!silence);
+        config.isSilenced = silence;
         return true;
     }
 
+    private boolean doSetMute(boolean mute){
+        PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.PUBLISHER);
+        if (null == pcWrapper) {
+            KLog.p(KLog.ERROR,"null == pcWrapper");
+            return false;
+        }
+        pcWrapper.setLocalAudioEnable(!mute);
+        config.isMuted = mute;
+        return true;
+    }
 
     /**
      * 是否处于哑音状态
@@ -673,22 +710,38 @@ public class WebRtcManager extends Caster<Msg>{
      * 设置哑音。
      * @param bMute true，屏蔽自己语音；false，放开自己语音。
      * */
-    public boolean setMute(boolean bMute){
+    public void setMute(boolean bMute, IResultListener resultListener){
         if(!bSessionStarted){
             KLog.p(KLog.ERROR,"session not start");
-            return false;
+            reportFailed(-1, resultListener);
+            return;
         }
-        if (bMute != config.isMuted) {
-            PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.PUBLISHER);
-            if (null == pcWrapper) {
-                KLog.p(KLog.ERROR,"null == pcWrapper");
-                return false;
+        boolean hasChange = bMute != config.isMuted;
+        if (hasChange && !doSetMute(bMute)) {
+            reportFailed(-1, resultListener);
+            return;
+        }
+        req(Msg.SetMute, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                BaseTypeBool result = (BaseTypeBool) rspContent;
+                if (result.basetype == bMute){ // 设置成功
+                    reportSuccess(null, resultListener);
+                }else{
+                    if (hasChange) {
+                        doSetSilence(!bMute); // 设置失败，回滚
+                    }
+                    reportFailed(-1, resultListener);
+                }
             }
-            pcWrapper.setLocalAudioEnable(!bMute);
-            config.isMuted = bMute;
-        }
-        req(Msg.SetMute, null, null, bMute);
-        return true;
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                if (hasChange) {
+                    doSetSilence(!bMute); // 设置失败，回滚
+                }
+            }
+        }, resultListener, bMute);
     }
 
 
@@ -930,6 +983,26 @@ public class WebRtcManager extends Caster<Msg>{
                 });
 
 //                bindStream(); // 码流离开不需要重新订阅，业务组件会处理
+                break;
+
+            case SelfSilenceStateChanged:
+                BaseTypeBool cont = (BaseTypeBool) ntfContent;
+                if (cont.basetype != config.isSilenced && doSetSilence(cont.basetype)) {
+                    sessionEventListener.onSelfSilenceStateChanged(config.isSilenced);
+                }
+                break;
+            case SelfMuteStateChanged:
+                cont = (BaseTypeBool) ntfContent;
+                if (cont.basetype != config.isMuted && doSetMute(cont.basetype)) {
+                    sessionEventListener.onSelfSilenceStateChanged(config.isMuted);
+                }
+                break;
+            case OtherConfereeStateChanged:
+                TMtEntityStatus state = (TMtEntityStatus) ntfContent;
+                Conferee conferee = findConferee(state.dwMcuId, state.dwTerId, Conferee.ConfereeType.Normal);
+                if (conferee != null){
+                    sessionEventListener.onOtherConfereeAudioStateChanged(conferee, state.tStatus.bIsMute, state.tStatus.bIsQuiet);
+                }
                 break;
         }
 
@@ -1459,6 +1532,29 @@ public class WebRtcManager extends Caster<Msg>{
          * 收到此通知后请调用{@link #verifyConfPassword(String, IResultListener)}传入密码验证
          * */
         void confPasswordNeeded();
+
+        /**
+         * 己端哑音状态被改变
+         * NOTE: 主动哑音{@link #setMute(boolean, IResultListener)}不会触发该事件
+         */
+        default void onSelfMuteStateChanged(boolean muted) {
+
+        }
+
+        /**
+         * 己端静音状态被改变
+         * NOTE: 主动静音{@link #setSilence(boolean, IResultListener)}不会触发该事件
+         */
+        default void onSelfSilenceStateChanged(boolean silenced) {
+
+        }
+
+        /**
+         * 其他与会方声音状态变更
+         */
+        default void onOtherConfereeAudioStateChanged(Conferee conferee, boolean muted, boolean silenced) {
+
+        }
     }
     private SessionEventListener sessionEventListener;
 
@@ -3084,10 +3180,8 @@ public class WebRtcManager extends Caster<Msg>{
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper) return;
                 KLog.p(KLog.ERROR, "create sdp failed, error info:%s. %s", error, pcWrapper);
-                if (pcWrapper.isUnpublishing) {
-                    pcWrapper.isUnpublishing = false;
-                    recreatePeerConnection(pcWrapper.connType);
-                }
+                // 业务要求失败就重新创建peerconnection
+                recreatePeerConnection(pcWrapper.connType);
             });
         }
 
@@ -3097,10 +3191,8 @@ public class WebRtcManager extends Caster<Msg>{
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper) return;
                 KLog.p(KLog.ERROR, "set sdp failed, error info:%s. %s", error, pcWrapper);
-                if (pcWrapper.isUnpublishing) {
-                    pcWrapper.isUnpublishing = false;
-                    recreatePeerConnection(pcWrapper.connType);
-                }
+                // 业务要求失败就重新创建peerconnection
+                recreatePeerConnection(pcWrapper.connType);
             });
         }
 

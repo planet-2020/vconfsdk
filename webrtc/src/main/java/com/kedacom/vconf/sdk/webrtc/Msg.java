@@ -5,16 +5,24 @@ import com.kedacom.vconf.sdk.annotation.Module;
 import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
+import com.kedacom.vconf.sdk.common.bean.transfer.TMtEntityStatus;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
+import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtId;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TQueryConfInfoResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
 
 /**
  * Created by Sissi on 2019/10/24
@@ -298,7 +306,8 @@ enum Msg {
      */
     @Request(name = "AudQuiteLocalSpeakerCmd",
             owner = Atlas.AudioCtrl,
-            paras = boolean.class)
+            paras = boolean.class,
+            rspSeq = "SelfSilenceStateChanged")
     SetSilence,
 
 
@@ -307,7 +316,8 @@ enum Msg {
      */
     @Request(name = "AudMuteLocalMicCmd",
             owner = Atlas.AudioCtrl,
-            paras = boolean.class)
+            paras = boolean.class,
+            rspSeq = "SelfMuteStateChanged")
     SetMute,
 
 
@@ -318,7 +328,6 @@ enum Msg {
     @Request(name = "VideoAssStreamCmd",
             paras = boolean.class,
             owner = Atlas.MonitorCtrl,
-            timeout = 30,
             rspSeq = "ToggleScreenShareRsp"
     )
     ToggleScreenShare,
@@ -378,6 +387,34 @@ enum Msg {
             owner = Atlas.ConfCtrl
     )
     CloseMyMainVideoChannel,
+
+    /**
+     * 己端静音状态变更
+     * */
+    @Notification(name = "CodecQuietNtf",
+            clz = BaseTypeBool.class // true已静音
+    )
+    @Response(name = "CodecQuietNtf",
+            clz = BaseTypeBool.class // true已静音
+    )
+    SelfSilenceStateChanged,
+
+    /**
+     * 己端哑音状态变更
+     * */
+    @Notification(name = "CodecMuteNtf",
+            clz = BaseTypeBool.class // true已哑音
+    )
+    @Response(name = "CodecMuteNtf",
+            clz = BaseTypeBool.class // true已哑音
+    )
+    SelfMuteStateChanged,
+
+    /**
+     * 其他与会方状态变更
+     * */
+    @Notification(name = "GetTerStatusNtf", clz = TMtEntityStatus.class)
+    OtherConfereeStateChanged,
 
 
     END;
