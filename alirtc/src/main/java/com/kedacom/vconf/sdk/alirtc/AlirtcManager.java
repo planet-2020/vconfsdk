@@ -229,13 +229,14 @@ public class AlirtcManager extends Caster<Msg> {
     }
 
 
-    /**
-     * 退出会议
-     * */
-    public void quitConf(String confNum, IResultListener resultListener){
-        // TODO 调用阿里接口退出会议
-        req(Msg.ReportConfState, null, null, confNum, false); // FIXME 等退出阿里会议成功后再上报
-    }
+//    /**
+//     * 退出会议
+//     * */
+//    // ali ui sdk将退会封在了sdk内部自己做了，所以该接口用不着了
+//    public void quitConf(String confNum, IResultListener resultListener){
+//        // TODO 调用阿里接口退出会议
+//        req(Msg.ReportConfState, null, null, confNum, false);
+//    }
 
 
     private void initAliRtcSDK() {
