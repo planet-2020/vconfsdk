@@ -59,9 +59,6 @@ enum Msg {
                     "LoginRsp"})
     Login,
 
-    /**
-     * 登录数据协作服务器响应
-     */
     @Response(clz = TDCSResult.class,
             name = "DcsLoginSrv_Rsp")
     LoginRsp,
@@ -76,9 +73,6 @@ enum Msg {
             })
     Logout,
 
-    /**
-     * 注销数据协作服务器响应
-     */
     @Response(clz = TDCSResult.class,
             name = "DcsLogout_Rsp")
     LogoutRsp,
@@ -95,9 +89,6 @@ enum Msg {
     )
     QueryAddr,
 
-    /**
-     * 查询数据协作地址响应
-     */
     @Response(clz = DcsGetConfAddrRsp.class,
             name = "DcsGetConfAddr_Rsp")
     QueryAddrRsp,
@@ -105,9 +96,8 @@ enum Msg {
     /**
      * 数据协作链路状态变化
      */
+    @Notification
     @Response(clz = TDCSConnectResult.class,
-            name = "DcsConfResult_Ntf")
-    @Notification(clz = TDCSConnectResult.class,
             name = "DcsConfResult_Ntf")
     LinkStateChanged,
 
@@ -126,9 +116,8 @@ enum Msg {
     /**
      * 数据协作已开启
      */
+    @Notification
     @Response(clz = TDCSCreateConfResult.class,
-            name = "DcsCreateConf_Rsp")
-    @Notification(clz = TDCSCreateConfResult.class,
             name = "DcsCreateConf_Rsp")
     CollaborateStarted,
 
@@ -147,9 +136,6 @@ enum Msg {
                     "LinkStateChanged"})
     QuitCollaborate,
 
-    /**
-     * 退出数据协作响应
-     */
     @Response(clz = TDCSResult.class,
             name = "DcsQuitConf_Rsp")
     QuitCollaborateRsp,
@@ -165,9 +151,6 @@ enum Msg {
             rspSeq2 = {"FinishCollaborateRsp", "CollaborateFinished", "LinkStateChanged"})
     FinishCollaborate,
 
-    /**
-     * 结束数据协作响应
-     */
     @Response(clz = TDCSResult.class,
             name = "DcsReleaseConf_Rsp")
     FinishCollaborateRsp,
@@ -175,9 +158,8 @@ enum Msg {
     /**
      * 数据协作已结束
      */
+    @Notification
     @Response(clz = BaseTypeString.class,
-            name = "DcsReleaseConf_Ntf")
-    @Notification(clz = BaseTypeString.class,
             name = "DcsReleaseConf_Ntf")
     CollaborateFinished,
 
@@ -189,9 +171,6 @@ enum Msg {
             rspSeq = "QueryConfigRsp")
     QueryConfig,
 
-    /**
-     * 查询数据协作配置响应
-     */
     @Response(clz = TDCSCreateConfResult.class,
             name = "DcsGetConfInfo_Rsp")
     QueryConfigRsp,
@@ -206,9 +185,6 @@ enum Msg {
             rspSeq = {"ModifyConfigRsp", "ConfigModified"})
     ModifyConfig,
 
-    /**
-     * 修改数据协作配置响应
-     */
     @Response(clz = DcsSetConfInfoRsp.class,
             name = "DcsSetConfInfo_Rsp")
     ModifyConfigRsp,
@@ -216,9 +192,8 @@ enum Msg {
     /**
      * 数据协作配置已变更，如协作模式被修改。
      */
+    @Notification
     @Response(clz = TDCSConfInfo.class,
-            name = "DcsUpdateConfInfo_Ntf")
-    @Notification(clz = TDCSConfInfo.class,
             name = "DcsUpdateConfInfo_Ntf")
     ConfigModified,
 
@@ -236,9 +211,6 @@ enum Msg {
                     "OperatorAdded"})
     AddOperator,
 
-    /**
-     * 添加协作方响应
-     */
     @Response(clz = TDCSResult.class,
             name = "DcsAddOperator_Rsp")
     AddOperatorRsp,
@@ -254,9 +226,6 @@ enum Msg {
                     "OperatorDeleted"})
     DelOperator,
 
-    /**
-     * 删除协作方响应
-     */
     @Response(clz = TDCSResult.class,
             name = "DcsDelOperator_Rsp")
     DelOperatorRsp,
@@ -273,9 +242,6 @@ enum Msg {
             timeout = 30)
     ApplyOperator,
 
-    /**
-     * 申请协作方响应
-     */
     @Response(clz = TDCSResult.class,
             name = "DcsApplyOper_Rsp")
     ApplyOperatorRsp,
@@ -290,15 +256,12 @@ enum Msg {
             rspSeq = {"CancelOperatorRsp"})
     CancelOperator, // TODO 待调
 
-    /**
-     * 取消作为协作方响应
-     */
     @Response(clz = TDCSResult.class,
             name = "DcsCancelOper_Rsp")
     CancelOperatorRsp,
 
     /**
-     * （主席）拒绝成员申请作为协作方的请求
+     * （主席）拒绝协作权申请
      */
     @Request(name = "DCSRejectOperatorCmd",
             owner = Atlas.DcsCtrl,
@@ -307,33 +270,31 @@ enum Msg {
     RejectApplyOperator,
 
     /**
-     * 用户加入数据协作通知
+     * 有用户加入数据协作
      */
     @Notification(clz = TDCSUserInfo.class,
             name = "DcsUserJoinConf_Ntf")
     UserJoined,
 
     /**
-     * 成员（向主席）申请协作权通知
+     * 协作权申请通知
      */
     @Notification(clz = TDCSUserInfo.class,
             name = "DcsUserApplyOper_Ntf")
     ApplyOperatorNtf,
 
     /**
-     * 协作方被添加通知
+     * 协作方被添加
      */
+    @Notification
     @Response(clz = TDCSUserInfos.class,
-            name = "DcsAddOperator_Ntf")
-    @Notification(clz = TDCSUserInfos.class,
             name = "DcsAddOperator_Ntf")
     OperatorAdded,
     /**
-     * 协作方被删除通知
+     * 协作方被删除
      */
+    @Notification
     @Response(clz = TDCSUserInfos.class,
-            name = "DcsDelOperator_Ntf")
-    @Notification(clz = TDCSUserInfos.class,
             name = "DcsDelOperator_Ntf")
     OperatorDeleted,
     /**
@@ -354,9 +315,6 @@ enum Msg {
             rspSeq = {"QueryAllMembersRsp"})
     QueryAllMembers,
 
-    /**
-     * 获取数据协作会议中的所有成员响应
-     */
     @Response(clz = DcsGetUserListRsp.class,
             name = "DcsGetUserList_Rsp")
     QueryAllMembersRsp,
@@ -375,9 +333,6 @@ enum Msg {
                     "BoardCreated"})
     NewBoard,
 
-    /**
-     * 新建画板响应
-     */
     @Response(clz = DcsNewWhiteBoardRsp.class,
             name = "DcsNewWhiteBoard_Rsp")
     NewBoardRsp,
@@ -394,9 +349,6 @@ enum Msg {
                     "BoardDeleted"})
     DelBoard,
 
-    /**
-     * 删除画板响应
-     */
     @Response(clz = TDCSBoardResult.class,
             name = "DcsDelWhiteBoard_Rsp")
     DelBoardRsp,
@@ -412,9 +364,6 @@ enum Msg {
                     "AllBoardDeleted"})
     DelAllBoards,
 
-    /**
-     * 删除所有画板响应
-     */
     @Response(clz = TDCSBoardResult.class,
             name = "DcsDelAllWhiteBoard_Rsp")
     DelAllBoardsRsp,
@@ -430,9 +379,6 @@ enum Msg {
                     "BoardSwitched"})
     SwitchBoard,
 
-    /**
-     * 切换画板响应
-     */
     @Response(clz = DcsSwitchRsp.class,
             name = "DcsSwitch_Rsp")
     SwitchBoardRsp,
@@ -447,9 +393,6 @@ enum Msg {
             rspSeq = {"QueryCurBoardRsp"})
     QueryCurBoard,
 
-    /**
-     * 查询当前画板响应
-     */
     @Response(clz = DcsGetWhiteBoardRsp.class,
             name = "DcsGetCurWhiteBoard_Rsp")
     QueryCurBoardRsp,
@@ -466,9 +409,6 @@ enum Msg {
             rspSeq = {"QueryBoardRsp"})
     QueryBoard,
 
-    /**
-     * 查询画板响应
-     */
     @Response(clz = DcsGetWhiteBoardRsp.class,
             name = "DcsGetWhiteBoard_Rsp")
     QueryBoardRsp,
@@ -483,9 +423,6 @@ enum Msg {
             rspSeq = {"QueryAllBoardsRsp"})
     QueryAllBoards,
 
-    /**
-     * 查询所有白板响应
-     */
     @Response(clz = DcsGetAllWhiteBoardRsp.class,
             name = "DcsGetAllWhiteBoard_Rsp")
     QueryAllBoardsRsp,
@@ -501,41 +438,38 @@ enum Msg {
 
 
     /**
-     * 当前画板通知。
+     * 当前画板
      * 该通知仅用于加入数据协作时通知入会方当前画板信息，其他场景下不会上报。
      */
-    @Response(clz = TDCSBoardInfo.class,
-            name = "DcsCurrentWhiteBoard_Ntf")
-    @Notification(clz = TDCSBoardInfo.class,
-            name = "DcsCurrentWhiteBoard_Ntf")
+    @Notification(clz = TDCSBoardInfo.class, name = "DcsCurrentWhiteBoard_Ntf")
     CurrentBoardNtf,
 
     /**
      * 画板已创建
      */
+    @Notification
     @Response(name = "DcsNewWhiteBoard_Ntf", clz = TDCSBoardInfo.class)
-    @Notification(name = "DcsNewWhiteBoard_Ntf", clz = TDCSBoardInfo.class)
     BoardCreated,
 
     /**
      * 画板已切换
      */
+    @Notification
     @Response(name = "DcsSwitch_Ntf", clz = TDCSBoardInfo.class)
-    @Notification(name = "DcsSwitch_Ntf", clz = TDCSBoardInfo.class)
     BoardSwitched,
 
     /**
      * 画板已删除
      */
+    @Notification
     @Response(name = "DcsDelWhiteBoard_Ntf", clz = TDCSDelWhiteBoardInfo.class)
-    @Notification(name = "DcsDelWhiteBoard_Ntf", clz = TDCSDelWhiteBoardInfo.class)
     BoardDeleted,
 
     /**
      * 所有画板已删除
      */
+    @Notification
     @Response(name = "DcsDelAllWhiteBoard_Ntf", clz = TDCSDelWhiteBoardInfo.class)
-    @Notification(name = "DcsDelAllWhiteBoard_Ntf", clz = TDCSDelWhiteBoardInfo.class)
     AllBoardDeleted,
 
 
@@ -713,9 +647,6 @@ enum Msg {
             timeout = 15)
     Upload,
 
-    /**
-     * 上传文件响应
-     */
     @Response(clz = TDCSFileLoadResult.class,
             name = "DcsUploadFile_Ntf")
     UploadRsp,
@@ -731,9 +662,6 @@ enum Msg {
             rspSeq = {"QueryPicUploadUrlRsp"})
     QueryPicUploadUrl,
 
-    /**
-     * 获取图片上传地址响应
-     */
     @Response(clz = DcsUploadImageRsp.class,
             name = "DcsUploadImage_Rsp")
     QueryPicUploadUrlRsp,
@@ -751,9 +679,6 @@ enum Msg {
             timeout = 15)
     Download,
 
-    /**
-     * 下载响应
-     */
     @Response(clz = TDCSFileLoadResult.class,
             name = "DcsDownloadFile_Rsp")
     DownloadRsp,
@@ -768,19 +693,15 @@ enum Msg {
             rspSeq = {"QueryPicUrlRsp"})
     QueryPicUrl,
 
-    /**
-     * 获取下载图片地址响应
-     */
     @Response(clz = DcsDownloadImageRsp.class,
             name = "DcsDownloadImage_Rsp")
     QueryPicUrlRsp,
 
     /**
-     * 图片可下载通知
+     * 图片可下载
      */
+    @Notification
     @Response(clz = TDCSImageUrl.class,
-            name = "DcsDownloadImage_Ntf")
-    @Notification(clz = TDCSImageUrl.class,
             name = "DcsDownloadImage_Ntf")
     PicDownloadable,
 
@@ -797,118 +718,105 @@ enum Msg {
     /**
      * 直线已绘制
      */
+    @Notification
     @Response(clz = DcsOperLineOperInfoNtf.class,
-            name = "DcsOperLineOperInfo_Ntf")
-    @Notification(clz = DcsOperLineOperInfoNtf.class,
             name = "DcsOperLineOperInfo_Ntf")
     LineDrawn,
 
     /**
      * 圆/椭圆已绘制
      */
+    @Notification
     @Response(clz = DcsOperCircleOperInfoNtf.class,
-            name = "DcsOperCircleOperInfo_Ntf")
-    @Notification(clz = DcsOperCircleOperInfoNtf.class,
             name = "DcsOperCircleOperInfo_Ntf")
     OvalDrawn,
 
     /**
      * 矩形已绘制
      */
+    @Notification
     @Response(clz = DcsOperRectangleOperInfoNtf.class,
-            name = "DcsOperRectangleOperInfo_Ntf")
-    @Notification(clz = DcsOperRectangleOperInfoNtf.class,
             name = "DcsOperRectangleOperInfo_Ntf")
     RectDrawn,
 
     /**
      * 路径已绘制
      */
+    @Notification
     @Response(clz = DcsOperPencilOperInfoNtf.class,
-            name = "DcsOperPencilOperInfo_Ntf")
-    @Notification(clz = DcsOperPencilOperInfoNtf.class,
             name = "DcsOperPencilOperInfo_Ntf")
     PathDrawn,
 
 
     /**
-     * 图片插入通知
+     * 图片已插入
      */
+    @Notification
     @Response(clz = DcsOperInsertPicNtf.class,
-            name = "DcsOperInsertPic_Ntf")
-    @Notification(clz = DcsOperInsertPicNtf.class,
             name = "DcsOperInsertPic_Ntf")
     PicInserted,
 
     /**
-     * 图片拖动通知
+     * 图片已拖动
      */
+    @Notification
     @Response(clz = DcsOperPitchPicDragNtf.class,
-            name = "DcsOperPitchPicDrag_Ntf")
-    @Notification(clz = DcsOperPitchPicDragNtf.class,
             name = "DcsOperPitchPicDrag_Ntf")
     PicDragged,
 
     /**
-     * 图片删除通知
+     * 图片已删除
      */
+    @Notification
     @Response(clz = DcsOperPitchPicDelNtf.class,
-            name = "DcsOperPitchPicDel_Ntf")
-    @Notification(clz = DcsOperPitchPicDelNtf.class,
             name = "DcsOperPitchPicDel_Ntf")
     PicDeleted,
 
     /**
-     * 黑板擦擦除通知
+     * 已黑板擦擦除
      */
+    @Notification
     @Response(clz = DcsOperReginEraseNtf.class,
-            name = "DcsOperReginErase_Ntf")
-    @Notification(clz = DcsOperReginEraseNtf.class,
             name = "DcsOperReginErase_Ntf")
     Erased,
 
     /**
-     * 矩形擦除通知
+     * 已矩形擦除
      */
+    @Notification
     @Response(clz = DcsOperEraseOperInfoNtf.class,
-            name = "DcsOperEraseOperInfo_Ntf")
-    @Notification(clz = DcsOperEraseOperInfoNtf.class,
             name = "DcsOperEraseOperInfo_Ntf")
     RectErased,
 
     /**
-     * 全屏matrix操作通知（缩放、移动、旋转）
+     * 已全屏matrix（缩放、移动、旋转）
      */
+    @Notification
     @Response(clz = DcsOperFullScreenNtf.class,
-            name = "DcsOperFullScreen_Ntf")
-    @Notification(clz = DcsOperFullScreenNtf.class,
             name = "DcsOperFullScreen_Ntf")
     Matrixed,
 
     /**
-     * 撤销操作通知
+     * 已撤销
      */
+    @Notification
     @Response(clz = DcsOperUndoNtf.class,
-            name = "DcsOperUndo_Ntf")
-    @Notification(clz = DcsOperUndoNtf.class,
             name = "DcsOperUndo_Ntf")
     Undone,
 
     /**
-     * 恢复（恢复被撤销的操作）通知
+     * 已恢复（被撤销的操作）
      */
+    @Notification
     @Response(clz = DcsOperRedoNtf.class,
-            name = "DcsOperRedo_Ntf")
-    @Notification(clz = DcsOperRedoNtf.class,
             name = "DcsOperRedo_Ntf")
     Redone,
 
     /**
-     * 清屏通知
+     * 已清屏
      */
+    @Notification
     @Response(clz = TDCSOperContent.class,
-            name = "DcsOperClearScreen_Ntf")
-    @Notification(clz = TDCSOperContent.class,
             name = "DcsOperClearScreen_Ntf")
     ScreenCleared;
 
