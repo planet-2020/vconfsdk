@@ -13,7 +13,9 @@ import com.google.common.io.Files;
 import com.google.common.net.InetAddresses;
 import com.google.common.primitives.Ints;
 import com.kedacom.vconf.sdk.amulet.Caster;
+import com.kedacom.vconf.sdk.amulet.ILifecycleOwner;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
+import com.kedacom.vconf.sdk.amulet.ListenerLifecycleObserver;
 import com.kedacom.vconf.sdk.common.type.BaseTypeString;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
@@ -56,8 +58,6 @@ import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSvrAddr;
 import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSSwitchReq;
 import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSUserInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.transfer.TDCSUserInfos;
-import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
-import com.kedacom.vconf.sdk.utils.lifecycle.ListenerLifecycleObserver;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.io.File;
