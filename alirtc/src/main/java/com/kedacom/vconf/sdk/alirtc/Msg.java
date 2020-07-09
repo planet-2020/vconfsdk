@@ -54,7 +54,7 @@ enum Msg {
     /**
      * 登录状态变更
      */
-    @Notification(name = "RegResultNtf", clz = TRegResultNtf.class)
+    @Notification
     @Response(name = "RegResultNtf", clz = TRegResultNtf.class)
     LoginStateChanged,
 

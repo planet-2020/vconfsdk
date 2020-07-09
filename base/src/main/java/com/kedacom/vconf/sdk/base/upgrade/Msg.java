@@ -98,8 +98,8 @@ enum Msg {
      * 升级服务器已断开
      * 例如升级过程中CancelUpgrade会收到该消息（非升级状态下CancelUpgrade则不会收到该消息）
      * */
+    @Notification
     @Response(name = "UpgradeDisconnectServerNtf", clz = Void.class)
-    @Notification(name = "UpgradeDisconnectServerNtf", clz = Void.class)
     ServerDisconnected,
 
 
