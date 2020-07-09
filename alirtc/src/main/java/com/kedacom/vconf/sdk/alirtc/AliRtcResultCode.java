@@ -23,7 +23,7 @@ public final class AliRtcResultCode {
 
     /**
      * 错误码映射关系：
-     * 消息（请求/通知）    :   原始错误码   :   本地错误码
+     * 消息    :   原始错误码   :   本地错误码
      * */
     private static Table<Msg, Object, Integer> resultCodes = HashBasedTable.create();
 
