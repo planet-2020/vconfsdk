@@ -78,7 +78,7 @@ enum Msg {
     /**
      * 登录状态变更
      */
-    @Notification(name = "RegResultNtf", clz = TRegResultNtf.class)
+    @Notification
     @Response(name = "RegResultNtf", clz = TRegResultNtf.class)
     LoginStateChanged,
 
@@ -116,18 +116,16 @@ enum Msg {
     /**
      * 多方会议已结束
      * */
+    @Notification
     @Response(clz = BaseTypeInt.class, // EmMtCallDisReason
-            name = "MulConfEndedNtf")
-    @Notification(clz = BaseTypeInt.class, // EmMtCallDisReason
             name = "MulConfEndedNtf")
     MultipartyConfEnded,
 
     /**
      * 会议已取消
      * */
+    @Notification
     @Response(clz = BaseTypeInt.class, // EmMtCallDisReason
-            name = "ConfCanceledNtf")
-    @Notification(clz = BaseTypeInt.class, // EmMtCallDisReason
             name = "ConfCanceledNtf")
     ConfCanceled,
 
@@ -363,8 +361,8 @@ enum Msg {
     /**
      * 此会议需要密码
      * */
+    @Notification
     @Response(clz = Void.class, name = "McReqTerPwdNtf")
-    @Notification(clz = Void.class, name = "McReqTerPwdNtf")
     ConfPasswordNeeded,
 
     /**
@@ -391,9 +389,7 @@ enum Msg {
     /**
      * 己端静音状态变更
      * */
-    @Notification(name = "CodecQuietNtf",
-            clz = BaseTypeBool.class // true已静音
-    )
+    @Notification
     @Response(name = "CodecQuietNtf",
             clz = BaseTypeBool.class // true已静音
     )
@@ -402,9 +398,7 @@ enum Msg {
     /**
      * 己端哑音状态变更
      * */
-    @Notification(name = "CodecMuteNtf",
-            clz = BaseTypeBool.class // true已哑音
-    )
+    @Notification
     @Response(name = "CodecMuteNtf",
             clz = BaseTypeBool.class // true已哑音
     )
