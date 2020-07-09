@@ -84,7 +84,7 @@ public class AlirtcManager extends Caster<Msg> {
                     isConsumed[0] = false;
                     return;
                 }
-                loginState = AliRtcResultCode.trans(Msg.LoginStateChanged, result.AssParam.basetype);
+                loginState = AliRtcResultCode.trans(rsp, result.AssParam.basetype);
                 if (loginState == AliRtcResultCode.LoginSuccess) {
                     reportSuccess(null, resultListener);
                 } else {
@@ -114,7 +114,7 @@ public class AlirtcManager extends Caster<Msg> {
                     isConsumed[0] = false;
                     return;
                 }
-                loginState = AliRtcResultCode.trans(Msg.LoginStateChanged, result.AssParam.basetype);
+                loginState = AliRtcResultCode.trans(rsp, result.AssParam.basetype);
                 if (loginState == AliRtcResultCode.LogoutSuccess) {
                     reportSuccess(null, resultListener);
                 } else {
@@ -221,7 +221,7 @@ public class AlirtcManager extends Caster<Msg> {
                     AliMeetingUIManager.joinMeeting(context, builder.builder());
 
                 }else{
-                    reportFailed(AliRtcResultCode.trans(req, joinConfResult.dwErrorCode), resultListener);
+                    reportFailed(AliRtcResultCode.trans(rsp, joinConfResult.dwErrorCode), resultListener);
                 }
             }
         }, resultListener, new TJoinConfPara(confNum, password));
@@ -285,7 +285,7 @@ public class AlirtcManager extends Caster<Msg> {
             case LoginStateChanged:
                 TRegResultNtf regResultNtf = (TRegResultNtf) ntfContent;
                 if(regResultNtf.MainParam.basetype == 6){ // alirtc服务器
-                    int state = AliRtcResultCode.trans(Msg.LoginStateChanged, regResultNtf.AssParam.basetype);
+                    int state = AliRtcResultCode.trans(ntf, regResultNtf.AssParam.basetype);
                     if (loginState != state){ // 登录状态有变
                         loginState = state;
                         loginStateChangedHandler.removeCallbacksAndMessages(null);
