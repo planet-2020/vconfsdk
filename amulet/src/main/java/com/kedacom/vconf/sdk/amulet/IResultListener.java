@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.amulet;
 
-import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
 
 /**
  * 请求结果监听器。
