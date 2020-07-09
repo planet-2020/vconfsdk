@@ -27,9 +27,31 @@ import android.view.TextureView;
 import android.view.View;
 import android.widget.FrameLayout;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.google.common.collect.Sets;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
-import com.kedacom.vconf.sdk.datacollaborate.bean.*;
+import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.EOpType;
+import com.kedacom.vconf.sdk.datacollaborate.bean.IBoundary;
+import com.kedacom.vconf.sdk.datacollaborate.bean.IRepealable;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpClearScreen;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDeletePic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDragPic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDraw;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawLine;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawOval;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawPath;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpDrawRect;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpErase;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpInsertPic;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpMatrix;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpRectErase;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpRedo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUndo;
+import com.kedacom.vconf.sdk.datacollaborate.bean.OpUpdatePic;
 import com.kedacom.vconf.sdk.utils.bitmap.BitmapHelper;
 import com.kedacom.vconf.sdk.utils.collection.CompatibleConcurrentLinkedDeque;
 import com.kedacom.vconf.sdk.utils.log.KLog;
@@ -46,10 +68,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-import static com.kedacom.vconf.sdk.datacollaborate.IPaintBoard.Config.Tool.*;
+import static com.kedacom.vconf.sdk.datacollaborate.IPaintBoard.Config.Tool.ERASER;
+import static com.kedacom.vconf.sdk.datacollaborate.IPaintBoard.Config.Tool.RECT_ERASER;
 
 @SuppressWarnings("SingleStatementInBlock")
 class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
@@ -297,10 +317,11 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                         SnapshotTask task = snapshotTasks.peekFirst();
                         KLog.p("start processing snapshotTask %s", task);
                         Runnable snapshotRunnable = this;
+                        DefaultPaintBoard board = task.board;
 
-                        boolean bLoaded = getWidth()>0 && getHeight()>0;
-                        int boardW = bLoaded ? getWidth() : boardWidth;
-                        int boardH = bLoaded ? getHeight() : boardHeight;
+                        boolean bLoaded = board.getWidth()>0 && board.getHeight()>0;
+                        int boardW = bLoaded ? board.getWidth() : boardWidth;
+                        int boardH = bLoaded ? board.getHeight() : boardHeight;
                         int outputW = (task.outputWidth <=0 || boardW< task.outputWidth) ? boardW : task.outputWidth;
                         int outputH = (task.outputHeight <=0 || boardH< task.outputHeight) ? boardH : task.outputHeight;
 
@@ -308,17 +329,16 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
                         Canvas canvas = new Canvas(bt);
                         canvas.scale(outputW/(float)boardW, outputH/(float)boardH);
 
-                        snapshotBackground(canvas);
+                        board.snapshotBackground(canvas);
 
                         // 将画板中所有图元绘制在bitmap上可能比较耗时，我们在非主线程处理
                         assHandler.post(() -> {
-                            snapshotWholeScene(canvas);
+                            board.snapshotWholeScene(canvas);
                             // 绘制结果通过ui线程上报用户
                             // XXX：此时resultListener可能已被用户销毁，但我们没有提供途径让用户告知。 TODO 考虑使用LifecycleOwner机制
                             handler.post(() -> {
-                                task.resultListener.onResult(bt);
-
                                 KLog.p("finish processing snapshotTask %s", task);
+                                task.resultListener.onResult(bt);
                                 snapshotTasks.pollFirst();
                                 if (!snapshotTasks.isEmpty()){
                                     // 串行处理下一个快照请求
@@ -334,7 +354,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
             }
 
-            SnapshotTask task = new SnapshotTask(outputWidth, outputHeight, resultListener);
+            SnapshotTask task = new SnapshotTask(this, outputWidth, outputHeight, resultListener);
             KLog.p("add snapshotTask %s", task);
             snapshotTasks.offerLast(task);
 
@@ -674,10 +694,12 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
 
     private class SnapshotTask{
+        DefaultPaintBoard board;
         int outputWidth;
         int outputHeight;
         ISnapshotResultListener resultListener;
-        SnapshotTask(int outputWidth, int outputHeight, ISnapshotResultListener resultListener) {
+        SnapshotTask(DefaultPaintBoard board, int outputWidth, int outputHeight, ISnapshotResultListener resultListener) {
+            this.board = board;
             this.outputWidth = outputWidth;
             this.outputHeight = outputHeight;
             this.resultListener = resultListener;
@@ -686,7 +708,8 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
         @Override
         public String toString() {
             return "SnapshotTask{" +
-                    "outputWidth=" + outputWidth +
+                    "boardId='" + board.boardInfo.getId() + '\'' +
+                    ", outputWidth=" + outputWidth +
                     ", outputHeight=" + outputHeight +
                     ", resultListener=" + resultListener +
                     '}';
