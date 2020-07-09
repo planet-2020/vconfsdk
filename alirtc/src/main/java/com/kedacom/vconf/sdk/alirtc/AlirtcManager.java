@@ -24,12 +24,12 @@ import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfPara;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
 import com.kedacom.vconf.sdk.amulet.Caster;
+import com.kedacom.vconf.sdk.amulet.ILifecycleOwner;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.bean.TerminalType;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.type.TNetAddr;
-import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import org.jetbrains.annotations.NotNull;

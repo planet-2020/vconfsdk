@@ -6,12 +6,25 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 
 import com.kedacom.vconf.sdk.amulet.Caster;
+import com.kedacom.vconf.sdk.amulet.ILifecycleOwner;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.base.login.bean.UserDetails;
-import com.kedacom.vconf.sdk.base.login.bean.transfer.*;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.EmServerAddrType;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.EmServerState;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.EmServerType;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.MtXAPSvrCfg;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.MtXAPSvrListCfg;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TApsLoginResult;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TLoginPlatformRsp;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TMTAccountManagerSystem;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TMTApsLoginParam;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TMTUserInfoFromAps;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TMTWeiboLogin;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtSvrState;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtSvrStateList;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TQueryUserDetailsRsp;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
-import com.kedacom.vconf.sdk.utils.lifecycle.ILifecycleOwner;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 
