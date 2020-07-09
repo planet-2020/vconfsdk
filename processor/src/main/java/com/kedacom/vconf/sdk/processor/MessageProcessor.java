@@ -115,6 +115,7 @@ public class MessageProcessor extends AbstractProcessor {
         reqMap.clear();
         rspMap.clear();
         ntfMap.clear();
+        String defaultClz = "com.kedacom.vconf.sdk.annotation.Notification.Default";
 
         List<? extends Element> msgElements = msgDefClass.getEnclosedElements();
         for (Element element : msgElements) {
@@ -124,22 +125,32 @@ public class MessageProcessor extends AbstractProcessor {
             String enumName = element.getSimpleName().toString();
             String msgId = moduleName +"_"+enumName;
             Response response  = element.getAnnotation(Response.class);
+            String rspName = null;
+            String rspClzFullName = null;
             if (null != response) {
-                rspMap.put(msgId, COL_NAME, !response.name().isEmpty() ? response.name() : enumName);
+                rspName = response.name().trim();
+                if (rspName.isEmpty()){
+                    throw new IllegalArgumentException(String.format("@Response.name() of %s cannot be empty!", enumName));
+                }
+                rspMap.put(msgId, COL_NAME, rspName);
 
-                String clzFullName;
                 try {
                     Class clz = response.clz();
-                    clzFullName = clz.getCanonicalName();
+                    rspClzFullName = clz.getCanonicalName();
                 } catch (MirroredTypeException mte) {
-                    clzFullName = parseClassNameFromMirroredTypeException(mte);
+                    rspClzFullName = parseClassNameFromMirroredTypeException(mte);
                 }
-                rspMap.put(msgId, COL_CLZ, clzFullName);
+                rspMap.put(msgId, COL_CLZ, rspClzFullName);
             }
 
             Notification notification  = element.getAnnotation(Notification.class);
             if (null != notification) {
-                ntfMap.put(msgId, COL_NAME, !notification.name().isEmpty() ? notification.name() : enumName);
+                String ntfName = !notification.name().trim().isEmpty() ? notification.name().trim() :
+                        rspName != null ? rspName : ""; // 尝试跟随@Response.name()
+                if (ntfName.isEmpty()){
+                    throw new IllegalArgumentException(String.format("@Notification.name() of %s cannot be empty!", enumName));
+                }
+                ntfMap.put(msgId, COL_NAME, ntfName);
 
                 String clzFullName;
                 try {
@@ -147,6 +158,13 @@ public class MessageProcessor extends AbstractProcessor {
                     clzFullName = clz.getCanonicalName();
                 } catch (MirroredTypeException mte) {
                     clzFullName = parseClassNameFromMirroredTypeException(mte);
+                }
+                if (clzFullName.equals(defaultClz)){
+                    if (rspClzFullName != null) {
+                        clzFullName = rspClzFullName; // 跟随@Response.clz()
+                    }else{
+                        throw new IllegalArgumentException(String.format("@Notification.clz() of %s cannot be empty!", enumName));
+                    }
                 }
                 ntfMap.put(msgId, COL_CLZ, clzFullName);
             }
