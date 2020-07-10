@@ -80,6 +80,14 @@ public class UpgradeManager extends Caster<Msg> {
                 new TMTUpgradeNetParam(addr.dwIP),
                 new TMTUpgradeDeviceInfo(terminalType.getVal(), e164, version, addr.dwIP, "kedacom")
         );
+        /*
+        * 检测升级前先取消。
+        * 对于业务组件那边来说检查更新不是一个独立的瞬时结束的操作，而是和其他操作如下载更新关联在一起的，是一条流水线上的不同环节，
+        * 检查更新对他们来说更准确的语义是“开始升级流程”，所以用户多次检查更新在业务组件看来是多次“开始升级流程”，状态不对，
+        * 所以此处先取消前面可能存在的升级流程，保证此为一个崭新的流程。
+        * */
+        req(Msg.CancelUpgrade, null, null);
+
         req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
@@ -89,11 +97,17 @@ public class UpgradeManager extends Caster<Msg> {
                     if (version.compareToIgnoreCase(upgradePkgInfo.versionNum) < 0) {
                         reportSuccess(upgradePkgInfo, resultListener);
                     }else{
+                        req(Msg.CancelUpgrade, null, null);
                         reportFailed(ALREADY_NEWEST, resultListener);
                     }
                 }else{
                     reportFailed(NO_UPGRADE_PACKAGE, resultListener);
                 }
+            }
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                req(Msg.CancelUpgrade, null, null);
             }
         }, resultListener, checkUpgradePara);
     }
@@ -143,10 +157,10 @@ public class UpgradeManager extends Caster<Msg> {
 
 
     /**
-     * 取消升级
+     * 取消下载升级包
      * @param resultListener onSuccess null
      * */
-    public void cancelUpgrade(IResultListener resultListener){
+    public void cancelDownloadUpgrade(IResultListener resultListener){
         req(Msg.CancelUpgrade, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {

@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '2.3.12-SNAPSHOT'
+version = '3.0.0-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
