@@ -95,48 +95,52 @@ final class SessionFairy implements IFairy.ISessionFairy{
         }
         String methodName = magicBook.reqName(s.reqId);
         boolean hasRsp = null != s.rspSeqs && 0 != s.rspSeqs.length;
+        String sendReqPrompt;
         if (hasRsp) {
             // 启动超时
             Message msg = Message.obtain();
             msg.what = MsgId_Timeout;
             msg.obj = s;
             uiHandler.sendMessageDelayed(msg, s.timeoutVal);
-            uiHandler.post(() -> Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqId, methodName, sb)));
+            sendReqPrompt = String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqId, methodName, sb);
         }else {
-            uiHandler.post(() -> Log.d(TAG, String.format(" -~-> %s(%s) \nparas={%s}", s.reqId, methodName, sb)));
+            sendReqPrompt = String.format(" -~-> %s(%s) \nparas={%s}", s.reqId, methodName, sb);
         }
         s.setState(Session.READY);
 
-        reqHandler.post(() -> {
-            if(!s.transState(Session.READY, Session.SENDING)){
-                return;
-            }
-
-            // 调用native接口
-            String nativeMethodOwner = magicBook.nativeMethodOwner(s.reqId);
-            long nativeCallCostTime = 0;
-            long timestamp = System.currentTimeMillis();
-            if (null != crystalBall) {
-                crystalBall.spell(nativeMethodOwner, methodName, paras, nativeParaClasses);
-            }
-            nativeCallCostTime = System.currentTimeMillis() - timestamp;
-
-            KLog.p(KLog.DEBUG,"native method %s cost time: %s", nativeMethodOwner+"#"+methodName, nativeCallCostTime);
-            if(!s.transState(Session.SENDING, Session.SENT)){
-                return;
-            }
-
-            uiHandler.post(() -> {
-                if(!s.transState(Session.SENT, Session.WAITING)){
+        uiHandler.post(() -> {
+            Log.d(TAG, sendReqPrompt);
+            reqHandler.post(() -> {
+                if(!s.transState(Session.READY, Session.SENDING)){
                     return;
                 }
-                if (!hasRsp){
-                    s.setState(Session.END);
-                    sessions.remove(s);
-                }
-                s.listener.onReqSent(hasRsp, s.reqId, s.reqSn, s.reqPara);
-            });
 
+                // 调用native接口
+                String nativeMethodOwner = magicBook.nativeMethodOwner(s.reqId);
+                long nativeCallCostTime = 0;
+                long timestamp = System.currentTimeMillis();
+                if (null != crystalBall) {
+                    crystalBall.spell(nativeMethodOwner, methodName, paras, nativeParaClasses);
+                }
+                nativeCallCostTime = System.currentTimeMillis() - timestamp;
+
+                KLog.p(KLog.DEBUG,"native method %s cost time: %s", nativeMethodOwner+"#"+methodName, nativeCallCostTime);
+                if(!s.transState(Session.SENDING, Session.SENT)){
+                    return;
+                }
+
+                uiHandler.post(() -> {
+                    if(!s.transState(Session.SENT, Session.WAITING)){
+                        return;
+                    }
+                    if (!hasRsp){
+                        s.setState(Session.END);
+                        sessions.remove(s);
+                    }
+                    s.listener.onReqSent(hasRsp, s.reqId, s.reqSn, s.reqPara);
+                });
+
+            });
         });
 
         return true;
