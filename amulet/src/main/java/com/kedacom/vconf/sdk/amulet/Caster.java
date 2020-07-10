@@ -449,7 +449,10 @@ public abstract class Caster<T extends Enum<T>> implements
         }
         if (!isConsumed[0]){
             // 超时未被消费则此处通知用户超时
-            reportTimeout(resultListener);
+            if (resultListener != null) {
+                resultListener.onArrive(false);
+                resultListener.onTimeout();
+            }
         }
     }
 
