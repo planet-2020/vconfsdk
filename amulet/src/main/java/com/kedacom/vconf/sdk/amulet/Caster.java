@@ -474,10 +474,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * 上报用户请求进度
      * */
     protected void reportProgress(Object progress, IResultListener listener){
-        if (null == listener || !containsRspListener(listener)){
-            return;
-        }
-        listener.onProgress(progress);
+        reportProgress(progress, listener, false);
     }
 
 
@@ -485,34 +482,59 @@ public abstract class Caster<T extends Enum<T>> implements
      * 上报用户请求成功
      * */
     protected void reportSuccess(Object result, IResultListener listener){
-        if (null == listener || !containsRspListener(listener)){
-            return;
-        }
-        listener.onArrive(true);
-        listener.onSuccess(result);
+        reportSuccess(result, listener, false);
     }
 
     /**
      * 上报用户请求失败
      * */
     protected void reportFailed(int errorCode, IResultListener listener){
-        if (null == listener || !containsRspListener(listener)){
-            return;
-        }
-        listener.onArrive(false);
-        listener.onFailed(errorCode);
+        reportFailed(errorCode, listener, false);
     }
 
     /**
      * 上报用户请求超时
      * */
     protected void reportTimeout(IResultListener listener){
-        if (null == listener || !containsRspListener(listener)){
+        reportTimeout(listener, false);
+    }
+
+
+    /**
+     * @param onlyIfListenerExistInSession 仅当listener仍存在于会话中时才上报。
+     *                                     listener可能在会话过程中被销毁了详情可参考{@link #req(Enum, SessionProcessor, IResultListener, Object...)}
+     * */
+    protected void reportProgress(Object progress, IResultListener listener, boolean onlyIfListenerExistInSession){
+        if (null == listener || (onlyIfListenerExistInSession && !containsRspListener(listener)) ){
+            return;
+        }
+        listener.onProgress(progress);
+    }
+
+    protected void reportSuccess(Object result, IResultListener listener, boolean onlyIfListenerExistInSession){
+        if (null == listener || (onlyIfListenerExistInSession && !containsRspListener(listener)) ){
+            return;
+        }
+        listener.onArrive(true);
+        listener.onSuccess(result);
+    }
+
+    protected void reportFailed(int errorCode, IResultListener listener, boolean onlyIfListenerExistInSession){
+        if (null == listener || (onlyIfListenerExistInSession && !containsRspListener(listener)) ){
+            return;
+        }
+        listener.onArrive(false);
+        listener.onFailed(errorCode);
+    }
+
+    protected void reportTimeout(IResultListener listener, boolean onlyIfListenerExistInSession){
+        if (null == listener || (onlyIfListenerExistInSession && !containsRspListener(listener)) ){
             return;
         }
         listener.onArrive(false);
         listener.onTimeout();
     }
+
 
 
     /**
