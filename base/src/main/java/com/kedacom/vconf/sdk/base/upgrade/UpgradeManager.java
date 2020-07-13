@@ -168,7 +168,7 @@ public class UpgradeManager extends Caster<Msg> {
                 boolean got = false;
                 for (TMtSvrState state : states){
                     if (EmServerType.emSUS == state.emSvrType
-                            && EmServerState.emSrvIdle == state.emSvrState){
+                            && (EmServerState.emSrvIdle == state.emSvrState || EmServerState.emSrvDisconnected == state.emSvrState)){
                         got = true;
                         break;
                     }
