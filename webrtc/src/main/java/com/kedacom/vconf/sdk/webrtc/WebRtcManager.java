@@ -24,6 +24,38 @@ import com.annimon.stream.Stream;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Sets;
+import com.kedacom.vconf.sdk.amulet.Caster;
+import com.kedacom.vconf.sdk.amulet.IResultListener;
+import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
+import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
+import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
+import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
+import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
+import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.utils.log.KLog;
+import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
+import com.kedacom.vconf.sdk.webrtc.CommonDef.ConnType;
+import com.kedacom.vconf.sdk.webrtc.CommonDef.MediaType;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfInvitationInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
+import com.kedacom.vconf.sdk.webrtc.bean.CreateConfResult;
+import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtId;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TQueryConfInfoResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRegState;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayItem;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
 
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
@@ -75,24 +107,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import com.kedacom.vconf.sdk.webrtc.bean.*;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
-import com.kedacom.vconf.sdk.webrtc.CommonDef.*;
-import com.kedacom.vconf.sdk.amulet.Caster;
-import com.kedacom.vconf.sdk.amulet.IResultListener;
-import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
-import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
-import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
-import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
-import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
-import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
-import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
-import com.kedacom.vconf.sdk.utils.log.KLog;
-import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
 
 
 @SuppressWarnings({"unused", "WeakerAccess"})
@@ -3075,10 +3089,8 @@ public class WebRtcManager extends Caster<Msg>{
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper) return;
                 KLog.p(KLog.ERROR, "create sdp failed, error info:%s. %s", error, pcWrapper);
-                if (pcWrapper.isUnpublishing) {
-                    pcWrapper.isUnpublishing = false;
-                    recreatePeerConnection(pcWrapper.connType);
-                }
+                // 失败重建PeerConnection，业务组件要求
+                recreatePeerConnection(pcWrapper.connType);
             });
         }
 
@@ -3088,10 +3100,8 @@ public class WebRtcManager extends Caster<Msg>{
                 PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
                 if (null == pcWrapper) return;
                 KLog.p(KLog.ERROR, "set sdp failed, error info:%s. %s", error, pcWrapper);
-                if (pcWrapper.isUnpublishing) {
-                    pcWrapper.isUnpublishing = false;
-                    recreatePeerConnection(pcWrapper.connType);
-                }
+                // 失败重建PeerConnection，业务组件要求
+                recreatePeerConnection(pcWrapper.connType);
             });
         }
 
