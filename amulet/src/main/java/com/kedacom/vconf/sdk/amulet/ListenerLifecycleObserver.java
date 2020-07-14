@@ -146,7 +146,13 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
     /**获取对象的外部类对象。*/
     private Object getEncloserEx(Object obj){
         Class<?> clz = obj.getClass();
-        Class<?> enclosingClz = clz.getEnclosingClass();
+        Class<?> enclosingClz;
+        try {
+            enclosingClz = clz.getEnclosingClass();
+        }catch (Throwable e){  // if clz enclosed by lambda IncompatibleClassChangeError will be thrown out!
+            e.printStackTrace();
+            return null;
+        }
         Object encloser = null;
         Field enclosingClzRef;
 
