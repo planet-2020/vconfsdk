@@ -16,6 +16,7 @@ import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
 import com.aliwork.meeting.api.member.AMSDKMeetingClient;
 import com.annimon.stream.Stream;
 import com.kedacom.vconf.sdk.alirtc.bean.ConfInvitationInfo;
+import com.kedacom.vconf.sdk.alirtc.bean.JoinConfPara;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.AliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TConfInvitation;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
@@ -156,13 +157,12 @@ public class AlirtcManager extends Caster<Msg> {
 
     /**
      * 加入会议
-     * @param confNum 会议号码
-     * @param password 会议密码。没有密码则置空
+     * @param joinConfPara 入会参数
      * @param resultListener
      *          成功返回： null
      *          失败返回：错误码
      * */
-    public void joinConf(@NonNull String confNum, String password, IResultListener resultListener){
+    public void joinConf(@NonNull JoinConfPara joinConfPara, IResultListener resultListener){
         req(Msg.JoinConf, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
@@ -188,8 +188,8 @@ public class AlirtcManager extends Caster<Msg> {
                             .setAppIdentifier("appTag")
                             .setAppVersion("0.1.0")
                             .setAppNotifyIconRes(R.drawable.notification_icon)
-                            .setOpenCameraDefault(true)
-                            .setMuteAudioDefault(false)
+                            .setOpenCameraDefault(!joinConfPara.closeCamera)
+                            .setMuteAudioDefault(joinConfPara.closeMic)
 //                            .setMeetingDetail(detail)
                             .setMeetingCallBack(new AMUIMeetingCallBack() {
                                 @Override
@@ -200,15 +200,15 @@ public class AlirtcManager extends Caster<Msg> {
                                 @Override
                                 public void onMeetingJoined() {
                                     KLog.p("#####onMeetingJoined");
-                                    req(Msg.ReportConfState, null,null, confNum, true);
-                                    req(Msg.ReportVoiceState, null,null, confNum, false, false);  // FIXME 根据配置填
+                                    req(Msg.ReportConfState, null,null, joinConfPara.confNum, true);
+                                    req(Msg.ReportVoiceState, null,null, joinConfPara.confNum, joinConfPara.closeMic, false);  // FIXME 根据配置填
                                     reportSuccess(null, resultListener);
                                 }
 
                                 @Override
                                 public void onMeetingFinished(@NotNull AMUIFinishCode amuiFinishCode, @Nullable String s) {
                                     KLog.p("#####onMeetingFinished %s, %s", amuiFinishCode, s);
-                                    req(Msg.ReportConfState, null,null, confNum, false);
+                                    req(Msg.ReportConfState, null,null, joinConfPara.confNum, false);
                                 }
 
                                 @Override
@@ -224,7 +224,7 @@ public class AlirtcManager extends Caster<Msg> {
                     reportFailed(AliRtcResultCode.trans(rsp, joinConfResult.dwErrorCode), resultListener);
                 }
             }
-        }, resultListener, new TJoinConfPara(confNum, password));
+        }, resultListener, new TJoinConfPara(joinConfPara.confNum, joinConfPara.password));
 
     }
 
@@ -331,7 +331,7 @@ public class AlirtcManager extends Caster<Msg> {
     public interface OnConfInvitingListener extends ILifecycleOwner{
         /**
          * 会议邀请。
-         * 收到邀请后可调用{@link #joinConf(String, String, IResultListener)}加入会议，
+         * 收到邀请后可调用{@link #joinConf(JoinConfPara, IResultListener)}加入会议，
          * 或者忽略表示拒绝邀请。
          * */
         void onConfInviting(ConfInvitationInfo confInvitationInfo);
