@@ -878,7 +878,7 @@ public class WebRtcManager extends Caster<Msg>{
                     presentConferees.add(assStreamConferee);
                 }
 
-                presentConferees.add(myself);
+                presentConferees.add(myself); // 己端放最后
                 sessionEventListener.onConfereesAppeared(presentConferees);
                 break;
 
@@ -2024,6 +2024,14 @@ public class WebRtcManager extends Caster<Msg>{
             if (resolutionChanged){
                 instance.subscribeStream();
             }
+            if (instance.myself != this && videoChannelState == VideoChannelState.Idle){
+                instance.handler.postDelayed(() -> {
+                    if (VideoChannelState.Idle == videoChannelState){
+                        // Conferee没有视频码流，此种情形下我们置其VideoChannelState为BindingFailed
+                        setVideoChannelState(VideoChannelState.BindingFailed);
+                    }
+                }, 500);
+            }
         }
 
         private boolean removeDisplay(@NonNull Display display) {
@@ -2431,7 +2439,8 @@ public class WebRtcManager extends Caster<Msg>{
             if (conferee.isMyself() && !isLocalVideoEnabled){
                 stateDeco = Conferee.cameraDisabledDeco;
             }else if (Conferee.VideoChannelState.BindingFailed == videoChannelState
-                    && Conferee.AudioChannelState.BindingFailed != audioChannelState){
+//                    && Conferee.AudioChannelState.BindingFailed != audioChannelState
+            ){
                 stateDeco = Conferee.audioConfereeDeco;
             }else if (Conferee.VideoSignalState.Weak == videoSignalState){
                 stateDeco = Conferee.weakVideoSignalDeco;
@@ -2508,14 +2517,19 @@ public class WebRtcManager extends Caster<Msg>{
     };
 
 
+    /**
+     * 向平台订阅码流
+     * NOTE：每次订阅都是全量，这意味着即使新增一路码流也需要把之前已订阅过的码流全部重新订阅，
+     * 未包含在此次订阅码流集合中的则视为取消订阅（若之前已订阅）；音频码流无需订阅，业务组件已代劳。
+     * */
     private void doSubscribeStream(){
         List<TRtcPlayItem> playItems = Stream.of(streams)
                 .filter(it -> {
                     Conferee owner = it.getOwner();
-                    if (null == owner){
+                    if (null == owner){ // 不订阅/取消订阅没有归属的码流
                         return false;
                     }
-                    if (owner.displays.isEmpty()){
+                    if (owner.displays.isEmpty()){ // 不订阅/取消订阅未绑定Display的Conferee的码流
                         return false;
                     }
 
@@ -2530,7 +2544,7 @@ public class WebRtcManager extends Caster<Msg>{
                                 }
                             }, 2000);
                         }
-                        // 音频业务组件已处理，无需订阅
+                        // 音频码流业务组件已代劳，无需订阅
                         return false;
                     }else {
                         Conferee.VideoChannelState videoChannelState = owner.getVideoChannelState();
@@ -2552,7 +2566,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         if (!playItems.isEmpty()) {
             // 因为是全量，所以可能既包含未订阅的的也包含已订阅过的。
-            // 对于未订阅过的会触发PCObserver#onTrack，对于已订阅过的下层没有任何消息或者回调反馈（目前没发现）
+            // 对于未订阅过的会触发PCObserver#onTrack，对于已订阅过的下层没有任何消息或者回调反馈
             set(Msg.SelectStream, new TRtcPlayParam(playItems));
         }
     }
