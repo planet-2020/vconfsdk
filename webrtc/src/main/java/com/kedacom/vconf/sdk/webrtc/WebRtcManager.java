@@ -1933,6 +1933,14 @@ public class WebRtcManager extends Caster<Msg>{
             if (resolutionChanged){
                 instance.subscribeStream();
             }
+            if (instance.myself != this && videoChannelState == VideoChannelState.Idle){
+                instance.handler.postDelayed(() -> {
+                    if (VideoChannelState.Idle == videoChannelState){
+                        // Conferee没有视频码流，此种情形下我们置其VideoChannelState为BindingFailed
+                        setVideoChannelState(VideoChannelState.BindingFailed);
+                    }
+                }, 500);
+            }
         }
 
         private boolean removeDisplay(@NonNull Display display) {
@@ -2340,7 +2348,8 @@ public class WebRtcManager extends Caster<Msg>{
             if (conferee.isMyself() && !isLocalVideoEnabled){
                 stateDeco = Conferee.cameraDisabledDeco;
             }else if (Conferee.VideoChannelState.BindingFailed == videoChannelState
-                    && Conferee.AudioChannelState.BindingFailed != audioChannelState){
+//                    && Conferee.AudioChannelState.BindingFailed != audioChannelState
+            ){
                 stateDeco = Conferee.audioConfereeDeco;
             }else if (Conferee.VideoSignalState.Weak == videoSignalState){
                 stateDeco = Conferee.weakVideoSignalDeco;
