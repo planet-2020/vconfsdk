@@ -25,7 +25,11 @@ import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.utils.file.FileHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
-import static com.kedacom.vconf.sdk.base.upgrade.UpgradeResultCode.*;
+import java.io.File;
+
+import static com.kedacom.vconf.sdk.base.upgrade.UpgradeResultCode.ALREADY_NEWEST;
+import static com.kedacom.vconf.sdk.base.upgrade.UpgradeResultCode.NO_UPGRADE_PACKAGE;
+import static com.kedacom.vconf.sdk.base.upgrade.UpgradeResultCode.SERVER_DISCONNECTED;
 
 
 public class UpgradeManager extends Caster<Msg> {
@@ -116,14 +120,15 @@ public class UpgradeManager extends Caster<Msg> {
     /**
      * 下载升级包
      * @param versionId 目标版本id（由checkUpgrade的返回结果中获取）。
-     * @param saveDir 升级包存放目录
+     * @param saveDirPath 升级包存放目录
      * @param resultListener onProgress {@link DownloadProgressInfo}
-     *                       onSuccess  null
+     *                       onSuccess  downloaded package file full path
      *                       onFailed   {@link UpgradeResultCode#SERVER_DISCONNECTED}
      * */
-    public void downloadUpgrade(int versionId, String saveDir, IResultListener resultListener){
-        if (FileHelper.createDir(saveDir) == null){
-            KLog.p(KLog.ERROR, "create save dir %s failed!", saveDir);
+    public void downloadUpgrade(int versionId, String saveDirPath, IResultListener resultListener){
+        File saveDir = FileHelper.createDir(saveDirPath);
+        if (saveDir == null){
+            KLog.p(KLog.ERROR, "create save dir %s failed!", saveDirPath);
             reportFailed(-1, resultListener);
             return;
         }
@@ -136,7 +141,7 @@ public class UpgradeManager extends Caster<Msg> {
                         reportProgress(new DownloadProgressInfo(downloadInfo.dwCurPercent), resultListener);
                         if (downloadInfo.dwCurPercent == 100) {
                             cancelReq(Msg.DownloadUpgrade, resultListener); // 已下载完毕，取消会话，否则会话会等待超时。
-                            reportSuccess(null, resultListener);
+                            reportSuccess(new File(saveDir, downloadInfo.achCurFileName).getAbsolutePath(), resultListener);
                         }
                     } else {
                         reportFailed(-1, resultListener);
@@ -152,7 +157,7 @@ public class UpgradeManager extends Caster<Msg> {
                 isConsumed[0] = true;
                 reportTimeout(resultListener);
             }
-        }, resultListener, saveDir, versionId);
+        }, resultListener, saveDirPath, versionId);
     }
 
 
