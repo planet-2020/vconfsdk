@@ -325,6 +325,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
             @Override
             public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 reportSuccess(false, resultListener);
+                isConsumed[0] = true;
             }
         }, resultListener, confE164);
     }
