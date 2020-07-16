@@ -199,7 +199,7 @@ public class WebRtcManager extends Caster<Msg>{
      * @param resultListener onSuccess null
      *                       onFailed {@link RtcResultCode#NetworkUnreachable}
      *                                {@link RtcResultCode#UnknownServerAddress}
-     *                                {@link RtcResultCode#MultipleRegistration}
+     *                                {@link RtcResultCode#AlreadyLoggedIn}
      * @param confEventListener 会议事件监听器
      * */
     public void login(@NonNull String e164, @NonNull IResultListener resultListener, @NonNull ConfEventListener confEventListener){
@@ -219,8 +219,8 @@ public class WebRtcManager extends Caster<Msg>{
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TRegResultNtf loginResult = (TRegResultNtf) rspContent;
-                int resCode = RtcResultCode.trans(req, loginResult.AssParam.basetype);
-                if (RtcResultCode.OK == resCode) {
+                int resCode = RtcResultCode.trans(rsp, loginResult.AssParam.basetype);
+                if (RtcResultCode.LoggedIn == resCode) {
                     reportSuccess(null, resultListener);
                 } else {
                     reportFailed(resCode, resultListener);
@@ -243,8 +243,8 @@ public class WebRtcManager extends Caster<Msg>{
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TRegResultNtf loginResult = (TRegResultNtf) rspContent;
-                int resCode = RtcResultCode.trans(req, loginResult.AssParam.basetype);
-                if (RtcResultCode.OK == resCode) {
+                int resCode = RtcResultCode.trans(rsp, loginResult.AssParam.basetype);
+                if (RtcResultCode.LoggedOut == resCode) {
                     reportSuccess(null, resultListener);
                 } else {
                     reportFailed(resCode, resultListener);
@@ -260,8 +260,8 @@ public class WebRtcManager extends Caster<Msg>{
      * @param peerId 对于点对点而言是对端e164，对于多方会议而言是会议e164
      * @param bAudio 是否音频方式入会
      * @param resultListener onSuccess {@link MakeCallResult}
-     *                       onFailed {@link RtcResultCode#NotLoginedYet}
-     *                                {@link RtcResultCode#ReachConfereeNumLimit}
+     *                       onFailed {@link RtcResultCode#NotLoggedInYet}
+     *                                {@link RtcResultCode#ConfereeNumReachLimit}
      * @param sessionEventListener 会话事件监听器
      * */
     public void makeCall(String peerId, boolean bAudio, @NonNull IResultListener resultListener, @NonNull SessionEventListener sessionEventListener){
@@ -283,7 +283,7 @@ public class WebRtcManager extends Caster<Msg>{
                                 break;
                             case ConfCanceled:
                                 stopSession();
-                                reportFailed(RtcResultCode.trans(req, ((BaseTypeInt) rspContent).basetype), resultListener);
+                                reportFailed(RtcResultCode.trans(rsp, ((BaseTypeInt) rspContent).basetype), resultListener);
                                 break;
                         }
                     }
@@ -323,8 +323,8 @@ public class WebRtcManager extends Caster<Msg>{
                 switch (rsp){
                     case CreateConfRsp:
                         TCreateConfResult tCreateConfResult = (TCreateConfResult) rspContent;
-                        int resCode = RtcResultCode.trans(req, tCreateConfResult.MainParam.dwErrorID);
-                        if (RtcResultCode.OK != resCode){
+                        int resCode = RtcResultCode.trans(rsp, tCreateConfResult.MainParam.dwErrorID);
+                        if (RtcResultCode.Success != resCode){
                             stopSession();
                             cancelReq(req, resultListener);
                             reportFailed(resCode, resultListener);
@@ -335,7 +335,7 @@ public class WebRtcManager extends Caster<Msg>{
                         break;
                     case ConfCanceled:
                         stopSession();
-                        reportFailed(RtcResultCode.trans(req, ((BaseTypeInt) rspContent).basetype), resultListener);
+                        reportFailed(RtcResultCode.trans(rsp, ((BaseTypeInt) rspContent).basetype), resultListener);
                         break;
                 }
             }
@@ -439,8 +439,8 @@ public class WebRtcManager extends Caster<Msg>{
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TQueryConfInfoResult queryConfInfoResult = (TQueryConfInfoResult) rspContent;
-                int resCode = RtcResultCode.trans(req, queryConfInfoResult.MainParam.dwErrorID);
-                if (RtcResultCode.OK == resCode){
+                int resCode = RtcResultCode.trans(rsp, queryConfInfoResult.MainParam.dwErrorID);
+                if (RtcResultCode.Success == resCode){
                     reportSuccess(ToDoConverter.tMTInstanceConferenceInfo2ConfInfo(queryConfInfoResult.AssParam), resultListener);
                 }else{
                     reportFailed(resCode, resultListener);
@@ -835,7 +835,7 @@ public class WebRtcManager extends Caster<Msg>{
             case LoginStateChanged:
                 TRegResultNtf regState = (TRegResultNtf) ntfContent;
                 int resCode = RtcResultCode.trans(ntf, regState.AssParam.basetype);
-                if (RtcResultCode.OK != resCode) {
+                if (RtcResultCode.LoggedIn != resCode) {
                     confEventListener.onConfServerDisconnected(resCode);
                 }
                 break;
