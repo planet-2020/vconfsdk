@@ -26,7 +26,7 @@ import org.webrtc.YuvConverter;
  * 窗口采集。
  * 截取指定窗口的图像
  * */
-public class WindowCapturer implements VideoCapturer {
+class WindowCapturer implements VideoCapturer {
 
     private SurfaceTextureHelper surTexture;
     private Context appContext;
