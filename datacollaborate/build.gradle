@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 
 
-version = '3.2.4-SNAPSHOT'
+version = '3.2.5-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -14,7 +14,7 @@ dependencies {
     compileOnly project(':annotation')
     annotationProcessor project(':processor')
 
-    implementation 'com.kedacom.vconf.sdk:amulet:5.4.0-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:amulet:5.4.2-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:common:1.2.3-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:utils:1.3.0-SNAPSHOT' // XXX amulet是通过implementation依赖utils的，传递依赖应该阻断了，为什么dc模块还能通过对amulet的依赖访问到utils？
 
