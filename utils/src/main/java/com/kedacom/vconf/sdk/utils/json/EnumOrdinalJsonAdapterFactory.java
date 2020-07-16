@@ -15,7 +15,7 @@ import java.io.IOException;
  * “枚举实例<-->枚举序号”Json适配器工厂。
  * 配合{@link EnumOrdinalStrategy}使用。
  * */
-class EnumOrdinalJsonAdapterFactory implements TypeAdapterFactory {
+public class EnumOrdinalJsonAdapterFactory implements TypeAdapterFactory {
 
     @Override
     public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {

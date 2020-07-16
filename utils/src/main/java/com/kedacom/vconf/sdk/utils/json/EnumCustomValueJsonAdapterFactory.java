@@ -20,7 +20,7 @@ import java.lang.reflect.Method;
  * “枚举实例<-->自定义值”Json适配器工厂。
  * 配合{@link EnumCustomValueStrategy}使用。
  * */
-class EnumCustomValueJsonAdapterFactory implements TypeAdapterFactory {
+public class EnumCustomValueJsonAdapterFactory implements TypeAdapterFactory {
 
     @Override
     public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {

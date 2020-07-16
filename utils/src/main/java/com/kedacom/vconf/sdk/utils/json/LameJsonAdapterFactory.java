@@ -17,7 +17,7 @@ import java.lang.reflect.Field;
  * “跛子”Json适配器工厂。
  * 配合{@link LameStrategy}使用。
  * */
-class LameJsonAdapterFactory implements TypeAdapterFactory {
+public class LameJsonAdapterFactory implements TypeAdapterFactory {
 
     @Override
     public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
