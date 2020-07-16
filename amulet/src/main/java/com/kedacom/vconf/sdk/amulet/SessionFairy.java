@@ -95,21 +95,17 @@ final class SessionFairy implements IFairy.ISessionFairy{
         }
         String methodName = magicBook.reqName(s.reqId);
         boolean hasRsp = null != s.rspSeqs && 0 != s.rspSeqs.length;
-        String sendReqPrompt;
         if (hasRsp) {
             // 启动超时
             Message msg = Message.obtain();
             msg.what = MsgId_Timeout;
             msg.obj = s;
             uiHandler.sendMessageDelayed(msg, s.timeoutVal);
-            sendReqPrompt = String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqId, methodName, sb);
-        }else {
-            sendReqPrompt = String.format(" -~-> %s(%s) \nparas={%s}", s.reqId, methodName, sb);
         }
         s.setState(Session.READY);
 
         uiHandler.post(() -> {
-            Log.d(TAG, sendReqPrompt);
+            Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", hasRsp?s.id:"", s.reqId, methodName, sb));
             reqHandler.post(() -> {
                 if(!s.transState(Session.READY, Session.SENDING)){
                     return;
@@ -249,13 +245,12 @@ final class SessionFairy implements IFairy.ISessionFairy{
                             s.setState(Session.END);
                             sessions.remove(s);
                         }
-                        Log.d(TAG, String.format("%s <-~-o %s(%s) \n%s", s.id, rspId, msgName, msgContent));
                     } else {
                         if (!s.isState(Session.CANCELED)) {
                             s.setState(Session.RECVING);
                         }
-                        Log.d(TAG, String.format("%s <-~- %s(%s) \n%s", s.id, rspId, msgName, msgContent));
                     }
+                    Log.d(TAG, String.format("%s <-~-%s %s(%s) \n%s", s.id, gotLast?"o":"", rspId, msgName, msgContent));
 
                     break tryConsume;
                 }
