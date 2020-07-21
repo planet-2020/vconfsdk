@@ -3,16 +3,20 @@ package com.kedacom.vconf.sdk.alirtc;
 import android.app.Application;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.View;
 
 import androidx.annotation.NonNull;
+import androidx.fragment.app.FragmentActivity;
 
 import com.alibaba.alimeeting.uisdk.AMUIClientStatusEvent;
 import com.alibaba.alimeeting.uisdk.AMUIErrorCode;
 import com.alibaba.alimeeting.uisdk.AMUIFinishCode;
 import com.alibaba.alimeeting.uisdk.AMUIMeetingCallBack;
+import com.alibaba.alimeeting.uisdk.AMUIMeetingDetail;
 import com.alibaba.alimeeting.uisdk.AMUIMeetingDetailConfig;
 import com.alibaba.alimeeting.uisdk.AMUIMeetingJoinConfig;
 import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
+import com.alibaba.alimeeting.uisdk.widget.AMUIAvatarLayout;
 import com.aliwork.meeting.api.member.AMSDKMeetingClient;
 import com.annimon.stream.Stream;
 import com.kedacom.vconf.sdk.alirtc.bean.ConfInvitationInfo;
@@ -139,6 +143,7 @@ public class AlirtcManager extends Caster<Msg> {
      *          成功返回： {@link CreateConfResult}
      *          失败返回：错误码
      * */
+    @Deprecated // 阿里会议都是专属会议，跟随帐号分配好了，没有创建一说。
     public void createConf(@NonNull String confName, int duration, IResultListener resultListener){
         req(Msg.CreateConf, new SessionProcessor<Msg>() {
             @Override
@@ -170,11 +175,19 @@ public class AlirtcManager extends Caster<Msg> {
                 if (joinConfResult.bSuccess){
                     AliConfParam para = joinConfResult.tAliJoinConfParam;
 
+                    AMUIMeetingDetail meetingDetail = new AMUIMeetingDetail();
+                    meetingDetail.subject = para.achConfName;
+                    meetingDetail.password = joinConfPara.password;
+                    meetingDetail.shareLink = "shareLink";
+                    meetingDetail.beginDate = 0;
+                    meetingDetail.endDate = 0;
+                    meetingDetail.shareMessage = "you are invited to join conferee "+joinConfPara.confNum;
+
                     AMUIMeetingJoinConfig.Builder builder = new AMUIMeetingJoinConfig.Builder()
                             .setMeetingCode(para.achConfCode)
                             .setUserId(para.achUsrId)
                             .setUserName("userName")
-                            .setMeetingDetailConfig(
+                            .setMeetingDetailConfig( // 用于入会
                                     new AMUIMeetingDetailConfig(
                                             para.achClientAppid,
                                             para.achConfToken,
@@ -184,13 +197,15 @@ public class AlirtcManager extends Caster<Msg> {
                                             para.achMemuuid
                                     )
                             )
+                            .setMeetingDetail(// 用于邀请
+                                    meetingDetail
+                            )
                             .setOpenBeautifyDefault(true)
                             .setAppIdentifier("appTag")
                             .setAppVersion("0.1.0")
                             .setAppNotifyIconRes(R.drawable.notification_icon)
                             .setOpenCameraDefault(!joinConfPara.closeCamera)
                             .setMuteAudioDefault(joinConfPara.closeMic)
-//                            .setMeetingDetail(detail)
                             .setMeetingCallBack(new AMUIMeetingCallBack() {
                                 @Override
                                 public void onClientStatusChanged(@NotNull AMSDKMeetingClient amsdkMeetingClient, @NotNull AMUIClientStatusEvent amuiClientStatusEvent) {
@@ -244,13 +259,22 @@ public class AlirtcManager extends Caster<Msg> {
         //2. UI配置，目前仅支持邀请人定制，如果不设置AliMeetingUIManager.uiController， 则没有参会人列表不会有邀请人选项
         AliMeetingUIManager.initManager(context);
 
+        AliMeetingUIManager.setUiController(new AliMeetingUIManager.IAMUIMeetingUIController() {
+            @Override
+            public boolean onInviteAction(@NotNull View view, @NotNull FragmentActivity activity, @Nullable AMUIMeetingDetail detail) {
+                return false;
+            }
 
-//        AliMeetingUIManager.setUiController(new AliMeetingUIManager.AliMeetingUiController() {
-//            @Override
-//            public void onInviteAction(@NotNull View view, @NotNull FragmentActivity fragmentActivity, @NotNull AliMeetingBrief aliMeetingBrief) {
-//                KLog.p("view =%s, frag=%s, userId=%s, meetingCode=%s", view, fragmentActivity, aliMeetingBrief.getUserId(), aliMeetingBrief.getMeetingCode());
-//            }
-//        });
+            @Override
+            public boolean loadAvatar(@NotNull AMUIAvatarLayout view, @Nullable String url, @NotNull AMSDKMeetingClient client, @Nullable String userName) {
+                return super.loadAvatar(view, url, client, userName);
+            }
+
+            @Override
+            public boolean showMeetingDetail(@NotNull View view, @NotNull FragmentActivity activity, @Nullable AMUIMeetingDetail detail) {
+                return super.showMeetingDetail(view, activity, detail);
+            }
+        });
 
 //        AliMeetingUIManager.uiController = object : AliMeetingUIManager.AliMeetingUiController {
 //            override fun onInviteAction(
