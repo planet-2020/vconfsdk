@@ -1,0 +1,17 @@
+apply plugin: 'com.android.library'
+
+version = '5.5.0-SNAPSHOT'
+android {
+    defaultConfig {
+        versionCode 1
+        versionName "1.0"
+    }
+}
+
+dependencies {
+//    api "androidx.lifecycle:lifecycle-runtime:2.0.0"
+    implementation "androidx.lifecycle:lifecycle-common-java8:2.2.0"
+    implementation 'com.google.guava:guava:27.0.1-android'
+
+    implementation project(':utils')
+}

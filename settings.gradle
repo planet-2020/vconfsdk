@@ -1,15 +1,21 @@
 
 rootProject.name = 'vconfsdk'
-//
-//ext.frameworkDir = 'framework'
-//ext.frameworkModules = ['annotation', 'processor', 'amulet']
-//
-//frameworkModules.each {
-//    String modulePath = ":$it"
-//    include modulePath
-//    project(modulePath).setProjectDir(new File("./$frameworkDir/$it"))
-//}
 
-include ':annotation', ':processor', ':amulet'
-include ':utils', ':common', ':base', ':datacollaborate', ':webrtc', ':alirtc'
+ext.frameworkDir = 'framework'
+ext.frameworkModules = ['annotation', 'processor', 'amulet']
+ext.componentDir = 'components'
+ext.componentModules = ['utils', 'common', 'base', 'datacollaborate', 'webrtc', 'alirtc']
 
+frameworkModules.each {
+    String modulePath = ":$it"
+    include modulePath
+    project(modulePath).setProjectDir(new File("$frameworkDir/$it"))
+//    logger.quiet("framework $modulePath")
+}
+
+componentModules.each {
+    String modulePath = ":$it"
+    include modulePath
+    project(modulePath).setProjectDir(new File("$componentDir/$it"))
+//    logger.quiet("component $modulePath")
+}

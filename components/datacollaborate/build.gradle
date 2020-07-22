@@ -1,0 +1,39 @@
+apply plugin: 'com.android.library'
+
+
+version = '3.3.0-SNAPSHOT'
+android {
+    defaultConfig {
+        versionCode 1
+        versionName "1.0"
+    }
+}
+
+dependencies {
+
+    compileOnly project(':annotation')
+    annotationProcessor project(':processor')
+    implementation project(':common')
+    implementation project(':utils')
+
+    implementation 'com.kedacom.vconf.sdk:amulet:5.5.0-SNAPSHOT'
+
+//    implementation fileTree(dir: 'libs', include: ['*.jar'])
+//    implementation project(':base')
+//    implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"
+//    implementation 'com.kedacom.vconf.sdk:base:1.0.0'
+//    implementation ('com.kedacom.vconf.sdk:base:0.4.13-SNAPSHOT@aar'){
+//        transitive = true
+//    }
+//    implementation ('com.kedacom.vconf.sdk:base:0.2.25'){
+//        changing = true
+//    }
+
+    configurations.all {
+        resolutionStrategy {
+            // don't cache changing modules at all
+            cacheChangingModulesFor 0, 'seconds'
+        }
+    }
+}
+

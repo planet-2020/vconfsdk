@@ -1,0 +1,25 @@
+apply plugin: 'com.android.library'
+
+version = '3.1.0-SNAPSHOT'
+android {
+    defaultConfig {
+        versionCode 1
+        versionName "1.0"
+    }
+}
+
+dependencies {
+//    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    compileOnly files('libs/mtapi.jar') //NOTE: 我们只是编译时使用mtapi.jar，因为用户会引入mtcapi-jni.jar包含了所有的native接口定义。
+
+    compileOnly project(':annotation')
+    annotationProcessor project(':processor')
+    implementation project(':common')
+    implementation project(':utils')
+
+    implementation 'com.kedacom.vconf.sdk:amulet:5.5.0-SNAPSHOT'
+
+//    implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"
+//    implementation 'com.google.code.gson:gson:2.8.2'
+    implementation 'com.google.guava:guava:27.0.1-android'
+}

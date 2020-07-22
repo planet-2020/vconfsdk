@@ -121,6 +121,7 @@ buildscript {
 
 subprojects {
     group = MYGROUP
+    ext.publish = true
     configRepo(project, false)
     configProject(project)
 }
@@ -132,7 +133,7 @@ task clean(type: Delete) {
 def configProject(Project project){
 //    logger.quiet("configProject $project")
     project.afterEvaluate {
-//        logger.quiet("project $project, plugins=$project.plugins")
+//        logger.quiet("project $project, publish=$project.ext.publish, plugins=$project.plugins")
         if (project.plugins.hasPlugin(com.android.build.gradle.LibraryPlugin)
 //                || project.plugins.hasPlugin(com.android.build.gradle.AppPlugin)
         ){
@@ -169,7 +170,9 @@ def configProject(Project project){
 //            dependencyHandler.add('compileOnly', dependencyHandler.project('path' : ':annotation'))
 //            dependencyHandler.add('annotationProcessor', dependencyHandler.project('path' : ':processor'))
 
-            project.apply from : '../publish.gradle'
+            if (project.ext.publish){
+                project.apply from : new File(rootDir, "publish.gradle")
+            }
 
         }else if (project.plugins.hasPlugin(JavaPlugin)){
 //            logger.quiet("###############org.gradle.java, project $project")
@@ -177,4 +180,5 @@ def configProject(Project project){
             project.targetCompatibility = TARGET_JAVA_VERSION
         }
     }
+
 }
