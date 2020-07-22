@@ -13,6 +13,7 @@ import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.ParcelFileDescriptor;
 import android.view.SurfaceHolder;
 import android.view.View;
 
@@ -40,6 +41,7 @@ import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.utils.file.FileHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.ConnType;
@@ -99,6 +101,8 @@ import org.webrtc.VideoTrack;
 import org.webrtc.audio.AudioDeviceModule;
 import org.webrtc.audio.JavaAudioDeviceModule;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1251,6 +1255,18 @@ public class WebRtcManager extends Caster<Msg>{
 
             KLog.p("pcWrappers created");
 
+            if (/*config.aecDump*/false) {
+                try {
+                    ParcelFileDescriptor aecDumpFileDescriptor =
+                            ParcelFileDescriptor.open(new File(FileHelper.getPath(FileHelper.Location.EXTERNAL, FileHelper.Type.COMMON, "webrtc/aec.dump")),
+                                    ParcelFileDescriptor.MODE_READ_WRITE | ParcelFileDescriptor.MODE_CREATE | ParcelFileDescriptor.MODE_TRUNCATE);
+                    factory.startAecDump(aecDumpFileDescriptor.detachFd(), -1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+
         });
 
     }
@@ -1313,6 +1329,11 @@ public class WebRtcManager extends Caster<Msg>{
 
     private void destroyPeerConnectionWrapper(){
         KLog.p("destroying pcWrappers...");
+        if (/*config.aecDump*/false) {
+            executor.execute(() -> {
+                factory.stopAecDump();
+            });
+        }
         synchronized (pcWrapperLock) {
             if (null != pubPcWrapper) {
                 pubPcWrapper.close();
