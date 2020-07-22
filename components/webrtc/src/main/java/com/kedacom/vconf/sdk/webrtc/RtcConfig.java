@@ -42,6 +42,10 @@ public final class RtcConfig {
     private static final String key_isFrontCameraPreferred = "key_isFrontCameraPreferred";
     // 视频质量偏好
     private static final String key_preferredVideoQuality = "key_preferredVideoQuality";
+    // 是否禁用android内置的AEC
+    private static final String key_disableBuiltInAEC = "key_disableBuiltInAEC";
+    // 是否禁用android内置的NS
+    private static final String key_disableBuiltInNS = "key_disableBuiltInNS";
 
     // 视频质量定义
     static final int VideoQuality_Unknown = 0;
@@ -283,6 +287,32 @@ public final class RtcConfig {
         return rtcUserConfig.getBoolean(key_isFrontCameraPreferred, true);
     }
 
+    /**
+     * 设置是否禁用android内置的AEC
+     * @param disable true禁用
+     * */
+    public RtcConfig setDisableBuiltInAEC(boolean disable){
+        editor.putBoolean(key_disableBuiltInAEC, disable).apply();
+        return this;
+    }
+
+    public boolean needDisableBuiltInAEC(){
+        return rtcUserConfig.getBoolean(key_disableBuiltInAEC, false);
+    }
+
+    /**
+     * 设置是否禁用android内置的NS
+     * @param disable true禁用
+     * */
+    public RtcConfig setDisableBuiltInNS(boolean disable){
+        editor.putBoolean(key_disableBuiltInNS, disable).apply();
+        return this;
+    }
+
+    public boolean needDisableBuiltInNS(){
+        return rtcUserConfig.getBoolean(key_disableBuiltInNS, false);
+    }
+
 
     /**
      * 将RtcConfig对象保存为持久化配置
@@ -304,6 +334,8 @@ public final class RtcConfig {
         setRemoteVideoEnable(config.isRemoteVideoEnabled);
         setFrontCameraPreferred(config.isFrontCameraPreferred);
         setPreferredVideoQuality(config.preferredVideoQuality);
+        setDisableBuiltInAEC(config.disableBuiltInAEC);
+        setDisableBuiltInNS(config.disableBuiltInNS);
     }
 
 
@@ -328,6 +360,8 @@ public final class RtcConfig {
         config.isRemoteVideoEnabled = isRemoteVideoEnabled();
         config.isFrontCameraPreferred = isFrontCameraPreferred();
         config.preferredVideoQuality = getPreferredVideoQuality();
+        config.disableBuiltInAEC = needDisableBuiltInAEC();
+        config.disableBuiltInNS = needDisableBuiltInNS();
 
         return config;
     }
@@ -370,6 +404,11 @@ public final class RtcConfig {
         // 视频质量偏好
         int preferredVideoQuality;
 
+        // 是否禁用android内置的AEC
+        boolean disableBuiltInAEC;
+        // 是否禁用android内置的NS
+        boolean disableBuiltInNS;
+
 
         void copy(Config src){
             isHardwareVideoEncoderPreferred = src.isHardwareVideoEncoderPreferred;
@@ -388,6 +427,8 @@ public final class RtcConfig {
             isRemoteVideoEnabled = src.isRemoteVideoEnabled;
             isFrontCameraPreferred = src.isFrontCameraPreferred;
             preferredVideoQuality = src.preferredVideoQuality;
+            disableBuiltInAEC = src.disableBuiltInAEC;
+            disableBuiltInNS = src.disableBuiltInNS;
         }
 
         @Override
@@ -409,9 +450,11 @@ public final class RtcConfig {
                     ", isRemoteVideoEnabled=" + isRemoteVideoEnabled +
                     ", isFrontCameraPreferred=" + isFrontCameraPreferred +
                     ", preferredVideoQuality=" + preferredVideoQuality +
+                    ", disableBuiltInAEC=" + disableBuiltInAEC +
+                    ", disableBuiltInNS=" + disableBuiltInNS +
                     '}';
         }
 
-
     }
+
 }

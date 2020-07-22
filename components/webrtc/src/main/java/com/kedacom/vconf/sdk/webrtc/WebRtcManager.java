@@ -1382,8 +1382,8 @@ public class WebRtcManager extends Caster<Msg>{
 
         return JavaAudioDeviceModule.builder(context)
 //        .setSamplesReadyCallback(saveRecordedAudioToFile)
-//                .setUseHardwareAcousticEchoCanceler(!peerConnectionParameters.disableBuiltInAEC)
-//                .setUseHardwareNoiseSuppressor(!peerConnectionParameters.disableBuiltInNS)
+                .setUseHardwareAcousticEchoCanceler(!config.disableBuiltInAEC)
+                .setUseHardwareNoiseSuppressor(!config.disableBuiltInNS)
                 .setAudioRecordErrorCallback(audioRecordErrorCallback)
                 .setAudioTrackErrorCallback(audioTrackErrorCallback)
                 .createAudioDeviceModule();
