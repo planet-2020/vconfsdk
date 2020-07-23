@@ -63,7 +63,7 @@ public interface IMagicBook {
      * NOTE： 对于没有响应的请求此方法不适用
      * @return 超时时长，单位：秒。
      * */
-    int timeout(@NonNull String reqId);
+    double timeout(@NonNull String reqId);
 
     /**
      * 响应名称对应的响应ID集合

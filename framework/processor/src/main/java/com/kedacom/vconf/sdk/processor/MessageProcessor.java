@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -42,6 +43,7 @@ import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.MirroredTypesException;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
+import javax.tools.Diagnostic;
 
 
 /**
@@ -66,8 +68,6 @@ public class MessageProcessor extends AbstractProcessor {
 
     private String packageName;
 
-    private String className = "MagicBook$$Impl";
-
     private Messager messager;
 
     private static String COL_NAME = "name";
@@ -89,7 +89,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         messager = processingEnv.getMessager();
 
-//        messager.printMessage(Diagnostic.Kind.NOTE, "START to generate msg file ... ");
+        messager.printMessage(Diagnostic.Kind.NOTE, "START processing @Module, processor "+this);
 
         Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Module.class);
         for (Element element : msgSet) {
@@ -110,6 +110,8 @@ public class MessageProcessor extends AbstractProcessor {
         if (moduleName.trim().isEmpty()){
             throw new IllegalArgumentException(msgDefClass+": module name can not be empty!");
         }
+//        messager.printMessage(Diagnostic.Kind.NOTE, "processing @Module "+moduleName);
+
         packageName = ((PackageElement) msgDefClass.getEnclosingElement()).getQualifiedName().toString();
         // 清除掉前一个Msg的残留数据
         reqMap.clear();
@@ -135,7 +137,7 @@ public class MessageProcessor extends AbstractProcessor {
                 rspMap.put(msgId, COL_NAME, rspName);
 
                 try {
-                    Class clz = response.clz();
+                    Class<?> clz = response.clz();
                     rspClzFullName = clz.getCanonicalName();
                 } catch (MirroredTypeException mte) {
                     rspClzFullName = parseClassNameFromMirroredTypeException(mte);
@@ -154,7 +156,7 @@ public class MessageProcessor extends AbstractProcessor {
 
                 String clzFullName;
                 try {
-                    Class clz = notification.clz();
+                    Class<?> clz = notification.clz();
                     clzFullName = clz.getCanonicalName();
                 } catch (MirroredTypeException mte) {
                     clzFullName = parseClassNameFromMirroredTypeException(mte);
@@ -184,18 +186,18 @@ public class MessageProcessor extends AbstractProcessor {
 
                 String[] paraClzNames = null;
                 try {
-                    Class[] paraClasses = request.paras();
+                    request.paras();
                 }catch (MirroredTypesException mte) {
                     paraClzNames = parseClassNameFromMirroredTypesException(mte);
                 }
-                reqMap.put(msgId, COL_PARAS, paraClzNames);
-
+                reqMap.put(msgId, COL_PARAS, Objects.requireNonNull(paraClzNames));
+                paraClzNames = null;
                 try {
-                    Class[] paraClasses = request.userParas();
+                    request.userParas();
                 }catch (MirroredTypesException mte) {
                     paraClzNames = parseClassNameFromMirroredTypesException(mte);
                 }
-                reqMap.put(msgId, COL_USERPARAS, paraClzNames);
+                reqMap.put(msgId, COL_USERPARAS, Objects.requireNonNull(paraClzNames));
 
                 reqMap.put(msgId, COL_ISGET, request.isGet());
 
@@ -218,24 +220,23 @@ public class MessageProcessor extends AbstractProcessor {
         List<String[]> rspSeqList = new ArrayList<>();
         for (String[] rspSeq : rspSeqs){
             List<String> modRspSeq = new ArrayList<>();
-            for (int i=0; i<rspSeq.length; ++i){
-                String rspId = rspSeq[i];
+            for (String rspId : rspSeq) {
                 boolean isGreedyNote = Request.GREEDY.equals(rspId);
-                if (isGreedyNote && (modRspSeq.isEmpty() || Request.GREEDY.equals(modRspSeq.get(modRspSeq.size()-1)))){
+                if (isGreedyNote && (modRspSeq.isEmpty() || Request.GREEDY.equals(modRspSeq.get(modRspSeq.size() - 1)))) {
                     //剔除掉序列首部的以及重复的greedy note
                     continue;
                 }
-                String completeRspId = moduleName +"_"+rspId;
-                if (!isGreedyNote){
+                String completeRspId = moduleName + "_" + rspId;
+                if (!isGreedyNote) {
                     // 检查请求的响应序列中的响应是否已注册为响应
                     boolean matched = false;
-                    for (String registeredRspId : rspMap.rowKeySet()){
-                        if (registeredRspId.equals(completeRspId)){
+                    for (String registeredRspId : rspMap.rowKeySet()) {
+                        if (registeredRspId.equals(completeRspId)) {
                             matched = true;
                             break;
                         }
                     }
-                    if (!matched){
+                    if (!matched) {
                         // 该响应未注册！
                         throw new RuntimeException(String.format("\"%s\" has not registered as a rsp yet!", rspId));
                     }
@@ -320,24 +321,24 @@ public class MessageProcessor extends AbstractProcessor {
                 .addStatement("$L = $T.create()", ntfMap, HashBasedTable.class)
                 ;
 
-        for(Table.Cell cell : this.reqMap.cellSet()){
-            String row = (String) cell.getRowKey();
-            String col = (String) cell.getColumnKey();
-            if (col.equals(COL_NAME)
-                    || col.equals(COL_OWNER)) {
+        for(Table.Cell<String, String, Object> cell : this.reqMap.cellSet()){
+            String row = cell.getRowKey();
+            String col = cell.getColumnKey();
+            if (COL_NAME.equals(col)
+                    || COL_OWNER.equals(col)) {
                 staticCodeBlockBuilder.addStatement("$L.put($S, $S, $S)", reqMap, row, col, cell.getValue());
-            }else if (col.equals(COL_PARAS)
-                    || col.equals(COL_USERPARAS)){
+            }else if (COL_PARAS.equals(col)
+                    || COL_USERPARAS.equals(col)){
                 StringBuffer value = new StringBuffer();
                 String[] paras = (String[]) cell.getValue();
-                for (String para : paras){
+                for (String para : Objects.requireNonNull(paras)){
                     value.append(para).append(".class, ");
                 }
                 staticCodeBlockBuilder.addStatement("$L.put($S, $S, new Class[]{$L})", reqMap, row, col, value);
-            }else if (col.equals(COL_RSPSEQ)){
+            }else if (COL_RSPSEQ.equals(col)){
                 StringBuffer value = new StringBuffer();
                 String[][] rspSeq = (String[][]) cell.getValue();
-                for (String[] aRspSeq : rspSeq) {
+                for (String[] aRspSeq : Objects.requireNonNull(rspSeq)) {
                     value.append("{");
                     for (String anARspSeq : aRspSeq) {
                         value.append("\"").append(anARspSeq).append("\", ");
@@ -345,15 +346,15 @@ public class MessageProcessor extends AbstractProcessor {
                     value.append("}, ");
                 }
                 staticCodeBlockBuilder.addStatement("$L.put($S, $S, new String[][]{$L})", reqMap, row, col, value);
-            }else if (col.equals(COL_TIMEOUT)
-                    || col.equals(COL_ISGET)){
+            }else if (COL_TIMEOUT.equals(col)
+                    || COL_ISGET.equals(col)){
                 staticCodeBlockBuilder.addStatement("$L.put($S, $S, $L)", reqMap, row, col, cell.getValue());
             }
         }
 
-        for(Table.Cell cell : this.rspMap.cellSet()){
-            String row = (String) cell.getRowKey();
-            String col = (String) cell.getColumnKey();
+        for(Table.Cell<String, String, Object> cell : this.rspMap.cellSet()){
+            String row = cell.getRowKey();
+            String col = cell.getColumnKey();
             if (COL_NAME.equals(col)) {
                 staticCodeBlockBuilder.addStatement("$L.put($S, $S, $S)", rspMap, row, col, cell.getValue());
             }else if (COL_CLZ.equals(col)){
@@ -361,9 +362,9 @@ public class MessageProcessor extends AbstractProcessor {
             }
         }
 
-        for(Table.Cell cell : this.ntfMap.cellSet()){
-            String row = (String) cell.getRowKey();
-            String col = (String) cell.getColumnKey();
+        for(Table.Cell<String, String, Object> cell : this.ntfMap.cellSet()){
+            String row = cell.getRowKey();
+            String col = cell.getColumnKey();
             if (COL_NAME.equals(col)) {
                 staticCodeBlockBuilder.addStatement("$L.put($S, $S, $S)", ntfMap, row, col, cell.getValue());
             }else if (COL_CLZ.equals(col)){
@@ -426,10 +427,10 @@ public class MessageProcessor extends AbstractProcessor {
         MethodSpec timeout = MethodSpec.methodBuilder("timeout")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(ParameterSpec.builder(String.class, reqId).build())
-                .returns(int.class)
+                .returns(double.class)
                 .addCode("Object val = $L.row($L).get($S);\n" +
                                 "if (null == val) return 5;\n" +
-                                "return (int)val;\n",
+                                "return (double)val;\n",
                         reqMap, reqId, COL_TIMEOUT)
                 .build();
         methodSpecs.add(timeout);
@@ -499,6 +500,7 @@ public class MessageProcessor extends AbstractProcessor {
         * 对于生成的类，我们不希望能通过常规手段访问，只允许通过反射访问（只让框架知道访问方式），
         * 所以我们将类及其成员的访问权限限制到最小。
         * */
+        String className = "MagicBook$$Impl";
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.FINAL)
                 .addField(FieldSpec.builder(String.class,

@@ -101,7 +101,7 @@ public @interface Request {
      * 请求对应的超时时长。单位：秒
      * NOTE: 若无响应序列此超时时长无用。
      * */
-    int timeout() default 5;
+    double timeout() default 5;
 
 
     /**

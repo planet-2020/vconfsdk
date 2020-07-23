@@ -83,7 +83,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
             return false;
         }
 
-        Session s = new Session(listener, reqSn, reqId, reqParas,magicBook.timeout(reqId) * 1000, magicBook.rspSeqs(reqId));
+        Session s = new Session(listener, reqSn, reqId, reqParas, (int) (magicBook.timeout(reqId) * 1000), magicBook.rspSeqs(reqId));
         sessions.add(s);
 
         // 用户参数转换为底层方法需要的参数

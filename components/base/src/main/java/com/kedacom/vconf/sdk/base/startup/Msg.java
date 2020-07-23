@@ -40,7 +40,7 @@ enum Msg {
                     String.class, // 终端软件版本号
             },
             rspSeq = "StartMtBaseRsp", // 下层实际并不会抛消息上来，超时是必然。
-            timeout = 2
+            timeout = 1.5
             )
     StartMtBase,
 
@@ -95,7 +95,5 @@ enum Msg {
             userParas = TNetWorkInfo.class
     )
     SetNetWorkCfg,
-
-    END;
 
 }
