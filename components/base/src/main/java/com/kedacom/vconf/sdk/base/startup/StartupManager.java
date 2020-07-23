@@ -16,20 +16,24 @@ import com.kedacom.vconf.sdk.base.startup.bean.transfer.MtLoginMtParam;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.TMTLoginMtResult;
 import com.kedacom.vconf.sdk.common.bean.TerminalType;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
+import com.kedacom.vconf.sdk.utils.file.FileHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetworkHelper;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.util.Objects;
+
 
 public class StartupManager extends Caster<Msg> {
     private static StartupManager instance = null;
-    private Context context;
+    private Application context;
 
     private boolean started;
 
-    private StartupManager(Context ctx) {
+    private StartupManager(Application ctx) {
         context = ctx;
     }
 
@@ -53,18 +57,20 @@ public class StartupManager extends Caster<Msg> {
             reportSuccess(null, resultListener);
             return;
         }
-        // 设置业务组件工作空间
-//        File dir = new File(context.getFilesDir(), "cellar");
-//        if (!dir.exists()){
-//            if(!dir.mkdir()){
-//                throw new RuntimeException("try to create dir "+dir.getAbsolutePath()+" failed");
-//            }
-//        }
-//        req(Msg.SetMtWorkspace, null, dir.getAbsolutePath()); // TODO mtcapi-jni中没有SetSysWorkPathPrefix
 
         // 启动业务组件基础模块
         EmMtModel model = ToDoConverter.toTransferObj(type);
         req(Msg.StartMtBase, new SessionProcessor<Msg>() {
+            @Override
+            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas) {
+                // 设置业务组件工作空间
+                String ywzjWorkSpace = FileHelper.getPath(FileHelper.Location.EXTERNAL, FileHelper.Type.COMMON, "ywzj");
+                File dir = FileHelper.createDir(Objects.requireNonNull(ywzjWorkSpace));
+                req(Msg.SetMtWorkspace, null, null, Objects.requireNonNull(dir).getAbsolutePath());
+                // 启用业务组件保存日志到文件的功能
+                req(Msg.MtLogToFile, null, null, true);
+            }
+
             // StartMtBase并不会给响应，我们必定是等待超时。
             // 我们利用超时机制做延时以保证此刻业务组件基础模块已经完全起来了，在此之前我们不能调用业务组件任何其他接口！
             @Override

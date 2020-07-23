@@ -17,11 +17,22 @@ enum Msg {
     /**设置业务组件工作空间。
      * 其创建的一些配置文件以及日志文件均在该路径下*/
     @Request(name = "SetSysWorkPathPrefix",
-            owner = Atlas.KernalCtrl,
+            owner = Atlas.MtcLib,
             paras = StringBuffer.class,
             userParas = String.class  // 工作空间完整路径
     )
     SetMtWorkspace,
+
+    /**
+     * 设置是否启用业务组件的日志文件功能。
+     * 若启用则业务组件会将日志以文件形式保存在SetMtWorkspace设置的路径下。
+     * */
+    @Request(name = "SetLogCfgCmd",
+            owner = Atlas.ConfigCtrl,
+            paras = StringBuffer.class,
+            userParas = boolean.class // true启用
+    )
+    MtLogToFile,
 
     /**启动业务组件基础模块
      * NOTE：调用所有其他业务组件接口前需先等该接口“完成”！
