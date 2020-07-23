@@ -10,6 +10,7 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.media.projection.MediaProjection;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -1257,8 +1258,12 @@ public class WebRtcManager extends Caster<Msg>{
 
             if (/*config.aecDump*/false) {
                 try {
+                    File dir = new File(Environment.getExternalStorageDirectory().getPath() + File.separator + "kedacom/webrtc");
+                    if (!dir.exists()){
+                        dir.mkdirs();
+                    }
                     ParcelFileDescriptor aecDumpFileDescriptor =
-                            ParcelFileDescriptor.open(new File(FileHelper.getPath(FileHelper.Location.EXTERNAL, FileHelper.Type.COMMON, "webrtc/aec.dump")),
+                            ParcelFileDescriptor.open(new File(dir, "aec.dump"),
                                     ParcelFileDescriptor.MODE_READ_WRITE | ParcelFileDescriptor.MODE_CREATE | ParcelFileDescriptor.MODE_TRUNCATE);
                     factory.startAecDump(aecDumpFileDescriptor.detachFd(), -1);
                 } catch (IOException e) {
