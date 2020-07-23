@@ -84,23 +84,20 @@ public class StartupManager extends Caster<Msg> {
                     @Override
                     public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas) {
                         // 设置业务组件sdk回调
-                        set(Msg.SetMtSdkCallback, new IMtcCallback() {
-                            @Override
-                            public void Callback(String msg) {
-                                try {
-                                    JSONObject mtapi = new JSONObject(msg);
-                                    String msgId = mtapi.getJSONObject("head").getString("eventname");
-                                    String body = mtapi.getString("body");
-                                    if (null == msgId || null == body) {
-                                        KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
-                                        return;
-                                    }
-
-                                    CrystalBall.instance().onAppear(msgId, body);
-
-                                } catch (JSONException e) {
-                                    e.printStackTrace();
+                        set(Msg.SetMtSdkCallback, (IMtcCallback) msg -> {
+                            try {
+                                JSONObject mtapi = new JSONObject(msg);
+                                String msgId = mtapi.getJSONObject("head").getString("eventname");
+                                String body = mtapi.getString("body");
+                                if (null == msgId || null == body) {
+                                    KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
+                                    return;
                                 }
+
+                                CrystalBall.instance().onAppear(msgId, body);
+
+                            } catch (JSONException e) {
+                                e.printStackTrace();
                             }
                         });
                     }
