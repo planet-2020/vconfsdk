@@ -104,39 +104,38 @@ final class SessionFairy implements IFairy.ISessionFairy{
         }
         s.setState(Session.READY);
 
-        uiHandler.post(() -> {
-            Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", hasRsp?s.id:"", s.reqId, methodName, sb));
-            reqHandler.post(() -> {
-                if(!s.transState(Session.READY, Session.SENDING)){
+        Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", hasRsp?s.id:"", s.reqId, methodName, sb));
+
+        reqHandler.post(() -> {
+            if(!s.transState(Session.READY, Session.SENDING)){
+                return;
+            }
+
+            // 调用native接口
+            String nativeMethodOwner = magicBook.nativeMethodOwner(s.reqId);
+            long nativeCallCostTime;
+            long timestamp = System.currentTimeMillis();
+            if (null != crystalBall) {
+                crystalBall.spell(nativeMethodOwner, methodName, paras, nativeParaClasses);
+            }
+            nativeCallCostTime = System.currentTimeMillis() - timestamp;
+
+            KLog.p(KLog.DEBUG,"native method %s cost time: %s", nativeMethodOwner+"#"+methodName, nativeCallCostTime);
+            if(!s.transState(Session.SENDING, Session.SENT)){
+                return;
+            }
+
+            uiHandler.post(() -> {
+                if(!s.transState(Session.SENT, Session.WAITING)){
                     return;
                 }
-
-                // 调用native接口
-                String nativeMethodOwner = magicBook.nativeMethodOwner(s.reqId);
-                long nativeCallCostTime = 0;
-                long timestamp = System.currentTimeMillis();
-                if (null != crystalBall) {
-                    crystalBall.spell(nativeMethodOwner, methodName, paras, nativeParaClasses);
+                if (!hasRsp){
+                    s.setState(Session.END);
+                    sessions.remove(s);
                 }
-                nativeCallCostTime = System.currentTimeMillis() - timestamp;
-
-                KLog.p(KLog.DEBUG,"native method %s cost time: %s", nativeMethodOwner+"#"+methodName, nativeCallCostTime);
-                if(!s.transState(Session.SENDING, Session.SENT)){
-                    return;
-                }
-
-                uiHandler.post(() -> {
-                    if(!s.transState(Session.SENT, Session.WAITING)){
-                        return;
-                    }
-                    if (!hasRsp){
-                        s.setState(Session.END);
-                        sessions.remove(s);
-                    }
-                    s.listener.onReqSent(hasRsp, s.reqId, s.reqSn, s.reqPara);
-                });
-
+                s.listener.onReqSent(hasRsp, s.reqId, s.reqSn, s.reqPara);
             });
+
         });
 
         return true;
@@ -209,6 +208,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
                             continue;
                         }
                         // 若当前期望的rspId是GreedyNote则尝试匹配其前后的rspId
+                        //noinspection StatementWithEmptyBody
                         if(rspId.equals(candidateRspSeq[expectedRspIdx-1])){
                             // 若匹配到GreedyNote前面的rspId，则expectedRspIdx不变，表明我们依然可以接收GreedyNote前面或后面的rspId
                             // Nothing to do
@@ -316,6 +316,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
             this.state = state;
         }
 
+        @SuppressWarnings("BooleanMethodIsAlwaysInverted")
         private synchronized boolean transState(int from, int to) {
             if (from != state){
                 return false;
