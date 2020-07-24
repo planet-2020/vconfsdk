@@ -12,4 +12,4 @@ dependencies {
     implementation project(':utils')
 }
 
-publish = false
+//publish = false

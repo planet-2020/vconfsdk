@@ -35,9 +35,9 @@ import java.util.Set;
 
 public class LoginManager extends Caster<Msg> {
     private static LoginManager instance = null;
-    private Context context;
+    private Application context;
 
-    private LoginManager(Context ctx) {
+    private LoginManager(Application ctx) {
         context = ctx;
     }
 
@@ -152,7 +152,7 @@ public class LoginManager extends Caster<Msg> {
                                     }, resultListener, NetAddrHelper.ipLongLittleEndian2Str(apsLoginResult.AssParam.dwIP));
 
                                 }else{
-                                    reportFailed(-1, resultListener);
+                                    reportFailed(LIResultCode.trans(rsp, apsLoginResult.MainParam.dwApsErroce), resultListener);
                                 }
                             }
                         },
@@ -221,6 +221,7 @@ public class LoginManager extends Caster<Msg> {
         }, resultListener, new TMTAccountManagerSystem(username));
     }
 
+    @SuppressWarnings("SwitchStatementWithTooFewBranches")
     @Override
     protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
         switch (ntf){
