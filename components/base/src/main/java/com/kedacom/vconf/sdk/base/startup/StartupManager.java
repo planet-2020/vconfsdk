@@ -58,16 +58,16 @@ public class StartupManager extends Caster<Msg> {
             return;
         }
 
+        // 设置业务组件工作空间
+        String ywzjWorkSpace = FileHelper.getPath(FileHelper.Location.INTERNAL, FileHelper.Type.COMMON, "ywzj");
+        req(Msg.SetMtWorkspace, null, null, ywzjWorkSpace);
+
         // 启动业务组件基础模块
         EmMtModel model = ToDoConverter.toTransferObj(type);
         req(Msg.StartMtBase, new SessionProcessor<Msg>() {
             @Override
             public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas) {
-                // 设置业务组件工作空间
-                String ywzjWorkSpace = FileHelper.getPath(FileHelper.Location.EXTERNAL, FileHelper.Type.COMMON, "ywzj");
-                File dir = FileHelper.createDir(Objects.requireNonNull(ywzjWorkSpace));
-                req(Msg.SetMtWorkspace, null, null, Objects.requireNonNull(dir).getAbsolutePath());
-                // 启用业务组件保存日志到文件的功能
+               // 启用业务组件保存日志到文件的功能
                 req(Msg.MtLogToFile, null, null, true);
             }
 
