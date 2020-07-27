@@ -294,7 +294,7 @@ public final class RtcConfig {
     }
 
     public boolean isBuiltInAECPreferred(){
-        return rtcUserConfig.getBoolean(key_isBuiltInAECPreferred, true);
+        return rtcUserConfig.getBoolean(key_isBuiltInAECPreferred, false);
     }
 
     /** 是否优先尝试使用android平台内置的NS——噪声抑制（如果没有内置的再选用webrtc自带的）*/
@@ -304,7 +304,7 @@ public final class RtcConfig {
     }
 
     public boolean isBuiltInNSPreferred(){
-        return rtcUserConfig.getBoolean(key_isBuiltInNSPreferred, true);
+        return rtcUserConfig.getBoolean(key_isBuiltInNSPreferred, false);
     }
 
 
