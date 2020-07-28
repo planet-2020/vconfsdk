@@ -42,7 +42,6 @@ import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
-import com.kedacom.vconf.sdk.utils.file.FileHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.ConnType;
@@ -101,6 +100,7 @@ import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 import org.webrtc.audio.AudioDeviceModule;
 import org.webrtc.audio.JavaAudioDeviceModule;
+import org.webrtc.voiceengine.WebRtcAudioUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -1176,6 +1176,10 @@ public class WebRtcManager extends Caster<Msg>{
                 decoderFactory = new SoftwareVideoDecoderFactory();
             }
 
+            WebRtcAudioUtils.setWebRtcBasedAcousticEchoCanceler(true);
+            WebRtcAudioUtils.setWebRtcBasedAutomaticGainControl(true);
+            WebRtcAudioUtils.setWebRtcBasedNoiseSuppressor(true);
+
             factory = PeerConnectionFactory.builder()
                     .setOptions(new PeerConnectionFactory.Options())
                     .setAudioDeviceModule(adm)
@@ -1408,8 +1412,8 @@ public class WebRtcManager extends Caster<Msg>{
 
         return JavaAudioDeviceModule.builder(context)
 //        .setSamplesReadyCallback(saveRecordedAudioToFile)
-                .setUseHardwareAcousticEchoCanceler(!config.disableBuiltInAEC)
-                .setUseHardwareNoiseSuppressor(!config.disableBuiltInNS)
+                .setUseHardwareAcousticEchoCanceler(config.isBuiltInAECPreferred)
+                .setUseHardwareNoiseSuppressor(config.isBuiltInNSPreferred)
                 .setAudioRecordErrorCallback(audioRecordErrorCallback)
                 .setAudioTrackErrorCallback(audioTrackErrorCallback)
                 .createAudioDeviceModule();
