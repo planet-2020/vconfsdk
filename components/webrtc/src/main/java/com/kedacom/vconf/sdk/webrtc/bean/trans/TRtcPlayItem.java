@@ -16,10 +16,27 @@ public final class TRtcPlayItem {
     public EmCodecComponent emLocalChan;                         ///<本地码流
     public EmCodecComponentIndex byLocalChanIdx;                      ///<本地第几路
 
+    public boolean bSubBigSstream;  // 是否为大画面码流。平台根据此标记针对该路码流做优化
+
+    private String achMtName;    // windows专用
+
+
     public TRtcPlayItem(String achStreamId, boolean bAss, EmMtResolution emRes) {
         this.bLocal = false;
         this.achStreamId = achStreamId;
         this.bAss = bAss;
         this.emRes = emRes;
+    }
+
+    public TRtcPlayItem(String achStreamId, boolean bAss, EmMtResolution emRes, boolean bSubBigSstream) {
+        this.bLocal = false;
+        this.achStreamId = achStreamId;
+        this.bAss = bAss;
+        this.emRes = emRes;
+        this.bSubBigSstream = bSubBigSstream;
+    }
+
+    public void setbSubBigSstream(boolean bSubBigSstream) {
+        this.bSubBigSstream = bSubBigSstream;
     }
 }
