@@ -3412,17 +3412,17 @@ public class WebRtcManager extends Caster<Msg>{
             // 从低到高，平台要求的。
             RtpParameters.Encoding low = new RtpParameters.Encoding("l", true, 4.0);
             low.maxFramerate = config.videoFps;
-            low.maxBitrateBps = config.videoMaxBitrate * 1000;
+            low.maxBitrateBps = config.videoMaxBitrate * 1024;
             RtpParameters.Encoding medium = new RtpParameters.Encoding("m", true, 2.0);
             medium.maxFramerate = config.videoFps;
-            medium.maxBitrateBps = config.videoMaxBitrate * 1000;
+            medium.maxBitrateBps = config.videoMaxBitrate * 1024;
             encodings.add(low);
             encodings.add(medium);
         }
 
         RtpParameters.Encoding high = new RtpParameters.Encoding("h", true, 1.0);
         high.maxFramerate = config.videoFps;
-        high.maxBitrateBps = config.videoMaxBitrate * 1000;
+        high.maxBitrateBps = config.videoMaxBitrate * 1024;
         encodings.add(high);
 
         return encodings;
@@ -3437,15 +3437,15 @@ public class WebRtcManager extends Caster<Msg>{
                     if (encoding.rid.equals("l")) {
                         encoding.scaleResolutionDownBy = 4.0;
                         encoding.maxFramerate = config.videoFps;
-                        encoding.maxBitrateBps = config.videoMaxBitrate * 1000;
+                        encoding.maxBitrateBps = config.videoMaxBitrate * 1024;
                     } else if (encoding.rid.equals("m")) {
                         encoding.scaleResolutionDownBy = 2.0;
                         encoding.maxFramerate = config.videoFps;
-                        encoding.maxBitrateBps = config.videoMaxBitrate * 1000;
+                        encoding.maxBitrateBps = config.videoMaxBitrate * 1024;
                     } else if (encoding.rid.equals("h")) {
                         encoding.scaleResolutionDownBy = 1.0;
                         encoding.maxFramerate = config.videoFps;
-                        encoding.maxBitrateBps = config.videoMaxBitrate * 1000;
+                        encoding.maxBitrateBps = config.videoMaxBitrate * 1024;
                     }
                     KLog.p("encoding: rid=%s, scaleResolutionDownBy=%s, maxFramerate=%s, maxBitrateBps=%s",
                             encoding.rid, encoding.scaleResolutionDownBy, encoding.maxFramerate, encoding.maxBitrateBps);
@@ -3454,7 +3454,7 @@ public class WebRtcManager extends Caster<Msg>{
                 RtpParameters.Encoding encoding = encodings.get(0);
                 encoding.scaleResolutionDownBy = 1.0;
                 encoding.maxFramerate = config.videoFps;
-                encoding.maxBitrateBps = config.videoMaxBitrate * 1000;
+                encoding.maxBitrateBps = config.videoMaxBitrate * 1024;
                 KLog.p("encoding.size=%s, encoding[0]: rid=%s, scaleResolutionDownBy=%s, maxFramerate=%s, maxBitrateBps=%s",
                         encodings.size(), encoding.rid, encoding.scaleResolutionDownBy, encoding.maxFramerate, encoding.maxBitrateBps);
             }

@@ -149,7 +149,7 @@ public final class RtcConfig {
     }
 
     /**
-     * 设置视频宽度
+     * 设置视频采集宽
      * */
     public RtcConfig setVideoWidth(int width){
         editor.putInt(key_videoWidth, width).apply();
@@ -157,11 +157,11 @@ public final class RtcConfig {
     }
 
     public int getVideoWidth(){
-        return rtcUserConfig.getInt(key_videoWidth, 1280);
+        return rtcUserConfig.getInt(key_videoWidth, 640);
     }
 
     /**
-     * 设置视频高度
+     * 设置视频采集高
      * */
     public RtcConfig setVideoHeight(int height){
         editor.putInt(key_videoHeight, height).apply();
@@ -169,12 +169,12 @@ public final class RtcConfig {
     }
 
     public int getVideoHeight(){
-        return rtcUserConfig.getInt(key_videoHeight, 720);
+        return rtcUserConfig.getInt(key_videoHeight, 360);
     }
 
 
     /**
-     * 设置视频帧率
+     * 设置视频采集帧率
      * */
     public RtcConfig setVideoFps(int fps){
         editor.putInt(key_videoFps, fps).apply();
@@ -182,12 +182,12 @@ public final class RtcConfig {
     }
 
     public int getVideoFps(){
-        return rtcUserConfig.getInt(key_videoFps, 30);
+        return rtcUserConfig.getInt(key_videoFps, 15);
     }
 
 
     /**
-     * 设置最大视频码率
+     * 设置最大视频发送码率
      * @param bitrate 码率。单位：kbps（b代表bit非byte）
      * */
     public RtcConfig setVideoMaxBitrate(int bitrate){
@@ -196,7 +196,7 @@ public final class RtcConfig {
     }
 
     public int getVideoMaxBitrate(){
-        return rtcUserConfig.getInt(key_videoMaxBitrate, 1024*4);
+        return rtcUserConfig.getInt(key_videoMaxBitrate, 256);
     }
 
     /**
