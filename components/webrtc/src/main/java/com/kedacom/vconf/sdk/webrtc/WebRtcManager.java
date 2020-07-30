@@ -1103,7 +1103,8 @@ public class WebRtcManager extends Caster<Msg>{
         }
         displays.clear();
 
-        myself = null;
+//        myself = null;
+
         conferees.clear();
 
         streams.clear();
@@ -2054,7 +2055,7 @@ public class WebRtcManager extends Caster<Msg>{
             if (resolutionChanged){
                 instance.subscribeStream();
             }
-            if (instance.myself != this && videoChannelState == VideoChannelState.Idle){
+            if (instance.myself != this && videoChannelState == VideoChannelState.Idle){ // TODO do this only if display has enabled
                 instance.handler.postDelayed(() -> {
                     if (VideoChannelState.Idle == videoChannelState){
                         // Conferee没有视频码流，此种情形下我们置其VideoChannelState为BindingFailed
