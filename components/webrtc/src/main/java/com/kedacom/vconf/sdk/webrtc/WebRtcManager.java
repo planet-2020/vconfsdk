@@ -2773,7 +2773,7 @@ public class WebRtcManager extends Caster<Msg>{
     public Display createDisplay(Display.Type type){
         Display display =  new Display(context, type);
         displays.add(display);
-        KLog.p("display %s created", display.id());
+        KLog.p("display %s created, type=%s", display.id(), type);
         return display;
     }
 
@@ -4227,7 +4227,7 @@ public class WebRtcManager extends Caster<Msg>{
                     synchronized (publisherStats) {
                         StatsHelper.resolveStats(rtcStatsReport, publisherStats);
                         KLog.p("####publisherStats: ");
-                        printStats(publisherStats);
+                        printStats(publisherStats, false);
                     }
                 });
             }
@@ -4236,23 +4236,26 @@ public class WebRtcManager extends Caster<Msg>{
                     synchronized (subscriberStats) {
                         StatsHelper.resolveStats(rtcStatsReport, subscriberStats);
                         KLog.p("####subscriberStats: ");
-                        printStats(subscriberStats);
+                        printStats(subscriberStats, false);
                     }
                 });
             }
+
 //            if (null != assPubPcWrapper && null != assPubPcWrapper.pc) {
 //                assPubPcWrapper.pc.getStats(rtcStatsReport -> {
-//                    KLog.p("assPublisherStats=%s ", rtcStatsReport);
+//                    KLog.p("####assPublisherStats: ");
 //                    synchronized (assPublisherStats) {
 //                        StatsHelper.resolveStats(rtcStatsReport, assPublisherStats);
+//                        printStats(assPublisherStats, false);
 //                    }
 //                });
 //            }
 //            if (null != assSubPcWrapper && null != assSubPcWrapper.pc) {
 //                assSubPcWrapper.pc.getStats(rtcStatsReport -> {
-//                    KLog.p("assSubscriberStats=%s ", rtcStatsReport);
+//                    KLog.p("####assSubscriberStats: ");
 //                    synchronized (assSubscriberStats) {
-//                        StatsHelper.resolveStats(rtcStatsReport, assSubscriberStats);
+//                        StatsHelper.resolveStats(rtcStatsReport, assPublisherStats);
+//                        printStats(assPublisherStats, false);
 //                    }
 //                });
 //            }
@@ -4387,32 +4390,34 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private void printStats(StatsHelper.Stats stats){
+    private void printStats(StatsHelper.Stats stats, boolean detail){
         if (!enableStatsLog){
             return;
         }
         KLog.p(">>>>>>>>>> stats begin");
         // 因为android log一次输出有最大字符限制，所以我们分段输出
-        KLog.p("---------- audio");
-        if (null != stats.audioSource) {
-            KLog.p(stats.audioSource.toString());
-        }
-        if (null != stats.sendAudioTrack) {
-            KLog.p(stats.sendAudioTrack.toString());
-        }
-        if (null != stats.audioOutboundRtp) {
-            KLog.p(stats.audioOutboundRtp.toString());
-        }
-        if (null != stats.recvAudioTrackList) {
-            for (StatsHelper.RecvAudioTrack audioTrack : stats.recvAudioTrackList) {
-                String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(audioTrack.trackIdentifier);
-                Conferee conferee = findConfereeByStreamId(kdStreamId);
-                KLog.p(conferee != null ? conferee.alias+" " + audioTrack : audioTrack.toString());
+        if (detail) {
+            KLog.p("---------- audio");
+            if (null != stats.audioSource) {
+                KLog.p(stats.audioSource.toString());
             }
-        }
-        if (null != stats.audioInboundRtpList) {
-            for (StatsHelper.AudioInboundRtp audioInbound : stats.audioInboundRtpList) {
-                KLog.p(audioInbound.toString());
+            if (null != stats.sendAudioTrack) {
+                KLog.p(stats.sendAudioTrack.toString());
+            }
+            if (null != stats.audioOutboundRtp) {
+                KLog.p(stats.audioOutboundRtp.toString());
+            }
+            if (null != stats.recvAudioTrackList) {
+                for (StatsHelper.RecvAudioTrack audioTrack : stats.recvAudioTrackList) {
+                    String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(audioTrack.trackIdentifier);
+                    Conferee conferee = findConfereeByStreamId(kdStreamId);
+                    KLog.p(conferee != null ? conferee.alias + " " + audioTrack : audioTrack.toString());
+                }
+            }
+            if (null != stats.audioInboundRtpList) {
+                for (StatsHelper.AudioInboundRtp audioInbound : stats.audioInboundRtpList) {
+                    KLog.p(audioInbound.toString());
+                }
             }
         }
 
@@ -4439,15 +4444,17 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
 
-        KLog.p("---------- codec");
-        if (null != stats.encoderList) {
-            for (StatsHelper.Codec codec : stats.encoderList) {
-                KLog.p(codec.toString());
+        if (detail) {
+            KLog.p("---------- codec");
+            if (null != stats.encoderList) {
+                for (StatsHelper.Codec codec : stats.encoderList) {
+                    KLog.p(codec.toString());
+                }
             }
-        }
-        if (null != stats.decoderList) {
-            for (StatsHelper.Codec codec : stats.decoderList) {
-                KLog.p(codec.toString());
+            if (null != stats.decoderList) {
+                for (StatsHelper.Codec codec : stats.decoderList) {
+                    KLog.p(codec.toString());
+                }
             }
         }
 
