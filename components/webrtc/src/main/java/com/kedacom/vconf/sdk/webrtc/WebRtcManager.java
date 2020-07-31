@@ -1529,7 +1529,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 己端加入会议时，会议中已有与会方出席（包括自己）。
          * 作为对比，{@link #onConfereeJoined(Conferee)}、{@link #onConfereeLeft(Conferee)}分别表示己端入会后与会方加入、离开。
          *
-         * 一般情形下，用户收到该回调时调用{@link #createDisplay()}创建Display，
+         * 一般情形下，用户收到该回调时调用{@link #createDisplay(Display.Type)}创建Display，
          * 然后调用{@link Display#setConferee(Conferee)} 将Display绑定到与会方以使与会方画面展示在Display上，
          * 如果还需要展示文字图标等deco，可调用{@link Conferee#addText(TextDecoration)}}, {@link Conferee#addPic(PicDecoration)}
          * NOTE: 文字、图片等deco是属于Conferee的而非Display，所以调用{@link Display#swapContent(Display)}等方法时，deco也会跟着迁移。
@@ -1539,7 +1539,7 @@ public class WebRtcManager extends Caster<Msg>{
         void onConfereesAppeared(List<Conferee> conferees);
         /**
          * 与会方加入。
-         * 一般情形下，用户收到该回调时调用{@link #createDisplay()}创建Display，
+         * 一般情形下，用户收到该回调时调用{@link #createDisplay(Display.Type)}创建Display，
          * 然后调用{@link Display#setConferee(Conferee)} 将Display绑定到与会方以使与会方画面展示在Display上，
          * 如果还需要展示文字图标等deco，可调用{@link Conferee#addText(TextDecoration)}}, {@link Conferee#addPic(PicDecoration)}
          * NOTE: 文字、图片等deco是属于Conferee的而非Display，所以调用{@link Display#swapContent(Display)}等方法时，deco也会跟着迁移。
@@ -2048,6 +2048,21 @@ public class WebRtcManager extends Caster<Msg>{
             return false;
         }
 
+        private Display.Priority getPriority(){
+            return Stream.of(displays)
+                    .map(display -> display.priority)
+                    .max(Display.Priority::compareTo)
+                    .orElse(null);
+        }
+
+        private boolean willPriorityBeChanged(Display.Priority requiredPriority){
+            return getPriority() != requiredPriority && null != getVideoStream();
+        }
+
+        private boolean onStage(){
+            return getPriority() == Display.Priority.HIGH;
+        }
+
         private void addDisplay(@NonNull Display display) {
             KLog.p("add Display %s to conferee %s", display.id(), getId());
             boolean resolutionChanged = willVideoResolutionBeChanged(display.preferredVideoQuality);
@@ -2244,16 +2259,31 @@ public class WebRtcManager extends Caster<Msg>{
          * 视频质量偏好。
          * 一个与会方“可能”有高中低三种不同质量的视频流，该字段用于指定该Display“倾向于”展示哪种质量的视频流。
          * */
-        private int preferredVideoQuality = RtcConfig.VideoQuality_Unknown;
+        private int preferredVideoQuality;
+
+        /**
+         * 优先级
+         * 多个display场景下，高优先级的优先享用带宽，以保证画面的流畅。
+         * */
+        private Priority priority;
+
+        /**
+         * Display类型。
+         * Display类型影响{@link #priority}和{@link #preferredVideoQuality}的默认值。
+         * */
+        private final Type type;
 
 
-        private Display(Context context) {
+        private Display(Context context, Type type) {
             super(context);
             init(instance.eglBase.getEglBaseContext(), null);
             setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
             setEnableHardwareScaler(true);
             setWillNotDraw(false);
             id = hashCode()+"";
+            this.type = type;
+            priority = type2Priority(type);
+            preferredVideoQuality = type2VideoQuality(type);
         }
 
         public String id() {
@@ -2282,7 +2312,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         /**
-         * 绑定与会方。
+         * 绑定与会方以展示其画面。
          * 一个Display只会绑定到一个与会方；
          * 多个Display可以绑定到同一与会方；
          * 若一个Display已经绑定到某个与会方，则该绑定会先被解除，然后建立新的绑定关系；
@@ -2403,13 +2433,32 @@ public class WebRtcManager extends Caster<Msg>{
          * 设置视频质量偏好。
          * @param quality 视频质量{@link RtcConfig#VideoQuality_High}{@link RtcConfig#VideoQuality_Medium}{@link RtcConfig#VideoQuality_Low}
          * 与会方“可能”发布了多种分辨率的视频流(simulcast)，此种情形下，可以依据使用场景选择对应的分辨率，如大画面以高分辨率展示，小画面以低分辨率展示。
+         *
+         * NOTE：大多数情况下您不需要调用该接口，默认会根据Display的type自动设置。{@link #createDisplay(Type)}
          * */
         public void setPreferredVideoQuality(int quality){
             if (preferredVideoQuality != quality){
                 boolean resolutionChanged = null != conferee && conferee.willVideoResolutionBeChanged(quality);
-                KLog.p("display %s change preferredVideoQuality from %s to %s", id(), preferredVideoQuality, quality);
+                KLog.p("display %s change preferredVideoQuality from %s to %s, need resubscribe = %s", id(), preferredVideoQuality, quality, resolutionChanged);
                 preferredVideoQuality = quality;
                 if (resolutionChanged){
+                    instance.subscribeStream();
+                }
+            }
+        }
+
+        /**
+         * 设置优先级。
+         * 高优先级的优先享用网络带宽以保证画面质量。
+         *
+         * NOTE：大多数情况下您不需要调用该接口，默认会根据Display的type自动设置，参见{@link #createDisplay(Type)}
+         * */
+        public void setPriority(Priority priority) {
+            if (this.priority != priority) {
+                boolean willBeChanged = null != conferee && conferee.willPriorityBeChanged(priority);
+                KLog.p("display %s change priority from %s to %s, need resubscribe = %s", id(), this.priority, priority, willBeChanged);
+                this.priority = priority;
+                if (willBeChanged){
                     instance.subscribeStream();
                 }
             }
@@ -2516,6 +2565,53 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
+        /**
+         * Display类型。
+         * 对于一大多小的布局形式，大的是MAIN，小的是THUMBNAIL。
+         * 對於等大佈局的情況，所有都是MAIN。
+         * */
+        public enum Type{
+            THUMBNAIL, // 缩略图。一般以小画面形式展示，通常多个小画面形成一个列表。
+            MAIN,  // 主Display。一般以大画面形式展示。
+            FULLSCREEN // 全屏
+        }
+
+        /**
+         * Display优先级。
+         * 优先级影响一些内部策略，如带宽优享。
+         * */
+        public enum Priority{ // NOTE: 优先级按从小到大排序
+            LOW,
+//            MEDIUM, // 目前仅支持中高两种
+            HIGH
+        }
+
+        private Priority type2Priority(Type type){
+            switch (type){
+                case THUMBNAIL:
+                    return Priority.LOW;
+                case MAIN:
+//                    return Priority.MEDIUM;
+                case FULLSCREEN:
+                    return Priority.HIGH;
+                default:
+                    return Priority.LOW;
+            }
+        }
+
+        private int type2VideoQuality(Type type){
+            switch (type){
+                case THUMBNAIL:
+                    return RtcConfig.VideoQuality_Low;
+                case MAIN:
+                    return RtcConfig.VideoQuality_Medium;
+                case FULLSCREEN:
+                    return RtcConfig.VideoQuality_High;
+                default:
+                    return RtcConfig.VideoQuality_Low;
+            }
+        }
+
     }
 
 
@@ -2534,7 +2630,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 订阅码流
      * */
     private void subscribeStream(){
-        // 延迟绑定以防止短时间内大量重复绑定
+        // 延迟处理以防止短时间内大量订阅
         handler.removeCallbacks(subscribeStreamRunnable);
         handler.postDelayed(subscribeStreamRunnable, 200);
     }
@@ -2550,7 +2646,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     /**
      * 向平台订阅码流
-     * NOTE：每次订阅都是全量，这意味着即使新增一路码流也需要把之前已订阅过的码流全部重新订阅，
+     * NOTE：每次订阅都是全量，这意味着即使只新增一路码流也需要把之前已订阅过的码流全部重新订阅一遍，
      * 未包含在此次订阅码流集合中的则视为取消订阅（若之前已订阅）；音频码流无需订阅，业务组件已代劳。
      * */
     private void doSubscribeStream(){
@@ -2592,7 +2688,7 @@ public class WebRtcManager extends Caster<Msg>{
                     }
 
                 })
-                .map(stream -> new TRtcPlayItem(stream.getStreamId(), stream.isAss(), stream.getResolution()))
+                .map(stream -> new TRtcPlayItem(stream.getStreamId(), stream.isAss(), stream.getResolution(), stream.getOwner().onStage()))
                 .collect(Collectors.toList());
 
         if (!playItems.isEmpty()) {
@@ -2660,9 +2756,22 @@ public class WebRtcManager extends Caster<Msg>{
 
     /**
      * 创建Display。
+     *
+     * @param type display類型。
+     * 根据Display类型默认有如下策略：
+     * 1、分辨率优选
+     * 假设Conferee发布了3种不同分辨率的视频码流低、中、高，則Conferee分別展示在{@link Display.Type#THUMBNAIL}、{@link Display.Type#MAIN}、
+     * {@link Display.Type#FULLSCREEN}類型的Display中時訂閱的嗎流分別爲低、中、高，Conferee在不同类型的Display中切换展示时码流选择会动态变化。
+     * NOTE：您可以通过{@link Display#setPreferredVideoQuality(int)}覆盖默认的分辨率选择策略。
+     *       若多个Display绑定到了同一个Conferee，则它们实际展示的分辨率一致——对齐其中最高的。
+     * 2、带宽享用优先级
+     * 默认情况下带宽享用的优先级{@link Display.Type#FULLSCREEN}>{@link Display.Type#MAIN}>{@link Display.Type#THUMBNAIL}，
+     * 当带宽受限时会牺牲低优先级的Display画面效果以保证高优先级的流畅性。
+     * NOTE：您可以通过{@link Display#setPriority(Display.Priority)} 覆盖默认的带宽享用优先级。
+     *       若多个Display绑定到了同一个Conferee，则它们实际享用的带宽优先级是一致的——对齐其中最高的。
      * */
-    public Display createDisplay(){
-        Display display =  new Display(context);
+    public Display createDisplay(Display.Type type){
+        Display display =  new Display(context, type);
         displays.add(display);
         KLog.p("display %s created", display.id());
         return display;
