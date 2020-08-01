@@ -2781,6 +2781,10 @@ public class WebRtcManager extends Caster<Msg>{
      * 当带宽受限时会牺牲低优先级的Display画面效果以保证高优先级的流畅性。
      * NOTE：您可以通过{@link Display#setPriority(Display.Priority)} 覆盖默认的带宽享用优先级。
      *       若多个Display绑定到了同一个Conferee，则它们实际享用的带宽优先级是一致的——对齐其中最高的。
+     *
+     * NOTE：如果您后续想复用该Display，则您可能需要调用{@link Display#setType(Display.Type)}改换其类型。
+     *      例如一开始以全屏展示某个画面{@link Display.Type#FULLSCREEN}，然后切换到大画面展示该画面，使用的是同一个Display，
+     *      则该Display的类型需要更改为{@link Display.Type#MAIN}
      * */
     public Display createDisplay(Display.Type type){
         Display display =  new Display(context, type);
