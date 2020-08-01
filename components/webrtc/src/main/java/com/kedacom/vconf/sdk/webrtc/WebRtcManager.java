@@ -2335,6 +2335,9 @@ public class WebRtcManager extends Caster<Msg>{
          * @param conferee 与会方。若为null或一个不存在于会议中的Conferee，界面效果等同没绑定。
          * */
         public void setConferee(@Nullable Conferee conferee){
+            if (conferee == this.conferee){
+                return;
+            }
             KLog.p("set content %s for display %s", null != conferee ? conferee.getId() : null, id());
             if (null != this.conferee){
                 this.conferee.removeDisplay(this);
