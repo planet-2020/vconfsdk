@@ -2796,7 +2796,7 @@ public class WebRtcManager extends Caster<Msg>{
         private int textSize;   // 文字大小（UCD标注的，实际展示的大小会依据Display的大小调整）
         private Paint bgPaint = new Paint();
         private RectF bgRect = new RectF();  // 文字背景区域
-        private static final int minTextSizeLimit = 35;
+        private static final int minTextSizeLimit = 32;
         /**
          * @param id deco的id，唯一标识该deco，用户自定义。
          * @param text deco文字内容
