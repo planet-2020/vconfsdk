@@ -47,6 +47,13 @@ public final class MatrixHelper {
         return Math.min(scaleX, scaleY);
     }
 
+    public static float getAverageScale(Matrix matrix){
+        matrix.getValues(matrixVals);
+        float scaleX = matrixVals[Matrix.MSCALE_X];
+        float scaleY = matrixVals[Matrix.MSCALE_Y];
+        return (scaleX + scaleY) / 2;
+    }
+
 
     public static float[] valStr2Float(String[] strMatrixValue){
         float[] matrixValue = new float[9];

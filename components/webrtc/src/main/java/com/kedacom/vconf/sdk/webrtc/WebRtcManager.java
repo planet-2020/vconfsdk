@@ -2956,6 +2956,7 @@ public class WebRtcManager extends Caster<Msg>{
             super(id, w, h, dx, dy, refPos);
             this.pic = pic;
             paint.setStyle(Paint.Style.STROKE);
+            paint.setAntiAlias(true);
 
             float picW = pic.getWidth();
             float picH = pic.getHeight();
@@ -3084,12 +3085,19 @@ public class WebRtcManager extends Caster<Msg>{
             preWidth = width;
             preHeight = height;
 
+            // 计算实际锚点
             matrix.reset();
             matrix.postTranslate(x, y);
             matrix.postScale(width/(float)w, height/(float)h, 0, 0);
             float[] cor = new float[2];
             matrix.mapPoints(cor);
             actualX = cor[0]; actualY = cor[1];
+
+            // 放缩尽量维持宽高比
+            float averageScale = MatrixHelper.getAverageScale(matrix);
+            matrix.reset();
+            matrix.postTranslate(x, y);
+            matrix.postScale(averageScale, averageScale, 0, 0);
 
 //            KLog.p("displayW=%s, displayH=%s, x=%s, y=%s, matrix=%s, actualX=%s, actualY=%s",
 //                    width, height, x, y, matrix, actualX, actualY);
