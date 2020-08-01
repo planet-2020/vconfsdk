@@ -1741,6 +1741,11 @@ public class WebRtcManager extends Caster<Msg>{
             return Collections.unmodifiableSet(displays);
         }
 
+
+        private Set<Display> getWorkingDisplays(){
+            return Stream.of(displays).filter(value -> value.enabled).collect(Collectors.toSet());
+        }
+
         /**
          * 是否为己端
          * */
@@ -2032,31 +2037,52 @@ public class WebRtcManager extends Caster<Msg>{
 
         private int getPreferredVideoQuality(){
             return Stream.of(displays)
+                    .filter(display -> display.enabled)
                     .map(display -> display.preferredVideoQuality)
                     .max(Integer::compareTo)
                     .orElse(RtcConfig.VideoQuality_Unknown);
         }
 
-        private boolean willVideoResolutionBeChanged(int requiredVideoQuality){
-            int curPreferredQuality = getPreferredVideoQuality();
-            if (curPreferredQuality < requiredVideoQuality){
-                RtcStream videoStream = getVideoStream();
-                if (null != videoStream && videoStream.getResolution(curPreferredQuality) != videoStream.getResolution(requiredVideoQuality)){
-                    return true;
-                }
-            }
-            return false;
-        }
-
         private Display.Priority getPriority(){
             return Stream.of(displays)
+                    .filter(display -> display.enabled)
                     .map(display -> display.priority)
                     .max(Display.Priority::compareTo)
                     .orElse(null);
         }
 
-        private boolean willPriorityBeChanged(Display.Priority requiredPriority){
-            return getPriority() != requiredPriority && null != getVideoStream();
+        private Display.Priority priority;
+        private int preferredVideoQuality = -1;
+        private RtcStream videoStream;
+        private void mark(){
+            if (isMyself()) {
+                return;
+            }
+            priority = getPriority();
+            preferredVideoQuality = getPreferredVideoQuality();
+            videoStream = getVideoStream();
+        }
+
+        /**
+         * 尝试刷新conferee。
+         * @return true刷新，false无需刷新。
+         * NOTE: 先{@link #mark()}再invalidate，成对。
+         * */
+        private boolean tryInvalidate(){
+            if (isMyself()) {
+                return false;
+            }
+            RtcStream curVS = getVideoStream();
+            Display.Priority curPri = getPriority();
+            int curPVQ = getPreferredVideoQuality();
+
+            boolean needInvalidate = curVS != videoStream
+                    || ( curVS != null && (curPri != priority || (curPVQ != preferredVideoQuality && curVS.getResolution(preferredVideoQuality) != curVS.getResolution(curPVQ)) ) );
+
+            if (needInvalidate){
+                instance.subscribeStream();
+            }
+            return needInvalidate;
         }
 
         private boolean onStage(){
@@ -2065,12 +2091,10 @@ public class WebRtcManager extends Caster<Msg>{
 
         private void addDisplay(@NonNull Display display) {
             KLog.p("add Display %s to conferee %s", display.id(), getId());
-            boolean resolutionChanged = willVideoResolutionBeChanged(display.preferredVideoQuality);
+            mark();
             displays.add(display);
-            if (resolutionChanged){
-                instance.subscribeStream();
-            }
-            if (instance.myself != this && videoChannelState == VideoChannelState.Idle){ // TODO do this only if display has enabled
+            boolean invalidate = tryInvalidate();
+            if (invalidate && videoChannelState == VideoChannelState.Idle){
                 instance.handler.postDelayed(() -> {
                     if (VideoChannelState.Idle == videoChannelState){
                         // Conferee没有视频码流，此种情形下我们置其VideoChannelState为BindingFailed
@@ -2082,12 +2106,11 @@ public class WebRtcManager extends Caster<Msg>{
 
         private boolean removeDisplay(@NonNull Display display) {
             KLog.p("try to remove Display %s from conferee %s", display.id(), getId());
+            mark();
             boolean success = displays.remove(display);
             if (success) {
                 KLog.p("display %s removed from conferee %s", display.id(), getId());
-                if (willVideoResolutionBeChanged(display.preferredVideoQuality)){
-                    instance.subscribeStream();
-                }
+                tryInvalidate();
             }
             return success;
         }
@@ -2240,12 +2263,6 @@ public class WebRtcManager extends Caster<Msg>{
         private String id;
 
         /**
-         * 是否使能。
-         * 使能则显示内容，否则不显示。
-         * */
-        private boolean enabled = true;
-
-        /**
          * 绑定的与会方。
          * */
         private Conferee conferee;
@@ -2256,22 +2273,32 @@ public class WebRtcManager extends Caster<Msg>{
         private Set<String> disabledDecos = new HashSet<>();
 
         /**
+         * 是否使能。
+         * 使能则显示内容，否则不显示。
+         * NOTE： 该属性乃Display固有，不会因内容相关操作，如{@link #swapContent(Display)}等，而变更。
+         * */
+        private boolean enabled = true;
+
+        /**
+         * Display类型。
+         * Display类型影响{@link #priority}和{@link #preferredVideoQuality}的默认值。
+         * NOTE： 该属性乃Display固有，不会因内容相关操作，如{@link #swapContent(Display)}等，而变更。
+         * */
+        private Type type;
+
+        /**
          * 视频质量偏好。
          * 一个与会方“可能”有高中低三种不同质量的视频流，该字段用于指定该Display“倾向于”展示哪种质量的视频流。
+         * NOTE： 该属性乃Display固有，不会因内容相关操作，如{@link #swapContent(Display)}等，而变更。
          * */
         private int preferredVideoQuality;
 
         /**
          * 优先级
          * 多个display场景下，高优先级的优先享用带宽，以保证画面的流畅。
+         * NOTE： 该属性乃Display固有，不会因内容相关操作，如{@link #swapContent(Display)}等，而变更。
          * */
         private Priority priority;
-
-        /**
-         * Display类型。
-         * Display类型影响{@link #priority}和{@link #preferredVideoQuality}的默认值。
-         * */
-        private Type type;
 
 
         private Display(Context context, Type type) {
@@ -2286,6 +2313,13 @@ public class WebRtcManager extends Caster<Msg>{
             preferredVideoQuality = type2VideoQuality(type);
         }
 
+        /**
+         * 设置是否在所有Display最前端展示。可用于多个Display层叠的场景
+         * */
+        public void setOnTopOverOtherDisplays(boolean bOnTop){
+            setZOrderMediaOverlay(bOnTop);
+        }
+
         public String id() {
             return id;
         }
@@ -2296,12 +2330,20 @@ public class WebRtcManager extends Caster<Msg>{
 
         /**
          * 设置是否使能该Display
-         * @param enable false 禁用该Display，屏蔽内容展示；true正常展示内容。默认true
+         * @param enable false 禁用该Display，屏蔽内容展示；true正常展示内容。默认true。
          * */
         public void setEnable(boolean enable){
-            KLog.p("set enable=%s for display %s", enable, id());
-            this.enabled = enable;
-            refresh();
+            if (this.enabled != enable) {
+                KLog.p("set enable=%s for display %s", enable, id());
+                if (conferee != null){ conferee.mark(); }
+
+                this.enabled = enable;
+
+                if (conferee != null){
+                    conferee.tryInvalidate();
+                    refresh();
+                }
+            }
         }
 
         /**
@@ -2316,12 +2358,67 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
 
+
         /**
-         * 设置是否在所有Display最前端展示。可用于多个Display层叠的场景
+         * 设置视频质量偏好。
+         * @param quality 视频质量{@link RtcConfig#VideoQuality_High}{@link RtcConfig#VideoQuality_Medium}{@link RtcConfig#VideoQuality_Low}
+         * 与会方“可能”发布了多种分辨率的视频流(simulcast)，此种情形下，可以依据使用场景选择对应的分辨率，如大画面以高分辨率展示，小画面以低分辨率展示。
+         *
+         * NOTE：大多数情况下您不需要调用该接口，默认会根据Display的type自动设置，参见{@link #createDisplay(Type)}及{@link #setType(Type)}
          * */
-        public void setOnTopOverOtherDisplays(boolean bOnTop){
-            setZOrderMediaOverlay(bOnTop);
+        public void setPreferredVideoQuality(int quality){
+            if (preferredVideoQuality != quality){
+                KLog.p("display %s change preferredVideoQuality from %s to %s", id(), preferredVideoQuality, quality);
+                if (conferee != null){ conferee.mark(); }
+
+                preferredVideoQuality = quality;
+
+                if (conferee != null){ conferee.tryInvalidate(); }
+            }
         }
+
+        /**
+         * 设置优先级。
+         * 高优先级的优先享用网络带宽以保证画面质量。
+         *
+         * NOTE：大多数情况下您不需要调用该接口，默认会根据Display的type自动设置，参见{@link #createDisplay(Type)}及{@link #setType(Type)}
+         * */
+        public void setPriority(Priority priority) {
+            if (this.priority != priority) {
+                KLog.p("display %s change priority from %s to %s", id(), this.priority, priority);
+                if (conferee != null){ conferee.mark(); }
+
+                this.priority = priority;
+
+                if (conferee != null){ conferee.tryInvalidate(); }
+            }
+        }
+
+        /**
+         * 设置是否展示某个deco
+         * 默认是展示。
+         * @param decoId {@link Decoration#id}
+         * @param enabled true，展示；false，屏蔽
+         * */
+        public void setDecoEnable(String decoId, boolean enabled){
+            boolean bSuccess;
+            if (enabled){
+                bSuccess = disabledDecos.remove(decoId);
+            }else{
+                bSuccess = disabledDecos.add(decoId);
+            }
+            if (bSuccess) {
+                refresh();
+            }
+        }
+
+        /**
+         * 清空禁掉的deco
+         * */
+        public void clearDisabledDecos(){
+            disabledDecos.clear();
+        }
+
 
         /**
          * 绑定与会方以展示其画面。
@@ -2367,14 +2464,14 @@ public class WebRtcManager extends Caster<Msg>{
             if (null != this.conferee){
                 this.conferee.removeDisplay(this);
             }
-            disabledDecos.clear();
 
             if (null != src.conferee) {
                 src.conferee.addDisplay(this);
             }
             conferee = src.conferee;
+
+            disabledDecos.clear();
             disabledDecos.addAll(src.disabledDecos);
-            enabled = src.enabled;
 
             refresh();
         }
@@ -2388,14 +2485,12 @@ public class WebRtcManager extends Caster<Msg>{
             dst.setConferee(conferee);
             dst.disabledDecos.clear();
             dst.disabledDecos.addAll(disabledDecos);
-            dst.enabled = enabled;
 
             if (null != conferee){
                 conferee.removeDisplay(this);
             }
             conferee = null;
             disabledDecos.clear();
-            enabled = true;
 
             refresh();
         }
@@ -2416,10 +2511,6 @@ public class WebRtcManager extends Caster<Msg>{
             disabledDecos.addAll(otherDisplay.disabledDecos);
             otherDisplay.disabledDecos.clear();
             otherDisplay.disabledDecos.addAll(myDisabledDecos);
-
-            boolean myEnabled = enabled;
-            enabled = otherDisplay.enabled;
-            otherDisplay.enabled = myEnabled;
         }
 
         /**
@@ -2428,73 +2519,16 @@ public class WebRtcManager extends Caster<Msg>{
         public void clear(){
             setConferee(null);
             disabledDecos.clear();
-            enabled = true;
         }
+
 
         /**
          * 销毁display
          * */
         private void destroy(){
             KLog.p("destroy display %s ", id());
-            if (null != conferee){
-                conferee.removeDisplay(this);
-                conferee = null;
-            }
+            clear();
             super.release();
-        }
-
-
-        /**
-         * 设置视频质量偏好。
-         * @param quality 视频质量{@link RtcConfig#VideoQuality_High}{@link RtcConfig#VideoQuality_Medium}{@link RtcConfig#VideoQuality_Low}
-         * 与会方“可能”发布了多种分辨率的视频流(simulcast)，此种情形下，可以依据使用场景选择对应的分辨率，如大画面以高分辨率展示，小画面以低分辨率展示。
-         *
-         * NOTE：大多数情况下您不需要调用该接口，默认会根据Display的type自动设置。{@link #createDisplay(Type)}
-         * */
-        public void setPreferredVideoQuality(int quality){
-            if (preferredVideoQuality != quality){
-                boolean resolutionChanged = null != conferee && conferee.willVideoResolutionBeChanged(quality);
-                KLog.p("display %s change preferredVideoQuality from %s to %s, need resubscribe = %s", id(), preferredVideoQuality, quality, resolutionChanged);
-                preferredVideoQuality = quality;
-                if (resolutionChanged){
-                    instance.subscribeStream();
-                }
-            }
-        }
-
-        /**
-         * 设置优先级。
-         * 高优先级的优先享用网络带宽以保证画面质量。
-         *
-         * NOTE：大多数情况下您不需要调用该接口，默认会根据Display的type自动设置，参见{@link #createDisplay(Type)}
-         * */
-        public void setPriority(Priority priority) {
-            if (this.priority != priority) {
-                boolean willBeChanged = null != conferee && conferee.willPriorityBeChanged(priority);
-                KLog.p("display %s change priority from %s to %s, need resubscribe = %s", id(), this.priority, priority, willBeChanged);
-                this.priority = priority;
-                if (willBeChanged){
-                    instance.subscribeStream();
-                }
-            }
-        }
-
-        /**
-         * 设置是否展示某个deco
-         * 默认是展示。
-         * @param decoId {@link Decoration#id}
-         * @param enabled true，展示；false，屏蔽
-         * */
-        public void setDecoEnable(String decoId, boolean enabled){
-            boolean bSuccess;
-            if (enabled){
-                bSuccess = disabledDecos.remove(decoId);
-            }else{
-                bSuccess = disabledDecos.add(decoId);
-            }
-            if (bSuccess) {
-                refresh();
-            }
         }
 
 
@@ -2672,7 +2706,7 @@ public class WebRtcManager extends Caster<Msg>{
                     if (null == owner){ // 不订阅/取消订阅没有归属的码流
                         return false;
                     }
-                    if (owner.displays.isEmpty()){ // 不订阅/取消订阅未绑定Display的Conferee的码流
+                    if (owner.getWorkingDisplays().isEmpty()){ // 不订阅/取消订阅未绑定Display的Conferee的码流
                         return false;
                     }
 
