@@ -2271,7 +2271,7 @@ public class WebRtcManager extends Caster<Msg>{
          * Display类型。
          * Display类型影响{@link #priority}和{@link #preferredVideoQuality}的默认值。
          * */
-        private final Type type;
+        private Type type;
 
 
         private Display(Context context, Type type) {
@@ -2302,6 +2302,18 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p("set enable=%s for display %s", enable, id());
             this.enabled = enable;
             refresh();
+        }
+
+        /**
+         * 设置Display类型。
+         * NOTE：设置Display类型会根据默认规则重置{@link #preferredVideoQuality}和{@link #priority}，参见{@link #createDisplay(Type)}
+         * */
+        public void setType(Type type){
+            if (type != this.type){
+                this.type = type;
+                setPreferredVideoQuality(type2VideoQuality(type));
+                setPriority(type2Priority(type));
+            }
         }
 
         /**
