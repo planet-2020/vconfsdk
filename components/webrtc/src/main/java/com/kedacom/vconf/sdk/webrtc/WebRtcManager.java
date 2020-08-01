@@ -2618,7 +2618,8 @@ public class WebRtcManager extends Caster<Msg>{
                 case MAIN:
                     return RtcConfig.VideoQuality_Medium;
                 case FULLSCREEN:
-                    return RtcConfig.VideoQuality_High;
+//                    return RtcConfig.VideoQuality_High;
+                    return RtcConfig.VideoQuality_Medium;
                 default:
                     return RtcConfig.VideoQuality_Low;
             }
