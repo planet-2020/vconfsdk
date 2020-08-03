@@ -421,7 +421,8 @@ class RtcConnector implements IRcvMsgCallback{
 		if (null != rtcMedia.encodings){
 			for (RtpParameters.Encoding encoding : rtcMedia.encodings){
 				StructConfPB.TRtcRid.Builder ridBuider = StructConfPB.TRtcRid.newBuilder();
-				ridBuider.setRid(encoding.rid)
+				ridBuider
+//						.setRid(encoding.rid)
 						.setEmres(convertRes(encoding.scaleResolutionDownBy))
 						.setBitrate(encoding.maxBitrateBps);
 				rtcMediaBuilder.addRidlist(ridBuider.build());
