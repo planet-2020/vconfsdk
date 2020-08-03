@@ -3704,7 +3704,7 @@ public class WebRtcManager extends Caster<Msg>{
         ctor.setAccessible(true);
         RtpParameters.Encoding encoding = null;
         try {
-            encoding = (RtpParameters.Encoding) ctor.newInstance(true, 0, 0, 0, 0, 1, 0);
+            encoding = (RtpParameters.Encoding) ctor.newInstance(true, 0, 0, 0, 0, 1.0, 0L);
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         } catch (InstantiationException e) {
