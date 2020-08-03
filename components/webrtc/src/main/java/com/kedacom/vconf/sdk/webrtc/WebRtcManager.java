@@ -1264,7 +1264,7 @@ public class WebRtcManager extends Caster<Msg>{
 
             KLog.p("pcWrappers created");
 
-            if (/*config.aecDump*/false) {
+            if (/*config.aecDump*/true) { // FIXME 仅作调试用，正式版本请关闭
                 try {
                     File dir = new File(Environment.getExternalStorageDirectory().getPath() + File.separator + "kedacom/webrtc");
                     if (!dir.exists()){
@@ -1342,7 +1342,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private void destroyPeerConnectionWrapper(){
         KLog.p("destroying pcWrappers...");
-        if (/*config.aecDump*/false) {
+        if (/*config.aecDump*/true) { // FIXME 仅作调试用，正式版本请关闭
             executor.execute(() -> {
                 factory.stopAecDump();
             });
