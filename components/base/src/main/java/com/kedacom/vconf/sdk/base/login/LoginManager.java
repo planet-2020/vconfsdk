@@ -1,7 +1,8 @@
 package com.kedacom.vconf.sdk.base.login;
 
 import android.app.Application;
-import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.annotation.NonNull;
 
@@ -31,11 +32,18 @@ import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class LoginManager extends Caster<Msg> {
     private static LoginManager instance = null;
     private Application context;
+
+    private static Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    private static ExecutorService executor = Executors.newCachedThreadPool();
+
 
     private LoginManager(Application ctx) {
         context = ctx;
@@ -76,17 +84,27 @@ public class LoginManager extends Caster<Msg> {
      *                       失败返回错误码。
      * */
     public void loginAps(@NonNull String apsAddr, @NonNull String username, @NonNull String password, IResultListener resultListener){
-        String apsIP = apsAddr;
-        if (!NetAddrHelper.isValidIp(apsAddr)){
+        if (NetAddrHelper.isValidIp(apsAddr)){
+            doLoginAps(apsAddr, username, password, resultListener);
+        }else{
             // 尝试域名解析
-            List<String> ips = NetAddrHelper.parseDomain(apsAddr);
-            if (ips.isEmpty()){
-                reportFailed(-1, resultListener);
-                return;
-            }
-            apsIP = ips.get(0);
+            executor.execute(() -> {
+                List<String> ips = NetAddrHelper.parseDomain(apsAddr);
+                mainHandler.post(() -> {
+                    if (!ips.isEmpty()){
+                        doLoginAps(ips.get(0), username, password, resultListener);
+                    }else{
+                        reportFailed(-1, resultListener);
+                    }
+                });
+
+            });
         }
 
+    }
+
+
+    private void doLoginAps(String apsIP, String username, @NonNull String password, IResultListener resultListener){
         long ipLong;
         try {
             ipLong = NetAddrHelper.ipStr2LongLittleEndian(apsIP);
@@ -106,62 +124,62 @@ public class LoginManager extends Caster<Msg> {
 
         // 配置Aps
         req(Msg.SetApsServerCfg, new SessionProcessor<Msg>() {
-                @Override
-                public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                    // 登录Aps
-                    req(Msg.LoginAps, new SessionProcessor<Msg>() {
-                            @Override
-                            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                                TApsLoginResult apsLoginResult = (TApsLoginResult) rspContent;
-                                if (apsLoginResult.MainParam.bSucess){
-                                    // 获取平台分配的token
-                                    req(Msg.QueryAccountToken, new SessionProcessor<Msg>() {
-                                        @Override
-                                        public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                                            TRestErrorInfo restErrorInfo = (TRestErrorInfo) rspContent;
-                                            if (restErrorInfo.dwErrorID == 1000){
-                                                // 登录platform
-                                                req(Msg.LoginPlatform, new SessionProcessor<Msg>() {
-                                                    @Override
-                                                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                                                        TLoginPlatformRsp res = (TLoginPlatformRsp) rspContent;
-                                                        if (res.MainParam.dwErrorID == 1000){
-                                                            reportSuccess(null, resultListener);
-                                                        }else{
-                                                            logoutAps(null);
-                                                            reportFailed(-1, resultListener);
-                                                        }
-                                                    }
-                                                    @Override
-                                                    public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        // 登录Aps
+                        req(Msg.LoginAps, new SessionProcessor<Msg>() {
+                                    @Override
+                                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                        TApsLoginResult apsLoginResult = (TApsLoginResult) rspContent;
+                                        if (apsLoginResult.MainParam.bSucess){
+                                            // 获取平台分配的token
+                                            req(Msg.QueryAccountToken, new SessionProcessor<Msg>() {
+                                                @Override
+                                                public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                                    TRestErrorInfo restErrorInfo = (TRestErrorInfo) rspContent;
+                                                    if (restErrorInfo.dwErrorID == 1000){
+                                                        // 登录platform
+                                                        req(Msg.LoginPlatform, new SessionProcessor<Msg>() {
+                                                            @Override
+                                                            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                                                TLoginPlatformRsp res = (TLoginPlatformRsp) rspContent;
+                                                                if (res.MainParam.dwErrorID == 1000){
+                                                                    reportSuccess(null, resultListener);
+                                                                }else{
+                                                                    logoutAps(null);
+                                                                    reportFailed(-1, resultListener);
+                                                                }
+                                                            }
+                                                            @Override
+                                                            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                                                logoutAps(null);
+                                                                reportFailed(-1, resultListener);
+                                                            }
+                                                        }, resultListener, new TMTWeiboLogin(username, password));
+                                                    }else{
                                                         logoutAps(null);
                                                         reportFailed(-1, resultListener);
                                                     }
-                                                }, resultListener, new TMTWeiboLogin(username, password));
-                                            }else{
-                                                logoutAps(null);
-                                                reportFailed(-1, resultListener);
-                                            }
+                                                }
+
+                                                @Override
+                                                public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                                    logoutAps(null);
+                                                    reportFailed(-1, resultListener);
+                                                }
+                                            }, resultListener, NetAddrHelper.ipLongLittleEndian2Str(apsLoginResult.AssParam.dwIP));
+
+                                        }else{
+                                            reportFailed(LIResultCode.trans(rsp, apsLoginResult.MainParam.dwApsErroce), resultListener);
                                         }
+                                    }
+                                },
+                                resultListener, new TMTApsLoginParam(username, password, "", "Skywalker_Ali", "")
+                        );
+                    }
 
-                                        @Override
-                                        public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                                            logoutAps(null);
-                                            reportFailed(-1, resultListener);
-                                        }
-                                    }, resultListener, NetAddrHelper.ipLongLittleEndian2Str(apsLoginResult.AssParam.dwIP));
-
-                                }else{
-                                    reportFailed(LIResultCode.trans(rsp, apsLoginResult.MainParam.dwApsErroce), resultListener);
-                                }
-                            }
-                        },
-                        resultListener, new TMTApsLoginParam(username, password, "", "Skywalker_Ali", "")
-                    );
-                }
-
-            },
-            resultListener, new MtXAPSvrListCfg(0, Collections.singletonList(mtXAPSvrCfg))
+                },
+                resultListener, new MtXAPSvrListCfg(0, Collections.singletonList(mtXAPSvrCfg))
         );
 
     }

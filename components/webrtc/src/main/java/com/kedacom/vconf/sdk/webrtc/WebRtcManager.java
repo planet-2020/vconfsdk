@@ -27,7 +27,6 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.ILifecycleOwner;
-import com.kedacom.vconf.sdk.amulet.IMagicBook;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.bean.transfer.TMtEntityStatus;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
