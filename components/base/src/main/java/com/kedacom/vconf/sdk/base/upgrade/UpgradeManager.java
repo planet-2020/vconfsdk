@@ -36,6 +36,10 @@ public class UpgradeManager extends Caster<Msg> {
     private static UpgradeManager instance = null;
     private Context context;
 
+    private TerminalType terminalType = TerminalType.Unknown;
+    private String localVersion = "unknown";
+    private String userE164 = "unknown";
+
 
     private UpgradeManager(Context ctx) {
         context = ctx;
@@ -69,7 +73,7 @@ public class UpgradeManager extends Caster<Msg> {
      * 检查更新
      * @param terminalType 终端类型
      * @param version 当前软件版本
-     * @param e164 用户e164
+     * @param e164 用户e164 （灰度版本需要该参数）
      * @param resultListener onSuccess {@link UpgradePkgInfo}；
      *                       onFailed  {@link UpgradeResultCode#NO_UPGRADE_PACKAGE}
      *                                 {@link UpgradeResultCode#ALREADY_NEWEST}
@@ -84,6 +88,10 @@ public class UpgradeManager extends Caster<Msg> {
                 new TMTUpgradeNetParam(addr.dwIP),
                 new TMTUpgradeDeviceInfo(terminalType.getVal(), e164, version, addr.dwIP, "kedacom")
         );
+
+        this.terminalType = terminalType;
+        localVersion = version;
+        userE164 = e164;
 
         req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
             @Override
@@ -140,6 +148,17 @@ public class UpgradeManager extends Caster<Msg> {
             reportFailed(-1, resultListener);
             return;
         }
+
+        TMTSUSAddr addr = (TMTSUSAddr) get(Msg.GetServerAddr);
+        if (null == addr){
+            reportFailed(-1, resultListener);
+            return;
+        }
+        TMTUpgradeClientInfo checkUpgradePara = new TMTUpgradeClientInfo(
+                new TMTUpgradeNetParam(addr.dwIP),
+                new TMTUpgradeDeviceInfo(terminalType.getVal(), userE164, localVersion, addr.dwIP, "kedacom")
+        );
+
         // 下载前先check以建链
         req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
             @Override
@@ -184,7 +203,7 @@ public class UpgradeManager extends Caster<Msg> {
                     reportFailed(NO_UPGRADE_PACKAGE, resultListener);
                 }
             }
-        }, resultListener);
+        }, resultListener, checkUpgradePara);
 
     }
 
