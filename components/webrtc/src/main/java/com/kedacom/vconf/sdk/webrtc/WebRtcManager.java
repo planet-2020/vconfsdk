@@ -3179,10 +3179,17 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         @Override
-        public void onSetAnswerCmd(int pcType, String answerSdp) {
+        public void onSetAnswerCmd(int pcType, String answerSdp, List<RtcConnector.TRtcMedia> rtcMediaList) {
             ConnType connType = ConnType.getInstance(pcType);
             PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
             if (null == pcWrapper || !pcWrapper.checkSdpState(SdpState.SENDING)) return;
+            int mediaSize = rtcMediaList.size();
+            if (mediaSize>0 && rtcMediaList.get(mediaSize-1).streamid==null){
+                // 最后一个的streamId为null表示发布失败（业务组件如是说），发布失败要重置对应的pc。
+                recreatePeerConnection(connType);
+                return;
+            }
+
             String sdp = modifySdp(pcWrapper, answerSdp);
             pcWrapper.setRemoteDescription(new SessionDescription(SessionDescription.Type.ANSWER, sdp));
             pcWrapper.setSdpState(SdpState.SETTING_REMOTE);

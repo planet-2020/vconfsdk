@@ -22,7 +22,6 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import org.webrtc.RtpParameters;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -244,11 +243,14 @@ class RtcConnector implements IRcvMsgCallback{
 	private void onSetAnswerCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
 		BodyItem item0 = mtMsg.GetMsgBody(0);
 		BodyItem item1 = mtMsg.GetMsgBody(1);
+		BodyItem item2 = mtMsg.GetMsgBody(2);
 		int connType;
 		String answer;
+		StructConfPB.TRtcMedialist rtcMedialist;
 		try {
 			connType = BasePB.TU32.parseFrom(item0.getAbyContent()).getValue();
 			answer = BasePB.TString.parseFrom(item1.getAbyContent()).getValue();
+			rtcMedialist = StructConfPB.TRtcMedialist.parseFrom(item2.getAbyContent());
 		} catch (InvalidProtocolBufferException e) {
 			e.printStackTrace();
 			return;
@@ -257,9 +259,14 @@ class RtcConnector implements IRcvMsgCallback{
 		Log.i(TAG, String.format("[PUB]<=#= onSetAnswerCmd, connType=%s, answer=", connType));
 		KLog.p(answer);
 
+		List<TRtcMedia> rtcMedias = new ArrayList<>();
+		for (StructConfPB.TRtcMedia tRtcMedia : rtcMedialist.getMediaList()){
+			rtcMedias.add(rtcMediaFromPB(tRtcMedia));
+		}
+
 		handler.post(() -> {
 			if (null != signalingEvents) {
-				signalingEvents.onSetAnswerCmd(connType, answer);
+				signalingEvents.onSetAnswerCmd(connType, answer, rtcMedias);
 			}
 		});
 
@@ -543,7 +550,7 @@ class RtcConnector implements IRcvMsgCallback{
 
 		void onSetOfferCmd(int connType, String offerSdp, List<TRtcMedia> rtcMediaList);
 
-		void onSetAnswerCmd(int connType, String answerSdp);
+		void onSetAnswerCmd(int connType, String answerSdp, List<TRtcMedia> rtcMediaList);
 
 		void onSetIceCandidateCmd(int connType, String sdpMid, int sdpMLineIndex, String sdp);
 
