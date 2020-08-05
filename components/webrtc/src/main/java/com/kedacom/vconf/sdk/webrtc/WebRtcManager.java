@@ -1422,6 +1422,15 @@ public class WebRtcManager extends Caster<Msg>{
                 .createAudioDeviceModule();
     }
 
+    public boolean isHWAECSupported(){
+        return JavaAudioDeviceModule.isBuiltInAcousticEchoCancelerSupported();
+    }
+
+    public boolean isHWNSSupported(){
+        return JavaAudioDeviceModule.isBuiltInNoiseSuppressorSupported();
+    }
+
+
 
     private @Nullable VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
         final String[] deviceNames = enumerator.getDeviceNames();
