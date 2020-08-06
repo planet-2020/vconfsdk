@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.google.protobuf'
 
-version = '1.8.0-m74.3-SNAPSHOT'
+version = '2.0.0-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -12,7 +12,10 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.aar', "*.jar"])
 
-    compileOnly fileTree(dir: 'libs/rtc', include: ['*.aar', "*.jar"], excludes: ['google-webrtc-1.0.30039-mod.aar'])
+    compileOnly fileTree(dir: 'libs/rtc', include: ['*.aar', "*.jar"],
+            excludes: ['google-webrtc-1.0.30039-mod.aar'] // 使用m74版本
+//            excludes: ['libwebrtc.aar'] // 使用30039版本（官方发布的最后一个版本，后续要使用最新sdk需要自己编译）
+    )
 //    implementation 'org.webrtc:google-webrtc:1.0.+'
 
     implementation 'com.google.protobuf:protobuf-java:3.9.2'
