@@ -46,6 +46,8 @@ public final class RtcConfig {
     private static final String key_isBuiltInAECPreferred = "key_isBuiltInAECPreferred";
     // 是否优先尝试使用android平台内置的NS（如果没有内置的再选用webrtc自带的）
     private static final String key_isBuiltInNSPreferred = "key_isBuiltInNSPreferred";
+    // 是否dump AEC数据
+    private static final String key_isAECDumpEnabled = "key_isAECDumpEnabled";
 
     // 视频质量定义
     static final int VideoQuality_Unknown = 0;
@@ -288,8 +290,8 @@ public final class RtcConfig {
     }
 
     /** 是否优先尝试使用android平台内置的AEC——回声取消（如果没有内置的再选用webrtc自带的）*/
-    public RtcConfig setBuiltInAECPreferred(boolean disable){
-        editor.putBoolean(key_isBuiltInAECPreferred, disable).apply();
+    public RtcConfig setBuiltInAECPreferred(boolean prefer){
+        editor.putBoolean(key_isBuiltInAECPreferred, prefer).apply();
         return this;
     }
 
@@ -298,8 +300,8 @@ public final class RtcConfig {
     }
 
     /** 是否优先尝试使用android平台内置的NS——噪声抑制（如果没有内置的再选用webrtc自带的）*/
-    public RtcConfig setBuiltInNSPreferred(boolean disable){
-        editor.putBoolean(key_isBuiltInNSPreferred, disable).apply();
+    public RtcConfig setBuiltInNSPreferred(boolean prefer){
+        editor.putBoolean(key_isBuiltInNSPreferred, prefer).apply();
         return this;
     }
 
@@ -307,6 +309,15 @@ public final class RtcConfig {
         return rtcUserConfig.getBoolean(key_isBuiltInNSPreferred, false);
     }
 
+    /** 是否dump AEC数据*/
+    public RtcConfig setAECDumpEnable(boolean enable){
+        editor.putBoolean(key_isAECDumpEnabled, enable).apply();
+        return this;
+    }
+
+    public boolean isAECDumpEnabled(){
+        return rtcUserConfig.getBoolean(key_isAECDumpEnabled, false);
+    }
 
     /**
      * 将RtcConfig对象保存为持久化配置
@@ -330,6 +341,7 @@ public final class RtcConfig {
         setPreferredVideoQuality(config.preferredVideoQuality);
         setBuiltInAECPreferred(config.isBuiltInAECPreferred);
         setBuiltInNSPreferred(config.isBuiltInNSPreferred);
+        setAECDumpEnable(config.isAECDumpEnabled);
     }
 
 
@@ -356,6 +368,7 @@ public final class RtcConfig {
         config.preferredVideoQuality = getPreferredVideoQuality();
         config.isBuiltInAECPreferred = isBuiltInAECPreferred();
         config.isBuiltInNSPreferred = isBuiltInNSPreferred();
+        config.isAECDumpEnabled = isAECDumpEnabled();
 
         return config;
     }
@@ -402,6 +415,8 @@ public final class RtcConfig {
         boolean isBuiltInAECPreferred;
         // 是否优先尝试使用android平台内置的NS——噪声抑制（如果没有内置的再选用webrtc自带的）
         boolean isBuiltInNSPreferred;
+        // 是否Dump AEC数据
+        boolean isAECDumpEnabled;
 
 
         void copy(Config src){
@@ -423,6 +438,7 @@ public final class RtcConfig {
             preferredVideoQuality = src.preferredVideoQuality;
             isBuiltInAECPreferred = src.isBuiltInAECPreferred;
             isBuiltInNSPreferred = src.isBuiltInNSPreferred;
+            isAECDumpEnabled = src.isAECDumpEnabled;
         }
 
         @Override
@@ -446,6 +462,7 @@ public final class RtcConfig {
                     ", preferredVideoQuality=" + preferredVideoQuality +
                     ", isBuiltInAECPreferred=" + isBuiltInAECPreferred +
                     ", isBuiltInNSPreferred=" + isBuiltInNSPreferred +
+                    ", isAECDumpEnabled=" + isAECDumpEnabled +
                     '}';
         }
     }
