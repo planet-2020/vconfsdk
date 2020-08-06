@@ -152,7 +152,7 @@ public class UpgradeManager extends Caster<Msg> {
         if (!saveDir.exists()){
             return null;
         }
-        File[] files = saveDir.listFiles((dir, name) -> name.toLowerCase().endsWith("apk"));
+        File[] files = saveDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".apk"));
         for (File file : files){
             if(file.length() == upgradePkgInfo.getFileSize()){
                 return file;
