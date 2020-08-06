@@ -3455,13 +3455,16 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void onIceConnectionChange(final PeerConnection.IceConnectionState newState) {
             KLog.tp(TAG,KLog.INFO, "onIceConnectionChange connType=%s, newState=%s", connType, newState);
-//                sessionHandler.post(() -> {
-//                    if (newState == PeerConnection.IceConnectionState.CONNECTED) {
-//                    } else if (newState == PeerConnection.IceConnectionState.DISCONNECTED) {
-//                    } else if (newState == PeerConnection.IceConnectionState.FAILED) {
-////                        reportError("ICE connection failed.");
-//                    }
-//                });
+            handler.post(() -> {
+                PeerConnectionWrapper pcWrapper = getPcWrapper(connType);
+                if (null == pcWrapper) return;
+                if (newState == PeerConnection.IceConnectionState.FAILED) {
+                    KLog.tp(TAG,KLog.INFO, "ICE failed, try restart ice...");
+                    MediaConstraints mediaConstraints = new MediaConstraints();
+                    mediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair("IceRestart", "true"));
+                    pcWrapper.createOffer(mediaConstraints);
+                }
+            });
 
         }
 
@@ -3737,14 +3740,19 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         void createOffer(){
+            createOffer(new MediaConstraints());
+        }
+
+        void createOffer(MediaConstraints mediaConstraints){
             executor.execute(() -> {
                 if (null == pc){
                     KLog.p(KLog.ERROR, "peerConnection destroyed");
                     return;
                 }
-                pc.createOffer(sdpObserver, new MediaConstraints());
+                pc.createOffer(sdpObserver, mediaConstraints);
             });
         }
+
         void createAnswer(){
             executor.execute(() -> {
                 if (null == pc){
