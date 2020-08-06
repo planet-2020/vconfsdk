@@ -30,6 +30,8 @@ import java.io.OutputStreamWriter;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 
@@ -374,7 +376,6 @@ public final class FileHelper {
     public static File createDir(@NonNull String fullPath){
         File file = new File(fullPath);
         if (file.exists()){
-            KLog.p(KLog.WARN, "dir %s has existed already", fullPath);
             return file;
         }
         if (!file.mkdirs()){
@@ -426,6 +427,71 @@ public final class FileHelper {
         }else{
             KLog.p(KLog.WARN, "UNKNOWN file type %s", file.getAbsolutePath());
             return false;
+        }
+    }
+
+    /**
+     * 删除目录下的文件。
+     * @param kept 保留的文件列表
+     * @return 成功返回true，失败返回false
+     * */
+    public static boolean deleteFileFromDir(@NonNull File dir, List<File> kept) {
+        if (!dir.exists()){
+            KLog.p(KLog.WARN, "%s does not exist!", dir.getAbsolutePath());
+            return true;
+        }
+        if (!dir.isDirectory()){
+            KLog.p(KLog.ERROR, "%s is not dir!", dir.getAbsolutePath());
+            return false;
+        }
+
+        File[] childFiles = dir.listFiles();
+        if (null == childFiles){
+            // 比如属于root的文件夹您无权访问
+            KLog.p(KLog.ERROR, "FAILED to read %s, PERMISSION DENIED!", dir.getAbsolutePath());
+            return false;
+        }
+
+        boolean ret = true;
+        label:
+        for (File f : childFiles) {
+            for (File k : kept){
+                if (f.getAbsolutePath().equals(k.getAbsolutePath())){
+                    continue label;
+                }
+            }
+            if(!f.delete()){
+                ret = false;
+            }
+        }
+        return ret;
+    }
+
+
+    /**
+     * 从目录下挑取前几个文件
+     * @param comparator 用于决定优先级排序的比较器。优先级高的优先挑取。
+     * @param num 挑取的数量
+     * */
+    public static List<File> pickFirstSeveralFilesFromDir(@NonNull File dir, @NonNull Comparator<File> comparator, int num){
+        List<File> files = new ArrayList<>();
+        if (!dir.exists()){
+            KLog.p(KLog.WARN, "%s does not exist!", dir.getAbsolutePath());
+            return files;
+        }
+        if (!dir.isDirectory()){
+            KLog.p(KLog.ERROR, "%s is not dir!", dir.getAbsolutePath());
+            return files;
+        }
+
+        File[] children = dir.listFiles();
+        Collections.addAll(files, children);
+        Collections.sort(files, comparator);
+        num = num > 0 ? num : files.size();
+        if (files.size()<=num){
+            return files;
+        }else{
+            return files.subList(files.size()-num, files.size());
         }
     }
 

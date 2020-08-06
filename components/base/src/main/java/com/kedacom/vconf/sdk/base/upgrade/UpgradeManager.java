@@ -26,6 +26,7 @@ import com.kedacom.vconf.sdk.utils.file.FileHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.io.File;
+import java.util.List;
 
 import static com.kedacom.vconf.sdk.base.upgrade.UpgradeResultCode.ALREADY_NEWEST;
 import static com.kedacom.vconf.sdk.base.upgrade.UpgradeResultCode.NO_UPGRADE_PACKAGE;
@@ -36,6 +37,7 @@ public class UpgradeManager extends Caster<Msg> {
     private static UpgradeManager instance = null;
     private Context context;
 
+    private static final String SAVE_DIR = FileHelper.getPath(FileHelper.Location.EXTERNAL, FileHelper.Type.COMMON, "upgrade");
     private TerminalType terminalType = TerminalType.Unknown;
     private String localVersion = "unknown";
     private String userE164 = "unknown";
@@ -49,6 +51,14 @@ public class UpgradeManager extends Caster<Msg> {
         if (instance == null) {
             instance = new UpgradeManager(ctx);
             instance.startService();
+            /*清理升级文件夹*/
+            File saveDir = FileHelper.createDir(SAVE_DIR);
+            if (saveDir != null){
+                List<File> keptFiles = FileHelper.pickFirstSeveralFilesFromDir(saveDir, (o1, o2) -> (int) (o1.lastModified() - o2.lastModified()), 2);
+                FileHelper.deleteFileFromDir(saveDir, keptFiles);
+            }else{
+                KLog.p(KLog.ERROR, "create save dir %s failed!", SAVE_DIR);
+            }
         }
         return instance;
     }
@@ -115,7 +125,7 @@ public class UpgradeManager extends Caster<Msg> {
                 TMTUpgradeVersionInfo[] remoteVersionList = ((TCheckUpgradeRsp)rspContent).AssParam.tVerList;
                 if (null != remoteVersionList && remoteVersionList.length>0){
                     UpgradePkgInfo upgradePkgInfo = ToDoConverter.TMTUpgradeVersionInfo2UpgradePkgInfo(remoteVersionList[0]);
-                    if (version.compareToIgnoreCase(upgradePkgInfo.versionNum) < 0) {
+                    if (version.compareToIgnoreCase(upgradePkgInfo.getVersionNum()) < 0) {
                         reportSuccess(upgradePkgInfo, resultListener);
                     }else{
                         reportFailed(ALREADY_NEWEST, resultListener);
@@ -134,17 +144,35 @@ public class UpgradeManager extends Caster<Msg> {
 
 
     /**
+     * 尝试获取已下载升级包
+     * @return 若已下载返回已下载升级包file对象，否则返回null。
+     * */
+    public File tryGetDownloadedPkg(UpgradePkgInfo upgradePkgInfo){
+        File saveDir = new File(SAVE_DIR);
+        if (!saveDir.exists()){
+            return null;
+        }
+        File[] files = saveDir.listFiles((dir, name) -> name.toLowerCase().endsWith("apk"));
+        for (File file : files){
+            if(file.length() == upgradePkgInfo.getFileSize()){
+                return file;
+            }
+        }
+        return null;
+    }
+
+    /**
      * 下载升级包
-     * @param versionId 目标版本id（由checkUpgrade的返回结果中获取）。
-     * @param saveDirPath 升级包存放目录
+     * NOTE: 您可以调用{@link #tryGetDownloadedPkg(UpgradePkgInfo)}尝试获取已下载的升级包，若获取失败再去下载。
+     * @param pkgInfo 升级包信息
      * @param resultListener onProgress {@link DownloadProgressInfo}
-     *                       onSuccess  downloaded package file full path
+     *                       onSuccess  downloaded package file
      *                       onFailed   {@link UpgradeResultCode#SERVER_DISCONNECTED}
      * */
-    public void downloadUpgrade(int versionId, String saveDirPath, IResultListener resultListener){
-        File saveDir = FileHelper.createDir(saveDirPath);
+    public void downloadUpgrade(UpgradePkgInfo pkgInfo, IResultListener resultListener){
+        File saveDir = FileHelper.createDir(SAVE_DIR);
         if (saveDir == null){
-            KLog.p(KLog.ERROR, "create save dir %s failed!", saveDirPath);
+            KLog.p(KLog.ERROR, "create save dir %s failed!", SAVE_DIR);
             reportFailed(-1, resultListener);
             return;
         }
@@ -165,8 +193,8 @@ public class UpgradeManager extends Caster<Msg> {
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TMTUpgradeVersionInfo[] remoteVersionList = ((TCheckUpgradeRsp)rspContent).AssParam.tVerList;
                 if (null != remoteVersionList && remoteVersionList.length>0){
-                    UpgradePkgInfo upgradePkgInfo = ToDoConverter.TMTUpgradeVersionInfo2UpgradePkgInfo(remoteVersionList[0]);
-                    if (upgradePkgInfo.versionId == versionId){
+                    UpgradePkgInfo remotePkgInfo = ToDoConverter.TMTUpgradeVersionInfo2UpgradePkgInfo(remoteVersionList[0]);
+                    if (remotePkgInfo.getVersionId() == pkgInfo.getVersionId()){
                         // 下载升级包
                         req(Msg.DownloadUpgrade, new SessionProcessor<Msg>() {
                             @Override
@@ -178,7 +206,7 @@ public class UpgradeManager extends Caster<Msg> {
                                         reportProgress(new DownloadProgressInfo(downloadInfo.dwCurPercent), resultListener);
                                         if (downloadInfo.dwCurPercent == 100) {
                                             cancelReq(Msg.DownloadUpgrade, resultListener); // 已下载完毕，取消会话，否则会话会等待超时，因为没有结束消息。
-                                            reportSuccess(new File(saveDir, downloadInfo.achCurFileName).getAbsolutePath(), resultListener);
+                                            reportSuccess(new File(saveDir, downloadInfo.achCurFileName), resultListener);
                                         }
                                     } else {
                                         reportFailed(-1, resultListener);
@@ -194,7 +222,7 @@ public class UpgradeManager extends Caster<Msg> {
                                 isConsumed[0] = true;
                                 reportTimeout(resultListener);
                             }
-                        }, resultListener, saveDirPath, versionId);
+                        }, resultListener, SAVE_DIR, remotePkgInfo.getVersionId());
 
                     }else{
                         reportFailed(NO_UPGRADE_PACKAGE, resultListener);
