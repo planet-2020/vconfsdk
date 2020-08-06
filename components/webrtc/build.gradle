@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.google.protobuf'
 
-version = '1.8.2-SNAPSHOT'
+version = '1.8.0-m74.3-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -12,7 +12,7 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.aar', "*.jar"])
 
-    compileOnly fileTree(dir: 'libs/rtc', include: ['*.aar', "*.jar"], excludes: ['libwebrtc.aar'])
+    compileOnly fileTree(dir: 'libs/rtc', include: ['*.aar', "*.jar"], excludes: ['google-webrtc-1.0.30039-mod.aar'])
 //    implementation 'org.webrtc:google-webrtc:1.0.+'
 
     implementation 'com.google.protobuf:protobuf-java:3.9.2'
