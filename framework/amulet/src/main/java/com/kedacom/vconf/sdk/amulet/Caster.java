@@ -305,19 +305,32 @@ public abstract class Caster<T extends Enum<T>> implements
     /**
      * 批量删除通知监听器
      * @param ntfs 监听器监听的通知（一个监听器可能监听多个通知）。若为null则表示任意通知。
-     * @param listener 通知监听器。要删除的监听器对象 */
-    protected void delNtfListeners(@Nullable T[] ntfs, @NonNull ILifecycleOwner listener){
+     * @param listener 通知监听器。要删除的监听器对象。若为null则表示任意监听器。
+     *                 NOTE: 若ntfs和listener同时为null则删除所有通知监听器。
+     * */
+    protected void delNtfListeners(@Nullable T[] ntfs, @Nullable ILifecycleOwner listener){
         if (null != ntfs) {
             for (T ntf : ntfs) {
-                Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntf);
-                if (null != listeners) {
-                    KLog.p(KLog.DEBUG, "delete ntfListener, ntf=%s, listener=%s", ntf, listener);
-                    listeners.remove(listener);
+                Set<ILifecycleOwner> ntfListeners = ntfListenersMap.get(ntf);
+                if (null != ntfListeners) {
+                    if (null != listener) {
+                        KLog.p(KLog.DEBUG, "delete ntfListener, ntf=%s, listener=%s", ntf, listener);
+                        ntfListeners.remove(listener);
+                    }else{
+                        KLog.p(KLog.DEBUG, "clear ntfListener, ntf=%s", ntf);
+                        ntfListeners.clear();
+                    }
                 }
             }
         }else{
-            for (Set<ILifecycleOwner> ntfListeners : ntfListenersMap.values()) {
-                ntfListeners.remove(listener);
+            if (null != listener) {
+                for (Set<ILifecycleOwner> ntfListeners : ntfListenersMap.values()) {
+                    KLog.p(KLog.DEBUG, "delete ntfListener, listener=%s", listener);
+                    ntfListeners.remove(listener);
+                }
+            }else{
+                KLog.p(KLog.DEBUG, "clear all ntfListeners");
+                ntfListenersMap.clear();
             }
         }
         if(!containsListener(listener)){
