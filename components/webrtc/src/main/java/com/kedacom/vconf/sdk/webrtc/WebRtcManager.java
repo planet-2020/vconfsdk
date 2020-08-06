@@ -1133,6 +1133,9 @@ public class WebRtcManager extends Caster<Msg>{
         // 所以我们在会议结束时取消掉可能进行中的密码验证请求以解决该问题。
         cancelReq(Msg.VerifyConfPassword, null);
 
+        // 删除所有通知监听器。删除后onNotification不会再回调上来
+        delNtfListeners(null, null);
+
         KLog.p("session stopped ");
 
         return true;
