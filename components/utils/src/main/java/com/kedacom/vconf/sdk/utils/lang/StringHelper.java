@@ -39,18 +39,13 @@ public final class StringHelper {
     /**
      * 判断字符串是否相等。
      * @param ignoreCase 是否忽略大小写。true忽略
-     * @param ignoreBlank 是否忽略空白符。true忽略
      * */
-    public static boolean equals(String str1, String str2, boolean ignoreCase, boolean ignoreBlank){
+    public static boolean equals(String str1, String str2, boolean ignoreCase){
         if (str1==null && str2==null){
             return true;
         }
         if (str1==null || str2==null){
             return false;
-        }
-        if (ignoreBlank){
-            str1 = str1.trim();
-            str2 = str2.trim();
         }
         if (ignoreCase){
             return str1.equalsIgnoreCase(str2);
@@ -65,6 +60,17 @@ public final class StringHelper {
      * */
     public static boolean isNullOrBlank(String str){
         return str==null || str.trim().isEmpty();
+    }
+
+
+    /**
+     * 剔除所有空白字符
+     * */
+    public static String eliminateAllBlanks(String str){
+        if (str == null){
+            return str;
+        }
+        return str.replaceAll("\\s+", "");
     }
 
 }
