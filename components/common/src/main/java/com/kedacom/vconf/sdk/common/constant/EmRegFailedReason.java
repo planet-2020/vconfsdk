@@ -48,7 +48,24 @@ public enum EmRegFailedReason {
 	emRtcNotAllowed_Api(78),        //不允许(取消注册)
 
 	emUnRegSuc(90),  // 取消注册成功。如果上层取消注册，底层取消成功，会发Ev_MtApi_Vc_RegResult_Ntf(emUnRegSuc)。再一个如果上册取消注册成功， 上层不需要再不断的注册下来。
-	emRegSuccess(100);    ///注册成功， sip和323都是这个
+	emRegSuccess(100),    ///注册成功， sip和323都是这个
+
+	emAliInternalServer(150),           //ali服务器内部错误
+	emAliInputInvaild(151),             //参数有误
+	emAliWriteFileFail(152),            //写文件失败
+	emAliTimeOut(153),                  //超时
+	emAliYunAnomaly(154),               //阿里云服务器异常
+	emAliUserInvalid(155),              //用户错误
+	emAliPwdError(156),                 //密码错误
+	emAliClientNoAuth(157),             //ws客户端没有权限验证
+	emAliTokenInvaild(158),             //无效的token
+	emAliUserLogged(159),               //用户已经登录
+	emAliUserNoPermission(160),         //权限不足,拒绝访问
+	emAliUserInConf(161),               //用户在会议中
+	emAliUserLoginRemote(162),          //抢登
+	emAliUserDisconnect(163),           //用户断链
+
+	emRegReasonEnd(1000);
 
 	public int value;
 	EmRegFailedReason(int val) {
