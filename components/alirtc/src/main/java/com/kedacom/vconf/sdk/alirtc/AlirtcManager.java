@@ -47,6 +47,7 @@ public class AlirtcManager extends Caster<Msg> {
     private Application context;
     private int loginState = AliRtcResultCode.Failed;
     private static Handler loginStateChangedHandler = new Handler(Looper.getMainLooper());
+    private TNetAddr rtcServerAddr;
 
     private AlirtcManager(Application ctx) {
         context = ctx;
@@ -76,11 +77,12 @@ public class AlirtcManager extends Caster<Msg> {
      *                       失败返回错误码。
      * */
     public void login(@NonNull TerminalType type, @NonNull String version, IResultListener resultListener){
-        TNetAddr addr = (TNetAddr) get(Msg.GetServerAddr);
-        if (null == addr){
+        rtcServerAddr = (TNetAddr) get(Msg.GetServerAddr);
+        if (null == rtcServerAddr){
             reportFailed(-1, resultListener);
             return;
         }
+
         req(Msg.Login, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
@@ -96,7 +98,7 @@ public class AlirtcManager extends Caster<Msg> {
                     reportFailed(loginState, resultListener);
                 }
             }
-        }, resultListener, addr, new TMtRegistCsvInfo(type.getVal(), version, true));
+        }, resultListener, rtcServerAddr, new TMtRegistCsvInfo(type.getVal(), version, true));
     }
 
 
@@ -106,8 +108,7 @@ public class AlirtcManager extends Caster<Msg> {
      *                       失败返回错误码。
      * */
     public void logout(IResultListener resultListener){
-        TNetAddr addr = (TNetAddr) get(Msg.GetServerAddr);
-        if (null == addr){
+        if (null == rtcServerAddr){
             reportFailed(-1, resultListener);
             return;
         }
@@ -131,7 +132,7 @@ public class AlirtcManager extends Caster<Msg> {
             public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 loginState = AliRtcResultCode.LogoutSuccess;
             }
-        }, resultListener, addr);
+        }, resultListener, rtcServerAddr);
     }
 
 
@@ -178,10 +179,10 @@ public class AlirtcManager extends Caster<Msg> {
                     AMUIMeetingDetail meetingDetail = new AMUIMeetingDetail();
                     meetingDetail.subject = para.achConfName;
                     meetingDetail.password = joinConfPara.password;
-                    meetingDetail.shareLink = "shareLink";
+                    meetingDetail.shareLink = String.format("https://%s/login.html?%s", rtcServerAddr.dwIp, joinConfPara.confNum);
                     meetingDetail.beginDate = 0;
                     meetingDetail.endDate = 0;
-                    meetingDetail.shareMessage = "you are invited to join conferee "+joinConfPara.confNum;
+                    meetingDetail.shareMessage = "您被邀请参加会议"+joinConfPara.confNum;
 
                     AMUIMeetingJoinConfig.Builder builder = new AMUIMeetingJoinConfig.Builder()
                             .setMeetingCode(para.achConfCode)
