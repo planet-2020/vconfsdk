@@ -180,7 +180,7 @@ public class AlirtcManager extends Caster<Msg> {
                     AMUIMeetingDetail meetingDetail = new AMUIMeetingDetail();
                     meetingDetail.subject = para.achConfName;
                     meetingDetail.password = joinConfPara.password;
-                    meetingDetail.shareLink = String.format("https://%s/login.html?%s", NetAddrHelper.ipLongLittleEndian2Str(rtcServerAddr.dwIp), joinConfPara.confNum);
+                    meetingDetail.shareLink = String.format("https://%s/login.html?%s", NetAddrHelper.ipLongLittleEndian2Str(rtcServerAddr.dwIp), joinConfPara.confNum); // 分享链接格式由平台指定
                     meetingDetail.beginDate = 0;
                     meetingDetail.endDate = 0;
                     meetingDetail.shareMessage = "您被邀请参加会议"+joinConfPara.confNum;
