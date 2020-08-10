@@ -49,6 +49,7 @@ public class AlirtcManager extends Caster<Msg> {
     private int loginState = AliRtcResultCode.Failed;
     private static Handler loginStateChangedHandler = new Handler(Looper.getMainLooper());
     private TNetAddr rtcServerAddr;
+    private String curConfNum;
 
     private AlirtcManager(Application ctx) {
         context = ctx;
@@ -138,29 +139,11 @@ public class AlirtcManager extends Caster<Msg> {
 
 
     /**
-     * 创建会议
-     * @param confName 会议名称
-     * @param duration 会议时长。单位：分钟
-     * @param resultListener
-     *          成功返回： {@link CreateConfResult}
-     *          失败返回：错误码
+     * 是否正在会议中
      * */
-    @Deprecated // 阿里会议都是专属会议，跟随帐号分配好了，没有创建一说。
-    public void createConf(@NonNull String confName, int duration, IResultListener resultListener){
-        req(Msg.CreateConf, new SessionProcessor<Msg>() {
-            @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                TCreateAliConfResult result = (TCreateAliConfResult) rspContent;
-                if (1000 == result.MainParam.dwErrorID){
-                    String confNum = result.AssParam.basetype;
-                    reportSuccess(new CreateConfResult(confName, confNum), resultListener);
-                }else{
-                    reportFailed(-1, resultListener);
-                }
-            }
-        }, resultListener, new TCreateAliConfParam(2, confName, duration, true));
+    public boolean isInConference(){
+        return curConfNum != null;
     }
-
 
     /**
      * 加入会议
@@ -170,6 +153,8 @@ public class AlirtcManager extends Caster<Msg> {
      *          失败返回：错误码
      * */
     public void joinConf(@NonNull JoinConfPara joinConfPara, IResultListener resultListener){
+        curConfNum = null;
+
         req(Msg.JoinConf, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
@@ -217,6 +202,7 @@ public class AlirtcManager extends Caster<Msg> {
                                 @Override
                                 public void onMeetingJoined() {
                                     KLog.p("#####onMeetingJoined");
+                                    curConfNum = joinConfPara.confNum;
                                     req(Msg.ReportConfState, null,null, joinConfPara.confNum, true);
                                     req(Msg.ReportVoiceState, null,null, joinConfPara.confNum, joinConfPara.closeMic, false);  // FIXME 根据配置填
                                     reportSuccess(null, resultListener);
@@ -225,6 +211,7 @@ public class AlirtcManager extends Caster<Msg> {
                                 @Override
                                 public void onMeetingFinished(@NotNull AMUIFinishCode amuiFinishCode, @Nullable String s) {
                                     KLog.p("#####onMeetingFinished %s, %s", amuiFinishCode, s);
+                                    curConfNum = null;
                                     req(Msg.ReportConfState, null,null, joinConfPara.confNum, false);
                                 }
 
