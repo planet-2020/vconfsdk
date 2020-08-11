@@ -66,15 +66,6 @@ public class AlirtcManager extends Caster<Msg> {
     }
 
 
-    @Override
-    protected Map<Class<? extends ILifecycleOwner>, Msg> regNtfListenerType() {
-        Map<Class<? extends ILifecycleOwner>, Msg> listenerType2CaredNtf = new HashMap<>();
-        listenerType2CaredNtf.put(OnLoginStateChangedListener.class, Msg.LoginStateChanged);
-        listenerType2CaredNtf.put(OnConfInvitingListener.class, Msg.ConfInviting);
-        listenerType2CaredNtf.put(OnConfAboutToEndListener.class, Msg.ConfAboutToEnd);
-        return listenerType2CaredNtf;
-    }
-
     /**
      * 当前登录状态
      * @return {@link AliRtcResultCode#LoginSuccess}已成功登录，{@link AliRtcResultCode#LogoutSuccess} 已成功注销，其他登录失败。
@@ -335,6 +326,15 @@ public class AlirtcManager extends Caster<Msg> {
         }
     }
 
+
+    @Override
+    protected Map<Class<? extends ILifecycleOwner>, Msg> regNtfListenerType() {
+        Map<Class<? extends ILifecycleOwner>, Msg> listenerType2CaredNtf = new HashMap<>();
+        listenerType2CaredNtf.put(OnLoginStateChangedListener.class, Msg.LoginStateChanged);
+        listenerType2CaredNtf.put(OnConfInvitingListener.class, Msg.ConfInviting);
+        listenerType2CaredNtf.put(OnConfAboutToEndListener.class, Msg.ConfAboutToEnd);
+        return listenerType2CaredNtf;
+    }
 
     /**
      * 登录状态变更监听器

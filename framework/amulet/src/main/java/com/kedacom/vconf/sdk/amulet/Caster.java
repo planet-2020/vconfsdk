@@ -120,7 +120,7 @@ public abstract class Caster<T extends Enum<T>> implements
     /**
      * 注册通知监听器类型
      * */
-    protected abstract Map<Class<? extends ILifecycleOwner>, T> regNtfListenerType();
+    protected Map<Class<? extends ILifecycleOwner>, T> regNtfListenerType(){return null;}
 
     /**
      * 会话请求（异步请求）

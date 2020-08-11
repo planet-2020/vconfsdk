@@ -108,8 +108,6 @@ public class StartupManager extends Caster<Msg> {
                         if (startSdkSuccess){
                             reportSuccess(null, resultListener);
 
-                            // 设置是否将业务组件日志写入日志文件
-                            //        req(Msg.ToggleMtFileLog, null, true);
                             //        try {
 //            req(Msg.SetNetWorkCfg, null,
 //                    new TNetWorkInfo(convertTransType(NetworkHelper.getTransType()),

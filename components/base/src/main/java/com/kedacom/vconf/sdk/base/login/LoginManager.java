@@ -6,6 +6,7 @@ import android.os.Looper;
 
 import androidx.annotation.NonNull;
 
+import com.annimon.stream.Stream;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.ILifecycleOwner;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
@@ -30,7 +31,9 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -244,11 +247,16 @@ public class LoginManager extends Caster<Msg> {
     protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
         switch (ntf){
             case KickedOff:
-                for (ILifecycleOwner listener : ntfListeners){
-                    ((OnKickedOffListener) listener).onKickedOff();
-                }
+                Stream.of(ntfListeners).forEach(it-> ((OnKickedOffListener) it).onKickedOff());
                 break;
         }
+    }
+
+    @Override
+    protected Map<Class<? extends ILifecycleOwner>, Msg> regNtfListenerType() {
+        Map<Class<? extends ILifecycleOwner>, Msg> listenerType2CaredNtf = new HashMap<>();
+        listenerType2CaredNtf.put(OnKickedOffListener.class, Msg.KickedOff);
+        return listenerType2CaredNtf;
     }
 
     /**
@@ -257,17 +265,5 @@ public class LoginManager extends Caster<Msg> {
     public interface OnKickedOffListener extends ILifecycleOwner {
         void onKickedOff();
     }
-    /**
-     * 添加被抢登监听器
-     * */
-    public void addOnKickedOffListener(OnKickedOffListener listener){
-        addNtfListener(Msg.KickedOff, listener);
-    }
-//    /**
-//     * 删除被抢登监听器
-//     * */
-//    public void delOnKickedOffListener(OnKickedOffListener listener){
-//        delNtfListener(Msg.KickedOff, listener);
-//    }
 
 }
