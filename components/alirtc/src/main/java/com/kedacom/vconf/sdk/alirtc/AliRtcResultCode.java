@@ -19,6 +19,7 @@ public final class AliRtcResultCode {
     public static final int AllConfsConfereeNumReachLimit = 23;  // 整个企业所有会议的与会总人数达到上限（会议本身的上限很可能没达到）
     public static final int NotAllowed = 24;  // 不允许加入该会议
     public static final int Expired = 25;  // 该会议已过期（仅企业会议室才可能过期，个人专属会议室一直存在）
+    public static final int NoSuchConf = 26;  // 没有该会议
 
     // NOTE：企业会议室——会议号固定公开，成员由管理员配置，仅配置过的成员可加入该会议，有期限，到期解散。
 
@@ -41,6 +42,7 @@ public final class AliRtcResultCode {
         resultCodes.put(Msg.JoinConfRsp, 30334, Expired);
         resultCodes.put(Msg.JoinConfRsp, 30333, NotAllowed);
         resultCodes.put(Msg.JoinConfRsp, 30335, NotAllowed);
+        resultCodes.put(Msg.JoinConfRsp, 30323, NoSuchConf);
     }
 
     static int trans(@NonNull Msg msg, Object rawResultCode){
