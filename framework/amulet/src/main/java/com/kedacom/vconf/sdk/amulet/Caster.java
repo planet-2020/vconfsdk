@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.Lifecycle;
 
+import com.kedacom.vconf.sdk.utils.lang.ClassHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Constructor;
@@ -354,13 +355,21 @@ public abstract class Caster<T extends Enum<T>> implements
      * */
     public void addNtfListener(@NonNull ILifecycleOwner... listeners){
         for (ILifecycleOwner listener : listeners){
-            if (listener != null) {
-                T ntf = listenerType2CaredNtfMap.get(listener.getClass());
-                if (ntf == null) {
-                    throw new IllegalArgumentException(String.format("listener %s not supported by %s!", listener.getClass(), getClass()));
-                }
-                addNtfListener(ntf, listener);
+            if (listener == null) {
+                continue;
             }
+            Class<?> listenerClass = listener.getClass();
+            T ntf = null;
+            for (Class<?> clz : listenerType2CaredNtfMap.keySet()){
+                if (clz.isAssignableFrom(listenerClass)){
+                    ntf = listenerType2CaredNtfMap.get(clz);
+                    break;
+                }
+            }
+            if (ntf == null) {
+                throw new IllegalArgumentException(String.format("listener %s not supported by %s", ClassHelper.getReadableName(listener.getClass()), getClass()));
+            }
+            addNtfListener(ntf, listener);
         }
     }
 
