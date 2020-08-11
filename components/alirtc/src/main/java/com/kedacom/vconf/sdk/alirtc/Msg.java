@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.alirtc;
 
+import com.kedacom.vconf.sdk.alirtc.bean.ConfAboutToEnd;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TConfInvitation;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
@@ -122,6 +123,13 @@ enum Msg {
     @Notification(name = "RcvInvitedFromCsv_Ntf",
             clz = TConfInvitation.class)
     ConfInviting,
+
+    /**
+     * 会议即将结束通知
+     * */
+    @Notification(name = "AliConfWillEnd_Ntf",
+            clz = ConfAboutToEnd.class)
+    ConfAboutToEnd,
 
 
     END;

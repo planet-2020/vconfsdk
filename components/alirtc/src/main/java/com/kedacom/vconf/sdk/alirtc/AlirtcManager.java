@@ -19,12 +19,12 @@ import com.alibaba.alimeeting.uisdk.AliMeetingUIManager;
 import com.alibaba.alimeeting.uisdk.widget.AMUIAvatarLayout;
 import com.aliwork.meeting.api.member.AMSDKMeetingClient;
 import com.annimon.stream.Stream;
+import com.kedacom.vconf.sdk.alirtc.bean.ConfAboutToEnd;
 import com.kedacom.vconf.sdk.alirtc.bean.ConfInvitationInfo;
 import com.kedacom.vconf.sdk.alirtc.bean.JoinConfPara;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.AliConfParam;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TAliConfWillEndInfo;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TConfInvitation;
-import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
-import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfPara;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
@@ -315,6 +315,10 @@ public class AlirtcManager extends Caster<Msg> {
                 Stream.of(ntfListeners).forEach(it ->
                         ((OnConfInvitingListener)it).onConfInviting(ToDoConverter.TConfInvitation2ConfInvitationInfo((TConfInvitation) ntfContent))
                 );
+//            case ConfAboutToEnd:
+//                Stream.of(ntfListeners).forEach(it ->
+//                        ((OnConfEventListener)it).aboutToEnd(ToDoConverter.TAliConfWillEndInfo2ConfAboutToEnd((TAliConfWillEndInfo) ntfContent))
+//                );
                 break;
         }
     }
