@@ -352,12 +352,16 @@ public abstract class Caster<T extends Enum<T>> implements
     /**
      * 添加通知监听器
      * */
-    public void addNtfListener(@NonNull ILifecycleOwner listener){
-        T ntf = listenerType2CaredNtfMap.get(listener.getClass());
-        if (ntf==null){
-            throw new IllegalArgumentException(String.format("listener %s not supported by %s!", listener.getClass(), getClass()));
+    public void addNtfListener(@NonNull ILifecycleOwner... listeners){
+        for (ILifecycleOwner listener : listeners){
+            if (listener != null) {
+                T ntf = listenerType2CaredNtfMap.get(listener.getClass());
+                if (ntf == null) {
+                    throw new IllegalArgumentException(String.format("listener %s not supported by %s!", listener.getClass(), getClass()));
+                }
+                addNtfListener(ntf, listener);
+            }
         }
-        addNtfListener(ntf, listener);
     }
 
     /**
