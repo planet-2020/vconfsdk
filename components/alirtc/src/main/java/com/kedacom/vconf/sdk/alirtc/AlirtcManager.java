@@ -41,6 +41,8 @@ import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 public class AlirtcManager extends Caster<Msg> {
@@ -61,6 +63,16 @@ public class AlirtcManager extends Caster<Msg> {
             instance.initAliRtcSDK();
         }
         return instance;
+    }
+
+
+    @Override
+    protected Map<Class<? extends ILifecycleOwner>, Msg> regNtfListenerType() {
+        Map<Class<? extends ILifecycleOwner>, Msg> listenerType2CaredNtf = new HashMap<>();
+        listenerType2CaredNtf.put(OnLoginStateChangedListener.class, Msg.LoginStateChanged);
+        listenerType2CaredNtf.put(OnConfInvitingListener.class, Msg.ConfInviting);
+        listenerType2CaredNtf.put(OnConfAboutToEndListener.class, Msg.ConfAboutToEnd);
+        return listenerType2CaredNtf;
     }
 
     /**
@@ -315,10 +327,10 @@ public class AlirtcManager extends Caster<Msg> {
                 Stream.of(ntfListeners).forEach(it ->
                         ((OnConfInvitingListener)it).onConfInviting(ToDoConverter.TConfInvitation2ConfInvitationInfo((TConfInvitation) ntfContent))
                 );
-//            case ConfAboutToEnd:
-//                Stream.of(ntfListeners).forEach(it ->
-//                        ((OnConfEventListener)it).aboutToEnd(ToDoConverter.TAliConfWillEndInfo2ConfAboutToEnd((TAliConfWillEndInfo) ntfContent))
-//                );
+            case ConfAboutToEnd:
+                Stream.of(ntfListeners).forEach(it ->
+                        ((OnConfAboutToEndListener)it).onConfAboutToEnd(ToDoConverter.TAliConfWillEndInfo2ConfAboutToEnd((TAliConfWillEndInfo) ntfContent))
+                );
                 break;
         }
     }
@@ -334,13 +346,6 @@ public class AlirtcManager extends Caster<Msg> {
          * */
         void onLoginStateChanged(int state);
     }
-    /**
-     * 添加会议邀请通知监听器
-     * */
-    public void addOnLoginStateChangedListener(OnLoginStateChangedListener listener){
-        addNtfListener(Msg.LoginStateChanged, listener);
-    }
-
 
     /**
      * 会议邀请通知监听器
@@ -353,11 +358,15 @@ public class AlirtcManager extends Caster<Msg> {
          * */
         void onConfInviting(ConfInvitationInfo confInvitationInfo);
     }
+
     /**
-     * 添加会议邀请通知监听器
+     * 会议即将结束监听器
      * */
-    public void addOnConfInvitingListener(OnConfInvitingListener listener){
-        addNtfListener(Msg.ConfInviting, listener);
+    public interface OnConfAboutToEndListener extends ILifecycleOwner{
+        /**
+         * 会议即将结束
+         * */
+        void onConfAboutToEnd(ConfAboutToEnd confAboutToEnd);
     }
 
 }
