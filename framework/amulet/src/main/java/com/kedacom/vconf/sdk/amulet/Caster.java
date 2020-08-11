@@ -9,6 +9,7 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -27,6 +28,7 @@ public abstract class Caster<T extends Enum<T>> implements
     private ICrystalBall crystalBall = CrystalBall.instance();
 
     private final Set<Session> sessions = new LinkedHashSet<>();
+    private final Map<Class<? extends ILifecycleOwner>, T> listenerType2CaredNtfMap = new HashMap<>();
     private final Map<T, Set<ILifecycleOwner>> ntfListenersMap = new LinkedHashMap<>();
 
     private Class<T> enumT;
@@ -108,8 +110,17 @@ public abstract class Caster<T extends Enum<T>> implements
                 }
             }
         }
+
+        Map<Class<? extends ILifecycleOwner>, T> ntfListenerTypes = regNtfListenerType();
+        if (ntfListenerTypes != null) {
+            listenerType2CaredNtfMap.putAll(ntfListenerTypes);
+        }
     }
 
+    /**
+     * 注册通知监听器类型
+     * */
+    protected abstract Map<Class<? extends ILifecycleOwner>, T> regNtfListenerType();
 
     /**
      * 会话请求（异步请求）
@@ -338,6 +349,16 @@ public abstract class Caster<T extends Enum<T>> implements
         }
     }
 
+    /**
+     * 添加通知监听器
+     * */
+    public void addNtfListener(@NonNull ILifecycleOwner listener){
+        T ntf = listenerType2CaredNtfMap.get(listener.getClass());
+        if (ntf==null){
+            throw new IllegalArgumentException(String.format("listener %s not supported by %s!", listener.getClass(), getClass()));
+        }
+        addNtfListener(ntf, listener);
+    }
 
     /**
      * 删除监听器。
