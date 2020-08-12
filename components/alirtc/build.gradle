@@ -3,7 +3,7 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 
-version = '0.5.2-SNAPSHOT'
+version = '0.5.3-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -41,8 +41,7 @@ dependencies {
     api 'com.alibaba:fastjson:1.1.70.android'
     api 'io.reactivex.rxjava2:rxandroid:2.0.2'
     api "io.reactivex.rxjava2:rxjava:2.1.14"
-    //okhttp:3.14.1 ⽀持Android 5.0+，如果需要⽀持Android 4.0+，可以使⽤3.10.0版本
-    api "com.squareup.okhttp3:okhttp:3.14.1"
+    api "com.squareup.okhttp3:okhttp:4.8.1"
     //<- 阿里sdk引入
 
 }
