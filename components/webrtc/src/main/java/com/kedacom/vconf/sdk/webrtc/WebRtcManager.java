@@ -858,8 +858,8 @@ public class WebRtcManager extends Caster<Msg>{
             case MultipartyConfEnded:
 
             case ConfCanceled:
-                stopSession();
                 confEventListener.onConfFinished(RtcResultCode.trans(ntf, ((BaseTypeInt) ntfContent).basetype));
+                stopSession();
                 break;
 
             case CurrentConfereeList: // NOTE: 入会后会收到一次该通知，创会者也会收到这条消息。列表中包含了自己。
