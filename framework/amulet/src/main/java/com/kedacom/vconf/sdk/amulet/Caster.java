@@ -10,6 +10,7 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -321,31 +322,28 @@ public abstract class Caster<T extends Enum<T>> implements
      *                 NOTE: 若ntfs和listener同时为null则删除所有通知监听器。
      * */
     protected void delNtfListeners(@Nullable T[] ntfs, @Nullable ILifecycleOwner listener){
-        if (null != ntfs) {
-            for (T ntf : ntfs) {
-                Set<ILifecycleOwner> ntfListeners = ntfListenersMap.get(ntf);
-                if (null != ntfListeners) {
-                    if (null != listener) {
-                        KLog.p(KLog.DEBUG, "delete ntfListener, ntf=%s, listener=%s", ntf, listener);
-                        ntfListeners.remove(listener);
-                    }else{
-                        KLog.p(KLog.DEBUG, "clear ntfListener, ntf=%s", ntf);
-                        ntfListeners.clear();
-                    }
-                }
-            }
+        Set<T> ntfSet = new HashSet<>();
+        if (ntfs != null){
+            Collections.addAll(ntfSet, ntfs);
         }else{
+            ntfSet.addAll(ntfListenersMap.keySet());
+        }
+
+        for (T ntf : ntfSet){
+            Set<ILifecycleOwner> ntfListeners = ntfListenersMap.get(ntf);
+            if (null == ntfListeners) {
+                continue;
+            }
             if (null != listener) {
-                for (Set<ILifecycleOwner> ntfListeners : ntfListenersMap.values()) {
-                    KLog.p(KLog.DEBUG, "delete ntfListener, listener=%s", listener);
-                    ntfListeners.remove(listener);
-                }
+                KLog.p(KLog.DEBUG, "delete ntfListener, ntf=%s, listener=%s", ntf, listener);
+                ntfListeners.remove(listener);
             }else{
-                KLog.p(KLog.DEBUG, "clear all ntfListeners");
-                ntfListenersMap.clear();
+                KLog.p(KLog.DEBUG, "clear ntfListener, ntf=%s", ntf);
+                ntfListeners.clear();
             }
         }
-        if(!containsListener(listener)){
+
+        if(null != listener && !containsListener(listener)){
             listenerLifecycleObserver.unobserve(listener);
         }
     }
