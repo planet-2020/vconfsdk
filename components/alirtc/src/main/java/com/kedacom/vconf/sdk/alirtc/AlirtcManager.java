@@ -329,11 +329,11 @@ public class AlirtcManager extends Caster<Msg> {
 
 
     @Override
-    protected Map<Class<? extends ILifecycleOwner>, Msg> regNtfListenerType() {
-        Map<Class<? extends ILifecycleOwner>, Msg> listenerType2CaredNtf = new HashMap<>();
-        listenerType2CaredNtf.put(OnLoginStateChangedListener.class, Msg.LoginStateChanged);
-        listenerType2CaredNtf.put(OnConfInvitingListener.class, Msg.ConfInviting);
-        listenerType2CaredNtf.put(OnConfAboutToEndListener.class, Msg.ConfAboutToEnd);
+    protected Map<Class<? extends ILifecycleOwner>, Msg[]> regNtfListenerType() {
+        Map<Class<? extends ILifecycleOwner>, Msg[]> listenerType2CaredNtf = new HashMap<>();
+        listenerType2CaredNtf.put(OnLoginStateChangedListener.class, new Msg[]{Msg.LoginStateChanged});
+        listenerType2CaredNtf.put(OnConfInvitingListener.class, new Msg[]{Msg.ConfInviting});
+        listenerType2CaredNtf.put(OnConfAboutToEndListener.class, new Msg[]{Msg.ConfAboutToEnd});
         return listenerType2CaredNtf;
     }
 

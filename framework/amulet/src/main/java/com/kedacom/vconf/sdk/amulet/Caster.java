@@ -30,7 +30,7 @@ public abstract class Caster<T extends Enum<T>> implements
     private ICrystalBall crystalBall = CrystalBall.instance();
 
     private final Set<Session> sessions = new LinkedHashSet<>();
-    private final Map<Class<? extends ILifecycleOwner>, T> listenerType2CaredNtfMap = new HashMap<>();
+    private final Map<Class<? extends ILifecycleOwner>, T[]> listenerType2CaredNtfMap = new HashMap<>();
     private final Map<T, Set<ILifecycleOwner>> ntfListenersMap = new LinkedHashMap<>();
 
     private Class<T> enumT;
@@ -113,7 +113,7 @@ public abstract class Caster<T extends Enum<T>> implements
             }
         }
 
-        Map<Class<? extends ILifecycleOwner>, T> ntfListenerTypes = regNtfListenerType();
+        Map<Class<? extends ILifecycleOwner>, T[]> ntfListenerTypes = regNtfListenerType();
         if (ntfListenerTypes != null) {
             listenerType2CaredNtfMap.putAll(ntfListenerTypes);
         }
@@ -122,7 +122,7 @@ public abstract class Caster<T extends Enum<T>> implements
     /**
      * 注册通知监听器类型
      * */
-    protected Map<Class<? extends ILifecycleOwner>, T> regNtfListenerType(){return null;}
+    protected Map<Class<? extends ILifecycleOwner>, T[]> regNtfListenerType(){return null;}
 
     /**
      * 会话请求（异步请求）
@@ -357,17 +357,17 @@ public abstract class Caster<T extends Enum<T>> implements
                 continue;
             }
             Class<?> listenerClass = listener.getClass();
-            T ntf = null;
+            T[] ntfs = null;
             for (Class<?> clz : listenerType2CaredNtfMap.keySet()){
                 if (clz.isAssignableFrom(listenerClass)){
-                    ntf = listenerType2CaredNtfMap.get(clz);
+                    ntfs = listenerType2CaredNtfMap.get(clz);
                     break;
                 }
             }
-            if (ntf == null) {
+            if (ntfs == null) {
                 throw new IllegalArgumentException(String.format("listener %s not supported by %s", ClassHelper.getReadableName(listener.getClass()), getClass()));
             }
-            addNtfListener(ntf, listener);
+            addNtfListeners(ntfs, listener);
         }
     }
 

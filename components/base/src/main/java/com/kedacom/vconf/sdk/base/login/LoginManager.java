@@ -253,9 +253,9 @@ public class LoginManager extends Caster<Msg> {
     }
 
     @Override
-    protected Map<Class<? extends ILifecycleOwner>, Msg> regNtfListenerType() {
-        Map<Class<? extends ILifecycleOwner>, Msg> listenerType2CaredNtf = new HashMap<>();
-        listenerType2CaredNtf.put(OnKickedOffListener.class, Msg.KickedOff);
+    protected Map<Class<? extends ILifecycleOwner>, Msg[]> regNtfListenerType() {
+        Map<Class<? extends ILifecycleOwner>, Msg[]> listenerType2CaredNtf = new HashMap<>();
+        listenerType2CaredNtf.put(OnKickedOffListener.class, new Msg[]{Msg.KickedOff});
         return listenerType2CaredNtf;
     }
 
