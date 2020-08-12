@@ -1764,7 +1764,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 是否为己端
          * */
         public boolean isMyself(){
-            return instance.userE164.equals(e164); // XXX 可以考虑增加一个与会方类型——己端，则可以直接判断类型是否为己端。
+            return instance.myself == this;
         }
 
         /**
