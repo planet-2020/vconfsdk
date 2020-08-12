@@ -318,6 +318,7 @@ public class AlirtcManager extends Caster<Msg> {
                 Stream.of(ntfListeners).forEach(it ->
                         ((OnConfInvitingListener)it).onConfInviting(ToDoConverter.TConfInvitation2ConfInvitationInfo((TConfInvitation) ntfContent))
                 );
+                break;
             case ConfAboutToEnd:
                 Stream.of(ntfListeners).forEach(it ->
                         ((OnConfAboutToEndListener)it).onConfAboutToEnd(ToDoConverter.TAliConfWillEndInfo2ConfAboutToEnd((TAliConfWillEndInfo) ntfContent))
