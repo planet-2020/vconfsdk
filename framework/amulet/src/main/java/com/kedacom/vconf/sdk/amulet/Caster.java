@@ -197,7 +197,6 @@ public abstract class Caster<T extends Enum<T>> implements
      *                       绑定的优先级按从高到低： getLifecycleOwner > 自身即为LifecycleOwner > 直接外部类是LifecycleOwner或绑定了LifecycleOwner；
      *                       如果用户的监听器本身就是一个长寿对象（如一个全局单例），肯定长过session的生命周期，则无需关注生命周期问题；
      *                       当session结束时（session一定会结束，有超时机制），Caster会自动释放监听器引用，所以多数情况下即使不做任何处理现象上也不会表现出问题，但逻辑上是有问题的，在某些极端场景下会表现异常；
-     *
      * */
     protected void req(@NonNull T req, SessionProcessor<T> sessionProcessor, IResultListener resultListener, Object... reqParas){
         String reqId = prefix(req.name());
@@ -272,7 +271,11 @@ public abstract class Caster<T extends Enum<T>> implements
      * 添加通知监听器
      * @param ntfListener 通知监听器。
      *                    NOTE: Caster会尝试监测该监听器的生命周期，并做相应处理，
-     *                    参见{@link #req(Enum, SessionProcessor, IResultListener, Object...)}}对IResultListener的处理
+     *                    参见{@link #req(Enum, SessionProcessor, IResultListener, Object...)}}对IResultListener的处理。
+     *                    NOTE：若ntfListener是lambda，则cater可能无法获取其直接外部类，不同于内部类必定持有外部类的引用，
+     *                    lambda是否持有外部类的引用取决于lambda中是否引用了外部类或者外部类的成员，
+     *                    若不能获取ntfListener的外部类引用，则须得ntfListener自身是生命周期对象或者通过{@link ILifecycleOwner#getLifecycleOwner()}}指定了要绑定的生命周期对象，
+     *                    caster才能自动管理ntfListener的生命周期对象。
      * */
     protected void addNtfListener(@NonNull T ntfId, @NonNull ILifecycleOwner ntfListener){
         Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntfId);
