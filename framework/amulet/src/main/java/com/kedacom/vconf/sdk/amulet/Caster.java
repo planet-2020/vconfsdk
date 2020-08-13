@@ -197,8 +197,6 @@ public abstract class Caster<T extends Enum<T>> implements
      *                       绑定的优先级按从高到低： getLifecycleOwner > 自身即为LifecycleOwner > 直接外部类是LifecycleOwner或绑定了LifecycleOwner；
      *                       如果用户的监听器本身就是一个长寿对象（如一个全局单例），肯定长过session的生命周期，则无需关注生命周期问题；
      *                       当session结束时（session一定会结束，有超时机制），Caster会自动释放监听器引用，所以多数情况下即使不做任何处理现象上也不会表现出问题，但逻辑上是有问题的，在某些极端场景下会表现异常；
-     *                       IResultListener的外部类定义不要使用lambada，否则绑定可能失败（取决于java编译器具体实现），AS会提示转换为lambada，请suppress；
-     *                       建议用户尽量参考例一例二；
      *
      * */
     protected void req(@NonNull T req, SessionProcessor<T> sessionProcessor, IResultListener resultListener, Object... reqParas){

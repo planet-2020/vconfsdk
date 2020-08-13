@@ -6,6 +6,7 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
 
+import com.kedacom.vconf.sdk.utils.lang.ClassHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import java.lang.reflect.Field;
@@ -36,11 +37,6 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
     }
 
     /**尝试监控对象的生命周期。
-     *
-     * NOTE：1、该方法使用了反射，可能随着所使用java版本的变化而失效；
-     *       2、对于受监控对象为lambda的情形，若该lambda表达式内未使用外部类对象或外部类对象的成员则无法获取其外部类对象的引用，
-     *       返回尝试监控失败。此种情形在实际使用中会较常遇见，使用者需特别留意，评估由此带来的影响。
-     *
      * @param listener 监听器
      * @return 监听结果。true表示成功监听，后续监听器将感知生命周期对象的生命周期变化事件并通过Callback回调。
      * */
@@ -61,7 +57,7 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
 //            KLog.p("%s is LifecycleOwner itself", listener);
             observe((LifecycleOwner) listener, listener, cb);
         }else{ // 没有指定绑定的生命周期对象，自身也不是生命周期拥有者，则尝试监控其外部类对象的生命周期
-            Object encloser = getEncloserEx(listener);
+            Object encloser = getEnclosingObject(listener);
             if (encloser instanceof ILifecycleOwner){
                 LifecycleOwner owner = getBoundLifecycleOwner((ILifecycleOwner) encloser);
                 if (null != owner){ // 外部类对象有绑定的生命周期对象
@@ -78,7 +74,7 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
                 3、其外部类对象（如果有）指定绑定了的生命周期对象；
                 4、其外部类对象（如果有）为生命周期拥有者；
                 */
-                KLog.p(KLog.DEBUG, "%s can not perceive lifecycle", listener);
+                KLog.p(KLog.DEBUG, "can not perceive lifecycle for %s", listener + ClassHelper.getParents(listener.getClass()));
                 return false;
             }
         }
@@ -99,12 +95,12 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
             if (val.contains(listener)){
                 val.remove(listener);
                 listenerCallbackMap.remove(listener);
-                KLog.p(KLog.DEBUG,"unbind %s's lifecycle from %s", listener, key);
+                KLog.p(KLog.DEBUG,"unbind lifecycle from %s for %s", key, listener+ClassHelper.getParents(listener.getClass()));
                 if (val.isEmpty()){
                     // owner其下没有与之绑定的listener则取消对该owner的监控。
                     key.getLifecycle().removeObserver(this);
                     lifecycleOwnerBindListeners.remove(key);
-                    KLog.p(KLog.DEBUG, "unobserve %s's lifecycle", key);
+                    KLog.p(KLog.DEBUG, "unobserve lifecycle of %s", key);
                 }
                 return;
             }
@@ -124,12 +120,12 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
     /**
      * 监控生命周期。
      *
-    *  @param owner 生命周期拥有者
+     *  @param owner 生命周期拥有者
      * @param listener 生命周期附庸者，绑定到owner上从而拥有和owner一样的生命周期。
      *                 可以为null表示owner暂时没有附庸者，owner自身生命周期仍被监控。
-    * */
+     * */
     private void observe(LifecycleOwner owner, ILifecycleOwner listener, Callback cb){
-        KLog.p(KLog.DEBUG,"bind %s's lifecycle to %s", listener, owner);
+        KLog.p(KLog.DEBUG,"bind lifecycle to %s for %s", owner, listener+ClassHelper.getParents(listener.getClass()));
         if (lifecycleOwnerBindListeners.containsKey(owner)) { // 该生命周期对象已经被监控了
             lifecycleOwnerBindListeners.get(owner).add(listener); // 绑定该listener到该生命周期对象
         }else { // 该生命周期对象尚未被监控
@@ -137,72 +133,62 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
             listeners.add(listener);
             lifecycleOwnerBindListeners.put(owner, listeners); // 绑定该listener到该生命周期对象
             owner.getLifecycle().addObserver(this); // 监控该生命周期对象
-            KLog.p(KLog.DEBUG, "observe %s's lifecycle", owner);
+            KLog.p(KLog.DEBUG, "observe lifecycle of %s", owner);
         }
         listenerCallbackMap.put(listener, cb);
     }
 
 
-    /**获取对象的外部类对象。*/
-    private Object getEncloserEx(Object obj){
+    /**获取对象的直接外部类对象。
+     * @return 返回obj的直接外部类对象，若没有则返回null。
+     *
+     * NOTE：该方法使用了反射，在openjdk8上验证通过，但依赖的规则没有官方文档说明，可能随着jdk版本选用的不同而失效。
+     * */
+    private Object getEnclosingObject(Object obj){
         Class<?> clz = obj.getClass();
-        Class<?> enclosingClz;
+        // 尝试获取该对象的外部类。
+        // 我们使用该外部类作为辅助尽力保证我们获取到的外部类对象的正确性
+        Class<?> enclosingClz = null;
         try {
             enclosingClz = clz.getEnclosingClass();
         }catch (Throwable e){  // if clz enclosed by lambda IncompatibleClassChangeError will be thrown out!
-            e.printStackTrace();
-            return null;
+            ;
         }
-        Object encloser = null;
-        Field enclosingClzRef;
 
-        if (null != enclosingClz) { // 为内部类对象的情形
-            Field[] fields = clz.getDeclaredFields();
-            for (Field field : fields){
+        /*
+        * 我们尝试利用如下不成文的规则查找外部类对象（请注意我们是在openjdk8验证通过，其他版本的jdk可能实现不一样）：
+        * 1、内部类对象持有外部类对象的引用，该引用名以“this$”开头；
+        * 2、lambda对象持有外部类对象的引用，若该lambda对象引用了外部类对象或其成员，该引用名为"f$0"；
+        * 3、用户自定义的成员中不包含"this$"或"f$0"；
+        * */
+        Object enclosingObj = getField(obj, "this$", enclosingClz);
+        if (enclosingObj == null){
+            enclosingObj = getField(obj, "f$0", enclosingClz);
+        }
+
+        return enclosingObj;
+    }
+
+
+    private Object getField(Object obj, String filedName, Class<?> fieldCls){
+        Class<?> cls = obj.getClass();
+        Field[] fields = cls.getDeclaredFields();
+        for (Field field : fields){
 //                KLog.p("======= field: name=%s, clz=%s", field.getName(), field.getDeclaringClass());
-                if (field.getName().contains("this$")){ // 外部类对象的名称包含"this$"。NOTE: 此法没有官方文档说明，可能随着编译器的变化而失效。
-                    Object tmp;
-                    field.setAccessible(true);
-                    try {
-                        tmp = field.get(obj);
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
-                        return null;
-                    }
-                    if (!enclosingClz.isInstance(tmp)){ // 该对象是外部类的实例。（尽力规避内部类中有定义形如"this$"成员变量的情形）
-                        continue;
-                    }
-
-                    encloser = tmp;
-                    break;
-                }
-            }
-
-            return encloser;
-
-        }else { // 为lambda对象的情形
-            /*lambda可能持有外部类引用也可能未持有。
-            若lambda内部引用了外部类或外部类的成员则持有否则未持有。*/
-            try {
-                enclosingClzRef = clz.getDeclaredField("arg$1");
-            } catch (NoSuchFieldException e) {
+            if (field.getName().startsWith(filedName)){
+                Object fieldObj = null;
+                field.setAccessible(true);
                 try {
-                    enclosingClzRef = clz.getDeclaredField("f$0");
-                } catch (NoSuchFieldException e1) {
-                    return null;
+                    fieldObj = field.get(obj);
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+                if (fieldCls == null || fieldCls.isInstance(fieldObj)){ // 除了名字匹配外，我们还尽力验证类型是否匹配
+                    return fieldObj; // 找到外部类对象
                 }
             }
         }
-
-        enclosingClzRef.setAccessible(true);
-
-        try {
-            encloser = enclosingClzRef.get(obj);
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
-
-        return encloser;
+        return null;
     }
 
 
@@ -233,7 +219,7 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
     @Override
     public void onDestroy(@NonNull LifecycleOwner owner) {
         act(owner, Lifecycle.Event.ON_DESTROY);
-        KLog.p(KLog.DEBUG, "unobserve %s's lifecycle", owner);
+        KLog.p(KLog.DEBUG, "unobserve lifecycle of %s", owner);
     }
 
 
@@ -250,7 +236,7 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
                     cbMap.put(listener, cb);
                 }
                 if (listener.destroyWhenLifecycleOwner() == event) {
-                    KLog.p(KLog.DEBUG, "unbind %s's lifecycle from %s", listener, owner);
+                    KLog.p(KLog.DEBUG, "unbind lifecycle from %s for %s", owner, listener+ClassHelper.getParents(listener.getClass()));
                     it.remove();
                     listenerCallbackMap.remove(listener);
                 }
