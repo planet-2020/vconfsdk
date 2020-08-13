@@ -1764,7 +1764,8 @@ public class WebRtcManager extends Caster<Msg>{
          * 是否为己端
          * */
         public boolean isMyself(){
-            return instance.myself == this;
+            // NOTE：目前的实现必须通过e164判断
+            return e164.equals(instance.myself.e164);
         }
 
         /**
@@ -2820,6 +2821,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     /**
      * 创建Display。
+     * NOTE: Display不再使用时记得销毁{@link #releaseDisplay(Display)}
      *
      * @param type display類型。
      * 根据Display类型默认有如下策略：
@@ -2854,7 +2856,7 @@ public class WebRtcManager extends Caster<Msg>{
             display.destroy();
             KLog.p("display %s released", display.id());
         }else{
-            KLog.p(KLog.ERROR, "wired! display %s is not created by me?", display.id());
+            KLog.p(KLog.ERROR, "display %s is not alive", display.id());
         }
     }
 
