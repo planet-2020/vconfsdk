@@ -15,4 +15,19 @@ public class ClassHelper {
         }
         return name;
     }
+
+    public static String getParents(@NonNull Class<?> cls){
+        StringBuilder parents = new StringBuilder();
+        Class<?>[] interfaces = cls.getInterfaces();
+        Class<?> superclass = cls.getSuperclass();
+        if (superclass != Object.class){
+            parents.append(" extends ").append(superclass).append("\n");
+        }
+        for (Class<?> itf : interfaces){
+            parents.append(" implements ").append(itf).append("\n");
+        }
+
+        return parents.toString();
+
+    }
 }
