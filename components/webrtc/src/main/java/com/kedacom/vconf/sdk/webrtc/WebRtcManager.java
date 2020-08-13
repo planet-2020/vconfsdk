@@ -1562,7 +1562,7 @@ public class WebRtcManager extends Caster<Msg>{
         /**
          * 与会方离开。
          * 如果该Conferee对应的Display不需要了请调用{@link #releaseDisplay(Display)}销毁；
-         * 如果后续要复用则可以不销毁，可以调用{@link Display#setConferee)}参数传null清空内容；
+         * 如果后续要复用则可以不销毁，可以调用{@link Display#clear()} 清空内容；
          * NOTE: 会议结束时会销毁所有Display。用户不能跨会议复用Display。
          * */
         void onConfereeLeft(Conferee conferee);
@@ -2541,9 +2541,9 @@ public class WebRtcManager extends Caster<Msg>{
          * 销毁display
          * */
         private void destroy(){
+            super.release();
             KLog.p("destroy display %s ", id());
             clear();
-            super.release();
         }
 
 
