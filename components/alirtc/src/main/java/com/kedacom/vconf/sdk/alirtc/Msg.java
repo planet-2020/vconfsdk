@@ -1,6 +1,6 @@
 package com.kedacom.vconf.sdk.alirtc;
 
-import com.kedacom.vconf.sdk.alirtc.bean.ConfAboutToEnd;
+import com.kedacom.vconf.sdk.alirtc.bean.transfer.TAliConfWillEndInfo;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TConfInvitation;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfParam;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
@@ -128,7 +128,7 @@ enum Msg {
      * 会议即将结束通知
      * */
     @Notification(name = "AliConfWillEnd_Ntf",
-            clz = ConfAboutToEnd.class)
+            clz = TAliConfWillEndInfo.class)
     ConfAboutToEnd,
 
 
