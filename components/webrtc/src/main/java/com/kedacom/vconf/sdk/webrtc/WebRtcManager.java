@@ -1100,16 +1100,16 @@ public class WebRtcManager extends Caster<Msg>{
 
         handler.removeCallbacksAndMessages(null);
 
-        for (Display display : displays){
-            display.destroy();
-        }
-        displays.clear();
-
 //        myself = null;
 
         conferees.clear();
 
         streams.clear();
+
+        for (Display display : displays){
+            display.release();
+        }
+        displays.clear();
 
 
         kdStreamId2RtcTrackIdMap.clear();
@@ -2541,9 +2541,12 @@ public class WebRtcManager extends Caster<Msg>{
          * 销毁display
          * */
         private void destroy(){
-            super.release();
             KLog.p("destroy display %s ", id());
-            clear();
+            enabled = false;
+            if (conferee != null){
+                conferee.removeDisplay(this);
+            }
+            super.release();
         }
 
 
