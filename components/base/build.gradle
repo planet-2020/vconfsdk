@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '3.2.3-SNAPSHOT'
+version = '3.2.4-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -18,7 +18,7 @@ dependencies {
     implementation project(':common')
     implementation project(':utils')
 
-    implementation 'com.kedacom.vconf.sdk:amulet:5.7.2-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:amulet:5.8.0-SNAPSHOT'
 
 //    implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"
 //    implementation 'com.google.code.gson:gson:2.8.2'

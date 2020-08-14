@@ -228,7 +228,7 @@ public class AlirtcManager extends Caster<Msg> {
                     AliMeetingUIManager.joinMeeting(context, builder.builder());
 
                 }else{
-                    reportFailed(AliRtcResultCode.trans(rsp, joinConfResult.dwErrorCode), resultListener);
+                    reportFailed(AliRtcResultCode.trans(rsp, joinConfResult.dwErrorCode), rspContent, resultListener);
                 }
             }
         }, resultListener, new TJoinConfPara(joinConfPara.confNum, joinConfPara.password));
