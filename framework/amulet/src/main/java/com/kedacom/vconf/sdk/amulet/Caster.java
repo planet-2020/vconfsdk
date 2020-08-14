@@ -539,6 +539,13 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
     /**
+     * 上报用户请求失败
+     * */
+    protected void reportFailed(int errorCode, Object errorInfo, IResultListener listener){
+        reportFailed(errorCode, errorInfo, listener, false);
+    }
+
+    /**
      * 上报用户请求超时
      * */
     protected void reportTimeout(IResultListener listener){
@@ -571,6 +578,14 @@ public abstract class Caster<T extends Enum<T>> implements
         }
         listener.onArrive(false);
         listener.onFailed(errorCode);
+    }
+
+    protected void reportFailed(int errorCode, Object errorInfo, IResultListener listener, boolean onlyIfListenerExistInSession){
+        if (null == listener || (onlyIfListenerExistInSession && !containsRspListener(listener)) ){
+            return;
+        }
+        listener.onArrive(false);
+        listener.onFailed(errorCode, errorInfo);
     }
 
     protected void reportTimeout(IResultListener listener, boolean onlyIfListenerExistInSession){
