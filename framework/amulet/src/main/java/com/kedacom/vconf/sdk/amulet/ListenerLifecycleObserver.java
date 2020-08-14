@@ -144,7 +144,7 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
      *
      * NOTE：该方法使用了反射，但依赖的规则没有官方文档说明。
      *      在如下编译环境下验证通过：
-     *      jdk：openjdk8或openjdk11
+     *      jdk：openjdk8/openjdk11/OracleJDK8
      *      compileOptions {
      *          sourceCompatibility JavaVersion.VERSION_1_8
      *          targetCompatibility JavaVersion.VERSION_1_8
@@ -162,11 +162,10 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
         }
 
         /*
-        * 我们尝试利用如下不成文的规则查找外部类对象（请注意我们是在openjdk8验证通过，其他版本的jdk可能实现不一样）：
+        * 我们尝试利用如下不成文的规则查找外部类对象：
         * 1、内部类对象持有外部类对象的引用，该引用名以“this$”开头；
         * 2、lambda对象持有外部类对象的引用，若该lambda对象引用了外部类对象或其成员，该引用名为"f$0"；
-        * 3、obj被lambda表达式包裹时，obj持有的外部类对象引用“this$”或"f$0"并非指向lambda对象，而是穿透lambda指向上一层的外部类对象；
-        * 4、用户自定义的成员中不包含"this$"或"f$0"；
+        * 3、用户自定义的成员中不包含"this$"或"f$0"；
         * */
         Object enclosingObj = getField(obj, "this$", enclosingClz);
         if (enclosingObj == null){
