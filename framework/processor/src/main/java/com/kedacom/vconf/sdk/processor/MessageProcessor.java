@@ -89,7 +89,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         messager = processingEnv.getMessager();
 
-        messager.printMessage(Diagnostic.Kind.NOTE, "START processing @Module, processor "+this);
+//        messager.printMessage(Diagnostic.Kind.NOTE, "START processing @Module, processor "+this);
 
         Set<? extends Element> msgSet = roundEnvironment.getElementsAnnotatedWith(Module.class);
         for (Element element : msgSet) {

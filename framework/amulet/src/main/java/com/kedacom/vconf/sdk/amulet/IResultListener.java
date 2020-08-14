@@ -27,12 +27,6 @@ public interface IResultListener extends ILifecycleOwner {
 
     /**失败。
      * @param errorCode 错误码。具体定义在各自模块查阅
-     * */
-    @Deprecated
-    default void onFailed(int errorCode){}
-
-    /**失败。
-     * @param errorCode 错误码。具体定义在各自模块查阅
      * @param errorInfo 错误详情。具体定义在各自模块查阅
      * */
     default void onFailed(int errorCode, Object errorInfo){}

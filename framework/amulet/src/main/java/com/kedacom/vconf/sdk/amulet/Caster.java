@@ -20,14 +20,13 @@ import java.util.Map;
 import java.util.Set;
 
 
+@SuppressWarnings({"unused", "SameParameterValue"})
 public abstract class Caster<T extends Enum<T>> implements
         IFairy.ISessionFairy.IListener,
         IFairy.INotificationFairy.IListener{
 
     private IFairy.ISessionFairy sessionFairy = new SessionFairy();
-    private IFairy.INotificationFairy notificationFairy = new NotificationFairy();
     private IFairy.ICommandFairy commandFairy = new CommandFairy();
-    private ICrystalBall crystalBall = CrystalBall.instance();
 
     private final Set<Session> sessions = new LinkedHashSet<>();
     private final Map<Class<? extends ILifecycleOwner>, T[]> listenerType2CaredNtfMap = new HashMap<>();
@@ -36,7 +35,6 @@ public abstract class Caster<T extends Enum<T>> implements
     private Class<T> enumT;
 
     private static Set<String> modules = new HashSet<>();
-    private String module;
     private String msgPrefix;
 
     private ListenerLifecycleObserver listenerLifecycleObserver = ListenerLifecycleObserver.getInstance();
@@ -75,13 +73,14 @@ public abstract class Caster<T extends Enum<T>> implements
     @SuppressWarnings("ConstantConditions")
     protected Caster(){
         IMagicBook magicBook = null;
-        enumT = (Class<T>)((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+        //noinspection unchecked
+        enumT = (Class<T>) ((ParameterizedType)getClass().getGenericSuperclass()).getActualTypeArguments()[0];
         try {
             Class<?> magicBookClz = Class.forName(enumT.getPackage().getName()+".MagicBook$$Impl");
             Constructor<?> ctor = magicBookClz.getDeclaredConstructor();
             ctor.setAccessible(true);
             magicBook = (IMagicBook) ctor.newInstance();
-            module = magicBook.name();
+            String module = magicBook.name();
             if(!modules.add(module)){
                 throw new RuntimeException(String.format("module %s has existed already!", module));
             }
@@ -94,9 +93,11 @@ public abstract class Caster<T extends Enum<T>> implements
         }
 
         sessionFairy.setMagicBook(magicBook);
+        ICrystalBall crystalBall = CrystalBall.instance();
         sessionFairy.setCrystalBall(crystalBall);
         commandFairy.setMagicBook(magicBook);
         commandFairy.setCrystalBall(crystalBall);
+        IFairy.INotificationFairy notificationFairy = new NotificationFairy();
         notificationFairy.setMagicBook(magicBook);
 
         crystalBall.addRspListener(sessionFairy);
@@ -375,8 +376,9 @@ public abstract class Caster<T extends Enum<T>> implements
     /**
      * 删除监听器。
      * NOTE：该接口会删除该listener注册的所有监听器，包括各个请求结果监听器，通知监听器。
-     *
-     * @param listener*/
+     *       如果您只需删除通知监听器请使用{@link #delNtfListener(Enum, ILifecycleOwner)}，
+     *       如果只需要删除结果监听器请使用{@link #delResultListener(IResultListener)}
+     * */
     public void delListener(@NonNull ILifecycleOwner listener){
         delNtfListeners(null, listener);
         if (listener instanceof IResultListener){
@@ -386,8 +388,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 删除结果监听器
-     *
-     * @param listener*/
+     * */
     protected void delResultListener(@NonNull IResultListener listener){
         for (Session s : sessions) {
             if (listener == s.resultListener) {
@@ -577,7 +578,7 @@ public abstract class Caster<T extends Enum<T>> implements
             return;
         }
         listener.onArrive(false);
-        listener.onFailed(errorCode);
+        listener.onFailed(errorCode, null);
     }
 
     protected void reportFailed(int errorCode, Object errorInfo, IResultListener listener, boolean onlyIfListenerExistInSession){

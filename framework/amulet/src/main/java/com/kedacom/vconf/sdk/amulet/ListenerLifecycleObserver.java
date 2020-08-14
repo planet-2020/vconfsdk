@@ -40,7 +40,7 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
      * @param listener 监听器
      * @return 监听结果。true表示成功监听，后续监听器将感知生命周期对象的生命周期变化事件并通过Callback回调。
      * */
-    public boolean tryObserve(@NonNull ILifecycleOwner listener, @NonNull Callback cb){
+    public boolean tryObserve(ILifecycleOwner listener, @NonNull Callback cb){
         if (null == listener){
             return false;
         }
@@ -85,7 +85,7 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
 
 
     /**取消监控生命周期。*/
-    public void unobserve(@NonNull ILifecycleOwner listener){
+    public void unobserve(ILifecycleOwner listener){
         if (null == listener){
             return;
         }
