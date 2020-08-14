@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.google.protobuf'
 
-version = '2.0.6-SNAPSHOT'
+version = '3.0.0-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -25,7 +25,7 @@ dependencies {
     implementation project(':common')
     implementation project(':utils')
 
-    implementation 'com.kedacom.vconf.sdk:amulet:5.7.0-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:amulet:6.0.0-SNAPSHOT'
 }
 
 

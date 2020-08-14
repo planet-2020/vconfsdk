@@ -549,7 +549,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
             }
 
             @Override
-            public void onFailed(int errorCode) {
+            public void onFailed(int errorCode, Object errorInfo) {
                 reportFailed(errorCode, resultListener);
             }
 
@@ -1001,7 +1001,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                                 }
 
                                 @Override
-                                public void onFailed(int errorCode) {
+                                public void onFailed(int errorCode, Object errorInfo) {
                                     reportFailed(-1, resultListener);
                                 }
 
@@ -1014,7 +1014,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 }
 
                 @Override
-                public void onFailed(int errorCode) {
+                public void onFailed(int errorCode, Object errorInfo) {
                     reportFailed(-1, resultListener);
                 }
 
@@ -1261,7 +1261,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
             }
 
             @Override
-            public void onFailed(int errorCode) {
+            public void onFailed(int errorCode, Object errorInfo) {
                 // 上报同步进度
                 reportSynProgress(board.getId(), 0, true);
             }
