@@ -111,7 +111,7 @@ public final class InterpolatingTextWatcher implements TextWatcher {
             if (span< deletedText.length()) {
                 deletedText.delete(span, span+separatorLen);
             }
-            if (span<= cursorPos){
+            if (span< cursorPos){
                 cursorPos -= separatorLen;
             }
         }
