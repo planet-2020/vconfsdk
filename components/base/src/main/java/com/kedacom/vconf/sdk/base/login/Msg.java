@@ -66,6 +66,14 @@ enum Msg {
             clz = TMtSvrStateList.class)
     LogoutApsRsp,
 
+    /**获取平台地址*/
+    @Request(name = "GetMtPlatformApiCfg",
+            owner = Atlas.ConfigCtrl,
+            paras = StringBuffer.class,
+            userParas = TMtPlatformApiAddr.class,
+            isGet = true)
+    GetPlatformAddr,
+
     /**获取平台为用户分配的token*/
     @Request(name = "MGRestGetPlatformAccountTokenReq",
             owner = Atlas.MeetingCtrl,

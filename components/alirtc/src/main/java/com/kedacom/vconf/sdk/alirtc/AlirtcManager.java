@@ -184,7 +184,8 @@ public class AlirtcManager extends Caster<Msg> {
                                             para.achConfDomain,
                                             para.achConfCode,
                                             para.achConfuuid,
-                                            para.achMemuuid
+                                            para.achMemuuid,
+                                            ""
                                     )
                             )
                             .setMeetingDetail(// 用于邀请

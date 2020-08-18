@@ -22,10 +22,12 @@ import com.kedacom.vconf.sdk.base.login.bean.transfer.TMTAccountManagerSystem;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.TMTApsLoginParam;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.TMTUserInfoFromAps;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.TMTWeiboLogin;
+import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtPlatformApiAddr;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtSvrState;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtSvrStateList;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.TQueryUserDetailsRsp;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
+import com.kedacom.vconf.sdk.common.type.TNetAddr;
 import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
@@ -135,6 +137,12 @@ public class LoginManager extends Caster<Msg> {
                                     public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                                         TApsLoginResult apsLoginResult = (TApsLoginResult) rspContent;
                                         if (apsLoginResult.MainParam.bSucess){
+                                            // 获取平台地址
+                                            TMtPlatformApiAddr platformApiAddr = (TMtPlatformApiAddr) get(Msg.GetPlatformAddr);
+                                            if (null == platformApiAddr){
+                                                reportFailed(LIResultCode.Failed, resultListener);
+                                                return;
+                                            }
                                             // 获取平台分配的token
                                             req(Msg.QueryAccountToken, new SessionProcessor<Msg>() {
                                                 @Override
@@ -170,7 +178,7 @@ public class LoginManager extends Caster<Msg> {
                                                     logoutAps(null);
                                                     reportFailed(-1, resultListener);
                                                 }
-                                            }, resultListener, NetAddrHelper.ipLongLittleEndian2Str(apsLoginResult.AssParam.dwIP));
+                                            }, resultListener, NetAddrHelper.ipLongLittleEndian2Str(platformApiAddr.dwIp));
 
                                         }else{
                                             reportFailed(LIResultCode.trans(rsp, apsLoginResult.MainParam.dwApsErroce), resultListener);
