@@ -13,7 +13,7 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 /**
  * 插值文本监听器。
  * 该监听器针对输入的text根据指定的span插入指定的separator。
- * NOTE：Filters不能过滤掉separator中的字符，否则该监听器不能正常工作。
+ * NOTE：InputFilter不能过滤掉separator中的字符，否则该监听器不能正常工作。
  * */
 public final class InterpolatingTextWatcher implements TextWatcher {
     // 原始的文本（剔除插值）
@@ -25,12 +25,11 @@ public final class InterpolatingTextWatcher implements TextWatcher {
 
     private int cursorPos;
 
-    private EditText editText;
-    private int[] spans;
-    private String[] separators;
-    private int begin;
-    private int end;
-    private boolean rejectInputSeparator;
+    private final EditText editText;
+    private final int[] spans;
+    private final String[] separators;
+    private final int till;
+    private final boolean rejectInputSeparator;
 
     public static final int TILL_END = Integer.MAX_VALUE;
 
@@ -38,56 +37,53 @@ public final class InterpolatingTextWatcher implements TextWatcher {
      * @param editText 监听的EditText
      * @param spans 插入的跨度
      * @param separators 插入的字符串
-     * @param begin 计算的起始位置。若小于0则取值0，0表示第一个字符的位置。
-     * @param end 计算的结束位置。若大于text长度则取text长度值；取值{@link #TILL_END}表示到text末尾。
-     *            NOTE：计算范围为左闭右开区间即[begin,end)。如对于“1234567”，若begin=1, end=4，则计算的区间为"234"；
-     *                  若begin>=end则使用[0, TILL_END)替代。
-     * @param rejectInputSeparator 是否丢弃用户输入的插值字符。如，若插值为"-"，用户输入"1-2"，则为true时最终text为"12"，为false则维持原样。
+     * @param till 计算的结束位置。若大于text长度则取text长度值；取值{@link #TILL_END}表示到text末尾。
+     * @param rejectInputSeparator 是否丢弃用户输入的插值字符。如：若插值为"-"，用户输入"1-2"，则为true时实际处理的text为"12"（剔除了'-'），为false则维持原样。
      *
-     * 举例：若editText输入内容“1234567”，span为{1}，separator为{"-"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-2-3-4-5-6-7”。
-     *      若editText输入内容“1234567”，span为{1,2}，separator为{"-"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-23-45-67”。
-     *      若editText输入内容“1234567”，span为{1}，separator为{"-",":"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-2:3:4:5:6:7”。
-     *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，begin=0, end=7, 则最终展示在EditText上的内容为“1-23:45:67”。
-     *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，begin=0, end=4, 则最终展示在EditText上的内容为“1-23:4567”。
-     *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，begin=1, end=4, 则最终展示在EditText上的内容为“12-34567”。
-     *      若editText输入内容“123456-7”，span为{1,2}，separator为{"-",":"}，begin=1, end=4, rejectInputSeparator=true, 则最终展示在EditText上的内容为“12-34567”。
-     *      若editText输入内容“123456-7”，span为{1,2}，separator为{"-",":"}，begin=1, end=4, rejectInputSeparator=false, 则最终展示在EditText上的内容为“12-3456-7”。
+     * 举例：若editText输入内容“1234567”，span为{1}，separator为{"-"}，till=7, 则最终展示在EditText上的内容为“1-2-3-4-5-6-7”。
+     *      若editText输入内容“1234567”，span为{1}，separator为{"--"}，till=7, 则最终展示在EditText上的内容为“1--2--3--4--5--6--7”。
+     *      若editText输入内容“1234567”，span为{1,2}，separator为{"-"}，till=7, 则最终展示在EditText上的内容为“1-23-45-67”。
+     *      若editText输入内容“1234567”，span为{1}，separator为{"-",":"}，till=7, 则最终展示在EditText上的内容为“1-2:3:4:5:6:7”。
+     *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，till=7, 则最终展示在EditText上的内容为“1-23:45:67”。
+     *      若editText输入内容“1234567”，span为{1,2}，separator为{"-",":"}，till=4, 则最终展示在EditText上的内容为“1-23:4567”。
+     *      若editText输入内容“123456-7”，span为{2}，separator为{"-",":"}，till=4, rejectInputSeparator=true, 则最终展示在EditText上的内容为“12-34567”。
+     *      若editText输入内容“123456-7”，span为{2}，separator为{"-",":"}，till=5, rejectInputSeparator=false, 则最终展示在EditText上的内容为“12-34:56-7”。
      *     */
-    public InterpolatingTextWatcher(@NonNull EditText editText, @NonNull int[] spans, @NonNull String[] separators, int begin, int end, boolean rejectInputSeparator) {
+    public InterpolatingTextWatcher(@NonNull EditText editText, @NonNull int[] spans, @NonNull String[] separators, int till, boolean rejectInputSeparator) {
         this.editText = editText;
         this.spans = new int[spans.length];
         this.separators = new String[separators.length];
         System.arraycopy(spans, 0, this.spans, 0, spans.length);
         System.arraycopy(separators, 0, this.separators, 0, separators.length);
-        this.begin = Math.max(begin, 0);
-        this.end = Math.max(end, 0);
-        if (this.end <= this.begin){
-            this.begin = 0;
-            this.end = TILL_END;
-        }
+
+        this.till = till>0 ? till : TILL_END;
+
         this.rejectInputSeparator = rejectInputSeparator;
-        for (int i=0; i<spans.length; ++i){
-            KLog.p("spans[%s]=%s", i, spans[i]);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("spans:[");
+        for (int span : spans) {
+            sb.append(span).append(",");
         }
-        for (int i=0; i<separators.length; ++i){
-            KLog.p("separators[%s]=%s,", i, separators[i]);
+        sb.append("], ");
+        sb.append("separators:[");
+        for (String separator : separators) {
+            sb.append(separator).append(", ");
         }
-        KLog.p("begin=%s, end=%s", begin, end);
+        sb.append("], ");
+        sb.append("till: ").append(till);
+
+        KLog.p(sb.toString());
     }
 
-    /**
-     * @see #InterpolatingTextWatcher(EditText, int[], String[], int, int, boolean)
-     * */
     public InterpolatingTextWatcher(@NonNull EditText editText, @NonNull int[] spans, @NonNull String[] separators, boolean rejectInputSeparator) {
-        this(editText, spans, separators, 0, TILL_END, rejectInputSeparator);
+        this(editText, spans, separators, TILL_END, rejectInputSeparator);
     }
 
-    /**
-     * @see #InterpolatingTextWatcher(EditText, int[], String[], int, int, boolean)
-     * */
     public InterpolatingTextWatcher(@NonNull EditText editText, @NonNull int[] spans, @NonNull String[] separators) {
-        this(editText, spans, separators, 0, TILL_END, true);
+        this(editText, spans, separators, true);
     }
+
 
     @Override
     public void beforeTextChanged(
@@ -99,10 +95,10 @@ public final class InterpolatingTextWatcher implements TextWatcher {
         deletedText.delete(0, deletedText.length());
         deletedText.append(s.subSequence(0, start+count));
 
-        // 剔除插值，拿到原始字符串
+
         cursorPos = start;
-        for (int i=0, span=begin+spans[i];
-             span<Math.min(end, rawText.length());
+        for (int i=0, span=spans[i];
+             span<Math.min(till, rawText.length());
              ++i, span += i<spans.length ? spans[i] : spans[spans.length-1]){
             KLog.p("spans[%s]=%s, rawText=%s, cursorPos=%s", i, span, rawText, cursorPos);
             String separator = i<separators.length ? separators[i] : separators[separators.length-1];
@@ -111,7 +107,7 @@ public final class InterpolatingTextWatcher implements TextWatcher {
             if (span< deletedText.length()) {
                 deletedText.delete(span, span+separatorLen);
             }
-            if (span< cursorPos){
+            if (span< cursorPos || (span == cursorPos && count > 0)){
                 cursorPos -= separatorLen;
             }
         }
@@ -126,27 +122,20 @@ public final class InterpolatingTextWatcher implements TextWatcher {
 
     @Override
     public void onTextChanged(CharSequence s, int start, int before, int count) {
-        KLog.p("s=%s, start=%s, before=%s, count=%s, rawText=%s,", s, start, before, count, rawText);
+        KLog.p("s=%s, start=%s, before=%s, count=%s, rawText=%s", s, start, before, count, rawText);
 
         CharSequence addedText = s.subSequence(start, start+count);
         if (rejectInputSeparator){
             String text = addedText.toString();
-            StringBuilder sb = new StringBuilder();
             for (String sep : separators){
-                for (int i=0; i<text.length(); ++i){
-                    char c = text.charAt(i);
-                    if (-1 == sep.indexOf(c)){
-                        sb.append(c);
-                    }
-                }
+                text = text.replace(sep, "");
             }
-            KLog.p("addedText=%s, after polish=%s,", addedText, sb.toString());
-            addedText = sb.toString();
+            KLog.p("addedText=%s, after polish =%s", addedText, text);
+            addedText = text;
         }
 
         rawText.insert(cursorPos, addedText);
         cursorPos += addedText.length();
-//                String trimedStr = rawStr.toString().replace(" ", "");
 
         KLog.p("rawText=%s, addedText=%s, cursorPos=%s", rawText, addedText, cursorPos);
     }
@@ -157,16 +146,11 @@ public final class InterpolatingTextWatcher implements TextWatcher {
         KLog.p("s=%s,", s);
         interpolatedText.delete(0, interpolatedText.length());
         interpolatedText.append(rawText);
-        if (rawText.length() <= begin){
-            KLog.p("rawText.length(%s) <= begin(%s)", rawText.length(), begin);
-            s.clear();
-            s.append(interpolatedText);
-            return;
-        }
+
         // 对原始text进行插值处理生成插值后的text
-        int stop = Math.min(end, rawText.length());
-        KLog.p("begin=%s, stop=%s, spans[0]=%s, rawText=%s,", begin, stop, spans[0], rawText);
-        for (int i=0, span=begin+spans[i];
+        int stop = Math.min(till, rawText.length());
+        KLog.p("till=%s, spans[0]=%s, rawText=%s,", stop, spans[0], rawText);
+        for (int i=0, span=spans[i];
              span<Math.min(stop, interpolatedText.length());
              ++i, span += i<spans.length ? spans[i] : spans[spans.length-1]){
             String sep = i<separators.length ? separators[i] : separators[separators.length-1];
