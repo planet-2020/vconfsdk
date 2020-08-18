@@ -224,7 +224,9 @@ public class AlirtcManager extends Caster<Msg> {
                                     KLog.p("#####onJoinMeetingError %s, %s", amuiErrorCode, s);
                                     reportFailed(-1, resultListener);
                                 }
-                            });
+                            })
+                            .enableFloatingOutSideApp(true)
+                            ;
 
                     AliMeetingUIManager.joinMeeting(context, builder.builder());
 
