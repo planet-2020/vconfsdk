@@ -1182,9 +1182,9 @@ public class WebRtcManager extends Caster<Msg>{
                 decoderFactory = new SoftwareVideoDecoderFactory();
             }
 
-            WebRtcAudioUtils.setWebRtcBasedAcousticEchoCanceler(true);
-            WebRtcAudioUtils.setWebRtcBasedAutomaticGainControl(true);
-            WebRtcAudioUtils.setWebRtcBasedNoiseSuppressor(true);
+            WebRtcAudioUtils.setWebRtcBasedAcousticEchoCanceler(!config.isBuiltInAECPreferred);
+//            WebRtcAudioUtils.setWebRtcBasedAutomaticGainControl(true);
+            WebRtcAudioUtils.setWebRtcBasedNoiseSuppressor(!config.isBuiltInNSPreferred);
 
             factory = PeerConnectionFactory.builder()
                     .setOptions(new PeerConnectionFactory.Options())
