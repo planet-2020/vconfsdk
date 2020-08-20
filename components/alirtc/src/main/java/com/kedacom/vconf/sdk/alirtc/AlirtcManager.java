@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.alirtc;
 
 import android.app.Application;
+import android.content.pm.ApplicationInfo;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -11,6 +12,7 @@ import androidx.fragment.app.FragmentActivity;
 import com.alibaba.alimeeting.uisdk.AMUIClientStatusEvent;
 import com.alibaba.alimeeting.uisdk.AMUIErrorCode;
 import com.alibaba.alimeeting.uisdk.AMUIFinishCode;
+import com.alibaba.alimeeting.uisdk.AMUILoggerLevel;
 import com.alibaba.alimeeting.uisdk.AMUIMeetingCallBack;
 import com.alibaba.alimeeting.uisdk.AMUIMeetingDetail;
 import com.alibaba.alimeeting.uisdk.AMUIMeetingDetailConfig;
@@ -227,6 +229,11 @@ public class AlirtcManager extends Caster<Msg> {
                             })
                             .enableFloatingOutSideApp(true)
                             ;
+
+                    if ((context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+                        // app is debug version, so we enable ali sdk log
+                        builder.setLoggerLevel(AMUILoggerLevel.VERBOSE, null);
+                    }
 
                     AliMeetingUIManager.joinMeeting(context, builder.builder());
 
