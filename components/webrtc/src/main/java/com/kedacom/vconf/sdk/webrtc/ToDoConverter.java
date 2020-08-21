@@ -30,7 +30,7 @@ import java.util.List;
  */
 final class ToDoConverter {
 
-    static MakeCallResult callLinkState2MakeCallResult(TMtCallLinkSate tMtCallLinkSate) {
+    static MakeCallResult callLinkState2MakeCallResult(TMtCallLinkSate tMtCallLinkSate, boolean audioManner) {
         String e164=null, alias=null, email=null;
         int callBitRate = tMtCallLinkSate.dwCallRate;
         for (TMtAlias tMtAlias : tMtCallLinkSate.tPeerAlias.arrAlias){
@@ -46,7 +46,7 @@ final class ToDoConverter {
             }
         }
 
-        return new MakeCallResult(e164, alias, email, callBitRate, tMtCallLinkSate.emEndpointType == EmEndpointType.emEndpointTypeMT);
+        return new MakeCallResult(e164, alias, email, callBitRate, tMtCallLinkSate.emEndpointType == EmEndpointType.emEndpointTypeMT, audioManner);
     }
 
     static CreateConfResult callLinkState2CreateConfResult(TMtCallLinkSate tMtCallLinkSate) {

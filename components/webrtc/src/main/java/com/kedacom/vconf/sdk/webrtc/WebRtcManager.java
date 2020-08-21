@@ -286,7 +286,7 @@ public class WebRtcManager extends Caster<Msg>{
                                 }
                                 break;
                             case MultipartyConfStarted:
-                                reportSuccess(ToDoConverter.callLinkState2MakeCallResult((TMtCallLinkSate) rspContent), resultListener);
+                                reportSuccess(ToDoConverter.callLinkState2MakeCallResult((TMtCallLinkSate) rspContent, bAudio), resultListener);
                                 break;
                             case ConfCanceled:
                                 stopSession();
@@ -416,7 +416,7 @@ public class WebRtcManager extends Caster<Msg>{
         req(Msg.AcceptInvitation, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                reportSuccess(ToDoConverter.callLinkState2MakeCallResult((TMtCallLinkSate) rspContent), resultListener);
+                reportSuccess(ToDoConverter.callLinkState2MakeCallResult((TMtCallLinkSate) rspContent, bAudio), resultListener);
             }
 
             @Override
