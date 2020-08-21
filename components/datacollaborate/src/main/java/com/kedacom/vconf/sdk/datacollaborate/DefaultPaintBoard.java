@@ -496,7 +496,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
     @Override
     public int getPicCount() {
-        return opWrapper.getInsertPicOpsCount() + picEditStuff.pics.size();
+        return opWrapper.getInsertPicOpsCount() + (null != picEditStuff ? picEditStuff.pics.size() : 0);
     }
 
 
