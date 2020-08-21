@@ -49,7 +49,7 @@ final class ToDoConverter {
         return new MakeCallResult(e164, alias, email, callBitRate, tMtCallLinkSate.emEndpointType == EmEndpointType.emEndpointTypeMT, audioManner);
     }
 
-    static CreateConfResult callLinkState2CreateConfResult(TMtCallLinkSate tMtCallLinkSate) {
+    static CreateConfResult callLinkState2CreateConfResult(TMtCallLinkSate tMtCallLinkSate, boolean isAudio, boolean selfJoinInAudioManner) {
         String e164=null, alias=null, email=null;
         int callBitRate = tMtCallLinkSate.dwCallRate;
         for (TMtAlias tMtAlias : tMtCallLinkSate.tPeerAlias.arrAlias){
@@ -65,7 +65,7 @@ final class ToDoConverter {
             }
         }
 
-        return new CreateConfResult(e164, e164, alias, email, callBitRate);
+        return new CreateConfResult(e164, e164, alias, email, callBitRate, isAudio, selfJoinInAudioManner);
     }
 
     static ConfInvitationInfo callLinkSate2ConfInvitationInfo(TMtCallLinkSate tMtCallLinkSate) {

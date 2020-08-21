@@ -338,7 +338,7 @@ public class WebRtcManager extends Caster<Msg>{
                         }
                         break;
                     case MultipartyConfStarted:
-                        reportSuccess(ToDoConverter.callLinkState2CreateConfResult( (TMtCallLinkSate) rspContent), resultListener);
+                        reportSuccess(ToDoConverter.callLinkState2CreateConfResult( (TMtCallLinkSate) rspContent, confPara.bAudio, confPara.bSelfAudioMannerJoin), resultListener);
                         break;
                     case ConfCanceled:
                         stopSession();
