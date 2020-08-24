@@ -544,6 +544,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * */
     protected void reportProgress(Object progress, IResultListener listener){
         if (null == listener || !containsRspListener(listener) ){
+            KLog.p(KLog.WARN, "containsRspListener=false, listeners=%s", listener);
             return;
         }
         listener.onProgress(progress);
@@ -555,6 +556,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * */
     protected void reportSuccess(Object result, IResultListener listener){
         if (null == listener || !containsRspListener(listener) ){
+            KLog.p(KLog.WARN, "containsRspListener=false, listeners=%s", listener);
             return;
         }
         listener.onArrive(true);
@@ -566,6 +568,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * */
     protected void reportFailed(int errorCode, IResultListener listener){
         if (null == listener || !containsRspListener(listener) ){
+            KLog.p(KLog.WARN, "containsRspListener=false, listeners=%s", listener);
             return;
         }
         listener.onArrive(false);
@@ -577,6 +580,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * */
     protected void reportFailed(int errorCode, Object errorInfo, IResultListener listener){
         if (null == listener || !containsRspListener(listener) ){
+            KLog.p(KLog.WARN, "containsRspListener=false, listeners=%s", listener);
             return;
         }
         listener.onArrive(false);
@@ -588,6 +592,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * */
     protected void reportTimeout(IResultListener listener){
         if (null == listener || !containsRspListener(listener) ){
+            KLog.p(KLog.WARN, "containsRspListener=false, listeners=%s", listener);
             return;
         }
         listener.onArrive(false);
