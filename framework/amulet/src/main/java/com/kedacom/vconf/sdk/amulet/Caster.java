@@ -125,6 +125,29 @@ public abstract class Caster<T extends Enum<T>> implements
      * */
     protected Map<Class<? extends ILifecycleOwner>, T[]> regNtfListenerType(){return null;}
 
+
+    /**
+     * 是否已暂停。
+     * */
+    private static boolean paused;
+    /**
+     * 暂停。
+     * 暂停后所有请求（req/get/set）会被缓存，直到resume被调用时才会下发
+     * */
+    protected static void pause(){
+        paused = true;
+    }
+
+    /**
+     * 继续。
+     * 暂停状态中，请求不会被立即发送而是先缓存起来，继续则将缓存的请求发出并清空缓存，并从暂停状态恢复到正常状态。
+     * */
+    protected static void resume(){
+        if (paused){
+            paused = false;
+        }
+    }
+
     /**
      * 会话请求（异步请求）
      * NOTE: 不同于{@link #set(Enum, Object...)}和{@link #get(Enum, Object...)}，
@@ -446,16 +469,14 @@ public abstract class Caster<T extends Enum<T>> implements
         T req = T.valueOf(enumT, unprefix(reqId));
         Session s = getSession(reqSn);
         IResultListener resultListener = s.resultListener;
+        KLog.p(KLog.DEBUG,"req=%s, sid=%s, resultListener=%s", req, s.id, resultListener);
+        if (null != s.processor){
+            s.processor.onReqSent(resultListener, req, reqParas);
+        }
         if (!hasRsp){
             sessions.remove(s);
             listenerLifecycleObserver.unobserve(resultListener);
         }
-        KLog.p(KLog.DEBUG,"req=%s, sid=%s, resultListener=%s", req, s.id, resultListener);
-        if (null == s.processor){
-            KLog.p(KLog.WARN, "null == processor");
-            return;
-        }
-        s.processor.onReqSent(resultListener, req, reqParas);
     }
 
     @Override
@@ -485,7 +506,6 @@ public abstract class Caster<T extends Enum<T>> implements
     public void onTimeout(String reqId, int reqSn, Object[] reqParas) {
         T req = T.valueOf(enumT, unprefix(reqId));
         Session s = getSession(reqSn);
-        sessions.remove(s);
         IResultListener resultListener = s.resultListener;
         listenerLifecycleObserver.unobserve(resultListener);
         KLog.p(KLog.DEBUG,"req=%s, sid=%s, resultListener=%s", req, s.id, resultListener);
@@ -494,6 +514,8 @@ public abstract class Caster<T extends Enum<T>> implements
         if (null != processor){
             processor.onTimeout(resultListener, req, reqParas, isConsumed);
         }
+        sessions.remove(s);
+
         if (!isConsumed[0]){
             // 超时未被消费则此处通知用户超时
             if (resultListener != null) {
@@ -521,7 +543,10 @@ public abstract class Caster<T extends Enum<T>> implements
      * 上报用户请求进度
      * */
     protected void reportProgress(Object progress, IResultListener listener){
-        reportProgress(progress, listener, false);
+        if (null == listener || !containsRspListener(listener) ){
+            return;
+        }
+        listener.onProgress(progress);
     }
 
 
@@ -529,74 +554,45 @@ public abstract class Caster<T extends Enum<T>> implements
      * 上报用户请求成功
      * */
     protected void reportSuccess(Object result, IResultListener listener){
-        reportSuccess(result, listener, false);
-    }
-
-    /**
-     * 上报用户请求失败
-     * */
-    protected void reportFailed(int errorCode, IResultListener listener){
-        reportFailed(errorCode, listener, false);
-    }
-
-    /**
-     * 上报用户请求失败
-     * */
-    protected void reportFailed(int errorCode, Object errorInfo, IResultListener listener){
-        reportFailed(errorCode, errorInfo, listener, false);
-    }
-
-    /**
-     * 上报用户请求超时
-     * */
-    protected void reportTimeout(IResultListener listener){
-        reportTimeout(listener, false);
-    }
-
-
-    /**
-     * @param onlyIfListenerExistInSession 仅当listener仍存在于会话中时才上报。
-     *                                     listener可能在会话过程中被销毁了详情可参考{@link #req(Enum, SessionProcessor, IResultListener, Object...)}
-     * */
-    protected void reportProgress(Object progress, IResultListener listener, boolean onlyIfListenerExistInSession){
-        if (null == listener || (onlyIfListenerExistInSession && !containsRspListener(listener)) ){
-            return;
-        }
-        listener.onProgress(progress);
-    }
-
-    protected void reportSuccess(Object result, IResultListener listener, boolean onlyIfListenerExistInSession){
-        if (null == listener || (onlyIfListenerExistInSession && !containsRspListener(listener)) ){
+        if (null == listener || !containsRspListener(listener) ){
             return;
         }
         listener.onArrive(true);
         listener.onSuccess(result);
     }
 
-    protected void reportFailed(int errorCode, IResultListener listener, boolean onlyIfListenerExistInSession){
-        if (null == listener || (onlyIfListenerExistInSession && !containsRspListener(listener)) ){
+    /**
+     * 上报用户请求失败
+     * */
+    protected void reportFailed(int errorCode, IResultListener listener){
+        if (null == listener || !containsRspListener(listener) ){
             return;
         }
         listener.onArrive(false);
         listener.onFailed(errorCode, null);
     }
 
-    protected void reportFailed(int errorCode, Object errorInfo, IResultListener listener, boolean onlyIfListenerExistInSession){
-        if (null == listener || (onlyIfListenerExistInSession && !containsRspListener(listener)) ){
+    /**
+     * 上报用户请求失败
+     * */
+    protected void reportFailed(int errorCode, Object errorInfo, IResultListener listener){
+        if (null == listener || !containsRspListener(listener) ){
             return;
         }
         listener.onArrive(false);
         listener.onFailed(errorCode, errorInfo);
     }
 
-    protected void reportTimeout(IResultListener listener, boolean onlyIfListenerExistInSession){
-        if (null == listener || (onlyIfListenerExistInSession && !containsRspListener(listener)) ){
+    /**
+     * 上报用户请求超时
+     * */
+    protected void reportTimeout(IResultListener listener){
+        if (null == listener || !containsRspListener(listener) ){
             return;
         }
         listener.onArrive(false);
         listener.onTimeout();
     }
-
 
 
     /**
@@ -650,6 +646,21 @@ public abstract class Caster<T extends Enum<T>> implements
             this.processor = processor;
             this.resultListener = resultListener;
         }
+    }
+
+    /*
+    * NOTE: 对于CancelSession检查缓存中是否存在Session，若不存在则下发，否则才缓存。
+    * */
+    private class CancelSession{
+
+    }
+
+    private class SetRequest{
+
+    }
+
+    private class GetRequest{
+
     }
 
 }
