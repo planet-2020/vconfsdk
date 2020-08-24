@@ -21,7 +21,7 @@ public final class BitmapHelper {
 
     public static void decode(String bitmapFilePath, Bitmap.Config config, int outputSizeLimit, IResultListener resultListener){
         executor.execute(() -> {
-            printMemUsage();
+//            printMemUsage();
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inPreferredConfig = config;
             Bitmap bitmap = BitmapFactory.decodeFile(bitmapFilePath, options);
@@ -33,27 +33,27 @@ public final class BitmapHelper {
             }
             Bitmap finalBitmap = bitmap;
             mainHandler.post(() -> resultListener.onResult(finalBitmap));
-            printMemUsage();
+//            printMemUsage();
         });
 
     }
 
     public static void decode(String bitmapFilePath, int outputWidth, int outputHeight, Bitmap.Config config, IResultListener resultListener){
         executor.execute(() -> {
-            printMemUsage();
+//            printMemUsage();
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inPreferredConfig = config;
             Bitmap bitmap = BitmapFactory.decodeFile(bitmapFilePath, options);
             KLog.p("bitmap %s", bitmapFilePath);
-            Bitmap scaledBitmap = scale(bitmap, outputWidth, outputHeight);
+            Bitmap scaledBitmap = scale(bitmap, outputWidth, outputHeight, false);
             mainHandler.post(() -> resultListener.onResult(scaledBitmap));
-            printMemUsage();
+//            printMemUsage();
         });
     }
 
 
     public static Bitmap decode(String bitmapFilePath, int outputSizeLimit, Bitmap.Config config){
-        printMemUsage();
+//        printMemUsage();
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inPreferredConfig = config;
         Bitmap bitmap = BitmapFactory.decodeFile(bitmapFilePath, options);
@@ -63,19 +63,19 @@ public final class BitmapHelper {
         if (outputSizeLimit>0 && origW * origH > outputSizeLimit){
             bitmap = scale(bitmap, outputSizeLimit);
         }
-        printMemUsage();
+//        printMemUsage();
         return bitmap;
 
     }
 
-    public static Bitmap decode(String bitmapFilePath, int outputWidth, int outputHeight, Bitmap.Config config){
-        printMemUsage();
+    public static Bitmap decode(String bitmapFilePath, int outputWidth, int outputHeight, Bitmap.Config config, boolean keepRatio){
+//        printMemUsage();
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inPreferredConfig = config;
         Bitmap bitmap = BitmapFactory.decodeFile(bitmapFilePath, options);
         KLog.p("bitmap %s", bitmapFilePath);
-        Bitmap scaledBitmap = scale(bitmap, outputWidth, outputHeight);
-        printMemUsage();
+        Bitmap scaledBitmap = scale(bitmap, outputWidth, outputHeight, keepRatio);
+//        printMemUsage();
         return scaledBitmap;
     }
 
@@ -92,16 +92,23 @@ public final class BitmapHelper {
         return Bitmap.createBitmap(bitmap, 0, 0, origW, origH, matrix, false);
     }
 
-    public static Bitmap scale(Bitmap bitmap, int targetWidth, int targetHeight){
+    public static Bitmap scale(Bitmap bitmap, int targetWidth, int targetHeight, boolean keepRatio){
         int origW = bitmap.getWidth();
         int origH = bitmap.getHeight();
-        KLog.p("bitmap origW=%s, origH=%s, outputWidth=%s, outputHeight=%s", origW, origH, targetWidth, targetHeight);
         if (origW == targetWidth && origH == targetHeight){
             return bitmap;
         }
         Matrix matrix = new Matrix();
-        matrix.postScale(targetWidth/(float)origW, targetHeight/(float)origH);
+        float scaleX, scaleY;
+        scaleX = targetWidth/(float)origW;
+        scaleY = targetHeight/(float)origH;
+        if (keepRatio){
+            scaleX = scaleY = (scaleX+scaleY)/2;
+        }
+        matrix.postScale(scaleX, scaleY);
         bitmap = Bitmap.createBitmap(bitmap, 0, 0, origW, origH, matrix, false);
+        KLog.p("bitmap origW=%s, origH=%s, targetWidth=%s, targetHeight=%s, outputWidth=%s, outputHeight=%s, matrix=%s",
+                origW, origH, targetWidth, targetHeight, bitmap.getWidth(), bitmap.getHeight(), matrix);
         return bitmap;
     }
 

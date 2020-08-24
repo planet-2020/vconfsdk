@@ -518,7 +518,7 @@ class DefaultPaintBoard extends FrameLayout implements IPaintBoard{
 
         bInsertingPic = true;
 
-        Bitmap bitmap = BitmapHelper.decode(path, bitmapSizeLimit, Bitmap.Config.RGB_565);
+        Bitmap bitmap = BitmapHelper.decode(path, boardWidth, boardHeight, Bitmap.Config.RGB_565, true);
         Matrix matrix = new Matrix();
         matrix.setTranslate((getWidth()-bitmap.getWidth())/2f, (getHeight()-bitmap.getHeight())/2f);
         matrix.postConcat(MatrixHelper.invert(getDensityRelativeBoardMatrix(new Matrix())));
