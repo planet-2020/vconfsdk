@@ -108,7 +108,7 @@ public abstract class Caster<T extends Enum<T>> implements
             for (String ntfId : ntfIds){
                 if (notificationFairy.subscribe(this, ntfId)){
                     String val = unprefix(ntfId);
-                    T ntf = T.valueOf(enumT, val);
+                    T ntf = Enum.valueOf(enumT, val);
                     ntfListenersMap.put(ntf, new HashSet<>());
                 }
             }
@@ -130,9 +130,15 @@ public abstract class Caster<T extends Enum<T>> implements
      * 是否已暂停。
      * */
     private static boolean paused;
+
+    /**
+     * 缓存的请求
+     * */
+    private static Set<Object> cachedRequests = new LinkedHashSet<>();
+
     /**
      * 暂停。
-     * 暂停后所有请求（req/get/set）会被缓存，直到resume被调用时才会下发
+     * 暂停后所有请求（req/get/set/cancel）会被缓存，直到resume被调用时才会下发
      * */
     protected static void pause(){
         paused = true;
@@ -143,8 +149,15 @@ public abstract class Caster<T extends Enum<T>> implements
      * 暂停状态中，请求不会被立即发送而是先缓存起来，继续则将缓存的请求发出并清空缓存，并从暂停状态恢复到正常状态。
      * */
     protected static void resume(){
-        if (paused){
-            paused = false;
+        if (!paused){
+            return;
+        }
+        paused = false;
+        for (Object obj :
+                cachedRequests) {
+//            if (obj instanceof Session){
+//
+//            }
         }
     }
 
@@ -466,7 +479,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     @Override
     public void onReqSent(boolean hasRsp, String reqId, int reqSn, Object[] reqParas) {
-        T req = T.valueOf(enumT, unprefix(reqId));
+        T req = Enum.valueOf(enumT, unprefix(reqId));
         Session s = getSession(reqSn);
         IResultListener resultListener = s.resultListener;
         KLog.p(KLog.DEBUG,"req=%s, sid=%s, resultListener=%s", req, s.id, resultListener);
@@ -481,8 +494,8 @@ public abstract class Caster<T extends Enum<T>> implements
 
     @Override
     public boolean onRsp(boolean bLast, String rspId, Object rspContent, String reqId, int reqSn, Object[] reqParas) {
-        T req = T.valueOf(enumT, unprefix(reqId));
-        T rsp = T.valueOf(enumT, unprefix(rspId));
+        T req = Enum.valueOf(enumT, unprefix(reqId));
+        T rsp = Enum.valueOf(enumT, unprefix(rspId));
         Session s = getSession(reqSn);
         IResultListener resultListener = s.resultListener;
         SessionProcessor<T> processor = s.processor;
@@ -504,7 +517,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     @Override
     public void onTimeout(String reqId, int reqSn, Object[] reqParas) {
-        T req = T.valueOf(enumT, unprefix(reqId));
+        T req = Enum.valueOf(enumT, unprefix(reqId));
         Session s = getSession(reqSn);
         IResultListener resultListener = s.resultListener;
         listenerLifecycleObserver.unobserve(resultListener);
@@ -528,7 +541,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     @Override
     public void onNtf(String ntfId, Object ntfContent) {
-        T ntf = T.valueOf(enumT, unprefix(ntfId));
+        T ntf = Enum.valueOf(enumT, unprefix(ntfId));
         Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntf);
         StringBuilder sb = new StringBuilder();
         for (Object listener : listeners) {
@@ -657,15 +670,18 @@ public abstract class Caster<T extends Enum<T>> implements
     * NOTE: 对于CancelSession检查缓存中是否存在Session，若不存在则下发，否则才缓存。
     * */
     private class CancelSession{
-
+        private T req;
+        private IResultListener resultListener;
     }
 
     private class SetRequest{
-
+        private T set;
+        private Object[] paras;
     }
 
     private class GetRequest{
-
+        private T get;
+        private Object[] paras;
     }
 
 }
