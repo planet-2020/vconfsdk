@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.base.startup;
 
 import android.app.Application;
 import android.content.Context;
+import android.os.Handler;
 
 import androidx.annotation.NonNull;
 
@@ -69,70 +70,53 @@ public class StartupManager extends Caster<Msg> {
             public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas) {
                // 启用业务组件保存日志到文件的功能
                 req(Msg.MtLogToFile, null, null, true);
-            }
 
-            // StartMtBase并不会给响应，我们必定是等待超时。
-            // 我们利用超时机制做延时以保证此刻业务组件基础模块已经完全起来了，在此之前我们不能调用业务组件任何其他接口！
-            @Override
-            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-
-                isConsumed[0] = true;
-
+                new Handler().postDelayed(() -> {
                 // 启动业务组件sdk
                 req(Msg.StartMtSdk, new SessionProcessor<Msg>() {
 
-                    @Override
-                    public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas) {
-                        // 设置业务组件sdk回调
-                        set(Msg.SetMtSdkCallback, (IMtcCallback) msg -> {
-                            try {
-                                JSONObject mtapi = new JSONObject(msg);
-                                String msgId = mtapi.getJSONObject("head").getString("eventname");
-                                String body = mtapi.getString("body");
-                                if (null == msgId || null == body) {
-                                    KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
-                                    return;
-                                }
+                            @Override
+                            public void onReqSent(IResultListener resultListener1, Msg req1, Object[] reqParas1) {
+                                // 设置业务组件sdk回调
+                                set(Msg.SetMtSdkCallback, (IMtcCallback) msg -> {
+                                    try {
+                                        JSONObject mtapi = new JSONObject(msg);
+                                        String msgId = mtapi.getJSONObject("head").getString("eventname");
+                                        String body = mtapi.getString("body");
+                                        if (null == msgId || null == body) {
+                                            KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
+                                            return;
+                                        }
 
-                                CrystalBall.instance().onAppear(msgId, body);
+                                        CrystalBall.instance().onAppear(msgId, body);
 
-                            } catch (JSONException e) {
-                                e.printStackTrace();
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    }
+                                });
                             }
-                        });
-                    }
 
-                    @Override
-                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                        boolean startSdkSuccess = ((TMTLoginMtResult) rspContent).bLogin;
-                        if (startSdkSuccess){
-                            reportSuccess(null, resultListener);
+                            @Override
+                            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener1, Msg req1, Object[] reqParas1, boolean[] isConsumed) {
+                                boolean startSdkSuccess = ((TMTLoginMtResult) rspContent).bLogin;
+                                if (startSdkSuccess){
+                                    reportSuccess(null, resultListener1);
+                                }else{
+                                    reportFailed(-1, resultListener1);
+                                }
+                            }
+                        },
 
-                            //        try {
-//            req(Msg.SetNetWorkCfg, null,
-//                    new TNetWorkInfo(convertTransType(NetworkHelper.getTransType()),
-//                            NetAddrHelper.ipStr2Int(NetworkHelper.getAddr()),
-//                            NetAddrHelper.ipStr2Int(NetworkHelper.getMask()),
-//                            NetAddrHelper.ipStr2Int(NetworkHelper.getGateway()),
-//                            NetAddrHelper.ipStr2Int(NetworkHelper.getDns()))
-//            );
-//        } catch (NetAddrHelper.InvalidIpv4Exception e) {
-//            e.printStackTrace();
-//            reportFailed(-1, resultListener);
-//        }
-
-                        }else{
-                            reportFailed(-1, resultListener);
-                        }
-                    }
-                },
                         resultListener,
                         false,
                         false,
                         new MtLoginMtParam(EmClientAppType.emClientAppSkyAndroid_Api, EmAuthType.emInnerPwdAuth_Api,
-                        "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001)
+                                "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001)
                 );
 
+                },
+                        500 // 业务组件未提供方法通知启动已完成，故此处延时以保证业务组件启动完成（延时时长是跟业务组件协商的结果）
+                );
             }
 
         }, resultListener, model, type.getVal(), "v0.1.0");

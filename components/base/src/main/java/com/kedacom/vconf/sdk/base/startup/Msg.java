@@ -49,18 +49,9 @@ enum Msg {
                     // 我们平时所提及的“终端型号”指此处的）
                     String.class, // 终端型号名称（有型号为啥还要型号名称？）
                     String.class, // 终端软件版本号
-            },
-            rspSeq = "StartMtBaseRsp", // 下层实际并不会抛消息上来，超时是必然。
-            timeout = 2
+            }
             )
     StartMtBase,
-
-    /**启动业务组件基础模块响应
-     * NOTE: 下层并不会抛这样一条消息上来
-     * */
-    @Response(name = "StartMtBaseRsp",
-            clz = Void.class)
-    StartMtBaseRsp,
 
 
     /**启动业务组件sdk*/
