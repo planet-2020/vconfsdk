@@ -237,7 +237,7 @@ public final class NetworkHelper {
 
     /**
      * 更新网络信息。
-     * NOTE: 若API level>=21，建议使用{@link #updateNetInfo}。
+     * NOTE: 若API level>=21，建议使用{@link #updateNetInfo(NetworkCapabilities)}。
      * */
     private static void updateNetInfo(NetworkInfo networkInfo){
         if (null== networkInfo || !networkInfo.isConnected()){
