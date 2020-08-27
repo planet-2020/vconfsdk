@@ -229,6 +229,7 @@ public class AlirtcManager extends Caster<Msg> {
                                 }
                             })
                             .enableFloatingOutSideApp(true)
+                            .setLoadingFinishShowDelayMills(6000)
                             ;
 
                     AMUILoggerLevel loggerLevel = (context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0 ? AMUILoggerLevel.VERBOSE : AMUILoggerLevel.INFO;
