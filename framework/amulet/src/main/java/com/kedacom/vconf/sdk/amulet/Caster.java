@@ -556,8 +556,50 @@ public abstract class Caster<T extends Enum<T>> implements
      * 上报用户请求进度
      * */
     protected void reportProgress(Object progress, IResultListener listener){
-        if (null == listener || !containsRspListener(listener) ){
-            KLog.p(KLog.WARN, "containsRspListener=false, listeners=%s", listener);
+        reportProgress(progress, listener, false);
+    }
+
+
+    /**
+     * 上报用户请求成功
+     * */
+    protected void reportSuccess(Object result, IResultListener listener){
+        reportSuccess(result, listener, false);
+    }
+
+    /**
+     * 上报用户请求失败
+     * */
+    protected void reportFailed(int errorCode, IResultListener listener){
+        reportFailed(errorCode, null, listener,false);
+    }
+
+    /**
+     * 上报用户请求失败
+     * */
+    protected void reportFailed(int errorCode, Object errorInfo, IResultListener listener){
+        reportFailed(errorCode, errorInfo, listener, false);
+    }
+
+    /**
+     * 上报用户请求超时
+     * */
+    protected void reportTimeout(IResultListener listener){
+        reportTimeout(listener, false);
+    }
+
+
+    /**
+     * @param onlyIfListenerAliveInSession 仅当listener仍存活于会话中时才上报。
+     *                                     listener可能在会话过程中被解绑了，详情可参考{@link #req(Enum, SessionProcessor, IResultListener, Object...)}
+     * */
+    protected void reportProgress(Object progress, IResultListener listener, boolean onlyIfListenerAliveInSession){
+        if (null == listener){
+            KLog.p(KLog.WARN, "ResultListener is null!");
+            return;
+        }
+        if (onlyIfListenerAliveInSession && !containsRspListener(listener)){
+            KLog.p(KLog.WARN, "not alive in session! listener %s", listener);
             return;
         }
         listener.onProgress(progress);
@@ -567,33 +609,30 @@ public abstract class Caster<T extends Enum<T>> implements
     /**
      * 上报用户请求成功
      * */
-    protected void reportSuccess(Object result, IResultListener listener){
-        if (null == listener || !containsRspListener(listener) ){
-            KLog.p(KLog.WARN, "containsRspListener=false, listeners=%s", listener);
+    protected void reportSuccess(Object result, IResultListener listener, boolean onlyIfListenerAliveInSession){
+        if (null == listener){
+            KLog.p(KLog.WARN, "ResultListener is null!");
+            return;
+        }
+        if (onlyIfListenerAliveInSession && !containsRspListener(listener)){
+            KLog.p(KLog.WARN, "not alive in session! listener %s", listener);
             return;
         }
         listener.onArrive(true);
         listener.onSuccess(result);
     }
 
-    /**
-     * 上报用户请求失败
-     * */
-    protected void reportFailed(int errorCode, IResultListener listener){
-        if (null == listener || !containsRspListener(listener) ){
-            KLog.p(KLog.WARN, "containsRspListener=false, listeners=%s", listener);
-            return;
-        }
-        listener.onArrive(false);
-        listener.onFailed(errorCode, null);
-    }
 
     /**
      * 上报用户请求失败
      * */
-    protected void reportFailed(int errorCode, Object errorInfo, IResultListener listener){
-        if (null == listener || !containsRspListener(listener) ){
-            KLog.p(KLog.WARN, "containsRspListener=false, listeners=%s", listener);
+    protected void reportFailed(int errorCode, Object errorInfo, IResultListener listener, boolean onlyIfListenerAliveInSession){
+        if (null == listener){
+            KLog.p(KLog.WARN, "ResultListener is null!");
+            return;
+        }
+        if (onlyIfListenerAliveInSession && !containsRspListener(listener)){
+            KLog.p(KLog.WARN, "not alive in session! listener %s", listener);
             return;
         }
         listener.onArrive(false);
@@ -603,9 +642,13 @@ public abstract class Caster<T extends Enum<T>> implements
     /**
      * 上报用户请求超时
      * */
-    protected void reportTimeout(IResultListener listener){
-        if (null == listener || !containsRspListener(listener) ){
-            KLog.p(KLog.WARN, "containsRspListener=false, listeners=%s", listener);
+    protected void reportTimeout(IResultListener listener, boolean onlyIfListenerAliveInSession){
+        if (null == listener){
+            KLog.p(KLog.WARN, "ResultListener is null!");
+            return;
+        }
+        if (onlyIfListenerAliveInSession && !containsRspListener(listener)){
+            KLog.p(KLog.WARN, "not alive in session! listener %s", listener);
             return;
         }
         listener.onArrive(false);
