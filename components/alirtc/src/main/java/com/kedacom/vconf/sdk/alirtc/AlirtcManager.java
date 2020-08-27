@@ -231,10 +231,8 @@ public class AlirtcManager extends Caster<Msg> {
                             .enableFloatingOutSideApp(true)
                             ;
 
-                    if ((context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
-                        // app is debug version, so we enable ali sdk log
-                        builder.setLoggerLevel(AMUILoggerLevel.VERBOSE, null);
-                    }
+                    AMUILoggerLevel loggerLevel = (context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0 ? AMUILoggerLevel.VERBOSE : AMUILoggerLevel.INFO;
+                    builder.setLoggerLevel(loggerLevel, null);
 
                     AliMeetingUIManager.joinMeeting(context, builder.builder());
 
