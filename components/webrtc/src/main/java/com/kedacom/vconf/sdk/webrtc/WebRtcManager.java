@@ -15,7 +15,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.ParcelFileDescriptor;
-import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.View;
 
@@ -1958,7 +1957,6 @@ public class WebRtcManager extends Caster<Msg>{
         private long timestamp = System.currentTimeMillis();
         @Override
         public void onFrame(VideoFrame videoFrame) {
-//            Log.e("VideoSink", "conferee "+getId()+" onFrame IN");
             long curts = System.currentTimeMillis();
             long ts = timestamp;
             if (curts - ts > 5000){
@@ -1977,12 +1975,8 @@ public class WebRtcManager extends Caster<Msg>{
                 if (!display.enabled) {
                     continue;
                 }
-//                Log.e("VideoSink", "display "+display.id()+" onFrame IN");
                 display.onFrame(videoFrame);
-//                Log.e("VideoSink", "display "+display.id()+" onFrame OUT");
             }
-
-//            Log.e("VideoSink", "conferee "+getId()+" onFrame OUT");
         }
 
 
