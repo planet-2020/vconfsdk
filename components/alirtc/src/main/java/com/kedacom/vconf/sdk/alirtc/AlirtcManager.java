@@ -37,6 +37,7 @@ import com.kedacom.vconf.sdk.common.bean.TerminalType;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.type.TNetAddr;
+import com.kedacom.vconf.sdk.utils.lang.StringHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 
@@ -173,7 +174,7 @@ public class AlirtcManager extends Caster<Msg> {
                     meetingDetail.shareLink = String.format("https://%s/login.html?%s", NetAddrHelper.ipLongLittleEndian2Str(rtcServerAddr.dwIp), joinConfPara.confNum); // 分享链接格式由平台指定
                     meetingDetail.beginDate = 0;
                     meetingDetail.endDate = 0;
-                    meetingDetail.shareMessage = "您被邀请参加会议"+joinConfPara.confNum;
+                    meetingDetail.shareMessage = String.format("您被邀请参加会议%s%s", joinConfPara.confNum, StringHelper.isNullOrBlank(joinConfPara.password) ? "" : "，密码："+joinConfPara.password);
 
                     AMUIMeetingJoinConfig.Builder builder = new AMUIMeetingJoinConfig.Builder()
                             .setMeetingCode(para.achConfCode)
