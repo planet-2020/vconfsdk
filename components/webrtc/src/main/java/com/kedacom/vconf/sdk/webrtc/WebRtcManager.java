@@ -3605,6 +3605,9 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+/*
+*  针对webrtc sdk 30039版本的实现
+* */
 
 //    private List<RtpParameters.Encoding> createEncodingListForSendingOfferSdp(){
 //        List<RtpParameters.Encoding> encodings = new ArrayList<>();
@@ -3678,6 +3681,10 @@ public class WebRtcManager extends Caster<Msg>{
 //
 //    }
 
+
+    /*
+     *  针对webrtc sdk m74版本的实现
+     * */
 
     private List<RtpParameters.Encoding> createEncodingListForSendingOfferSdp(){
         List<RtpParameters.Encoding> encodings = new ArrayList<>();
@@ -3971,6 +3978,10 @@ public class WebRtcManager extends Caster<Msg>{
                     KLog.p(KLog.ERROR, "factory destroyed");
                     return;
                 }
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
                 audioSource = factory.createAudioSource(new MediaConstraints());
                 String localAudioTrackId = LOCAL_AUDIO_TRACK_ID+audioTrackCnt++;
                 localAudioTrack = factory.createAudioTrack(localAudioTrackId, audioSource);
@@ -4016,6 +4027,10 @@ public class WebRtcManager extends Caster<Msg>{
 
         void createRemoteVideoTrack(String mid, VideoTrack track){
             executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
                 String kdStreamId = mid2KdStreamIdMap.get(mid);
                 if (null == kdStreamId) {
                     KLog.p(KLog.ERROR,"kdStreamId related to mid "+mid+" doesn't exist? i should have got it from onSetOfferCmd()");
@@ -4063,6 +4078,10 @@ public class WebRtcManager extends Caster<Msg>{
                         }
 
                         executor.execute(() -> {
+                            if (null == pc){
+                                KLog.p(KLog.ERROR, "peerConnection destroyed");
+                                return;
+                            }
                             KLog.p("bind track %s to conferee %s", track.id(), owner.getId());
                             track.addSink(owner);
                         });
@@ -4075,6 +4094,10 @@ public class WebRtcManager extends Caster<Msg>{
             String kdStreamId = stream.getStreamId();
             Conferee owner = stream.getOwner();
             executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
                 for (String streamId : remoteVideoTracks.keySet()) {
                     if (streamId.equals(kdStreamId)) {
                         VideoTrack track = remoteVideoTracks.remove(streamId);
@@ -4087,6 +4110,10 @@ public class WebRtcManager extends Caster<Msg>{
                                 owner.setVideoChannelState(Conferee.VideoChannelState.Idle);
                                 owner.setVideoSignalState(Conferee.VideoSignalState.Idle);
                                 executor.execute(() -> {
+                                    if (null == pc){
+                                        KLog.p(KLog.ERROR, "peerConnection destroyed");
+                                        return;
+                                    }
                                     KLog.p("unbind track %s from conferee %s", track.id(), owner.getId());
                                     track.removeSink(owner);
                                 });
@@ -4104,11 +4131,16 @@ public class WebRtcManager extends Caster<Msg>{
 
         void createRemoteAudioTrack(String mid, AudioTrack track){
             executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
                 String kdStreamId = mid2KdStreamIdMap.get(mid);
                 if (null == kdStreamId) {
                     KLog.p(KLog.ERROR,"kdStreamId related to mid "+mid+" doesn't exist? i should have got it from onSetOfferCmd()");
                     return;
                 }
+
                 track.setEnabled(!config.isSilenced);
                 remoteAudioTracks.put(kdStreamId, track);
 
@@ -4148,6 +4180,10 @@ public class WebRtcManager extends Caster<Msg>{
             String kdStreamId = stream.getStreamId();
             Conferee owner = stream.getOwner();
             executor.execute(() -> {
+                if (null == pc){
+                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                    return;
+                }
                 for (String streamId : remoteAudioTracks.keySet()) {
                     if (streamId.equals(kdStreamId)) {
                         AudioTrack track = remoteAudioTracks.remove(kdStreamId);
