@@ -49,6 +49,8 @@ public class LoginManager extends Caster<Msg> {
 
     private static ExecutorService executor = Executors.newCachedThreadPool();
 
+    private boolean serviceStarted;
+
 
     private LoginManager(Application ctx) {
         context = ctx;
@@ -69,8 +71,8 @@ public class LoginManager extends Caster<Msg> {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TSrvStartResult result = (TSrvStartResult) rspContent;
-                boolean success = result.MainParam.basetype && result.AssParam.achSysalias.equals(serviceName);
-                if (success){
+                serviceStarted = result.MainParam.basetype && result.AssParam.achSysalias.equals(serviceName);
+                if (serviceStarted){
                     KLog.p("start %s service success!", serviceName);
                 }
             }
@@ -89,6 +91,9 @@ public class LoginManager extends Caster<Msg> {
      *                       失败返回错误码。
      * */
     public void loginAps(@NonNull String apsAddr, @NonNull String username, @NonNull String password, IResultListener resultListener){
+        if (!serviceStarted){
+            startService();  // TODO改为请求缓存机制
+        }
         if (NetAddrHelper.isValidIp(apsAddr)){
             doLoginAps(apsAddr, username, password, resultListener);
         }else{

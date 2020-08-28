@@ -60,7 +60,7 @@ public class StartupManager extends Caster<Msg> {
         }
 
         // 设置业务组件工作空间
-        String ywzjWorkSpace = FileHelper.getPath(FileHelper.Location.INTERNAL, FileHelper.Type.COMMON, "ywzj");
+        String ywzjWorkSpace = FileHelper.getPath(FileHelper.Location.EXTERNAL, FileHelper.Type.COMMON, "ywzj");
         req(Msg.SetMtWorkspace, null, null, ywzjWorkSpace);
 
         // 启动业务组件基础模块
