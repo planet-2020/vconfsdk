@@ -484,7 +484,7 @@ public abstract class Caster<T extends Enum<T>> implements
         IResultListener resultListener = s.resultListener;
         KLog.p(KLog.DEBUG,"req=%s, sid=%s, resultListener=%s", req, s.id, resultListener);
         if (null != s.processor){
-            s.processor.onReqSent(resultListener, req, reqParas);
+            s.processor.onReqSent(resultListener, req, reqParas, null);
         }
         if (!hasRsp){
             sessions.remove(s);
@@ -669,13 +669,14 @@ public abstract class Caster<T extends Enum<T>> implements
     /**会话处理器*/
     protected interface SessionProcessor<T>{
         /**
-         * 请求已发出。（业务组件接口已返回）
+         * 请求已发出。（业务组件接口已调用完成）
          * @param resultListener 结果监听器,req()传入。
          *                 NOTE: 可能为null。如用户传入即为null，或者会话过程中监听器被销毁，
          * @param req 请求消息，req()传入。
          * @param reqParas 请求参数列表，req()传入，顺序同传入时的
+         * @param output  即刻反馈的结果。有些业务组件接口会在调用完成时即刻反馈结果，典型的如获取配置接口，本地读取配置即刻反馈结果，无需进行消息交互。
          * */
-        default void onReqSent(IResultListener resultListener, T req, Object[] reqParas){}
+        default void onReqSent(IResultListener resultListener, T req, Object[] reqParas, Object output){}
 
         /**
          * 收到响应
