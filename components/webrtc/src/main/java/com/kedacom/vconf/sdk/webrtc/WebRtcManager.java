@@ -862,7 +862,7 @@ public class WebRtcManager extends Caster<Msg>{
                 stopSession();
                 break;
 
-            case CurrentConfereeList: // NOTE: 入会后会收到一次该通知，创会者也会收到这条消息。列表中包含了自己。
+            case CurrentConfereeList: // NOTE: 入会后会收到一次该通知，创会者也会收到这条消息，列表中包含了自己。对于带密码的会议，下面会推两条这样的消息上来且内容重复。
                 List<Conferee> presentConferees =
                         Stream.of(((TMTEntityInfoList) ntfContent).atMtEntitiy)
                         .distinctBy(it -> it.dwMcuId+"-"+it.dwTerId)
@@ -870,11 +870,14 @@ public class WebRtcManager extends Caster<Msg>{
                         .filter(it-> findConferee(it.mcuId, it.terId, it.type)==null)
                         .collect(Collectors.toList());
 
-                Conferee self = Stream.of(presentConferees).filter(Conferee::isMyself).findFirst().orElse(null);
-                if (self != null){
+                boolean selfFilled = myself.mcuId != 0 && myself.terId != 0;
+                if (!selfFilled){
                     // 己端我们拎出来特殊对待
-                    myself.fill(self.mcuId, self.terId, self.alias,self.email);
-                    presentConferees.remove(self);
+                    Conferee self = Stream.of(presentConferees).filter(Conferee::isMyself).findFirst().orElse(null);
+                    if (self != null) {
+                        myself.fill(self.mcuId, self.terId, self.alias, self.email);
+                        presentConferees.remove(self);
+                    }
                 }
 
                 conferees.addAll(presentConferees);
@@ -885,7 +888,9 @@ public class WebRtcManager extends Caster<Msg>{
                     presentConferees.add(assStreamConferee);
                 }
 
-                presentConferees.add(myself); // 己端放最后
+                if (!selfFilled) {
+                    presentConferees.add(myself); // 己端放最后
+                }
                 sessionEventListener.onConfereesAppeared(presentConferees);
                 break;
 
