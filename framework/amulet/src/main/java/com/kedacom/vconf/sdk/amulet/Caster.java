@@ -138,7 +138,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 暂停。
-     * 暂停后所有请求（req/get/set/cancel）会被缓存，直到resume被调用时才会下发
+     * 暂停后后续请求会被缓存，直到resume被调用时才会下发
      * */
     protected static void pause(){
         paused = true;
@@ -146,7 +146,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 继续。
-     * 暂停状态中，请求不会被立即发送而是先缓存起来，继续则将缓存的请求发出并清空缓存，并从暂停状态恢复到正常状态。
+     * 将缓存的请求发出并清空缓存，并从暂停状态恢复到正常状态。
      * */
     protected static void resume(){
         if (!paused){
