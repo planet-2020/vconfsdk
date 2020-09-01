@@ -85,28 +85,34 @@ public class AlirtcManager extends Caster<Msg> {
      *                       失败返回错误码。
      * */
     public void login(@NonNull TerminalType type, @NonNull String version, IResultListener resultListener){
-        rtcServerAddr = (TNetAddr) get(Msg.GetServerAddr);
-        if (null == rtcServerAddr){
-            reportFailed(-1, resultListener);
-            return;
-        }
-
-        req(Msg.Login, new SessionProcessor<Msg>() {
+        req(Msg.GetServerAddr, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                TRegResultNtf result = (TRegResultNtf) rspContent;
-                if (EmConfProtocol.emaliyun.ordinal() != result.MainParam.basetype){
-                    isConsumed[0] = false;
+            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
+                rtcServerAddr = (TNetAddr) output;
+                if (null == rtcServerAddr){
+                    reportFailed(-1, resultListener);
                     return;
                 }
-                loginState = AliRtcResultCode.trans(rsp, result.AssParam.basetype);
-                if (loginState == AliRtcResultCode.LoginSuccess) {
-                    reportSuccess(null, resultListener);
-                } else {
-                    reportFailed(loginState, resultListener);
-                }
+
+                req(Msg.Login, new SessionProcessor<Msg>() {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        TRegResultNtf result = (TRegResultNtf) rspContent;
+                        if (EmConfProtocol.emaliyun.ordinal() != result.MainParam.basetype){
+                            isConsumed[0] = false;
+                            return;
+                        }
+                        loginState = AliRtcResultCode.trans(rsp, result.AssParam.basetype);
+                        if (loginState == AliRtcResultCode.LoginSuccess) {
+                            reportSuccess(null, resultListener);
+                        } else {
+                            reportFailed(loginState, resultListener);
+                        }
+                    }
+                }, resultListener, rtcServerAddr, new TMtRegistCsvInfo(type.getVal(), version, true));
             }
-        }, resultListener, rtcServerAddr, new TMtRegistCsvInfo(type.getVal(), version, true));
+        }, resultListener);
+
     }
 
 
@@ -306,7 +312,7 @@ public class AlirtcManager extends Caster<Msg> {
 
 
     @Override
-    protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
+    protected void onNtf(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
         switch (ntf){
             case LoginStateChanged:
                 TRegResultNtf regResultNtf = (TRegResultNtf) ntfContent;
@@ -339,7 +345,7 @@ public class AlirtcManager extends Caster<Msg> {
 
 
     @Override
-    protected Map<Class<? extends ILifecycleOwner>, Msg[]> regNtfListenerType() {
+    protected Map<Class<? extends ILifecycleOwner>, Msg[]> regNtfListener() {
         Map<Class<? extends ILifecycleOwner>, Msg[]> listenerType2CaredNtf = new HashMap<>();
         listenerType2CaredNtf.put(OnLoginStateChangedListener.class, new Msg[]{Msg.LoginStateChanged});
         listenerType2CaredNtf.put(OnConfInvitingListener.class, new Msg[]{Msg.ConfInviting});

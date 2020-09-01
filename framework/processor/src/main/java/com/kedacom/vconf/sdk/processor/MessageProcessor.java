@@ -74,7 +74,7 @@ public class MessageProcessor extends AbstractProcessor {
     private static String COL_OWNER = "owner";
     private static String COL_PARAS = "paras";
     private static String COL_USERPARAS = "userParas";
-    private static String COL_ISGET = "isGet";
+    private static String COL_OutputParaIndex = "outputParaIndex";
     private static String COL_RSPSEQ = "rspSeq";
     private static String COL_TIMEOUT = "timeout";
     private static String COL_CLZ = "clz";
@@ -132,7 +132,7 @@ public class MessageProcessor extends AbstractProcessor {
             if (null != response) {
                 rspName = response.name().trim();
                 if (rspName.isEmpty()){
-                    throw new IllegalArgumentException(String.format("@Response.name() of %s cannot be empty!", enumName));
+                    throw new IllegalArgumentException(String.format("@Response.name() of %s cannot be empty!", msgId));
                 }
                 rspMap.put(msgId, COL_NAME, rspName);
 
@@ -150,7 +150,7 @@ public class MessageProcessor extends AbstractProcessor {
                 String ntfName = !notification.name().trim().isEmpty() ? notification.name().trim() :
                         rspName != null ? rspName : ""; // 尝试跟随@Response.name()
                 if (ntfName.isEmpty()){
-                    throw new IllegalArgumentException(String.format("@Notification.name() of %s cannot be empty!", enumName));
+                    throw new IllegalArgumentException(String.format("@Notification.name() of %s cannot be empty!", msgId));
                 }
                 ntfMap.put(msgId, COL_NAME, ntfName);
 
@@ -165,7 +165,7 @@ public class MessageProcessor extends AbstractProcessor {
                     if (rspClzFullName != null) {
                         clzFullName = rspClzFullName; // 跟随@Response.clz()
                     }else{
-                        throw new IllegalArgumentException(String.format("@Notification.clz() of %s cannot be empty!", enumName));
+                        throw new IllegalArgumentException(String.format("@Notification.clz() of %s cannot be empty!", msgId));
                     }
                 }
                 ntfMap.put(msgId, COL_CLZ, clzFullName);
@@ -191,15 +191,18 @@ public class MessageProcessor extends AbstractProcessor {
                     paraClzNames = parseClassNameFromMirroredTypesException(mte);
                 }
                 reqMap.put(msgId, COL_PARAS, Objects.requireNonNull(paraClzNames));
-                paraClzNames = null;
+                String[] userParaClzNames = null;
                 try {
                     request.userParas();
                 }catch (MirroredTypesException mte) {
-                    paraClzNames = parseClassNameFromMirroredTypesException(mte);
+                    userParaClzNames = parseClassNameFromMirroredTypesException(mte);
                 }
-                reqMap.put(msgId, COL_USERPARAS, Objects.requireNonNull(paraClzNames));
+                if (paraClzNames.length != Objects.requireNonNull(userParaClzNames).length){
+                    throw new IllegalArgumentException(String.format("%s's paras.length must be equal with userParas.length", msgId));
+                }
+                reqMap.put(msgId, COL_USERPARAS, Objects.requireNonNull(userParaClzNames));
 
-                reqMap.put(msgId, COL_ISGET, request.isGet());
+                reqMap.put(msgId, COL_OutputParaIndex, Math.min(request.outputParaIndex(), paraClzNames.length -1));
 
                 reqMap.put(msgId, COL_RSPSEQ, processRspSeqs(
                         request.rspSeq(),
@@ -347,7 +350,7 @@ public class MessageProcessor extends AbstractProcessor {
                 }
                 staticCodeBlockBuilder.addStatement("$L.put($S, $S, new String[][]{$L})", reqMap, row, col, value);
             }else if (COL_TIMEOUT.equals(col)
-                    || COL_ISGET.equals(col)){
+                    || COL_OutputParaIndex.equals(col)){
                 staticCodeBlockBuilder.addStatement("$L.put($S, $S, $L)", reqMap, row, col, cell.getValue());
             }
         }
@@ -373,6 +376,11 @@ public class MessageProcessor extends AbstractProcessor {
         }
 
         // 实现IMagicBook
+        ParameterSpec reqIdParameterSpec = ParameterSpec.builder(String.class, reqId).build();
+        ParameterSpec rspIdParameterSpec = ParameterSpec.builder(String.class, rspId).build();
+        ParameterSpec rspNameParameterSpec = ParameterSpec.builder(String.class, rspName).build();
+        ParameterSpec ntfIdParameterSpec = ParameterSpec.builder(String.class, ntfId).build();
+        ParameterSpec ntfNameParameterSpec = ParameterSpec.builder(String.class, ntfName).build();
         List<MethodSpec> methodSpecs = new ArrayList<>();
         MethodSpec name = MethodSpec.methodBuilder("name")
                 .addModifiers(Modifier.PUBLIC)
@@ -381,20 +389,20 @@ public class MessageProcessor extends AbstractProcessor {
                 .build();
         methodSpecs.add(name);
 
-        MethodSpec isGet = MethodSpec.methodBuilder("isGet")
+        MethodSpec outputParaIndex = MethodSpec.methodBuilder("outputParaIndex")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, reqId).build())
-                .returns(boolean.class)
+                .addParameter(reqIdParameterSpec)
+                .returns(int.class)
                 .addCode("Object val = $L.row($L).get($S);\n" +
-                                "if (null == val) return false;\n" +
-                        "return (boolean)val;\n",
-                        reqMap, reqId, COL_ISGET)
+                                "if (null == val) return -1;\n" +
+                        "return (int)val;\n",
+                        reqMap, reqId, COL_OutputParaIndex)
                 .build();
-        methodSpecs.add(isGet);
+        methodSpecs.add(outputParaIndex);
 
         MethodSpec reqName = MethodSpec.methodBuilder("reqName")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, reqId).build())
+                .addParameter(reqIdParameterSpec)
                 .returns(String.class)
                 .addCode("return (String)$L.row($L).get($S);\n", reqMap, reqId, COL_NAME)
                 .build();
@@ -402,7 +410,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec nativeMethodOwner = MethodSpec.methodBuilder("nativeMethodOwner")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, reqId).build())
+                .addParameter(reqIdParameterSpec)
                 .returns(String.class)
                 .addCode("return (String)$L.row($L).get($S);\n", reqMap, reqId, COL_OWNER)
                 .build();
@@ -410,7 +418,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec nativeParaClasses = MethodSpec.methodBuilder("nativeParaClasses")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, reqId).build())
+                .addParameter(reqIdParameterSpec)
                 .returns(ArrayTypeName.of(ParameterizedTypeName.get(ClassName.get(Class.class), WildcardTypeName.subtypeOf(Object.class))))
                 .addCode("return (Class<?>[])$L.row($L).get($S);\n", reqMap, reqId, COL_PARAS)
                 .build();
@@ -418,7 +426,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec userParaClasses = MethodSpec.methodBuilder("userParaClasses")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, reqId).build())
+                .addParameter(reqIdParameterSpec)
                 .returns(ArrayTypeName.of(ParameterizedTypeName.get(ClassName.get(Class.class), WildcardTypeName.subtypeOf(Object.class))))
                 .addCode("return (Class<?>[])$L.row($L).get($S);\n", reqMap, reqId, COL_USERPARAS)
                 .build();
@@ -426,7 +434,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec timeout = MethodSpec.methodBuilder("timeout")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, reqId).build())
+                .addParameter(reqIdParameterSpec)
                 .returns(double.class)
                 .addCode("Object val = $L.row($L).get($S);\n" +
                                 "if (null == val) return 5;\n" +
@@ -437,7 +445,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec rspSeqs = MethodSpec.methodBuilder("rspSeqs")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, reqId).build())
+                .addParameter(reqIdParameterSpec)
                 .returns(String[][].class)
                 .addCode("return (String[][])$L.row($L).get($S);\n", reqMap, reqId, COL_RSPSEQ)
                 .build();
@@ -445,7 +453,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec rspClass = MethodSpec.methodBuilder("rspClass")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, rspId).build())
+                .addParameter(rspIdParameterSpec)
                 .returns(ParameterizedTypeName.get(ClassName.get(Class.class), WildcardTypeName.subtypeOf(Object.class)))
                 .addCode("return (Class<?>)$L.row($L).get($S);\n", rspMap, rspId, COL_CLZ)
                 .build();
@@ -453,7 +461,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec isGreedyNote = MethodSpec.methodBuilder("isGreedyNote")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, rspId).build())
+                .addParameter(rspIdParameterSpec)
                 .returns(boolean.class)
                 .addStatement("return $S.equals($L)", Request.GREEDY, rspId)
                 .build();
@@ -462,7 +470,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec methodRspIds = MethodSpec.methodBuilder("rspIds")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, rspName).build())
+                .addParameter(rspNameParameterSpec)
                 .returns(ParameterizedTypeName.get(Set.class, String.class))
                 .addStatement("$T<$T> $L = new $T<>()", Set.class, String.class, rspIds, HashSet.class)
                 .beginControlFlow("for ($T<$T, $T, Object> cell: $L.cellSet())", Table.Cell.class, String.class, String.class, rspMap)
@@ -476,7 +484,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec ntfClass = MethodSpec.methodBuilder("ntfClass")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, ntfId).build())
+                .addParameter(ntfIdParameterSpec)
                 .returns(ParameterizedTypeName.get(ClassName.get(Class.class), WildcardTypeName.subtypeOf(Object.class)))
                 .addCode("return (Class<?>)$L.row($L).get($S);\n", ntfMap, ntfId, COL_CLZ)
                 .build();
@@ -484,7 +492,7 @@ public class MessageProcessor extends AbstractProcessor {
 
         MethodSpec methodNtfIds = MethodSpec.methodBuilder("ntfIds")
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(ParameterSpec.builder(String.class, ntfName).build())
+                .addParameter(ntfNameParameterSpec)
                 .returns(ParameterizedTypeName.get(Set.class, String.class))
                 .addStatement("$T<$T> $L = new $T<>()", Set.class, String.class, ntfIds, HashSet.class)
                 .beginControlFlow("for ($T<$T, $T, Object> cell: $L.cellSet())", Table.Cell.class, String.class, String.class, ntfMap)

@@ -89,57 +89,63 @@ public class UpgradeManager extends Caster<Msg> {
      *                                 {@link UpgradeResultCode#ALREADY_NEWEST}
      * */
     public void checkUpgrade(@NonNull TerminalType terminalType, @NonNull String version, @NonNull String e164, @NonNull IResultListener resultListener){
-        TMTSUSAddr addr = (TMTSUSAddr) get(Msg.GetServerAddr);
-        if (null == addr){
-            reportFailed(-1, resultListener);
-            return;
-        }
-        TMTUpgradeClientInfo checkUpgradePara = new TMTUpgradeClientInfo(
-                new TMTUpgradeNetParam(addr.dwIP),
-                new TMTUpgradeDeviceInfo(terminalType.getVal(), e164, version, addr.dwIP, "kedacom")
-        );
-
-        this.terminalType = terminalType;
-        localVersion = version;
-        userE164 = e164;
-
-        req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
+        req(Msg.GetServerAddr, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                /*
-                 * 检查更新完成后取消。
-                 * 对于业务组件那边来说检查更新不是一个独立的短暂的操作，而是和其他操作如下载更新关联在一起的，是一条流水线上的不同环节，是一个长连接的发端。
-                 * 检查更新对他们来说更准确的语义是“开始升级流程”，需要跟“结束（取消）升级流程”配对使用，这样才算一个完整的升级流程，他们才能维持正确的状态。
-                 * 所以当直接使用业务组件接口时，如下调用序列将会失败：
-                 * 检查更新->检查更新（不能重复调用检查更新接口因为不能重复开始升级流程，业务组件状态不对）；
-                 * 下载更新（不能直接调用下载更新的接口，必须先调用检查更新）；
-                 *
-                 * 我们认为这样的接口语义和行为不一致，会给用户造成严重困惑，故我们封装以使接口的行为跟语义保持一致。下面是我们做的工作：
-                 * 1、站在用户角度，检查升级我们认为应该独立于下载、取消升级，检查结果返回检查升级结束，不存在遗留状态，重复检查是可以的。
-                 * 为了达成这个目标我们在业务组件的检查升级结果返回后取消升级，以重置业务组件的状态。
-                 * 2、站在用户角度，下载升级包我们认为应该独立于检查升级，我知道该升级包的id便可直接下载它。
-                 * 为了达成这个目标我们在下载前先调用业务组件的检查升级，然后才去下载升级包。
-                 * */
-                req(Msg.CancelUpgrade, null, null);
-
-                TMTUpgradeVersionInfo[] remoteVersionList = ((TCheckUpgradeRsp)rspContent).AssParam.tVerList;
-                if (null != remoteVersionList && remoteVersionList.length>0){
-                    UpgradePkgInfo upgradePkgInfo = ToDoConverter.TMTUpgradeVersionInfo2UpgradePkgInfo(remoteVersionList[0]);
-                    if (version.compareToIgnoreCase(upgradePkgInfo.getVersionNum()) < 0) {
-                        reportSuccess(upgradePkgInfo, resultListener);
-                    }else{
-                        reportFailed(ALREADY_NEWEST, resultListener);
-                    }
-                }else{
-                    reportFailed(NO_UPGRADE_PACKAGE, resultListener);
+            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
+                TMTSUSAddr addr = (TMTSUSAddr) output;
+                if (null == addr){
+                    reportFailed(-1, resultListener);
+                    return;
                 }
-            }
+                TMTUpgradeClientInfo checkUpgradePara = new TMTUpgradeClientInfo(
+                        new TMTUpgradeNetParam(addr.dwIP),
+                        new TMTUpgradeDeviceInfo(terminalType.getVal(), e164, version, addr.dwIP, "kedacom")
+                );
 
-            @Override
-            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                req(Msg.CancelUpgrade, null, null);
+                instance.terminalType = terminalType;
+                localVersion = version;
+                userE164 = e164;
+
+                req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        /*
+                         * 检查更新完成后取消。
+                         * 对于业务组件那边来说检查更新不是一个独立的短暂的操作，而是和其他操作如下载更新关联在一起的，是一条流水线上的不同环节，是一个长连接的发端。
+                         * 检查更新对他们来说更准确的语义是“开始升级流程”，需要跟“结束（取消）升级流程”配对使用，这样才算一个完整的升级流程，他们才能维持正确的状态。
+                         * 所以当直接使用业务组件接口时，如下调用序列将会失败：
+                         * 检查更新->检查更新（不能重复调用检查更新接口因为不能重复开始升级流程，业务组件状态不对）；
+                         * 下载更新（不能直接调用下载更新的接口，必须先调用检查更新）；
+                         *
+                         * 我们认为这样的接口语义和行为不一致，会给用户造成严重困惑，故我们封装以使接口的行为跟语义保持一致。下面是我们做的工作：
+                         * 1、站在用户角度，检查升级我们认为应该独立于下载、取消升级，检查结果返回检查升级结束，不存在遗留状态，重复检查是可以的。
+                         * 为了达成这个目标我们在业务组件的检查升级结果返回后取消升级，以重置业务组件的状态。
+                         * 2、站在用户角度，下载升级包我们认为应该独立于检查升级，我知道该升级包的id便可直接下载它。
+                         * 为了达成这个目标我们在下载前先调用业务组件的检查升级，然后才去下载升级包。
+                         * */
+                        req(Msg.CancelUpgrade, null, null);
+
+                        TMTUpgradeVersionInfo[] remoteVersionList = ((TCheckUpgradeRsp)rspContent).AssParam.tVerList;
+                        if (null != remoteVersionList && remoteVersionList.length>0){
+                            UpgradePkgInfo upgradePkgInfo = ToDoConverter.TMTUpgradeVersionInfo2UpgradePkgInfo(remoteVersionList[0]);
+                            if (version.compareToIgnoreCase(upgradePkgInfo.getVersionNum()) < 0) {
+                                reportSuccess(upgradePkgInfo, resultListener);
+                            }else{
+                                reportFailed(ALREADY_NEWEST, resultListener);
+                            }
+                        }else{
+                            reportFailed(NO_UPGRADE_PACKAGE, resultListener);
+                        }
+                    }
+
+                    @Override
+                    public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        req(Msg.CancelUpgrade, null, null);
+                    }
+                }, resultListener, checkUpgradePara);
             }
-        }, resultListener, checkUpgradePara);
+        }, resultListener);
+
     }
 
 
@@ -177,61 +183,68 @@ public class UpgradeManager extends Caster<Msg> {
             return;
         }
 
-        TMTSUSAddr addr = (TMTSUSAddr) get(Msg.GetServerAddr);
-        if (null == addr){
-            reportFailed(-1, resultListener);
-            return;
-        }
-        TMTUpgradeClientInfo checkUpgradePara = new TMTUpgradeClientInfo(
-                new TMTUpgradeNetParam(addr.dwIP),
-                new TMTUpgradeDeviceInfo(terminalType.getVal(), userE164, localVersion, addr.dwIP, "kedacom")
-        );
-
-        // 下载前先check以建链
-        req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
+        req(Msg.GetServerAddr, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                TMTUpgradeVersionInfo[] remoteVersionList = ((TCheckUpgradeRsp)rspContent).AssParam.tVerList;
-                if (null != remoteVersionList && remoteVersionList.length>0){
-                    UpgradePkgInfo remotePkgInfo = ToDoConverter.TMTUpgradeVersionInfo2UpgradePkgInfo(remoteVersionList[0]);
-                    if (remotePkgInfo.getVersionId() == pkgInfo.getVersionId()){
-                        // 下载升级包
-                        req(Msg.DownloadUpgrade, new SessionProcessor<Msg>() {
-                            @Override
-                            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                                if (Msg.DownloadUpgradeRsp == rsp){
-                                    TMTUpgradeDownloadInfo downloadInfo = (TMTUpgradeDownloadInfo) rspContent;
-                                    if (downloadInfo.dwErrcode == 0) {
-                                        // 上报下载进度
-                                        reportProgress(new DownloadProgressInfo(downloadInfo.dwCurPercent), resultListener);
-                                        if (downloadInfo.dwCurPercent == 100) {
-                                            cancelReq(Msg.DownloadUpgrade, resultListener); // 已下载完毕，取消会话，否则会话会等待超时，因为没有结束消息。
-                                            reportSuccess(new File(saveDir, downloadInfo.achCurFileName), resultListener);
-                                        }
-                                    } else {
-                                        reportFailed(-1, resultListener);
-                                    }
-                                }else if (Msg.ServerDisconnected == rsp){
-                                    reportFailed(SERVER_DISCONNECTED, resultListener);
-                                }
-                            }
+            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
 
-                            @Override
-                            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                                req(Msg.CancelUpgrade, null, null);
-                                isConsumed[0] = true;
-                                reportTimeout(resultListener);
-                            }
-                        }, resultListener, SAVE_DIR, remotePkgInfo.getVersionId());
-
-                    }else{
-                        reportFailed(NO_UPGRADE_PACKAGE, resultListener);
-                    }
-                }else{
-                    reportFailed(NO_UPGRADE_PACKAGE, resultListener);
+                TMTSUSAddr addr = (TMTSUSAddr) output;
+                if (null == addr){
+                    reportFailed(-1, resultListener);
+                    return;
                 }
+                TMTUpgradeClientInfo checkUpgradePara = new TMTUpgradeClientInfo(
+                        new TMTUpgradeNetParam(addr.dwIP),
+                        new TMTUpgradeDeviceInfo(terminalType.getVal(), userE164, localVersion, addr.dwIP, "kedacom")
+                );
+
+                // 下载前先check以建链
+                req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        TMTUpgradeVersionInfo[] remoteVersionList = ((TCheckUpgradeRsp)rspContent).AssParam.tVerList;
+                        if (null != remoteVersionList && remoteVersionList.length>0){
+                            UpgradePkgInfo remotePkgInfo = ToDoConverter.TMTUpgradeVersionInfo2UpgradePkgInfo(remoteVersionList[0]);
+                            if (remotePkgInfo.getVersionId() == pkgInfo.getVersionId()){
+                                // 下载升级包
+                                req(Msg.DownloadUpgrade, new SessionProcessor<Msg>() {
+                                    @Override
+                                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                        if (Msg.DownloadUpgradeRsp == rsp){
+                                            TMTUpgradeDownloadInfo downloadInfo = (TMTUpgradeDownloadInfo) rspContent;
+                                            if (downloadInfo.dwErrcode == 0) {
+                                                // 上报下载进度
+                                                reportProgress(new DownloadProgressInfo(downloadInfo.dwCurPercent), resultListener);
+                                                if (downloadInfo.dwCurPercent == 100) {
+                                                    cancelReq(Msg.DownloadUpgrade, resultListener); // 已下载完毕，取消会话，否则会话会等待超时，因为没有结束消息。
+                                                    reportSuccess(new File(saveDir, downloadInfo.achCurFileName), resultListener);
+                                                }
+                                            } else {
+                                                reportFailed(-1, resultListener);
+                                            }
+                                        }else if (Msg.ServerDisconnected == rsp){
+                                            reportFailed(SERVER_DISCONNECTED, resultListener);
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                        req(Msg.CancelUpgrade, null, null);
+                                        isConsumed[0] = true;
+                                        reportTimeout(resultListener);
+                                    }
+                                }, resultListener, SAVE_DIR, remotePkgInfo.getVersionId());
+
+                            }else{
+                                reportFailed(NO_UPGRADE_PACKAGE, resultListener);
+                            }
+                        }else{
+                            reportFailed(NO_UPGRADE_PACKAGE, resultListener);
+                        }
+                    }
+                }, resultListener, checkUpgradePara);
+
             }
-        }, resultListener, checkUpgradePara);
+        }, resultListener);
 
     }
 

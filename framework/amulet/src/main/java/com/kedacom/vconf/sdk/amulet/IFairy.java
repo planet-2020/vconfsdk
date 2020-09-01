@@ -5,11 +5,6 @@ public interface IFairy {
 
     String TAG = "Fairy";
 
-    interface ICommandFairy extends IFairy {
-        void set(String reqId, Object... paras);
-        Object get(String reqId, Object... paras);
-    }
-
     interface ISessionFairy extends IFairy, ICrystalBall.IListener{
         boolean req(IListener listener, String reqId, int reqSn, Object... reqParas);
         boolean cancelReq(int reqSn);
@@ -21,12 +16,13 @@ public interface IFairy {
         interface IListener{
             /**
              * 请求已发出
-             * @param hasRsp 该请求是否有对应的响应，若有则后续会回调onRsp或onTimeout。
+             * @param hasRsp 该请求是否有对应的响应消息。
              * @param reqId 请求ID。由{@link #req(IListener, String, int, Object...)}传入
              * @param reqSn 请求序号。由{@link #req(IListener, String, int, Object...)}传入
              * @param reqParas 请求参数。由{@link #req(IListener, String, int, Object...)}传入
+             * @param output  传出参数。有些接口会通过传出参数反馈结果而非响应消息，比如获取本地配置。
              * */
-            void onReqSent(boolean hasRsp, String reqId, int reqSn, Object[] reqParas);
+            void onReqSent(boolean hasRsp, String reqId, int reqSn, Object[] reqParas, Object output);
 
             /**
              * 收到响应

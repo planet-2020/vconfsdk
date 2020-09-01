@@ -46,10 +46,14 @@ public class SecurityManager extends Caster<Msg> {
     /**
      * 交互式调试是否已开启
      * */
-    public boolean hasEnabledInteractiveDebug(){
-        BaseTypeBool baseTypeBool = (BaseTypeBool) get(Msg.HasEnabledInteractiveDebug);
-        if (baseTypeBool==null) return false;
-        return baseTypeBool.basetype;
+    public void hasEnabledInteractiveDebug(IResultListener resultListener){
+        req(Msg.HasEnabledInteractiveDebug, new SessionProcessor<Msg>() {
+            @Override
+            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
+                BaseTypeBool baseTypeBool = (BaseTypeBool) output;
+                reportSuccess(baseTypeBool!=null && baseTypeBool.basetype, resultListener);
+            }
+        }, resultListener);
     }
 
 }

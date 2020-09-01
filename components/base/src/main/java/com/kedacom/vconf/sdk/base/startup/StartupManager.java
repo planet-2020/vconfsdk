@@ -67,7 +67,7 @@ public class StartupManager extends Caster<Msg> {
         EmMtModel model = ToDoConverter.toTransferObj(type);
         req(Msg.StartMtBase, new SessionProcessor<Msg>() {
             @Override
-            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas) {
+            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
                // 启用业务组件保存日志到文件的功能
                 req(Msg.MtLogToFile, null, null, true);
 
@@ -75,43 +75,43 @@ public class StartupManager extends Caster<Msg> {
                 // 启动业务组件sdk
                 req(Msg.StartMtSdk, new SessionProcessor<Msg>() {
 
-                            @Override
-                            public void onReqSent(IResultListener resultListener1, Msg req1, Object[] reqParas1) {
-                                // 设置业务组件sdk回调
-                                set(Msg.SetMtSdkCallback, (IMtcCallback) msg -> {
-                                    try {
-                                        JSONObject mtapi = new JSONObject(msg);
-                                        String msgId = mtapi.getJSONObject("head").getString("eventname");
-                                        String body = mtapi.getString("body");
-                                        if (null == msgId || null == body) {
-                                            KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
-                                            return;
-                                        }
-
-                                        CrystalBall.instance().onAppear(msgId, body);
-
-                                    } catch (JSONException e) {
-                                        e.printStackTrace();
+                        @Override
+                        public void onReqSent(IResultListener resultListener1, Msg req1, Object[] reqParas1, Object output) {
+                            // 设置业务组件sdk回调
+                            req(Msg.SetMtSdkCallback, null, null, (IMtcCallback) msg -> {
+                                try {
+                                    JSONObject mtapi = new JSONObject(msg);
+                                    String msgId = mtapi.getJSONObject("head").getString("eventname");
+                                    String body = mtapi.getString("body");
+                                    if (null == msgId || null == body) {
+                                        KLog.p(KLog.ERROR, "invalid msg: msgId=%s, body=%s", msgId, body);
+                                        return;
                                     }
-                                });
-                            }
 
-                            @Override
-                            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener1, Msg req1, Object[] reqParas1, boolean[] isConsumed) {
-                                boolean startSdkSuccess = ((TMTLoginMtResult) rspContent).bLogin;
-                                if (startSdkSuccess){
-                                    reportSuccess(null, resultListener1);
-                                }else{
-                                    reportFailed(-1, resultListener1);
+                                    CrystalBall.instance().onAppear(msgId, body);
+
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
                                 }
-                            }
-                        },
+                            });
+                        }
 
-                        resultListener,
-                        false,
-                        false,
-                        new MtLoginMtParam(EmClientAppType.emClientAppSkyAndroid_Api, EmAuthType.emInnerPwdAuth_Api,
-                                "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001)
+                        @Override
+                        public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener1, Msg req1, Object[] reqParas1, boolean[] isConsumed) {
+                            boolean startSdkSuccess = ((TMTLoginMtResult) rspContent).bLogin;
+                            if (startSdkSuccess){
+                                reportSuccess(null, resultListener1);
+                            }else{
+                                reportFailed(-1, resultListener1);
+                            }
+                        }
+                    },
+
+                    resultListener,
+                    false,
+                    false,
+                    new MtLoginMtParam(EmClientAppType.emClientAppSkyAndroid_Api, EmAuthType.emInnerPwdAuth_Api,
+                            "admin", "2018_Inner_Pwd_|}><NewAccess#@k", "127.0.0.1", 60001)
                 );
 
                 },

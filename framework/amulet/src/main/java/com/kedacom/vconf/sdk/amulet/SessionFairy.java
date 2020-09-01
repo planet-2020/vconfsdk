@@ -8,10 +8,19 @@ import android.os.Process;
 import android.util.Log;
 import android.util.SparseIntArray;
 
+import androidx.annotation.NonNull;
+
 import com.kedacom.vconf.sdk.utils.json.Kson;
+import com.kedacom.vconf.sdk.utils.lang.PrimitiveTypeHelper;
+import com.kedacom.vconf.sdk.utils.lang.StringHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 
@@ -70,55 +79,48 @@ final class SessionFairy implements IFairy.ISessionFairy{
             KLog.p(KLog.ERROR, "listener is null");
             return false;
         }
-        if (magicBook.isGet(reqId)){
-            KLog.p(KLog.ERROR, "session fairy can not handle GET req %s", reqId);
-            return false;
-        }
         if (null == reqParas){
             KLog.p(KLog.ERROR, "reqParas is null");
-            return false;
-        }
-
-        if (!Helper.checkUserPara(reqId, reqParas, magicBook)){
             return false;
         }
 
         Session s = new Session(listener, reqSn, reqId, reqParas, (int) (magicBook.timeout(reqId) * 1000), magicBook.rspSeqs(reqId));
         sessions.add(s);
 
-        // 用户参数转换为底层方法需要的参数
-        Class<?>[] nativeParaClasses = magicBook.nativeParaClasses(s.reqId);
-        Object[] paras = Helper.convertUserPara2NativePara(s.reqPara, nativeParaClasses);
+        // 用户参数转为native参数
+        Object[] paras = convertUserPara2NativePara(s.reqId, s.reqPara, magicBook);
+        if (paras == null){
+            KLog.p(KLog.ERROR, "convertUserPara2NativePara failed");
+            return false;
+        }
         StringBuilder sb = new StringBuilder();
         for (Object para : paras) {
             sb.append(para).append(", ");
         }
+
         String methodName = magicBook.reqName(s.reqId);
-        boolean hasRsp = null != s.rspSeqs && 0 != s.rspSeqs.length;
-        if (hasRsp) {
+        s.setState(Session.READY);
+
+        reqHandler.postDelayed(() -> {
+            if(!s.transState(Session.READY, Session.SENDING)){
+                return;
+            }
+
+            Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", s.id, s.reqId, methodName, sb));
+
             // 启动超时
             Message msg = Message.obtain();
             msg.what = MsgId_Timeout;
             msg.obj = s;
             uiHandler.sendMessageDelayed(msg, s.timeoutVal);
-        }
-        s.setState(Session.READY);
-
-        Log.d(TAG, String.format("%s -~-> %s(%s) \nparas={%s}", hasRsp?s.id:"", s.reqId, methodName, sb));
-
-        reqHandler.post(() -> {
-            if(!s.transState(Session.READY, Session.SENDING)){
-                return;
-            }
 
             // 调用native接口
             String nativeMethodOwner = magicBook.nativeMethodOwner(s.reqId);
-            long nativeCallCostTime;
             long timestamp = System.currentTimeMillis();
             if (null != crystalBall) {
-                crystalBall.spell(nativeMethodOwner, methodName, paras, nativeParaClasses);
+                crystalBall.spell(nativeMethodOwner, methodName, paras, magicBook.nativeParaClasses(s.reqId));
             }
-            nativeCallCostTime = System.currentTimeMillis() - timestamp;
+            long nativeCallCostTime = System.currentTimeMillis() - timestamp;
 
             KLog.p(KLog.DEBUG,"native method %s cost time: %s", nativeMethodOwner+"#"+methodName, nativeCallCostTime);
             if(!s.transState(Session.SENDING, Session.SENT)){
@@ -129,14 +131,37 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 if(!s.transState(Session.SENT, Session.WAITING)){
                     return;
                 }
+                boolean hasRsp = null != s.rspSeqs && 0 != s.rspSeqs.length;
                 if (!hasRsp){
+                    // 没有响应，结束会话并移除定时器
                     s.setState(Session.END);
                     sessions.remove(s);
+                    uiHandler.removeMessages(MsgId_Timeout, s);
                 }
-                s.listener.onReqSent(hasRsp, s.reqId, s.reqSn, s.reqPara);
+                // 判断是否存在出参，若存在出参（json形式）则转为用户参数（类对象）
+                Object output = null;
+                int outputParaIndex = magicBook.outputParaIndex(reqId);
+                Class<?>[] userParaClasses = magicBook.userParaClasses(reqId);
+                boolean outputParaExists = 0 <= outputParaIndex && outputParaIndex < userParaClasses.length;
+                if (outputParaExists){
+                    output = Kson.fromJson(
+                            paras[outputParaIndex].toString(), // 目前和native之间交换数据是通过json字符串
+                            userParaClasses[outputParaIndex]
+                    );
+                }
+                if (!hasRsp) {
+                    Log.d(TAG, String.format("%s <-~-o NO RESPONSE%s", s.id, outputParaExists ? ", outputPara="+paras[outputParaIndex] : ""));
+                }else if(outputParaExists){
+                    KLog.p(KLog.DEBUG,"native method %s output para: %s", nativeMethodOwner+"#"+methodName, paras[outputParaIndex]);
+                }
+
+                // 上报用户请求已发送，并反馈出参（若存在）
+                s.listener.onReqSent(hasRsp, s.reqId, s.reqSn, s.reqPara, output);
             });
 
-        });
+        },
+                10 /*做一个短暂的延时以保证消息交互打印的时序更易理解*/
+        );
 
         return true;
     }
@@ -149,10 +174,11 @@ final class SessionFairy implements IFairy.ISessionFairy{
                 s.setState(Session.CANCELED);
                 uiHandler.removeMessages(MsgId_Timeout, s);
 
+                reqHandler.post(() -> Log.d(TAG, String.format("%s -~->x %s", s.id, s.reqId)));
+
                 // 用户很有可能在onMsg回调中调用cancelReq（onMsg回调到上层的onRsp然后用户在onRsp中cancelReq），
                 // 然而onMsg中我们正在遍历sessions，所以我们延迟删除
                 uiHandler.post(() -> {
-                    Log.d(TAG, String.format("%s -~->x %s", s.id, s.reqId));
                     if (s.isState(Session.CANCELED)) {
                         sessions.remove(s);
                     }else{
@@ -238,6 +264,9 @@ final class SessionFairy implements IFairy.ISessionFairy{
                         s.reqId, s.reqSn, s.reqPara);
 
                 if (bConsumed) {
+
+                    Log.d(TAG, String.format("%s <-~-%s %s(%s) \n%s", s.id, gotLast?"o":"", rspId, msgName, msgContent));
+
                     s.candidates = candidates; // 更新候选序列
                     if (gotLast) {  // 已集齐会话期望的所有响应，该会话结束。
                         if (!s.isState(Session.CANCELED)) {
@@ -250,7 +279,6 @@ final class SessionFairy implements IFairy.ISessionFairy{
                             s.setState(Session.RECVING);
                         }
                     }
-                    Log.d(TAG, String.format("%s <-~-%s %s(%s) \n%s", s.id, gotLast?"o":"", rspId, msgName, msgContent));
 
                     break tryConsume;
                 }
@@ -259,6 +287,103 @@ final class SessionFairy implements IFairy.ISessionFairy{
         }
 
         return bConsumed;
+    }
+
+
+    /**
+     * 将用户参数转为native方法参数
+     * */
+    private Object[] convertUserPara2NativePara(@NonNull String reqId, @NonNull Object[] userParas, @NonNull IMagicBook magicBook){
+        /*
+         * 验证参数合法性
+         * */
+        Class<?>[] userParaClasses = magicBook.userParaClasses(reqId);
+        Class<?>[] nativeParaClasses = magicBook.nativeParaClasses(reqId);
+        if (null==userParaClasses || nativeParaClasses == null){
+            throw new RuntimeException(String.format("reqId %s not registered!", reqId));
+        }
+
+        if (userParaClasses.length != nativeParaClasses.length){
+            throw new RuntimeException(String.format("reqId %s: userParaClasses.length(%s) != nativeParaClasses.length(%s)",
+                    reqId, userParaClasses.length, nativeParaClasses.length));
+        }
+
+        int outputParaIndex = magicBook.outputParaIndex(reqId);
+        boolean outputParaExists = 0 <= outputParaIndex && outputParaIndex < userParaClasses.length;
+        int expectedArgumentLen = outputParaExists ? userParaClasses.length - 1 : userParaClasses.length;
+        if (expectedArgumentLen != userParas.length){
+            throw new RuntimeException(String.format("reqId %s: invalid user para num, expect %s but got %s", reqId, expectedArgumentLen, userParas.length));
+        }
+
+        if (outputParaExists){
+            // 补齐出参。 出参比较特殊，用户并不传入出参，导致实参比形参少。
+            Class<?> outputParaClass = userParaClasses[outputParaIndex];
+            Object outputPara;
+            try {
+                Constructor<?> ctor = outputParaClass.getDeclaredConstructor();
+                ctor.setAccessible(true);
+                outputPara = ctor.newInstance();
+            } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+                e.printStackTrace();
+                throw new RuntimeException(String.format("try construct output para %s failed!", outputParaClass));
+            }
+
+            List<Object> userParaList = new ArrayList<>();
+            Collections.addAll(userParaList, userParas);
+            userParaList.add(outputParaIndex, outputPara);
+            userParas = userParaList.toArray();
+        }
+
+        // 校验用户实际传入的参数类型是否匹配注册的参数类型
+        for(int i=0; i<userParaClasses.length; ++i){
+            Class<?> userParaClz = userParaClasses[i];
+            Class<?> reqParaClz = userParas[i].getClass();
+            if (!(reqParaClz==userParaClz // 同类
+                    || userParaClz.isAssignableFrom(reqParaClz) // 子类亦可接受
+                    || userParaClz.isPrimitive() && reqParaClz== PrimitiveTypeHelper.getWrapperClass(userParaClz) // 注册用户参数类型为基本类型，请求参数为对应的包装类亦可接受
+            )){
+                KLog.p(KLog.ERROR, "invalid user para type for %s, expect %s but got %s", reqId, userParaClz, reqParaClz);
+                return null;
+            }
+        }
+
+        /*
+         * 用户参数转为native参数
+         * */
+        Object[] nativeParas = new Object[nativeParaClasses.length];
+        for (int i=0; i<nativeParas.length; ++i){
+            Object userPara = userParas[i];
+            Class<?> nativeParaType = nativeParaClasses[i];
+            KLog.p(KLog.DEBUG,"userPara[%s].class=%s, nativeMethodPara[%s].class=%s", i, null==userPara? null : userPara.getClass(), i, nativeParaType);
+            if (null == userPara){
+                nativeParas[i] = nativeParaType.isPrimitive() ? PrimitiveTypeHelper.getDefaultValue(nativeParaType) :
+                        StringHelper.isStringCompatible(nativeParaType) ? "" : null;
+            }else if (userPara.getClass() == nativeParaType
+                    || nativeParaType.isAssignableFrom(userPara.getClass())){
+                nativeParas[i] = userPara;
+            }else {
+                if (StringHelper.isStringCompatible(nativeParaType)) {
+                    if (StringHelper.isStringCompatible(userPara.getClass())) {
+                        nativeParas[i] = StringHelper.convert2CompatibleType(nativeParaType, userPara);
+                    }else {
+                        nativeParas[i] = StringHelper.convert2CompatibleType(nativeParaType, Kson.toJson(userPara));
+                    }
+                } else if (nativeParaType.isPrimitive()) {
+                    if (userPara.getClass() == PrimitiveTypeHelper.getWrapperClass(nativeParaType)){
+                        nativeParas[i] = userPara;
+                    }else if (userPara.getClass().isEnum() && nativeParaType==int.class) {
+                        nativeParas[i] = Integer.valueOf(Kson.toJson(userPara)); //XXX 虽然当前枚举都是转为int型，但是后续需求也可能变更为其它类型如String。后续如果有这样的需求此处需相应更改。
+                    }else{
+                        throw new ClassCastException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+nativeParaType);
+                    }
+                } else {
+                    throw new ClassCastException("trying to convert user para to native method para failed: "+userPara.getClass()+" can not cast to "+nativeParaType);
+                }
+            }
+
+        }
+
+        return nativeParas;
     }
 
 

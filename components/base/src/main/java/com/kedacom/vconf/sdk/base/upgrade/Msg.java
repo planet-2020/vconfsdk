@@ -1,7 +1,6 @@
 package com.kedacom.vconf.sdk.base.upgrade;
 
 
-import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Module;
 import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
@@ -13,14 +12,14 @@ import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeClientInfo;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeDownloadInfo;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 
-import static com.kedacom.vconf.sdk.annotation.Request.GREEDY;
+import static com.kedacom.vconf.sdk.annotation.Request.*;
 
 @Module(name = "UG")
 enum Msg {
     /**启动（升级）服务
      * */
     @Request(name = "SYSStartService",
-            owner = Atlas.MtServiceCfgCtrl,
+            owner = MtServiceCfgCtrl,
             paras = StringBuffer.class,
             userParas = String.class, // 服务名称，如"rest"接入、"upgrade"升级
             rspSeq = "StartMtServiceRsp"
@@ -34,17 +33,17 @@ enum Msg {
     /**获取升级服务器地址
      * */
     @Request(name = "GetSUSCfg",
-            owner = Atlas.ConfigCtrl,
+            owner = ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMTSUSAddr.class,
-            isGet = true
+            outputParaIndex = LastIndex
     )
     GetServerAddr,
 
     /**检查更新
      * */
     @Request(name = "MTCheckUpgradeCmd",
-            owner = Atlas.MtEntityCtrl,
+            owner = MtEntityCtrl,
             paras = StringBuffer.class,
             userParas = TMTUpgradeClientInfo.class,
             rspSeq = "CheckUpgradeRsp"
@@ -59,7 +58,7 @@ enum Msg {
     /**下载升级包
      * */
     @Request(name = "MTStartDownloadUpgradeFileCmd",
-            owner = Atlas.MtEntityCtrl,
+            owner = MtEntityCtrl,
             paras = {StringBuffer.class,
                     int.class
             },
@@ -85,7 +84,7 @@ enum Msg {
     /**取消升级
      * */
     @Request(name = "MTCancelUpgradeCmd",
-            owner = Atlas.MtEntityCtrl,
+            owner = MtEntityCtrl,
             rspSeq = "CancelUpgradeRsp"
     )
     CancelUpgrade,
@@ -101,8 +100,5 @@ enum Msg {
     @Notification
     @Response(name = "UpgradeDisconnectServerNtf", clz = Void.class)
     ServerDisconnected,
-
-
-    END;
 
 }

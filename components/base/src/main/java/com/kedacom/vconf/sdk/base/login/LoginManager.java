@@ -143,60 +143,64 @@ public class LoginManager extends Caster<Msg> {
         loggedIn = false;
         // 登录Aps
         req(Msg.LoginAps, new SessionProcessor<Msg>() {
-                    @Override
-                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                        TApsLoginResult apsLoginResult = (TApsLoginResult) rspContent;
-                        if (apsLoginResult.MainParam.bSucess){
-                            // 获取平台地址
-                            TMtPlatformApiAddr platformApiAddr = (TMtPlatformApiAddr) get(Msg.GetPlatformAddr);
-                            if (null == platformApiAddr){
-                                reportFailed(LIResultCode.Failed, resultListener);
-                                return;
-                            }
-                            // 获取平台分配的token
-                            req(Msg.QueryAccountToken, new SessionProcessor<Msg>() {
-                                @Override
-                                public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                                    TRestErrorInfo restErrorInfo = (TRestErrorInfo) rspContent;
-                                    if (restErrorInfo.dwErrorID == 1000){
-                                        // 登录platform
-                                        req(Msg.LoginPlatform, new SessionProcessor<Msg>() {
-                                            @Override
-                                            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                                                TLoginPlatformRsp res = (TLoginPlatformRsp) rspContent;
-                                                if (res.MainParam.dwErrorID == 1000){
-                                                    reportSuccess(null, resultListener);
-                                                    loggedIn = true;
-                                                }else{
+                @Override
+                public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                    TApsLoginResult apsLoginResult = (TApsLoginResult) rspContent;
+                    if (apsLoginResult.MainParam.bSucess){
+                        // 获取platform地址
+                        req(Msg.GetPlatformAddr, new SessionProcessor<Msg>() {
+                            @Override
+                            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
+                                TMtPlatformApiAddr platformApiAddr = (TMtPlatformApiAddr) output;
+                                if (null == platformApiAddr){
+                                    reportFailed(LIResultCode.Failed, resultListener);
+                                    return;
+                                }
+                                // 获取platform分配的token
+                                req(Msg.QueryAccountToken, new SessionProcessor<Msg>() {
+                                    @Override
+                                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                        TRestErrorInfo restErrorInfo = (TRestErrorInfo) rspContent;
+                                        if (restErrorInfo.dwErrorID == 1000){
+                                            // 登录platform
+                                            req(Msg.LoginPlatform, new SessionProcessor<Msg>() {
+                                                @Override
+                                                public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                                    TLoginPlatformRsp res = (TLoginPlatformRsp) rspContent;
+                                                    if (res.MainParam.dwErrorID == 1000){
+                                                        reportSuccess(null, resultListener);
+                                                        loggedIn = true;
+                                                    }else{
+                                                        logoutAps(null);
+                                                        reportFailed(-1, resultListener);
+                                                    }
+                                                }
+                                                @Override
+                                                public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                                                     logoutAps(null);
                                                     reportFailed(-1, resultListener);
                                                 }
-                                            }
-                                            @Override
-                                            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                                                logoutAps(null);
-                                                reportFailed(-1, resultListener);
-                                            }
-                                        }, resultListener, new TMTWeiboLogin(username, password));
-                                    }else{
+                                            }, resultListener, new TMTWeiboLogin(username, password));
+                                        }else{
+                                            logoutAps(null);
+                                            reportFailed(-1, resultListener);
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                                         logoutAps(null);
                                         reportFailed(-1, resultListener);
                                     }
-                                }
-
-                                @Override
-                                public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                                    logoutAps(null);
-                                    reportFailed(-1, resultListener);
-                                }
-                            }, resultListener, NetAddrHelper.ipLongLittleEndian2Str(platformApiAddr.dwIp));
-
-                        }else{
-                            reportFailed(LIResultCode.trans(rsp, apsLoginResult.MainParam.dwApsErroce), resultListener);
-                        }
+                                }, resultListener, NetAddrHelper.ipLongLittleEndian2Str(platformApiAddr.dwIp));
+                            }
+                        }, resultListener);
+                    }else{
+                        reportFailed(LIResultCode.trans(rsp, apsLoginResult.MainParam.dwApsErroce), resultListener);
                     }
-                },
-                resultListener, new TMTApsLoginParam(username, password, "", "Skywalker_Ali", "")
+                }
+            },
+            resultListener, new TMTApsLoginParam(username, password, "", "Skywalker_Ali", "")
         );
 
     }
@@ -236,30 +240,36 @@ public class LoginManager extends Caster<Msg> {
      *          失败反馈 errorcode
      * */
     public void queryUserDetails(@NonNull IResultListener resultListener){
-        TMTUserInfoFromAps userBrief = (TMTUserInfoFromAps) get(Msg.GetUserBrief);
-        if (null == userBrief){
-            reportFailed(-1, resultListener);
-            return;
-        }
-        String username = userBrief.achE164;
-        req(Msg.QueryUserDetails, new SessionProcessor<Msg>() {
+        req(Msg.GetUserBrief, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                TQueryUserDetailsRsp detailsRsp = (TQueryUserDetailsRsp) rspContent;
-                if (1000 == detailsRsp.MainParam.dwErrorID){
-                    UserDetails userDetails = ToDoConverter.fromTransferObj(detailsRsp.AssParam);
-                    userDetails.aliroomId = userBrief.achVirtualRoomId;
-                    reportSuccess(userDetails, resultListener);
-                }else{
+            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
+
+                TMTUserInfoFromAps userBrief = (TMTUserInfoFromAps) output;
+                if (null == userBrief){
                     reportFailed(-1, resultListener);
+                    return;
                 }
+                String username = userBrief.achE164;
+                req(Msg.QueryUserDetails, new SessionProcessor<Msg>() {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        TQueryUserDetailsRsp detailsRsp = (TQueryUserDetailsRsp) rspContent;
+                        if (1000 == detailsRsp.MainParam.dwErrorID){
+                            UserDetails userDetails = ToDoConverter.fromTransferObj(detailsRsp.AssParam);
+                            userDetails.aliroomId = userBrief.achVirtualRoomId;
+                            reportSuccess(userDetails, resultListener);
+                        }else{
+                            reportFailed(-1, resultListener);
+                        }
+                    }
+                }, resultListener, new TMTAccountManagerSystem(username));
             }
-        }, resultListener, new TMTAccountManagerSystem(username));
+        }, resultListener);
     }
 
     @SuppressWarnings("SwitchStatementWithTooFewBranches")
     @Override
-    protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
+    protected void onNtf(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
         switch (ntf){
             case KickedOff:
                 Stream.of(ntfListeners).forEach(it-> ((OnKickedOffListener) it).onKickedOff());
@@ -268,7 +278,7 @@ public class LoginManager extends Caster<Msg> {
     }
 
     @Override
-    protected Map<Class<? extends ILifecycleOwner>, Msg[]> regNtfListenerType() {
+    protected Map<Class<? extends ILifecycleOwner>, Msg[]> regNtfListener() {
         Map<Class<? extends ILifecycleOwner>, Msg[]> listenerType2CaredNtf = new HashMap<>();
         listenerType2CaredNtf.put(OnKickedOffListener.class, new Msg[]{Msg.KickedOff});
         return listenerType2CaredNtf;

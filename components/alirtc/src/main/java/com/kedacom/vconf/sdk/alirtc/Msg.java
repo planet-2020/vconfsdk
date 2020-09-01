@@ -7,7 +7,6 @@ import com.kedacom.vconf.sdk.alirtc.bean.transfer.TCreateAliConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfPara;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
-import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Module;
 import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
@@ -15,16 +14,18 @@ import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.type.TNetAddr;
 
+import static com.kedacom.vconf.sdk.annotation.Request.*;
+
 @Module(name = "ALIRTC")
 enum Msg {
 
     /**获取CSV服务器（用于对接alirtc的平台服务器）地址
      * */
     @Request(name = "GetCsvAddr",
-            owner = Atlas.ConfigCtrl,
+            owner = ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TNetAddr.class,
-            isGet = true
+            outputParaIndex = LastIndex
     )
     GetServerAddr,
 
@@ -32,7 +33,7 @@ enum Msg {
      * 登录CSV
      * */
     @Request(name = "LoginCsvCmd",
-            owner = Atlas.ConfCtrl,
+            owner = ConfCtrl,
             paras = {StringBuffer.class,
                     StringBuffer.class},
             userParas = {TNetAddr.class,
@@ -45,7 +46,7 @@ enum Msg {
      * 注销CSV
      * */
     @Request(name = "LogoutCsvCmd",
-            owner = Atlas.ConfCtrl,
+            owner = ConfCtrl,
             paras = StringBuffer.class,
             userParas = TNetAddr.class,
             rspSeq = "LoginStateChanged"
@@ -62,7 +63,7 @@ enum Msg {
     /** 创会
      * */
     @Request(name = "MGCreateAliConfCmd",
-            owner = Atlas.MeetingCtrl,
+            owner = MeetingCtrl,
             paras = StringBuffer.class,
             userParas = TCreateAliConfParam.class,
             rspSeq = "CreateConfRsp"
@@ -77,7 +78,7 @@ enum Msg {
     /** 加入会议
      * */
     @Request(name = "JoinAliConfCmd",
-            owner = Atlas.ConfCtrl,
+            owner = ConfCtrl,
             paras = StringBuffer.class,
             userParas = TJoinConfPara.class,
             rspSeq = "JoinConfRsp"
@@ -93,7 +94,7 @@ enum Msg {
      *      终端在ali平台上入会成功后需要主动上报自身会议状态给keda平台。
      * */
     @Request(name = "NotifyCsvConfState",
-            owner = Atlas.ConfCtrl,
+            owner = ConfCtrl,
             paras = {StringBuffer.class,
                     boolean.class},
             userParas = {String.class, // 会议号
@@ -105,7 +106,7 @@ enum Msg {
     /**上报静音哑音状态。
      * */
     @Request(name = "NotifyCsvVoiceState",
-            owner = Atlas.ConfCtrl,
+            owner = ConfCtrl,
             paras = {StringBuffer.class,
                     boolean.class,
                     boolean.class
@@ -130,8 +131,5 @@ enum Msg {
     @Notification(name = "AliConfWillEnd_Ntf",
             clz = TAliConfWillEndInfo.class)
     ConfAboutToEnd,
-
-
-    END;
 
 }

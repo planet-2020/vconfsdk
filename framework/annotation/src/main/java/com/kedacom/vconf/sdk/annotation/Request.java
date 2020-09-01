@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
 public @interface Request {
 
     /**
-     * 请求名称（对应的native方法名称）
+     * 请求名称(请求对应的native方法名称)
      * 如LoginManager.java中定义如下方法：
      * public static native void login(String jsonLoginPara);
      * 则该字段值为"login"
@@ -38,8 +38,11 @@ public @interface Request {
      * */
     Class[] paras() default {};
 
+    int InvalidIndex = -1;
+    int LastIndex = 987654321;
+
     /** 用户方法参数类型。
-     不同于paras，paras为native方法的形参列表，目前大部分情形下是StringBuffer类型的json字符串，而userParas是面向用户（框架使用者）的方法的参数列表。
+     不同于paras，paras为native方法的形参列表，目前大部分情形下是StringBuffer类型的json字符串，而userParas是面向用户（框架使用者）的方法的形参列表。
      例如native方法定义如下：
      public static native void login(StringBuffer jsonLoginPara1, StringBuffer jsonLoginPara2);
      而为了用户使用方便，面向用户的接口可能定义如下：
@@ -47,7 +50,18 @@ public @interface Request {
      则paras和userParas的赋值分别为paras={StringBuffer.class, StringBuffer.class}, userParas={LoginPara1.class, LoginPara2.class}
      框架在调用native方法前自动将LoginPara对象转为StringBuffer类型json字符串。
 
-     框架在反馈用户结果前自动将StringBuffer类型json字符串outPara转为DCServerCfg对象。
+     有的native方法有传出参数，如获取本地配置。此时我们需要正确的声明{@link #outputParaIndex()}。
+     如有如下native方法：
+     public static native void DcsGetServerCfg(String serverId, StringBuffer outPara); // 最后一个参数为传出参数，native方法使用传出参数反馈请求结果。
+     对应的用户方法我们定义为：
+     public void getServerCfg(String serverId, ResultListener{ onResult(DCServerCfg cfg){}}); // 用户方法比native方法少一个传出参数，而通过监听器接受结果。
+     我们声明outputParaIndex={@link #LastIndex}  // 最后一个参数为出参。
+     则paras和userParas的赋值分别为
+     paras={String.class, StringBuffer.class},
+     userParas={String.class,
+     DCServerCfg.class // NOTE: 用户并不需要传入该参数，此为请求的结果。
+     }
+     框架在反馈用户结果前根据outputParaIndex找到出参，并自动将StringBuffer类型json字符串outPara转为DCServerCfg对象。
 
      userPara到para转换规则按优先级从高到低如下：
      1、若userPara为基本类型包装类型，para为对应的基本类型，则将包装类型解包；
@@ -59,20 +73,15 @@ public @interface Request {
     Class[] userParas() default {};
 
     /**
-     * 输出参数类型
-     *
+     * 出参index。
+     * 有的native方法有传出参数，如获取配置。此字段用于标记该出参位置用于特殊处理。
+     * 若值为{@link #InvalidIndex}则表示没有出参，值为{@link #LastIndex}则表示最后一个参数为出参。
      * */
-    Class outputPara() default null;
-
-    /**
-     * 是否为GET请求。
-     * GET请求不同于普通请求，最后一个userParas为请求结果，详见{@link #userParas()}说明
-     * */
-    boolean isGet() default false;
+    int outputParaIndex() default InvalidIndex;
 
     /**
      * 请求对应的响应序列。{@link Response}
-     * NOTE：请求也可能没有响应。
+     * NOTE：请求也可能没有响应，如设置/获取本地配置。
      * */
     String[] rspSeq() default {};
     /**
@@ -92,13 +101,6 @@ public @interface Request {
     // 往往暗示着设计有缺陷，需审视。
 
     /**
-     * 请求对应的超时时长。单位：秒
-     * NOTE: 若无响应序列此超时时长无用。
-     * */
-    double timeout() default 5;
-
-
-    /**
      * 贪婪模式标记。
      * 贪婪模式的使用场景：
      * 假设有req，接受的响应序列为：
@@ -115,4 +117,29 @@ public @interface Request {
      * 这通常不是用户期望的，所以此种情形下用户需要根据接收到的响应内容判断是否需要手动结束会话以避免超时。
      * */
     String GREEDY = "...";
+
+    /**
+     * 请求对应的超时时长。单位：秒
+     * */
+    double timeout() default 5;
+
+
+    /**
+     * native方法所在类路径定义
+     * */
+    String PKG = "com.kedacom.kdv.mt.mtapi.";
+    String KernalCtrl = PKG+"KernalCtrl";
+    String MtcLib = PKG+"MtcLib";
+    String LoginCtrl = PKG+"LoginCtrl";
+    String MonitorCtrl = PKG+"MonitorCtrl";
+    String CommonCtrl = PKG+"CommonCtrl";
+    String ConfigCtrl = PKG+"ConfigCtrl";
+    String MtServiceCfgCtrl = PKG+"MtServiceCfgCtrl";
+    String MeetingCtrl = PKG+"MeetingCtrl";
+    String MtEntityCtrl = PKG+"MtEntityCtrl";
+    String RmtContactCtrl = PKG+"RmtContactCtrl";
+    String ConfCtrl = PKG+"ConfCtrl";
+    String AudioCtrl = PKG+"AudioCtrl";
+    String DcsCtrl = PKG+"DcsCtrl";
+
 }

@@ -21,12 +21,6 @@ public interface IMagicBook {
     @Nullable String reqName(@NonNull String reqId);
 
     /**
-     * 是否为GET请求
-     * @param reqId 请求ID
-     * */
-    boolean isGet(@NonNull String reqId);
-
-    /**
      * 请求对应的native方法所属类
      * NOTE: 实际上此方法的必要性取决于和native层的具体约定，比如可以约定native方法的原型固定为一个且仅有一个，
      * 参数形式也约定好，这样Java层调用的始终是同一个native方法，在native层再根据标签如ReqName去做分发，
@@ -51,6 +45,12 @@ public interface IMagicBook {
      * 框架负责将用户方法映射到native方法。
      * */
     @Nullable Class<?>[] userParaClasses(@NonNull String reqId);
+
+    /**
+     * 出参index。
+     * 有的native方法有传出参数，如获取配置。小于0则表示没有出参。
+     * */
+    int outputParaIndex(@NonNull String reqId);
 
     /**
      * 请求对应的响应消息序列列表

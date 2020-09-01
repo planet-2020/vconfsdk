@@ -12,7 +12,7 @@ public interface ICrystalBall {
     int spell(String methodOwner, String methodName, Object[] para, Class[] paraType);
 
     /**
-     * 上报消息。
+     * 收到消息。
      * */
     void onAppear(String msgId, String msgContent);
 
