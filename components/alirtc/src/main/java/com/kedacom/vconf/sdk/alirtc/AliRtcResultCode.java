@@ -17,10 +17,11 @@ public final class AliRtcResultCode {
     public static final int AccountLocked = 21;  // 帐号已锁定（尝试登录失败次数过多可导致）
     public static final int ConfereeNumReachLimit = 22;  // 此会议中与会人数达到上限
     public static final int AllConfsConfereeNumReachLimit = 23;  // 整个企业所有会议的与会总人数达到上限（会议本身的上限很可能没达到）
-    public static final int NoRights = 24;  // 没有权限（对于企业会议室，只有特定的人有权入会）
-    public static final int Expired = 25;  // 该会议已过期（仅企业会议室才可能过期，个人专属会议室一直存在）
-    public static final int NoSuchConf = 26;  // 会议不存在
-    public static final int ConfLocked = 27;  // 会议已被管理员锁定，暂时无法入会
+    public static final int NoRightsToJoin = 24;  // 无权加入会议（对于企业会议室，只有特定的人有权入会）
+    public static final int NoRightsToConvene = 25;  // 无权召开会议（对于企业会议室，只有特定的人有权召开会议）
+    public static final int Expired = 26;  // 该会议已过期（仅企业会议室才可能过期，个人专属会议室一直存在）
+    public static final int NoSuchConf = 27;  // 会议不存在
+    public static final int ConfLocked = 28;  // 会议已被管理员锁定，暂时无法入会
 
     // NOTE：企业会议室——会议号固定公开，成员由管理员配置，仅配置过的成员可加入该会议，有期限，到期解散。
 
@@ -42,8 +43,8 @@ public final class AliRtcResultCode {
         resultCodes.put(Msg.JoinConfRsp, 30328, ConfereeNumReachLimit);
         resultCodes.put(Msg.JoinConfRsp, 30325, AllConfsConfereeNumReachLimit);
         resultCodes.put(Msg.JoinConfRsp, 30334, Expired);
-        resultCodes.put(Msg.JoinConfRsp, 30333, NoRights);
-        resultCodes.put(Msg.JoinConfRsp, 30335, NoRights);
+        resultCodes.put(Msg.JoinConfRsp, 30333, NoRightsToJoin);
+        resultCodes.put(Msg.JoinConfRsp, 30335, NoRightsToConvene);
         resultCodes.put(Msg.JoinConfRsp, 30323, NoSuchConf);
         resultCodes.put(Msg.JoinConfRsp, 30338, ConfLocked);
     }
