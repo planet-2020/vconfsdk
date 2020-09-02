@@ -38,22 +38,14 @@ public abstract class Caster<T extends Enum<T>> implements
 
     private static Set<Caster>casters = new LinkedHashSet<>();
 
-    /**
-     * 是否所有模块请求已暂停。
-     * 仅当(!allPaused && !paused)时请求才发出，否则暂存直到满足(!allPaused && !paused)。
-     * */
-    private static boolean allPaused;
+    private static boolean globalPaused;
 
-    /**
-     * 是否本模块请求已暂停。
-     * 仅当(!allPaused && !paused)时请求才发出，否则暂存直到满足(!allPaused && !paused)。
-     * */
     private boolean paused;
 
     /**
      * 缓存的请求
      * */
-    private Set<Object> cachedReqs = new LinkedHashSet<>();
+    private Set<Session> cachedSessions = new LinkedHashSet<>();
 
 
     private ListenerLifecycleObserver listenerLifecycleObserver = ListenerLifecycleObserver.getInstance();
@@ -146,31 +138,6 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
     /**
-     * 暂停。
-     * 暂停后后续请求会被缓存，直到resume被调用时才会下发
-     * */
-    protected static void pause(){
-        paused = true;
-    }
-
-    /**
-     * 继续。
-     * 将缓存的请求发出并清空缓存，并从暂停状态恢复到正常状态。
-     * */
-    protected static void resume(){
-        if (!paused){
-            return;
-        }
-        paused = false;
-        for (Object obj :
-                cachedRequests) {
-//            if (obj instanceof Session){
-//
-//            }
-        }
-    }
-
-    /**
      * 会话请求（异步请求）
      * 该接口是异步的不会阻塞调用者，该接口返回不代表请求已执行。
      * @param req 请求消息
@@ -243,8 +210,13 @@ public abstract class Caster<T extends Enum<T>> implements
      *                       当session结束时（session一定会结束，有超时机制），Caster会自动释放监听器引用，所以多数情况下即使不做任何处理现象上也不会表现出问题，但逻辑上是有问题的，在某些极端场景下会表现异常；
      * */
     protected void req(@NonNull T req, SessionProcessor<T> sessionProcessor, IResultListener resultListener, Object... reqParas){
+        Session s = new Session(req, sessionProcessor, resultListener, reqParas);
+        if (isPaused()){
+            KLog.p(KLog.WARN, "caster paused");
+            cachedSessions.add(s);
+            return;
+        }
         String reqId = prefix(req.name());
-        Session s = new Session(req, sessionProcessor, resultListener);
         if (!sessionFairy.req(this, reqId, s.id, reqParas)){
             KLog.p(KLog.ERROR, "%s failed", req);
             return;
@@ -619,6 +591,59 @@ public abstract class Caster<T extends Enum<T>> implements
     protected void onNtf(T ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners){}
 
 
+    /**
+     * 设置全局暂停
+     * @param pause true暂停，false取消暂停
+     * 暂停后所有caster的请求均不会下发而是会被缓存，直到暂停被取消。
+     * */
+    protected static void setGlobalPause(boolean pause){
+        if (globalPaused == pause){
+            return;
+        }
+        globalPaused = pause;
+        // 遍历所有caster尝试推发缓存的请求
+        if (!globalPaused) {
+            for (Caster c : casters) {
+                if (!c.isPaused()) {
+                    c.driveReqs();
+                }
+            }
+        }
+    }
+
+    /**
+     * 设置本caster暂停。
+     * @param pause true暂停，false取消暂停
+     * 暂停后该caster的请求均不会下发而是会被缓存，直到暂停被取消。
+     * */
+    protected void setPause(boolean pause){
+        if (paused == pause){
+            return;
+        }
+        paused = pause;
+        if (!isPaused()){
+            driveReqs();
+        }
+    }
+
+    /**
+     * 请求是否已暂停
+     * */
+    private boolean isPaused(){
+        return paused || globalPaused;
+    }
+
+    /**
+     * 推发缓存的请求
+     * */
+    private void driveReqs(){
+        for (Session s : cachedSessions){
+            req(s.req, s.processor, s.resultListener, s.reqParas);
+        }
+        cachedSessions.clear();
+    }
+
+
     /**会话处理器*/
     protected interface SessionProcessor<T>{
         /**
@@ -654,31 +679,15 @@ public abstract class Caster<T extends Enum<T>> implements
         private T req;
         private SessionProcessor<T> processor;
         private IResultListener resultListener;
+        private Object[] reqParas;
 
-        public Session(T req, SessionProcessor<T> processor, IResultListener resultListener) {
+        public Session(T req, SessionProcessor<T> processor, IResultListener resultListener, Object[] reqParas) {
             id = sessionCount++;
             this.req = req;
             this.processor = processor;
             this.resultListener = resultListener;
+            this.reqParas = reqParas;
         }
-    }
-
-    /*
-    * NOTE: 对于CancelSession检查缓存中是否存在Session，若不存在则下发，否则才缓存。
-    * */
-    private class CancelSession{
-        private T req;
-        private IResultListener resultListener;
-    }
-
-    private class SetRequest{
-        private T set;
-        private Object[] paras;
-    }
-
-    private class GetRequest{
-        private T get;
-        private Object[] paras;
     }
 
 }
