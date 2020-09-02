@@ -36,6 +36,26 @@ public abstract class Caster<T extends Enum<T>> implements
     private static Set<String> modules = new HashSet<>();
     private String msgPrefix;
 
+    private static Set<Caster>casters = new LinkedHashSet<>();
+
+    /**
+     * 是否所有模块请求已暂停。
+     * 仅当(!allPaused && !paused)时请求才发出，否则暂存直到满足(!allPaused && !paused)。
+     * */
+    private static boolean allPaused;
+
+    /**
+     * 是否本模块请求已暂停。
+     * 仅当(!allPaused && !paused)时请求才发出，否则暂存直到满足(!allPaused && !paused)。
+     * */
+    private boolean paused;
+
+    /**
+     * 缓存的请求
+     * */
+    private Set<Object> cachedReqs = new LinkedHashSet<>();
+
+
     private ListenerLifecycleObserver listenerLifecycleObserver = ListenerLifecycleObserver.getInstance();
     private ListenerLifecycleObserver.Callback ListenerLifecycleObserverCb = new ListenerLifecycleObserver.Callback(){
         @Override
@@ -115,6 +135,8 @@ public abstract class Caster<T extends Enum<T>> implements
         if (ntfListenerTypes != null) {
             listenerType2CaredNtfMap.putAll(ntfListenerTypes);
         }
+
+        casters.add(this);
     }
 
     /**
@@ -122,16 +144,6 @@ public abstract class Caster<T extends Enum<T>> implements
      * */
     protected Map<Class<? extends ILifecycleOwner>, T[]> regNtfListener(){return null;}
 
-
-    /**
-     * 是否已暂停。
-     * */
-    private static boolean paused;
-
-    /**
-     * 缓存的请求
-     * */
-    private static Set<Object> cachedRequests = new LinkedHashSet<>();
 
     /**
      * 暂停。
