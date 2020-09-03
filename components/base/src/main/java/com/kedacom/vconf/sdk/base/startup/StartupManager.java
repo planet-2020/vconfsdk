@@ -1,7 +1,6 @@
 package com.kedacom.vconf.sdk.base.startup;
 
 import android.app.Application;
-import android.content.Context;
 import android.os.Handler;
 
 import androidx.annotation.NonNull;
@@ -12,27 +11,27 @@ import com.kedacom.vconf.sdk.amulet.CrystalBall;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.EmAuthType;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.EmClientAppType;
-import com.kedacom.vconf.sdk.base.startup.bean.transfer.EmNetTransportType;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.MtLoginMtParam;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.TMTLoginMtResult;
 import com.kedacom.vconf.sdk.common.bean.TerminalType;
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
 import com.kedacom.vconf.sdk.utils.file.FileHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
-import com.kedacom.vconf.sdk.utils.net.NetworkHelper;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.io.File;
-import java.util.Objects;
 
 
 public class StartupManager extends Caster<Msg> {
     private static StartupManager instance = null;
     private Application context;
 
-    private boolean started;
+    private int state = Idle;
+    private static final int Idle = 0;
+    private static final int Starting = 1;
+    private static final int StartSuccess = 2;
+    private static final int StartFailed = 3;
+
 
     private StartupManager(Application ctx) {
         context = ctx;
@@ -49,36 +48,51 @@ public class StartupManager extends Caster<Msg> {
     /**
      * 启动，完成一些初始化的工作。
      * @param type 终端类型
-     * @param resultListener onSuccess null
-     *                       onFailed
+     * @param resultListener onSuccess(null);
+     *                       onFailed(
+     *                       {@link SUResultCode#StartInProgress},null
+     *                       / {@link SUResultCode#StartedAlready},null
+     *                       / {@link SUResultCode#StartMtSdkFailed},null
+     *                       );
+     *                       onTimeout();
      * */
     public void start(TerminalType type, @NonNull IResultListener resultListener){
-        if (started) {
-            KLog.p(KLog.WARN, "started yet!");
-            reportSuccess(null, resultListener);
+        if (state == Starting) {
+            KLog.p(KLog.ERROR, "starting...");
+            reportFailed(SUResultCode.StartInProgress, resultListener);
             return;
         }
+        if (state == StartSuccess) {
+            KLog.p(KLog.ERROR, "started already!");
+            reportFailed(SUResultCode.StartedAlready, resultListener);
+            return;
+        }
+
+        state = Starting;
 
         // 设置业务组件工作空间
         String ywzjWorkSpace = FileHelper.getPath(FileHelper.Location.EXTERNAL, FileHelper.Type.COMMON, "ywzj");
         req(Msg.SetMtWorkspace, null, null, ywzjWorkSpace);
 
+        // 启动过程中禁止下发请求
+        disableReqGlobally(true);
+
         // 启动业务组件基础模块
         EmMtModel model = ToDoConverter.toTransferObj(type);
-        req(Msg.StartMtBase, new SessionProcessor<Msg>() {
+        req(true, true, Msg.StartMtBase, new SessionProcessor<Msg>() {
             @Override
             public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
                // 启用业务组件保存日志到文件的功能
-                req(Msg.MtLogToFile, null, null, true);
+                req(true, true, Msg.MtLogToFile, null, null, true);
 
                 new Handler().postDelayed(() -> {
                 // 启动业务组件sdk
-                req(Msg.StartMtSdk, new SessionProcessor<Msg>() {
+                req(true, true, Msg.StartMtSdk, new SessionProcessor<Msg>() {
 
                         @Override
                         public void onReqSent(IResultListener resultListener1, Msg req1, Object[] reqParas1, Object output) {
                             // 设置业务组件sdk回调
-                            req(Msg.SetMtSdkCallback, null, null, (IMtcCallback) msg -> {
+                            req(true, true, Msg.SetMtSdkCallback, null, null, (IMtcCallback) msg -> {
                                 try {
                                     JSONObject mtapi = new JSONObject(msg);
                                     String msgId = mtapi.getJSONObject("head").getString("eventname");
@@ -98,12 +112,25 @@ public class StartupManager extends Caster<Msg> {
 
                         @Override
                         public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener1, Msg req1, Object[] reqParas1, boolean[] isConsumed) {
+                            // 取消禁令
+                            disableReqGlobally(false);
+
                             boolean startSdkSuccess = ((TMTLoginMtResult) rspContent).bLogin;
                             if (startSdkSuccess){
+                                state = StartSuccess;
                                 reportSuccess(null, resultListener1);
                             }else{
-                                reportFailed(-1, resultListener1);
+                                state = StartFailed;
+                                reportFailed(SUResultCode.StartMtSdkFailed, resultListener);
                             }
+                        }
+
+                        @Override
+                        public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                            // 取消禁令
+                            disableReqGlobally(false);
+
+                            state = StartFailed;
                         }
                     },
 
@@ -121,21 +148,6 @@ public class StartupManager extends Caster<Msg> {
 
         }, resultListener, model, type.getVal(), "v0.1.0");
 
-        started = true;
-    }
-
-
-    private EmNetTransportType convertTransType(int type){
-        switch (type){
-            case NetworkHelper.TRANS_ETHERNET:
-                return EmNetTransportType.EthnetCard1;
-            case NetworkHelper.TRANS_WIFI:
-                return EmNetTransportType.Wifi;
-            case NetworkHelper.TRANS_CELLULAR:
-                return EmNetTransportType.MobileData;
-            default:
-                return EmNetTransportType.None;
-        }
     }
 
 }

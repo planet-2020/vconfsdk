@@ -49,8 +49,6 @@ public class LoginManager extends Caster<Msg> {
 
     private static ExecutorService executor = Executors.newCachedThreadPool();
 
-    private boolean serviceStarted;
-
     private boolean loggedIn;
 
     private LoginManager(Application ctx) {
@@ -67,17 +65,24 @@ public class LoginManager extends Caster<Msg> {
 
     // 启动业务组件接入服务
     private void startService(){
+        // 启动服务过程中该模块其它请求禁止下发
+        disableReq(true);
+
         String serviceName = "rest";
-        req(Msg.StartMtService, new SessionProcessor<Msg>() {
+        req(false, true, Msg.StartMtService, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                // 取消禁令
+                disableReq(false);
+
                 TSrvStartResult result = (TSrvStartResult) rspContent;
-                serviceStarted = result.MainParam.basetype && result.AssParam.achSysalias.equals(serviceName);
-                if (serviceStarted){
-                    KLog.p("start %s service success!", serviceName);
+                boolean serviceStarted = result.MainParam.basetype && result.AssParam.achSysalias.equals(serviceName);
+                if (!serviceStarted){
+                    KLog.p(KLog.ERROR,"start service %s failed!", serviceName);
                 }
             }
         }, null , serviceName);
+
     }
 
 
@@ -92,9 +97,6 @@ public class LoginManager extends Caster<Msg> {
      *                       失败返回错误码。
      * */
     public void loginAps(@NonNull String apsAddr, @NonNull String username, @NonNull String password, IResultListener resultListener){
-        if (!serviceStarted){
-            startService();  // TODO改为请求缓存机制
-        }
         if (loggedIn){
             reportSuccess(null, resultListener);
             return;

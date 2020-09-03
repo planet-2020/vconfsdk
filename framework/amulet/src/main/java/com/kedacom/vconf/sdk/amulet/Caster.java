@@ -1,7 +1,6 @@
 package com.kedacom.vconf.sdk.amulet;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.lifecycle.Lifecycle;
 
 import com.kedacom.vconf.sdk.utils.lang.ClassHelper;
@@ -10,13 +9,13 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 
@@ -29,7 +28,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     private final Set<Session> sessions = new LinkedHashSet<>();
     private final Map<Class<? extends ILifecycleOwner>, T[]> listenerType2CaredNtfMap = new HashMap<>();
-    private final Map<T, Set<ILifecycleOwner>> ntfListenersMap = new LinkedHashMap<>();
+    private final Map<T, Set<ILifecycleOwner>> ntfListeners = new LinkedHashMap<>();
 
     private Class<T> enumT;
 
@@ -38,15 +37,9 @@ public abstract class Caster<T extends Enum<T>> implements
 
     private static Set<Caster>casters = new LinkedHashSet<>();
 
-    private static boolean globalPaused;
+    private static boolean reqGloballyDisabled;
 
-    private boolean paused;
-
-    /**
-     * 缓存的请求
-     * */
-    private Set<Session> cachedSessions = new LinkedHashSet<>();
-
+    private boolean reqDisabled;
 
     private ListenerLifecycleObserver listenerLifecycleObserver = ListenerLifecycleObserver.getInstance();
     private ListenerLifecycleObserver.Callback ListenerLifecycleObserverCb = new ListenerLifecycleObserver.Callback(){
@@ -118,7 +111,7 @@ public abstract class Caster<T extends Enum<T>> implements
                 if (notificationFairy.subscribe(this, ntfId)){
                     String val = unprefix(ntfId);
                     T ntf = Enum.valueOf(enumT, val);
-                    ntfListenersMap.put(ntf, new HashSet<>());
+                    ntfListeners.put(ntf, new HashSet<>());
                 }
             }
         }
@@ -131,24 +124,28 @@ public abstract class Caster<T extends Enum<T>> implements
         casters.add(this);
     }
 
+
     /**
-     * 注册通知监听器
+     * 发起请求
      * */
-    protected Map<Class<? extends ILifecycleOwner>, T[]> regNtfListener(){return null;}
-
+    protected void req(@NonNull T req, SessionProcessor<T> sessionProcessor, IResultListener resultListener, Object... reqParas){
+        req(false, false, req, sessionProcessor, resultListener, reqParas);
+    }
 
     /**
-     * 会话请求（异步请求）
+     * 发起请求
      * 该接口是异步的不会阻塞调用者，该接口返回不代表请求已执行。
+     * @param ignoreGlobalBan 是否忽略全局性的禁令{@link #disableReqGlobally(boolean)}
+     * @param ignoreBan 是否忽略该Caster的禁令{@link #disableReq(boolean)}
      * @param req 请求消息
-     * @param sessionProcessor 会话处理器。为null则表示不关注响应或没有响应。
+     * @param sessionProcessor 会话处理器。为null则表示不关注请求结果或没有结果反馈，比如设置配置往往不需要反馈结果。
      * @param reqParas 请求参数列表，可以没有。
      * @param resultListener 请求结果监听器。
      *                       NOTE: 会话持有了resultListener的引用，而resultListener可能为生命周期对象如Activity，
      *                       若resultListener生命周期结束于会话之前则会话需要及时释放resultListener引用以避免内存泄漏以及不被用户期望的请求结果回调。
      *                       释放引用有两种方式：手动释放和自动释放。
-     *                       手动释放指用户通过调用{@link #delListener(ILifecycleOwner)}释放，自动释放则由Caster自动管理，目前实现是在resultListener生命周期结束时释放。
-     *                       手动释放很繁琐且易遗漏出错，所以最好由Caster自动释放。
+     *                       手动释放指用户通过调用{@link #delListener(ILifecycleOwner)}释放，自动释放则由Caster自动管理，默认是在resultListener生命周期结束时释放。
+     *                       手动释放很繁琐易出错，所以最好由Caster自动释放。
      *
      *                       在调用本接口时，Caster会尝试监控resultListener的生命周期，进而实现自动释放，但是成功的前提是——
      *                       resultListener需得是生命周期拥有者{@link androidx.lifecycle.LifecycleOwner}或者绑定了某个LifecycleOwner，
@@ -188,6 +185,7 @@ public abstract class Caster<T extends Enum<T>> implements
      *                                                                                                                 IResultListener1也自动绑定了WelcomeActivity的生命周期，用户无需手动释放。
      *                                                ......
      *                       }
+     *                       此例中，如果您使用类似ButterKnife框架，OnClickListener的中间类可以略去，这样IResultListener0的直接外部类就变成了WelcomeActivity。
      *
      *                       例三：未绑定生命周期对象+手动释放：
      *                       {@code
@@ -209,62 +207,65 @@ public abstract class Caster<T extends Enum<T>> implements
      *                       如果用户的监听器本身就是一个长寿对象（如一个全局单例），肯定长过session的生命周期，则无需关注生命周期问题；
      *                       当session结束时（session一定会结束，有超时机制），Caster会自动释放监听器引用，所以多数情况下即使不做任何处理现象上也不会表现出问题，但逻辑上是有问题的，在某些极端场景下会表现异常；
      * */
-    protected void req(@NonNull T req, SessionProcessor<T> sessionProcessor, IResultListener resultListener, Object... reqParas){
-        Session s = new Session(req, sessionProcessor, resultListener, reqParas);
-        if (isPaused()){
-            KLog.p(KLog.WARN, "caster paused");
-            cachedSessions.add(s);
+    protected void req(boolean ignoreGlobalBan, boolean ignoreBan,
+                       @NonNull T req, SessionProcessor<T> sessionProcessor, IResultListener resultListener, Object... reqParas){
+        Session s = new Session(ignoreBan, req, sessionProcessor, resultListener, reqParas);
+        sessions.add(s);
+        if (reqGloballyDisabled && !ignoreGlobalBan){
+            KLog.p(KLog.WARN, "reqGloballyDisabled, session %s cached, req=%s", s.id, req);
+            s.state = Session.Paused;
             return;
         }
+        if (reqDisabled && !ignoreBan){
+            KLog.p(KLog.WARN, "reqDisabled, session %s cached, req=%s", s.id, req);
+            s.state = Session.Paused;
+            return;
+        }
+
         String reqId = prefix(req.name());
         if (!sessionFairy.req(this, reqId, s.id, reqParas)){
             KLog.p(KLog.ERROR, "%s failed", req);
+            sessions.remove(s);
             return;
         }
-        sessions.add(s);
+        s.state = Session.Working;
         listenerLifecycleObserver.tryObserve(resultListener, ListenerLifecycleObserverCb);
         KLog.p(KLog.DEBUG,"req=%s, sid=%s, sessionProcessor=%s, resultListener=%s", req, s.id, sessionProcessor, resultListener);
     }
 
+
     /**
-     * 取消会话。
-     * @param req 请求消息
-     * @param resultListener 结果监听器，为null则取消所有请求消息为req的会话。
+     * 取消请求
+     * @param req 请求消息，为null则取消所有结果监听器为resultListener的请求。
+     * @param resultListener 结果监听器，为null则取消所有请求消息为req的请求。
+     *                       若req和resultListener均为null则取消所有请求。
      * */
-    protected void cancelReq(@NonNull T req, IResultListener resultListener){
+    protected void cancelReq(T req, IResultListener resultListener){
+        KLog.p(KLog.DEBUG,"req=%s, resultListener=%s", req, resultListener);
         Iterator<Session> it = sessions.iterator();
         while (it.hasNext()){
             Session s = it.next();
-            if (req == s.req
-                    && (null==resultListener || resultListener==s.resultListener)){
-                KLog.p(KLog.DEBUG,"cancel req=%s, sid=%s, sessionProcessor=%s, listener=%s", req, s.id, s.processor, s.resultListener);
+            if ((null==req || req == s.req) && (null==resultListener || resultListener==s.resultListener)){
+                KLog.p(KLog.DEBUG,"cancel req=%s, sid=%s, sessionProcessor=%s, listener=%s", s.req, s.id, s.processor, s.resultListener);
                 it.remove();
-                sessionFairy.cancelReq(s.id);
+                if (s.state == Session.Working) {
+                    sessionFairy.cancelReq(s.id);
+                }
+                s.state = Session.End;
+                if (!containsListener(s.resultListener)){
+                    listenerLifecycleObserver.unobserve(s.resultListener);
+                }
             }
         }
-        if (!containsListener(resultListener)){
-            listenerLifecycleObserver.unobserve(resultListener);
-        }
-    }
-
-    /**
-     * 取消所有会话。
-     * */
-    protected void cancelAllReqs(){
-        for (Session s : sessions) {
-            sessionFairy.cancelReq(s.id);
-            if (!containsNtfListener(s.resultListener)){
-                listenerLifecycleObserver.unobserve(s.resultListener);
-            }
-        }
-        sessions.clear();
     }
 
 
     /**
      * 添加通知监听器
      * @param listeners 通知监听器列表。
-     *                  NOTE: Caster会尝试监测该监听器的生命周期，并做相应处理，
+     *                  NOTE:
+     *                  1、Caster必须先注册通知监听器类型{@link #regNtfListener()}，只有注册过的类型才能被添加；
+     *                  2、Caster会尝试监测该监听器的生命周期，并做相应处理，
      *                  参见{@link #req(Enum, SessionProcessor, IResultListener, Object...)}}对IResultListener的处理。
      *                  NOTE：若ntfListener是lambda，则cater可能无法获取其直接外部类，不同于内部类必定持有外部类的引用，
      *                  lambda是否持有外部类的引用取决于lambda中是否引用了外部类或者外部类的成员，
@@ -289,7 +290,7 @@ public abstract class Caster<T extends Enum<T>> implements
             }
 
             for (T ntf : ntfs){
-                Set<ILifecycleOwner> listenerSet = ntfListenersMap.get(ntf);
+                Set<ILifecycleOwner> listenerSet = ntfListeners.get(ntf);
                 if (null == listenerSet){
                     KLog.p(KLog.ERROR, "no such ntf %s", ntf);
                     return;
@@ -303,62 +304,52 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
     /**
-     * 删除监听器。
-     * NOTE：该接口会删除该listener注册的所有监听器，包括各个请求结果监听器，通知监听器。
-     * */
-    public void delListener(@NonNull ILifecycleOwner listener){
-        delNtfListener(null, listener);
-        if (listener instanceof IResultListener){
-            delResultListener((IResultListener) listener);
-        }
-    }
-
-
-    /**
      * 删除通知监听器
-     * @param ntfs 监听器监听的通知（一个监听器可能监听多个通知）。若为null则表示任意通知。
-     * @param listener 通知监听器。要删除的监听器对象。若为null则表示任意监听器。
-     *                 NOTE: 若ntfs和listener同时为null则删除所有通知监听器。
+     * @param listener 要删除的通知监听器。若为null则表示删除所有通知监听器。
      * */
-    protected void delNtfListener(@Nullable T[] ntfs, @Nullable ILifecycleOwner listener){
-        Set<T> ntfSet = new HashSet<>();
-        if (ntfs != null){
-            Collections.addAll(ntfSet, ntfs);
-        }else{
-            ntfSet.addAll(ntfListenersMap.keySet());
-        }
-
-        for (T ntf : ntfSet){
-            Set<ILifecycleOwner> ntfListeners = ntfListenersMap.get(ntf);
-            if (null == ntfListeners) {
-                continue;
-            }
+    public void delNtfListener(ILifecycleOwner listener){
+        for (Map.Entry<T, Set<ILifecycleOwner>> entry : ntfListeners.entrySet()){
+            T ntf = entry.getKey();
+            Set<ILifecycleOwner> listenerSet = entry.getValue();
             if (null != listener) {
-                KLog.p(KLog.DEBUG, "delete ntfListener, ntf=%s, listener=%s", ntf, listener);
-                ntfListeners.remove(listener);
+                KLog.p(KLog.DEBUG, "delete ntfListener: ntf=%s, listener=%s", ntf, listener);
+                listenerSet.remove(listener);
             }else{
-                KLog.p(KLog.DEBUG, "clear ntfListener, ntf=%s", ntf);
-                ntfListeners.clear();
+                KLog.p(KLog.DEBUG, "clear ntfListener: ntf=%s", ntf);
+                listenerSet.clear();
             }
         }
 
-        if(null != listener && !containsListener(listener)){
+        if( !(listener instanceof IResultListener && containsRspListener((IResultListener) listener)) ){
             listenerLifecycleObserver.unobserve(listener);
         }
     }
 
+
     /**
-     * 删除结果监听器
+     * 删除请求结果监听器
+     * @param listener 要删除的请求结果监听器。若为null则表示删除所有请求结果监听器。
      * */
-    protected void delResultListener(@NonNull IResultListener listener){
+    public void delResultListener(IResultListener listener){
         for (Session s : sessions) {
-            if (listener == s.resultListener) {
-                KLog.p(KLog.DEBUG, "delete result listener, req=%s, sid=%s, listener=%s", s.req, s.id, s.resultListener);
+            if (listener==null || listener == s.resultListener) {
+                KLog.p(KLog.DEBUG, "delete result listener: req=%s, sid=%s, listener=%s", s.req, s.id, s.resultListener);
                 s.resultListener = null; // 保留会话，仅删除监听器
             }
         }
-        if(!containsListener(listener)){
+        if(!containsNtfListener(listener)){
             listenerLifecycleObserver.unobserve(listener);
+        }
+    }
+
+
+    /**
+     * 删除监听器。
+     * */
+    public void delListener(@NonNull ILifecycleOwner listener){
+        delNtfListener(listener);
+        if (listener instanceof IResultListener){
+            delResultListener((IResultListener) listener);
         }
     }
 
@@ -377,7 +368,7 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
     protected boolean containsNtfListener(ILifecycleOwner listener){
-        for (Set<ILifecycleOwner> listeners : ntfListenersMap.values()){
+        for (Set<ILifecycleOwner> listeners : ntfListeners.values()){
             if (listeners.contains(listener)){
                 return true;
             }
@@ -413,7 +404,9 @@ public abstract class Caster<T extends Enum<T>> implements
         }
         if (!hasRsp){
             sessions.remove(s);
-            listenerLifecycleObserver.unobserve(resultListener);
+            if (!containsListener(resultListener)) {
+                listenerLifecycleObserver.unobserve(resultListener);
+            }
         }
     }
 
@@ -431,7 +424,9 @@ public abstract class Caster<T extends Enum<T>> implements
             if (isConsumed[0]){
                 if (bLast){
                     sessions.remove(s);
-                    listenerLifecycleObserver.unobserve(resultListener);
+                    if (!containsListener(resultListener)) {
+                        listenerLifecycleObserver.unobserve(resultListener);
+                    }
                 }
             }
             return isConsumed[0];
@@ -445,21 +440,19 @@ public abstract class Caster<T extends Enum<T>> implements
         T req = Enum.valueOf(enumT, unprefix(reqId));
         Session s = getSession(reqSn);
         IResultListener resultListener = s.resultListener;
-        listenerLifecycleObserver.unobserve(resultListener);
         KLog.p(KLog.DEBUG,"req=%s, sid=%s, resultListener=%s", req, s.id, resultListener);
         SessionProcessor<T> processor = s.processor;
         boolean[] isConsumed = new boolean[]{false};
         if (null != processor){
             processor.onTimeout(resultListener, req, reqParas, isConsumed);
         }
-        sessions.remove(s);
-
         if (!isConsumed[0]){
             // 超时未被消费则此处通知用户超时
-            if (resultListener != null) {
-                resultListener.onArrive(false);
-                resultListener.onTimeout();
-            }
+            reportTimeout(resultListener);
+        }
+        sessions.remove(s);
+        if (!containsListener(resultListener)) {
+            listenerLifecycleObserver.unobserve(resultListener);
         }
     }
 
@@ -467,9 +460,9 @@ public abstract class Caster<T extends Enum<T>> implements
     @Override
     public void onNtf(String ntfId, Object ntfContent) {
         T ntf = Enum.valueOf(enumT, unprefix(ntfId));
-        Set<ILifecycleOwner> listeners = ntfListenersMap.get(ntf);
+        Set<ILifecycleOwner> listeners = ntfListeners.get(ntf);
         StringBuilder sb = new StringBuilder();
-        for (Object listener : listeners) {
+        for (ILifecycleOwner listener : Objects.requireNonNull(listeners)) {
             sb.append(listener).append("\n");
         }
         KLog.p(KLog.DEBUG,"ntf=%s, ntfContent=%s\nlisteners=%s", ntf, ntfContent, sb.toString());
@@ -582,9 +575,17 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
     /**
-     * 通知抵达
+     * 注册通知监听器
      * 若要处理通知需override此方法。
-     * @param ntf 通知
+     * @return 通知监听器类型到负责处理的通知类型的映射。
+     * */
+    protected Map<Class<? extends ILifecycleOwner>, T[]> regNtfListener(){return null;}
+
+
+    /**
+     * 通知抵达
+     * 若要处理通知需override此方法以及{@link #regNtfListener()}
+     * @param ntf 通知消息
      * @param ntfContent 通知内容，具体类型由通知消息决定
      * @param ntfListeners 通知监听器集合
      * */
@@ -592,55 +593,60 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
     /**
-     * 设置全局暂停
-     * @param pause true暂停，false取消暂停
-     * 暂停后所有caster的请求均不会下发而是会被缓存，直到暂停被取消。
+     * 设置是否禁止下发请求（全局性，针对所有caster）。
+     * 若禁止则所有caster的请求不会下发而是会被缓存，直到禁令解除。
+     * 默认不禁止。
+     * NOTE：一般情况下仅当全局禁令和模块禁令都解除时请求才会下发；
+     *      但是，用户可以在请求时指明忽略禁令{@link #req(boolean, boolean, Enum, SessionProcessor, IResultListener, Object...)}
      * */
-    protected static void setGlobalPause(boolean pause){
-        if (globalPaused == pause){
+    protected static void disableReqGlobally(boolean disable){
+        if (reqGloballyDisabled == disable){
             return;
         }
-        globalPaused = pause;
-        // 遍历所有caster尝试推发缓存的请求
-        if (!globalPaused) {
+        KLog.p("disable=%s", disable);
+        reqGloballyDisabled = disable;
+        if (!reqGloballyDisabled) {
+            // 禁令解除，尝试下发缓存的请求
             for (Caster c : casters) {
-                if (!c.isPaused()) {
-                    c.driveReqs();
-                }
+                c.driveReqs();
             }
         }
     }
 
     /**
-     * 设置本caster暂停。
-     * @param pause true暂停，false取消暂停
-     * 暂停后该caster的请求均不会下发而是会被缓存，直到暂停被取消。
+     * 设置是否禁止下发请求（仅针对本caster）。
+     * 若禁止则该caster的请求不会下发而是会被缓存，直到禁令解除。
+     * 默认不禁止。
+     * NOTE：仅当全局禁令和模块禁令都解除时请求才会下发；
+     *      用户可以在请求时指明忽略禁令{@link #req(boolean, boolean, Enum, SessionProcessor, IResultListener, Object...)}
      * */
-    protected void setPause(boolean pause){
-        if (paused == pause){
+    protected void disableReq(boolean disable){
+        if (reqDisabled == disable){
             return;
         }
-        paused = pause;
-        if (!isPaused()){
+        KLog.p("disable=%s", disable);
+        reqDisabled = disable;
+        if (!reqDisabled && !reqGloballyDisabled){
+            // 禁令解除，尝试下发缓存的请求
             driveReqs();
         }
-    }
-
-    /**
-     * 请求是否已暂停
-     * */
-    private boolean isPaused(){
-        return paused || globalPaused;
     }
 
     /**
      * 推发缓存的请求
      * */
     private void driveReqs(){
-        for (Session s : cachedSessions){
-            req(s.req, s.processor, s.resultListener, s.reqParas);
+        Set<Session> pausedSessions = new LinkedHashSet<>();
+        for (Session s : sessions){
+            if (s.state == Session.Paused && (!reqDisabled || s.ignoreBan)) {
+                pausedSessions.add(s);
+            }
         }
-        cachedSessions.clear();
+        sessions.removeAll(pausedSessions);
+        for (Session s : pausedSessions) {
+            KLog.p("drive cached session %s", s.id);
+            req(false, s.ignoreBan, s.req, s.processor, s.resultListener, s.reqParas);
+        }
     }
 
 
@@ -649,7 +655,8 @@ public abstract class Caster<T extends Enum<T>> implements
         /**
          * 请求已发出。（业务组件接口已调用完成）
          * @param resultListener 结果监听器,req()传入。
-         *                 NOTE: 可能为null。如用户传入即为null，或者会话过程中监听器被销毁，
+         *                 NOTE: 可能为null，如用户传入即为null，
+         *                       或者会话过程中监听器被解绑，参见：{@link #req(Enum, SessionProcessor, IResultListener, Object...)}
          * @param req 请求消息，req()传入。
          * @param reqParas 请求参数列表，req()传入，顺序同传入时的
          * @param output  传出参数。有些业务组件接口会通过传出参数反馈结果而非响应消息，比如获取本地配置。
@@ -666,8 +673,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
         /**
          * 会话超时
-         * @param isConsumed 是否已被消费。出参。默认是已消费。
-         * @return 是否已被消费。出参。true已消费，默认是false。若未消费则Caster会接管处理——上报用户已超时。
+         * @param isConsumed 超时消息是否已被消费，出参，默认是未消费。若未消费则Caster会接管处理——上报用户已超时。
          * */
         default void onTimeout(IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
     }
@@ -676,13 +682,20 @@ public abstract class Caster<T extends Enum<T>> implements
     private static int sessionCount;
     private class Session {
         private int id;
+        private boolean ignoreBan;
         private T req;
         private SessionProcessor<T> processor;
         private IResultListener resultListener;
         private Object[] reqParas;
+        private int state = Idle;
+        static final int Idle = 0;
+        static final int Working = 1;
+        static final int Paused = 2;
+        static final int End = 3;
 
-        public Session(T req, SessionProcessor<T> processor, IResultListener resultListener, Object[] reqParas) {
+        public Session(boolean ignoreBan, T req, SessionProcessor<T> processor, IResultListener resultListener, Object[] reqParas) {
             id = sessionCount++;
+            this.ignoreBan = ignoreBan;
             this.req = req;
             this.processor = processor;
             this.resultListener = resultListener;

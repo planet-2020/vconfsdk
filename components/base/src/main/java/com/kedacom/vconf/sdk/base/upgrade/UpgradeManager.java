@@ -65,14 +65,20 @@ public class UpgradeManager extends Caster<Msg> {
 
     // 启动业务组件升级服务
     private void startService(){
+        // 启动服务过程中该模块其它请求禁止下发
+        disableReq(true);
+
         String serviceName = "upgrade";
-        req(Msg.StartMtService, new SessionProcessor<Msg>() {
+        req(false, true, Msg.StartMtService, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                // 取消禁令
+                disableReq(false);
+
                 TSrvStartResult result = (TSrvStartResult) rspContent;
                 boolean success = result.MainParam.basetype && result.AssParam.achSysalias.equals(serviceName);
-                if (success){
-                    KLog.p("start %s service success!", serviceName);
+                if (!success){
+                    KLog.p(KLog.ERROR,"start service %s failed!", serviceName);
                 }
             }
         }, null , serviceName);
