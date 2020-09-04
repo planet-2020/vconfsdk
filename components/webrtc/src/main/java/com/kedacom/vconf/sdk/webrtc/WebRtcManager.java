@@ -885,12 +885,11 @@ public class WebRtcManager extends Caster<Msg>{
                         .collect(Collectors.toList());
 
                 boolean selfFilled = myself.mcuId != 0 && myself.terId != 0;
-                if (!selfFilled){
-                    // 己端我们拎出来特殊对待
-                    Conferee self = Stream.of(presentConferees).filter(Conferee::isMyself).findFirst().orElse(null);
-                    if (self != null) {
+                Conferee self = Stream.of(presentConferees).filter(Conferee::isMyself).findFirst().orElse(null);
+                if (self != null) {
+                    presentConferees.remove(self);
+                    if (!selfFilled){
                         myself.fill(self.mcuId, self.terId, self.alias, self.email);
-                        presentConferees.remove(self);
                     }
                 }
 
