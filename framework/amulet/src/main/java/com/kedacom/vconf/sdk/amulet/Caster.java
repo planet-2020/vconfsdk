@@ -295,9 +295,13 @@ public abstract class Caster<T extends Enum<T>> implements
                     KLog.p(KLog.ERROR, "no such ntf %s", ntf);
                     return;
                 }
-                KLog.p(KLog.DEBUG,"ntf=%s, ntfListener=%s", ntf, listener);
-                listenerSet.add(listener);
-                listenerLifecycleObserver.tryObserve(listener, ListenerLifecycleObserverCb);
+                if (!listenerSet.contains(listener)) {
+                    KLog.p(KLog.DEBUG, "ntf=%s, ntfListener=%s", ntf, listener);
+                    listenerSet.add(listener);
+                    listenerLifecycleObserver.tryObserve(listener, ListenerLifecycleObserverCb);
+                }else{
+                    KLog.p(KLog.ERROR, "listener %s has already added for %s", listener, ntf);
+                }
             }
         }
     }
