@@ -230,50 +230,63 @@ public final class DataCollaborateManager extends Caster<Msg> {
      * NOTE: 请务必在登录APS成功后登录数据协作！（登录APS的接口在其他模块）
      **/
     public void login(ETerminalType terminalType, IResultListener resultListener){
-        TDCSSrvState srvState = (TDCSSrvState) get(Msg.GetState);
-        if (null != srvState && EmServerState.emSrvLogin_Succ == srvState.emState){
-            KLog.p(KLog.WARN, "already logined!");
-            // 已登录状态则直接返回成功（若此状态下直接请求登录下层不会有任何响应 (─.─||| ）
-            if (null != resultListener) reportSuccess(null, resultListener);
-            return;
-        }
-        TDCSSvrAddr svrAddr = (TDCSSvrAddr) get(Msg.GetServerAddr);
-        if (null == svrAddr){
-            KLog.p(KLog.ERROR, "can not fetch DCS server address, have you logined APS yet? ");
-            if (null != resultListener) reportFailed(DcErrorCode.GetServerAddrFailed, resultListener);
-            return;
-        }
-        curTerminalType = ToDoConverter.toTransferObj(terminalType);
-        String ip = null;
-        try {
-            // 将整型ip转为点分十进制
-            ip = InetAddresses.fromLittleEndianByteArray(Ints.toByteArray((int) svrAddr.dwIp)).getHostAddress();
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        }
-
-        req(Msg.Login, new SessionProcessor<Msg>() {
+        req(Msg.GetState, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                switch (rsp){
-                    case LoginLinkStateChanged:
-                        TDCSConnectResult result = (TDCSConnectResult) rspContent;
-                        if (!result.bSuccess) { // 链路建立失败
-                            cancelReq(Msg.Login, resultListener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
-                            reportFailed(DcErrorCode.BuildLink4LoginFailed, resultListener);
-                        }
-                        break;
-                    case LoginRsp:
-                        TDCSResult loginRes = (TDCSResult) rspContent;
-                        if (loginRes.bSuccess) {
-                            reportSuccess(null, resultListener);
-                        }else{
-                            reportFailed(DcErrorCode.fromTransfer(loginRes.dwErrorCode), resultListener);
-                        }
-                        break;
+            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
+                TDCSSrvState srvState = (TDCSSrvState) output;
+                if (null != srvState && EmServerState.emSrvLogin_Succ == srvState.emState){
+                    KLog.p(KLog.WARN, "already logined!");
+                    // 已登录状态则直接返回成功（若此状态下直接请求登录下层不会有任何响应 (─.─||| ）
+                    reportSuccess(null, resultListener);
+                    return;
                 }
+
+                req(Msg.GetServerAddr, new SessionProcessor<Msg>() {
+                    @Override
+                    public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
+                        TDCSSvrAddr svrAddr = (TDCSSvrAddr) output;
+                        if (null == svrAddr){
+                            KLog.p(KLog.ERROR, "can not fetch DCS server address, have you logined APS yet? ");
+                            reportFailed(DcErrorCode.GetServerAddrFailed, resultListener);
+                            return;
+                        }
+
+                        curTerminalType = ToDoConverter.toTransferObj(terminalType);
+                        String ip = null;
+                        try {
+                            // 将整型ip转为点分十进制
+                            ip = InetAddresses.fromLittleEndianByteArray(Ints.toByteArray((int) svrAddr.dwIp)).getHostAddress();
+                        } catch (UnknownHostException e) {
+                            e.printStackTrace();
+                        }
+
+                        req(Msg.Login, new SessionProcessor<Msg>() {
+                            @Override
+                            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                switch (rsp){
+                                    case LoginLinkStateChanged:
+                                        TDCSConnectResult result = (TDCSConnectResult) rspContent;
+                                        if (!result.bSuccess) { // 链路建立失败
+                                            cancelReq(Msg.Login, resultListener);  // 后续不会有DCLoginRsp上来，取消该请求以防等待超时。
+                                            reportFailed(DcErrorCode.BuildLink4LoginFailed, resultListener);
+                                        }
+                                        break;
+                                    case LoginRsp:
+                                        TDCSResult loginRes = (TDCSResult) rspContent;
+                                        if (loginRes.bSuccess) {
+                                            reportSuccess(null, resultListener);
+                                        }else{
+                                            reportFailed(DcErrorCode.fromTransfer(loginRes.dwErrorCode), resultListener);
+                                        }
+                                        break;
+                                }
+                            }
+                        }, resultListener, new TDCSRegInfo(ip, svrAddr.dwPort, curTerminalType));
+                    }
+                }, resultListener);
             }
-        }, resultListener, new TDCSRegInfo(ip, svrAddr.dwPort, curTerminalType));
+        }, resultListener);
+
     }
 
     /**注销数据协作
@@ -333,9 +346,14 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**
      * 当前用户是否正在协作中。
      * */
-    public boolean isCollaborating(){
-        TDCSSrvState srvState = (TDCSSrvState) get(Msg.GetState);
-        return null != srvState && srvState.bInConference;
+    public void isCollaborating(IResultListener resultListener){
+        req(Msg.GetState, new SessionProcessor<Msg>() {
+            @Override
+            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
+                TDCSSrvState srvState = (TDCSSrvState) output;
+                reportSuccess(null != srvState && srvState.bInConference, resultListener);
+            }
+        }, resultListener);
     }
 
 
@@ -401,11 +419,11 @@ public final class DataCollaborateManager extends Caster<Msg> {
                                         unsubscribeNtfListeners();
 
                                         // 注册通知监听器
-                                        subscribeNtfListeners((IOnSynchronizeProgressListener) reqParas[1],
-                                                (IOnSessionEventListener) reqParas[2],
-                                                (IOnOperatorEventListener) reqParas[3],
-                                                (IOnBoardOpListener) reqParas[4],
-                                                (IOnPaintOpListener) reqParas[5]);
+                                        subscribeNtfListeners(synchronizeProgressListener,
+                                                sessionEventListener,
+                                                operatorEventListener,
+                                                boardOpListener,
+                                                paintOpListener);
 
                                         // 同步协作中已有内容
                                         synchronizeCachedStuff(createConfResult);
@@ -426,8 +444,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 }, resultListener,
                 new TDCSCreateConf(ToDoConverter.toTransferObj(confType),
                         confE164, confName, ToDoConverter.toTransferObj(dcMode),
-                        ToDoConverter.toDcUserList(members), adminE164, curTerminalType),
-                synchronizeProgressListener, sessionEventListener, operatorEventListener, boardOpListener, paintOpListener
+                        ToDoConverter.toDcUserList(members), adminE164, curTerminalType)
         );
     }
 
@@ -1377,7 +1394,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
 
 
     @Override
-    protected void onNotification(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
+    protected void onNtf(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
 
         if (paintNtfs.contains(ntf)){
             onPaintNtfs(ntf, ntfContent);
@@ -1668,7 +1685,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
         unsubscribeNtfListeners();
         handler.removeCallbacksAndMessages(null);
         assHandler.removeCallbacksAndMessages(null);
-        cancelAllReqs();
+        cancelReq(null, null);
     }
 
     /**

@@ -181,21 +181,28 @@ public class WebRtcManager extends Caster<Msg>{
 
     // 启动业务组件webrtc服务
     private void startService(){
-        String serviceName = "mtrtcservice";
-        req(Msg.StartMtService, new SessionProcessor<Msg>() {
-            @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                TSrvStartResult result = (TSrvStartResult) rspContent;
-                if (!result.AssParam.achSysalias.equals(serviceName)){
-                    isConsumed[0] = false;
-                    return;
-                }
-                boolean success = result.MainParam.basetype;
-                if (success){
-                    KLog.p("start %s service success!", serviceName);
-                }
-            }
-        }, null , serviceName);
+        req(Msg.StartMtService, null, null , "mtrtcservice");
+//        // 启动服务过程中该模块其它请求禁止下发
+//        disableReq(true);
+//
+//        String serviceName = "rest";
+//        req(false, true, Msg.StartMtService, new SessionProcessor<Msg>() {
+//            @Override
+//            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+//                // 取消禁令
+//                disableReq(false);
+//
+//                TSrvStartResult result = (TSrvStartResult) rspContent;
+//                if (!result.AssParam.achSysalias.equals(serviceName)){
+//                    isConsumed[0] = false;
+//                    return;
+//                }
+//                boolean success = result.MainParam.basetype;
+//                if (!success){
+//                    KLog.p(KLog.ERROR,"start service %s failed!", serviceName);
+//                }
+//            }
+//        }, null , serviceName);
     }
 
 
@@ -210,30 +217,37 @@ public class WebRtcManager extends Caster<Msg>{
      * @param confEventListener 会议事件监听器
      * */
     public void login(@NonNull String e164, @NonNull IResultListener resultListener, @NonNull ConfEventListener confEventListener){
-        TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) get(Msg.GetSvrAddr);
-        if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0){
-            KLog.p(KLog.ERROR, "invalid rtcSvrAddr");
-            reportFailed(-1, resultListener);
-            return;
-        }
-
-        userE164 = e164;
-        rtcSvrAddr.bUsedRtc = true;
-        rtcSvrAddr.achNumber = e164;
-
-        this.confEventListener = confEventListener;
-        req(Msg.Login, new SessionProcessor<Msg>() {
+        req(Msg.GetSvrAddr, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                TRegResultNtf loginResult = (TRegResultNtf) rspContent;
-                int resCode = RtcResultCode.trans(rsp, loginResult.AssParam.basetype);
-                if (RtcResultCode.LoggedIn == resCode) {
-                    reportSuccess(null, resultListener);
-                } else {
-                    reportFailed(resCode, resultListener);
+            public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
+                TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) output;
+                if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0){
+                    KLog.p(KLog.ERROR, "invalid rtcSvrAddr");
+                    reportFailed(-1, resultListener);
+                    return;
                 }
+
+                userE164 = e164;
+                rtcSvrAddr.bUsedRtc = true;
+                rtcSvrAddr.achNumber = e164;
+
+                WebRtcManager.this.confEventListener = confEventListener;
+                req(Msg.Login, new SessionProcessor<Msg>() {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        TRegResultNtf loginResult = (TRegResultNtf) rspContent;
+                        int resCode = RtcResultCode.trans(rsp, loginResult.AssParam.basetype);
+                        if (RtcResultCode.LoggedIn == resCode) {
+                            reportSuccess(null, resultListener);
+                        } else {
+                            reportFailed(resCode, resultListener);
+                        }
+                    }
+                }, resultListener, rtcSvrAddr);
+
             }
-        }, resultListener, rtcSvrAddr);
+        }, resultListener);
+
     }
 
 
@@ -351,7 +365,7 @@ public class WebRtcManager extends Caster<Msg>{
             public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 stopSession();
             }
-        }, resultListener, ToDoConverter.confPara2CreateConference(confPara), EmConfProtocol.emrtc);
+        }, resultListener, ToDoConverter.confPara2CreateConference(confPara));
     }
 
 
@@ -836,7 +850,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     @Override
-    protected void onNotification(Msg ntf, java.lang.Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
+    protected void onNtf(Msg ntf, java.lang.Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
 
         switch (ntf){
             case LoginStateChanged:
@@ -1138,8 +1152,8 @@ public class WebRtcManager extends Caster<Msg>{
         // 所以我们在会议结束时取消掉可能进行中的密码验证请求以解决该问题。
         cancelReq(Msg.VerifyConfPassword, null);
 
-        // 删除所有通知监听器。删除后onNotification不会再回调上来
-        delNtfListeners(null, null);
+        // 删除所有通知监听器
+        delNtfListener(null);
 
         KLog.p("session stopped ");
 
@@ -2767,7 +2781,7 @@ public class WebRtcManager extends Caster<Msg>{
         if (!playItems.isEmpty()) {
             // 因为是全量，所以可能既包含未订阅的的也包含已订阅过的。
             // 对于未订阅过的会触发PCObserver#onTrack，对于已订阅过的下层没有任何消息或者回调反馈
-            set(Msg.SelectStream, new TRtcPlayParam(playItems));
+            req(Msg.SelectStream, null, null, new TRtcPlayParam(playItems));
         }
     }
 

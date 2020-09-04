@@ -76,8 +76,12 @@ public class LoginManager extends Caster<Msg> {
                 disableReq(false);
 
                 TSrvStartResult result = (TSrvStartResult) rspContent;
-                boolean serviceStarted = result.MainParam.basetype && result.AssParam.achSysalias.equals(serviceName);
-                if (!serviceStarted){
+                if (!result.AssParam.achSysalias.equals(serviceName)){
+                    isConsumed[0] = false;
+                    return;
+                }
+                boolean success = result.MainParam.basetype;
+                if (!success){
                     KLog.p(KLog.ERROR,"start service %s failed!", serviceName);
                 }
             }

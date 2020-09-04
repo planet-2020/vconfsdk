@@ -76,7 +76,11 @@ public class UpgradeManager extends Caster<Msg> {
                 disableReq(false);
 
                 TSrvStartResult result = (TSrvStartResult) rspContent;
-                boolean success = result.MainParam.basetype && result.AssParam.achSysalias.equals(serviceName);
+                if (!result.AssParam.achSysalias.equals(serviceName)){
+                    isConsumed[0] = false;
+                    return;
+                }
+                boolean success = result.MainParam.basetype;
                 if (!success){
                     KLog.p(KLog.ERROR,"start service %s failed!", serviceName);
                 }

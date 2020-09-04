@@ -316,26 +316,19 @@ final class SessionFairy implements IFairy.ISessionFairy{
         }
 
         if (outputParaExists){
-            // 补齐出参。 出参比较特殊，用户并不传入出参，导致实参比形参少。
-            Class<?> outputParaClass = userParaClasses[outputParaIndex];
-            Object outputPara;
-            try {
-                Constructor<?> ctor = outputParaClass.getDeclaredConstructor();
-                ctor.setAccessible(true);
-                outputPara = ctor.newInstance();
-            } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
-                e.printStackTrace();
-                throw new RuntimeException(String.format("try construct output para %s failed!", outputParaClass));
-            }
-
+            // 补齐出参。
+            // 出参比较特殊，用户并不传入出参，导致实参比形参少，为方便处理我们补齐。
             List<Object> userParaList = new ArrayList<>();
             Collections.addAll(userParaList, userParas);
-            userParaList.add(outputParaIndex, outputPara);
+            userParaList.add(outputParaIndex, null); // 我们不需要真正创建该出参对象，只需要补个位置
             userParas = userParaList.toArray();
         }
 
         // 校验用户实际传入的参数类型是否匹配注册的参数类型
         for(int i=0; i<userParaClasses.length; ++i){
+            if (i==outputParaIndex){
+                continue; // 出参不校验类型是否匹配，因为实际我们并未传入
+            }
             Class<?> userParaClz = userParaClasses[i];
             Class<?> reqParaClz = userParas[i].getClass();
             if (!(reqParaClz==userParaClz // 同类
@@ -354,7 +347,22 @@ final class SessionFairy implements IFairy.ISessionFairy{
         for (int i=0; i<nativeParas.length; ++i){
             Object userPara = userParas[i];
             Class<?> nativeParaType = nativeParaClasses[i];
-            KLog.p(KLog.DEBUG,"userPara[%s].class=%s, nativeMethodPara[%s].class=%s", i, null==userPara? null : userPara.getClass(), i, nativeParaType);
+            KLog.p(KLog.DEBUG,"userPara[%s].class=%s, nativeMethodPara[%s].class=%s, outputParaIndex=%s",
+                    i, null==userPara? null : userPara.getClass(), i, nativeParaType, outputParaIndex);
+
+            if (i == outputParaIndex){
+                // 出参直接构造一个给native方法
+                try {
+                    Constructor<?> ctor = nativeParaType.getDeclaredConstructor();
+                    ctor.setAccessible(true);
+                    nativeParas[i] = ctor.newInstance();
+                } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(String.format("try construct output para %s failed!", nativeParaType));
+                }
+                continue;
+            }
+
             if (null == userPara){
                 nativeParas[i] = nativeParaType.isPrimitive() ? PrimitiveTypeHelper.getDefaultValue(nativeParaType) :
                         StringHelper.isStringCompatible(nativeParaType) ? "" : null;

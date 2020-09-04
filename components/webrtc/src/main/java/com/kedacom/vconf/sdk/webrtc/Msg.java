@@ -1,6 +1,5 @@
 package com.kedacom.vconf.sdk.webrtc;
 
-import com.kedacom.vconf.sdk.amulet.Atlas;
 import com.kedacom.vconf.sdk.annotation.Module;
 import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
@@ -24,6 +23,8 @@ import com.kedacom.vconf.sdk.webrtc.bean.trans.TQueryConfInfoResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
 
+import static com.kedacom.vconf.sdk.annotation.Request.*;
+
 /**
  * Created by Sissi on 2019/10/24
  */
@@ -36,9 +37,10 @@ enum Msg {
      * 启动业务组件服务
      * */
     @Request(name = "SYSStartService",
-            owner = Atlas.MtServiceCfgCtrl,
+            owner = MtServiceCfgCtrl,
             paras = StringBuffer.class,
-            userParas = String.class
+            userParas = String.class,
+            rspSeq = "StartMtServiceRsp"
     )
     StartMtService,
 
@@ -48,31 +50,34 @@ enum Msg {
 
     /**获取Rtc服务器地址*/
     @Request(name = "GetRtcSvrCfg",
-            owner = Atlas.ConfigCtrl,
+            owner = ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMtRtcSvrAddr.class,
-            isGet = true)
+            outputParaIndex = LastIndex
+    )
     GetSvrAddr,
 
     /**
      * 登录Rtc服务器
      */
     @Request(name = "SetRtcSvrCfgCmd",
-            owner = Atlas.ConfigCtrl,
+            owner = ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMtRtcSvrAddr.class, // 登录：TMtRtcSvrAddr.bUsedRtc==true，登出：=false
             timeout = 30,
-            rspSeq = "LoginStateChanged")
+            rspSeq = "LoginStateChanged"
+    )
     Login,
 
     /**
      * 注销Rtc服务器
      */
     @Request(name = "SetRtcSvrCfgCmd",
-            owner = Atlas.ConfigCtrl,
+            owner = ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMtRtcSvrAddr.class, // 登录：TMtRtcSvrAddr.bUsedRtc==true，登出：=false
-            rspSeq = "LoginStateChanged")
+            rspSeq = "LoginStateChanged"
+    )
     Logout,
 
     /**
@@ -87,7 +92,7 @@ enum Msg {
      * 呼出
      * */
     @Request(name = "ConfMakeCallCmd",
-            owner = Atlas.ConfCtrl,
+            owner = ConfCtrl,
             paras = {StringBuffer.class, int.class, int.class},
             userParas = {
                     String.class, // 对端e164（点对点）/ 会议号（多点）
@@ -140,7 +145,7 @@ enum Msg {
      * 创建会议
      * */
     @Request(name = "MGRestCreateConferenceReq",
-            owner = Atlas.MeetingCtrl,
+            owner = MeetingCtrl,
             paras = StringBuffer.class,
             userParas = TMTInstanceCreateConference.class,
             timeout = 60,
@@ -164,7 +169,7 @@ enum Msg {
      * 退出会议
      * */
     @Request(name = "ConfHangupConfCmd",
-            owner = Atlas.ConfCtrl,
+            owner = ConfCtrl,
             paras = int.class,
             userParas = EmMtCallDisReason.class,
             rspSeq = "MultipartyConfEnded"
@@ -175,7 +180,7 @@ enum Msg {
      * 结束会议
      * */
     @Request(name = "ConfEndConfCmd",
-            owner = Atlas.ConfCtrl,
+            owner = ConfCtrl,
             rspSeq = "MultipartyConfEnded"
     )
     EndConf,
@@ -184,7 +189,7 @@ enum Msg {
      * 接受入会邀请
      * */
     @Request(name = "ConfAcceptCmd",
-            owner = Atlas.ConfCtrl,
+            owner = ConfCtrl,
             timeout = 60,
             rspSeq = "MultipartyConfStarted"
     )
@@ -194,7 +199,7 @@ enum Msg {
      * 拒绝入会邀请
      * */
     @Request(name = "ConfRejectConfCmd",
-            owner = Atlas.ConfCtrl,
+            owner = ConfCtrl,
             rspSeq = {} //TODO
     )
     DeclineInvitation,
@@ -272,7 +277,7 @@ enum Msg {
      * 选择想要订阅的视频码流
      */
     @Request(name = "SetRtcPlayCmd",
-            owner = Atlas.MonitorCtrl,
+            owner = MonitorCtrl,
             paras = StringBuffer.class,
             userParas = TRtcPlayParam.class)
     SelectStream,
@@ -281,20 +286,22 @@ enum Msg {
 
     /**获取流列表*/
     @Request(name = "GetRtcStreamList",
-            owner = Atlas.MonitorCtrl,
+            owner = MonitorCtrl,
             paras = StringBuffer.class,
             userParas = TRtcStreamInfoList.class,
-            isGet = true)
+            outputParaIndex = LastIndex
+    )
     GetStreamList,
 
     /**
      * 获取流数量
      */
     @Request(name = "GetRtcStreamListNum",
-            owner = Atlas.MonitorCtrl,
+            owner = MonitorCtrl,
             paras = StringBuffer.class,
             userParas = int.class,
-            isGet = true)
+            outputParaIndex = LastIndex
+    )
     GetStreamCount,
 
 
@@ -303,9 +310,11 @@ enum Msg {
      * 静音
      */
     @Request(name = "AudQuiteLocalSpeakerCmd",
-            owner = Atlas.AudioCtrl,
+            owner = AudioCtrl,
             paras = boolean.class,
-            rspSeq = "SelfSilenceStateChanged")
+            userParas = boolean.class,
+            rspSeq = "SelfSilenceStateChanged"
+    )
     SetSilence,
 
 
@@ -313,9 +322,11 @@ enum Msg {
      * 哑音
      */
     @Request(name = "AudMuteLocalMicCmd",
-            owner = Atlas.AudioCtrl,
+            owner = AudioCtrl,
             paras = boolean.class,
-            rspSeq = "SelfMuteStateChanged")
+            userParas = boolean.class,
+            rspSeq = "SelfMuteStateChanged"
+    )
     SetMute,
 
 
@@ -325,7 +336,8 @@ enum Msg {
      * */
     @Request(name = "VideoAssStreamCmd",
             paras = boolean.class,
-            owner = Atlas.MonitorCtrl,
+            userParas = boolean.class,
+            owner = MonitorCtrl,
             rspSeq = "ToggleScreenShareRsp"
     )
     ToggleScreenShare,
@@ -343,7 +355,7 @@ enum Msg {
      * 查询会议详情
      * */
     @Request(name = "MGRestGetInstantConfInfoByIDReq",
-            owner = Atlas.MeetingCtrl,
+            owner = MeetingCtrl,
             paras = StringBuffer.class,  // 会议e164号
             userParas = String.class,
             timeout = 10,
@@ -369,7 +381,7 @@ enum Msg {
      * 验证会议密码
      * */
     @Request(name = "ConfVerifyConfPwdCmd",
-            owner = Atlas.ConfCtrl,
+            owner = ConfCtrl,
             paras = StringBuffer.class,  // 会议密码
             userParas = String.class,
             timeout = 10,
@@ -382,7 +394,7 @@ enum Msg {
      * 关闭己端主流
      * */
     @Request(name = "MainVideoOff",
-            owner = Atlas.ConfCtrl
+            owner = ConfCtrl
     )
     CloseMyMainVideoChannel,
 
@@ -409,8 +421,5 @@ enum Msg {
      * */
     @Notification(name = "GetTerStatusNtf", clz = TMtEntityStatus.class)
     OtherConfereeStateChanged,
-
-
-    END;
 
 }
