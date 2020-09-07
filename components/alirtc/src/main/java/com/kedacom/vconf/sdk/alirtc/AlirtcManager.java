@@ -345,7 +345,7 @@ public class AlirtcManager extends Caster<Msg> {
 
 
     @Override
-    protected Map<Class<? extends ILifecycleOwner>, Msg[]> regNtfListener() {
+    protected Map<Class<? extends ILifecycleOwner>, Msg[]> regNtfListenerTypes() {
         Map<Class<? extends ILifecycleOwner>, Msg[]> listenerType2CaredNtf = new HashMap<>();
         listenerType2CaredNtf.put(OnLoginStateChangedListener.class, new Msg[]{Msg.LoginStateChanged});
         listenerType2CaredNtf.put(OnConfInvitingListener.class, new Msg[]{Msg.ConfInviting});
