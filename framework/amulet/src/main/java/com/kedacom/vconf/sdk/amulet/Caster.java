@@ -325,6 +325,7 @@ public abstract class Caster<T extends Enum<T>> implements
                 Set<ILifecycleOwner> listenerSet = ntfUnrelatedListeners.get(registeredType);
                 if (listenerSet == null){
                     listenerSet = new LinkedHashSet<>();
+                    ntfUnrelatedListeners.put(registeredType, listenerSet);
                 }
                 if (!listenerSet.contains(listener)) {
                     KLog.p(KLog.DEBUG, "ntfListener=%s",  listener+ClassHelper.getParents(listener.getClass()));
