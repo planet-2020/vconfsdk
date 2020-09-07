@@ -9,6 +9,7 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -362,11 +363,11 @@ public abstract class Caster<T extends Enum<T>> implements
     }
 
 
-    protected Set<ILifecycleOwner> getNtfUnrelatedListeners(Class<?> listenerType){
-        Set<ILifecycleOwner> listeners = new LinkedHashSet<>();
+    protected <U extends ILifecycleOwner> Set<U> getNtfUnrelatedListeners(Class<U> listenerType){
+        Set<U> listeners = new LinkedHashSet<>();
         Set<ILifecycleOwner> listeners2 = ntfUnrelatedListeners.get(listenerType);
         if (listeners2 != null){
-            listeners.addAll(listeners2);
+            listeners.addAll((Collection<? extends U>) listeners2);
         }
         return listeners;
     }
