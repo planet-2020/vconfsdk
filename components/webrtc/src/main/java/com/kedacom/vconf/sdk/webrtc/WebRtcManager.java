@@ -2104,7 +2104,8 @@ public class WebRtcManager extends Caster<Msg>{
             int curPVQ = getPreferredVideoQuality();
 
             boolean needInvalidate = curVS != videoStream
-                    || ( curVS != null && (curPri != priority || (curPVQ != preferredVideoQuality && curVS.getResolution(preferredVideoQuality) != curVS.getResolution(curPVQ)) ) );
+                    || curPri != priority
+                    || curPVQ != preferredVideoQuality && curVS.getResolution(preferredVideoQuality) != curVS.getResolution(curPVQ);
 
             if (needInvalidate){
                 instance.subscribeStream();
