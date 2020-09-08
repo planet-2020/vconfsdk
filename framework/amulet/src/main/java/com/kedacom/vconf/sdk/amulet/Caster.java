@@ -45,7 +45,7 @@ public abstract class Caster<T extends Enum<T>> implements
      * }
      * 通过{@link #addNtfListener(ILifecycleOwner...)}添加监听器
      * 通过{@link #getNtfUnrelatedListeners(Class)}获取监听器
-     * */
+     * *///
     private final Map<Class<?>, Set<ILifecycleOwner>> ntfUnrelatedListeners = new LinkedHashMap<>();
 
     private Class<T> enumT;
