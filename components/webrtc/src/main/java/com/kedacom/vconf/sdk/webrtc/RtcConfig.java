@@ -48,6 +48,10 @@ public final class RtcConfig {
     private static final String key_isBuiltInNSPreferred = "key_isBuiltInNSPreferred";
     // 是否dump AEC数据
     private static final String key_isAECDumpEnabled = "key_isAECDumpEnabled";
+    // 输入音量（麦克）
+    private static final String key_inputAudioVolume = "key_inputAudioVolume";
+    // 输出音量（耳机/扬声器）
+    private static final String key_outputAudioVolume = "key_outputAudioVolume";
 
     // 视频质量定义
     static final int VideoQuality_Unknown = 0;
@@ -319,6 +323,34 @@ public final class RtcConfig {
         return rtcUserConfig.getBoolean(key_isAECDumpEnabled, false);
     }
 
+
+    /**
+     * 设置输入音量
+     * @param volume 音量，范围0-100。
+     * */
+    public RtcConfig setInputAudioVolume(int volume){
+        editor.putInt(key_inputAudioVolume, volume).apply();
+        return this;
+    }
+
+    public int getInputAudioVolume(){
+        return rtcUserConfig.getInt(key_inputAudioVolume, 100);
+    }
+
+    /**
+     * 设置输出音量
+     * @param volume 音量，范围0-100。
+     * */
+    public RtcConfig setOutputAudioVolume(int volume){
+        editor.putInt(key_outputAudioVolume, volume).apply();
+        return this;
+    }
+
+    public int getOutputAudioVolume(){
+        return rtcUserConfig.getInt(key_outputAudioVolume, 100);
+    }
+
+
     /**
      * 将RtcConfig对象保存为持久化配置
      * */
@@ -342,6 +374,8 @@ public final class RtcConfig {
         setBuiltInAECPreferred(config.isBuiltInAECPreferred);
         setBuiltInNSPreferred(config.isBuiltInNSPreferred);
         setAECDumpEnable(config.isAECDumpEnabled);
+        setInputAudioVolume(config.inputAudioVolume);
+        setOutputAudioVolume(config.outputAudioVolume);
     }
 
 
@@ -369,6 +403,8 @@ public final class RtcConfig {
         config.isBuiltInAECPreferred = isBuiltInAECPreferred();
         config.isBuiltInNSPreferred = isBuiltInNSPreferred();
         config.isAECDumpEnabled = isAECDumpEnabled();
+        config.inputAudioVolume = getInputAudioVolume();
+        config.outputAudioVolume = getOutputAudioVolume();
 
         return config;
     }
@@ -417,6 +453,10 @@ public final class RtcConfig {
         boolean isBuiltInNSPreferred;
         // 是否Dump AEC数据
         boolean isAECDumpEnabled;
+        // 输入音量
+        int inputAudioVolume;
+        // 输出音量
+        int outputAudioVolume;
 
 
         void copy(Config src){
@@ -439,6 +479,8 @@ public final class RtcConfig {
             isBuiltInAECPreferred = src.isBuiltInAECPreferred;
             isBuiltInNSPreferred = src.isBuiltInNSPreferred;
             isAECDumpEnabled = src.isAECDumpEnabled;
+            inputAudioVolume = src.inputAudioVolume;
+            outputAudioVolume = src.outputAudioVolume;
         }
 
         @Override
@@ -463,6 +505,8 @@ public final class RtcConfig {
                     ", isBuiltInAECPreferred=" + isBuiltInAECPreferred +
                     ", isBuiltInNSPreferred=" + isBuiltInNSPreferred +
                     ", isAECDumpEnabled=" + isAECDumpEnabled +
+                    ", inputAudioVolume=" + inputAudioVolume +
+                    ", outputAudioVolume=" + outputAudioVolume +
                     '}';
         }
     }

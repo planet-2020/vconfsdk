@@ -3999,6 +3999,7 @@ public class WebRtcManager extends Caster<Msg>{
                 String localAudioTrackId = LOCAL_AUDIO_TRACK_ID+audioTrackCnt++;
                 localAudioTrack = factory.createAudioTrack(localAudioTrackId, audioSource);
                 localAudioTrack.setEnabled(!config.isMuted);
+                localAudioTrack.setVolume(10 * config.inputAudioVolume/100f);
                 RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
                         RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
                         Collections.singletonList(STREAM_ID)
@@ -4155,6 +4156,7 @@ public class WebRtcManager extends Caster<Msg>{
                 }
 
                 track.setEnabled(!config.isSilenced);
+                track.setVolume(10 * config.outputAudioVolume/100f);
                 remoteAudioTracks.put(kdStreamId, track);
 
                 KLog.p("remote audio track %s/%s created", kdStreamId, track.id());
