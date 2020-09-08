@@ -26,7 +26,7 @@ dependencies {
 //    implementation project(':amulet')
     implementation project(':common')
     implementation project(':utils')
-    implementation 'com.kedacom.vconf.sdk:amulet:8.0.0-req-cache-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:amulet:8.0.0-SNAPSHOT'
 
     //-> 阿里sdk引入
     compileOnly fileTree(dir: 'libs/alisdk', include: ['*.jar', '*.aar'])
