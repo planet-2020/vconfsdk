@@ -334,7 +334,9 @@ public final class RtcConfig {
     }
 
     public int getInputAudioVolume(){
-        return rtcUserConfig.getInt(key_inputAudioVolume, 100);
+        return rtcUserConfig.getInt(key_inputAudioVolume,
+                5 // 媒控建议的数值
+        );
     }
 
     /**
@@ -347,7 +349,9 @@ public final class RtcConfig {
     }
 
     public int getOutputAudioVolume(){
-        return rtcUserConfig.getInt(key_outputAudioVolume, 100);
+        return rtcUserConfig.getInt(key_outputAudioVolume,
+                2 // 媒控建议的数值
+        );
     }
 
 
