@@ -84,3 +84,60 @@ message TRtcRegAuthSet
 	optional EmRtcAlgType   auth_type = 3;
 }
 
+//音频编码器统计信息
+message TAgentAudEncStatistic
+{
+    optional uint32 index = 1; //第几路音频码流;从1开始
+        optional uint32 bitrate = 2; //上行音频码率
+        optional uint32 format = 3;  //音频格式，对应EmAudFormat
+        optional bool enc_start = 4;   //是否开始编码
+}
+
+//音频解码器统计信息
+message TAgentAudDecStatistic
+{
+    optional uint32 index = 1; //第几路音频码流;从1开始
+        optional uint32 pkts_lose = 2; //音频丢包总数
+        optional uint32 pkts_loserate = 3; //音频丢包率
+        optional uint32 bitrate = 4; //下行音频码率(KB/s)
+        optional uint32 format = 5;  //音频格式，对应EmAudFormat
+        optional bool dec_start = 6;   //是否开始解码
+}
+
+//视频编码器统计信息
+message TAgentVidEncStatistic
+{
+    optional uint32 index = 1; //第几路视频码流;从1开始
+        optional bool video_resource_exist = 2; //有无视频源
+        optional uint32 framerate = 3; //视频帧率
+        optional uint32 bitrate = 4; //上行视频码率(KB/s)
+        optional uint32 format = 5;  //视频格式，对应EmVidFormat
+        optional uint32 resolution = 6; //分辨率 EmMtResolution
+        optional bool enc_start = 7;   //是否开始编码
+        optional bool hw_enc_status = 8;   //硬件编码状态
+}
+
+//视频解码器统计信息
+message TAgentVidDecStatistic
+{
+    optional uint32 index = 1; //第几路视频码流;从1开始
+        optional uint32 framerate = 2; //视频帧率
+        optional uint32 pkts_lose = 3; //视频丢包总数
+        optional uint32 pkts_loserate = 4; //视频丢包率
+        optional uint32 bitrate = 5; //下行视频码率(KB/s)
+        optional uint32 format = 6;  //视频格式，对应EmVidFormat
+        optional uint32 resolution = 7; //分辨率 EmMtResolution
+        optional bool dec_start = 8;   //是否开始解码
+        optional bool hw_dec_status = 9;   //硬件解码状态
+}
+
+//会议统计信息
+message TAgentCodecStatistic
+{
+    repeated TAgentAudEncStatistic audenc_statics = 1; //音频编码器统计信息
+        repeated TAgentAudDecStatistic auddec_statics = 2; //音频解码器统计信息
+        repeated TAgentVidEncStatistic pri_videnc_statics = 3; //主视频编码器统计信息
+        repeated TAgentVidDecStatistic pri_viddec_statics = 4; //主视频解码器统计信息
+        repeated TAgentVidEncStatistic ass_videnc_statics = 5; //辅视频编码器统计信息
+        repeated TAgentVidDecStatistic ass_viddec_statics = 6; //辅视频解码器统计信息
+}

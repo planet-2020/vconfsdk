@@ -10,7 +10,6 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.media.projection.MediaProjection;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -30,7 +29,6 @@ import com.kedacom.vconf.sdk.amulet.ILifecycleOwner;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.bean.transfer.TMtEntityStatus;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
-import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
@@ -51,6 +49,7 @@ import com.kedacom.vconf.sdk.webrtc.bean.ConfInvitationInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
 import com.kedacom.vconf.sdk.webrtc.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
+import com.kedacom.vconf.sdk.webrtc.bean.Statistics;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
@@ -850,7 +849,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     @Override
-    protected void onNtf(Msg ntf, java.lang.Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
+    protected void onNtf(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
 
         switch (ntf){
             case LoginStateChanged:
@@ -3140,7 +3139,7 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private class RtcConnectorEventListener implements RtcConnector.SignalingEvents{
+    private class RtcConnectorEventListener implements RtcConnector.Listener {
 
         @Override
         public void onGetOfferCmd(int pcType, int mType) {
@@ -3273,6 +3272,11 @@ public class WebRtcManager extends Caster<Msg>{
                 return;
             }
             doUnpublish(connType, mediaType);
+        }
+
+        @Override
+        public void onAgentRtcCodecStatisticReq() {
+//            rtcConnector.sendCodecStats();
         }
 
     }
@@ -4434,40 +4438,40 @@ public class WebRtcManager extends Caster<Msg>{
             if (null != pubPcWrapper && null != pubPcWrapper.pc) {
                 pubPcWrapper.pc.getStats(rtcStatsReport -> {
                     synchronized (publisherStats) {
-                        StatsHelper.resolveStats(rtcStatsReport, publisherStats);
                         KLog.p("####publisherStats: ");
-                        printStats(publisherStats, false);
+                        StatsHelper.resolveStats(rtcStatsReport, publisherStats);
+                        printStats(publisherStats, true);
                     }
                 });
             }
             if (null != subPcWrapper && null != subPcWrapper.pc) {
                 subPcWrapper.pc.getStats(rtcStatsReport -> {
                     synchronized (subscriberStats) {
-                        StatsHelper.resolveStats(rtcStatsReport, subscriberStats);
                         KLog.p("####subscriberStats: ");
-                        printStats(subscriberStats, false);
+                        StatsHelper.resolveStats(rtcStatsReport, subscriberStats);
+                        printStats(subscriberStats, true);
                     }
                 });
             }
 
-//            if (null != assPubPcWrapper && null != assPubPcWrapper.pc) {
-//                assPubPcWrapper.pc.getStats(rtcStatsReport -> {
-//                    KLog.p("####assPublisherStats: ");
-//                    synchronized (assPublisherStats) {
-//                        StatsHelper.resolveStats(rtcStatsReport, assPublisherStats);
-//                        printStats(assPublisherStats, false);
-//                    }
-//                });
-//            }
-//            if (null != assSubPcWrapper && null != assSubPcWrapper.pc) {
-//                assSubPcWrapper.pc.getStats(rtcStatsReport -> {
-//                    KLog.p("####assSubscriberStats: ");
-//                    synchronized (assSubscriberStats) {
-//                        StatsHelper.resolveStats(rtcStatsReport, assPublisherStats);
-//                        printStats(assPublisherStats, false);
-//                    }
-//                });
-//            }
+            if (null != assPubPcWrapper && null != assPubPcWrapper.pc) {
+                assPubPcWrapper.pc.getStats(rtcStatsReport -> {
+                    synchronized (assPublisherStats) {
+                        KLog.p("####assPublisherStats: ");
+                        StatsHelper.resolveStats(rtcStatsReport, assPublisherStats);
+                        printStats(assPublisherStats, true);
+                    }
+                });
+            }
+            if (null != assSubPcWrapper && null != assSubPcWrapper.pc) {
+                assSubPcWrapper.pc.getStats(rtcStatsReport -> {
+                    synchronized (assSubscriberStats) {
+                        KLog.p("####assSubscriberStats: ");
+                        StatsHelper.resolveStats(rtcStatsReport, assPublisherStats);
+                        printStats(assPublisherStats, true);
+                    }
+                });
+            }
 
             handler.postDelayed(this, 2000);
         }
@@ -4654,12 +4658,13 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         if (detail) {
-            KLog.p("---------- codec");
+            KLog.p("---------- encoder");
             if (null != stats.encoderList) {
                 for (StatsHelper.Codec codec : stats.encoderList) {
                     KLog.p(codec.toString());
                 }
             }
+            KLog.p("---------- decoder");
             if (null != stats.decoderList) {
                 for (StatsHelper.Codec codec : stats.decoderList) {
                     KLog.p(codec.toString());
@@ -4670,4 +4675,15 @@ public class WebRtcManager extends Caster<Msg>{
         KLog.p(">>>>>>>>>> stats end");
     }
 
+    private void collectStats(){
+
+    }
+
+    private List<Statistics> statisticsList = new ArrayList<>();
+
+    public interface StatsListener{
+        void onStats(List<Statistics> statisticsList);
+    }
+
 }
+

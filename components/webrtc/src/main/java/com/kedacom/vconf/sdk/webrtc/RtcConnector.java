@@ -18,6 +18,7 @@ import com.kedacom.osp.BodyItem;
 import com.kedacom.osp.EmMtOspMsgSys;
 import com.kedacom.osp.MtMsg;
 import com.kedacom.vconf.sdk.utils.log.KLog;
+import com.kedacom.vconf.sdk.webrtc.bean.Statistics;
 
 import org.webrtc.RtpParameters;
 
@@ -52,9 +53,9 @@ class RtcConnector implements IRcvMsgCallback{
 	private ByteArrayOutputStream answerBuf;
 	private static final int SegLengthLimit = 50000; // 每段的长度上限。
 
-	private SignalingEvents signalingEvents;
-	void setSignalingEventsCallback(SignalingEvents signalingEvents){
-		this.signalingEvents = signalingEvents;
+	private Listener listener;
+	void setSignalingEventsCallback(Listener listener){
+		this.listener = listener;
 	}
 
 	RtcConnector( ) {
@@ -65,9 +66,9 @@ class RtcConnector implements IRcvMsgCallback{
 		cbMsgHandlerMap.put("Ev_MT_SetIceCandidate_Cmd", this::onSetIceCandidateCmd);
 		cbMsgHandlerMap.put("Ev_MT_GetFingerPrint_Cmd", this::onGetFingerPrintCmd);
 		cbMsgHandlerMap.put("Ev_MT_UnPub_Cmd", this::onUnPubCmd);
-
 		cbMsgHandlerMap.put("Ev_MT_CodecQuiet_Cmd", this::onCodecQuietCmd);
 		cbMsgHandlerMap.put("Ev_MT_CodecMute_Cmd", this::onCodecMuteCmd);
+		cbMsgHandlerMap.put("Ev_MT_Agent_RtcCodecStatistic_Req", this::onAgentRtcCodecStatisticReq);
 
 		if (!CreateOspObject()){
 			throw new RuntimeException("CreateOspObject failed!");
@@ -77,14 +78,7 @@ class RtcConnector implements IRcvMsgCallback{
 		MtMsg msg = new MtMsg();
 		msg.SetMsgId("Ev_MT_Subscribe_Cmd");
 		StructCommonPB.TSubsMsgID.Builder subsMsgBuilder = StructCommonPB.TSubsMsgID.newBuilder();
-		subsMsgBuilder.addMsgid("Ev_MT_GetOffer_Cmd");
-		subsMsgBuilder.addMsgid("Ev_MT_SetOffer_Cmd");
-		subsMsgBuilder.addMsgid("Ev_MT_SetAnswer_Cmd");
-		subsMsgBuilder.addMsgid("Ev_MT_SetIceCandidate_Cmd");
-        subsMsgBuilder.addMsgid("Ev_MT_GetFingerPrint_Cmd");
-		subsMsgBuilder.addMsgid("Ev_MT_CodecQuiet_Cmd");
-		subsMsgBuilder.addMsgid("Ev_MT_CodecMute_Cmd");
-		subsMsgBuilder.addMsgid("Ev_MT_UnPub_Cmd");
+		subsMsgBuilder.addAllMsgid(cbMsgHandlerMap.keySet());
 		msg.addMsg(subsMsgBuilder.build());
 		byte[] abyContent = msg.Encode();
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
@@ -194,8 +188,8 @@ class RtcConnector implements IRcvMsgCallback{
 		Log.i(TAG, String.format("[PUB]<=#= onGetOfferCmd, connType=%s, mediaType=%s", connType, mediaType));
 
 		handler.post(() -> {
-			if (null != signalingEvents) {
-				signalingEvents.onGetOfferCmd(connType, mediaType);
+			if (null != listener) {
+				listener.onGetOfferCmd(connType, mediaType);
 			}
 		});
 
@@ -229,8 +223,8 @@ class RtcConnector implements IRcvMsgCallback{
 			rtcMedias.add(rtcMediaFromPB(tRtcMedia));
 		}
 		handler.post(() -> {
-			if (null != signalingEvents) {
-				signalingEvents.onSetOfferCmd(connType, offer, rtcMedias);
+			if (null != listener) {
+				listener.onSetOfferCmd(connType, offer, rtcMedias);
 			}
 		});
 
@@ -265,8 +259,8 @@ class RtcConnector implements IRcvMsgCallback{
 		}
 
 		handler.post(() -> {
-			if (null != signalingEvents) {
-				signalingEvents.onSetAnswerCmd(connType, answer, rtcMedias);
+			if (null != listener) {
+				listener.onSetAnswerCmd(connType, answer, rtcMedias);
 			}
 		});
 
@@ -298,8 +292,8 @@ class RtcConnector implements IRcvMsgCallback{
 		Log.i(TAG, String.format("<=#= connType=%s, mid=%s, index=%s, candidate=", connType, mid, index));
 		KLog.p(candidate);
 		handler.post(() -> {
-			if (null != signalingEvents) {
-				signalingEvents.onSetIceCandidateCmd(connType, mid, index, candidate);
+			if (null != listener) {
+				listener.onSetIceCandidateCmd(connType, mid, index, candidate);
 			}
 		});
 	}
@@ -323,8 +317,8 @@ class RtcConnector implements IRcvMsgCallback{
 
 		KLog.p("[sub]<=#= connType=%s", connType);
 		handler.post(() -> {
-			if (null != signalingEvents) {
-				signalingEvents.onGetFingerPrintCmd(connType);
+			if (null != listener) {
+				listener.onGetFingerPrintCmd(connType);
 			}
 		});
 	}
@@ -345,8 +339,8 @@ class RtcConnector implements IRcvMsgCallback{
 
 		KLog.p("bQuiet=%s", bQuiet);
 		handler.post(() -> {
-			if (null != signalingEvents) {
-				signalingEvents.onCodecQuietCmd(bQuiet);
+			if (null != listener) {
+				listener.onCodecQuietCmd(bQuiet);
 			}
 		});
 	}
@@ -367,8 +361,8 @@ class RtcConnector implements IRcvMsgCallback{
 
 		KLog.p("bMute=%s", bMute);
 		handler.post(() -> {
-			if (null != signalingEvents) {
-				signalingEvents.onCodecMuteCmd(bMute);
+			if (null != listener) {
+				listener.onCodecMuteCmd(bMute);
 			}
 		});
 	}
@@ -393,8 +387,21 @@ class RtcConnector implements IRcvMsgCallback{
 		Log.i(TAG, String.format("[UNPUB]<=#= onUnPubCmd, connType=%s, mediaType=%s", connType, mediaType));
 
 		handler.post(() -> {
-			if (null != signalingEvents) {
-				signalingEvents.onUnPubCmd(connType, mediaType);
+			if (null != listener) {
+				listener.onUnPubCmd(connType, mediaType);
+			}
+		});
+	}
+
+
+	/**
+	 * 请求上报编解码信息
+	 * */
+	private void onAgentRtcCodecStatisticReq(MtMsg mtMsg, long nSrcId, long nSrcNode){
+		Log.i(TAG, "<=#= onAgentRtcCodecStatisticReq");
+		handler.post(() -> {
+			if (null != listener) {
+				listener.onAgentRtcCodecStatisticReq();
 			}
 		});
 	}
@@ -461,7 +468,7 @@ class RtcConnector implements IRcvMsgCallback{
 		KLog.p(offerSdp);
 	}
 
-	void sendAnswerSdp(int connType, @NonNull String answerSdp, List<RtcConnector.TRtcMedia> rtcMediaList) {
+	void sendAnswerSdp(int connType, @NonNull String answerSdp, List<TRtcMedia> rtcMediaList) {
 		StructConfPB.TRtcMedialist.Builder builder = StructConfPB.TRtcMedialist.newBuilder();
 		for (TRtcMedia rtcMedia : rtcMediaList){
 			builder.addMedia(rtcMediaToPB(rtcMedia));
@@ -519,6 +526,23 @@ class RtcConnector implements IRcvMsgCallback{
         KLog.p("[sub]=#=> sendFingerPrint connType=%s, fingerPrint=%s", connType, fingerPrint);
 	}
 
+
+	void sendCodecStats(@NonNull List<Statistics> statsList){
+		StructConfPB.TAgentCodecStatistic codecStatistic;
+//		MtMsg msg = new MtMsg();
+//		msg.SetMsgId("Ev_MT_FingerPrint_Ntf");
+//		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
+//		msg.addMsg(BasePB.TString.newBuilder().setValue(fingerPrint).build());
+//		byte[] abyContent = msg.Encode();
+//		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+//				dispatchId, dispatchNode, myId, myNode, 5000 );
+//		if (0 != ret){
+//			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
+//		}
+//
+//		KLog.p("[sub]=#=> sendFingerPrint connType=%s, fingerPrint=%s", connType, fingerPrint);
+	}
+
 	static class TRtcMedia {
 		String streamid="";
 		String mid;
@@ -543,9 +567,10 @@ class RtcConnector implements IRcvMsgCallback{
 	}
 
 	/**
+	 * 事件监听器。
 	 * 所有回调均从主线程
 	 * */
-	interface SignalingEvents {
+	interface Listener {
 
 		void onGetOfferCmd(int connType, int mediaType);
 
@@ -562,6 +587,8 @@ class RtcConnector implements IRcvMsgCallback{
 		default void onCodecMuteCmd(boolean bMute){}
 
 		void onUnPubCmd(int connType, int mediaType);
+
+		void onAgentRtcCodecStatisticReq();
 	}
 
 
