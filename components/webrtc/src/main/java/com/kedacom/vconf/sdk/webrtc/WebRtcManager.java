@@ -1088,7 +1088,7 @@ public class WebRtcManager extends Caster<Msg>{
         createPeerConnectionWrapper();
 
         // 定时获取统计信息
-        handler.postDelayed(statsCollector, 3000);
+        handler.postDelayed(statsCollector, 2000);
         // 定时处理音频统计信息
         handler.postDelayed(audioStatsProcesser, 3000);
         // 定时处理视频统计信息
@@ -4427,53 +4427,65 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     // 用于定时收集统计信息
-    private final StatsHelper.Stats publisherStats = new StatsHelper.Stats();
-    private final StatsHelper.Stats subscriberStats = new StatsHelper.Stats();
-    private final StatsHelper.Stats assPublisherStats = new StatsHelper.Stats();
-    private final StatsHelper.Stats assSubscriberStats = new StatsHelper.Stats();
+    private StatsHelper.Stats publisherStats;
+    private StatsHelper.Stats subscriberStats;
+    private StatsHelper.Stats assPublisherStats;
+    private StatsHelper.Stats assSubscriberStats;
+
+    // 上一个采集周期留存的统计信息。
+    // 因为有些统计数据我们需要自己计算，比如码率、帧率。
+    private StatsHelper.Stats prePublisherStats;
+    private StatsHelper.Stats preSubscriberStats;
+    private StatsHelper.Stats preAssPublisherStats;
+    private StatsHelper.Stats preAssSubscriberStats;
+
+    // 统计信息采集周期。// 单位：秒
+    private final int STATS_INTERVAL = 2;
+
     // RTC统计信息收集器
     private Runnable statsCollector = new Runnable() {
         @Override
         public void run() {
             if (null != pubPcWrapper && null != pubPcWrapper.pc) {
-                pubPcWrapper.pc.getStats(rtcStatsReport -> {
-                    synchronized (publisherStats) {
-                        KLog.p("####publisherStats: ");
-                        StatsHelper.resolveStats(rtcStatsReport, publisherStats);
-                        printStats(publisherStats, true);
-                    }
-                });
+                pubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+                    prePublisherStats = publisherStats;
+                    publisherStats = StatsHelper.resolveStats(rtcStatsReport);
+                }));
             }
             if (null != subPcWrapper && null != subPcWrapper.pc) {
-                subPcWrapper.pc.getStats(rtcStatsReport -> {
-                    synchronized (subscriberStats) {
-                        KLog.p("####subscriberStats: ");
-                        StatsHelper.resolveStats(rtcStatsReport, subscriberStats);
-                        printStats(subscriberStats, true);
-                    }
-                });
+                subPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+                    preSubscriberStats = subscriberStats;
+                    subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
+                }));
             }
 
             if (null != assPubPcWrapper && null != assPubPcWrapper.pc) {
-                assPubPcWrapper.pc.getStats(rtcStatsReport -> {
-                    synchronized (assPublisherStats) {
-                        KLog.p("####assPublisherStats: ");
-                        StatsHelper.resolveStats(rtcStatsReport, assPublisherStats);
-                        printStats(assPublisherStats, true);
-                    }
-                });
+                assPubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+                    preAssPublisherStats = assPublisherStats;
+                    assPublisherStats = StatsHelper.resolveStats(rtcStatsReport);
+                }));
             }
             if (null != assSubPcWrapper && null != assSubPcWrapper.pc) {
-                assSubPcWrapper.pc.getStats(rtcStatsReport -> {
-                    synchronized (assSubscriberStats) {
-                        KLog.p("####assSubscriberStats: ");
-                        StatsHelper.resolveStats(rtcStatsReport, assPublisherStats);
-                        printStats(assPublisherStats, true);
-                    }
-                });
+                assSubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+                    preAssSubscriberStats = assSubscriberStats;
+                    assSubscriberStats = StatsHelper.resolveStats(rtcStatsReport);
+                }));
             }
 
-            handler.postDelayed(this, 2000);
+            aggregateStats();
+
+            if (enableStatsLog){
+                KLog.p("/### publisherStats: ");
+                printStats(publisherStats, true);
+                KLog.p("/### subscriberStats: ");
+                printStats(subscriberStats, true);
+                KLog.p("/### assPublisherStats: ");
+                printStats(assPublisherStats, true);
+                KLog.p("/### assSubscriberStats: ");
+                printStats(assSubscriberStats, true);
+            }
+
+            handler.postDelayed(this, STATS_INTERVAL * 1000);
         }
     };
 
@@ -4488,26 +4500,22 @@ public class WebRtcManager extends Caster<Msg>{
             double maxAudioLevel = 0;
             if (!config.isMuted) { // 非哑音状态我们才将己端音量纳入统计范畴（按理说并不需要这个条件判断，我理解哑音状态下己端音量应该为0才对，但是实测并不是）
                 // 己端的音量
-                synchronized (publisherStats) {
-                    maxAudioLevelTrackId = null != publisherStats.audioSource ? publisherStats.audioSource.trackIdentifier : null;
-                    maxAudioLevel = null != publisherStats.audioSource ? publisherStats.audioSource.audioLevel : 0;
-                    KLog.p("local audioLevel= %s", maxAudioLevel);
-                }
+                maxAudioLevelTrackId = null != publisherStats.audioSource ? publisherStats.audioSource.trackIdentifier : null;
+                maxAudioLevel = null != publisherStats.audioSource ? publisherStats.audioSource.audioLevel : 0;
+                KLog.p("local audioLevel= %s", maxAudioLevel);
             }
             // 其他与会方的音量
-            synchronized (subscriberStats) {
-                for (StatsHelper.RecvAudioTrack track : subscriberStats.recvAudioTrackList) {
-                    String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(track.trackIdentifier);
-                    Conferee conferee = findConfereeByStreamId(kdStreamId);
-                    if (null == conferee) {
-                        KLog.p(KLog.ERROR, "track %s(kdstreamId=%s) not belong to any conferee?", track.trackIdentifier, kdStreamId);
-                        continue;
-                    }
-                    KLog.p("track %s(kdstreamId=%s), audioLevel %s, maxAudioLevel=%s", track.trackIdentifier, kdStreamId, track.audioLevel, maxAudioLevel);
-                    if (track.audioLevel > maxAudioLevel) {
-                        maxAudioLevel = track.audioLevel;
-                        maxAudioLevelTrackId = track.trackIdentifier;
-                    }
+            for (StatsHelper.RecvAudioTrack track : subscriberStats.recvAudioTrackList) {
+                String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(track.trackIdentifier);
+                Conferee conferee = findConfereeByStreamId(kdStreamId);
+                if (null == conferee) {
+                    KLog.p(KLog.ERROR, "track %s(kdstreamId=%s) not belong to any conferee?", track.trackIdentifier, kdStreamId);
+                    continue;
+                }
+                KLog.p("track %s(kdstreamId=%s), audioLevel %s, maxAudioLevel=%s", track.trackIdentifier, kdStreamId, track.audioLevel, maxAudioLevel);
+                if (track.audioLevel > maxAudioLevel) {
+                    maxAudioLevel = track.audioLevel;
+                    maxAudioLevelTrackId = track.trackIdentifier;
                 }
             }
             KLog.p("maxAudioLevel=%s", maxAudioLevel);
@@ -4541,7 +4549,7 @@ public class WebRtcManager extends Caster<Msg>{
                 preMaxAudioLevelKdStreamId = null;
             }
 
-            handler.postDelayed(this, 2000);
+            handler.postDelayed(this, STATS_INTERVAL * 1000);
         }
     };
 
@@ -4555,10 +4563,8 @@ public class WebRtcManager extends Caster<Msg>{
         public void run() {
             // 其他与会方的帧率
             Map<String, Long> framesReceivedMap = new HashMap<>();
-            synchronized (subscriberStats) {
-                for (StatsHelper.RecvVideoTrack track : subscriberStats.recvVideoTrackList) {
-                    framesReceivedMap.put(track.trackIdentifier, track.framesReceived);
-                }
+            for (StatsHelper.RecvVideoTrack track : subscriberStats.recvVideoTrackList) {
+                framesReceivedMap.put(track.trackIdentifier, track.framesReceived);
             }
             long curTimestamp = System.currentTimeMillis();
             for (Map.Entry<String, Long> entry : framesReceivedMap.entrySet()){
@@ -4592,7 +4598,7 @@ public class WebRtcManager extends Caster<Msg>{
                 videoStatsTimeStamp = curTimestamp;
             }
 
-            handler.postDelayed(this, 2000);
+            handler.postDelayed(this, STATS_INTERVAL * 1000);
         }
     };
 
@@ -4604,7 +4610,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private void printStats(StatsHelper.Stats stats, boolean detail){
-        if (!enableStatsLog){
+        if (null == stats){
             return;
         }
         KLog.p(">>>>>>>>>> stats begin");
@@ -4675,9 +4681,87 @@ public class WebRtcManager extends Caster<Msg>{
         KLog.p(">>>>>>>>>> stats end");
     }
 
-    private void collectStats(){
+    private void aggregateStats(){
+        statisticsList.clear();
+        if (publisherStats != null && prePublisherStats != null){
+            int bitrate = (int) ((publisherStats.audioOutboundRtp.bytesSent - prePublisherStats.audioOutboundRtp.bytesSent)*8 / STATS_INTERVAL / 1024);
+            String codecMime = publisherStats.getCodecMime(publisherStats.audioOutboundRtp.trackId);
+            Statistics.AudioOutput audioOutput = new Statistics.AudioOutput(bitrate, codecMime);
+            bitrate = (int) ((publisherStats.videoOutboundRtp.bytesSent - prePublisherStats.videoOutboundRtp.bytesSent)*8 / STATS_INTERVAL/ 1024);
+            codecMime = publisherStats.getCodecMime(publisherStats.videoOutboundRtp.trackId);
+            int frameRate = (int) ((publisherStats.sendVideoTrack.framesSent - prePublisherStats.sendVideoTrack.framesSent) / STATS_INTERVAL);
+            Statistics.VideoOutput videoOutput = new Statistics.VideoOutput(frameRate, publisherStats.sendVideoTrack.frameWidth, publisherStats.sendVideoTrack.frameHeight, bitrate, codecMime, publisherStats.videoOutboundRtp.encoderImplementation);
 
+            if (videoOutput.framerate<=0 || videoOutput.bitrate<=0 || videoOutput.width<=0 || videoOutput.height<=0){
+                videoOutput.framerate = videoOutput.bitrate = videoOutput.width = videoOutput.height = 0;
+            }
+            Statistics myselfStats = new Statistics(myself.getId(), audioOutput, videoOutput, null, null);
+            statisticsList.add(myselfStats);
+        }
+        if (subscriberStats != null && preSubscriberStats != null){
+            Map<String, Statistics.AudioInput> audioInputMap = new HashMap<>();
+            for (StatsHelper.AudioInboundRtp audioInboundRtp : subscriberStats.audioInboundRtpList){
+                for (StatsHelper.AudioInboundRtp preAudioInboundRtp : preSubscriberStats.audioInboundRtpList){
+                    if(audioInboundRtp.trackId.equals(preAudioInboundRtp.trackId)){
+                        int bitrate = (int) ((audioInboundRtp.bytesReceived - preAudioInboundRtp.bytesReceived)*8 / STATS_INTERVAL / 1024);
+                        String codecMime = subscriberStats.getCodecMime(audioInboundRtp.trackId);
+                        Statistics.AudioInput audioInput = new Statistics.AudioInput(audioInboundRtp.packetsReceived, audioInboundRtp.packetsLost, bitrate, codecMime);
+                        StatsHelper.RecvAudioTrack recvAudioTrack = subscriberStats.getRecvAudioTrack(audioInboundRtp.trackId);
+                        String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
+                        Conferee conferee = findConfereeByStreamId(kdStreamId);
+                        if (conferee != null){
+                            audioInputMap.put(conferee.getId(), audioInput);
+                        }else{
+                            KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
+                        }
+                        break;
+                    }
+                }
+            }
+            Map<String, Statistics.VideoInput> videoInputMap = new HashMap<>();
+            for (StatsHelper.VideoInboundRtp videoInboundRtp : subscriberStats.videoInboundRtpList){
+                for (StatsHelper.VideoInboundRtp preVideoInboundRtp : preSubscriberStats.videoInboundRtpList){
+                    if(videoInboundRtp.trackId.equals(preVideoInboundRtp.trackId)){
+                        int bitrate = (int) ((videoInboundRtp.bytesReceived - preVideoInboundRtp.bytesReceived)*8 / STATS_INTERVAL / 1024);
+                        String codecMime = subscriberStats.getCodecMime(videoInboundRtp.trackId);
+                        StatsHelper.RecvVideoTrack recvVideoTrack = subscriberStats.getRecvVideoTrack(videoInboundRtp.trackId);
+                        int frameRate = (int) ((recvVideoTrack.framesReceived - preSubscriberStats.getRecvVideoTrack(preVideoInboundRtp.trackId).framesReceived) / STATS_INTERVAL);
+                        Statistics.VideoInput videoInput = new Statistics.VideoInput(frameRate, recvVideoTrack.frameWidth, recvVideoTrack.frameHeight, videoInboundRtp.packetsReceived, videoInboundRtp.packetsLost, bitrate, codecMime, videoInboundRtp.decoderImplementation);
+                        if (videoInput.framerate<=0 || videoInput.bitrate<=0 || videoInput.width<=0 || videoInput.height<=0){
+                            videoInput.framerate = videoInput.bitrate = videoInput.width = videoInput.height = 0;
+                        }
+                        String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvVideoTrack.trackIdentifier);
+                        Conferee conferee = findConfereeByStreamId(kdStreamId);
+                        if (conferee != null){
+                            videoInputMap.put(conferee.getId(), videoInput);
+                        }else{
+                            KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvVideoTrack.trackIdentifier, kdStreamId);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            Set<String> confereeIds = new HashSet<>();
+            confereeIds.addAll(audioInputMap.keySet());
+            confereeIds.addAll(videoInputMap.keySet());
+            for (String confereeId : confereeIds){
+                Statistics.AudioInput audioInput = audioInputMap.get(confereeId);
+                Statistics.VideoInput videoInput = videoInputMap.get(confereeId);
+                Statistics othersStats = new Statistics(confereeId, null, null, audioInput, videoInput);
+                statisticsList.add(othersStats);
+            }
+        }
+
+        if (!statisticsList.isEmpty()) {
+            KLog.p("/### statisticsList start");
+            for (Statistics stats : statisticsList) {
+                KLog.p(stats.toString());
+            }
+            KLog.p("/### statisticsList end");
+        }
     }
+
 
     private List<Statistics> statisticsList = new ArrayList<>();
 

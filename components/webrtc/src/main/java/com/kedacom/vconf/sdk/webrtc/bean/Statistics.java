@@ -15,22 +15,91 @@ public class Statistics {
     // 视频输入信息。
     public VideoInput videoInput;
 
+    // 媒体编码格式定义
+    public static final String VP8 = "VP8";
+    public static final String VP9 = "VP9";
+    public static final String H264 = "H264";
+    public static final String H264_BASELINE = "H264 Baseline";
+    public static final String H264_HIGH = "H264 High";
+    public static final String OPUS = "OPUS";
+    public static final String ISAC = "ISAC";
+    public static final String G722 = "G722";
+    public static final String UNKNOWN = "UNKNOWN";
+
+
+    public Statistics(String confereeId, AudioOutput audioOutput, VideoOutput videoOutput, AudioInput audioInput, VideoInput videoInput) {
+        this.confereeId = confereeId;
+        this.audioOutput = audioOutput;
+        this.audioInput = audioInput;
+        this.videoOutput = videoOutput;
+        this.videoInput = videoInput;
+    }
+
+
+    private static String mime2CodecName(String mime){
+        mime = mime.toLowerCase();
+        switch (mime){
+            case "audio/opus":
+                return OPUS;
+            case "audio/g722":
+                return G722;
+            case "video/h264":
+                return H264;
+            case "video/vp8":
+                return VP8;
+            default:
+                return UNKNOWN;
+        }
+
+    }
+
+
     public static class AudioOutput{
         // 码率。kbit/s
         public int bitrate;
-        // 编码格式。EmAudFormat.ordinal()
-        public int encodeFormat;
+        // 编码格式。
+        public String encodeFormat;
+
+        public AudioOutput(int bitrate, String mime) {
+            this.bitrate = bitrate;
+            this.encodeFormat = mime2CodecName(mime);
+        }
+
+        @Override
+        public String toString() {
+            return "AudioOutput{" +
+                    "bitrate=" + bitrate +
+                    ", encodeFormat=" + encodeFormat +
+                    '}';
+        }
     }
 
     public static class AudioInput{
         // 收包总数
-        public int packetsReceived;
+        public long packetsReceived;
         // 丢包总数
-        public int packetsLost;
+        public long packetsLost;
         // 码率。kbit/s
         public int bitrate;
-        // 编码格式。EmAudFormat.ordinal()
-        public int encodeFormat;
+        // 编码格式。
+        public String encodeFormat;
+
+        public AudioInput(long packetsReceived, long packetsLost, int bitrate, String mime) {
+            this.packetsReceived = packetsReceived;
+            this.packetsLost = packetsLost;
+            this.bitrate = bitrate;
+            this.encodeFormat = mime2CodecName(mime);
+        }
+
+        @Override
+        public String toString() {
+            return "AudioInput{" +
+                    "packetsReceived=" + packetsReceived +
+                    ", packetsLost=" + packetsLost +
+                    ", bitrate=" + bitrate +
+                    ", encodeFormat=" + encodeFormat +
+                    '}';
+        }
     }
 
     public static class VideoOutput{
@@ -38,29 +107,89 @@ public class Statistics {
         public int framerate;
         // 码率。kbit/s
         public int bitrate;
-        // 编码格式。EmVidFormat.ordinal()
-        public int encodeFormat;
-        // 分辨率。EmMtResolution.ordinal()
-        public int resolution;
+        // 编码格式。
+        public String encodeFormat;
+        // 帧宽
+        public int width;
+        // 帧高
+        public int height;
         // 硬编码器名称。若没有则为软编码
         public String hwencoder;
+
+        public VideoOutput(int framerate, int width, int height, int bitrate, String mime, String hwencoder) {
+            this.framerate = framerate;
+            this.bitrate = bitrate;
+            this.encodeFormat = mime2CodecName(mime);
+            this.width = width;
+            this.height = height;
+            this.hwencoder = hwencoder;
+        }
+
+        @Override
+        public String toString() {
+            return "VideoOutput{" +
+                    "framerate=" + framerate +
+                    ", bitrate=" + bitrate +
+                    ", encodeFormat=" + encodeFormat +
+                    ", width=" + width +
+                    ", height=" + height +
+                    ", hwencoder='" + hwencoder + '\'' +
+                    '}';
+        }
     }
 
     public static class VideoInput{
         // 收包总数
-        public int packetsReceived;
+        public long packetsReceived;
         // 丢包总数
-        public int packetsLost;
+        public long packetsLost;
         // 帧率。fps
         public int framerate;
         // 码率。kbit/s
         public int bitrate;
-        // 编码格式。EmVidFormat.ordinal()
-        public int encodeFormat;
-        // 分辨率。EmMtResolution.ordinal()
-        public int resolution;
+        // 编码格式。
+        public String encodeFormat;
+        // 帧宽
+        public int width;
+        // 帧高
+        public int height;
         // 硬编码器名称。若没有则为软编码
         public String hwencoder;
+
+        public VideoInput(int framerate, int width, int height, long packetsReceived, long packetsLost, int bitrate, String mime, String hwencoder) {
+            this.packetsReceived = packetsReceived;
+            this.packetsLost = packetsLost;
+            this.framerate = framerate;
+            this.bitrate = bitrate;
+            this.encodeFormat = mime2CodecName(mime);
+            this.width = width;
+            this.height = height;
+            this.hwencoder = hwencoder;
+        }
+
+        @Override
+        public String toString() {
+            return "VideoInput{" +
+                    "packetsReceived=" + packetsReceived +
+                    ", packetsLost=" + packetsLost +
+                    ", framerate=" + framerate +
+                    ", bitrate=" + bitrate +
+                    ", encodeFormat=" + encodeFormat +
+                    ", width=" + width +
+                    ", height=" + height +
+                    ", hwencoder='" + hwencoder + '\'' +
+                    '}';
+        }
     }
 
+    @Override
+    public String toString() {
+        return "Statistics{" +
+                "confereeId='" + confereeId + '\'' +
+                ", audioOutput=" + audioOutput +
+                ", audioInput=" + audioInput +
+                ", videoOutput=" + videoOutput +
+                ", videoInput=" + videoInput +
+                '}';
+    }
 }

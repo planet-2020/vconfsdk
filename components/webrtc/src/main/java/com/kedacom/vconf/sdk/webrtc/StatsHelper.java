@@ -1,7 +1,5 @@
 package com.kedacom.vconf.sdk.webrtc;
 
-import androidx.annotation.NonNull;
-
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
 import org.webrtc.RTCStats;
@@ -15,12 +13,12 @@ import java.util.Map;
 /**
  * Created by Sissi on 2019/12/19
  */
-public final class StatsHelper {
+final class StatsHelper {
 
     @SuppressWarnings({"ConstantConditions", "SimplifiableConditionalExpression"})
-    static void resolveStats(RTCStatsReport rtcStatsReport, @NonNull Stats resolvedStats){
+    static Stats resolveStats(RTCStatsReport rtcStatsReport){
 
-        resolvedStats.clear();
+        Stats stats = new Stats();
 
         KLog.p("resolveStats start===========");
         for (Map.Entry<String, RTCStats> rtcStatsEntry : rtcStatsReport.getStatsMap().entrySet()){
@@ -42,14 +40,14 @@ public final class StatsHelper {
                     audioSource.audioLevel = null != members.get("audioLevel") ? (double) members.get("audioLevel") : 0;
                     audioSource.totalAudioEnergy = null != members.get("totalAudioEnergy") ? (double) members.get("totalAudioEnergy") : 0;
                     audioSource.totalSamplesDuration = null != members.get("totalSamplesDuration") ? (double) members.get("totalSamplesDuration") : 0;
-                    resolvedStats.audioSource = audioSource;
+                    stats.audioSource = audioSource;
                 }else{
                     VideoSource videoSource = new VideoSource();
                     videoSource.trackIdentifier = null != members.get("trackIdentifier") ? (String) members.get("trackIdentifier") : null;
-                    videoSource.width = null != members.get("width") ? (long) members.get("width") : 0;
-                    videoSource.height = null != members.get("height") ? (long) members.get("height") : 0;
-                    videoSource.framesPerSecond = null != members.get("framesPerSecond") ? (long) members.get("framesPerSecond") : 0;
-                    resolvedStats.videoSource = videoSource;
+                    videoSource.width = (int) (null != members.get("width") ? (long) members.get("width") : 0);
+                    videoSource.height = (int) (null != members.get("height") ? (int) (long) members.get("height") : 0);
+                    videoSource.framesPerSecond = (int) (null != members.get("framesPerSecond") ? (long) members.get("framesPerSecond") : 0);
+                    stats.videoSource = videoSource;
                 }
 
             }else if (type.equals("codec")){
@@ -60,9 +58,9 @@ public final class StatsHelper {
                 codec.clockRate = null != members.get("clockRate") ? (long) members.get("clockRate") : 0;
                 boolean isDecoder = codec.id.contains("Inbound");
                 if (isDecoder){
-                    resolvedStats.decoderList.add(codec);
+                    stats.decoderList.add(codec);
                 }else{
-                    resolvedStats.encoderList.add(codec);
+                    stats.encoderList.add(codec);
                 }
 
             }else if (type.equals("track")){
@@ -92,7 +90,7 @@ public final class StatsHelper {
                         recvAudioTrack.relativePacketArrivalDelay = null != members.get("relativePacketArrivalDelay") ? (double) members.get("relativePacketArrivalDelay") : 0;
                         recvAudioTrack.interruptionCount = null != members.get("interruptionCount") ? (long) members.get("interruptionCount") : 0;
                         recvAudioTrack.totalInterruptionDuration = null != members.get("totalInterruptionDuration") ? (double) members.get("totalInterruptionDuration") : 0;
-                        resolvedStats.recvAudioTrackList.add(recvAudioTrack);
+                        stats.recvAudioTrackList.add(recvAudioTrack);
                     }else{
                         RecvVideoTrack recvVideoTrack = new RecvVideoTrack();
                         recvVideoTrack.id = trackIdInRtp;
@@ -101,8 +99,8 @@ public final class StatsHelper {
                         recvVideoTrack.detached = null != members.get("detached") ? (boolean) members.get("detached") : true;
                         recvVideoTrack.jitterBufferDelay = null != members.get("jitterBufferDelay") ? (double) members.get("jitterBufferDelay") : 0;
                         recvVideoTrack.jitterBufferEmittedCount = null != members.get("jitterBufferEmittedCount") ? ((BigInteger) members.get("jitterBufferEmittedCount")).longValue() : 0;
-                        recvVideoTrack.frameWidth = null != members.get("frameWidth") ? (long) members.get("frameWidth") : 0;
-                        recvVideoTrack.frameHeight = null != members.get("frameHeight") ? (long) members.get("frameHeight") : 0;
+                        recvVideoTrack.frameWidth = (int) (null != members.get("frameWidth") ? (long) members.get("frameWidth") : 0);
+                        recvVideoTrack.frameHeight = (int) (null != members.get("frameHeight") ? (long) members.get("frameHeight") : 0);
                         recvVideoTrack.framesReceived = null != members.get("framesReceived") ? (long) members.get("framesReceived") : 0;
                         recvVideoTrack.framesDecoded = null != members.get("framesDecoded") ? (long) members.get("framesDecoded") : 0;
                         recvVideoTrack.framesDropped = null != members.get("framesDropped") ? (long) members.get("framesDropped") : 0;
@@ -112,7 +110,7 @@ public final class StatsHelper {
                         recvVideoTrack.totalPausesDuration = null != members.get("totalPausesDuration") ? (double) members.get("totalPausesDuration") : 0;
                         recvVideoTrack.totalFramesDuration = null != members.get("totalFramesDuration") ? (double) members.get("totalFramesDuration") : 0;
                         recvVideoTrack.sumOfSquaredFramesDuration = null != members.get("sumOfSquaredFramesDuration") ? (double) members.get("sumOfSquaredFramesDuration") : 0;
-                        resolvedStats.recvVideoTrackList.add(recvVideoTrack);
+                        stats.recvVideoTrackList.add(recvVideoTrack);
                     }
                 }else{
                     if (bAudio){
@@ -122,7 +120,7 @@ public final class StatsHelper {
                         sendAudioTrack.mediaSourceId = null != members.get("mediaSourceId") ? (String) members.get("mediaSourceId") : null;
                         sendAudioTrack.ended = null != members.get("ended") ? (boolean) members.get("ended") : true;
                         sendAudioTrack.detached =  null != members.get("detached") ? (boolean) members.get("detached") : true;
-                        resolvedStats.sendAudioTrack = sendAudioTrack;
+                        stats.sendAudioTrack = sendAudioTrack;
                     }else{
                         SendVideoTrack sendVideoTrack = new SendVideoTrack();
                         sendVideoTrack.id = trackIdInRtp;
@@ -130,11 +128,11 @@ public final class StatsHelper {
                         sendVideoTrack.mediaSourceId = null != members.get("mediaSourceId") ? (String) members.get("mediaSourceId") : null;
                         sendVideoTrack.ended = null != members.get("ended") ? (boolean) members.get("ended") : true;
                         sendVideoTrack.detached =  null != members.get("detached") ? (boolean) members.get("detached") : true;
-                        sendVideoTrack.frameWidth = null != members.get("frameWidth") ? (long) members.get("frameWidth") : 0;
-                        sendVideoTrack.frameHeight = null != members.get("frameHeight") ? (long) members.get("frameHeight") : 0;
+                        sendVideoTrack.frameWidth = (int) (null != members.get("frameWidth") ? (long) members.get("frameWidth") : 0);
+                        sendVideoTrack.frameHeight = (int) (null != members.get("frameHeight") ? (long) members.get("frameHeight") : 0);
                         sendVideoTrack.framesSent = null != members.get("framesSent") ? (long) members.get("framesSent") : 0;
                         sendVideoTrack.hugeFramesSent = null != members.get("hugeFramesSent") ? (long) members.get("hugeFramesSent") : 0;
-                        resolvedStats.sendVideoTrack = sendVideoTrack;
+                        stats.sendVideoTrack = sendVideoTrack;
                     }
                 }
 
@@ -152,7 +150,7 @@ public final class StatsHelper {
                     audioOutboundRtp.bytesSent = null != members.get("bytesSent") ? ((BigInteger) members.get("bytesSent")).longValue() : 0;
                     audioOutboundRtp.headerBytesSent = null != members.get("headerBytesSent") ? ((BigInteger) members.get("headerBytesSent")).longValue() : 0;
                     audioOutboundRtp.retransmittedBytesSent = null != members.get("retransmittedBytesSent") ? ((BigInteger) members.get("retransmittedBytesSent")).longValue() : 0;
-                    resolvedStats.audioOutboundRtp = audioOutboundRtp;
+                    stats.audioOutboundRtp = audioOutboundRtp;
                 }else{
                     VideoOutboundRtp videoOutboundRtp = new VideoOutboundRtp();
                     videoOutboundRtp.ssrc = null != members.get("ssrc") ? (long) members.get("ssrc") : 0;
@@ -177,7 +175,7 @@ public final class StatsHelper {
                     videoOutboundRtp.qualityLimitationReason = null != members.get("qualityLimitationReason") ? (String) members.get("qualityLimitationReason") : null;
                     videoOutboundRtp.qualityLimitationResolutionChanges = null != members.get("qualityLimitationResolutionChanges") ? (long) members.get("qualityLimitationResolutionChanges") : 0;
                     videoOutboundRtp.encoderImplementation = null != members.get("encoderImplementation") ? (String) members.get("encoderImplementation") : null;
-                    resolvedStats.videoOutboundRtp = videoOutboundRtp;
+                    stats.videoOutboundRtp = videoOutboundRtp;
                 }
 
             }else if (type.equals("inbound-rtp")){
@@ -194,7 +192,7 @@ public final class StatsHelper {
                     audioInboundRtp.packetsLost = null != members.get("packetsLost") ? (int) members.get("packetsLost") : 0;
                     audioInboundRtp.lastPacketReceivedTimestamp = null != members.get("lastPacketReceivedTimestamp") ? (double) members.get("lastPacketReceivedTimestamp") : 0;
                     audioInboundRtp.jitter = null != members.get("jitter") ? (double) members.get("jitter") : 0;
-                    resolvedStats.audioInboundRtpList.add(audioInboundRtp);
+                    stats.audioInboundRtpList.add(audioInboundRtp);
                 }else{
                     VideoInboundRtp videoInboundRtp = new VideoInboundRtp();
                     videoInboundRtp.ssrc = null != members.get("ssrc") ? (long) members.get("ssrc") : 0;
@@ -216,7 +214,7 @@ public final class StatsHelper {
                     videoInboundRtp.totalInterFrameDelay = null != members.get("totalInterFrameDelay") ? (double) members.get("totalInterFrameDelay") : 0;
                     videoInboundRtp.totalSquaredInterFrameDelay = null != members.get("totalSquaredInterFrameDelay") ? (double) members.get("totalSquaredInterFrameDelay") : 0;
                     videoInboundRtp.decoderImplementation = null != members.get("decoderImplementation") ? (String) members.get("decoderImplementation") : null;
-                    resolvedStats.videoInboundRtpList.add(videoInboundRtp);
+                    stats.videoInboundRtpList.add(videoInboundRtp);
                 }
 
             }
@@ -224,80 +222,106 @@ public final class StatsHelper {
         }
 
         KLog.p("resolveStats end===========");
+
+        return stats;
+
     }
 
 
 
-    public static class Stats{
+    static class Stats{
         // send
-        public AudioSource audioSource;
-        public VideoSource videoSource;
-        public SendAudioTrack sendAudioTrack;
-        public SendVideoTrack sendVideoTrack;
-        public AudioOutboundRtp audioOutboundRtp;
-        public VideoOutboundRtp videoOutboundRtp;
-        public List<Codec> encoderList = new ArrayList<>();
+        AudioSource audioSource;
+        VideoSource videoSource;
+        SendAudioTrack sendAudioTrack;
+        SendVideoTrack sendVideoTrack;
+        AudioOutboundRtp audioOutboundRtp;
+        VideoOutboundRtp videoOutboundRtp;
+        List<Codec> encoderList = new ArrayList<>();
 
         //receive
-        public List<AudioInboundRtp> audioInboundRtpList = new ArrayList<>();
-        public List<VideoInboundRtp> videoInboundRtpList = new ArrayList<>();
-        public List<RecvAudioTrack> recvAudioTrackList = new ArrayList<>();
-        public List<RecvVideoTrack> recvVideoTrackList = new ArrayList<>();
-        public List<Codec> decoderList = new ArrayList<>();
+        List<AudioInboundRtp> audioInboundRtpList = new ArrayList<>();
+        List<VideoInboundRtp> videoInboundRtpList = new ArrayList<>();
+        List<RecvAudioTrack> recvAudioTrackList = new ArrayList<>();
+        List<RecvVideoTrack> recvVideoTrackList = new ArrayList<>();
+        List<Codec> decoderList = new ArrayList<>();
 
-        void clear(){
-            audioSource = null;
-            videoSource = null;
-            sendAudioTrack = null;
-            sendVideoTrack = null;
-            audioOutboundRtp = null;
-            videoOutboundRtp = null;
-            audioInboundRtpList.clear();
-            videoInboundRtpList.clear();
-            recvAudioTrackList.clear();
-            recvVideoTrackList.clear();
-            encoderList.clear();
-            decoderList.clear();
+
+        String getCodecMime(String trackIdInRtp){
+            if (audioOutboundRtp != null && trackIdInRtp.equals(audioOutboundRtp.trackId)) {
+                for (Codec codec : encoderList) {
+                    if (codec.id.equals(audioOutboundRtp.codecId)) {
+                        return codec.mimeType;
+                    }
+                }
+            }else if (videoOutboundRtp != null && trackIdInRtp.equals(videoOutboundRtp.trackId)){
+                for (Codec codec : encoderList){
+                    if (codec.id.equals(videoOutboundRtp.codecId)){
+                        return codec.mimeType;
+                    }
+                }
+            }else {
+                for (AudioInboundRtp audioInboundRtp : audioInboundRtpList){
+                    if (trackIdInRtp.equals(audioInboundRtp.trackId)){
+                        for (Codec codec : decoderList){
+                            if (codec.id.equals(audioInboundRtp.codecId)){
+                                return codec.mimeType;
+                            }
+                        }
+                    }
+                }
+                for (VideoInboundRtp videoInboundRtp : videoInboundRtpList){
+                    if (trackIdInRtp.equals(videoInboundRtp.trackId)){
+                        for (Codec codec : decoderList){
+                            if (codec.id.equals(videoInboundRtp.codecId)){
+                                return codec.mimeType;
+                            }
+                        }
+                    }
+                }
+            }
+            return "unknown";
         }
 
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            Stats cloneStats = new Stats();
-            cloneStats.audioSource = null != audioSource ? (AudioSource) audioSource.clone() : null;
-            cloneStats.videoSource = null != videoSource ? (VideoSource) videoSource.clone() : null;
-            cloneStats.sendAudioTrack = null != sendAudioTrack ? (SendAudioTrack) sendAudioTrack.clone() : null;
-            cloneStats.sendVideoTrack = null != sendVideoTrack ? (SendVideoTrack) sendVideoTrack.clone() : null;
-            cloneStats.audioOutboundRtp = null != audioOutboundRtp ? (AudioOutboundRtp) audioOutboundRtp.clone() : null;
-            cloneStats.videoOutboundRtp = null != videoOutboundRtp ? (VideoOutboundRtp) videoOutboundRtp.clone() : null;
-            cloneStats.audioInboundRtpList = null != audioInboundRtpList ? new ArrayList<>(audioInboundRtpList) : null;
-            cloneStats.videoInboundRtpList = null != videoInboundRtpList ? new ArrayList<>(videoInboundRtpList) : null;
-            cloneStats.recvAudioTrackList = null != recvAudioTrackList ? new ArrayList<>(recvAudioTrackList) : null;
-            cloneStats.recvVideoTrackList = null != recvVideoTrackList ? new ArrayList<>(recvVideoTrackList) : null;
-            cloneStats.encoderList = null != encoderList ? new ArrayList<>(encoderList) : null;
-            cloneStats.decoderList = null != decoderList ? new ArrayList<>(decoderList) : null;
 
-            return cloneStats;
+        RecvAudioTrack getRecvAudioTrack(String trackIdInRtp){
+            for (RecvAudioTrack recvAudioTrack : recvAudioTrackList){
+                if (recvAudioTrack.id.equals(trackIdInRtp)){
+                    return recvAudioTrack;
+                }
+            }
+            return null;
         }
 
-        Stats fillSend(Stats stats){
-            audioSource = stats.audioSource;
-            videoSource = stats.videoSource;
-            sendAudioTrack = stats.sendAudioTrack;
-            sendVideoTrack = stats.sendVideoTrack;
-            audioOutboundRtp = stats.audioOutboundRtp;
-            videoOutboundRtp = stats.videoOutboundRtp;
-            encoderList = stats.encoderList;
-            return this;
+
+        RecvVideoTrack getRecvVideoTrack(String trackIdInRtp){
+            for (RecvVideoTrack recvVideoTrack : recvVideoTrackList){
+                if (recvVideoTrack.id.equals(trackIdInRtp)){
+                    return recvVideoTrack;
+                }
+            }
+            return null;
         }
 
-        Stats fillRecv(Stats stats){
-            audioInboundRtpList = stats.audioInboundRtpList;
-            videoInboundRtpList = stats.videoInboundRtpList;
-            recvAudioTrackList = stats.recvAudioTrackList;
-            recvVideoTrackList = stats.recvVideoTrackList;
-            decoderList = stats.decoderList;
-            return this;
+        AudioInboundRtp getAudioInboundRtp(String trackIdInRtp){
+            for (AudioInboundRtp audioInboundRtp : audioInboundRtpList){
+                if (trackIdInRtp.equals(audioInboundRtp.trackId)){
+                    return audioInboundRtp;
+                }
+            }
+            return null;
         }
+
+
+        VideoInboundRtp getVideoInboundRtp(String trackIdInRtp){
+            for (VideoInboundRtp videoInboundRtp : videoInboundRtpList){
+                if (trackIdInRtp.equals(videoInboundRtp.trackId)){
+                    return videoInboundRtp;
+                }
+            }
+            return null;
+        }
+
 
         @Override
         public String toString() {
@@ -319,16 +343,11 @@ public final class StatsHelper {
     }
 
 
-    public static class AudioSource{
-        public String trackIdentifier; // 跟webrtc中track.id()方法获取到的一致
-        public double audioLevel;
-        public double totalAudioEnergy;
-        public double totalSamplesDuration;
-
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            return super.clone();
-        }
+    static class AudioSource{
+        String trackIdentifier; // 跟webrtc中track.id()方法获取到的一致
+        double audioLevel;
+        double totalAudioEnergy;
+        double totalSamplesDuration;
 
         @Override
         public String toString() {
@@ -341,16 +360,11 @@ public final class StatsHelper {
         }
     }
 
-    public static class VideoSource{
-        public String trackIdentifier;  // 跟webrtc中track.id()方法获取到的一致
-        public long width;
-        public long height;
-        public long framesPerSecond;
-
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            return super.clone();
-        }
+    static class VideoSource{
+        String trackIdentifier;  // 跟webrtc中track.id()方法获取到的一致
+        int width;
+        int height;
+        int framesPerSecond;
 
         @Override
         public String toString() {
@@ -363,16 +377,11 @@ public final class StatsHelper {
         }
     }
 
-    public static class Codec{
-        public String id;
-        public long payloadType;
-        public String mimeType;
-        public long clockRate;
-
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            return super.clone();
-        }
+    static class Codec{
+        String id;
+        long payloadType;
+        String mimeType;
+        long clockRate;
 
         @Override
         public String toString() {
@@ -385,22 +394,17 @@ public final class StatsHelper {
         }
     }
 
-    public static class AudioInboundRtp{
-        public long ssrc;
-        public String trackId;         // 跟RecvAudioTrack中的id内容一致
-        public String transportId;
-        public String codecId;
-        public long packetsReceived;
-        public long bytesReceived;
-        public long headerBytesReceived;
-        public int packetsLost;
-        public double lastPacketReceivedTimestamp;
-        public double jitter;
-
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            return super.clone();
-        }
+    static class AudioInboundRtp{
+        long ssrc;
+        String trackId;         // 跟RecvAudioTrack中的id内容一致
+        String transportId;
+        String codecId;
+        long packetsReceived;
+        long bytesReceived;
+        long headerBytesReceived;
+        int packetsLost;
+        double lastPacketReceivedTimestamp;
+        double jitter;
 
         @Override
         public String toString() {
@@ -419,31 +423,26 @@ public final class StatsHelper {
         }
     }
 
-    public static class VideoInboundRtp{
-        public long ssrc;
-        public String trackId;         // 跟RecvVideoTrack中的id内容一致
-        public String transportId;
-        public String codecId;
-        public long firCount;
-        public long pliCount;
-        public long nackCount;
-        public long qpSum;
-        public long packetsReceived;
-        public long bytesReceived;
-        public long headerBytesReceived;
-        public int packetsLost;
-        public double lastPacketReceivedTimestamp;
-        public long framesDecoded;
-        public long keyFramesDecoded;
-        public double totalDecodeTime;
-        public double totalInterFrameDelay;
-        public double totalSquaredInterFrameDelay;
-        public String decoderImplementation;
-
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            return super.clone();
-        }
+    static class VideoInboundRtp{
+        long ssrc;
+        String trackId;         // 跟RecvVideoTrack中的id内容一致
+        String transportId;
+        String codecId;
+        long firCount;
+        long pliCount;
+        long nackCount;
+        long qpSum;
+        long packetsReceived;
+        long bytesReceived;
+        long headerBytesReceived;
+        int packetsLost;
+        double lastPacketReceivedTimestamp;
+        long framesDecoded;
+        long keyFramesDecoded;
+        double totalDecodeTime;
+        double totalInterFrameDelay;
+        double totalSquaredInterFrameDelay;
+        String decoderImplementation;
 
         @Override
         public String toString() {
@@ -471,22 +470,17 @@ public final class StatsHelper {
         }
     }
 
-    public static class AudioOutboundRtp{
-        public long ssrc;
-        public String trackId;     // 跟SendAudioTrack中的id内容一致
-        public String transportId;
-        public String codecId;
-        public String mediaSourceId;
-        public long packetsSent;
-        public long retransmittedPacketsSent;
-        public long bytesSent;
-        public long headerBytesSent;
-        public long retransmittedBytesSent;
-
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            return super.clone();
-        }
+    static class AudioOutboundRtp{
+        long ssrc;
+        String trackId;     // 跟SendAudioTrack中的id内容一致
+        String transportId;
+        String codecId;
+        String mediaSourceId;
+        long packetsSent;
+        long retransmittedPacketsSent;
+        long bytesSent;
+        long headerBytesSent;
+        long retransmittedBytesSent;
 
         @Override
         public String toString() {
@@ -505,34 +499,29 @@ public final class StatsHelper {
         }
     }
 
-    public static class VideoOutboundRtp{
-        public long ssrc;
-        public String trackId;         // 跟SendVideoTrack中的id内容一致
-        public String transportId;
-        public String codecId;
-        public long firCount;
-        public long pliCount;
-        public long nackCount;
-        public long qpSum;
-        public String mediaSourceId;
-        public long packetsSent;
-        public long retransmittedPacketsSent;
-        public long bytesSent;
-        public long headerBytesSent;
-        public long retransmittedBytesSent;
-        public long framesEncoded;
-        public long keyFramesEncoded;
-        public double totalEncodeTime;
-        public long totalEncodedBytesTarget;
-        public double totalPacketSendDelay;
-        public String qualityLimitationReason;
-        public long qualityLimitationResolutionChanges;
-        public String encoderImplementation;
-
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            return super.clone();
-        }
+    static class VideoOutboundRtp{
+        long ssrc;
+        String trackId;         // 跟SendVideoTrack中的id内容一致
+        String transportId;
+        String codecId;
+        long firCount;
+        long pliCount;
+        long nackCount;
+        long qpSum;
+        String mediaSourceId;
+        long packetsSent;
+        long retransmittedPacketsSent;
+        long bytesSent;
+        long headerBytesSent;
+        long retransmittedBytesSent;
+        long framesEncoded;
+        long keyFramesEncoded;
+        double totalEncodeTime;
+        long totalEncodedBytesTarget;
+        double totalPacketSendDelay;
+        String qualityLimitationReason;
+        long qualityLimitationResolutionChanges;
+        String encoderImplementation;
 
         @Override
         public String toString() {
@@ -563,17 +552,12 @@ public final class StatsHelper {
         }
     }
 
-    public static class SendAudioTrack{
-        public String id;          // 跟OutboundRtp中的trackId内容一致
-        public String trackIdentifier; // 跟webrtc中track.id()方法获取到的一致
-        public String mediaSourceId;
-        public boolean ended;
-        public boolean detached;
-
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            return super.clone();
-        }
+    static class SendAudioTrack{
+        String id;          // 跟OutboundRtp中的trackId内容一致
+        String trackIdentifier; // 跟webrtc中track.id()方法获取到的一致
+        String mediaSourceId;
+        boolean ended;
+        boolean detached;
 
         @Override
         public String toString() {
@@ -587,21 +571,16 @@ public final class StatsHelper {
         }
     }
 
-    public static class SendVideoTrack{
-        public String id;          // 跟OutboundRtp中的trackId内容一致
-        public String trackIdentifier; // 跟webrtc中track.id()方法获取到的一致
-        public String mediaSourceId;
-        public boolean ended;
-        public boolean detached;
-        public long frameWidth;
-        public long frameHeight;
-        public long framesSent;
-        public long hugeFramesSent;
-
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            return super.clone();
-        }
+    static class SendVideoTrack{
+        String id;          // 跟OutboundRtp中的trackId内容一致
+        String trackIdentifier; // 跟webrtc中track.id()方法获取到的一致
+        String mediaSourceId;
+        boolean ended;
+        boolean detached;
+        int frameWidth;
+        int frameHeight;
+        long framesSent;
+        long hugeFramesSent;
 
         @Override
         public String toString() {
@@ -619,32 +598,27 @@ public final class StatsHelper {
         }
     }
 
-    public static class RecvAudioTrack{
-        public String id;              // 跟InboundRtp中的trackId内容一致
-        public String trackIdentifier; // 跟webrtc中track.id()方法获取到的一致
-        public boolean ended;
-        public boolean detached;
-        public double jitterBufferDelay;
-        public long jitterBufferEmittedCount;
-        public double audioLevel;
-        public double totalAudioEnergy;
-        public long totalSamplesReceived;
-        public double totalSamplesDuration;
-        public long concealedSamples;
-        public long silentConcealedSamples;
-        public long concealmentEvents;
-        public long insertedSamplesForDeceleration;
-        public long removedSamplesForAcceleration;
-        public long jitterBufferFlushes;
-        public long delayedPacketOutageSamples;
-        public double relativePacketArrivalDelay;
-        public long interruptionCount;
-        public double totalInterruptionDuration;
-
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            return super.clone();
-        }
+    static class RecvAudioTrack{
+        String id;              // 跟InboundRtp中的trackId内容一致
+        String trackIdentifier; // 跟webrtc中track.id()方法获取到的一致
+        boolean ended;
+        boolean detached;
+        double jitterBufferDelay;
+        long jitterBufferEmittedCount;
+        double audioLevel;
+        double totalAudioEnergy;
+        long totalSamplesReceived;
+        double totalSamplesDuration;
+        long concealedSamples;
+        long silentConcealedSamples;
+        long concealmentEvents;
+        long insertedSamplesForDeceleration;
+        long removedSamplesForAcceleration;
+        long jitterBufferFlushes;
+        long delayedPacketOutageSamples;
+        double relativePacketArrivalDelay;
+        long interruptionCount;
+        double totalInterruptionDuration;
 
         @Override
         public String toString() {
@@ -673,29 +647,24 @@ public final class StatsHelper {
         }
     }
 
-    public static class RecvVideoTrack{
-        public String id;      //跟InboundRtp中的trackId内容一致
-        public String trackIdentifier; // 跟webrtc中track.id()方法获取到的一致
-        public boolean ended;
-        public boolean detached;
-        public double jitterBufferDelay;
-        public long jitterBufferEmittedCount;
-        public long frameWidth;
-        public long frameHeight;
-        public long framesReceived;
-        public long framesDecoded;
-        public long framesDropped;
-        public long freezeCount;
-        public long pauseCount;
-        public double totalFreezesDuration;
-        public double totalPausesDuration;
-        public double totalFramesDuration;
-        public double sumOfSquaredFramesDuration;
-
-        @Override
-        public Object clone() throws CloneNotSupportedException {
-            return super.clone();
-        }
+    static class RecvVideoTrack{
+        String id;      //跟InboundRtp中的trackId内容一致
+        String trackIdentifier; // 跟webrtc中track.id()方法获取到的一致
+        boolean ended;
+        boolean detached;
+        double jitterBufferDelay;
+        long jitterBufferEmittedCount;
+        int frameWidth;
+        int frameHeight;
+        long framesReceived;
+        long framesDecoded;
+        long framesDropped;
+        long freezeCount;
+        long pauseCount;
+        double totalFreezesDuration;
+        double totalPausesDuration;
+        double totalFramesDuration;
+        double sumOfSquaredFramesDuration;
 
         @Override
         public String toString() {
