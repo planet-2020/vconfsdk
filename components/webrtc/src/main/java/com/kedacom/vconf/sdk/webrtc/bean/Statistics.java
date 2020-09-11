@@ -1,19 +1,11 @@
 package com.kedacom.vconf.sdk.webrtc.bean;
 
+import java.util.List;
+
 /**
  * 统计信息
  * */
 public class Statistics {
-    // 该统计信息所属与会方ID。
-    public String confereeId;
-    // 音频输出信息。
-    public AudioOutput audioOutput;
-    // 音频输入信息。
-    public AudioInput audioInput;
-    // 视频输出信息。
-    public VideoOutput videoOutput;
-    // 视频输入信息。
-    public VideoInput videoInput;
 
     // 媒体编码格式定义
     public static final String VP8 = "VP8";
@@ -26,15 +18,17 @@ public class Statistics {
     public static final String G722 = "G722";
     public static final String UNKNOWN = "UNKNOWN";
 
+    public List<ConfereeRelated> confereeRelated;
+    public Common common;
 
-    public Statistics(String confereeId, AudioOutput audioOutput, VideoOutput videoOutput, AudioInput audioInput, VideoInput videoInput) {
-        this.confereeId = confereeId;
-        this.audioOutput = audioOutput;
-        this.audioInput = audioInput;
-        this.videoOutput = videoOutput;
-        this.videoInput = videoInput;
+    public Statistics(List<ConfereeRelated> confereeRelated) {
+        this.confereeRelated = confereeRelated;
     }
 
+    public Statistics(List<ConfereeRelated> confereeRelated, Common common) {
+        this.confereeRelated = confereeRelated;
+        this.common = common;
+    }
 
     private static String mime2CodecName(String mime){
         mime = mime.toLowerCase();
@@ -53,6 +47,53 @@ public class Statistics {
 
     }
 
+    public static class ConfereeRelated{
+        // 该统计信息所属与会方ID。
+        public String confereeId;
+        // 音频输出信息。
+        public AudioOutput audioOutput;
+        // 音频输入信息。
+        public AudioInput audioInput;
+        // 视频输出信息。
+        public VideoOutput videoOutput;
+        // 视频输入信息。
+        public VideoInput videoInput;
+
+        public ConfereeRelated(String confereeId, AudioOutput audioOutput, VideoOutput videoOutput, AudioInput audioInput, VideoInput videoInput) {
+            this.confereeId = confereeId;
+            this.audioOutput = audioOutput;
+            this.audioInput = audioInput;
+            this.videoOutput = videoOutput;
+            this.videoInput = videoInput;
+        }
+
+        @Override
+        public String toString() {
+            return "ConfereeRelated{" +
+                    "confereeId='" + confereeId + '\'' +
+                    ", audioOutput=" + audioOutput +
+                    ", audioInput=" + audioInput +
+                    ", videoOutput=" + videoOutput +
+                    ", videoInput=" + videoInput +
+                    "}\n";
+        }
+    }
+
+    public static class Common{
+        // 混音
+        public AudioInput mixedAudio;
+
+        public Common(AudioInput mixedAudio) {
+            this.mixedAudio = mixedAudio;
+        }
+
+        @Override
+        public String toString() {
+            return "Common{" +
+                    "mixedAudio=" + mixedAudio +
+                    "}\n";
+        }
+    }
 
     public static class AudioOutput{
         // 码率。kbit/s
@@ -70,7 +111,7 @@ public class Statistics {
             return "AudioOutput{" +
                     "bitrate=" + bitrate +
                     ", encodeFormat=" + encodeFormat +
-                    '}';
+                    "}\n";
         }
     }
 
@@ -98,7 +139,7 @@ public class Statistics {
                     ", packetsLost=" + packetsLost +
                     ", bitrate=" + bitrate +
                     ", encodeFormat=" + encodeFormat +
-                    '}';
+                    "}\n";
         }
     }
 
@@ -134,7 +175,7 @@ public class Statistics {
                     ", width=" + width +
                     ", height=" + height +
                     ", hwencoder='" + hwencoder + '\'' +
-                    '}';
+                    "}\n";
         }
     }
 
@@ -178,18 +219,15 @@ public class Statistics {
                     ", width=" + width +
                     ", height=" + height +
                     ", hwencoder='" + hwencoder + '\'' +
-                    '}';
+                    "}\n";
         }
     }
 
     @Override
     public String toString() {
         return "Statistics{" +
-                "confereeId='" + confereeId + '\'' +
-                ", audioOutput=" + audioOutput +
-                ", audioInput=" + audioInput +
-                ", videoOutput=" + videoOutput +
-                ", videoInput=" + videoInput +
-                '}';
+                "confereeRelated=" + confereeRelated +
+                ", common=" + common +
+                "}\n";
     }
 }

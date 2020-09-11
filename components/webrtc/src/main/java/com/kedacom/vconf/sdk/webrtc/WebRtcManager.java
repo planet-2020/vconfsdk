@@ -4682,7 +4682,8 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     private void aggregateStats(){
-        statisticsList.clear();
+        List<Statistics.ConfereeRelated> confereeRelated = new ArrayList<>();
+        Statistics.Common common = null;
         if (publisherStats != null && prePublisherStats != null){
             int bitrate = (int) ((publisherStats.audioOutboundRtp.bytesSent - prePublisherStats.audioOutboundRtp.bytesSent)*8 / STATS_INTERVAL / 1024);
             String codecMime = publisherStats.getCodecMime(publisherStats.audioOutboundRtp.trackId);
@@ -4695,8 +4696,7 @@ public class WebRtcManager extends Caster<Msg>{
             if (videoOutput.framerate<=0 || videoOutput.bitrate<=0 || videoOutput.width<=0 || videoOutput.height<=0){
                 videoOutput.framerate = videoOutput.bitrate = videoOutput.width = videoOutput.height = 0;
             }
-            Statistics myselfStats = new Statistics(myself.getId(), audioOutput, videoOutput, null, null);
-            statisticsList.add(myselfStats);
+            confereeRelated.add(new Statistics.ConfereeRelated(myself.getId(), audioOutput, videoOutput, null, null));
         }
         if (subscriberStats != null && preSubscriberStats != null){
             Map<String, Statistics.AudioInput> audioInputMap = new HashMap<>();
@@ -4712,7 +4712,12 @@ public class WebRtcManager extends Caster<Msg>{
                         if (conferee != null){
                             audioInputMap.put(conferee.getId(), audioInput);
                         }else{
-                            KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
+                            RtcStream rtcStream = findStream(kdStreamId);
+                            if (rtcStream != null && rtcStream.streamInfo.bMix){
+                                common = new Statistics.Common(audioInput);
+                            }else {
+                                KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
+                            }
                         }
                         break;
                     }
@@ -4748,25 +4753,18 @@ public class WebRtcManager extends Caster<Msg>{
             for (String confereeId : confereeIds){
                 Statistics.AudioInput audioInput = audioInputMap.get(confereeId);
                 Statistics.VideoInput videoInput = videoInputMap.get(confereeId);
-                Statistics othersStats = new Statistics(confereeId, null, null, audioInput, videoInput);
-                statisticsList.add(othersStats);
+                confereeRelated.add(new Statistics.ConfereeRelated(confereeId, null, null, audioInput, videoInput));
             }
         }
 
-        if (!statisticsList.isEmpty()) {
-            KLog.p("/### statisticsList start");
-            for (Statistics stats : statisticsList) {
-                KLog.p(stats.toString());
-            }
-            KLog.p("/### statisticsList end");
-        }
+        statistics = new Statistics(confereeRelated, common);
+        KLog.p("/### "+statistics);
     }
 
-
-    private List<Statistics> statisticsList = new ArrayList<>();
+    private Statistics statistics;
 
     public interface StatsListener{
-        void onStats(List<Statistics> statisticsList);
+        void onStats(Statistics statistics);
     }
 
 }
