@@ -1,7 +1,7 @@
 package com.kedacom.vconf.sdk.amulet;
 
 
-public interface IFairy {
+interface IFairy {
 
     String TAG = "Fairy";
 

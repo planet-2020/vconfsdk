@@ -8,7 +8,7 @@ import androidx.annotation.NonNull;
 
 import com.annimon.stream.Stream;
 import com.kedacom.vconf.sdk.amulet.Caster;
-import com.kedacom.vconf.sdk.amulet.ILifecycleOwner;
+import com.kedacom.vconf.sdk.amulet.INtfListener;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.base.login.bean.UserDetails;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.EmServerAddrType;
@@ -27,7 +27,6 @@ import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtSvrState;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtSvrStateList;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.TQueryUserDetailsRsp;
 import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
-import com.kedacom.vconf.sdk.common.type.TNetAddr;
 import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
@@ -275,25 +274,18 @@ public class LoginManager extends Caster<Msg> {
 
     @SuppressWarnings("SwitchStatementWithTooFewBranches")
     @Override
-    protected void onNtf(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
+    protected void onNtf(Msg ntf, Object ntfContent) {
         switch (ntf){
             case KickedOff:
-                Stream.of(ntfListeners).forEach(it-> ((OnKickedOffListener) it).onKickedOff());
+                Stream.of(getNtfListeners(OnKickedOffListener.class)).forEach(OnKickedOffListener::onKickedOff);
                 break;
         }
-    }
-
-    @Override
-    protected Map<Class<? extends ILifecycleOwner>, Msg[]> regNtfListenerTypes() {
-        Map<Class<? extends ILifecycleOwner>, Msg[]> listenerType2CaredNtf = new HashMap<>();
-        listenerType2CaredNtf.put(OnKickedOffListener.class, new Msg[]{Msg.KickedOff});
-        return listenerType2CaredNtf;
     }
 
     /**
      * 被抢登监听器
      * */
-    public interface OnKickedOffListener extends ILifecycleOwner {
+    public interface OnKickedOffListener extends INtfListener {
         void onKickedOff();
     }
 
