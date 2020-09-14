@@ -25,7 +25,6 @@ import com.annimon.stream.Stream;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.kedacom.vconf.sdk.amulet.Caster;
-import com.kedacom.vconf.sdk.amulet.ILifecycleOwner;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.bean.transfer.TMtEntityStatus;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
@@ -849,7 +848,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     @Override
-    protected void onNtf(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
+    protected void onNtf(Msg ntf, Object ntfContent) {
 
         switch (ntf){
             case LoginStateChanged:
@@ -1143,9 +1142,6 @@ public class WebRtcManager extends Caster<Msg>{
 //        }
 
         cancelReq(null, null);
-
-        // 删除所有通知监听器
-        delNtfListener(null);
 
         KLog.p("session stopped ");
 
