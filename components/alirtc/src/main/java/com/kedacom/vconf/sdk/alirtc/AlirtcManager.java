@@ -31,7 +31,7 @@ import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfPara;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TJoinConfResult;
 import com.kedacom.vconf.sdk.alirtc.bean.transfer.TMtRegistCsvInfo;
 import com.kedacom.vconf.sdk.amulet.Caster;
-import com.kedacom.vconf.sdk.amulet.ILifecycleOwner;
+import com.kedacom.vconf.sdk.amulet.INtfListener;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.bean.TerminalType;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
@@ -312,7 +312,7 @@ public class AlirtcManager extends Caster<Msg> {
 
 
     @Override
-    protected void onNtf(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
+    protected void onNtf(Msg ntf, Object ntfContent) {
         switch (ntf){
             case LoginStateChanged:
                 TRegResultNtf regResultNtf = (TRegResultNtf) ntfContent;
@@ -322,41 +322,30 @@ public class AlirtcManager extends Caster<Msg> {
                         loginState = state;
                         loginStateChangedHandler.removeCallbacksAndMessages(null);
                         // 延迟处理避免频繁上报用户
-                        loginStateChangedHandler.postDelayed(() -> Stream.of(ntfListeners).forEach(it -> {
-                            if (containsNtfListener(it)) { // 因为是延迟通知，可能在延迟的时间段内监听器已销毁了，所以需判断该监听器是否仍存在
-                                ((OnLoginStateChangedListener) it).onLoginStateChanged(loginState);
-                            }
+                        loginStateChangedHandler.postDelayed(() -> Stream.of(getNtfListeners(OnLoginStateChangedListener.class)).forEach(it -> {
+                            it.onLoginStateChanged(loginState);
                         }), 3000);
                     }
                 }
                 break;
             case ConfInviting:
-                Stream.of(ntfListeners).forEach(it ->
-                        ((OnConfInvitingListener)it).onConfInviting(ToDoConverter.TConfInvitation2ConfInvitationInfo((TConfInvitation) ntfContent))
+                Stream.of(getNtfListeners(OnConfInvitingListener.class)).forEach(it ->
+                        it.onConfInviting(ToDoConverter.TConfInvitation2ConfInvitationInfo((TConfInvitation) ntfContent))
                 );
                 break;
             case ConfAboutToEnd:
-                Stream.of(ntfListeners).forEach(it ->
-                        ((OnConfAboutToEndListener)it).onConfAboutToEnd(ToDoConverter.TAliConfWillEndInfo2ConfAboutToEnd((TAliConfWillEndInfo) ntfContent))
+                Stream.of(getNtfListeners(OnConfAboutToEndListener.class)).forEach(it ->
+                        it.onConfAboutToEnd(ToDoConverter.TAliConfWillEndInfo2ConfAboutToEnd((TAliConfWillEndInfo) ntfContent))
                 );
                 break;
         }
     }
 
 
-    @Override
-    protected Map<Class<? extends ILifecycleOwner>, Msg[]> regNtfListenerTypes() {
-        Map<Class<? extends ILifecycleOwner>, Msg[]> listenerType2CaredNtf = new HashMap<>();
-        listenerType2CaredNtf.put(OnLoginStateChangedListener.class, new Msg[]{Msg.LoginStateChanged});
-        listenerType2CaredNtf.put(OnConfInvitingListener.class, new Msg[]{Msg.ConfInviting});
-        listenerType2CaredNtf.put(OnConfAboutToEndListener.class, new Msg[]{Msg.ConfAboutToEnd});
-        return listenerType2CaredNtf;
-    }
-
     /**
      * 登录状态变更监听器
      * */
-    public interface OnLoginStateChangedListener extends ILifecycleOwner{
+    public interface OnLoginStateChangedListener extends INtfListener {
         /**
          * 登录状态变更
          * @param state 当前登录状态。{@link AliRtcResultCode#OK}已登录，其他：未登录。
@@ -367,7 +356,7 @@ public class AlirtcManager extends Caster<Msg> {
     /**
      * 会议邀请通知监听器
      * */
-    public interface OnConfInvitingListener extends ILifecycleOwner{
+    public interface OnConfInvitingListener extends INtfListener{
         /**
          * 会议邀请。
          * 收到邀请后可调用{@link #joinConf(JoinConfPara, IResultListener)}加入会议，
@@ -379,7 +368,7 @@ public class AlirtcManager extends Caster<Msg> {
     /**
      * 会议即将结束监听器
      * */
-    public interface OnConfAboutToEndListener extends ILifecycleOwner{
+    public interface OnConfAboutToEndListener extends INtfListener{
         /**
          * 会议即将结束
          * */

@@ -9,18 +9,13 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 
-@SuppressWarnings({"unused", "SameParameterValue"})
+@SuppressWarnings({"unused", "SameParameterValue", "BooleanMethodIsAlwaysInverted"})
 public abstract class Caster<T extends Enum<T>> implements
         IFairy.ISessionFairy.IListener,
         IFairy.INotificationFairy.IListener{
@@ -28,32 +23,15 @@ public abstract class Caster<T extends Enum<T>> implements
     private IFairy.ISessionFairy sessionFairy = new SessionFairy();
 
     private final Set<Session> sessions = new LinkedHashSet<>();
-    private final Map<Class<? extends ILifecycleOwner>, T[]> registeredNtfListenerTypes = new HashMap<>();
-    private final Map<T, Set<ILifecycleOwner>> ntfListeners = new LinkedHashMap<>();
-    /**
-     * 通知无关的监听器。
-     * 该类通知监听器往往是Caster的子类自定义的，不是由Ntf直接触发，而是在满足特定条件时触发。
-     * 所以{@link #onNtf(Enum, Object, Set)}的listener集合中不包括该类监听器。
-     * 子类可以通过{@link #regNtfListenerTypes()}注册该类监听器，Ntf传空或者null，例如：
-     * {@code
-     *     @Override
-     *     protected Map<Class<? extends ILifecycleOwner>, Msg[]> regNtfListenerTypes() {
-     *         Map<Class<? extends ILifecycleOwner>, Msg[]> registeredNtfListenerTypes = new HashMap<>();
-     *         registeredNtfListenerTypes.put(OnSyncFinListener.class, null); // OnSyncFinListener监听器并非直接由ntf触发，所以ntf填null
-     *         return registeredNtfListenerTypes;
-     *     }
-     * }
-     * 通过{@link #addNtfListener(ILifecycleOwner...)}添加监听器
-     * 通过{@link #getNtfUnrelatedListeners(Class)}获取监听器
-     * */
-    private final Map<Class<?>, Set<ILifecycleOwner>> ntfUnrelatedListeners = new LinkedHashMap<>();
+
+    private final Set<INtfListener> ntfListeners = new LinkedHashSet<>();
 
     private Class<T> enumT;
 
     private static Set<String> modules = new HashSet<>();
     private String msgPrefix;
 
-    private static Set<Caster>casters = new LinkedHashSet<>();
+    private static Set<Caster<?>>casters = new LinkedHashSet<>();
 
     private static boolean reqGloballyDisabled;
 
@@ -126,17 +104,8 @@ public abstract class Caster<T extends Enum<T>> implements
         Set<String> ntfIds = magicBook.ntfIds(null);
         if (null != ntfIds){
             for (String ntfId : ntfIds){
-                if (notificationFairy.subscribe(this, ntfId)){
-                    String val = unprefix(ntfId);
-                    T ntf = Enum.valueOf(enumT, val);
-                    ntfListeners.put(ntf, new HashSet<>());
-                }
+                notificationFairy.subscribe(this, ntfId);
             }
-        }
-
-        Map<Class<? extends ILifecycleOwner>, T[]> ntfListenerTypes = regNtfListenerTypes();
-        if (ntfListenerTypes != null) {
-            registeredNtfListenerTypes.putAll(ntfListenerTypes);
         }
 
         casters.add(this);
@@ -145,6 +114,7 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 发起请求
+     * @see #req(boolean, boolean, Enum, SessionProcessor, IResultListener, Object...)
      * */
     protected void req(@NonNull T req, SessionProcessor<T> sessionProcessor, IResultListener resultListener, Object... reqParas){
         req(false, false, req, sessionProcessor, resultListener, reqParas);
@@ -152,17 +122,18 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 发起请求
-     * 该接口是异步的不会阻塞调用者，该接口返回不代表请求已执行。
+     * 该接口是异步的不会阻塞调用者；
+     * 该接口返回仅代表请求已加入请求队列，不代表请求已执行。
      * @param ignoreGlobalBan 是否忽略全局性的禁令{@link #disableReqGlobally(boolean)}
      * @param ignoreBan 是否忽略该Caster的禁令{@link #disableReq(boolean)}
      * @param req 请求消息
      * @param sessionProcessor 会话处理器。为null则表示不关注请求结果或没有结果反馈，比如设置配置往往不需要反馈结果。
      * @param reqParas 请求参数列表，可以没有。
      * @param resultListener 请求结果监听器。
-     *                       NOTE: 会话持有了resultListener的引用，而resultListener可能为生命周期对象如Activity，
+     *                       NOTE: caster为每次请求创建一个会话（“请求——响应序列”），会话持有了resultListener的引用，而resultListener可能为生命周期对象如Activity，
      *                       若resultListener生命周期结束于会话之前则会话需要及时释放resultListener引用以避免内存泄漏以及不被用户期望的请求结果回调。
      *                       释放引用有两种方式：手动释放和自动释放。
-     *                       手动释放指用户通过调用{@link #delListener(ILifecycleOwner)}释放，自动释放则由Caster自动管理，默认是在resultListener生命周期结束时释放。
+     *                       手动释放指用户通过调用delete系列方法释放，如{@link #delListener(Object...)}，自动释放则由Caster自动管理，默认是在resultListener生命周期结束时释放。
      *                       手动释放很繁琐易出错，所以最好由Caster自动释放。
      *
      *                       在调用本接口时，Caster会尝试监控resultListener的生命周期，进而实现自动释放，但是成功的前提是——
@@ -223,7 +194,7 @@ public abstract class Caster<T extends Enum<T>> implements
      *                       绑定LifecycleOwner可手动（通过实现{@link IResultListener#getLifecycleOwner()}），或自动（满足resultListener的“直接”外部类是LifecycleOwner或绑定了LifecycleOwner）；
      *                       绑定的优先级按从高到低： getLifecycleOwner > 自身即为LifecycleOwner > 直接外部类是LifecycleOwner或绑定了LifecycleOwner；
      *                       如果用户的监听器本身就是一个长寿对象（如一个全局单例），肯定长过session的生命周期，则无需关注生命周期问题；
-     *                       当session结束时（session一定会结束，有超时机制），Caster会自动释放监听器引用，所以多数情况下即使不做任何处理现象上也不会表现出问题，但逻辑上是有问题的，在某些极端场景下会表现异常；
+     *                       当session结束时（session一定会结束，有超时机制），Caster会自动释放监听器引用，所以多数情况下即使不做任何处理也不会表现出问题（但实则有漏洞）。
      * */
     protected void req(boolean ignoreGlobalBan, boolean ignoreBan,
                        @NonNull T req, SessionProcessor<T> sessionProcessor, IResultListener resultListener, Object... reqParas){
@@ -254,9 +225,10 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 取消请求
-     * @param req 请求消息，为null则取消所有结果监听器为resultListener的请求。
+     * @param req 请求消息，为null则取消所有结果监听器为resultListener的请求。（一个监听器可复用于多个请求）
      * @param resultListener 结果监听器，为null则取消所有请求消息为req的请求。
      *                       若req和resultListener均为null则取消所有请求。
+     *                       若同样的req和resultListener的请求有多个则这些请求均会被取消。
      * */
     protected void cancelReq(T req, IResultListener resultListener){
         KLog.p(KLog.DEBUG,"req=%s, resultListener=%s", req, resultListener);
@@ -282,59 +254,22 @@ public abstract class Caster<T extends Enum<T>> implements
      * 添加通知监听器
      * @param listeners 通知监听器列表。
      *                  NOTE:
-     *                  Caster会尝试监测该监听器的生命周期，并做相应处理，
+     *                  Caster会尝试监测监听器的生命周期，以实现自动管理对监听器的持有。
      *                  参见{@link #req(Enum, SessionProcessor, IResultListener, Object...)}}对IResultListener的处理。
-     *                  NOTE：若ntfListener是lambda，则cater可能无法获取其直接外部类，不同于内部类必定持有外部类的引用，
-     *                  lambda是否持有外部类的引用取决于lambda中是否引用了外部类或者外部类的成员，
-     *                  若不能获取ntfListener的外部类引用，则须得ntfListener自身是生命周期对象或者通过{@link ILifecycleOwner#getLifecycleOwner()}}指定了要绑定的生命周期对象，
-     *                  caster才能自动管理ntfListener的生命周期对象。否则listeners的生命周期需要用户自己管理。
+     *                  不同于IResultListener身处会话，会话结束IResultListener的持有即被释放，会话总会结束（有超时机制）所以IResultListener总是会被释放（即便用户不做任何处理，也没自动绑定生命周期对象），
+     *                  INtfListener会被caster长久持有，除非正确绑定了生命周期对象（这样caster就能自动决定何时该解除持有）或者调用删除系列方法手动删除，如{@link #delListener(Object...)}
      * */
-    public void addNtfListener(@NonNull ILifecycleOwner... listeners){
-        for (ILifecycleOwner listener : listeners){
+    public void addNtfListener(@NonNull INtfListener... listeners){
+        for (INtfListener listener : listeners){
             if (listener == null) {
                 continue;
             }
-            Class<?> listenerClass = listener.getClass();
-            Class<?> registeredType = null;
-            T[] ntfs = null;
-            for (Class<?> clz : registeredNtfListenerTypes.keySet()){
-                if (clz.isAssignableFrom(listenerClass)){
-                    registeredType = clz;
-                    ntfs = registeredNtfListenerTypes.get(clz);
-                    break;
-                }
-            }
-            if (registeredType == null) {
-                throw new IllegalArgumentException(String.format("listener type %s not supported by %s", ClassHelper.getReadableName(listener.getClass()), getClass()));
-            }
-
-            if (ntfs != null && ntfs.length>0) { // 监听通知消息的监听器
-                for (T ntf : ntfs) {
-                    Set<ILifecycleOwner> listenerSet = ntfListeners.get(ntf);
-                    if (null == listenerSet) {
-                        throw new RuntimeException(String.format("%s not registered as Ntf", ntf));
-                    }
-                    if (!listenerSet.contains(listener)) {
-                        KLog.p(KLog.DEBUG, "ntf=%s, ntfListener=%s", ntf, listener+ClassHelper.getParents(listener.getClass()));
-                        listenerSet.add(listener);
-                        listenerLifecycleObserver.tryObserve(listener, ListenerLifecycleObserverCb);
-                    } else {
-                        KLog.p(KLog.ERROR, "listener %s has already added for %s", listener, ntf);
-                    }
-                }
-            }else{ // 不监听通知消息，满足指定条件时触发
-                Set<ILifecycleOwner> listenerSet = ntfUnrelatedListeners.get(registeredType);
-                if (listenerSet == null){
-                    listenerSet = new LinkedHashSet<>();
-                    ntfUnrelatedListeners.put(registeredType, listenerSet);
-                }
-                if (!listenerSet.contains(listener)) {
-                    KLog.p(KLog.DEBUG, "ntfListener=%s",  listener+ClassHelper.getParents(listener.getClass()));
-                    listenerSet.add(listener);
-                    listenerLifecycleObserver.tryObserve(listener, ListenerLifecycleObserverCb);
-                }else{
-                    KLog.p(KLog.ERROR, "listener %s has already added", listener);
-                }
+            if (!ntfListeners.contains(listener)) {
+                KLog.p(KLog.DEBUG, "added ntfListener %s", listener+ClassHelper.getParents(listener.getClass()));
+                ntfListeners.add(listener);
+                listenerLifecycleObserver.tryObserve(listener, ListenerLifecycleObserverCb);
+            } else {
+                KLog.p(KLog.ERROR, "ntfListener %s has already added", listener);
             }
         }
     }
@@ -342,69 +277,87 @@ public abstract class Caster<T extends Enum<T>> implements
 
     /**
      * 删除通知监听器
-     * @param listener 要删除的通知监听器。若为null则表示删除所有通知监听器。
+     * @param listeners 要删除的通知监听器列表。
+     * NOTE：该方法和{@link #delListener(Object...)}的区别在于——
+     *       如果一个监听器既是通知监听器也是结果监听器则调用{@link #delListener(Object...)}将同时删除这两种监听器，
+     *       而调用本方法仅删除了通知监听器保留了其结果监听器的身份。
      * */
-    public void delNtfListener(ILifecycleOwner listener){
-        for (Map.Entry<T, Set<ILifecycleOwner>> entry : ntfListeners.entrySet()){
-            T ntf = entry.getKey();
-            Set<ILifecycleOwner> listenerSet = entry.getValue();
-            if (null != listener) {
-                KLog.p(KLog.DEBUG, "delete ntfListener: ntf=%s, listener=%s", ntf, listener);
-                listenerSet.remove(listener);
-            }else{
-                KLog.p(KLog.DEBUG, "clear ntfListener: ntf=%s", ntf);
-                listenerSet.clear();
+    public void delNtfListener(@NonNull Object... listeners){
+        for (Object listener : listeners){
+            for (INtfListener ntfListener : ntfListeners) {
+                if (ntfListener == listener){
+                    ntfListeners.remove(ntfListener);
+                    KLog.p(KLog.DEBUG, "deleted ntfListener %s", listener);
+                    break;
+                }
             }
         }
 
-        if( !(listener instanceof IResultListener && containsRspListener((IResultListener) listener)) ){
-            listenerLifecycleObserver.unobserve(listener);
-        }
+        tryUnobserveListener(listeners);
     }
 
 
-    protected <U extends ILifecycleOwner> Set<U> getNtfUnrelatedListeners(Class<U> listenerType){
+    /**
+     * 获取通知监听器集合
+     * @param type 通知监听器类型。NOTE：其子类型也会计算在内。
+     * */
+    protected <U extends INtfListener> Set<U> getNtfListeners(Class<U> type){
         Set<U> listeners = new LinkedHashSet<>();
-        Set<ILifecycleOwner> listeners2 = ntfUnrelatedListeners.get(listenerType);
-        if (listeners2 != null){
-            listeners.addAll((Collection<? extends U>) listeners2);
+        for (INtfListener ntfListener : ntfListeners) {
+            if (type.isAssignableFrom(ntfListener.getClass())){
+                listeners.add((U) ntfListener);
+            }
         }
         return listeners;
     }
 
+
     /**
-     * 删除请求结果监听器
-     * @param listener 要删除的请求结果监听器。若为null则表示删除所有请求结果监听器。
+     * 删除结果监听器
+     * @param listeners 要删除的结果监听器列表。
+     * NOTE：该方法和{@link #delListener(Object...)}的区别在于——
+     *       如果一个监听器既是结果监听器也是通知监听器则调用{@link #delListener(Object...)}将同时删除这两种监听器，
+     *       而调用本方法仅删除了结果监听器保留了其通知监听器的身份。
      * */
-    public void delResultListener(IResultListener listener){
-        for (Session s : sessions) {
-            if (listener==null || listener == s.resultListener) {
-                KLog.p(KLog.DEBUG, "delete result listener: req=%s, sid=%s, listener=%s", s.req, s.id, s.resultListener);
-                s.resultListener = null; // 保留会话，仅删除监听器
+    public void delResultListener(@NonNull Object... listeners){
+        for (Object listener : listeners) {
+            if (listener == null){
+                continue;
+            }
+            for (Session s : sessions) {
+                if (listener == s.resultListener) {
+                    s.resultListener = null; // 保留会话，仅删除监听器
+                    KLog.p(KLog.DEBUG, "deleted result listener: req=%s, sid=%s, listener=%s", s.req, s.id, s.resultListener);
+                }
             }
         }
-        if(!containsNtfListener(listener)){
-            listenerLifecycleObserver.unobserve(listener);
-        }
+
+        tryUnobserveListener(listeners);
     }
 
 
     /**
      * 删除监听器。
      * */
-    public void delListener(@NonNull ILifecycleOwner listener){
-        delNtfListener(listener);
-        if (listener instanceof IResultListener){
-            delResultListener((IResultListener) listener);
+    public void delListener(@NonNull Object... listeners){
+        delResultListener(listeners);
+        delNtfListener(listeners);
+    }
+
+
+    private void tryUnobserveListener(Object... listeners){
+        for (Object listener : listeners){
+            if (!containsListener(listener)){
+                listenerLifecycleObserver.unobserve(listener);
+            }
         }
     }
 
-
-    private boolean containsListener(ILifecycleOwner listener){
-        return containsNtfListener(listener) || ((listener instanceof IResultListener) && containsRspListener((IResultListener) listener));
+    private boolean containsListener(Object listener){
+        return containsNtfListener(listener) || containsRspListener(listener);
     }
 
-    private boolean containsRspListener(IResultListener listener){
+    private boolean containsRspListener(Object listener){
         for (Session s : sessions){
             if (s.resultListener == listener){
                 return true;
@@ -413,9 +366,9 @@ public abstract class Caster<T extends Enum<T>> implements
         return false;
     }
 
-    protected boolean containsNtfListener(ILifecycleOwner listener){
-        for (Set<ILifecycleOwner> listeners : ntfListeners.values()){
-            if (listeners.contains(listener)){
+    protected boolean containsNtfListener(Object listener){
+        for (INtfListener ntfListener : ntfListeners){
+            if (ntfListener == listener){
                 return true;
             }
         }
@@ -506,14 +459,8 @@ public abstract class Caster<T extends Enum<T>> implements
     @Override
     public void onNtf(String ntfId, Object ntfContent) {
         T ntf = Enum.valueOf(enumT, unprefix(ntfId));
-        Set<ILifecycleOwner> listeners = ntfListeners.get(ntf);
-        StringBuilder sb = new StringBuilder();
-        for (ILifecycleOwner listener : Objects.requireNonNull(listeners)) {
-            sb.append(listener).append("\n");
-        }
-        KLog.p(KLog.DEBUG,"ntf=%s, ntfContent=%s\nlisteners=%s", ntf, ntfContent, sb.toString());
-
-        onNtf(ntf, ntfContent, listeners);
+        KLog.p(KLog.DEBUG,"ntf=%s, ntfContent=%s", ntf, ntfContent);
+        onNtf(ntf, ntfContent);
     }
 
     /**
@@ -621,21 +568,11 @@ public abstract class Caster<T extends Enum<T>> implements
 
 
     /**
-     * 注册通知监听器类型
-     * 若要处理通知需override此方法。
-     * @return 通知监听器类型到负责处理的通知类型的映射。对于ntfUnrelatedListener通知填null即可。
-     * */
-    protected Map<Class<? extends ILifecycleOwner>, T[]> regNtfListenerTypes(){return null;}
-
-
-    /**
      * 通知抵达
-     * 若要处理通知需override此方法以及{@link #regNtfListenerTypes()}
      * @param ntf 通知消息
-     * @param ntfContent 通知内容，具体类型由通知消息决定
-     * @param ntfListeners 通知监听器集合
+     * @param ntfContent 通知内容，具体类型由通知消息决定\
      * */
-    protected void onNtf(T ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners){}
+    protected void onNtf(T ntf, Object ntfContent){}
 
 
     /**

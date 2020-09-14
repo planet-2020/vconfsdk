@@ -13,9 +13,8 @@ import com.google.common.io.Files;
 import com.google.common.net.InetAddresses;
 import com.google.common.primitives.Ints;
 import com.kedacom.vconf.sdk.amulet.Caster;
-import com.kedacom.vconf.sdk.amulet.ILifecycleOwner;
+import com.kedacom.vconf.sdk.amulet.INtfListener;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
-import com.kedacom.vconf.sdk.amulet.ListenerLifecycleObserver;
 import com.kedacom.vconf.sdk.common.type.BaseTypeString;
 import com.kedacom.vconf.sdk.datacollaborate.bean.BoardInfo;
 import com.kedacom.vconf.sdk.datacollaborate.bean.DCMember;
@@ -105,27 +104,6 @@ public final class DataCollaborateManager extends Caster<Msg> {
     private IOnOperatorEventListener onOperatorEventListener;
     private IOnBoardOpListener onBoardOpListener;
     private IOnPaintOpListener onPaintOpListener;
-
-    private ListenerLifecycleObserver listenerLifecycleObserver = ListenerLifecycleObserver.getInstance();
-    private ListenerLifecycleObserver.Callback lifecycleObserverCb = new ListenerLifecycleObserver.Callback(){
-                @Override
-                public void onListenerDestroy(Object listener) {
-                    if (listener == onDcCreatedListener){
-                        onDcCreatedListener = null;
-                    }else if (listener == onSynchronizeProgressListener){
-                        onSynchronizeProgressListener = null;
-                    }else if (listener == onSessionEventListener){
-                        onSessionEventListener = null;
-                    }else if (listener == onOperatorEventListener){
-                        onOperatorEventListener = null;
-                    }else if (listener == onBoardOpListener){
-                        onBoardOpListener = null;
-                    }else if (listener == onPaintOpListener){
-                        onPaintOpListener = null;
-                    }
-                }
-            };
-
 
 
 
@@ -1394,7 +1372,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
 
 
     @Override
-    protected void onNtf(Msg ntf, Object ntfContent, Set<ILifecycleOwner> ntfListeners) {
+    protected void onNtf(Msg ntf, Object ntfContent) {
 
         if (paintNtfs.contains(ntf)){
             onPaintNtfs(ntf, ntfContent);
@@ -1661,19 +1639,9 @@ public final class DataCollaborateManager extends Caster<Msg> {
         this.onOperatorEventListener = onOperatorEventListener;
         this.onBoardOpListener = onBoardOpListener;
         this.onPaintOpListener = onPaintOpListener;
-        listenerLifecycleObserver.tryObserve(onSynchronizeProgressListener, lifecycleObserverCb);
-        listenerLifecycleObserver.tryObserve(onSessionEventListener, lifecycleObserverCb);
-        listenerLifecycleObserver.tryObserve(onOperatorEventListener, lifecycleObserverCb);
-        listenerLifecycleObserver.tryObserve(onBoardOpListener, lifecycleObserverCb);
-        listenerLifecycleObserver.tryObserve(onPaintOpListener, lifecycleObserverCb);
     }
 
     private void unsubscribeNtfListeners(){
-        listenerLifecycleObserver.unobserve(onSynchronizeProgressListener);
-        listenerLifecycleObserver.unobserve(onSessionEventListener);
-        listenerLifecycleObserver.unobserve(onOperatorEventListener);
-        listenerLifecycleObserver.unobserve(onBoardOpListener);
-        listenerLifecycleObserver.unobserve(onPaintOpListener);
         onSynchronizeProgressListener = null;
         onSessionEventListener = null;
         onOperatorEventListener = null;
@@ -1691,7 +1659,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**
      * 数据协作会话事件监听器。
      * */
-    public interface IOnSessionEventListener extends ILifecycleOwner{
+    public interface IOnSessionEventListener extends INtfListener {
 
         /**
          * （对己端而言）数据协作已结束。（协作本身可能仍存在也可能已不存在）
@@ -1710,7 +1678,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**
      * 数据协作已创建通知监听器
      * */
-    public interface IOnDcCreatedListener extends ILifecycleOwner{
+    public interface IOnDcCreatedListener extends INtfListener{
         /**
          * 数据协作已创建
          * 用户收到该通知后应调用{@link #startCollaborate(String, String, EDcMode, EConfType, String, List, IResultListener,
@@ -1724,16 +1692,14 @@ public final class DataCollaborateManager extends Caster<Msg> {
      * 设置数据协作已创建通知监听器
      * */
     public void setOnDcCreatedListener(IOnDcCreatedListener onDcCreatedListener){
-        if (null != this.onDcCreatedListener) listenerLifecycleObserver.unobserve(this.onDcCreatedListener);
         this.onDcCreatedListener = onDcCreatedListener;
-        if (null != this.onDcCreatedListener) listenerLifecycleObserver.tryObserve(this.onDcCreatedListener, lifecycleObserverCb);
     }
 
 
     /**
      * 同步进度监听器
      * */
-    public interface IOnSynchronizeProgressListener extends ILifecycleOwner{
+    public interface IOnSynchronizeProgressListener extends INtfListener{
         /**
          * 单个画板同步进度。
          * @param boardId 画板ID
@@ -1761,7 +1727,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**
      * 绘制操作通知监听器。
      * */
-    public interface IOnPaintOpListener extends ILifecycleOwner {
+    public interface IOnPaintOpListener extends INtfListener {
         /**绘制通知
          * @param op 绘制操作*/
         void onPaint(OpPaint op);
@@ -1770,7 +1736,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**
      * 画板操作通知监听器。
      * */
-    public interface IOnBoardOpListener extends ILifecycleOwner{
+    public interface IOnBoardOpListener extends INtfListener{
         /**画板创建通知
          * @param boardInfo 画板信息 {@link BoardInfo}*/
         void onBoardCreated(BoardInfo boardInfo);
@@ -1791,7 +1757,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /**
      * 协作权相关通知监听器
      * */
-    public interface IOnOperatorEventListener extends ILifecycleOwner{
+    public interface IOnOperatorEventListener extends INtfListener{
         /**
          * 成员加入数据协作会议通知
          * @param member 成员信息

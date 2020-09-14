@@ -4,7 +4,7 @@ package com.kedacom.vconf.sdk.amulet;
  * Created by gaofan_kd7331, 2018-10-25
  */
 
-public interface ICrystalBall {
+interface ICrystalBall {
 
     /**
      * 下发请求。

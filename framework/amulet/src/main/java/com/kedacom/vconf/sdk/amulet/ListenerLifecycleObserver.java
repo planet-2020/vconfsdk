@@ -16,7 +16,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-public final class ListenerLifecycleObserver implements DefaultLifecycleObserver {
+final class ListenerLifecycleObserver implements DefaultLifecycleObserver {
 
     /*
      * 绑定到被监控的生命周期拥有者的监听器。
@@ -85,24 +85,27 @@ public final class ListenerLifecycleObserver implements DefaultLifecycleObserver
 
 
     /**取消监控生命周期。*/
-    public void unobserve(ILifecycleOwner listener){
+    public void unobserve(Object listener){
         if (null == listener){
             return;
         }
         for (Map.Entry<LifecycleOwner, Set<ILifecycleOwner>> owner : lifecycleOwnerBindListeners.entrySet()){
             LifecycleOwner key = owner.getKey();
             Set<ILifecycleOwner> val = owner.getValue();
-            if (val.contains(listener)){
-                val.remove(listener);
-                listenerCallbackMap.remove(listener);
-                KLog.p(KLog.DEBUG,"unbind lifecycle from %s for %s", key, listener+ClassHelper.getParents(listener.getClass()));
-                if (val.isEmpty()){
-                    // owner其下没有与之绑定的listener则取消对该owner的监控。
-                    key.getLifecycle().removeObserver(this);
-                    lifecycleOwnerBindListeners.remove(key);
-                    KLog.p(KLog.DEBUG, "unobserve lifecycle of %s", key);
+            for (ILifecycleOwner observedListener : val) {
+                if (observedListener == listener) {
+                    ILifecycleOwner toUnobserveListener = (ILifecycleOwner) listener;
+                    val.remove(toUnobserveListener);
+                    listenerCallbackMap.remove(toUnobserveListener);
+                    KLog.p(KLog.DEBUG, "unbind lifecycle from %s for %s", key, toUnobserveListener + ClassHelper.getParents(toUnobserveListener.getClass()));
+                    if (val.isEmpty()) {
+                        // owner其下没有与之绑定的listener则取消对该owner的监控。
+                        key.getLifecycle().removeObserver(this);
+                        lifecycleOwnerBindListeners.remove(key);
+                        KLog.p(KLog.DEBUG, "unobserve lifecycle of %s", key);
+                    }
+                    return;
                 }
-                return;
             }
         }
     }
