@@ -1,5 +1,6 @@
 package com.kedacom.vconf.sdk.webrtc.bean;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -18,17 +19,8 @@ public class Statistics {
     public static final String G722 = "G722";
     public static final String UNKNOWN = "UNKNOWN";
 
-    public List<ConfereeRelated> confereeRelated;
+    public List<ConfereeRelated> confereeRelated = new ArrayList<>();
     public Common common;
-
-    public Statistics(List<ConfereeRelated> confereeRelated) {
-        this.confereeRelated = confereeRelated;
-    }
-
-    public Statistics(List<ConfereeRelated> confereeRelated, Common common) {
-        this.confereeRelated = confereeRelated;
-        this.common = common;
-    }
 
     private static String mime2CodecName(String mime){
         mime = mime.toLowerCase();
