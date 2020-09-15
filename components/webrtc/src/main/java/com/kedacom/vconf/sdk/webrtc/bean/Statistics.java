@@ -9,15 +9,15 @@ import java.util.List;
 public class Statistics {
 
     // 媒体编码格式定义
-    public static final String VP8 = "VP8";
-    public static final String VP9 = "VP9";
-    public static final String H264 = "H264";
-    public static final String H264_BASELINE = "H264 Baseline";
-    public static final String H264_HIGH = "H264 High";
-    public static final String OPUS = "OPUS";
-    public static final String ISAC = "ISAC";
-    public static final String G722 = "G722";
-    public static final String UNKNOWN = "UNKNOWN";
+    public static final String VP8 = "vp8";
+    public static final String VP9 = "vp9";
+    public static final String H264 = "h264";
+    public static final String H264_BASELINE = "h264 baseline";
+    public static final String H264_HIGH = "h264 high";
+    public static final String OPUS = "opus";
+    public static final String ISAC = "isac";
+    public static final String G722 = "g722";
+    public static final String UNKNOWN = "unknown";
 
     public List<ConfereeRelated> confereeRelated = new ArrayList<>();
     public Common common;
@@ -151,16 +151,16 @@ public class Statistics {
         public int width;
         // 帧高
         public int height;
-        // 硬编码器名称。若没有则为软编码
-        public String hwencoder;
+        // 编码器名称
+        public String encoder;
 
-        public VideoOutput(int framerate, int width, int height, int bitrate, String mime, String hwencoder) {
+        public VideoOutput(int framerate, int width, int height, int bitrate, String mime, String encoder) {
             this.framerate = framerate;
             this.bitrate = bitrate;
             this.encodeFormat = mime2CodecName(mime);
             this.width = width;
             this.height = height;
-            this.hwencoder = hwencoder;
+            this.encoder = encoder;
         }
 
         @Override
@@ -171,7 +171,7 @@ public class Statistics {
                     ", encodeFormat=" + encodeFormat +
                     ", width=" + width +
                     ", height=" + height +
-                    ", hwencoder='" + hwencoder + '\'' +
+                    ", encoder='" + encoder + '\'' +
                     "}\n";
         }
     }
@@ -191,10 +191,10 @@ public class Statistics {
         public int width;
         // 帧高
         public int height;
-        // 硬编码器名称。若没有则为软编码
-        public String hwencoder;
+        // 编码器名称。
+        public String encoder;
 
-        public VideoInput(int framerate, int width, int height, long packetsReceived, long packetsLost, int bitrate, String mime, String hwencoder) {
+        public VideoInput(int framerate, int width, int height, long packetsReceived, long packetsLost, int bitrate, String mime, String encoder) {
             this.packetsReceived = packetsReceived;
             this.packetsLost = packetsLost;
             this.framerate = framerate;
@@ -202,7 +202,7 @@ public class Statistics {
             this.encodeFormat = mime2CodecName(mime);
             this.width = width;
             this.height = height;
-            this.hwencoder = hwencoder;
+            this.encoder = encoder;
         }
 
         @Override
@@ -215,7 +215,7 @@ public class Statistics {
                     ", encodeFormat=" + encodeFormat +
                     ", width=" + width +
                     ", height=" + height +
-                    ", hwencoder='" + hwencoder + '\'' +
+                    ", encoder='" + encoder + '\'' +
                     "}\n";
         }
     }

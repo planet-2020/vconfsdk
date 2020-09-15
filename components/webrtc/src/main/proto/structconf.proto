@@ -1,7 +1,7 @@
 package mt;
 
-option java_package = "com.kedacom.mt.netmanage.protobuf"; 
-option java_outer_classname = "StructConfPB"; 
+option java_package = "com.kedacom.mt.netmanage.protobuf";
+option java_outer_classname = "StructConfPB";
 
 import "enum.proto";
 import "structcommon.proto";
@@ -115,6 +115,8 @@ message TAgentVidEncStatistic
         optional uint32 resolution = 6; //分辨率 EmMtResolution
         optional bool enc_start = 7;   //是否开始编码
         optional bool hw_enc_status = 8;   //硬件编码状态
+		optional uint32 vid_width = 9; //视频宽度
+		optional uint32 vid_height = 10; //视频高度
 }
 
 //视频解码器统计信息
@@ -129,6 +131,8 @@ message TAgentVidDecStatistic
         optional uint32 resolution = 7; //分辨率 EmMtResolution
         optional bool dec_start = 8;   //是否开始解码
         optional bool hw_dec_status = 9;   //硬件解码状态
+		optional uint32 vid_width = 10; //视频宽度
+	    optional uint32 vid_height = 11; //视频高度
 }
 
 //会议统计信息

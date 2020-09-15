@@ -17,6 +17,8 @@ import com.kedacom.mt.netmanage.protobuf.StructConfPB;
 import com.kedacom.osp.BodyItem;
 import com.kedacom.osp.EmMtOspMsgSys;
 import com.kedacom.osp.MtMsg;
+import com.kedacom.vconf.sdk.common.constant.EmAudFormat;
+import com.kedacom.vconf.sdk.common.constant.EmVidFormat;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.webrtc.bean.Statistics;
 
@@ -447,6 +449,100 @@ class RtcConnector implements IRcvMsgCallback{
 		return rtcMediaBuilder.build();
 	}
 
+	private StructConfPB.TAgentCodecStatistic statistics2PB(Statistics statistics){
+		StructConfPB.TAgentCodecStatistic.Builder builder = StructConfPB.TAgentCodecStatistic.newBuilder();
+		for (Statistics.ConfereeRelated confereeRelated : statistics.confereeRelated) {
+			if (statistics.common != null){
+				Statistics.AudioInput audioInput = statistics.common.mixedAudio;
+				StructConfPB.TAgentAudDecStatistic.Builder audDecBuilder = StructConfPB.TAgentAudDecStatistic.newBuilder();
+				audDecBuilder.setBitrate(audioInput.bitrate);
+				audDecBuilder.setFormat(audEncodeFormat2PB(audioInput.encodeFormat));
+				audDecBuilder.setPktsLose((int) audioInput.packetsLost);
+				audDecBuilder.setPktsLoserate((int) (100 * audioInput.packetsLost/(float)audioInput.packetsReceived));
+				audDecBuilder.setDecStart(true);
+				audDecBuilder.setIndex(0);
+				builder.addAuddecStatics(audDecBuilder.build());
+			}
+			if (confereeRelated.audioOutput!=null){
+				StructConfPB.TAgentAudEncStatistic.Builder audEncBuilder = StructConfPB.TAgentAudEncStatistic.newBuilder();
+				audEncBuilder.setBitrate(confereeRelated.audioOutput.bitrate);
+				audEncBuilder.setFormat(audEncodeFormat2PB(confereeRelated.audioOutput.encodeFormat));
+				audEncBuilder.setEncStart(true);
+				audEncBuilder.setIndex(0);
+				builder.addAudencStatics(audEncBuilder.build());
+			}
+
+			if (confereeRelated.audioInput !=null){
+				StructConfPB.TAgentAudDecStatistic.Builder audDecBuilder = StructConfPB.TAgentAudDecStatistic.newBuilder();
+				audDecBuilder.setBitrate(confereeRelated.audioInput.bitrate);
+				audDecBuilder.setFormat(audEncodeFormat2PB(confereeRelated.audioInput.encodeFormat));
+				audDecBuilder.setPktsLose((int) confereeRelated.audioInput.packetsLost);
+				audDecBuilder.setPktsLoserate((int) (100 * confereeRelated.audioInput.packetsLost/(float)confereeRelated.audioInput.packetsReceived));
+				audDecBuilder.setDecStart(true);
+				audDecBuilder.setIndex(0);
+				builder.addAuddecStatics(audDecBuilder.build());
+			}
+
+			if (confereeRelated.videoOutput != null){
+				StructConfPB.TAgentVidEncStatistic.Builder vidEncBuilder = StructConfPB.TAgentVidEncStatistic.newBuilder();
+				vidEncBuilder.setBitrate(confereeRelated.videoOutput.bitrate);
+				vidEncBuilder.setFormat(vidEncodeFormat2PB(confereeRelated.videoOutput.encodeFormat));
+				vidEncBuilder.setFramerate(confereeRelated.videoOutput.framerate);
+				vidEncBuilder.setVidWidth(confereeRelated.videoOutput.width);
+				vidEncBuilder.setVidHeight(confereeRelated.videoOutput.height);
+				vidEncBuilder.setHwEncStatus(true);
+				vidEncBuilder.setEncStart(true);
+				vidEncBuilder.setIndex(0);
+				if (confereeRelated.confereeId.endsWith(WebRtcManager.Conferee.ConfereeType.AssStream.name())) {
+					builder.addAssVidencStatics(vidEncBuilder.build());
+				}else {
+					builder.addPriVidencStatics(vidEncBuilder.build());
+				}
+			}
+
+			if (confereeRelated.videoInput != null){
+				StructConfPB.TAgentVidDecStatistic.Builder vidDecBuilder = StructConfPB.TAgentVidDecStatistic.newBuilder();
+				vidDecBuilder.setBitrate(confereeRelated.videoInput.bitrate);
+				vidDecBuilder.setFormat(vidEncodeFormat2PB(confereeRelated.videoInput.encodeFormat));
+				vidDecBuilder.setFramerate(confereeRelated.videoInput.framerate);
+				vidDecBuilder.setVidWidth(confereeRelated.videoInput.width);
+				vidDecBuilder.setVidHeight(confereeRelated.videoInput.height);
+				vidDecBuilder.setPktsLose((int) confereeRelated.videoInput.packetsLost);
+				vidDecBuilder.setPktsLoserate((int) (100 * confereeRelated.videoInput.packetsLost/(float)confereeRelated.videoInput.packetsReceived));
+				vidDecBuilder.setHwDecStatus(true);
+				vidDecBuilder.setDecStart(true);
+				vidDecBuilder.setIndex(0);
+				if (confereeRelated.confereeId.endsWith(WebRtcManager.Conferee.ConfereeType.AssStream.name())) {
+					builder.addAssViddecStatics(vidDecBuilder.build());
+				}else {
+					builder.addPriViddecStatics(vidDecBuilder.build());
+				}
+			}
+		}
+
+		return builder.build();
+	}
+
+	private int vidEncodeFormat2PB(String format){
+		switch (format){
+			case Statistics.H264:
+				return EmVidFormat.emVH264.ordinal();
+			default:
+				return EmVidFormat.emVEnd.ordinal();
+		}
+	}
+
+	private int audEncodeFormat2PB(String format){
+		switch (format){
+			case Statistics.OPUS:
+				return EmAudFormat.emAOpus.ordinal();
+			case Statistics.G722:
+				return EmAudFormat.emAG722.ordinal();
+			default:
+				return EmAudFormat.emAudEnd.ordinal();
+		}
+	}
+
 	void sendOfferSdp(int connType, @NonNull String offerSdp, TRtcMedia... rtcMediaList) {
         StructConfPB.TRtcMedialist.Builder builder = StructConfPB.TRtcMedialist.newBuilder();
         for (TRtcMedia rtcMedia : rtcMediaList){
@@ -527,20 +623,18 @@ class RtcConnector implements IRcvMsgCallback{
 	}
 
 
-	void sendCodecStats(@NonNull List<Statistics> statsList){
-		StructConfPB.TAgentCodecStatistic codecStatistic;
-//		MtMsg msg = new MtMsg();
-//		msg.SetMsgId("Ev_MT_FingerPrint_Ntf");
-//		msg.addMsg(BasePB.TU32.newBuilder().setValue(connType).build());
-//		msg.addMsg(BasePB.TString.newBuilder().setValue(fingerPrint).build());
-//		byte[] abyContent = msg.Encode();
-//		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-//				dispatchId, dispatchNode, myId, myNode, 5000 );
-//		if (0 != ret){
-//			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
-//		}
-//
-//		KLog.p("[sub]=#=> sendFingerPrint connType=%s, fingerPrint=%s", connType, fingerPrint);
+	void sendStatistics(@NonNull Statistics stats){
+		MtMsg msg = new MtMsg();
+		msg.SetMsgId("Ev_MT_Agent_RtcCodecStatistic_Rsp");
+		msg.addMsg(statistics2PB(stats));
+		byte[] abyContent = msg.Encode();
+		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+				dispatchId, dispatchNode, myId, myNode, 5000 );
+		if (0 != ret){
+			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
+		}
+
+		KLog.p("=#=> sendStatistics %s", stats);
 	}
 
 	static class TRtcMedia {

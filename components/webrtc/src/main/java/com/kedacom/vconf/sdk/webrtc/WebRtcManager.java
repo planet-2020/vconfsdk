@@ -847,6 +847,20 @@ public class WebRtcManager extends Caster<Msg>{
 //        }
 //    }
 
+    private boolean showStatistics;
+    /**
+     * 设置是否展示统计信息
+     * */
+    public void setShowStatistics(boolean show){
+        if (showStatistics != show){
+            showStatistics = show;
+            Stream.of(conferees).forEach(Conferee::refreshDisplays);
+            if (null != myself) {
+                myself.refreshDisplays();
+            }
+        }
+    }
+
 
     @Override
     protected void onNtf(Msg ntf, Object ntfContent) {
@@ -2161,7 +2175,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         // 与会方类型
-        private enum ConfereeType{
+        public enum ConfereeType{
             Normal,
             AssStream, // 辅流与会方
         }
@@ -2324,6 +2338,7 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         private Priority priority;
 
+        private static Paint paint = new Paint();
 
         private Display(Context context, Type type) {
             super(context);
@@ -2564,6 +2579,93 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
+        private void drawStatistics(Statistics.ConfereeRelated stats, Canvas canvas){
+            if (stats == null){
+                return;
+            }
+            canvas.drawColor(0x80000000);
+            Statistics.AudioOutput ao = stats.audioOutput;
+            Statistics.VideoOutput vo = stats.videoOutput;
+            Statistics.AudioInput ai = stats.audioInput;
+            Statistics.VideoInput vi = stats.videoInput;
+            paint.reset();
+            paint.setColor(Color.GREEN);
+            paint.setTextSize(22);
+            paint.setAntiAlias(true);
+            Paint.FontMetrics fm = paint.getFontMetrics();
+            float fontHeight = fm.bottom - fm.top;
+            int xPos = 5, yPos = Math.round(fontHeight);
+            if (vo != null) {
+                canvas.drawText("== video ==", xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("width: "+vo.width, xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("height: "+vo.height, xPos, yPos, paint);
+                yPos += fontHeight;
+                if (vo.framerate < 5) {paint.setColor(Color.RED);}
+                canvas.drawText("frame rate: " + vo.framerate, xPos, yPos, paint);
+                paint.setColor(Color.GREEN);
+                yPos += fontHeight;
+                canvas.drawText("bitrate: "+vo.bitrate+"kbps", xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("format: "+vo.encodeFormat, xPos, yPos, paint);
+                yPos += fontHeight;
+//                canvas.drawText("encoder: "+vo.encoder, xPos, yPos, paint);
+//                yPos += fontHeight;
+            }else if (vi != null) {
+                canvas.drawText("== video ==", xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("width: "+vi.width, xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("height: "+vi.height, xPos, yPos, paint);
+                yPos += fontHeight;
+                if (vi.framerate < 5) {paint.setColor(Color.RED);}
+                canvas.drawText("frame rate: " + vi.framerate, xPos, yPos, paint);
+                paint.setColor(Color.GREEN);
+                yPos += fontHeight;
+                canvas.drawText("bitrate: "+vi.bitrate+"kbps", xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("format: "+vi.encodeFormat, xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("packets received: "+vi.packetsReceived, xPos, yPos, paint);
+                yPos += fontHeight;
+                int lostRate = (int) (100*vi.packetsLost/(float)vi.packetsReceived);
+                if (lostRate > 20) {paint.setColor(Color.RED);}
+                canvas.drawText("packets lost rate: "+lostRate+"%", xPos, yPos, paint);
+                paint.setColor(Color.GREEN);
+                yPos += fontHeight;
+//                canvas.drawText("encoder: "+vi.encoder, xPos, yPos, paint);
+//                yPos += fontHeight;
+            }
+
+            xPos = getWidth()/2;
+            yPos = Math.round(fontHeight);
+
+            if (ao != null) {
+                canvas.drawText("== audio ==", xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("bitrate: "+ao.bitrate+"kbps", xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("format: "+ao.encodeFormat, xPos, yPos, paint);
+                yPos += fontHeight;
+            }else if (ai != null) {
+                canvas.drawText("== audio ==", xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("bitrate: "+ai.bitrate+"kbps", xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("format: "+ai.encodeFormat, xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("packets received: "+ai.packetsReceived, xPos, yPos, paint);
+                yPos += fontHeight;
+                int lostRate = (int) (100*ai.packetsLost/(float)ai.packetsReceived);
+                if (lostRate > 20) {paint.setColor(Color.RED);}
+                canvas.drawText("packets lost rate: "+lostRate+"%", xPos, yPos, paint);
+                paint.setColor(Color.GREEN);
+                yPos += fontHeight;
+            }
+
+        }
+
 
         @Override
         public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
@@ -2630,6 +2732,11 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 KLog.p("draw text deco: id=%s", deco.id);
                 canvas.drawText(deco.text, deco.actualX, deco.actualY, deco.paint);
+            }
+
+            // 绘制统计信息
+            if (instance.showStatistics){
+                drawStatistics(instance.getStats(conferee.getId()), canvas);
             }
 
             // 绘制语音激励deco
@@ -3273,7 +3380,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onAgentRtcCodecStatisticReq() {
-//            rtcConnector.sendCodecStats();
+            rtcConnector.sendStatistics(statistics);
         }
 
     }
@@ -4696,6 +4803,13 @@ public class WebRtcManager extends Caster<Msg>{
         aggregatePubStats(assPublisherStats, preAssPublisherStats, true);
         aggregateSubStats(assSubscriberStats, preAssSubscriberStats, true);
         KLog.p("/### "+statistics);
+
+        if (showStatistics){
+            Stream.of(conferees).forEach(Conferee::refreshDisplays);
+            if (null != myself) {
+                myself.refreshDisplays();
+            }
+        }
     }
 
 
@@ -4814,6 +4928,14 @@ public class WebRtcManager extends Caster<Msg>{
             statistics.confereeRelated.add(new Statistics.ConfereeRelated(confereeId, null, null, audioInput, videoInput));
         }
 
+    }
+
+
+    private Statistics.ConfereeRelated getStats(String confereeId){
+        return Stream.of(statistics.confereeRelated)
+                .filter(it-> it.confereeId.equals(confereeId))
+                .findFirst()
+                .orElse(null);
     }
 
 
