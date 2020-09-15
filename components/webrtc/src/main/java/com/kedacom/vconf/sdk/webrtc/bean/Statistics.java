@@ -39,6 +39,11 @@ public class Statistics {
 
     }
 
+    public void clear(){
+        confereeRelated.clear();
+        common = null;
+    }
+
     public static class ConfereeRelated{
         // 该统计信息所属与会方ID。
         public String confereeId;

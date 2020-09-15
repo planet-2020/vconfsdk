@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 
 
-version = '6.0.0-SNAPSHOT'
+version = '6.1.0-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -16,7 +16,7 @@ dependencies {
     implementation project(':common')
     implementation project(':utils')
 
-    implementation 'com.kedacom.vconf.sdk:amulet:8.0.0-INtfListener-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:amulet:9.0.0-SNAPSHOT'
 
 //    implementation fileTree(dir: 'libs', include: ['*.jar'])
 //    implementation project(':base')

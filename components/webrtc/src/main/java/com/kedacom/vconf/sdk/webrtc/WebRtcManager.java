@@ -1144,9 +1144,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         cancelReq(null, null);
 
-        // 删除所有通知监听器
-        delNtfListener(null);
-
         KLog.p("session stopped ");
 
         return true;
@@ -4472,8 +4469,6 @@ public class WebRtcManager extends Caster<Msg>{
                 }));
             }
 
-            aggregateStats();
-
             if (enableStatsLog){
                 KLog.p("/### publisherStats: ");
                 printStats(publisherStats, true);
@@ -4484,6 +4479,8 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p("/### assSubscriberStats: ");
                 printStats(assSubscriberStats, true);
             }
+
+            aggregateStats();
 
             Stream.of(getNtfListeners(StatsListener.class)).forEach(statsListener -> statsListener.onStats(statistics));
 
@@ -4497,6 +4494,10 @@ public class WebRtcManager extends Caster<Msg>{
     private Runnable audioStatsProcesser = new Runnable() {
         @Override
         public void run() {
+            if (publisherStats==null || subscriberStats==null){
+                handler.postDelayed(this, STATS_INTERVAL * 1000);
+                return;
+            }
             // 比较各与会方的音量以选出最大者用以语音激励
             String maxAudioLevelTrackId = null;
             double maxAudioLevel = 0;
@@ -4506,6 +4507,7 @@ public class WebRtcManager extends Caster<Msg>{
                 maxAudioLevel = null != publisherStats.audioSource ? publisherStats.audioSource.audioLevel : 0;
                 KLog.p("local audioLevel= %s", maxAudioLevel);
             }
+
             // 其他与会方的音量
             for (StatsHelper.RecvAudioTrack track : subscriberStats.recvAudioTrackList) {
                 String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(track.trackIdentifier);
@@ -4563,6 +4565,10 @@ public class WebRtcManager extends Caster<Msg>{
     private Runnable videoStatsProcesser = new Runnable() {
         @Override
         public void run() {
+            if (subscriberStats==null){
+                handler.postDelayed(this, STATS_INTERVAL * 1000);
+                return;
+            }
             // 其他与会方的帧率
             Map<String, Long> framesReceivedMap = new HashMap<>();
             for (StatsHelper.RecvVideoTrack track : subscriberStats.recvVideoTrackList) {
@@ -4684,6 +4690,7 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     private void aggregateStats(){
+        statistics.clear();
         aggregatePubStats(publisherStats, prePublisherStats, false);
         aggregateSubStats(subscriberStats, preSubscriberStats, false);
         aggregatePubStats(assPublisherStats, preAssPublisherStats, true);
@@ -4693,82 +4700,107 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     void aggregatePubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, boolean isAss){
-        if (stats==null || preStats==null){
+        if (stats==null || preStats==null || (stats.audioOutboundRtp==null && stats.videoOutboundRtp==null)){
             return;
         }
 
         Statistics.AudioOutput audioOutput = null;
+        int bitrate = 0;
+        String codecMime = "";
         if (!isAss){
-            int bitrate = (int) ((stats.audioOutboundRtp.bytesSent - preStats.audioOutboundRtp.bytesSent)*8 / STATS_INTERVAL / 1024);
-            String codecMime = stats.getCodecMime(stats.audioOutboundRtp.trackId);
+            if (stats.audioOutboundRtp!=null && preStats.audioOutboundRtp!=null){
+                bitrate = (int) ((stats.audioOutboundRtp.bytesSent - preStats.audioOutboundRtp.bytesSent)*8 / STATS_INTERVAL / 1024);
+            }
+            if (stats.audioOutboundRtp!=null){
+                codecMime = stats.getCodecMime(stats.audioOutboundRtp.trackId);
+            }
             audioOutput = new Statistics.AudioOutput(bitrate, codecMime);
         }
 
-        int bitrate = (int) ((stats.videoOutboundRtp.bytesSent - preStats.videoOutboundRtp.bytesSent)*8 / STATS_INTERVAL/ 1024);
-        String codecMime = stats.getCodecMime(stats.videoOutboundRtp.trackId);
-        int frameRate = (int) ((stats.sendVideoTrack.framesSent - preStats.sendVideoTrack.framesSent) / STATS_INTERVAL);
-        Statistics.VideoOutput videoOutput = new Statistics.VideoOutput(frameRate, stats.sendVideoTrack.frameWidth, stats.sendVideoTrack.frameHeight, bitrate, codecMime, stats.videoOutboundRtp.encoderImplementation);
+        bitrate = 0;
+        codecMime = "";
+        String encoderImplementation = "";
+        if (stats.videoOutboundRtp!=null && preStats.videoOutboundRtp!=null){
+            bitrate = (int) ((stats.videoOutboundRtp.bytesSent - preStats.videoOutboundRtp.bytesSent)*8 / STATS_INTERVAL / 1024);
+            encoderImplementation = stats.videoOutboundRtp.encoderImplementation;
+        }
+        if (stats.videoOutboundRtp!=null){
+            codecMime = stats.getCodecMime(stats.videoOutboundRtp.trackId);
+        }
+        int frameRate = 0;
+        int frameWidth = 0;
+        int frameHeight = 0;
+        if (stats.sendVideoTrack!=null && preStats.sendVideoTrack!=null){
+            frameRate = (int) ((stats.sendVideoTrack.framesSent - preStats.sendVideoTrack.framesSent) / STATS_INTERVAL);
+            frameWidth = stats.sendVideoTrack.frameWidth;
+            frameHeight = stats.sendVideoTrack.frameHeight;
+        }
+        Statistics.VideoOutput videoOutput = new Statistics.VideoOutput(frameRate, frameWidth, frameHeight, bitrate, codecMime, encoderImplementation);
         if (videoOutput.framerate<=0 || videoOutput.bitrate<=0 || videoOutput.width<=0 || videoOutput.height<=0){
             videoOutput.framerate = videoOutput.bitrate = videoOutput.width = videoOutput.height = 0;
         }
 
-        String confereeId = isAss ? myself.getId()+"_ass" : myself.getId();
+        String confereeId = isAss ? myself.mcuId+"-"+myself.terId+"-"+myself.e164+"-"+Conferee.ConfereeType.AssStream : myself.getId();
         statistics.confereeRelated.add(new Statistics.ConfereeRelated(confereeId, audioOutput, videoOutput, null, null));
     }
 
 
     void aggregateSubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, boolean isAss){
-        if (stats==null || preStats==null){
+        if (stats==null || preStats==null || (stats.audioInboundRtpList==null && stats.videoInboundRtpList==null)){
             return;
         }
 
         Map<String, Statistics.AudioInput> audioInputMap = new HashMap<>();
         if (!isAss) {
-            for (StatsHelper.AudioInboundRtp rtp : stats.audioInboundRtpList) {
-                for (StatsHelper.AudioInboundRtp preRtp : preStats.audioInboundRtpList) {
-                    if (rtp.trackId.equals(preRtp.trackId)) {
-                        int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / STATS_INTERVAL / 1024);
-                        String codecMime = stats.getCodecMime(rtp.trackId);
-                        Statistics.AudioInput audioInput = new Statistics.AudioInput(rtp.packetsReceived, rtp.packetsLost, bitrate, codecMime);
-                        StatsHelper.RecvAudioTrack recvAudioTrack = stats.getRecvAudioTrack(rtp.trackId);
-                        String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
-                        Conferee conferee = findConfereeByStreamId(kdStreamId);
-                        if (conferee != null) {
-                            audioInputMap.put(conferee.getId(), audioInput);
-                        } else {
-                            RtcStream rtcStream = findStream(kdStreamId);
-                            if (rtcStream != null && rtcStream.streamInfo.bMix) {
-                                statistics.common = new Statistics.Common(audioInput);
+            if (stats.audioInboundRtpList!=null && preStats.audioInboundRtpList!=null) {
+                for (StatsHelper.AudioInboundRtp rtp : stats.audioInboundRtpList) {
+                    for (StatsHelper.AudioInboundRtp preRtp : preStats.audioInboundRtpList) {
+                        if (rtp.trackId.equals(preRtp.trackId)) {
+                            int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / STATS_INTERVAL / 1024);
+                            String codecMime = stats.getCodecMime(rtp.trackId);
+                            Statistics.AudioInput audioInput = new Statistics.AudioInput(rtp.packetsReceived, rtp.packetsLost, bitrate, codecMime);
+                            StatsHelper.RecvAudioTrack recvAudioTrack = stats.getRecvAudioTrack(rtp.trackId);
+                            String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
+                            Conferee conferee = findConfereeByStreamId(kdStreamId);
+                            if (conferee != null) {
+                                audioInputMap.put(conferee.getId(), audioInput);
                             } else {
-                                KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
+                                RtcStream rtcStream = findStream(kdStreamId);
+                                if (rtcStream != null && rtcStream.streamInfo.bMix) {
+                                    statistics.common = new Statistics.Common(audioInput);
+                                } else {
+                                    KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
+                                }
                             }
+                            break;
                         }
-                        break;
                     }
                 }
             }
         }
 
         Map<String, Statistics.VideoInput> videoInputMap = new HashMap<>();
-        for (StatsHelper.VideoInboundRtp rtp : stats.videoInboundRtpList){
-            for (StatsHelper.VideoInboundRtp preRtp : preStats.videoInboundRtpList){
-                if(rtp.trackId.equals(preRtp.trackId)){
-                    int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived)*8 / STATS_INTERVAL / 1024);
-                    String codecMime = stats.getCodecMime(rtp.trackId);
-                    StatsHelper.RecvVideoTrack recvVideoTrack = stats.getRecvVideoTrack(rtp.trackId);
-                    int frameRate = (int) ((recvVideoTrack.framesReceived - preSubscriberStats.getRecvVideoTrack(preRtp.trackId).framesReceived) / STATS_INTERVAL);
-                    Statistics.VideoInput videoInput = new Statistics.VideoInput(frameRate, recvVideoTrack.frameWidth, recvVideoTrack.frameHeight, rtp.packetsReceived, rtp.packetsLost, bitrate, codecMime, rtp.decoderImplementation);
-                    if (videoInput.framerate<=0 || videoInput.bitrate<=0 || videoInput.width<=0 || videoInput.height<=0){
-                        videoInput.framerate = videoInput.bitrate = videoInput.width = videoInput.height = 0;
+        if (stats.videoInboundRtpList!=null && preStats.videoInboundRtpList!=null) {
+            for (StatsHelper.VideoInboundRtp rtp : stats.videoInboundRtpList) {
+                for (StatsHelper.VideoInboundRtp preRtp : preStats.videoInboundRtpList) {
+                    if (rtp.trackId.equals(preRtp.trackId)) {
+                        int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / STATS_INTERVAL / 1024);
+                        String codecMime = stats.getCodecMime(rtp.trackId);
+                        StatsHelper.RecvVideoTrack recvVideoTrack = stats.getRecvVideoTrack(rtp.trackId);
+                        int frameRate = (int) ((recvVideoTrack.framesReceived - preStats.getRecvVideoTrack(preRtp.trackId).framesReceived) / STATS_INTERVAL);
+                        Statistics.VideoInput videoInput = new Statistics.VideoInput(frameRate, recvVideoTrack.frameWidth, recvVideoTrack.frameHeight, rtp.packetsReceived, rtp.packetsLost, bitrate, codecMime, rtp.decoderImplementation);
+                        if (videoInput.framerate <= 0 || videoInput.bitrate <= 0 || videoInput.width <= 0 || videoInput.height <= 0) {
+                            videoInput.framerate = videoInput.bitrate = videoInput.width = videoInput.height = 0;
+                        }
+                        String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvVideoTrack.trackIdentifier);
+                        Conferee conferee = findConfereeByStreamId(kdStreamId);
+                        if (conferee != null) {
+                            videoInputMap.put(conferee.getId(), videoInput);
+                        } else {
+                            KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvVideoTrack.trackIdentifier, kdStreamId);
+                        }
+                        break;
                     }
-                    String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvVideoTrack.trackIdentifier);
-                    Conferee conferee = findConfereeByStreamId(kdStreamId);
-                    if (conferee != null){
-                        videoInputMap.put(conferee.getId(), videoInput);
-                    }else{
-                        KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvVideoTrack.trackIdentifier, kdStreamId);
-                    }
-                    break;
                 }
             }
         }
