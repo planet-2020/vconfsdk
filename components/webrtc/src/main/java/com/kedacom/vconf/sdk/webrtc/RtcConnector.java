@@ -38,6 +38,7 @@ class RtcConnector implements IRcvMsgCallback{
 	private static final short WEBRTC_ID = 144;
 	private static final short MTDISPATCH_ID = 107;
 	private static final short MTRTCSERVICE_ID = 145;
+	private static final short GUARD_ID = 109;
 	private final Map<String, ICbMsgHandler> cbMsgHandlerMap = new HashMap<>();
 
 	private final long myId =Connector.MAKEIID(WEBRTC_ID, (short)1 );
@@ -47,6 +48,10 @@ class RtcConnector implements IRcvMsgCallback{
 
 	private final long mtrtcserviceId = Connector.MAKEIID(MTRTCSERVICE_ID, (short)1 );
 	private final long mtrtcserviceNode = 0;
+
+	private final long guardId = Connector.MAKEIID(GUARD_ID, (short)1 );
+	private final long guardNode = 0;
+
 
 	private Handler handler = new Handler(Looper.getMainLooper());
 
@@ -451,18 +456,18 @@ class RtcConnector implements IRcvMsgCallback{
 
 	private StructConfPB.TAgentCodecStatistic statistics2PB(Statistics statistics){
 		StructConfPB.TAgentCodecStatistic.Builder builder = StructConfPB.TAgentCodecStatistic.newBuilder();
+		if (statistics.common != null){
+			Statistics.AudioInput audioInput = statistics.common.mixedAudio;
+			StructConfPB.TAgentAudDecStatistic.Builder audDecBuilder = StructConfPB.TAgentAudDecStatistic.newBuilder();
+			audDecBuilder.setBitrate(audioInput.bitrate);
+			audDecBuilder.setFormat(audEncodeFormat2PB(audioInput.encodeFormat));
+			audDecBuilder.setPktsLose((int) audioInput.packetsLost);
+			audDecBuilder.setPktsLoserate((int) (100 * audioInput.packetsLost/(audioInput.packetsReceived+audioInput.packetsLost)));
+			audDecBuilder.setDecStart(true);
+			audDecBuilder.setIndex(0);
+			builder.addAuddecStatics(audDecBuilder.build());
+		}
 		for (Statistics.ConfereeRelated confereeRelated : statistics.confereeRelated) {
-			if (statistics.common != null){
-				Statistics.AudioInput audioInput = statistics.common.mixedAudio;
-				StructConfPB.TAgentAudDecStatistic.Builder audDecBuilder = StructConfPB.TAgentAudDecStatistic.newBuilder();
-				audDecBuilder.setBitrate(audioInput.bitrate);
-				audDecBuilder.setFormat(audEncodeFormat2PB(audioInput.encodeFormat));
-				audDecBuilder.setPktsLose((int) audioInput.packetsLost);
-				audDecBuilder.setPktsLoserate((int) (100 * audioInput.packetsLost/(audioInput.packetsReceived+audioInput.packetsLost)));
-				audDecBuilder.setDecStart(true);
-				audDecBuilder.setIndex(0);
-				builder.addAuddecStatics(audDecBuilder.build());
-			}
 			if (confereeRelated.audioOutput!=null){
 				StructConfPB.TAgentAudEncStatistic.Builder audEncBuilder = StructConfPB.TAgentAudEncStatistic.newBuilder();
 				audEncBuilder.setBitrate(confereeRelated.audioOutput.bitrate);
@@ -631,7 +636,7 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(statistics2PB(stats));
 		byte[] abyContent = msg.Encode();
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-				dispatchId, dispatchNode, myId, myNode, 5000 );
+				guardId, guardNode, myId, myNode, 5000 );
 		if (0 != ret){
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
