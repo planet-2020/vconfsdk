@@ -462,7 +462,8 @@ class RtcConnector implements IRcvMsgCallback{
 			audDecBuilder.setBitrate(audioInput.bitrate);
 			audDecBuilder.setFormat(audEncodeFormat2PB(audioInput.encodeFormat));
 			audDecBuilder.setPktsLose((int) audioInput.packetsLost);
-			audDecBuilder.setPktsLoserate((int) (100 * audioInput.packetsLost/(audioInput.packetsReceived+audioInput.packetsLost)));
+			long totalPack = audioInput.packetsReceived+audioInput.packetsLost;
+			audDecBuilder.setPktsLoserate(totalPack==0 ? 0 : (int) (100 * audioInput.packetsLost/totalPack));
 			audDecBuilder.setDecStart(true);
 			audDecBuilder.setIndex(0);
 			builder.addAuddecStatics(audDecBuilder.build());
@@ -483,7 +484,8 @@ class RtcConnector implements IRcvMsgCallback{
 				audDecBuilder.setBitrate(audioInput.bitrate);
 				audDecBuilder.setFormat(audEncodeFormat2PB(audioInput.encodeFormat));
 				audDecBuilder.setPktsLose((int) audioInput.packetsLost);
-				audDecBuilder.setPktsLoserate((int) (100 * audioInput.packetsLost/(audioInput.packetsReceived+audioInput.packetsLost)));
+				long totalPack = audioInput.packetsReceived+audioInput.packetsLost;
+				audDecBuilder.setPktsLoserate(totalPack==0 ? 0 : (int) (100 * audioInput.packetsLost/totalPack));
 				audDecBuilder.setDecStart(true);
 				audDecBuilder.setIndex(0);
 				builder.addAuddecStatics(audDecBuilder.build());
@@ -515,7 +517,8 @@ class RtcConnector implements IRcvMsgCallback{
 				vidDecBuilder.setVidWidth(videoInput.width);
 				vidDecBuilder.setVidHeight(videoInput.height);
 				vidDecBuilder.setPktsLose((int) videoInput.packetsLost);
-				vidDecBuilder.setPktsLoserate((int) (100 * videoInput.packetsLost/(videoInput.packetsReceived+videoInput.packetsLost)));
+				long totalPack = videoInput.packetsReceived+videoInput.packetsLost;
+				vidDecBuilder.setPktsLoserate(totalPack==0 ? 0 : (int) (100 * videoInput.packetsLost/totalPack));
 				vidDecBuilder.setHwDecStatus(true);
 				vidDecBuilder.setDecStart(true);
 				vidDecBuilder.setIndex(0);
