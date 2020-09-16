@@ -458,7 +458,7 @@ class RtcConnector implements IRcvMsgCallback{
 				audDecBuilder.setBitrate(audioInput.bitrate);
 				audDecBuilder.setFormat(audEncodeFormat2PB(audioInput.encodeFormat));
 				audDecBuilder.setPktsLose((int) audioInput.packetsLost);
-				audDecBuilder.setPktsLoserate((int) (100 * audioInput.packetsLost/(float)audioInput.packetsReceived));
+				audDecBuilder.setPktsLoserate((int) (100 * audioInput.packetsLost/(audioInput.packetsReceived+audioInput.packetsLost)));
 				audDecBuilder.setDecStart(true);
 				audDecBuilder.setIndex(0);
 				builder.addAuddecStatics(audDecBuilder.build());
@@ -474,10 +474,11 @@ class RtcConnector implements IRcvMsgCallback{
 
 			if (confereeRelated.audioInput !=null){
 				StructConfPB.TAgentAudDecStatistic.Builder audDecBuilder = StructConfPB.TAgentAudDecStatistic.newBuilder();
-				audDecBuilder.setBitrate(confereeRelated.audioInput.bitrate);
-				audDecBuilder.setFormat(audEncodeFormat2PB(confereeRelated.audioInput.encodeFormat));
-				audDecBuilder.setPktsLose((int) confereeRelated.audioInput.packetsLost);
-				audDecBuilder.setPktsLoserate((int) (100 * confereeRelated.audioInput.packetsLost/(float)confereeRelated.audioInput.packetsReceived));
+				Statistics.AudioInput audioInput = confereeRelated.audioInput;
+				audDecBuilder.setBitrate(audioInput.bitrate);
+				audDecBuilder.setFormat(audEncodeFormat2PB(audioInput.encodeFormat));
+				audDecBuilder.setPktsLose((int) audioInput.packetsLost);
+				audDecBuilder.setPktsLoserate((int) (100 * audioInput.packetsLost/(audioInput.packetsReceived+audioInput.packetsLost)));
 				audDecBuilder.setDecStart(true);
 				audDecBuilder.setIndex(0);
 				builder.addAuddecStatics(audDecBuilder.build());
@@ -502,13 +503,14 @@ class RtcConnector implements IRcvMsgCallback{
 
 			if (confereeRelated.videoInput != null){
 				StructConfPB.TAgentVidDecStatistic.Builder vidDecBuilder = StructConfPB.TAgentVidDecStatistic.newBuilder();
-				vidDecBuilder.setBitrate(confereeRelated.videoInput.bitrate);
-				vidDecBuilder.setFormat(vidEncodeFormat2PB(confereeRelated.videoInput.encodeFormat));
-				vidDecBuilder.setFramerate(confereeRelated.videoInput.framerate);
-				vidDecBuilder.setVidWidth(confereeRelated.videoInput.width);
-				vidDecBuilder.setVidHeight(confereeRelated.videoInput.height);
-				vidDecBuilder.setPktsLose((int) confereeRelated.videoInput.packetsLost);
-				vidDecBuilder.setPktsLoserate((int) (100 * confereeRelated.videoInput.packetsLost/(float)confereeRelated.videoInput.packetsReceived));
+				Statistics.VideoInput videoInput = confereeRelated.videoInput;
+				vidDecBuilder.setBitrate(videoInput.bitrate);
+				vidDecBuilder.setFormat(vidEncodeFormat2PB(videoInput.encodeFormat));
+				vidDecBuilder.setFramerate(videoInput.framerate);
+				vidDecBuilder.setVidWidth(videoInput.width);
+				vidDecBuilder.setVidHeight(videoInput.height);
+				vidDecBuilder.setPktsLose((int) videoInput.packetsLost);
+				vidDecBuilder.setPktsLoserate((int) (100 * videoInput.packetsLost/(videoInput.packetsReceived+videoInput.packetsLost)));
 				vidDecBuilder.setHwDecStatus(true);
 				vidDecBuilder.setDecStart(true);
 				vidDecBuilder.setIndex(0);

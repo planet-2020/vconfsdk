@@ -117,14 +117,18 @@ public class Statistics {
         public long packetsReceived;
         // 丢包总数
         public long packetsLost;
+        // 实时丢包率[0, 100]
+        // NOTE：此丢包率是实时的，并非packetsLost/(packetsReceived+packetsLost)，那是总的丢包率。
+        public int realtimeLostRate;
         // 码率。kbit/s
         public int bitrate;
         // 编码格式。
         public String encodeFormat;
 
-        public AudioInput(long packetsReceived, long packetsLost, int bitrate, String mime) {
+        public AudioInput(long packetsReceived, long packetsLost, int realtimeLostRate, int bitrate, String mime) {
             this.packetsReceived = packetsReceived;
             this.packetsLost = packetsLost;
+            this.realtimeLostRate = realtimeLostRate;
             this.bitrate = bitrate;
             this.encodeFormat = mime2CodecName(mime);
         }
@@ -134,9 +138,10 @@ public class Statistics {
             return "AudioInput{" +
                     "packetsReceived=" + packetsReceived +
                     ", packetsLost=" + packetsLost +
+                    ", realtimeLostRate=" + realtimeLostRate +
                     ", bitrate=" + bitrate +
-                    ", encodeFormat=" + encodeFormat +
-                    "}\n";
+                    ", encodeFormat='" + encodeFormat + '\'' +
+                    '}';
         }
     }
 
@@ -183,6 +188,9 @@ public class Statistics {
         public long packetsLost;
         // 帧率。fps
         public int framerate;
+        // 实时丢包率[0, 100]
+        // NOTE：此丢包率是实时的，并非packetsLost/(packetsReceived+packetsLost)，那是总的丢包率。
+        public int realtimeLostRate;
         // 码率。kbit/s
         public int bitrate;
         // 编码格式。
@@ -194,10 +202,11 @@ public class Statistics {
         // 编码器名称。
         public String encoder;
 
-        public VideoInput(int framerate, int width, int height, long packetsReceived, long packetsLost, int bitrate, String mime, String encoder) {
+        public VideoInput(int framerate, int width, int height, long packetsReceived, long packetsLost, int realtimeLostRate, int bitrate, String mime, String encoder) {
             this.packetsReceived = packetsReceived;
             this.packetsLost = packetsLost;
             this.framerate = framerate;
+            this.realtimeLostRate = realtimeLostRate;
             this.bitrate = bitrate;
             this.encodeFormat = mime2CodecName(mime);
             this.width = width;
@@ -211,12 +220,13 @@ public class Statistics {
                     "packetsReceived=" + packetsReceived +
                     ", packetsLost=" + packetsLost +
                     ", framerate=" + framerate +
+                    ", realtimeLostRate=" + realtimeLostRate +
                     ", bitrate=" + bitrate +
-                    ", encodeFormat=" + encodeFormat +
+                    ", encodeFormat='" + encodeFormat + '\'' +
                     ", width=" + width +
                     ", height=" + height +
                     ", encoder='" + encoder + '\'' +
-                    "}\n";
+                    '}';
         }
     }
 

@@ -2629,9 +2629,10 @@ public class WebRtcManager extends Caster<Msg>{
                 yPos += fontHeight;
                 canvas.drawText("packets received: "+vi.packetsReceived, xPos, yPos, paint);
                 yPos += fontHeight;
-                int lostRate = (int) (100*vi.packetsLost/(float)vi.packetsReceived);
-                if (lostRate > 20) {paint.setColor(Color.RED);}
-                canvas.drawText("packets lost rate: "+lostRate+"%", xPos, yPos, paint);
+                canvas.drawText("packets lost: "+vi.packetsLost, xPos, yPos, paint);
+                yPos += fontHeight;
+                if (vi.realtimeLostRate > 20) {paint.setColor(Color.RED);}
+                canvas.drawText("realtime lost rate: "+vi.realtimeLostRate+"%", xPos, yPos, paint);
                 paint.setColor(Color.GREEN);
                 yPos += fontHeight;
 //                canvas.drawText("encoder: "+vi.encoder, xPos, yPos, paint);
@@ -2657,9 +2658,10 @@ public class WebRtcManager extends Caster<Msg>{
                 yPos += fontHeight;
                 canvas.drawText("packets received: "+ai.packetsReceived, xPos, yPos, paint);
                 yPos += fontHeight;
-                int lostRate = (int) (100*ai.packetsLost/(float)ai.packetsReceived);
-                if (lostRate > 20) {paint.setColor(Color.RED);}
-                canvas.drawText("packets lost rate: "+lostRate+"%", xPos, yPos, paint);
+                canvas.drawText("packets lost: "+ai.packetsLost, xPos, yPos, paint);
+                yPos += fontHeight;
+                if (ai.realtimeLostRate > 20) {paint.setColor(Color.RED);}
+                canvas.drawText("realtime lost rate: "+ai.realtimeLostRate+"%", xPos, yPos, paint);
                 paint.setColor(Color.GREEN);
                 yPos += fontHeight;
             }
@@ -4872,7 +4874,9 @@ public class WebRtcManager extends Caster<Msg>{
                         if (rtp.trackId.equals(preRtp.trackId)) {
                             int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / STATS_INTERVAL / 1024);
                             String codecMime = stats.getCodecMime(rtp.trackId);
-                            Statistics.AudioInput audioInput = new Statistics.AudioInput(rtp.packetsReceived, rtp.packetsLost, bitrate, codecMime);
+                            long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
+                            int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
+                            Statistics.AudioInput audioInput = new Statistics.AudioInput(rtp.packetsReceived, rtp.packetsLost, realtimeLostRate, bitrate, codecMime);
                             StatsHelper.RecvAudioTrack recvAudioTrack = stats.getRecvAudioTrack(rtp.trackId);
                             String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
                             Conferee conferee = findConfereeByStreamId(kdStreamId);
@@ -4902,7 +4906,9 @@ public class WebRtcManager extends Caster<Msg>{
                         String codecMime = stats.getCodecMime(rtp.trackId);
                         StatsHelper.RecvVideoTrack recvVideoTrack = stats.getRecvVideoTrack(rtp.trackId);
                         int frameRate = (int) ((recvVideoTrack.framesReceived - preStats.getRecvVideoTrack(preRtp.trackId).framesReceived) / STATS_INTERVAL);
-                        Statistics.VideoInput videoInput = new Statistics.VideoInput(frameRate, recvVideoTrack.frameWidth, recvVideoTrack.frameHeight, rtp.packetsReceived, rtp.packetsLost, bitrate, codecMime, rtp.decoderImplementation);
+                        long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
+                        int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
+                        Statistics.VideoInput videoInput = new Statistics.VideoInput(frameRate, recvVideoTrack.frameWidth, recvVideoTrack.frameHeight, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate, bitrate, codecMime, rtp.decoderImplementation);
                         if (videoInput.framerate <= 0 || videoInput.bitrate <= 0 || videoInput.width <= 0 || videoInput.height <= 0) {
                             videoInput.framerate = videoInput.bitrate = videoInput.width = videoInput.height = 0;
                         }
