@@ -1688,6 +1688,9 @@ public class WebRtcManager extends Caster<Msg>{
         private Set<TextDecoration> textDecorations = new HashSet<>();
         private Set<PicDecoration> picDecorations = new HashSet<>();
 
+        // 麦克风装饰
+        private MicrophoneDecoration microphoneDeco = new MicrophoneDecoration();
+
         /**
          * 语音激励状态下的装饰
          * */
@@ -2736,6 +2739,9 @@ public class WebRtcManager extends Caster<Msg>{
                 canvas.drawText(deco.text, deco.actualX, deco.actualY, deco.paint);
             }
 
+            // 绘制麦克风
+            conferee.microphoneDeco.draw(new RectF(10,10,80,80), new RectF(0,0,100,100), 0x80000000, canvas);
+
             // 绘制统计信息
             if (instance.showStatistics){
                 drawStatistics(instance.getStats(conferee.getId()), canvas);
@@ -3138,6 +3144,57 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
+
+    private static class MicrophoneDecoration{
+        boolean muted;
+        int volume; // 音量[0, 100]
+        Paint strokePaint = new Paint();
+        Paint fillPaint = new Paint();
+
+        public MicrophoneDecoration() {
+            strokePaint.setStyle(Paint.Style.STROKE);
+            strokePaint.setStrokeWidth(2);
+            strokePaint.setColor(Color.WHITE);
+            strokePaint.setAntiAlias(true);
+            fillPaint.setStyle(Paint.Style.FILL);
+            fillPaint.setAntiAlias(true);
+        }
+
+        boolean isMuted() {
+            return muted;
+        }
+
+        void setMuted(boolean muted) {
+            this.muted = muted;
+        }
+
+        int getVolume() {
+            return volume;
+        }
+
+        void setVolume(int volume) {
+            this.volume = volume;
+        }
+
+        void draw(RectF rect, RectF background, int bgColor, Canvas canvas){
+            fillPaint.setColor(bgColor);
+            canvas.drawRect(background, fillPaint);
+            float roundRectHorizontalMargin = (rect.right-rect.left)/4;
+            float roundRectBottomMargin = (rect.bottom-rect.top)/2;
+            RectF roundRect = new RectF(rect.left+roundRectHorizontalMargin, rect.top, rect.right-roundRectHorizontalMargin, rect.bottom-roundRectBottomMargin);
+            RectF halfRoundRect = new RectF(rect.left, rect.top-roundRectBottomMargin/2, rect.right, rect.bottom-roundRectBottomMargin/2);
+            canvas.drawRoundRect(roundRect, roundRect.width(), roundRect.width(), strokePaint);
+            canvas.drawRoundRect(halfRoundRect, halfRoundRect.width(), halfRoundRect.width(), strokePaint);
+            canvas.drawLine(rect.left+roundRectHorizontalMargin, rect.bottom, rect.right-roundRectHorizontalMargin, rect.bottom, strokePaint);
+            canvas.drawLine((rect.right+rect.left)/2, rect.bottom-roundRectBottomMargin/2, (rect.right+rect.left)/2, rect.bottom, strokePaint);
+            if (muted){
+                strokePaint.setColor(Color.RED);
+                canvas.drawLine(rect.left, rect.top, rect.right, rect.bottom, strokePaint);
+                strokePaint.setColor(Color.WHITE);
+            }
+        }
+        
+    }
 
     public abstract static class Decoration{
         // 相对窗体的位置
