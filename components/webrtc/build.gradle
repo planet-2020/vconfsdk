@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.google.protobuf'
 
-version = '6.0.6-SNAPSHOT'
+version = '6.0.7-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
