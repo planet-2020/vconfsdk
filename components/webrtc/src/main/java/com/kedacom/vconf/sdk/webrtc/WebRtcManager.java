@@ -2740,7 +2740,8 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             // 绘制麦克风
-            conferee.microphoneDeco.draw(new RectF(10,10,80,80), new RectF(0,0,100,100), 0x80000000, canvas);
+            conferee.microphoneDeco.setVolume(50);
+            conferee.microphoneDeco.draw(new RectF(20,20,60,90), new RectF(0,0,70,100), 0x80000000, canvas);
 
             // 绘制统计信息
             if (instance.showStatistics){
@@ -3150,10 +3151,11 @@ public class WebRtcManager extends Caster<Msg>{
         int volume; // 音量[0, 100]
         Paint strokePaint = new Paint();
         Paint fillPaint = new Paint();
+        private final int STROKE_WIDTH = 4;
 
         public MicrophoneDecoration() {
             strokePaint.setStyle(Paint.Style.STROKE);
-            strokePaint.setStrokeWidth(2);
+            strokePaint.setStrokeWidth(STROKE_WIDTH);
             strokePaint.setColor(Color.WHITE);
             strokePaint.setAntiAlias(true);
             fillPaint.setStyle(Paint.Style.FILL);
@@ -3180,17 +3182,27 @@ public class WebRtcManager extends Caster<Msg>{
             fillPaint.setColor(bgColor);
             canvas.drawRect(background, fillPaint);
             float roundRectHorizontalMargin = (rect.right-rect.left)/4;
-            float roundRectBottomMargin = (rect.bottom-rect.top)/2;
+            float roundRectBottomMargin = (rect.bottom-rect.top)/3;
+            fillPaint.setColor(Color.WHITE);
             RectF roundRect = new RectF(rect.left+roundRectHorizontalMargin, rect.top, rect.right-roundRectHorizontalMargin, rect.bottom-roundRectBottomMargin);
+            canvas.drawRoundRect(roundRect, roundRect.width()/2, roundRect.width()/2, fillPaint);
             RectF halfRoundRect = new RectF(rect.left, rect.top-roundRectBottomMargin/2, rect.right, rect.bottom-roundRectBottomMargin/2);
-            canvas.drawRoundRect(roundRect, roundRect.width(), roundRect.width(), strokePaint);
-            canvas.drawRoundRect(halfRoundRect, halfRoundRect.width(), halfRoundRect.width(), strokePaint);
+            canvas.save();
+            canvas.clipRect(halfRoundRect.left-STROKE_WIDTH, (halfRoundRect.top+halfRoundRect.bottom)/2, halfRoundRect.right+STROKE_WIDTH, halfRoundRect.bottom+STROKE_WIDTH);
+            canvas.drawRoundRect(halfRoundRect, halfRoundRect.width()/2, halfRoundRect.width()/2, strokePaint);
+            canvas.restore();
             canvas.drawLine(rect.left+roundRectHorizontalMargin, rect.bottom, rect.right-roundRectHorizontalMargin, rect.bottom, strokePaint);
             canvas.drawLine((rect.right+rect.left)/2, rect.bottom-roundRectBottomMargin/2, (rect.right+rect.left)/2, rect.bottom, strokePaint);
             if (muted){
                 strokePaint.setColor(Color.RED);
                 canvas.drawLine(rect.left, rect.top, rect.right, rect.bottom, strokePaint);
                 strokePaint.setColor(Color.WHITE);
+            }else{
+                canvas.save();
+                canvas.clipRect(roundRect.left-STROKE_WIDTH, roundRect.bottom-roundRect.height()*(volume/100f), roundRect.right+STROKE_WIDTH, roundRect.bottom+STROKE_WIDTH);
+                fillPaint.setColor(0xff00aaff);
+                canvas.drawRoundRect(roundRect, roundRect.width()/2, roundRect.width()/2, fillPaint);
+                canvas.restore();
             }
         }
         
