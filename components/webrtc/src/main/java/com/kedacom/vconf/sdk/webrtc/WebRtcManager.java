@@ -4871,6 +4871,10 @@ public class WebRtcManager extends Caster<Msg>{
             if (stats.audioInboundRtpList!=null && preStats.audioInboundRtpList!=null) {
                 for (StatsHelper.AudioInboundRtp rtp : stats.audioInboundRtpList) {
                     for (StatsHelper.AudioInboundRtp preRtp : preStats.audioInboundRtpList) {
+                        if (rtp.trackId==null || preRtp.trackId==null){
+                            KLog.p(KLog.ERROR, "this inbound rtp has no track id !?");
+                            continue;
+                        }
                         if (rtp.trackId.equals(preRtp.trackId)) {
                             int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / STATS_INTERVAL / 1024);
                             String codecMime = stats.getCodecMime(rtp.trackId);
@@ -4901,6 +4905,10 @@ public class WebRtcManager extends Caster<Msg>{
         if (stats.videoInboundRtpList!=null && preStats.videoInboundRtpList!=null) {
             for (StatsHelper.VideoInboundRtp rtp : stats.videoInboundRtpList) {
                 for (StatsHelper.VideoInboundRtp preRtp : preStats.videoInboundRtpList) {
+                    if (rtp.trackId==null || preRtp.trackId==null){
+                        KLog.p(KLog.ERROR, "this inbound rtp has no track id !?");
+                        continue;
+                    }
                     if (rtp.trackId.equals(preRtp.trackId)) {
                         int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / STATS_INTERVAL / 1024);
                         String codecMime = stats.getCodecMime(rtp.trackId);
