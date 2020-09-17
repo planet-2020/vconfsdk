@@ -2593,7 +2593,7 @@ public class WebRtcManager extends Caster<Msg>{
             paint.setTextSize(22);
             paint.setAntiAlias(true);
             Paint.FontMetrics fm = paint.getFontMetrics();
-            float fontHeight = fm.bottom - fm.top;
+            float fontHeight = fm.descent - fm.ascent;
             int xPos = 5, yPos = Math.round(fontHeight);
             if (vo != null) {
                 canvas.drawText("== video ==", xPos, yPos, paint);
