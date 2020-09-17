@@ -4162,7 +4162,8 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 remoteVideoTracks.put(kdStreamId, track);
                 track.setEnabled(config.isRemoteVideoEnabled);
-                KLog.p("create remote video track %s/%s", kdStreamId, track.id());
+                String trackId = track.id();
+                KLog.p("create remote video track %s/%s", kdStreamId, trackId);
 
                 handler.post(new Runnable() {
                     int retriedCount;
@@ -4171,7 +4172,7 @@ public class WebRtcManager extends Caster<Msg>{
                         if (retriedCount >= 2){
                             return;
                         }
-                        kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
+                        kdStreamId2RtcTrackIdMap.put(kdStreamId, trackId);
                         RtcStream remoteStream = findStream(kdStreamId);
                         if (null == remoteStream) {
                             KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
@@ -4206,7 +4207,7 @@ public class WebRtcManager extends Caster<Msg>{
                                 KLog.p(KLog.ERROR, "peerConnection destroyed");
                                 return;
                             }
-                            KLog.p("bind track %s to conferee %s", track.id(), owner.getId());
+                            KLog.p("bind track %s to conferee %s", trackId, owner.getId());
                             track.addSink(owner);
                         });
                     }
@@ -4226,7 +4227,8 @@ public class WebRtcManager extends Caster<Msg>{
                     if (streamId.equals(kdStreamId)) {
                         VideoTrack track = remoteVideoTracks.remove(streamId);
 //                        track.dispose();
-                        KLog.p("remote video track %s/%s removed", streamId, track.id());
+                        String trackId = track.id();
+                        KLog.p("remote video track %s/%s removed", streamId, trackId);
 
                         handler.post(() -> {
                             kdStreamId2RtcTrackIdMap.remove(streamId);
@@ -4238,7 +4240,7 @@ public class WebRtcManager extends Caster<Msg>{
                                         KLog.p(KLog.ERROR, "peerConnection destroyed");
                                         return;
                                     }
-                                    KLog.p("unbind track %s from conferee %s", track.id(), owner.getId());
+                                    KLog.p("unbind track %s from conferee %s", trackId, owner.getId());
                                     track.removeSink(owner);
                                 });
                             }
@@ -4268,8 +4270,9 @@ public class WebRtcManager extends Caster<Msg>{
                 track.setEnabled(!config.isSilenced);
                 track.setVolume(10 * config.outputAudioVolume/100f);
                 remoteAudioTracks.put(kdStreamId, track);
+                String trackId = track.id();
 
-                KLog.p("remote audio track %s/%s created", kdStreamId, track.id());
+                KLog.p("remote audio track %s/%s created", kdStreamId, trackId);
 
                 handler.post(new Runnable() {
                     int retriedCount;
@@ -4278,7 +4281,7 @@ public class WebRtcManager extends Caster<Msg>{
                         if (retriedCount>=2){
                             return;
                         }
-                        kdStreamId2RtcTrackIdMap.put(kdStreamId, track.id());
+                        kdStreamId2RtcTrackIdMap.put(kdStreamId, trackId);
                         RtcStream remoteStream = findStream(kdStreamId);
                         if (null == remoteStream) {
                             KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
