@@ -93,12 +93,15 @@ public class Statistics {
     }
 
     public static class AudioOutput{
+        // 音量[0, 100]
+        public int audioLevel;
         // 码率。kbit/s
         public int bitrate;
         // 编码格式。
         public String encodeFormat;
 
-        public AudioOutput(int bitrate, String mime) {
+        public AudioOutput(int audioLevel, int bitrate, String mime) {
+            this.audioLevel = audioLevel;
             this.bitrate = bitrate;
             this.encodeFormat = mime2CodecName(mime);
         }
@@ -106,13 +109,16 @@ public class Statistics {
         @Override
         public String toString() {
             return "AudioOutput{" +
-                    "bitrate=" + bitrate +
-                    ", encodeFormat=" + encodeFormat +
-                    "}\n";
+                    "audioLevel=" + audioLevel +
+                    ", bitrate=" + bitrate +
+                    ", encodeFormat='" + encodeFormat + '\'' +
+                    '}';
         }
     }
 
     public static class AudioInput{
+        // 音量[0, 100]
+        public int audioLevel;
         // 收包总数
         public long packetsReceived;
         // 丢包总数
@@ -125,7 +131,8 @@ public class Statistics {
         // 编码格式。
         public String encodeFormat;
 
-        public AudioInput(long packetsReceived, long packetsLost, int realtimeLostRate, int bitrate, String mime) {
+        public AudioInput(int audioLevel, long packetsReceived, long packetsLost, int realtimeLostRate, int bitrate, String mime) {
+            this.audioLevel = audioLevel;
             this.packetsReceived = packetsReceived;
             this.packetsLost = packetsLost;
             this.realtimeLostRate = realtimeLostRate;
@@ -136,7 +143,8 @@ public class Statistics {
         @Override
         public String toString() {
             return "AudioInput{" +
-                    "packetsReceived=" + packetsReceived +
+                    "audioLevel=" + audioLevel +
+                    ", packetsReceived=" + packetsReceived +
                     ", packetsLost=" + packetsLost +
                     ", realtimeLostRate=" + realtimeLostRate +
                     ", bitrate=" + bitrate +

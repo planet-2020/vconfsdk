@@ -117,6 +117,7 @@ final class StatsHelper {
                         SendAudioTrack sendAudioTrack = new SendAudioTrack();
                         sendAudioTrack.id = trackIdInRtp;
                         sendAudioTrack.trackIdentifier = null != members.get("trackIdentifier") ? (String) members.get("trackIdentifier") : null;
+                        sendAudioTrack.audioLevel = null != members.get("audioLevel") ? (double) members.get("audioLevel") : 0;
                         sendAudioTrack.mediaSourceId = null != members.get("mediaSourceId") ? (String) members.get("mediaSourceId") : null;
                         sendAudioTrack.ended = null != members.get("ended") ? (boolean) members.get("ended") : true;
                         sendAudioTrack.detached =  null != members.get("detached") ? (boolean) members.get("detached") : true;
@@ -555,6 +556,7 @@ final class StatsHelper {
     static class SendAudioTrack{
         String id;          // 跟OutboundRtp中的trackId内容一致
         String trackIdentifier; // 跟webrtc中track.id()方法获取到的一致
+        double audioLevel;
         String mediaSourceId;
         boolean ended;
         boolean detached;
@@ -564,6 +566,7 @@ final class StatsHelper {
             return "SendAudioTrack{" +
                     "id='" + id + '\'' +
                     ", trackIdentifier='" + trackIdentifier + '\'' +
+                    ", audioLevel=" + audioLevel +
                     ", mediaSourceId='" + mediaSourceId + '\'' +
                     ", ended=" + ended +
                     ", detached=" + detached +

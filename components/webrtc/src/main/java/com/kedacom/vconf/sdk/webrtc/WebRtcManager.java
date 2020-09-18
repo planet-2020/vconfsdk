@@ -2652,12 +2652,23 @@ public class WebRtcManager extends Caster<Msg>{
                 yPos += fontHeight;
                 canvas.drawText("format: "+ao.encodeFormat, xPos, yPos, paint);
                 yPos += fontHeight;
-            }else if (ai != null) {
-                canvas.drawText("== audio ==", xPos, yPos, paint);
+                canvas.drawText("volume: "+ao.audioLevel, xPos, yPos, paint);
+                yPos += fontHeight;
+            }else if (ai != null || instance.statistics.common != null) {
+                String title;
+                if (ai != null){
+                    title = "== audio ==";
+                }else{
+                    ai = instance.statistics.common.mixedAudio;
+                    title = "== mixed audio ==";
+                }
+                canvas.drawText(title, xPos, yPos, paint);
                 yPos += fontHeight;
                 canvas.drawText("bitrate: "+ai.bitrate+"kbps", xPos, yPos, paint);
                 yPos += fontHeight;
                 canvas.drawText("format: "+ai.encodeFormat, xPos, yPos, paint);
+                yPos += fontHeight;
+                canvas.drawText("volume: "+ai.audioLevel, xPos, yPos, paint);
                 yPos += fontHeight;
                 canvas.drawText("packets received: "+ai.packetsReceived, xPos, yPos, paint);
                 yPos += fontHeight;
@@ -2740,7 +2751,6 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             // 绘制麦克风
-            conferee.microphoneDeco.setVolume(50);
             conferee.microphoneDeco.draw(new RectF(20,20,60,90), new RectF(0,0,70,100), 0x80000000, canvas);
 
             // 绘制统计信息
@@ -3200,7 +3210,7 @@ public class WebRtcManager extends Caster<Msg>{
             }else{
                 canvas.save();
                 canvas.clipRect(roundRect.left-STROKE_WIDTH, roundRect.bottom-roundRect.height()*(volume/100f), roundRect.right+STROKE_WIDTH, roundRect.bottom+STROKE_WIDTH);
-                fillPaint.setColor(0xff00aaff);
+                fillPaint.setColor(0xFF1E94DA);
                 canvas.drawRoundRect(roundRect, roundRect.width()/2, roundRect.width()/2, fillPaint);
                 canvas.restore();
             }
@@ -4902,7 +4912,12 @@ public class WebRtcManager extends Caster<Msg>{
             if (stats.audioOutboundRtp!=null){
                 codecMime = stats.getCodecMime(stats.audioOutboundRtp.trackId);
             }
-            audioOutput = new Statistics.AudioOutput(bitrate, codecMime);
+            int audioLevel = stats.sendAudioTrack != null ? (int) (stats.sendAudioTrack.audioLevel * 100) :0;
+            audioOutput = new Statistics.AudioOutput(audioLevel, bitrate, codecMime);
+            if (audioLevel != myself.microphoneDeco.volume) {
+                myself.microphoneDeco.setVolume(audioLevel);
+                myself.refreshDisplays();
+            }
         }
 
         bitrate = 0;
@@ -4952,12 +4967,21 @@ public class WebRtcManager extends Caster<Msg>{
                             String codecMime = stats.getCodecMime(rtp.trackId);
                             long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
                             int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
-                            Statistics.AudioInput audioInput = new Statistics.AudioInput(rtp.packetsReceived, rtp.packetsLost, realtimeLostRate, bitrate, codecMime);
                             StatsHelper.RecvAudioTrack recvAudioTrack = stats.getRecvAudioTrack(rtp.trackId);
+                            if (recvAudioTrack == null){
+                                KLog.p(KLog.ERROR, "no audio track of %s", rtp.trackId);
+                                continue;
+                            }
+                            int audioLevel = (int) (recvAudioTrack.audioLevel*100);
+                            Statistics.AudioInput audioInput = new Statistics.AudioInput(audioLevel, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate, bitrate, codecMime);
                             String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
                             Conferee conferee = findConfereeByStreamId(kdStreamId);
                             if (conferee != null) {
                                 audioInputMap.put(conferee.getId(), audioInput);
+                                if (audioLevel != conferee.microphoneDeco.volume) {
+                                    conferee.microphoneDeco.setVolume(audioLevel);
+                                    conferee.refreshDisplays();
+                                }
                             } else {
                                 RtcStream rtcStream = findStream(kdStreamId);
                                 if (rtcStream != null && rtcStream.streamInfo.bMix) {
