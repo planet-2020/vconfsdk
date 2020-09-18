@@ -1773,6 +1773,10 @@ public class WebRtcManager extends Caster<Msg>{
             return email;
         }
 
+        private TextDecoration getLabel(){
+            return Stream.of(textDecorations).filter(value -> value.isLabel).findFirst().orElse(null);
+        }
+
         /**
          * @return 与会方对应的显示器集合。不可修改！
          * */
@@ -2751,17 +2755,20 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             // 绘制麦克风
-            conferee.microphoneDeco.draw(new RectF(20,20,60,90), new RectF(0,0,70,100), 0x80000000, canvas);
-
-            // 绘制统计信息
-            if (instance.showStatistics){
-                drawStatistics(instance.getStats(conferee.getId()), canvas);
+            TextDecoration label = conferee.getLabel();
+            if (label != null && label.enabled() && !disabledDecos.contains(label.id)) {
+                conferee.microphoneDeco.draw(label.getMicroPhoneRect(), label.getMicroPhoneBackgroundRect(), 0x80000000, canvas);
             }
 
             // 绘制语音激励deco
             if (Conferee.AudioSignalState.Activated == audioSignalState){
                 conferee.voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
                 canvas.drawRect(conferee.voiceActivatedDeco, Conferee.voiceActivatedDecoPaint);
+            }
+
+            // 绘制统计信息
+            if (instance.showStatistics){
+                drawStatistics(instance.getStats(conferee.getId()), canvas);
             }
 
         }
@@ -3005,6 +3012,7 @@ public class WebRtcManager extends Caster<Msg>{
         private Paint bgPaint = new Paint();
         private RectF bgRect = new RectF();  // 文字背景区域
         private static final int minTextSizeLimit = 32;
+        private boolean isLabel; // 是否为台标
         /**
          * @param id deco的id，唯一标识该deco，用户自定义。
          * @param text deco文字内容
@@ -3067,6 +3075,38 @@ public class WebRtcManager extends Caster<Msg>{
             this.text = text;
         }
 
+        public boolean isLabel() {
+            return isLabel;
+        }
+
+        public void setLabel(boolean label) {
+            isLabel = label;
+        }
+
+        private RectF microPhoneRect = new RectF();
+        private RectF microPhoneBackgroundRect = new RectF();
+        RectF getMicroPhoneRect(){
+            float left, top, right, bottom;
+            top = actualY+fm.ascent;
+            bottom = actualY;
+            float phoneW = (bottom-top)*3/5;
+            left = (bgRect.left-phoneW)/2;
+            right = bgRect.left - left;
+            microPhoneRect.set(left, top, right, bottom);
+            return microPhoneRect;
+        }
+
+        RectF getMicroPhoneBackgroundRect(){
+            float left, top, right, bottom;
+            top = bgRect.top;
+            bottom = bgRect.bottom;
+            right = bgRect.left;
+            left = 0;
+            microPhoneBackgroundRect.set(left, top, right, bottom);
+            return microPhoneBackgroundRect;
+        }
+
+        private Paint.FontMetrics fm = new Paint.FontMetrics();
         protected boolean adjust(int width, int height){
             if (!super.adjust(width, height)){
                 return false;
@@ -3080,12 +3120,14 @@ public class WebRtcManager extends Caster<Msg>{
             // 修正实际锚点坐标。
             // 为防止字体缩的过小我们限定了字体大小下限，我们需修正由此可能带来的偏差。
             // NOTE: 此修正目前仅针对文字横排的情形，若将来增加文字竖排的需求，需在此增加相应的处理逻辑。
-            Paint.FontMetrics fm = paint.getFontMetrics();
+            paint.getFontMetrics(fm);
             if (POS_LEFTBOTTOM==refPos || POS_RIGHTBOTTOM==refPos) {
                 actualY = Math.min(height-fm.bottom-yPadding, actualY);
             }else {
                 actualY = Math.max(0-fm.top+yPadding, actualY);
             }
+
+            actualX = x * size / textSize;
 
             // 计算文字背景区域
             float left = actualX-xPadding;
