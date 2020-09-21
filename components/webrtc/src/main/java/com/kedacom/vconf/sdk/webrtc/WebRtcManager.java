@@ -870,22 +870,22 @@ public class WebRtcManager extends Caster<Msg>{
                 TRegResultNtf regState = (TRegResultNtf) ntfContent;
                 int resCode = RtcResultCode.trans(ntf, regState.AssParam.basetype);
                 if (RtcResultCode.LoggedIn != resCode) {
-                    confEventListener.onConfServerDisconnected(resCode);
+                    if (confEventListener != null) confEventListener.onConfServerDisconnected(resCode);
                 }
                 break;
 
             case CallIncoming:
-                confEventListener.onConfInvitation(ToDoConverter.callLinkSate2ConfInvitationInfo((TMtCallLinkSate) ntfContent));
+                if (confEventListener != null) confEventListener.onConfInvitation(ToDoConverter.callLinkSate2ConfInvitationInfo((TMtCallLinkSate) ntfContent));
                 break;
 
             case ConfPasswordNeeded:
-                sessionEventListener.confPasswordNeeded();
+                if (sessionEventListener != null) sessionEventListener.confPasswordNeeded();
                 break;
 
             case MultipartyConfEnded:
 
             case ConfCanceled:
-                confEventListener.onConfFinished(RtcResultCode.trans(ntf, ((BaseTypeInt) ntfContent).basetype));
+                if (confEventListener != null) confEventListener.onConfFinished(RtcResultCode.trans(ntf, ((BaseTypeInt) ntfContent).basetype));
                 stopSession();
                 break;
 
@@ -917,18 +917,18 @@ public class WebRtcManager extends Caster<Msg>{
                 if (!selfFilled) {
                     presentConferees.add(myself); // 己端放最后
                 }
-                sessionEventListener.onConfereesAppeared(presentConferees);
+                if (sessionEventListener != null) sessionEventListener.onConfereesAppeared(presentConferees);
                 break;
 
             case ConfereeJoined:
                 Conferee joined = tMTEntityInfo2Conferee((TMTEntityInfo) ntfContent);
                 if (findConferee(joined.mcuId, joined.terId, joined.type)==null){
                     conferees.add(joined);
-                    sessionEventListener.onConfereeJoined(joined);
+                    if (sessionEventListener != null)sessionEventListener.onConfereeJoined(joined);
                     assStreamConferee = tryCreateAssStreamConferee();
                     if (null != assStreamConferee){
                         conferees.add(assStreamConferee);
-                        sessionEventListener.onConfereeJoined(assStreamConferee);
+                        if (sessionEventListener != null)sessionEventListener.onConfereeJoined(assStreamConferee);
                     }
                 }
                 break;
@@ -938,7 +938,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Conferee leftConferee = findConferee(tMtId.dwMcuId, tMtId.dwTerId, Conferee.ConfereeType.Normal);
                 if (null != leftConferee){
                     conferees.remove(leftConferee);
-                    sessionEventListener.onConfereeLeft(leftConferee);
+                    if (sessionEventListener != null) sessionEventListener.onConfereeLeft(leftConferee);
                 }
                 break;
 
@@ -967,7 +967,7 @@ public class WebRtcManager extends Caster<Msg>{
                             Conferee preAssStreamConferee = preAssStream.getOwner();
                             if (null != preAssStreamConferee) {
                                 conferees.remove(preAssStreamConferee);
-                                sessionEventListener.onConfereeLeft(preAssStreamConferee);
+                                if (sessionEventListener != null) sessionEventListener.onConfereeLeft(preAssStreamConferee);
                             }
                         }
                     }
@@ -978,7 +978,7 @@ public class WebRtcManager extends Caster<Msg>{
                         assStreamConferee = tryCreateAssStreamConferee();
                         if (null != assStreamConferee){
                             conferees.add(assStreamConferee);
-                            sessionEventListener.onConfereeJoined(assStreamConferee);
+                            if (sessionEventListener != null) sessionEventListener.onConfereeJoined(assStreamConferee);
                         }
                     }
 
@@ -1006,7 +1006,7 @@ public class WebRtcManager extends Caster<Msg>{
                         Conferee assConferee = stream.getOwner();
                         if (null != assConferee){
                             conferees.remove(assConferee);
-                            sessionEventListener.onConfereeLeft(assConferee);
+                            if (sessionEventListener != null) sessionEventListener.onConfereeLeft(assConferee);
                         }
                     }else {
                         PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
@@ -1026,20 +1026,20 @@ public class WebRtcManager extends Caster<Msg>{
             case SelfSilenceStateChanged:
                 BaseTypeBool cont = (BaseTypeBool) ntfContent;
                 if (cont.basetype != config.isSilenced && doSetSilence(cont.basetype)) {
-                    sessionEventListener.onSelfSilenceStateChanged(config.isSilenced);
+                    if (sessionEventListener != null) sessionEventListener.onSelfSilenceStateChanged(config.isSilenced);
                 }
                 break;
             case SelfMuteStateChanged:
                 cont = (BaseTypeBool) ntfContent;
                 if (cont.basetype != config.isMuted && doSetMute(cont.basetype)) {
-                    sessionEventListener.onSelfSilenceStateChanged(config.isMuted);
+                    if (sessionEventListener != null) sessionEventListener.onSelfSilenceStateChanged(config.isMuted);
                 }
                 break;
             case OtherConfereeStateChanged:
                 TMtEntityStatus state = (TMtEntityStatus) ntfContent;
                 Conferee conferee = findConferee(state.dwMcuId, state.dwTerId, Conferee.ConfereeType.Normal);
                 if (conferee != null){
-                    sessionEventListener.onOtherConfereeAudioStateChanged(conferee, state.tStatus.bIsMute, state.tStatus.bIsQuiet);
+                    if (sessionEventListener != null) sessionEventListener.onOtherConfereeAudioStateChanged(conferee, state.tStatus.bIsMute, state.tStatus.bIsQuiet);
                 }
                 break;
         }
