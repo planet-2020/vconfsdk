@@ -36,6 +36,7 @@ import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
 import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.vconf.EmMtModifyConfInfoType;
 import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
@@ -50,6 +51,7 @@ import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
 import com.kedacom.vconf.sdk.webrtc.bean.CreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
 import com.kedacom.vconf.sdk.webrtc.bean.Statistics;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TConfSettingsModified;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
@@ -783,6 +785,29 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     /**
+     * 设置哑音。
+     * @param bMute 是否哑音。true哑音，false取消哑音
+     * */
+    public void setMuteMeeting(boolean bMute, IResultListener resultListener) {
+        if (!bSessionStarted) {
+            KLog.p(KLog.ERROR, "session not start");
+            reportFailed(-1, resultListener);
+            return;
+        }
+        req(Msg.SetMuteMeeting, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TConfSettingsModified res = (TConfSettingsModified) rspContent;
+                if (res.MainParam.basetype == EmMtModifyConfInfoType.MT_MODIFY_CONF_DUMB.ordinal()){
+                    reportSuccess(null, resultListener);
+                }else{
+                    isConsumed[0] = false;
+                }
+            }
+        }, resultListener, bMute);
+    }
+
+    /**
      * 是否正在使用前置摄像头
      * @return true前置，false后置
      * */
@@ -1069,6 +1094,10 @@ public class WebRtcManager extends Caster<Msg>{
                 baseTypeInt = (BaseTypeInt) ntfContent;
                 if (confEventListener != null) confEventListener.onConfProlonged(baseTypeInt.basetype);
                 break;
+
+//                case 全场哑音：
+//            setMute();
+//                    break;
         }
 
     }

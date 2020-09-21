@@ -14,6 +14,7 @@ import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TConfSettingsModified;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
@@ -453,5 +454,25 @@ enum Msg {
             clz = BaseTypeInt.class // 延长时长。单位：分钟
     )
     ConfProlonged,
+
+    /**
+     * 设置全场哑音
+     * */
+    @Request(name = "ConfSetConfDumb",
+            owner = ConfCtrl,
+            paras = boolean.class,  // 是否哑音。true哑音，false取消哑音
+            userParas = boolean.class,
+            rspSeq = "ConfSettingsModified"
+    )
+    SetMuteMeeting,
+
+    /**
+     * 会议设置变更通知
+     * */
+    @Response(name = "ModifyConfResultNtf",
+            clz = TConfSettingsModified.class
+    )
+    @Notification
+    ConfSettingsModified,
 
 }
