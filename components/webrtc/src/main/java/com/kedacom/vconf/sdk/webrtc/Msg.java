@@ -422,4 +422,36 @@ enum Msg {
     @Notification(name = "GetTerStatusNtf", clz = TMtEntityStatus.class)
     OtherConfereeStateChanged,
 
+    /**
+     * 会议即将结束通知
+     * */
+    @Notification(name = "ConfWillEndNtf",
+            clz = BaseTypeInt.class // 剩余时长。单位：分钟
+    )
+    ConfAboutToEnd,
+
+    /**
+     * 延长会议
+     * */
+    @Request(name = "ConfProlongConfTimeCmd",
+            owner = ConfCtrl,
+            paras = int.class,  // 需要延长的时长。单位：分钟
+            userParas = int.class,
+            rspSeq = "ProlongConfRsp"
+    )
+    ProlongConf,
+
+    @Response(name = "ProlongResultNtf",
+            clz = BaseTypeBool.class)
+    ProlongConfRsp,
+
+
+    /**
+     * 会议已被延长
+     * */
+    @Notification(name = "ConfDelayNtf",
+            clz = BaseTypeInt.class // 延长时长。单位：分钟
+    )
+    ConfProlonged,
+
 }

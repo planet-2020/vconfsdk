@@ -410,6 +410,23 @@ public class WebRtcManager extends Caster<Msg>{
         }, resultListener);
     }
 
+    /**
+     * 延长会议
+     * @param duration 需要延长的时长。单位：分钟
+     * */
+    public void prolongConf(int duration, IResultListener resultListener){
+        req(Msg.ProlongConf, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                BaseTypeBool res = (BaseTypeBool) rspContent;
+                if(res.basetype){
+                    reportSuccess(null, resultListener);
+                }else {
+                    reportSuccess(RtcResultCode.Failed, resultListener);
+                }
+            }
+        }, resultListener, duration);
+    }
 
     /**
      * 接受会议邀请
@@ -1042,6 +1059,16 @@ public class WebRtcManager extends Caster<Msg>{
                     if (sessionEventListener != null) sessionEventListener.onOtherConfereeAudioStateChanged(conferee, state.tStatus.bIsMute, state.tStatus.bIsQuiet);
                 }
                 break;
+
+            case ConfAboutToEnd:
+                BaseTypeInt baseTypeInt = (BaseTypeInt) ntfContent;
+                if (confEventListener != null) confEventListener.onConfAboutToEnd(baseTypeInt.basetype);
+                break;
+
+            case ConfProlonged:
+                baseTypeInt = (BaseTypeInt) ntfContent;
+                if (confEventListener != null) confEventListener.onConfProlonged(baseTypeInt.basetype);
+                break;
         }
 
     }
@@ -1553,6 +1580,18 @@ public class WebRtcManager extends Caster<Msg>{
          * @param resultCode 错误码{@link RtcResultCode}
          */
         void onConfFinished(int resultCode);
+
+        /**
+         * 会议即将结束
+         * @param  remainingTime 剩余时长。单位：分钟
+         * */
+        default void onConfAboutToEnd(int  remainingTime){}
+
+        /**
+         * 会议已被延长
+         * @param  prolongedTime 延长的时长。单位：分钟
+         * */
+        default void onConfProlonged(int  prolongedTime){}
     }
     private ConfEventListener confEventListener;
 
