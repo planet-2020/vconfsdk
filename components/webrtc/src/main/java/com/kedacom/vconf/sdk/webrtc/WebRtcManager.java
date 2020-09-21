@@ -2757,7 +2757,7 @@ public class WebRtcManager extends Caster<Msg>{
             // 绘制麦克风
             TextDecoration label = conferee.getLabel();
             if (label != null && label.enabled() && !disabledDecos.contains(label.id)) {
-                conferee.microphoneDeco.draw(label.getMicroPhoneRect(), label.getMicroPhoneBackgroundRect(), 0x80000000, canvas);
+                conferee.microphoneDeco.draw(label.getMicroPhoneRect(), label.getMicroPhoneBackgroundRect(), label.bgPaint.getColor(), canvas);
             }
 
             // 绘制语音激励deco
