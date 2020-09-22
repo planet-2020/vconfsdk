@@ -14,15 +14,7 @@ import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TConfSettingsModified;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtId;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TQueryConfInfoResult;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
 
 import static com.kedacom.vconf.sdk.annotation.Request.*;
 
@@ -474,5 +466,29 @@ enum Msg {
     )
     @Notification
     ConfSettingsModified,
+
+    /**
+     * 主持人变更通知
+     * */
+    @Notification(name = "ChairPosNtf",
+            clz = TMtId.class
+    )
+    PresenterChanged,
+
+    /**
+     * 主讲人变更通知
+     * */
+    @Notification(name = "SpeakerPosNtf",
+            clz = TMtId.class
+    )
+    KeynoteSpeakerChanged,
+
+    /**
+     * VIP列表变更通知
+     * */
+    @Notification(name = "VipList_Ntf",
+            clz = TMtIdList.class
+    )
+    VIPsChanged,
 
 }

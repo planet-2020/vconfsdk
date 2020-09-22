@@ -56,6 +56,7 @@ import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtId;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtIdList;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TQueryConfInfoResult;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayItem;
@@ -1087,12 +1088,119 @@ public class WebRtcManager extends Caster<Msg>{
 
             case ConfAboutToEnd:
                 BaseTypeInt baseTypeInt = (BaseTypeInt) ntfContent;
-                if (confEventListener != null) confEventListener.onConfAboutToEnd(baseTypeInt.basetype);
+                Stream.of(getNtfListeners(ConfAboutToEndListener.class)).forEach(it -> it.onConfAboutToEnd(baseTypeInt.basetype));
                 break;
 
             case ConfProlonged:
                 baseTypeInt = (BaseTypeInt) ntfContent;
-                if (confEventListener != null) confEventListener.onConfProlonged(baseTypeInt.basetype);
+                Stream.of(getNtfListeners(ConfProlongedListener.class)).forEach(it -> it.onConfProlonged(baseTypeInt.basetype));
+                break;
+
+            case PresenterChanged:
+            case KeynoteSpeakerChanged:
+                handler.post(new Runnable() {
+                    // 重试次数。
+                    // 主持人变动通知可能在与会方入会/与会方列表通知之前，
+                    // 此种情形下我们延后重试以等待与会方入会消息到达再做处理。
+                    int triedCount;
+
+                    @Override
+                    public void run() {
+                        TMtId mtId = (TMtId) ntfContent;
+                        if (triedCount > 3){
+                            KLog.p(KLog.ERROR, "tried %s times, %s(mcu=%s, ter=%s) has still not joined yet",
+                                    triedCount, ntf==Msg.PresenterChanged ? "presenter" : "keynote speaker", mtId.dwMcuId, mtId.dwTerId);
+                            return;
+                        }
+                        ++triedCount;
+
+                        Conferee successor;
+                        if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId){
+                            successor = myself;
+                        }else{
+                            successor = Stream.of(conferees).filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId).findFirst().orElse(null);
+                        }
+
+                        if (successor == null){
+                            KLog.p(KLog.WARN, "%s(mcu=%s, ter=%s) has not joined yet, wait for a moment...",
+                                    ntf==Msg.PresenterChanged ? "presenter" : "keynote speaker", mtId.dwMcuId, mtId.dwTerId);
+                            // 与会方入会消息尚未抵达，我们延后处理
+                            handler.postDelayed(this, 1000);
+                            return;
+                        }
+
+                        Conferee predecessor;
+                        if (ntf == Msg.PresenterChanged) {
+                            predecessor = findPresenter();
+                            if (successor == predecessor) {
+                                return;
+                            }
+                            if (predecessor != null) {
+                                predecessor.setPresenter(false);
+                            }
+                            successor.setPresenter(true);
+
+                            Stream.of(getNtfListeners(PresenterChangedListener.class)).forEach(it -> it.onPresenterChangedChanged(predecessor, successor));
+                        }else{
+                            predecessor = findKeynoteSpeaker();
+                            if (successor == predecessor) {
+                                return;
+                            }
+                            if (predecessor != null) {
+                                predecessor.setKeynoteSpeaker(false);
+                            }
+                            successor.setKeynoteSpeaker(true);
+
+                            Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class)).forEach(it -> it.onKeynoteSpeakerChanged(predecessor, successor));
+                        }
+                    }
+                });
+
+                break;
+
+            case VIPsChanged:
+                handler.post(new Runnable() {
+                    // 重试次数。
+                    // VIP变动通知可能在与会方入会/与会方列表通知之前，
+                    // 此种情形下我们延后重试以等待与会方入会消息到达再做处理。
+                    int triedCount;
+
+                    @Override
+                    public void run() {
+                        if (triedCount > 3){
+                            KLog.p(KLog.ERROR, "tried %s times, some vips has still not joined yet");
+                            return;
+                        }
+                        ++triedCount;
+
+                        Set<Conferee> oldVips = findVIPs();
+                        List<TMtId> tMtIds = ((TMtIdList) ntfContent).atList;
+                        Set<Conferee> newVips = Stream.of(tMtIds)
+                                .map(it -> {
+                                    Conferee vip = findConferee(it.dwMcuId, it.dwTerId, Conferee.ConfereeType.Normal);
+                                    if (vip==null){
+                                        KLog.p(KLog.WARN, "vip(mcu=%s, ter=%s) has not joined yet", it.dwMcuId, it.dwTerId);
+                                    }
+                                    return vip;
+                                })
+                                .filter(it -> it != null)
+                                .collect(Collectors.toSet());
+
+                        if (tMtIds.size() != newVips.size()){
+                            KLog.p(KLog.WARN, "some vips has not joined yet, wait for a moment...");
+                            // 与会方入会消息尚未抵达，我们延后处理
+                            handler.postDelayed(this, 1000);
+                            return;
+                        }
+
+                        Set<Conferee> added = new HashSet<>(newVips);
+                        added.removeAll(oldVips);
+                        Set<Conferee> removed = new HashSet<>(oldVips);
+                        removed.removeAll(newVips);
+
+                        Stream.of(getNtfListeners(VIPChangedListener.class)).forEach(vipChangedListener -> vipChangedListener.onVipChanged(added, removed));
+                    }
+                });
                 break;
 
 //                case 全场哑音：
@@ -1609,18 +1717,6 @@ public class WebRtcManager extends Caster<Msg>{
          * @param resultCode 错误码{@link RtcResultCode}
          */
         void onConfFinished(int resultCode);
-
-        /**
-         * 会议即将结束
-         * @param  remainingTime 剩余时长。单位：分钟
-         * */
-        default void onConfAboutToEnd(int  remainingTime){}
-
-        /**
-         * 会议已被延长
-         * @param  prolongedTime 延长的时长。单位：分钟
-         * */
-        default void onConfProlonged(int  prolongedTime){}
     }
     private ConfEventListener confEventListener;
 
@@ -1737,6 +1833,13 @@ public class WebRtcManager extends Caster<Msg>{
 
         private final ConfereeType type;
 
+        // 是否为主持人
+        private boolean isPresenter;
+        // 是否为主讲人
+        private boolean isKeynoteSpeaker;
+        // 是否为VIP
+        private boolean isVIP;
+
         // 音频通道状态
         private AudioChannelState audioChannelState = AudioChannelState.Idle;
         // 音频信号状态
@@ -1843,6 +1946,30 @@ public class WebRtcManager extends Caster<Msg>{
 
         private TextDecoration getLabel(){
             return Stream.of(textDecorations).filter(value -> value.isLabel).findFirst().orElse(null);
+        }
+
+        public boolean isPresenter() {
+            return isPresenter;
+        }
+
+        private void setPresenter(boolean presenter) {
+            isPresenter = presenter;
+        }
+
+        public boolean isKeynoteSpeaker() {
+            return isKeynoteSpeaker;
+        }
+
+        private void setKeynoteSpeaker(boolean keynoteSpeaker) {
+            isKeynoteSpeaker = keynoteSpeaker;
+        }
+
+        public boolean isVIP() {
+            return isVIP;
+        }
+
+        private void setVIP(boolean VIP) {
+            isVIP = VIP;
         }
 
         /**
@@ -3014,6 +3141,32 @@ public class WebRtcManager extends Caster<Msg>{
         return findConferee(assStream.getMcuId(), assStream.getTerId(), Conferee.ConfereeType.Normal);
     }
 
+
+    private Conferee findPresenter(){
+        if (myself.isPresenter()) {
+            return myself;
+        } else {
+            return Stream.of(conferees).filter(Conferee::isPresenter).findFirst().orElse(null);
+        }
+    }
+
+    private Conferee findKeynoteSpeaker(){
+        if (myself.isKeynoteSpeaker()) {
+            return myself;
+        } else {
+            return Stream.of(conferees).filter(Conferee::isKeynoteSpeaker).findFirst().orElse(null);
+        }
+    }
+
+    private Set<Conferee> findVIPs(){
+        Set<Conferee> vips = new HashSet<>();
+        if (myself.isVIP()) {
+            vips.add(myself);
+        }
+        vips.addAll(Stream.of(conferees).filter(Conferee::isVIP).collect(Collectors.toSet()));
+
+        return vips;
+    }
 
     private RtcStream findStream(String streamId){
         return Stream.of(streams).filter(it-> it.getStreamId().equals(streamId)).findFirst().orElse(null);
@@ -5161,8 +5314,64 @@ public class WebRtcManager extends Caster<Msg>{
 
     private final Statistics statistics = new Statistics();
 
+    /**
+     * 统计信息监听器
+     * */
     public interface StatsListener extends INtfListener {
         void onStats(Statistics statistics);
+    }
+
+    /**
+     * 会议即将结束监听器
+     * */
+    public interface ConfAboutToEndListener extends  INtfListener{
+        /**
+         * @param  remainingTime 剩余时长。单位：分钟
+         * */
+        void onConfAboutToEnd(int  remainingTime);
+    }
+
+    /**
+     * 会议已被延长监听器
+     * */
+    public interface ConfProlongedListener extends  INtfListener{
+        /**
+         * @param  prolongedTime 延长的时长。单位：分钟
+         * */
+        void onConfProlonged(int  prolongedTime);
+    }
+
+    /**
+     * 主持人变更监听器
+     * */
+    public interface PresenterChangedListener extends  INtfListener{
+        /**
+         * @param  predecessor 前任主持人。若为null表示没有前任。
+         * @param  presenter 当前主持人
+         * */
+        void onPresenterChangedChanged(Conferee predecessor, Conferee presenter);
+    }
+
+    /**
+     * 主讲人变更监听器
+     * */
+    public interface KeynoteSpeakerChangedListener extends  INtfListener{
+        /**
+         * @param  predecessor 前任主讲人。若为null表示没有前任。
+         * @param  keynoteSpeaker 当前主讲人
+         * */
+        void onKeynoteSpeakerChanged(Conferee predecessor, Conferee keynoteSpeaker);
+    }
+
+    /**
+     * VIP变更监听器
+     * */
+    public interface VIPChangedListener extends  INtfListener{
+        /**
+         * @param added 新增的vip。若没有则为空列表
+         * @param removed 移除的vip。若没有则为空列表
+         * */
+        void onVipChanged(@NonNull Set<Conferee> added, @NonNull Set<Conferee> removed);
     }
 
 }
