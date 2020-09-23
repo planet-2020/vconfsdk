@@ -419,7 +419,7 @@ public abstract class Caster<T extends Enum<T>> implements
         KLog.p(KLog.DEBUG,"req=%s, sid=%s, rsp=%s, resultListener=%s, \nrspContent=%s", req, s.id, rsp, resultListener, rspContent);
         if (null != processor){
             boolean[] isConsumed = new boolean[]{true};
-            processor.onRsp(rsp, rspContent, resultListener, req, reqParas, isConsumed);
+            processor.onRsp(rsp, rspContent, resultListener, bLast, req, reqParas, isConsumed);
             if (isConsumed[0]){
                 if (bLast){
                     sessions.remove(s);
@@ -650,9 +650,11 @@ public abstract class Caster<T extends Enum<T>> implements
          * 收到响应
          * @param rsp 响应消息
          * @param rspContent 响应内容，具体类型由响应消息决定。
-         * @param isConsumed 是否已被消费。出参。true已消费，默认是true。 若未消费该消息继续向下流转到其他会话或通知处理器
+         * @param isFinal 是否为该会话的最后一条响应
+         * @param isConsumed 是否已被消费。出参。true已消费，默认是true。
+         *                   若未消费会话会尝试继续等待该消息，并且该消息会流转到其他会话或通知处理器。
          * */
-        default void onRsp(T rsp, Object rspContent, IResultListener resultListener, T req, Object[] reqParas, boolean[] isConsumed){}
+        default void onRsp(T rsp, Object rspContent, IResultListener resultListener, boolean isFinal, T req, Object[] reqParas, boolean[] isConsumed){}
 
         /**
          * 会话超时
