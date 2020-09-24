@@ -29,6 +29,7 @@ import com.kedacom.vconf.sdk.amulet.INtfListener;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
 import com.kedacom.vconf.sdk.common.bean.transfer.TMtEntityStatus;
 import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
+import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
@@ -167,29 +168,27 @@ public class WebRtcManager extends Caster<Msg>{
 
     // 启动业务组件webrtc服务
     private void startService(){
-        req(Msg.StartMtService, null, null, "mtrtcservice");
-
         // 启动服务过程中该模块其它请求禁止下发
-//        disableReq(true);
-//
-//        String serviceName = "mtrtcservice";
-//        req(false, true, Msg.StartMtService, new SessionProcessor<Msg>() {
-//            @Override
-//            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
-//                // 取消禁令
-//                disableReq(false);
-//
-//                TSrvStartResult result = (TSrvStartResult) rspContent;
-//                if (!result.AssParam.achSysalias.equals(serviceName)){
-//                    isConsumed[0] = false;
-//                    return;
-//                }
-//                boolean success = result.MainParam.basetype;
-//                if (success){
-//                    KLog.p("start service %s success!", serviceName);
-//                }
-//            }
-//        }, null , serviceName);
+        disableReq(true);
+
+        String serviceName = "mtrtcservice";
+        req(false, true, Msg.StartMtService, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                // 取消禁令
+                disableReq(false);
+
+                TSrvStartResult result = (TSrvStartResult) rspContent;
+                if (!result.AssParam.achSysalias.equals(serviceName)){
+                    isConsumed[0] = false;
+                    return;
+                }
+                boolean success = result.MainParam.basetype;
+                if (success){
+                    KLog.p("start service %s success!", serviceName);
+                }
+            }
+        }, null , serviceName);
     }
 
 
