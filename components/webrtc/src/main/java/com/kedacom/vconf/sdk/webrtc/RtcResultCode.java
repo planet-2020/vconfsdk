@@ -24,6 +24,7 @@ public final class RtcResultCode {
     public static final int NetworkUnreachable = InnerCodeUpperBound+5;     // 网络不可达
     public static final int AlreadyLoggedIn = InnerCodeUpperBound+6;         // 已登录（重复登录）
     public static final int UnknownServerAddress = InnerCodeUpperBound+7;   // 未知服务器
+    public static final int ConfNeedPassword = InnerCodeUpperBound+8;   // 会议需要密码
 
     /**
      * 错误码映射关系：

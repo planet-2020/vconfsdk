@@ -81,8 +81,8 @@ public class UpgradeManager extends Caster<Msg> {
                     return;
                 }
                 boolean success = result.MainParam.basetype;
-                if (!success){
-                    KLog.p(KLog.ERROR,"start service %s failed!", serviceName);
+                if (success){
+                    KLog.p("start service %s success!", serviceName);
                 }
             }
         }, null , serviceName);

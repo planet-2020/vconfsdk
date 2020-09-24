@@ -45,24 +45,8 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.ConnType;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.MediaType;
-import com.kedacom.vconf.sdk.webrtc.bean.ConfInfo;
-import com.kedacom.vconf.sdk.webrtc.bean.ConfInvitationInfo;
-import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
-import com.kedacom.vconf.sdk.webrtc.bean.CreateConfResult;
-import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
-import com.kedacom.vconf.sdk.webrtc.bean.Statistics;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TConfSettingsModified;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfo;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TMTEntityInfoList;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtId;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtIdList;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TQueryConfInfoResult;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayItem;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
+import com.kedacom.vconf.sdk.webrtc.bean.*;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
 
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
@@ -183,14 +167,15 @@ public class WebRtcManager extends Caster<Msg>{
 
     // 启动业务组件webrtc服务
     private void startService(){
-        req(Msg.StartMtService, null, null , "mtrtcservice");
-//        // 启动服务过程中该模块其它请求禁止下发
+        req(Msg.StartMtService, null, null, "mtrtcservice");
+
+        // 启动服务过程中该模块其它请求禁止下发
 //        disableReq(true);
 //
-//        String serviceName = "rest";
+//        String serviceName = "mtrtcservice";
 //        req(false, true, Msg.StartMtService, new SessionProcessor<Msg>() {
 //            @Override
-//            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+//            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
 //                // 取消禁令
 //                disableReq(false);
 //
@@ -200,8 +185,8 @@ public class WebRtcManager extends Caster<Msg>{
 //                    return;
 //                }
 //                boolean success = result.MainParam.basetype;
-//                if (!success){
-//                    KLog.p(KLog.ERROR,"start service %s failed!", serviceName);
+//                if (success){
+//                    KLog.p("start service %s success!", serviceName);
 //                }
 //            }
 //        }, null , serviceName);
@@ -216,9 +201,8 @@ public class WebRtcManager extends Caster<Msg>{
      *                       onFailed {@link RtcResultCode#NetworkUnreachable}
      *                                {@link RtcResultCode#UnknownServerAddress}
      *                                {@link RtcResultCode#AlreadyLoggedIn}
-     * @param confEventListener 会议事件监听器
      * */
-    public void login(@NonNull String e164, @NonNull IResultListener resultListener, @NonNull ConfEventListener confEventListener){
+    public void login(@NonNull String e164, @NonNull IResultListener resultListener){
         req(Msg.GetSvrAddr, new SessionProcessor<Msg>() {
             @Override
             public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
@@ -233,10 +217,9 @@ public class WebRtcManager extends Caster<Msg>{
                 rtcSvrAddr.bUsedRtc = true;
                 rtcSvrAddr.achNumber = e164;
 
-                WebRtcManager.this.confEventListener = confEventListener;
                 req(Msg.Login, new SessionProcessor<Msg>() {
                     @Override
-                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                         TRegResultNtf loginResult = (TRegResultNtf) rspContent;
                         int resCode = RtcResultCode.trans(rsp, loginResult.AssParam.basetype);
                         if (RtcResultCode.LoggedIn == resCode) {
@@ -259,12 +242,11 @@ public class WebRtcManager extends Caster<Msg>{
      *                       onFailed errorCode // TODO
      * */
     public void logout(IResultListener resultListener){
-        this.confEventListener = null;
         userE164 = null;
         stopSession();
         req(Msg.Logout, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TRegResultNtf loginResult = (TRegResultNtf) rspContent;
                 int resCode = RtcResultCode.trans(rsp, loginResult.AssParam.basetype);
                 if (RtcResultCode.LoggedOut == resCode) {
@@ -285,16 +267,16 @@ public class WebRtcManager extends Caster<Msg>{
      * @param resultListener onSuccess {@link MakeCallResult}
      *                       onFailed {@link RtcResultCode#NotLoggedInYet}
      *                                {@link RtcResultCode#ConfereeNumReachLimit}
-     * @param sessionEventListener 会话事件监听器
      * */
-    public void makeCall(String peerId, boolean bAudio, @NonNull IResultListener resultListener, @NonNull SessionEventListener sessionEventListener){
-        if (!startSession(sessionEventListener)){
+    public void makeCall(String peerId, boolean bAudio, @NonNull IResultListener resultListener){
+        if (!startSession()){
             reportFailed(-1, resultListener);
             return;
         }
         req(Msg.Call, new SessionProcessor<Msg>() {
+            Runnable runnable;
                     @Override
-                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                         switch (rsp){
                             case Calling:
                                 if (EmConfProtocol.emrtc != ((TMtCallLinkSate) rspContent).emConfProtocol){
@@ -302,7 +284,21 @@ public class WebRtcManager extends Caster<Msg>{
                                 }
                                 break;
                             case MultipartyConfStarted:
-                                reportSuccess(ToDoConverter.callLinkState2MakeCallResult((TMtCallLinkSate) rspContent, bAudio), resultListener);
+                                // 表示入会已经成功了，但是有可能还需要输入密码
+                                reportProgress(null, resultListener);
+
+                                handler.removeCallbacks(runnable);
+                                runnable = () -> {
+                                    cancelReq(req, resultListener);
+                                    // 未等到可能的”需要密码“消息，此时我们认为该会议不需要密码，上报用户入会成功
+                                    reportSuccess(ToDoConverter.callLinkState2MakeCallResult((TMtCallLinkSate) rspContent, bAudio), resultListener);
+                                };
+                                // 等待可能的”需要密码“消息
+                                handler.postDelayed(runnable, 1000);
+                                break;
+                            case ConfPasswordNeeded:
+                                handler.removeCallbacks(runnable);
+                                reportFailed(RtcResultCode.ConfNeedPassword, resultListener);
                                 break;
                             case ConfCanceled:
                                 stopSession();
@@ -329,10 +325,9 @@ public class WebRtcManager extends Caster<Msg>{
      * @param confPara 创会参数
      * @param resultListener onSuccess {@link CreateConfResult}
      *                       onFailed {@link RtcResultCode#InstantConfDenied}
-     * @param sessionEventListener 会话事件监听器
      * */
-    public void createConf(ConfPara confPara, @NonNull IResultListener resultListener, @NonNull SessionEventListener sessionEventListener){
-        if (!startSession(sessionEventListener)){
+    public void createConf(ConfPara confPara, @NonNull IResultListener resultListener){
+        if (!startSession()){
             reportFailed(-1, resultListener);
             return;
         }
@@ -342,7 +337,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
         req(Msg.CreateConf, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 switch (rsp){
                     case CreateConfRsp:
                         TCreateConfResult tCreateConfResult = (TCreateConfResult) rspContent;
@@ -384,7 +379,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
         req(Msg.QuitConf, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 BaseTypeInt reason = (BaseTypeInt) rspContent;
                 int resCode = RtcResultCode.trans(req, reason.basetype);
                 // TODO 判断resCode
@@ -406,7 +401,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
         req(Msg.EndConf, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 // TODO 判断resCode
                 reportSuccess(null, resultListener);
             }
@@ -420,7 +415,7 @@ public class WebRtcManager extends Caster<Msg>{
     public void prolongConf(int duration, IResultListener resultListener){
         req(Msg.ProlongConf, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 BaseTypeBool res = (BaseTypeBool) rspContent;
                 if(res.basetype){
                     reportSuccess(null, resultListener);
@@ -437,8 +432,8 @@ public class WebRtcManager extends Caster<Msg>{
      * @param bAudio 是否音频方式入会
      * @param resultListener onSuccess {@link MakeCallResult}
      * */
-    public void acceptInvitation(boolean bAudio, @NonNull IResultListener resultListener, @NonNull SessionEventListener sessionEventListener){
-        if (!startSession(sessionEventListener)){
+    public void acceptInvitation(boolean bAudio, @NonNull IResultListener resultListener){
+        if (!startSession()){
             reportFailed(-1, resultListener);
             return;
         }
@@ -448,7 +443,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
         req(Msg.AcceptInvitation, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 reportSuccess(ToDoConverter.callLinkState2MakeCallResult((TMtCallLinkSate) rspContent, bAudio), resultListener);
             }
 
@@ -477,7 +472,7 @@ public class WebRtcManager extends Caster<Msg>{
     public void queryConfInfo(String confE164, IResultListener resultListener){
         req(Msg.QueryConfInfo, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TQueryConfInfoResult queryConfInfoResult = (TQueryConfInfoResult) rspContent;
                 int resCode = RtcResultCode.trans(rsp, queryConfInfoResult.MainParam.dwErrorID);
                 if (RtcResultCode.Success == resCode){
@@ -499,7 +494,7 @@ public class WebRtcManager extends Caster<Msg>{
     public void verifyConfPassword(String passwd, IResultListener resultListener){
         req(Msg.VerifyConfPassword, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 switch (rsp){
                     case MyLabelAssigned:
                         reportSuccess(null, resultListener);
@@ -555,7 +550,7 @@ public class WebRtcManager extends Caster<Msg>{
         screenCapturePermissionData = permissionData;
         req(Msg.ToggleScreenShare, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TMtAssVidStatusList assVidStatusList = (TMtAssVidStatusList) rspContent;
                 if (assVidStatusList.arrTAssVidStatus.length == 0){
                     reportFailed(-1, resultListener);
@@ -607,7 +602,7 @@ public class WebRtcManager extends Caster<Msg>{
         sharedWindow = window;
         req(Msg.ToggleScreenShare, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TMtAssVidStatusList assVidStatusList = (TMtAssVidStatusList) rspContent;
                 if (assVidStatusList.arrTAssVidStatus.length == 0){
                     reportFailed(-1, resultListener);
@@ -695,7 +690,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
         req(Msg.SetSilence, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 BaseTypeBool result = (BaseTypeBool) rspContent;
                 if (result.basetype == bSilence){ // 设置成功
                     reportSuccess(null, resultListener);
@@ -763,7 +758,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
         req(Msg.SetMute, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 BaseTypeBool result = (BaseTypeBool) rspContent;
                 if (result.basetype == bMute){ // 设置成功
                     reportSuccess(null, resultListener);
@@ -797,7 +792,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
         req(Msg.SetMuteMeeting, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TConfSettingsModified res = (TConfSettingsModified) rspContent;
                 if (res.MainParam.basetype == EmMtModifyConfInfoType.MT_MODIFY_CONF_DUMB.ordinal()){
                     reportSuccess(null, resultListener);
@@ -913,22 +908,18 @@ public class WebRtcManager extends Caster<Msg>{
                 TRegResultNtf regState = (TRegResultNtf) ntfContent;
                 int resCode = RtcResultCode.trans(ntf, regState.AssParam.basetype);
                 if (RtcResultCode.LoggedIn != resCode) {
-                    if (confEventListener != null) confEventListener.onConfServerDisconnected(resCode);
+                    Stream.of(getNtfListeners(ConfFinishedListener.class)).forEach(it -> it.onConfFinished(resCode));
                 }
                 break;
 
             case CallIncoming:
-                if (confEventListener != null) confEventListener.onConfInvitation(ToDoConverter.callLinkSate2ConfInvitationInfo((TMtCallLinkSate) ntfContent));
-                break;
-
-            case ConfPasswordNeeded:
-                if (sessionEventListener != null) sessionEventListener.confPasswordNeeded();
+                ConfInvitationInfo invitationInfo = ToDoConverter.callLinkSate2ConfInvitationInfo((TMtCallLinkSate) ntfContent);
+                Stream.of(getNtfListeners(ConfInvitationListener.class)).forEach(it -> it.onConfInvitation(invitationInfo));
                 break;
 
             case MultipartyConfEnded:
-
             case ConfCanceled:
-                if (confEventListener != null) confEventListener.onConfFinished(RtcResultCode.trans(ntf, ((BaseTypeInt) ntfContent).basetype));
+                Stream.of(getNtfListeners(ConfFinishedListener.class)).forEach(it -> it.onConfFinished(RtcResultCode.trans(ntf, ((BaseTypeInt) ntfContent).basetype)));
                 stopSession();
                 break;
 
@@ -960,18 +951,19 @@ public class WebRtcManager extends Caster<Msg>{
                 if (!selfFilled) {
                     presentConferees.add(myself); // 己端放最后
                 }
-                if (sessionEventListener != null) sessionEventListener.onConfereesAppeared(presentConferees);
+                Set<ConfereesChangedListener> listeners = getNtfListeners(ConfereesChangedListener.class);
+                Stream.of(presentConferees).forEach(conferee -> Stream.of(listeners).forEach(it -> it.onConfereeJoined(conferee)));
                 break;
 
             case ConfereeJoined:
                 Conferee joined = tMTEntityInfo2Conferee((TMTEntityInfo) ntfContent);
                 if (findConferee(joined.mcuId, joined.terId, joined.type)==null){
                     conferees.add(joined);
-                    if (sessionEventListener != null)sessionEventListener.onConfereeJoined(joined);
+                    Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeJoined(joined));
                     assStreamConferee = tryCreateAssStreamConferee();
                     if (null != assStreamConferee){
                         conferees.add(assStreamConferee);
-                        if (sessionEventListener != null)sessionEventListener.onConfereeJoined(assStreamConferee);
+                        Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeJoined(assStreamConferee));
                     }
                 }
                 break;
@@ -981,7 +973,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Conferee leftConferee = findConferee(tMtId.dwMcuId, tMtId.dwTerId, Conferee.ConfereeType.Normal);
                 if (null != leftConferee){
                     conferees.remove(leftConferee);
-                    if (sessionEventListener != null) sessionEventListener.onConfereeLeft(leftConferee);
+                    Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeLeft(leftConferee));
                 }
                 break;
 
@@ -1010,7 +1002,7 @@ public class WebRtcManager extends Caster<Msg>{
                             Conferee preAssStreamConferee = preAssStream.getOwner();
                             if (null != preAssStreamConferee) {
                                 conferees.remove(preAssStreamConferee);
-                                if (sessionEventListener != null) sessionEventListener.onConfereeLeft(preAssStreamConferee);
+                                Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeLeft(preAssStreamConferee));
                             }
                         }
                     }
@@ -1021,7 +1013,7 @@ public class WebRtcManager extends Caster<Msg>{
                         assStreamConferee = tryCreateAssStreamConferee();
                         if (null != assStreamConferee){
                             conferees.add(assStreamConferee);
-                            if (sessionEventListener != null) sessionEventListener.onConfereeJoined(assStreamConferee);
+                            Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeJoined(assStreamConferee));
                         }
                     }
 
@@ -1049,7 +1041,7 @@ public class WebRtcManager extends Caster<Msg>{
                         Conferee assConferee = stream.getOwner();
                         if (null != assConferee){
                             conferees.remove(assConferee);
-                            if (sessionEventListener != null) sessionEventListener.onConfereeLeft(assConferee);
+                            Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeLeft(assConferee));
                         }
                     }else {
                         PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
@@ -1069,20 +1061,20 @@ public class WebRtcManager extends Caster<Msg>{
             case SelfSilenceStateChanged:
                 BaseTypeBool cont = (BaseTypeBool) ntfContent;
                 if (cont.basetype != config.isSilenced && doSetSilence(cont.basetype)) {
-                    if (sessionEventListener != null) sessionEventListener.onSelfSilenceStateChanged(config.isSilenced);
+//                    if (sessionEventListener != null) sessionEventListener.onSelfSilenceStateChanged(config.isSilenced);
                 }
                 break;
             case SelfMuteStateChanged:
                 cont = (BaseTypeBool) ntfContent;
                 if (cont.basetype != config.isMuted && doSetMute(cont.basetype)) {
-                    if (sessionEventListener != null) sessionEventListener.onSelfSilenceStateChanged(config.isMuted);
+//                    if (sessionEventListener != null) sessionEventListener.onSelfMuteStateChanged(config.isMuted);
                 }
                 break;
             case OtherConfereeStateChanged:
                 TMtEntityStatus state = (TMtEntityStatus) ntfContent;
                 Conferee conferee = findConferee(state.dwMcuId, state.dwTerId, Conferee.ConfereeType.Normal);
                 if (conferee != null){
-                    if (sessionEventListener != null) sessionEventListener.onOtherConfereeAudioStateChanged(conferee, state.tStatus.bIsMute, state.tStatus.bIsQuiet);
+//                    if (sessionEventListener != null) sessionEventListener.onOtherConfereeAudioStateChanged(conferee, state.tStatus.bIsMute, state.tStatus.bIsQuiet);
                 }
                 break;
 
@@ -1198,7 +1190,7 @@ public class WebRtcManager extends Caster<Msg>{
                         Set<Conferee> removed = new HashSet<>(oldVips);
                         removed.removeAll(newVips);
 
-                        Stream.of(getNtfListeners(VIPChangedListener.class)).forEach(vipChangedListener -> vipChangedListener.onVipChanged(added, removed));
+                        Stream.of(getNtfListeners(VIPChangedListener.class)).forEach(it -> it.onVipChanged(added, removed));
                     }
                 });
                 break;
@@ -1245,7 +1237,7 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private boolean bSessionStarted;
-    private synchronized boolean startSession(@NonNull SessionEventListener listener){
+    private synchronized boolean startSession(){
         if (bSessionStarted){
             KLog.p(KLog.ERROR, "session has started already!");
             return false;
@@ -1254,7 +1246,6 @@ public class WebRtcManager extends Caster<Msg>{
         KLog.p("starting session...");
 
         bSessionStarted = true;
-        sessionEventListener = listener;
 
         myself = new Conferee(userE164);
 
@@ -1289,7 +1280,6 @@ public class WebRtcManager extends Caster<Msg>{
         KLog.p("stopping session...");
 
         bSessionStarted = false;
-        sessionEventListener = null;
 
         rtcConnector.setSignalingEventsCallback(null);
 
@@ -1697,100 +1687,6 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     /**
-     * 会议事件监听器
-     * */
-    public interface ConfEventListener {
-
-        /**
-         * 会议服务器连接断开
-         * @param errCode 错误码{@link RtcResultCode}
-         * */
-        void onConfServerDisconnected(int errCode);
-
-        /**
-         * 会议邀请
-         */
-        void onConfInvitation(ConfInvitationInfo confInvitationInfo);
-
-        /**
-         * 会议结束
-         * @param resultCode 错误码{@link RtcResultCode}
-         */
-        void onConfFinished(int resultCode);
-    }
-    private ConfEventListener confEventListener;
-
-
-    /**
-     * 会话监听器
-     * */
-    public interface SessionEventListener {
-        /**
-         * 己端加入会议时，会议中已有与会方出席（包括自己）。
-         * 作为对比，{@link #onConfereeJoined(Conferee)}、{@link #onConfereeLeft(Conferee)}分别表示己端入会后与会方加入、离开。
-         *
-         * 一般情形下，用户收到该回调时调用{@link #createDisplay(Display.Type)}创建Display，
-         * 然后调用{@link Display#setConferee(Conferee)} 将Display绑定到与会方以使与会方画面展示在Display上，
-         * 如果还需要展示文字图标等deco，可调用{@link Conferee#addText(TextDecoration)}}, {@link Conferee#addPic(PicDecoration)}
-         * NOTE: 文字、图片等deco是属于Conferee的而非Display，所以调用{@link Display#swapContent(Display)}等方法时，deco也会跟着迁移。
-         *
-         * @param conferees 已有与会方列表（包括自己）。
-         * */
-        void onConfereesAppeared(List<Conferee> conferees);
-        /**
-         * 与会方加入。
-         * 一般情形下，用户收到该回调时调用{@link #createDisplay(Display.Type)}创建Display，
-         * 然后调用{@link Display#setConferee(Conferee)} 将Display绑定到与会方以使与会方画面展示在Display上，
-         * 如果还需要展示文字图标等deco，可调用{@link Conferee#addText(TextDecoration)}}, {@link Conferee#addPic(PicDecoration)}
-         * NOTE: 文字、图片等deco是属于Conferee的而非Display，所以调用{@link Display#swapContent(Display)}等方法时，deco也会跟着迁移。
-         * */
-        void onConfereeJoined(Conferee conferee);
-        /**
-         * 与会方离开。
-         * 如果该Conferee对应的Display不需要了请调用{@link #releaseDisplay(Display)}销毁；
-         * 如果后续要复用则可以不销毁，可以调用{@link Display#clear()} 清空内容；
-         * NOTE: 会议结束时会销毁所有Display。用户不能跨会议复用Display。
-         * */
-        void onConfereeLeft(Conferee conferee);
-
-        /**
-         * 与会方正在发言
-         * */
-        default void onConfereeSpeaking(Conferee conferee){}
-
-        /**
-         * 此会议需要输入密码。
-         * 收到此通知后请调用{@link #verifyConfPassword(String, IResultListener)}传入密码验证
-         * */
-        void confPasswordNeeded();
-
-        /**
-         * 己端哑音状态被改变
-         * NOTE: 主动哑音{@link #setMute(boolean, IResultListener)}不会触发该事件
-         */
-        default void onSelfMuteStateChanged(boolean muted) {
-
-        }
-
-        /**
-         * 己端静音状态被改变
-         * NOTE: 主动静音{@link #setSilence(boolean, IResultListener)}不会触发该事件
-         */
-        default void onSelfSilenceStateChanged(boolean silenced) {
-
-        }
-
-        /**
-         * 其他与会方声音状态变更
-         */
-        default void onOtherConfereeAudioStateChanged(Conferee conferee, boolean muted, boolean silenced) {
-
-        }
-    }
-    private SessionEventListener sessionEventListener;
-
-
-    /**
      * 获取与会方列表
      * @param excludeAssStreamConferee 是否排除辅流与会方，true排除
      * @param excludeAssStreamConferee 是否排除己端，true排除
@@ -1889,6 +1785,9 @@ public class WebRtcManager extends Caster<Msg>{
          * 正在接收辅流的装饰
          * */
         private static StreamStateDecoration recvingAssStreamDeco;
+
+        // 统计信息paint
+        private static Paint statsPaint = new Paint();
 
 
         private Conferee(String e164) {
@@ -2376,6 +2275,113 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
+        private void drawStatistics(Canvas canvas){
+            Statistics.ConfereeRelated stats = instance.getStats(id);
+            if (stats == null){
+                return;
+            }
+            canvas.drawColor(0x80000000);
+            Statistics.AudioOutput ao = stats.audioOutput;
+            Statistics.VideoOutput vo = stats.videoOutput;
+            Statistics.AudioInput ai = stats.audioInput;
+            Statistics.VideoInput vi = stats.videoInput;
+            statsPaint.reset();
+            statsPaint.setColor(Color.GREEN);
+            statsPaint.setTextSize(22);
+            statsPaint.setAntiAlias(true);
+            Paint.FontMetrics fm = statsPaint.getFontMetrics();
+            float fontHeight = fm.descent - fm.ascent;
+            int xPos = 5, yPos = Math.round(fontHeight);
+            if (vo != null) {
+                canvas.drawText("== video ==", xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("width: "+vo.width, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("height: "+vo.height, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                if (vo.framerate < 5) {
+                    statsPaint.setColor(Color.RED);}
+                canvas.drawText("frame rate: " + vo.framerate, xPos, yPos, statsPaint);
+                statsPaint.setColor(Color.GREEN);
+                yPos += fontHeight;
+                canvas.drawText("bitrate: "+vo.bitrate+"kbps", xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("format: "+vo.encodeFormat, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+//                canvas.drawText("encoder: "+vo.encoder, xPos, yPos, paint);
+//                yPos += fontHeight;
+            }else if (vi != null) {
+                canvas.drawText("== video ==", xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("width: "+vi.width, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("height: "+vi.height, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                if (vi.framerate < 5) {
+                    statsPaint.setColor(Color.RED);}
+                canvas.drawText("frame rate: " + vi.framerate, xPos, yPos, statsPaint);
+                statsPaint.setColor(Color.GREEN);
+                yPos += fontHeight;
+                canvas.drawText("bitrate: "+vi.bitrate+"kbps", xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("format: "+vi.encodeFormat, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("packets received: "+vi.packetsReceived, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("packets lost: "+vi.packetsLost, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                if (vi.realtimeLostRate > 20) {
+                    statsPaint.setColor(Color.RED);}
+                canvas.drawText("realtime lost rate: "+vi.realtimeLostRate+"%", xPos, yPos, statsPaint);
+                statsPaint.setColor(Color.GREEN);
+                yPos += fontHeight;
+//                canvas.drawText("encoder: "+vi.encoder, xPos, yPos, paint);
+//                yPos += fontHeight;
+            }
+
+            xPos = canvas.getWidth()/2;
+            yPos = Math.round(fontHeight);
+
+            if (ao != null) {
+                canvas.drawText("== audio ==", xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("bitrate: "+ao.bitrate+"kbps", xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("format: "+ao.encodeFormat, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("volume: "+ao.audioLevel, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+            }else if (ai != null || instance.statistics.common != null) {
+                String title;
+                if (ai != null){
+                    title = "== audio ==";
+                }else{
+                    ai = instance.statistics.common.mixedAudio;
+                    title = "== mixed audio ==";
+                }
+                canvas.drawText(title, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("bitrate: "+ai.bitrate+"kbps", xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("format: "+ai.encodeFormat, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("volume: "+ai.audioLevel, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("packets received: "+ai.packetsReceived, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                canvas.drawText("packets lost: "+ai.packetsLost, xPos, yPos, statsPaint);
+                yPos += fontHeight;
+                if (ai.realtimeLostRate > 20) {
+                    statsPaint.setColor(Color.RED);}
+                canvas.drawText("realtime lost rate: "+ai.realtimeLostRate+"%", xPos, yPos, statsPaint);
+                statsPaint.setColor(Color.GREEN);
+                yPos += fontHeight;
+            }
+
+        }
+
+
+
         // 与会方类型
         public enum ConfereeType{
             Normal,
@@ -2540,7 +2546,6 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         private Priority priority;
 
-        private static Paint paint = new Paint();
 
         private Display(Context context, Type type) {
             super(context);
@@ -2781,107 +2786,6 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
 
-        private void drawStatistics(Statistics.ConfereeRelated stats, Canvas canvas){
-            if (stats == null){
-                return;
-            }
-            canvas.drawColor(0x80000000);
-            Statistics.AudioOutput ao = stats.audioOutput;
-            Statistics.VideoOutput vo = stats.videoOutput;
-            Statistics.AudioInput ai = stats.audioInput;
-            Statistics.VideoInput vi = stats.videoInput;
-            paint.reset();
-            paint.setColor(Color.GREEN);
-            paint.setTextSize(22);
-            paint.setAntiAlias(true);
-            Paint.FontMetrics fm = paint.getFontMetrics();
-            float fontHeight = fm.descent - fm.ascent;
-            int xPos = 5, yPos = Math.round(fontHeight);
-            if (vo != null) {
-                canvas.drawText("== video ==", xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("width: "+vo.width, xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("height: "+vo.height, xPos, yPos, paint);
-                yPos += fontHeight;
-                if (vo.framerate < 5) {paint.setColor(Color.RED);}
-                canvas.drawText("frame rate: " + vo.framerate, xPos, yPos, paint);
-                paint.setColor(Color.GREEN);
-                yPos += fontHeight;
-                canvas.drawText("bitrate: "+vo.bitrate+"kbps", xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("format: "+vo.encodeFormat, xPos, yPos, paint);
-                yPos += fontHeight;
-//                canvas.drawText("encoder: "+vo.encoder, xPos, yPos, paint);
-//                yPos += fontHeight;
-            }else if (vi != null) {
-                canvas.drawText("== video ==", xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("width: "+vi.width, xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("height: "+vi.height, xPos, yPos, paint);
-                yPos += fontHeight;
-                if (vi.framerate < 5) {paint.setColor(Color.RED);}
-                canvas.drawText("frame rate: " + vi.framerate, xPos, yPos, paint);
-                paint.setColor(Color.GREEN);
-                yPos += fontHeight;
-                canvas.drawText("bitrate: "+vi.bitrate+"kbps", xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("format: "+vi.encodeFormat, xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("packets received: "+vi.packetsReceived, xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("packets lost: "+vi.packetsLost, xPos, yPos, paint);
-                yPos += fontHeight;
-                if (vi.realtimeLostRate > 20) {paint.setColor(Color.RED);}
-                canvas.drawText("realtime lost rate: "+vi.realtimeLostRate+"%", xPos, yPos, paint);
-                paint.setColor(Color.GREEN);
-                yPos += fontHeight;
-//                canvas.drawText("encoder: "+vi.encoder, xPos, yPos, paint);
-//                yPos += fontHeight;
-            }
-
-            xPos = getWidth()/2;
-            yPos = Math.round(fontHeight);
-
-            if (ao != null) {
-                canvas.drawText("== audio ==", xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("bitrate: "+ao.bitrate+"kbps", xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("format: "+ao.encodeFormat, xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("volume: "+ao.audioLevel, xPos, yPos, paint);
-                yPos += fontHeight;
-            }else if (ai != null || instance.statistics.common != null) {
-                String title;
-                if (ai != null){
-                    title = "== audio ==";
-                }else{
-                    ai = instance.statistics.common.mixedAudio;
-                    title = "== mixed audio ==";
-                }
-                canvas.drawText(title, xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("bitrate: "+ai.bitrate+"kbps", xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("format: "+ai.encodeFormat, xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("volume: "+ai.audioLevel, xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("packets received: "+ai.packetsReceived, xPos, yPos, paint);
-                yPos += fontHeight;
-                canvas.drawText("packets lost: "+ai.packetsLost, xPos, yPos, paint);
-                yPos += fontHeight;
-                if (ai.realtimeLostRate > 20) {paint.setColor(Color.RED);}
-                canvas.drawText("realtime lost rate: "+ai.realtimeLostRate+"%", xPos, yPos, paint);
-                paint.setColor(Color.GREEN);
-                yPos += fontHeight;
-            }
-
-        }
-
-
         @Override
         public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
             super.surfaceChanged(holder, format, width, height);
@@ -2963,7 +2867,7 @@ public class WebRtcManager extends Caster<Msg>{
 
             // 绘制统计信息
             if (instance.showStatistics){
-                drawStatistics(instance.getStats(conferee.getId()), canvas);
+                conferee.drawStatistics(canvas);
             }
 
         }
@@ -3451,6 +3355,11 @@ public class WebRtcManager extends Caster<Msg>{
             this.volume = volume;
         }
 
+        /**
+         * @param rect 麦克图标所在的矩形区域
+         * @param background 图标背景区域
+         * @param bgColor 背景区域填充色
+         * */
         void draw(RectF rect, RectF background, int bgColor, Canvas canvas){
             fillPaint.setColor(bgColor);
             canvas.drawRect(background, fillPaint);
@@ -4924,13 +4833,13 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             if (enableStatsLog){
-                KLog.p("/### publisherStats: ");
+                KLog.p("/=== publisherStats: ");
                 printStats(publisherStats, true);
-                KLog.p("/### subscriberStats: ");
+                KLog.p("/=== subscriberStats: ");
                 printStats(subscriberStats, true);
-                KLog.p("/### assPublisherStats: ");
+                KLog.p("/=== assPublisherStats: ");
                 printStats(assPublisherStats, true);
-                KLog.p("/### assSubscriberStats: ");
+                KLog.p("/=== assSubscriberStats: ");
                 printStats(assSubscriberStats, true);
             }
 
@@ -5321,6 +5230,49 @@ public class WebRtcManager extends Caster<Msg>{
         void onStats(Statistics statistics);
     }
 
+
+    /**
+     * 会议结束监听器
+     * */
+    public interface ConfFinishedListener extends  INtfListener {
+        /**
+         * @param reason 结束原因{@link RtcResultCode}
+         */
+        void onConfFinished(int reason);
+    }
+
+    /**
+     * 会议邀请监听器
+     * */
+    public interface ConfInvitationListener extends  INtfListener{
+        /**
+         * @param confInvitationInfo 邀请信息
+         */
+        void onConfInvitation(ConfInvitationInfo confInvitationInfo);
+    }
+
+    /**
+     * 与会方变更监听器
+     * */
+    public interface ConfereesChangedListener extends  INtfListener{
+        /**
+         * 与会方加入。
+         * 一般情形下，用户收到该回调时调用{@link #createDisplay(Display.Type)}创建Display，
+         * 然后调用{@link Display#setConferee(Conferee)} 将Display绑定到与会方以使与会方画面展示在Display上，
+         * 如果还需要展示文字图标等deco，可调用{@link Conferee#addText(TextDecoration)}}, {@link Conferee#addPic(PicDecoration)}等deco设置相关接口。
+         * */
+        void onConfereeJoined(Conferee conferee);
+
+        /**
+         * 与会方离开。
+         * 如果该Conferee对应的Display不需要了请调用{@link #releaseDisplay(Display)}销毁；
+         * 如果后续要复用则可以不销毁，可以调用{@link Display#clear()} 清空内容；
+         * NOTE: 会议结束时会销毁所有Display。用户不能跨会议复用Display。
+         * */
+        void onConfereeLeft(Conferee conferee);
+    }
+
+
     /**
      * 会议即将结束监听器
      * */
@@ -5347,9 +5299,9 @@ public class WebRtcManager extends Caster<Msg>{
     public interface PresenterChangedListener extends  INtfListener{
         /**
          * @param  predecessor 前任主持人。若为null表示没有前任。
-         * @param  presenter 当前主持人
+         * @param  successor 继任的主持人
          * */
-        void onPresenterChangedChanged(Conferee predecessor, Conferee presenter);
+        void onPresenterChangedChanged(Conferee predecessor, Conferee successor);
     }
 
     /**
@@ -5358,9 +5310,9 @@ public class WebRtcManager extends Caster<Msg>{
     public interface KeynoteSpeakerChangedListener extends  INtfListener{
         /**
          * @param  predecessor 前任主讲人。若为null表示没有前任。
-         * @param  keynoteSpeaker 当前主讲人
+         * @param  successor 继任的主讲人
          * */
-        void onKeynoteSpeakerChanged(Conferee predecessor, Conferee keynoteSpeaker);
+        void onKeynoteSpeakerChanged(Conferee predecessor, Conferee successor);
     }
 
     /**
