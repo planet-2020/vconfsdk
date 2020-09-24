@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.webrtc.bean.trans;
+package com.kedacom.vconf.sdk.common.type.vconf;
 
 import com.kedacom.vconf.sdk.common.constant.EmMtModel;
 import com.kedacom.vconf.sdk.common.constant.EmMtType;

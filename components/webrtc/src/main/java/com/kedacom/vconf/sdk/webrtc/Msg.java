@@ -11,9 +11,14 @@ import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.vconf.TMTEntityInfo;
+import com.kedacom.vconf.sdk.common.type.vconf.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtId;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtIdList;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtSimpConfInfo;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
 
 import static com.kedacom.vconf.sdk.annotation.Request.*;
@@ -199,6 +204,11 @@ enum Msg {
             rspSeq = {} //TODO
     )
     DeclineInvitation,
+
+
+    @Notification(name = "SimpleConfInfo_Ntf",
+            clz = TMtSimpConfInfo.class)
+    BriefConfInfoArrived,
 
 
     /**

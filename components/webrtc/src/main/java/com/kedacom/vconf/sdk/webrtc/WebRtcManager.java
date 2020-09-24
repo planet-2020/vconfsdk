@@ -39,9 +39,14 @@ import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.vconf.EmMtModifyConfInfoType;
 import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
+import com.kedacom.vconf.sdk.common.type.vconf.TMTEntityInfo;
+import com.kedacom.vconf.sdk.common.type.vconf.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtId;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtIdList;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtSimpConfInfo;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.ConnType;
@@ -1087,8 +1092,9 @@ public class WebRtcManager extends Caster<Msg>{
                 Stream.of(getNtfListeners(ConfProlongedListener.class)).forEach(it -> it.onConfProlonged(baseTypeInt.basetype));
                 break;
 
-            case PresenterChanged:
-            case KeynoteSpeakerChanged:
+//            case PresenterChanged:
+//            case KeynoteSpeakerChanged:
+            case BriefConfInfoArrived:
                 handler.post(new Runnable() {
                     // 重试次数。
                     // 主持人变动通知可能在与会方入会/与会方列表通知之前，
@@ -1097,10 +1103,13 @@ public class WebRtcManager extends Caster<Msg>{
 
                     @Override
                     public void run() {
-                        TMtId mtId = (TMtId) ntfContent;
+                        TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
+                        TMtId mtId = briefConfInfo.tChairman;
+                        if (!mtId.isValid()){
+                            return;
+                        }
                         if (triedCount > 3){
-                            KLog.p(KLog.ERROR, "tried %s times, %s(mcu=%s, ter=%s) has still not joined yet",
-                                    triedCount, ntf==Msg.PresenterChanged ? "presenter" : "keynote speaker", mtId.dwMcuId, mtId.dwTerId);
+                            KLog.p(KLog.ERROR, "tried %s times, presenter(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
                             return;
                         }
                         ++triedCount;
@@ -1113,37 +1122,68 @@ public class WebRtcManager extends Caster<Msg>{
                         }
 
                         if (successor == null){
-                            KLog.p(KLog.WARN, "%s(mcu=%s, ter=%s) has not joined yet, wait for a moment...",
-                                    ntf==Msg.PresenterChanged ? "presenter" : "keynote speaker", mtId.dwMcuId, mtId.dwTerId);
+                            KLog.p(KLog.WARN, "presenter(mcu=%s, ter=%s) has not joined yet, wait for a moment...", mtId.dwMcuId, mtId.dwTerId);
                             // 与会方入会消息尚未抵达，我们延后处理
                             handler.postDelayed(this, 1000);
                             return;
                         }
 
-                        Conferee predecessor;
-                        if (ntf == Msg.PresenterChanged) {
-                            predecessor = findPresenter();
-                            if (successor == predecessor) {
-                                return;
-                            }
-                            if (predecessor != null) {
-                                predecessor.setPresenter(false);
-                            }
-                            successor.setPresenter(true);
-
-                            Stream.of(getNtfListeners(PresenterChangedListener.class)).forEach(it -> it.onPresenterChangedChanged(predecessor, successor));
-                        }else{
-                            predecessor = findKeynoteSpeaker();
-                            if (successor == predecessor) {
-                                return;
-                            }
-                            if (predecessor != null) {
-                                predecessor.setKeynoteSpeaker(false);
-                            }
-                            successor.setKeynoteSpeaker(true);
-
-                            Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class)).forEach(it -> it.onKeynoteSpeakerChanged(predecessor, successor));
+                        Conferee predecessor = findPresenter();
+                        if (successor == predecessor) {
+                            return;
                         }
+                        if (predecessor != null) {
+                            predecessor.setPresenter(false);
+                        }
+                        successor.setPresenter(true);
+
+                        Stream.of(getNtfListeners(PresenterChangedListener.class)).forEach(it -> it.onPresenterChangedChanged(predecessor, successor));
+                    }
+                });
+
+                handler.post(new Runnable() {
+                    // 重试次数。
+                    // 主讲人变动通知可能在与会方入会/与会方列表通知之前，
+                    // 此种情形下我们延后重试以等待与会方入会消息到达再做处理。
+                    int triedCount;
+
+                    @Override
+                    public void run() {
+                        TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
+                        TMtId mtId = briefConfInfo.tSpeaker;
+                        if (!mtId.isValid()){
+                            return;
+                        }
+                        if (triedCount > 3){
+                            KLog.p(KLog.ERROR, "tried %s times, keynoteSpeaker(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
+                            return;
+                        }
+                        ++triedCount;
+
+                        Conferee successor;
+                        if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId){
+                            successor = myself;
+                        }else{
+                            successor = Stream.of(conferees).filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId).findFirst().orElse(null);
+                        }
+
+                        if (successor == null){
+                            KLog.p(KLog.WARN, "keynoteSpeaker(mcu=%s, ter=%s) has not joined yet, wait for a moment...", mtId.dwMcuId, mtId.dwTerId);
+                            // 与会方入会消息尚未抵达，我们延后处理
+                            handler.postDelayed(this, 1000);
+                            return;
+                        }
+
+                        Conferee predecessor = findKeynoteSpeaker();
+                        if (successor == predecessor) {
+                            return;
+                        }
+                        if (predecessor != null) {
+                            predecessor.setKeynoteSpeaker(false);
+                        }
+                        successor.setKeynoteSpeaker(true);
+
+                        Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class)).forEach(it -> it.onKeynoteSpeakerChanged(predecessor, successor));
                     }
                 });
 

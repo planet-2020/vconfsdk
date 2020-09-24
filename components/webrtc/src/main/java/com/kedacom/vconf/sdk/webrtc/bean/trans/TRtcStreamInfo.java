@@ -1,6 +1,7 @@
 package com.kedacom.vconf.sdk.webrtc.bean.trans;
 
 import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
+import com.kedacom.vconf.sdk.common.type.vconf.TMtId;
 
 import java.util.List;
 
@@ -9,7 +10,7 @@ import java.util.List;
  */
 public class TRtcStreamInfo {
     public String             achStreamId;  ///流标识
-    public TMtId               tMtId;                               ///属于哪个终端
+    public TMtId tMtId;                               ///属于哪个终端
     public boolean             bAudio;                              ///音频还是视频
     public boolean             bMix;                                ///是不是混音
     public boolean             bAss;                                ///是不是辅流
