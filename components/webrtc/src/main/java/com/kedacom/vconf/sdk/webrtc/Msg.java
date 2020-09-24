@@ -11,6 +11,7 @@ import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
 import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.EmAPIVersionType;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTEntityInfo;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTInstanceCreateConference;
@@ -141,6 +142,18 @@ enum Msg {
     @Notification(clz = TMtCallLinkSate.class, name = "ConfInComingNtf")
     CallIncoming,
 
+    /**
+     * 获取平台接口版本
+     * */
+    @Request(name = "MGGetAPIVersionReq",
+            owner = MeetingCtrl,
+            paras = int.class,
+            userParas = EmAPIVersionType.class
+    )
+    GetAPIVersion,
+
+//    @Response(name = "", clz = )
+//    GetAPIVersionRsp,
 
     /**
      * 创建会议
