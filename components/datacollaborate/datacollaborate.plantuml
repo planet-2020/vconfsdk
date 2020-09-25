@@ -1138,12 +1138,12 @@ title __DATACOLLABORATE's Class Diagram__\n
 
   com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager -up-|> com.kedacom.vconf.sdk.amulet.Caster
   com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.bean.transfer.EmDcsType : curTerminalType
-  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnBoardOpListener : onBoardOpListener
-  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnDcCreatedListener : onDcCreatedListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.BoardOpListener : onBoardOpListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.DcCreatedListener : onDcCreatedListener
   com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnOperatorEventListener : onOperatorEventListener
-  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnPaintOpListener : onPaintOpListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.PaintOpListener : onPaintOpListener
   com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSessionEventListener : onSessionEventListener
-  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSynchronizeProgressListener : onSynchronizeProgressListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.SyncProgressListener : onSynchronizeProgressListener
   com.kedacom.vconf.sdk.datacollaborate.DefaultPaintBoard .up.|> com.kedacom.vconf.sdk.datacollaborate.IPaintBoard
   com.kedacom.vconf.sdk.datacollaborate.DefaultPaintBoard -up-|> android.widget.FrameLayout
   com.kedacom.vconf.sdk.datacollaborate.DefaultPaintBoard o-- com.kedacom.vconf.sdk.datacollaborate.bean.OpPaint : adjustingShapeOp

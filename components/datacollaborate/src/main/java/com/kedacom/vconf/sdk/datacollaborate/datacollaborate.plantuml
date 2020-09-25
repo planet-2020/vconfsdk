@@ -36,7 +36,7 @@ title __DATACOLLABORATE's Class Diagram__\n
     }
   }
     namespace com.kedacom.vconf.sdk.datacollaborate {
-      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnBoardOpListener {
+      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.BoardOpListener {
           {abstract} + onAllBoardDeleted()
           {abstract} + onBoardCreated()
           {abstract} + onBoardDeleted()
@@ -46,7 +46,7 @@ title __DATACOLLABORATE's Class Diagram__\n
 
 
     namespace com.kedacom.vconf.sdk.datacollaborate {
-      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnDcCreatedListener {
+      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.DcCreatedListener {
           {abstract} + onDcCreated()
       }
     }
@@ -63,7 +63,7 @@ title __DATACOLLABORATE's Class Diagram__\n
 
 
     namespace com.kedacom.vconf.sdk.datacollaborate {
-      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnPaintOpListener {
+      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.PaintOpListener {
           {abstract} + onPaint()
       }
     }
@@ -78,7 +78,7 @@ title __DATACOLLABORATE's Class Diagram__\n
 
 
     namespace com.kedacom.vconf.sdk.datacollaborate {
-      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSynchronizeProgressListener {
+      interface com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.SyncProgressListener {
           {abstract} + onProgress()
       }
     }
@@ -227,18 +227,18 @@ title __DATACOLLABORATE's Class Diagram__\n
 
 
   com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager -up-|> com.kedacom.vconf.sdk.amulet.Caster
-  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnBoardOpListener : onBoardOpListener
-  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnDcCreatedListener : onDcCreatedListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.BoardOpListener : onBoardOpListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.DcCreatedListener : onDcCreatedListener
   com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnOperatorEventListener : onOperatorEventListener
-  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnPaintOpListener : onPaintOpListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.PaintOpListener : onPaintOpListener
   com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSessionEventListener : onSessionEventListener
-  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSynchronizeProgressListener : onSynchronizeProgressListener
-'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnBoardOpListener
-'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnDcCreatedListener
+  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager o-- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.SyncProgressListener : onSynchronizeProgressListener
+'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.BoardOpListener
+'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.DcCreatedListener
 '  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnOperatorEventListener
-'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnPaintOpListener
+'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.PaintOpListener
 '  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSessionEventListener
-'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.IOnSynchronizeProgressListener
+'  com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager +-down- com.kedacom.vconf.sdk.datacollaborate.DataCollaborateManager.SyncProgressListener
   com.kedacom.vconf.sdk.datacollaborate.DefaultPaintBoard .up.|> com.kedacom.vconf.sdk.datacollaborate.IPaintBoard
   com.kedacom.vconf.sdk.datacollaborate.DefaultPaintBoard -up-|> android.widget.FrameLayout
   com.kedacom.vconf.sdk.datacollaborate.DefaultPaintFactory .up.|> com.kedacom.vconf.sdk.datacollaborate.IPaintFactory

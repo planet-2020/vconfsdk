@@ -73,7 +73,8 @@ enum Msg {
             owner = DcsCtrl,
             rspSeq = {"LogoutRsp",
                     "LoginLinkStateChanged"
-            })
+            },
+            timeout = 2)
     Logout,
 
     @Response(clz = TDCSResult.class,
@@ -136,7 +137,8 @@ enum Msg {
                     Integer.class // 是否同时退出会议。0表示退出协作的同时退出会议，1表示仅退出协作。
             },
             rspSeq = {"QuitCollaborateRsp",
-                    "LinkStateChanged"})
+                    "LinkStateChanged"},
+            timeout = 2)
     QuitCollaborate,
 
     @Response(clz = TDCSResult.class,
@@ -151,7 +153,8 @@ enum Msg {
             paras = StringBuffer.class,
             userParas = String.class, // 会议e164
             rspSeq = {"FinishCollaborateRsp", "LinkStateChanged"},
-            rspSeq2 = {"FinishCollaborateRsp", "CollaborateFinished", "LinkStateChanged"})
+            rspSeq2 = {"FinishCollaborateRsp", "CollaborateFinished", "LinkStateChanged"},
+            timeout = 2)
     FinishCollaborate,
 
     @Response(clz = TDCSResult.class,

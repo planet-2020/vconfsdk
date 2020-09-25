@@ -135,7 +135,7 @@ final class ToDoConverter {
             case DRAG_PICTURE:
                 return Msg.DragPic;
             default:
-                return null;
+                return Msg.DrawPath;
         }
     }
 
