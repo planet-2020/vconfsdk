@@ -72,6 +72,8 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 数据协作管理模块。
@@ -1147,7 +1149,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
             @Override
             public void onSuccess(Object result) {
                 // 上报同步进度
-                reportSyncProgress(boardId, 20, false);
+                reportSyncProgress(boardId, 15, false);
 
                 PriorityQueue<OpPaint> ops = cachedPaintOps.get(boardId);
                 if (null == ops) { // 若不为null则表明准备阶段已有该画板的实时图元到达，缓存队列在那时已创建，此处复用它即可
@@ -1160,7 +1162,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 Message msg = Message.obtain();
                 msg.what = MsgID_CheckSynchronizing;
                 msg.obj = id;
-                handler.sendMessageDelayed(msg, 2000);
+                handler.sendMessageDelayed(msg, 1000);
                 KLog.p("start synchronizing ops for board %s", id);
                 syncTimestamps.put(id, System.currentTimeMillis());
             }
@@ -1206,14 +1208,31 @@ public final class DataCollaborateManager extends Caster<Msg> {
 
 
     private void reportSyncProgress(String boardId, int boardProgress, boolean bBoardFin){
-        synProgress.put(boardId, boardProgress);
-        Stream.of(getNtfListeners(SyncProgressListener.class)).forEach(syncProgressListener -> {
+        SyncProgress progress = synProgress.get(boardId);
+        if (progress == null) {
+            progress = new SyncProgress();
+            synProgress.put(boardId, progress);
+        }
+        progress.progress = boardProgress;
+        progress.finished = bBoardFin;
+
+        AtomicInteger progressSum = new AtomicInteger();
+        AtomicBoolean allFin = new AtomicBoolean(true);
+        Stream.of(synProgress).forEach(it -> {
+            progressSum.addAndGet(it.getValue().progress);
+            if (!it.getValue().finished){
+                allFin.set(false);
+            }
+        });
+        int overallProgress = progressSum.get()/totalSynBoardCount;
+        boolean allFinished = allFin.get();
+
+        int synBoardCount = synProgress.size();
+        Stream.of(getNtfListeners(SyncProgressListener.class)).forEach(it -> {
             KLog.p("onProgress(%s, %s, %s)", boardId, boardProgress, bBoardFin);
-            syncProgressListener.onProgress(boardId, boardProgress, bBoardFin);
-            int synBoardCount = synProgress.size();
-            int totalProgress = (int) (100f*(synBoardCount-1)/ totalSynBoardCount + 1.0f/ totalSynBoardCount *boardProgress);
-            KLog.p("onOverallProgress(%s, %s, %s, %s)", synBoardCount, totalSynBoardCount, totalProgress, bBoardFin && synBoardCount==totalSynBoardCount);
-            syncProgressListener.onOverallProgress(synBoardCount, totalSynBoardCount, totalProgress, bBoardFin && synBoardCount==totalSynBoardCount);
+            it.onProgress(boardId, boardProgress, bBoardFin);
+            KLog.p("onOverallProgress(%s, %s, %s, %s)", synBoardCount, totalSynBoardCount, overallProgress, allFinished);
+            it.onOverallProgress(synBoardCount, totalSynBoardCount, overallProgress, allFinished);
         });
     }
 
@@ -1230,7 +1249,11 @@ public final class DataCollaborateManager extends Caster<Msg> {
     /*同步的画板总数*/
     private int totalSynBoardCount;
     /*各画板的同步进度*/
-    private Map<String, Integer> synProgress = new HashMap<>();
+    private Map<String, SyncProgress> synProgress = new HashMap<>();
+    private class SyncProgress{
+        int progress; // [0, 100]
+        boolean finished;
+    }
 
     private final int MsgID_CheckSynchronizing = 10;
     private Handler handler = new Handler(Looper.getMainLooper()){
@@ -1240,7 +1263,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                 case MsgID_CheckSynchronizing:
                     String boardId = (String) msg.obj;
                     long timestamp = syncTimestamps.get(boardId);
-                    if (System.currentTimeMillis()-timestamp > 1000){ // 同步阶段若1s未收到后续绘制操作则认为同步结束
+                    if (System.currentTimeMillis()-timestamp > 500){ // 同步阶段若1s未收到后续绘制操作则认为同步结束
                         syncTimestamps.remove(boardId);
                         PriorityQueue<OpPaint> ops = cachedPaintOps.remove(boardId);
                         if (null == ops){
@@ -1249,7 +1272,7 @@ public final class DataCollaborateManager extends Caster<Msg> {
                         }
                         KLog.p("finish synchronizing ops for board %s", boardId);
 
-                        reportSyncProgress(boardId, synProgress.get(boardId), true);
+                        reportSyncProgress(boardId, 100, true);
 
                         /* 同步结束，上报用户该画板已同步的绘制操作。
                         NOTE：之所以同步结束时才上报而不是边收边上报，是因为同步过程中操作到达时序可能跟操作实际时序不一致，
@@ -1269,8 +1292,8 @@ public final class DataCollaborateManager extends Caster<Msg> {
 
                     }else{
                         KLog.p("synchronizing ops for board %s", boardId);
-                        handler.sendMessageDelayed(Message.obtain(msg), 500); // 同步正在进行中，稍后再做检查是否已结束
-                        int progress = Math.max(synProgress.get(boardId)+10, 99);
+                        handler.sendMessageDelayed(Message.obtain(msg), 200); // 同步正在进行中，稍后再做检查是否已结束
+                        int progress = Math.min(synProgress.get(boardId).progress+15, 99);
                         reportSyncProgress(boardId, progress, false);
                     }
 
