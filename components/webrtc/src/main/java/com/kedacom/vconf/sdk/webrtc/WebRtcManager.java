@@ -47,6 +47,7 @@ import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtId;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtIdList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtSimpConfInfo;
+import com.kedacom.vconf.sdk.common.type.vconf.TShortMsg;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.ConnType;
@@ -1237,6 +1238,12 @@ public class WebRtcManager extends Caster<Msg>{
 //                case 全场哑音：
 //            setMute();
 //                    break;
+
+            case ConfManSMSArrived:
+                ConfManSMS sms = ToDoConverter.TShortMsg2ConfManSMS((TShortMsg) ntfContent);
+                Stream.of(getNtfListeners(ConfManSMSListener.class)).forEach(it -> it.onConfManSMS(sms));
+                break;
+
         }
 
     }
@@ -5363,6 +5370,13 @@ public class WebRtcManager extends Caster<Msg>{
          * @param removed 移除的vip。若没有则为空列表
          * */
         void onVipChanged(@NonNull Set<Conferee> added, @NonNull Set<Conferee> removed);
+    }
+
+    /**
+     * 会管短消息监听器
+     * */
+    public interface ConfManSMSListener extends INtfListener{
+        void onConfManSMS(ConfManSMS sms);
     }
 
 }

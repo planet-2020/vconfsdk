@@ -20,6 +20,7 @@ import com.kedacom.vconf.sdk.common.type.vconf.TMTInviteMember;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTVideoFormatList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.common.type.vconf.TShortMsg;
 import com.kedacom.vconf.sdk.webrtc.bean.*;
 
 import java.util.ArrayList;
@@ -165,4 +166,7 @@ final class ToDoConverter {
         return new ConfInfo(ci.achName, ci.achConfID, ci.achStartTime, ci.achEndTime);
     }
 
+    static ConfManSMS TShortMsg2ConfManSMS(TShortMsg shortMsg){
+        return new ConfManSMS(shortMsg.achText);
+    }
 }

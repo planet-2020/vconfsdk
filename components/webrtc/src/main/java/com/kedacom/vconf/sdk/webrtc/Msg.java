@@ -20,6 +20,7 @@ import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtId;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtIdList;
 import com.kedacom.vconf.sdk.common.type.vconf.TMtSimpConfInfo;
+import com.kedacom.vconf.sdk.common.type.vconf.TShortMsg;
 import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
 
 import static com.kedacom.vconf.sdk.annotation.Request.*;
@@ -516,5 +517,13 @@ enum Msg {
             clz = TMtIdList.class
     )
     VIPsChanged,
+
+    /**
+     * 会管短消息到达
+     * */
+    @Notification(name = "SMSNtf",
+            clz = TShortMsg.class
+    )
+    ConfManSMSArrived,
 
 }
