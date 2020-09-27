@@ -149,12 +149,14 @@ enum Msg {
     @Request(name = "MGGetAPIVersionReq",
             owner = MeetingCtrl,
             paras = int.class,
-            userParas = EmAPIVersionType.class
+            userParas = EmAPIVersionType.class,
+            rspSeq = "GetAPIVersionRsp"
     )
     GetAPIVersion,
 
-//    @Response(name = "", clz = )
-//    GetAPIVersionRsp,
+    @Response(name = "GetAPIVersion_Rsp",
+            clz = TAPIVersion.class)
+    GetAPIVersionRsp,
 
     /**
      * 创建会议

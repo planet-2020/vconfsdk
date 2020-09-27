@@ -10,6 +10,7 @@ import java.util.List;
 public final class ConfPara {
     public String creatorE164;      // 创建者e164
     public String confName;         // 会议名
+    public ConfType confType = ConfType.RTC;       // 会议类型
     public int duration;            // 会议时长。单位：分钟
     public boolean bAudio;          // 是否音频会议
     public boolean bHighDefinition; // 是否高清视频，高清1080P，其余720P。注：若音频会议则此字段无效

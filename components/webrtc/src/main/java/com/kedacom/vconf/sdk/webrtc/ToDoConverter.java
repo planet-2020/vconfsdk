@@ -110,7 +110,7 @@ final class ToDoConverter {
         tmtConfMixInfo.emMode = EmMtMixType.mcuWholeMix_Api;
         to.tMix = tmtConfMixInfo;
         // 会议类型
-        to.emMeetingtype = EmMeetingSafeType.emRestMeetingType_Sfu;
+        to.emMeetingtype = ConfType2EmMeetingSafeType(confPara.confType);
 
         //主视频格式
         List<TMTVideoFormatList> videoFormatLists = new ArrayList<>();
@@ -168,5 +168,22 @@ final class ToDoConverter {
 
     static ConfManSMS TShortMsg2ConfManSMS(TShortMsg shortMsg){
         return new ConfManSMS(shortMsg.achText);
+    }
+
+    static EmMeetingSafeType ConfType2EmMeetingSafeType(ConfType confType){
+        switch (confType){
+            case TRADITIONAL:
+                return EmMeetingSafeType.emRestMeetingType_Public;
+            case PORT:
+                return EmMeetingSafeType.emRestMeetingType_Port;
+            case RTC:
+                return EmMeetingSafeType.emRestMeetingType_Sfu;
+            case MIX:
+                return EmMeetingSafeType.emRestMeetingType_Mix_Api;
+            case AUTO:
+                return EmMeetingSafeType.emRestMeetingType_Auto_Api;
+            default:
+                return EmMeetingSafeType.emRestMeetingType_Auto_Api;
+        }
     }
 }

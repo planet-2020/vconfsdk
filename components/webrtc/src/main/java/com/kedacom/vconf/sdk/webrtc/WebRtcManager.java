@@ -37,6 +37,7 @@ import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
 import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.EmAPIVersionType;
 import com.kedacom.vconf.sdk.common.type.vconf.EmMtModifyConfInfoType;
 import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
 import com.kedacom.vconf.sdk.common.type.vconf.TMTEntityInfo;
@@ -340,34 +341,49 @@ public class WebRtcManager extends Caster<Msg>{
             // 音频入会则关闭己端主视频通道。底层上报onGetOfferCmd时带的媒体类型就为Audio了。
             req(Msg.CloseMyMainVideoChannel, null, null);
         }
-        req(Msg.CreateConf, new SessionProcessor<Msg>() {
+        req(Msg.GetAPIVersion, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                switch (rsp){
-                    case CreateConfRsp:
-                        TCreateConfResult tCreateConfResult = (TCreateConfResult) rspContent;
-                        int resCode = RtcResultCode.trans(rsp, tCreateConfResult.MainParam.dwErrorID);
-                        if (RtcResultCode.Success != resCode){
-                            stopSession();
-                            cancelReq(req, resultListener);
-                            reportFailed(resCode, resultListener);
-                        }
-                        break;
-                    case MultipartyConfStarted:
-                        reportSuccess(ToDoConverter.callLinkState2CreateConfResult( (TMtCallLinkSate) rspContent, confPara.bAudio, confPara.bSelfAudioMannerJoin), resultListener);
-                        break;
-                    case ConfCanceled:
-                        stopSession();
-                        reportFailed(RtcResultCode.trans(rsp, ((BaseTypeInt) rspContent).basetype), resultListener);
-                        break;
+                TAPIVersion version = (TAPIVersion) rspContent;
+                if (version.MainParam.dwErrorID == 1000){
+                    confPara.confType = version.AssParam.dwAPILevel <= 1 ? ConfType.RTC : ConfType.AUTO;
+                }else{
+                    confPara.confType = ConfType.AUTO;
+                    KLog.p(KLog.ERROR, "GetAPIVersion failed, errorCode=%s", version.MainParam.dwErrorID);
                 }
-            }
 
-            @Override
-            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                stopSession();
+                req(Msg.CreateConf, new SessionProcessor<Msg>() {
+                    @Override
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        switch (rsp){
+                            case CreateConfRsp:
+                                TCreateConfResult tCreateConfResult = (TCreateConfResult) rspContent;
+                                int resCode = RtcResultCode.trans(rsp, tCreateConfResult.MainParam.dwErrorID);
+                                if (RtcResultCode.Success != resCode){
+                                    stopSession();
+                                    cancelReq(req, resultListener);
+                                    reportFailed(resCode, resultListener);
+                                }
+                                break;
+                            case MultipartyConfStarted:
+                                reportSuccess(ToDoConverter.callLinkState2CreateConfResult( (TMtCallLinkSate) rspContent, confPara.bAudio, confPara.bSelfAudioMannerJoin), resultListener);
+                                break;
+                            case ConfCanceled:
+                                stopSession();
+                                reportFailed(RtcResultCode.trans(rsp, ((BaseTypeInt) rspContent).basetype), resultListener);
+                                break;
+                        }
+                    }
+
+                    @Override
+                    public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                        stopSession();
+                    }
+                }, resultListener, ToDoConverter.confPara2CreateConference(confPara));
+
             }
-        }, resultListener, ToDoConverter.confPara2CreateConference(confPara));
+        }, resultListener, EmAPIVersionType.emMcAPIVersion_Api);
+
     }
 
 
