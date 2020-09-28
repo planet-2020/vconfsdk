@@ -740,6 +740,8 @@ public class WebRtcManager extends Caster<Msg>{
             return false;
         }
         pcWrapper.setLocalAudioEnable(!mute);
+        config.isMuted = mute;
+        myself.setMuted(mute);
         return true;
     }
 
@@ -770,8 +772,6 @@ public class WebRtcManager extends Caster<Msg>{
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 BaseTypeBool result = (BaseTypeBool) rspContent;
                 if (result.basetype == bMute && doSetMute(bMute)){ // 设置成功
-                    config.isMuted = bMute;
-                    myself.setMuted(bMute);
                     reportSuccess(null, resultListener);
                 }else{
                     reportFailed(RtcResultCode.Failed, resultListener);
@@ -1096,9 +1096,7 @@ public class WebRtcManager extends Caster<Msg>{
             case SelfMuteStateChanged:
                 cont = (BaseTypeBool) ntfContent;
                 if (cont.basetype != myself.isMuted() && doSetMute(cont.basetype)) {
-                    config.isMuted = cont.basetype;
-                    myself.setMuted(cont.basetype);
-                    Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(myself.isMuted()));
+                    Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(myself));
                 }
                 break;
             case OtherConfereeStateChanged:
@@ -1106,7 +1104,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Conferee conferee = findConferee(state.dwMcuId, state.dwTerId, Conferee.ConfereeType.Normal);
                 if (conferee != null && conferee.isMuted() != state.tStatus.bIsMute){
                     conferee.setMuted(state.tStatus.bIsMute);
-                    Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(conferee.isMuted()));
+                    Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(conferee));
                 }
                 break;
 
@@ -1806,7 +1804,6 @@ public class WebRtcManager extends Caster<Msg>{
      * 该与会方相较于需求中的与会方是更抽象的概念，包含了普通的与会方以及虚拟的辅流与会方（以及将来可能扩展的其他类型与会方）。
      */
     public static final class Conferee implements VideoSink, Comparable<Conferee>{
-        // 唯一标志
         private final String id;
 
         private int mcuId;
@@ -1845,7 +1842,7 @@ public class WebRtcManager extends Caster<Msg>{
         private Set<TextDecoration> textDecorations = new HashSet<>();
         private Set<PicDecoration> picDecorations = new HashSet<>();
 
-        // 麦克风装饰
+        // 麦克风装饰 // TODO 统一由用户设置 addWidgetDeco(WidgetDeco, onclickListener)
         private MicrophoneDecoration microphoneDeco = new MicrophoneDecoration();
 
         /**
@@ -1970,13 +1967,15 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         /**
-         * @return 与会方对应的显示器集合。不可修改！
+         * 获取与会方对应的所有显示器（包括被禁用的）
          * */
         public Set<Display> getDisplays() {
-            return Collections.unmodifiableSet(displays);
+            return new HashSet<>(displays);
         }
 
-
+        /**
+         * 获取与会方对应的所有显示器（不包括被禁用的）
+         * */
         private Set<Display> getWorkingDisplays(){
             return Stream.of(displays).filter(value -> value.enabled).collect(Collectors.toSet());
         }
@@ -5383,8 +5382,9 @@ public class WebRtcManager extends Caster<Msg>{
     public interface ConfereeStateChangedListener extends  INtfListener{
         /**
          * 哑音状态改变
+         * {@link Conferee#isMuted()}
          * */
-        void onMuteStateChanged(boolean muted);
+        void onMuteStateChanged(Conferee conferee);
     }
 
 
