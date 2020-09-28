@@ -10,4 +10,9 @@ public final class TMtId {
     public boolean isValid(){
         return dwMcuId != 0 || dwTerId != 0;
     }
+
+    public TMtId(int dwMcuId, int dwTerId) {
+        this.dwMcuId = dwMcuId;
+        this.dwTerId = dwTerId;
+    }
 }

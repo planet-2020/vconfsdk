@@ -30,9 +30,7 @@ public class TRtcStreamInfo {
 
     public TRtcStreamInfo(String achStreamId, int mcuId, int terId, boolean bAudio, boolean bAss, List<EmMtResolution> aemSimcastRes) {
         this.achStreamId = achStreamId;
-        tMtId = new TMtId();
-        tMtId.dwMcuId = mcuId;
-        tMtId.dwTerId = terId;
+        tMtId = new TMtId(mcuId, terId);
         this.bAudio = bAudio;
         this.bAss = bAss;
         this.aemSimcastRes = aemSimcastRes;
@@ -40,9 +38,7 @@ public class TRtcStreamInfo {
 
     public TRtcStreamInfo(String achStreamId, int mcuId, int terId, boolean bMix) {
         this.achStreamId = achStreamId;
-        tMtId = new TMtId();
-        tMtId.dwMcuId = mcuId;
-        tMtId.dwTerId = terId;
+        tMtId = new TMtId(mcuId, terId);
         this.bAudio = true;
         this.bAss = false;
         this.bMix = bMix;

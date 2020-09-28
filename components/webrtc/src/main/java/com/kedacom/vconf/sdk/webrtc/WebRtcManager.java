@@ -704,29 +704,20 @@ public class WebRtcManager extends Caster<Msg>{
             reportFailed(-1, resultListener);
             return;
         }
-        boolean hasChange = bSilence != config.isSilenced;
-        if (hasChange && !doSetSilence(bSilence)) { // 立即设置而非等到响应返回，因为我们希望用户的操作能立即展现出效果，若最终设置失败我们会回滚该设置。
-            reportFailed(-1, resultListener);
+
+        if (bSilence == config.isSilenced){
+            reportSuccess(null, resultListener);
             return;
         }
         req(Msg.SetSilence, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 BaseTypeBool result = (BaseTypeBool) rspContent;
-                if (result.basetype == bSilence){ // 设置成功
+                if (result.basetype == bSilence && doSetSilence(bSilence)){
+                    config.isSilenced = bSilence;
                     reportSuccess(null, resultListener);
                 }else{
-                    if (hasChange) {
-                        doSetSilence(!bSilence); // 设置失败，回滚
-                    }
-                    reportFailed(-1, resultListener);
-                }
-            }
-
-            @Override
-            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                if (hasChange) {
-                    doSetSilence(!bSilence); // 设置失败，回滚
+                    reportFailed(RtcResultCode.Failed, resultListener);
                 }
             }
         }, resultListener, bSilence);
@@ -739,7 +730,6 @@ public class WebRtcManager extends Caster<Msg>{
             return false;
         }
         pcWrapper.setRemoteAudioEnable(!silence);
-        config.isSilenced = silence;
         return true;
     }
 
@@ -750,7 +740,6 @@ public class WebRtcManager extends Caster<Msg>{
             return false;
         }
         pcWrapper.setLocalAudioEnable(!mute);
-        config.isMuted = mute;
         return true;
     }
 
@@ -772,32 +761,51 @@ public class WebRtcManager extends Caster<Msg>{
             reportFailed(-1, resultListener);
             return;
         }
-        boolean hasChange = bMute != config.isMuted;
-        if (hasChange && !doSetMute(bMute)) {
-            reportFailed(-1, resultListener);
+        if (bMute == config.isMuted){
+            reportSuccess(null, resultListener);
             return;
         }
         req(Msg.SetMute, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 BaseTypeBool result = (BaseTypeBool) rspContent;
-                if (result.basetype == bMute){ // 设置成功
+                if (result.basetype == bMute && doSetMute(bMute)){ // 设置成功
+                    config.isMuted = bMute;
+                    myself.setMuted(bMute);
                     reportSuccess(null, resultListener);
                 }else{
-                    if (hasChange) {
-                        doSetSilence(!bMute); // 设置失败，回滚
-                    }
-                    reportFailed(-1, resultListener);
+                    reportFailed(RtcResultCode.Failed, resultListener);
                 }
             }
 
+        }, resultListener, bMute);
+    }
+
+
+    /**
+     * 哑音其他与会方。
+     * @param e164 哑音对象的e164
+     * @param bMute true，哑音；false，取消哑音
+     * */
+    public void setMuteOther(String e164, boolean bMute, IResultListener resultListener){
+        Conferee conferee = findConfereeByE164(e164, Conferee.ConfereeType.Normal);
+        if (conferee == null){
+            KLog.p(KLog.ERROR, "no such conferee %s", e164);
+            reportFailed(RtcResultCode.Failed, resultListener);
+            return;
+        }
+        req(Msg.SetMuteOther, new SessionProcessor<Msg>() {
             @Override
-            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                if (hasChange) {
-                    doSetSilence(!bMute); // 设置失败，回滚
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TMtEntityStatus status = (TMtEntityStatus) rspContent;
+                if (status.dwMcuId==conferee.mcuId && status.dwTerId==conferee.terId && status.tStatus.bIsMute == bMute){
+                    conferee.setMuted(bMute);
+                    reportSuccess(null, resultListener);
+                }else{
+                    isConsumed[0] = false;
                 }
             }
-        }, resultListener, bMute);
+        }, resultListener, new TMtId(conferee.mcuId, conferee.terId), bMute);
     }
 
 
@@ -1087,15 +1095,18 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
             case SelfMuteStateChanged:
                 cont = (BaseTypeBool) ntfContent;
-                if (cont.basetype != config.isMuted && doSetMute(cont.basetype)) {
-//                    if (sessionEventListener != null) sessionEventListener.onSelfMuteStateChanged(config.isMuted);
+                if (cont.basetype != myself.isMuted() && doSetMute(cont.basetype)) {
+                    config.isMuted = cont.basetype;
+                    myself.setMuted(cont.basetype);
+                    Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(myself.isMuted()));
                 }
                 break;
             case OtherConfereeStateChanged:
                 TMtEntityStatus state = (TMtEntityStatus) ntfContent;
                 Conferee conferee = findConferee(state.dwMcuId, state.dwTerId, Conferee.ConfereeType.Normal);
-                if (conferee != null){
-//                    if (sessionEventListener != null) sessionEventListener.onOtherConfereeAudioStateChanged(conferee, state.tStatus.bIsMute, state.tStatus.bIsQuiet);
+                if (conferee != null && conferee.isMuted() != state.tStatus.bIsMute){
+                    conferee.setMuted(state.tStatus.bIsMute);
+                    Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(conferee.isMuted()));
                 }
                 break;
 
@@ -1122,14 +1133,21 @@ public class WebRtcManager extends Caster<Msg>{
                     public void run() {
                         TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
                         TMtId mtId = briefConfInfo.tChairman;
-                        if (!mtId.isValid()){
-                            return;
-                        }
                         if (triedCount > 3){
                             KLog.p(KLog.ERROR, "tried %s times, presenter(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
                             return;
                         }
                         ++triedCount;
+
+                        Conferee predecessor = findPresenter();
+                        if (!mtId.isValid()){
+                            // 主持人mtid非法，我们认为此为取消主持人的场景
+                            if (predecessor != null) {
+                                predecessor.setPresenter(false);
+                            }
+                            Stream.of(getNtfListeners(PresenterChangedListener.class)).forEach(it -> it.onPresenterChangedChanged(predecessor, null));
+                            return;
+                        }
 
                         Conferee successor;
                         if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId){
@@ -1145,7 +1163,6 @@ public class WebRtcManager extends Caster<Msg>{
                             return;
                         }
 
-                        Conferee predecessor = findPresenter();
                         if (successor == predecessor) {
                             return;
                         }
@@ -1177,6 +1194,16 @@ public class WebRtcManager extends Caster<Msg>{
                         }
                         ++triedCount;
 
+                        Conferee predecessor = findKeynoteSpeaker();
+                        if (!mtId.isValid()){
+                            // 主讲人mtid非法，我们认为此为取消主讲人的场景
+                            if (predecessor != null) {
+                                predecessor.setKeynoteSpeaker(false);
+                            }
+                            Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class)).forEach(it -> it.onKeynoteSpeakerChanged(predecessor, null));
+                            return;
+                        }
+
                         Conferee successor;
                         if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId){
                             successor = myself;
@@ -1191,7 +1218,6 @@ public class WebRtcManager extends Caster<Msg>{
                             return;
                         }
 
-                        Conferee predecessor = findKeynoteSpeaker();
                         if (successor == predecessor) {
                             return;
                         }
@@ -1797,6 +1823,8 @@ public class WebRtcManager extends Caster<Msg>{
         private boolean isKeynoteSpeaker;
         // 是否为VIP
         private boolean isVIP;
+        // 是否已哑音
+        private boolean isMuted;
 
         // 音频通道状态
         private AudioChannelState audioChannelState = AudioChannelState.Idle;
@@ -1931,6 +1959,14 @@ public class WebRtcManager extends Caster<Msg>{
 
         private void setVIP(boolean VIP) {
             isVIP = VIP;
+        }
+
+        public boolean isMuted() {
+            return isMuted;
+        }
+
+        private void setMuted(boolean muted) {
+            isMuted = muted;
         }
 
         /**
@@ -3080,6 +3116,12 @@ public class WebRtcManager extends Caster<Msg>{
                 .orElse(null);
     }
 
+    private Conferee findConfereeByE164(String e164, Conferee.ConfereeType type){
+        return Stream.of(conferees)
+                .filter(it-> it.e164.equals(e164) && it.type==type)
+                .findFirst()
+                .orElse(null);
+    }
 
     private Conferee findConfereeByStreamId(String streamId){
         RtcStream stream = findStream(streamId);
@@ -5336,6 +5378,17 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     /**
+     * 与会方状态变更监听器
+     * */
+    public interface ConfereeStateChangedListener extends  INtfListener{
+        /**
+         * 哑音状态改变
+         * */
+        void onMuteStateChanged(boolean muted);
+    }
+
+
+    /**
      * 会议即将结束监听器
      * */
     public interface ConfAboutToEndListener extends  INtfListener{
@@ -5360,8 +5413,8 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public interface PresenterChangedListener extends  INtfListener{
         /**
-         * @param  predecessor 前任主持人。若为null表示没有前任。
-         * @param  successor 继任的主持人
+         * @param  predecessor 前任主持人。若为null表示没有前任，也即当前主持人为首位主持人。
+         * @param  successor 继任的主持人。若为null表示没有继任的主持人，也即取消主持人。
          * */
         void onPresenterChangedChanged(Conferee predecessor, Conferee successor);
     }
@@ -5371,8 +5424,8 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public interface KeynoteSpeakerChangedListener extends  INtfListener{
         /**
-         * @param  predecessor 前任主讲人。若为null表示没有前任。
-         * @param  successor 继任的主讲人
+         * @param  predecessor 前任主讲人。若为null表示没有前任，也即当前主讲人为首位主讲人。
+         * @param  successor 继任的主讲人。若为null表示没有继任的主讲人，也即取消主讲人。
          * */
         void onKeynoteSpeakerChanged(Conferee predecessor, Conferee successor);
     }
