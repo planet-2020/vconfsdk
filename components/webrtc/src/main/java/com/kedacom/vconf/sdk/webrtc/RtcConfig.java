@@ -240,7 +240,7 @@ public final class RtcConfig {
     }
 
     public boolean isMuted(){
-        return rtcUserConfig.getBoolean(key_isMuted, true);
+        return rtcUserConfig.getBoolean(key_isMuted, false);
     }
 
     /**
@@ -252,7 +252,7 @@ public final class RtcConfig {
     }
 
     public boolean isSilenced(){
-        return rtcUserConfig.getBoolean(key_isSilenced, true);
+        return rtcUserConfig.getBoolean(key_isSilenced, false);
     }
 
 

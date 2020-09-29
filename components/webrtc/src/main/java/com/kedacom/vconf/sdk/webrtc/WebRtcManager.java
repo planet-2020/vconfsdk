@@ -734,14 +734,14 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     private boolean doSetMute(boolean mute){
+        config.isMuted = mute;
+        myself.setMuted(mute);
         PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.PUBLISHER);
         if (null == pcWrapper) {
             KLog.p(KLog.ERROR,"null == pcWrapper");
             return false;
         }
         pcWrapper.setLocalAudioEnable(!mute);
-        config.isMuted = mute;
-        myself.setMuted(mute);
         return true;
     }
 
@@ -771,7 +771,8 @@ public class WebRtcManager extends Caster<Msg>{
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 BaseTypeBool result = (BaseTypeBool) rspContent;
-                if (result.basetype == bMute && doSetMute(bMute)){ // 设置成功
+                if (result.basetype == bMute){ // 设置成功
+                    doSetMute(bMute);
                     reportSuccess(null, resultListener);
                 }else{
                     reportFailed(RtcResultCode.Failed, resultListener);
@@ -1095,7 +1096,8 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
             case SelfMuteStateChanged:
                 cont = (BaseTypeBool) ntfContent;
-                if (cont.basetype != myself.isMuted() && doSetMute(cont.basetype)) {
+                if (cont.basetype != myself.isMuted()) {
+                    doSetMute(cont.basetype);
                     Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(myself));
                 }
                 break;
@@ -1333,14 +1335,15 @@ public class WebRtcManager extends Caster<Msg>{
 
         bSessionStarted = true;
 
-        myself = new Conferee(userE164);
-
         rtcConnector.setSignalingEventsCallback(new RtcConnectorEventListener());
 
         config.copy(RtcConfig.getInstance(context).dump());
         KLog.p("init rtc config: "+config);
         createPeerConnectionFactory();
         createPeerConnectionWrapper();
+
+        myself = new Conferee(userE164);
+        myself.setMuted(config.isMuted);
 
         // 定时获取统计信息
         handler.postDelayed(statsCollector, 2000);
