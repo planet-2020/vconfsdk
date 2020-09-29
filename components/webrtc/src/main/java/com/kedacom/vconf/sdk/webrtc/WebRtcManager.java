@@ -1822,6 +1822,8 @@ public class WebRtcManager extends Caster<Msg>{
         private boolean isVIP;
         // 是否已哑音
         private boolean isMuted;
+        // 音量[0, 100]
+        private int volume;
 
         // 音频通道状态
         private AudioChannelState audioChannelState = AudioChannelState.Idle;
@@ -1963,7 +1965,21 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         private void setMuted(boolean muted) {
-            isMuted = muted;
+            if (muted != isMuted) {
+                isMuted = muted;
+                refreshDisplays();
+            }
+        }
+
+        public int getVolume() {
+            return volume;
+        }
+
+        public void setVolume(int volume) {
+            if (volume != this.volume) {
+                this.volume = volume;
+                refreshDisplays();
+            }
         }
 
         /**
@@ -2953,7 +2969,8 @@ public class WebRtcManager extends Caster<Msg>{
             // 绘制麦克风
             TextDecoration label = conferee.getLabel();
             if (label != null && label.enabled() && !disabledDecos.contains(label.id)) {
-                conferee.microphoneDeco.draw(label.getMicroPhoneRect(), label.getMicroPhoneBackgroundRect(), label.bgPaint.getColor(), canvas);
+                conferee.microphoneDeco.draw(label.getMicroPhoneRect(), label.getMicroPhoneBackgroundRect(), label.bgPaint.getColor(),
+                        conferee.isMuted(), conferee.getVolume(), canvas);
             }
 
             // 绘制语音激励deco
@@ -3427,8 +3444,6 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private static class MicrophoneDecoration{
-        boolean muted;
-        int volume; // 音量[0, 100]
         Paint strokePaint = new Paint();
         Paint fillPaint = new Paint();
         private final int STROKE_WIDTH = 4;
@@ -3442,28 +3457,12 @@ public class WebRtcManager extends Caster<Msg>{
             fillPaint.setAntiAlias(true);
         }
 
-        boolean isMuted() {
-            return muted;
-        }
-
-        void setMuted(boolean muted) {
-            this.muted = muted;
-        }
-
-        int getVolume() {
-            return volume;
-        }
-
-        void setVolume(int volume) {
-            this.volume = volume;
-        }
-
         /**
          * @param rect 麦克图标所在的矩形区域
          * @param background 图标背景区域
          * @param bgColor 背景区域填充色
          * */
-        void draw(RectF rect, RectF background, int bgColor, Canvas canvas){
+        void draw(RectF rect, RectF background, int bgColor, boolean muted, int volume, Canvas canvas){
             fillPaint.setColor(bgColor);
             canvas.drawRect(background, fillPaint);
             float roundRectHorizontalMargin = (rect.right-rect.left)/4;
@@ -5162,13 +5161,6 @@ public class WebRtcManager extends Caster<Msg>{
         aggregatePubStats(assPublisherStats, preAssPublisherStats, true);
         aggregateSubStats(assSubscriberStats, preAssSubscriberStats, true);
         KLog.p("/### "+statistics);
-
-        if (showStatistics){
-            Stream.of(conferees).forEach(Conferee::refreshDisplays);
-            if (null != myself) {
-                myself.refreshDisplays();
-            }
-        }
     }
 
 
@@ -5189,10 +5181,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
             int audioLevel = stats.sendAudioTrack != null ? (int) (stats.sendAudioTrack.audioLevel * 100) :0;
             audioOutput = new Statistics.AudioOutput(audioLevel, bitrate, codecMime);
-            if (audioLevel != myself.microphoneDeco.volume) {
-                myself.microphoneDeco.setVolume(audioLevel);
-                myself.refreshDisplays();
-            }
+            myself.setVolume(audioLevel);
         }
 
         bitrate = 0;
@@ -5253,10 +5242,7 @@ public class WebRtcManager extends Caster<Msg>{
                             Conferee conferee = findConfereeByStreamId(kdStreamId);
                             if (conferee != null) {
                                 audioInputMap.put(conferee.getId(), audioInput);
-                                if (audioLevel != conferee.microphoneDeco.volume) {
-                                    conferee.microphoneDeco.setVolume(audioLevel);
-                                    conferee.refreshDisplays();
-                                }
+                                conferee.setVolume(audioLevel);
                             } else {
                                 RtcStream rtcStream = findStream(kdStreamId);
                                 if (rtcStream != null && rtcStream.streamInfo.bMix) {
