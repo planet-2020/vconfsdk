@@ -1975,7 +1975,7 @@ public class WebRtcManager extends Caster<Msg>{
             return volume;
         }
 
-        public void setVolume(int volume) {
+        private void setVolume(int volume) {
             if (volume != this.volume) {
                 this.volume = volume;
                 refreshDisplays();
