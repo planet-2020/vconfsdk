@@ -1141,7 +1141,7 @@ public class WebRtcManager extends Caster<Msg>{
 
                         Conferee predecessor = findPresenter();
                         if (!mtId.isValid()){
-                            // 主持人mtid非法，我们认为此为取消主持人的场景
+                            // 主持人mtid非法，此为取消主持人的场景。（已跟业务组件确认）
                             if (predecessor != null) {
                                 predecessor.setPresenter(false);
                             }
@@ -1196,7 +1196,7 @@ public class WebRtcManager extends Caster<Msg>{
 
                         Conferee predecessor = findKeynoteSpeaker();
                         if (!mtId.isValid()){
-                            // 主讲人mtid非法，我们认为此为取消主讲人的场景
+                            // 主讲人mtid非法，我们认为此为取消主讲人的场景。（已跟业务组件确认）
                             if (predecessor != null) {
                                 predecessor.setKeynoteSpeaker(false);
                             }
