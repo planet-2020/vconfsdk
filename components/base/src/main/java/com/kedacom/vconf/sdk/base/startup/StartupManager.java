@@ -111,7 +111,7 @@ public class StartupManager extends Caster<Msg> {
                         }
 
                         @Override
-                        public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener1, Msg req1, Object[] reqParas1, boolean[] isConsumed) {
+                        public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener1, boolean isFinal, Msg req1, Object[] reqParas1, boolean[] isConsumed) {
                             // 取消禁令
                             disableReqGlobally(false);
 

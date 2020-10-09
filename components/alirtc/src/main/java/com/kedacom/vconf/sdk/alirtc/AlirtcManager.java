@@ -44,10 +44,6 @@ import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
 public class AlirtcManager extends Caster<Msg> {
     private static AlirtcManager instance = null;
     private Application context;
@@ -96,7 +92,7 @@ public class AlirtcManager extends Caster<Msg> {
 
                 req(Msg.Login, new SessionProcessor<Msg>() {
                     @Override
-                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                         TRegResultNtf result = (TRegResultNtf) rspContent;
                         if (EmConfProtocol.emaliyun.ordinal() != result.MainParam.basetype){
                             isConsumed[0] = false;
@@ -128,7 +124,7 @@ public class AlirtcManager extends Caster<Msg> {
         }
         req(Msg.Logout, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TRegResultNtf result = (TRegResultNtf) rspContent;
                 if (EmConfProtocol.emaliyun.ordinal() != result.MainParam.basetype){
                     isConsumed[0] = false;
@@ -169,7 +165,7 @@ public class AlirtcManager extends Caster<Msg> {
 
         req(Msg.JoinConf, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TJoinConfResult joinConfResult = (TJoinConfResult) rspContent;
                 if (joinConfResult.bSuccess){
                     AliConfParam para = joinConfResult.tAliJoinConfParam;

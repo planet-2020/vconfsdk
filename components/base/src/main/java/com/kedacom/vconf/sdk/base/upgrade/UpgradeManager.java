@@ -71,7 +71,7 @@ public class UpgradeManager extends Caster<Msg> {
         String serviceName = "upgrade";
         req(false, true, Msg.StartMtService, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 // 取消禁令
                 disableReq(false);
 
@@ -118,19 +118,19 @@ public class UpgradeManager extends Caster<Msg> {
 
                 req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
                     @Override
-                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                         /*
                          * 检查更新完成后取消。
-                         * 对于业务组件那边来说检查更新不是一个独立的短暂的操作，而是和其他操作如下载更新关联在一起的，是一条流水线上的不同环节，是一个长连接的发端。
+                         * 对于业务组件那边来说检查更新不是一个独立的操作，而是和其他操作如下载更新关联在一起的，是一条流水线上的不同环节，是一个长连接的发端。
                          * 检查更新对他们来说更准确的语义是“开始升级流程”，需要跟“结束（取消）升级流程”配对使用，这样才算一个完整的升级流程，他们才能维持正确的状态。
                          * 所以当直接使用业务组件接口时，如下调用序列将会失败：
                          * 检查更新->检查更新（不能重复调用检查更新接口因为不能重复开始升级流程，业务组件状态不对）；
                          * 下载更新（不能直接调用下载更新的接口，必须先调用检查更新）；
                          *
                          * 我们认为这样的接口语义和行为不一致，会给用户造成严重困惑，故我们封装以使接口的行为跟语义保持一致。下面是我们做的工作：
-                         * 1、站在用户角度，检查升级我们认为应该独立于下载、取消升级，检查结果返回检查升级结束，不存在遗留状态，重复检查是可以的。
+                         * 1、检查升级我们认为应该独立于下载、取消升级，检查结果返回检查升级即刻结束，不存在遗留状态，“检查更新->检查更新”这样的执行流程是应该被允许的。
                          * 为了达成这个目标我们在业务组件的检查升级结果返回后取消升级，以重置业务组件的状态。
-                         * 2、站在用户角度，下载升级包我们认为应该独立于检查升级，我知道该升级包的id便可直接下载它。
+                         * 2、下载升级包我们认为应该独立于检查升级，我知道该升级包的id便可直接下载它。
                          * 为了达成这个目标我们在下载前先调用业务组件的检查升级，然后才去下载升级包。
                          * */
                         req(Msg.CancelUpgrade, null, null);
@@ -210,7 +210,7 @@ public class UpgradeManager extends Caster<Msg> {
                 // 下载前先check以建链
                 req(Msg.CheckUpgrade, new SessionProcessor<Msg>() {
                     @Override
-                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                         TMTUpgradeVersionInfo[] remoteVersionList = ((TCheckUpgradeRsp)rspContent).AssParam.tVerList;
                         if (null != remoteVersionList && remoteVersionList.length>0){
                             UpgradePkgInfo remotePkgInfo = ToDoConverter.TMTUpgradeVersionInfo2UpgradePkgInfo(remoteVersionList[0]);
@@ -218,7 +218,7 @@ public class UpgradeManager extends Caster<Msg> {
                                 // 下载升级包
                                 req(Msg.DownloadUpgrade, new SessionProcessor<Msg>() {
                                     @Override
-                                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                                         if (Msg.DownloadUpgradeRsp == rsp){
                                             TMTUpgradeDownloadInfo downloadInfo = (TMTUpgradeDownloadInfo) rspContent;
                                             if (downloadInfo.dwErrcode == 0) {
@@ -266,7 +266,7 @@ public class UpgradeManager extends Caster<Msg> {
     public void cancelDownloadUpgrade(IResultListener resultListener){
         req(Msg.CancelUpgrade, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TMtSvrState[] states = ((TMtSvrStateList) rspContent).arrSvrState;
                 boolean got = false;
                 for (TMtSvrState state : states){

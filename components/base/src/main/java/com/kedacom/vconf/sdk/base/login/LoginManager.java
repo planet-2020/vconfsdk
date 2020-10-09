@@ -70,7 +70,7 @@ public class LoginManager extends Caster<Msg> {
         String serviceName = "rest";
         req(false, true, Msg.StartMtService, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 // 取消禁令
                 disableReq(false);
 
@@ -149,7 +149,7 @@ public class LoginManager extends Caster<Msg> {
         // 登录Aps
         req(Msg.LoginAps, new SessionProcessor<Msg>() {
                 @Override
-                public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                     TApsLoginResult apsLoginResult = (TApsLoginResult) rspContent;
                     if (apsLoginResult.MainParam.bSucess){
                         // 获取platform地址
@@ -164,13 +164,13 @@ public class LoginManager extends Caster<Msg> {
                                 // 获取platform分配的token
                                 req(Msg.QueryAccountToken, new SessionProcessor<Msg>() {
                                     @Override
-                                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                                         TRestErrorInfo restErrorInfo = (TRestErrorInfo) rspContent;
                                         if (restErrorInfo.dwErrorID == 1000){
                                             // 登录platform
                                             req(Msg.LoginPlatform, new SessionProcessor<Msg>() {
                                                 @Override
-                                                public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                                                public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                                                     TLoginPlatformRsp res = (TLoginPlatformRsp) rspContent;
                                                     if (res.MainParam.dwErrorID == 1000){
                                                         reportSuccess(null, resultListener);
@@ -218,7 +218,7 @@ public class LoginManager extends Caster<Msg> {
         loggedIn = false;
         req(Msg.LogoutAps, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 TMtSvrState[] states = ((TMtSvrStateList) rspContent).arrSvrState;
                 boolean got = false;
                 for (TMtSvrState state : states){
@@ -257,7 +257,7 @@ public class LoginManager extends Caster<Msg> {
                 String username = userBrief.achE164;
                 req(Msg.QueryUserDetails, new SessionProcessor<Msg>() {
                     @Override
-                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                    public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                         TQueryUserDetailsRsp detailsRsp = (TQueryUserDetailsRsp) rspContent;
                         if (1000 == detailsRsp.MainParam.dwErrorID){
                             UserDetails userDetails = ToDoConverter.fromTransferObj(detailsRsp.AssParam);

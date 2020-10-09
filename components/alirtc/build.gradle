@@ -3,7 +3,7 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 
-version = '6.0.0-SNAPSHOT'
+version = '6.0.1-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -19,14 +19,12 @@ android {
 dependencies {
 //    compileOnly fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
 
-    implementation 'androidx.appcompat:appcompat:1.1.0'
-
     compileOnly project(':annotation')
     annotationProcessor project(':processor')
 //    implementation project(':amulet')
     implementation project(':common')
     implementation project(':utils')
-    implementation 'com.kedacom.vconf.sdk:amulet:8.0.0-INtfListener-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:amulet:10.0.0-SNAPSHOT'
 
     //-> 阿里sdk引入
     compileOnly fileTree(dir: 'libs/alisdk', include: ['*.jar', '*.aar'])

@@ -32,7 +32,7 @@ public class SecurityManager extends Caster<Msg> {
         BaseTypeBool baseTypeBool = new BaseTypeBool(enable);
         req(Msg.SetEnableInteractiveDebug, new SessionProcessor<Msg>() {
             @Override
-            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 boolean enabled = ((BaseTypeBool) rspContent).basetype;
                 if (enabled){
                     reportSuccess(null, resultListener);
