@@ -432,17 +432,15 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 延长会议
      * @param duration 需要延长的时长。单位：分钟
+     * @param resultListener onSuccess int // 延长后的会议时长。单位：分钟
+     *      *                onTimeout
      * */
     public void prolongConf(int duration, IResultListener resultListener){
         req(Msg.ProlongConf, new SessionProcessor<Msg>() {
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
-                BaseTypeBool res = (BaseTypeBool) rspContent;
-                if(res.basetype){
-                    reportSuccess(null, resultListener);
-                }else {
-                    reportSuccess(RtcResultCode.Failed, resultListener);
-                }
+                BaseTypeInt res = (BaseTypeInt) rspContent;
+                reportSuccess(res.basetype, resultListener);
             }
         }, resultListener, duration);
     }

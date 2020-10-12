@@ -482,21 +482,22 @@ enum Msg {
             owner = ConfCtrl,
             paras = int.class,  // 需要延长的时长。单位：分钟
             userParas = int.class,
-            rspSeq = "ProlongConfRsp"
+            rspSeq = "ConfProlonged"
     )
     ProlongConf,
 
-    @Response(name = "ProlongResultNtf",
-            clz = BaseTypeBool.class)
-    ProlongConfRsp,
+//    @Response(name = "ProlongResultNtf",
+//            clz = BaseTypeBool.class)
+//    ProlongConfRsp,
 
 
     /**
      * 会议已被延长
      * */
-    @Notification(name = "ConfDelayNtf",
-            clz = BaseTypeInt.class // 延长时长。单位：分钟
+    @Response(name = "ConfDelayNtf",
+            clz = BaseTypeInt.class // 延长后的会议时长。单位：分钟
     )
+    @Notification
     ConfProlonged,
 
     /**
