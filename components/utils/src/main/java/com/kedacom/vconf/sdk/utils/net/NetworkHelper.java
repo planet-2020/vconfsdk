@@ -32,8 +32,6 @@ import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 
-import javax.annotation.Nonnull;
-
 /**
  * Created by Sissi on 2019/8/6
  */
@@ -43,7 +41,7 @@ public final class NetworkHelper {
     private static ConnectivityManager connMan;
     private static WifiManager wifiMan;
 
-    public synchronized static void init(@Nonnull Application context){
+    public synchronized static void init(Application context){
         if (null != netInfo){
             return;
         }

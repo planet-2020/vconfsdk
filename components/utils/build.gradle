@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '1.6.6-SNAPSHOT'
+version = '1.6.7-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -9,17 +9,8 @@ android {
 }
 
 dependencies {
-//    implementation fileTree(dir: 'libs', include: ['*.jar'])
-//
-//    implementation 'androidx.appcompat:appcompat:1.0.2'
-//    testImplementation 'junit:junit:4.12'
-//    androidTestImplementation 'androidx.test:runner:1.2.0'
-//    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
-
     implementation 'com.google.code.gson:gson:2.8.5'
-//    implementation "androidx.lifecycle:lifecycle-runtime:2.0.0"
     implementation "androidx.lifecycle:lifecycle-common-java8:2.2.0"
-
     implementation 'com.google.guava:guava:27.0.1-android'
 
     api 'com.annimon:stream:1.2.1'

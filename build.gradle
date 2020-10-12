@@ -166,9 +166,12 @@ def configProject(Project project){
                 }
             }
 
-//            DependencyHandler dependencyHandler = project.getDependencies();
-//            dependencyHandler.add('compileOnly', dependencyHandler.project('path' : ':annotation'))
-//            dependencyHandler.add('annotationProcessor', dependencyHandler.project('path' : ':processor'))
+            // 添加公共依赖
+            DependencyHandler dependencyHandler = project.getDependencies()
+            if (!['common', 'utils', 'amulet'].contains(project.name)){
+                dependencyHandler.add('compileOnly', dependencyHandler.project('path' : ':annotation'))
+                dependencyHandler.add('annotationProcessor', dependencyHandler.project('path' : ':processor'))
+            }
 
             if (project.ext.publish){
                 project.apply from : new File(rootDir, "publish.gradle")

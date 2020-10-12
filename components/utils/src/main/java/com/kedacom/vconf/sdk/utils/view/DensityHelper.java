@@ -1,7 +1,6 @@
 package com.kedacom.vconf.sdk.utils.view;
 
 import android.content.Context;
-import javax.annotation.Nonnull;
 
 /**
  * Created by Sissi on 2019/8/14
@@ -24,7 +23,7 @@ public final class DensityHelper {
      * dip转pixel。
      * @param bRound 转换结果是否需要四舍五入取整。
      * */
-    public static float dpToPx(float dp, @Nonnull Context context, boolean bRound) {
+    public static float dpToPx(float dp, Context context, boolean bRound) {
         return dpToPx(dp, context.getResources().getDisplayMetrics().density, bRound);
     }
 
@@ -44,7 +43,7 @@ public final class DensityHelper {
      * pixel转dip。
      * @param bRound 转换结果是否需要四舍五入取整。
      * */
-    public static float pxToDp(float px, @Nonnull Context context, boolean bRound) {
+    public static float pxToDp(float px, Context context, boolean bRound) {
         return pxToDp(px, context.getResources().getDisplayMetrics().density, bRound);
     }
 
@@ -64,7 +63,7 @@ public final class DensityHelper {
      * sp转pixel。
      * @param bRound 转换结果是否需要四舍五入取整。
      * */
-    public static float spToPx(float sp, @Nonnull Context context, boolean bRound) {
+    public static float spToPx(float sp, Context context, boolean bRound) {
         return spToPx(sp, context.getResources().getDisplayMetrics().scaledDensity,bRound);
     }
 
@@ -85,7 +84,7 @@ public final class DensityHelper {
      * pixel转sp
      * @param bRound 转换结果是否需要四舍五入取整。
      * */
-    public static float pxToSp(float px, @Nonnull Context context, boolean bRound) {
+    public static float pxToSp(float px, Context context, boolean bRound) {
         return pxToSp(px, context.getResources().getDisplayMetrics().scaledDensity, bRound);
     }
 
