@@ -13,5 +13,7 @@ dependencies {
     implementation 'com.kedacom.vconf.sdk:common:1.2.11-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:utils:1.6.7-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:amulet:10.0.1-SNAPSHOT'
+
+    implementation "androidx.lifecycle:lifecycle-common-java8:2.2.0"
 }
 

@@ -168,6 +168,9 @@ def configProject(Project project){
 
             // 添加公共依赖
             DependencyHandler dependencyHandler = project.getDependencies()
+            dependencyHandler.add('implementation', dependencyHandler.module('androidx.annotation:annotation:1.1.0'))
+            dependencyHandler.add('implementation', dependencyHandler.module('com.google.guava:guava:27.0.1-android'))
+            dependencyHandler.add('implementation', dependencyHandler.module('com.annimon:stream:1.2.1'))
             if (!['common', 'utils', 'amulet'].contains(project.name)){
                 dependencyHandler.add('compileOnly', dependencyHandler.project('path' : ':annotation'))
                 dependencyHandler.add('annotationProcessor', dependencyHandler.project('path' : ':processor'))

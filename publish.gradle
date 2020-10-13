@@ -1,150 +1,32 @@
 apply plugin: 'maven-publish'
 
-//plugins {
-////    id 'java-library'
-//    id 'maven-publish'
-//    id 'signing'
-//}
-
-//group = 'com.example'
-//version = '1.0'
-
-//task sourcesJar(type: Jar) {
-//    from sourceSets.main.allJava
-//    classifier = 'sources'
-//}
-//
-//task javadocJar(type: Jar) {
-//    from javadoc
-//    classifier = 'javadoc'
-//}
-
-task sourceJar(type: Jar) {
-    from android.sourceSets.main.java.srcDirs
-    classifier "sources"
-}
-
-publishing {
-    publications {
-//        maven(MavenPublication) {
-//            artifactId = 'my-library'
-//            from components.java
-
-//            artifact sourcesJar
-//            artifact javadocJar
-
-//            pom {
-//                name = 'My Library'
-//                description = 'A concise description of my library'
-//                url = 'http://www.example.com/library'
-//                licenses {
-//                    license {
-//                        name = 'The Apache License, Version 2.0'
-//                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-//                    }
-//                }
-//                developers {
-//                    developer {
-//                        id = 'johnd'
-//                        name = 'John Doe'
-//                        email = 'john.doe@example.com'
-//                    }
-//                }
-//                scm {
-//                    connection = 'scm:git:git://example.com/my-library.git'
-//                    developerConnection = 'scm:git:ssh://example.com/my-library.git'
-//                    url = 'http://example.com/my-library/'
-//                }
-//            }
-
-//        }
-
-        "${project.name}"(MavenPublication) {
-//            logger.quiet("prject info: groupId=$project.group, artifactId=$project.name, version=$project.version")
-            artifact(sourceJar)
-            artifact("$buildDir/outputs/aar/${project.name}-release.aar")
-//            artifact("$buildDir/outputs/aar/${project.name}-debug.aar")  // NOTE: 注意下面依赖assemble要同步修改
-
-            /** 生成依赖。（maven-publish插件针对android不能将依赖自动写入pom文件中，故需要我们手动生成依赖信息写入pom）
-             * Publishing a custom primary artifact (no component):
-             * https://docs.gradle.org/current/userguide/publishing_overview.html
-             * */
-            pom.withXml {
-                def dependenciesNode = asNode().getAt('dependencies')[0]
-                if (dependenciesNode == null) {
-                    dependenciesNode = asNode().appendNode('dependencies') // 创建pom文件的dependencies节点
-                }
-                logger.quiet("=========dependencies:")
-                configurations.implementation.allDependencies.each {
-                    logger.quiet("groupId=$it.group, artifactId=$it.name, version=$it.version")
-                    if ("unspecified"==it.name || "unspecified"==it.version){
-                        return
-                    }
-                    def dependencyNode = dependenciesNode.appendNode('dependency') // 创建dependency节点
-                    dependencyNode.appendNode('groupId', it.group)
-                    dependencyNode.appendNode('artifactId', it.name)
-                    dependencyNode.appendNode('version', it.version)
-                    dependencyNode.appendNode('scope', "compile")
-                }
-
+afterEvaluate {
+    publishing {
+        publications {
+            "${project.name}"(MavenPublication) {
+                from components.release
+                artifact sourceJar
             }
         }
 
-
-     }
-
-    repositories {
-        maven {
-            name = 'keda'
+        repositories {
+            maven {
+                name = 'keda'
 //            def releasesRepoUrl = "$buildDir/repos/releases"  // 调试用可直接发布到本地
 //            def snapshotsRepoUrl = "$buildDir/repos/snapshots"
-            def releasesRepoUrl = "http://172.16.6.154:9081/repository/releases/"
-            def snapshotsRepoUrl = "http://172.16.6.154:9081/repository/snapshots/"
-            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
-            credentials {
-                username "TrueTouch_Android"
-                password "android"
+                def releasesRepoUrl = "http://172.16.6.154:9081/repository/releases/"
+                def snapshotsRepoUrl = "http://172.16.6.154:9081/repository/snapshots/"
+                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                credentials {
+                    username "TrueTouch_Android"
+                    password "android"
+                }
             }
         }
     }
 }
 
 
-/* 添加对assembleRelease的依赖，使得发布前自动构建。
-因为发布task名称是项目配置阶段完成后动态生成的（publish${PubName}PublicationToRepoNameRepository|publish${PubName}PublicationToMavenLocal ）
-这就以为着无法在脚本中直接访问发布task的名称。所以使用下面的句块在配置完成后动态分析并创建依赖关系*/
-tasks.withType(AbstractPublishToMaven).all {  // AbstractPublishToMaven是PublishToMavenRepository和PublishToMavenLocal共同的父类。这意味着无论是上传到远程仓库还是本地仓库都会先执行构建。
-//    def matcher = name =~ /generatePomFileFor(\w+)Publication/
-//    def matcher = name =~ /publish(\w+)PublicationToMavenLocal/
-//    def publicationName = matcher[0][1]
-//    destination = "$buildDir/poms/${publicationName}-pom.xml"
-//    logger.quiet("publish task name: $it, name=$name")
-//        logger.quiet("publish task name: $it, name=$name, matcher=$matcher")
-//        logger.quiet("publish task name: $it, name=$name, publicationName=$publicationName")
-//    logger.quiet("publish task name: $it, name=$name, publicationName=$publicationName, matcher=$matcher")
-
-        dependsOn "assembleRelease"
-
-//    dependsOn "assembleDebug"
+task sourceJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
 }
-
-//signing {
-//    sign publishing.publications.mavenJava
-//}
-//
-//
-//javadoc {
-//    if(JavaVersion.current().isJava9Compatible()) {
-//        options.addBooleanOption('html4', true)
-//    }
-//}
-
-
-//task publishToExternalRepository {
-//    group = 'publishing'
-//    description = 'Publishes all Maven publications to the external Maven repository.'
-//    dependsOn tasks.withType(PublishToMavenRepository).matching {
-//        it.repository == publishing.repositories.external // TODO 一次性发布所有组件
-////        println "repo=$it.repository, publishing.repositories=$publishing.repositories"
-//    }
-//}
