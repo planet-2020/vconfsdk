@@ -285,27 +285,20 @@ public class WebRtcManager extends Caster<Msg>{
                     public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                         switch (rsp){
                             case Calling:
-                                if (EmConfProtocol.emrtc != ((TMtCallLinkSate) rspContent).emConfProtocol){
+                                TMtCallLinkSate sate = (TMtCallLinkSate) rspContent;
+                                if (EmConfProtocol.emrtc != sate.emConfProtocol){
                                     isConsumed[0] = false;
                                 }
                                 break;
                             case MultipartyConfStarted:
-                                // 表示入会已经成功了，但是有可能还需要输入密码
-                                reportProgress(null, resultListener);
+                                sate = (TMtCallLinkSate) rspContent;
+                                if (EmConfProtocol.emrtc == sate.emConfProtocol){
+                                    reportSuccess(ToDoConverter.callLinkState2MakeCallResult(sate, bAudio), resultListener);
+                                }else{
+                                    isConsumed[0] = false;
+                                }
+                                break;
 
-                                handler.removeCallbacks(runnable);
-                                runnable = () -> {
-                                    cancelReq(req, resultListener);
-                                    // 未等到可能的”需要密码“消息，此时我们认为该会议不需要密码，上报用户入会成功
-                                    reportSuccess(ToDoConverter.callLinkState2MakeCallResult((TMtCallLinkSate) rspContent, bAudio), resultListener);
-                                };
-                                // 等待可能的”需要密码“消息
-                                handler.postDelayed(runnable, 1000);
-                                break;
-                            case ConfPasswordNeeded:
-                                handler.removeCallbacks(runnable);
-                                reportFailed(RtcResultCode.ConfNeedPassword, resultListener);
-                                break;
                             case ConfCanceled:
                                 stopSession();
                                 reportFailed(RtcResultCode.trans(rsp, ((BaseTypeInt) rspContent).basetype), resultListener);
@@ -1282,6 +1275,10 @@ public class WebRtcManager extends Caster<Msg>{
             case ConfManSMSArrived:
                 ConfManSMS sms = ToDoConverter.TShortMsg2ConfManSMS((TShortMsg) ntfContent);
                 Stream.of(getNtfListeners(ConfManSMSListener.class)).forEach(it -> it.onConfManSMS(sms));
+                break;
+
+            case ConfPasswordNeeded:
+                Stream.of(getNtfListeners(ConfPasswordNeededListener.class)).forEach(ConfPasswordNeededListener::onConfPasswordNeeded);
                 break;
 
         }
@@ -5433,6 +5430,13 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public interface ConfManSMSListener extends INtfListener{
         void onConfManSMS(ConfManSMS sms);
+    }
+
+    /**
+     * 需要会议密码监听器
+     * */
+    public interface ConfPasswordNeededListener extends INtfListener{
+        void onConfPasswordNeeded();
     }
 
 }

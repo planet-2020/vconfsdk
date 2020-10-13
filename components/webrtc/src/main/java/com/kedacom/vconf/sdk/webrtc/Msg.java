@@ -100,10 +100,7 @@ enum Msg {
                     EmConfProtocol.class   // 协议类型
             },
             timeout = 60,
-//            rspSeq = {"Calling", "MultipartyConfStarted"}, // 并非所有会议均需要密码，但是如果定义此消息序列会对下面的消息序列造成“短路”，
-                                                             // 进而使得需要密码的情形无法正常处理。所以我们注掉此消息序列转而使用如下“全量“的消息序列
-                                                             // 对于没有密码的情形，用户可能需要手动处理，否则会话会一直等待ConfPasswordNeeded直到超时。
-            rspSeq2 = {"Calling", "MultipartyConfStarted", "ConfPasswordNeeded"},
+            rspSeq2 = {"Calling", "MultipartyConfStarted"},
             rspSeq3 = {"Calling", "ConfCanceled"}
             )
     Call,
