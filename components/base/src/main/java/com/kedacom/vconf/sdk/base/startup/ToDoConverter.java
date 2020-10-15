@@ -1,7 +1,7 @@
 package com.kedacom.vconf.sdk.base.startup;
 
-import com.kedacom.vconf.sdk.common.bean.TerminalType;
-import com.kedacom.vconf.sdk.common.constant.EmMtModel;
+import com.kedacom.vconf.sdk.common.type.TerminalType;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtModel;
 
 /**
  * Created by Sissi on 2019/8/5

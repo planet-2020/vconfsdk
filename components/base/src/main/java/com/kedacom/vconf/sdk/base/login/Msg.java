@@ -6,9 +6,9 @@ import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.*;
-import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
+import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
-import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
+import com.kedacom.vconf.sdk.common.type.transfer.TRestErrorInfo;
 
 import static com.kedacom.vconf.sdk.annotation.Request.*;
 

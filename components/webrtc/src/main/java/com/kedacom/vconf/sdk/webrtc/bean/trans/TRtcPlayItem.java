@@ -1,8 +1,8 @@
 package com.kedacom.vconf.sdk.webrtc.bean.trans;
 
-import com.kedacom.vconf.sdk.common.constant.EmCodecComponent;
-import com.kedacom.vconf.sdk.common.constant.EmCodecComponentIndex;
-import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
+import com.kedacom.vconf.sdk.common.type.transfer.EmCodecComponent;
+import com.kedacom.vconf.sdk.common.type.transfer.EmCodecComponentIndex;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtResolution;
 
 /**
  * Created by Sissi on 2019/10/24

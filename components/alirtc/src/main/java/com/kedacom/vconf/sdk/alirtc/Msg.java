@@ -11,8 +11,8 @@ import com.kedacom.vconf.sdk.annotation.Module;
 import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
-import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
-import com.kedacom.vconf.sdk.common.type.TNetAddr;
+import com.kedacom.vconf.sdk.common.type.transfer.TRegResultNtf;
+import com.kedacom.vconf.sdk.common.type.transfer.TNetAddr;
 
 import static com.kedacom.vconf.sdk.annotation.Request.*;
 

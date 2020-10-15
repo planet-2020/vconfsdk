@@ -26,8 +26,8 @@ import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtPlatformApiAddr;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtSvrState;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.TMtSvrStateList;
 import com.kedacom.vconf.sdk.base.login.bean.transfer.TQueryUserDetailsRsp;
-import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
-import com.kedacom.vconf.sdk.common.type.TRestErrorInfo;
+import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
+import com.kedacom.vconf.sdk.common.type.transfer.TRestErrorInfo;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.net.NetAddrHelper;
 

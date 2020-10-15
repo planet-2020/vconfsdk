@@ -10,7 +10,7 @@ import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TCheckUpgradeRsp;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTSUSAddr;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeClientInfo;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeDownloadInfo;
-import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
+import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
 
 import static com.kedacom.vconf.sdk.annotation.Request.*;
 

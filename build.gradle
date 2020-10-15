@@ -123,21 +123,24 @@ subprojects {
     group = MYGROUP
     ext.publish = true
     configRepo(project, false)
-    configProject(project)
+    configSubProject(project)
 }
 
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
-def configProject(Project project){
+def configSubProject(Project project){
 //    logger.quiet("configProject $project")
-    project.afterEvaluate {
-//        logger.quiet("project $project, publish=$project.ext.publish, plugins=$project.plugins")
-        if (project.plugins.hasPlugin(com.android.build.gradle.LibraryPlugin)
-//                || project.plugins.hasPlugin(com.android.build.gradle.AppPlugin)
-        ){
-            project.android{
+    if (['annotation', 'processor'].contains(project.name)){
+        project.afterEvaluate{
+            project.sourceCompatibility = SOURCE_JAVA_VERSION
+            project.targetCompatibility = TARGET_JAVA_VERSION
+        }
+    }else{
+
+        project.afterEvaluate {
+            project.android {
                 compileSdkVersion COMPILE_SDK_VERSION
                 defaultConfig {
                     minSdkVersion MIN_SDK_VERSION
@@ -146,7 +149,7 @@ def configProject(Project project){
                         abiFilters ABI_FILTERS
                     }
                     buildConfigField("String", "VERSION", "\"$project.version\"")
-                    buildConfigField("String", "TIMESTAMP", "\""+new Date().format("yyyy-MM-dd HH:mm")+"\"")
+                    buildConfigField("String", "TIMESTAMP", "\"" + new Date().format("yyyy-MM-dd HH:mm") + "\"")
                 }
                 buildTypes {
                     release {
@@ -166,24 +169,20 @@ def configProject(Project project){
                 }
             }
 
-            // 添加公共依赖
+            // 公共依赖
             DependencyHandler dependencyHandler = project.getDependencies()
             dependencyHandler.add('implementation', dependencyHandler.module('androidx.annotation:annotation:1.1.0'))
             dependencyHandler.add('implementation', dependencyHandler.module('com.google.guava:guava:27.0.1-android'))
             dependencyHandler.add('implementation', dependencyHandler.module('com.annimon:stream:1.2.1'))
-            if (!['common', 'utils', 'amulet'].contains(project.name)){
+            if (!['common', 'utils', 'amulet'].contains(project.name)) {
                 dependencyHandler.add('compileOnly', dependencyHandler.project('path' : ':annotation'))
                 dependencyHandler.add('annotationProcessor', dependencyHandler.project('path' : ':processor'))
             }
 
-            if (project.ext.publish){
-                project.apply from : new File(rootDir, "publish.gradle")
+            if (project.ext.publish) {
+                project.apply from: new File(rootDir, "publish.gradle")
             }
 
-        }else if (project.plugins.hasPlugin(JavaPlugin)){
-//            logger.quiet("###############org.gradle.java, project $project")
-            project.sourceCompatibility = SOURCE_JAVA_VERSION
-            project.targetCompatibility = TARGET_JAVA_VERSION
         }
     }
 

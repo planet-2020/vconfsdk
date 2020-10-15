@@ -1,6 +1,6 @@
 package com.kedacom.vconf.sdk.webrtc.bean.trans;
 
-import com.kedacom.vconf.sdk.common.constant.EmMtVmpStyle;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtVmpStyle;
 
 import java.util.List;
 

@@ -17,8 +17,8 @@ import com.kedacom.mt.netmanage.protobuf.StructConfPB;
 import com.kedacom.osp.BodyItem;
 import com.kedacom.osp.EmMtOspMsgSys;
 import com.kedacom.osp.MtMsg;
-import com.kedacom.vconf.sdk.common.constant.EmAudFormat;
-import com.kedacom.vconf.sdk.common.constant.EmVidFormat;
+import com.kedacom.vconf.sdk.common.type.transfer.EmAudFormat;
+import com.kedacom.vconf.sdk.common.type.transfer.EmVidFormat;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.webrtc.bean.Statistics;
 

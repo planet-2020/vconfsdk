@@ -8,7 +8,7 @@ import com.kedacom.vconf.sdk.annotation.Response;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.MtLoginMtParam;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.TMTLoginMtResult;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.TNetWorkInfo;
-import com.kedacom.vconf.sdk.common.constant.EmMtModel;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtModel;
 
 import static com.kedacom.vconf.sdk.annotation.Request.*;
 

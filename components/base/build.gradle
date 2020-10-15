@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-version = '7.0.2-SNAPSHOT'
+version = '8.0.0-SNAPSHOT'
 android {
     defaultConfig {
         versionCode 1
@@ -12,7 +12,7 @@ dependencies {
 //    implementation fileTree(dir: 'libs', include: ['*.jar'])
     compileOnly files('libs/mtapi.jar') //NOTE: 我们只是编译时使用mtapi.jar，因为用户会引入mtcapi-jni.jar包含了所有的native接口定义。
 
-    implementation 'com.kedacom.vconf.sdk:common:1.2.11-SNAPSHOT'
+    api 'com.kedacom.vconf.sdk:common:2.0.0-SNAPSHOT'
     implementation 'com.kedacom.vconf.sdk:utils:1.6.7-SNAPSHOT'
-    implementation 'com.kedacom.vconf.sdk:amulet:10.0.1-SNAPSHOT'
+    api 'com.kedacom.vconf.sdk:amulet:10.1.0-SNAPSHOT'
 }

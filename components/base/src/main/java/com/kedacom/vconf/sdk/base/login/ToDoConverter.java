@@ -2,8 +2,8 @@ package com.kedacom.vconf.sdk.base.login;
 
 import com.kedacom.vconf.sdk.base.login.bean.DepartmentInfo;
 import com.kedacom.vconf.sdk.base.login.bean.UserDetails;
-import com.kedacom.vconf.sdk.common.bean.transfer.TMTWbParseKedaDept;
-import com.kedacom.vconf.sdk.common.bean.transfer.TMTWbParseKedaEntUser;
+import com.kedacom.vconf.sdk.common.type.transfer.TMTWbParseKedaDept;
+import com.kedacom.vconf.sdk.common.type.transfer.TMTWbParseKedaEntUser;
 
 import java.util.HashMap;
 import java.util.Map;

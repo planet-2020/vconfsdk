@@ -27,28 +27,30 @@ import com.google.common.collect.HashBiMap;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.INtfListener;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
-import com.kedacom.vconf.sdk.common.bean.transfer.TMtEntityStatus;
-import com.kedacom.vconf.sdk.common.bean.transfer.TRegResultNtf;
-import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
-import com.kedacom.vconf.sdk.common.constant.EmConfProtocol;
-import com.kedacom.vconf.sdk.common.constant.EmMtAliasType;
-import com.kedacom.vconf.sdk.common.constant.EmMtCallDisReason;
-import com.kedacom.vconf.sdk.common.constant.EmMtChanState;
-import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
+import com.kedacom.vconf.sdk.common.type.Converter;
+import com.kedacom.vconf.sdk.common.type.HangupConfReason;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtEntityStatus;
+import com.kedacom.vconf.sdk.common.type.transfer.TRegResultNtf;
+import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
+import com.kedacom.vconf.sdk.common.type.transfer.EmConfProtocol;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtAliasType;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtCallDisReason;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtChanState;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtResolution;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
-import com.kedacom.vconf.sdk.common.type.EmAPIVersionType;
-import com.kedacom.vconf.sdk.common.type.vconf.EmMtModifyConfInfoType;
-import com.kedacom.vconf.sdk.common.type.vconf.TAssVidStatus;
-import com.kedacom.vconf.sdk.common.type.vconf.TMTEntityInfo;
-import com.kedacom.vconf.sdk.common.type.vconf.TMTEntityInfoList;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtAlias;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtAssVidStatusList;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtCallLinkSate;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtId;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtIdList;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtSimpConfInfo;
-import com.kedacom.vconf.sdk.common.type.vconf.TShortMsg;
+import com.kedacom.vconf.sdk.common.type.transfer.EmAPIVersionType;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtModifyConfInfoType;
+import com.kedacom.vconf.sdk.common.type.transfer.TAssVidStatus;
+import com.kedacom.vconf.sdk.common.type.transfer.TMTEntityInfo;
+import com.kedacom.vconf.sdk.common.type.transfer.TMTEntityInfoList;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtAlias;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtAssVidStatusList;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtId;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtIdList;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtSimpConfInfo;
+import com.kedacom.vconf.sdk.common.type.transfer.TShortMsg;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.ConnType;
@@ -382,11 +384,11 @@ public class WebRtcManager extends Caster<Msg>{
 
     /**
      * 退出会议。
-     * @param disReason 原因码
+     * @param reason 退会原因码
      * @param resultListener onSuccess null
      *                       onFailed
      * */
-    public void quitConf(EmMtCallDisReason disReason, IResultListener resultListener){
+    public void quitConf(HangupConfReason reason, IResultListener resultListener){
         if (!stopSession()){
             reportFailed(-1, resultListener);
             return;
@@ -399,7 +401,7 @@ public class WebRtcManager extends Caster<Msg>{
                 // TODO 判断resCode
                 reportSuccess(null, resultListener);
             }
-        }, resultListener, disReason);
+        }, resultListener, Converter.HangupConfReason2EmMtCallDisReason(reason));
     }
 
 

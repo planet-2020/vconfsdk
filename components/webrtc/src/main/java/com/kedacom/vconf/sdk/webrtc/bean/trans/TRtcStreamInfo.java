@@ -1,7 +1,7 @@
 package com.kedacom.vconf.sdk.webrtc.bean.trans;
 
-import com.kedacom.vconf.sdk.common.constant.EmMtResolution;
-import com.kedacom.vconf.sdk.common.type.vconf.TMtId;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtResolution;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtId;
 
 import java.util.List;
 

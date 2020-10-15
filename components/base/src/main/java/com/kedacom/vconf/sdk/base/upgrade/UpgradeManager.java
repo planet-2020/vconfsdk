@@ -20,8 +20,8 @@ import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeDeviceInfo;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeDownloadInfo;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeNetParam;
 import com.kedacom.vconf.sdk.base.upgrade.bean.transfer.TMTUpgradeVersionInfo;
-import com.kedacom.vconf.sdk.common.bean.TerminalType;
-import com.kedacom.vconf.sdk.common.bean.transfer.TSrvStartResult;
+import com.kedacom.vconf.sdk.common.type.TerminalType;
+import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.utils.file.FileHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 

@@ -13,8 +13,8 @@ import com.kedacom.vconf.sdk.base.startup.bean.transfer.EmAuthType;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.EmClientAppType;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.MtLoginMtParam;
 import com.kedacom.vconf.sdk.base.startup.bean.transfer.TMTLoginMtResult;
-import com.kedacom.vconf.sdk.common.bean.TerminalType;
-import com.kedacom.vconf.sdk.common.constant.EmMtModel;
+import com.kedacom.vconf.sdk.common.type.TerminalType;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtModel;
 import com.kedacom.vconf.sdk.utils.file.FileHelper;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 
