@@ -8,7 +8,8 @@ public final class TMtId {
     public int         dwTerId;                ///< 终端 号码
 
     public boolean isValid(){
-        return dwMcuId != 0 || dwTerId != 0;
+        // NOTE: 此为目前经平台确认的有效范围，将来很可能变更！！！到时候请记起此坑！
+        return 0< dwTerId && dwTerId<=192;
     }
 
     public TMtId(int dwMcuId, int dwTerId) {

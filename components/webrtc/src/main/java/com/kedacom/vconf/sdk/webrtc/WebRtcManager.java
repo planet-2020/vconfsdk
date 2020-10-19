@@ -1312,6 +1312,10 @@ public class WebRtcManager extends Caster<Msg>{
 
                         TConfereeOnStage confereeOnStage = (TConfereeOnStage) ntfContent;
                         TMtId mtId = confereeOnStage.AssParam.tTer;
+                        if (!mtId.isValid()){
+                            KLog.p(KLog.ERROR, "invalid conferee(mcu=%s, ter=%s)", mtId.dwMcuId, mtId.dwTerId);
+                            return;
+                        }
                         Conferee conferee = findConferee(mtId.dwMcuId, mtId.dwTerId, Conferee.ConfereeType.Normal);
                         if (conferee == null){
                             if (triedCount == 3){
@@ -1355,6 +1359,13 @@ public class WebRtcManager extends Caster<Msg>{
                             return;
                         }
                         List<Conferee> conferees = Stream.of(vmpParam.atVmpItem)
+                                .filter(it -> {
+                                    boolean valid = it.tMtid.isValid();
+                                    if (!valid){
+                                        KLog.p(KLog.WARN, "invalid conferee(mcu=%s, ter=%s)", it.tMtid.dwMcuId, it.tMtid.dwTerId);
+                                    }
+                                    return valid;
+                                })
                                 .map(it -> {
                                     Conferee c = findConferee(it.tMtid.dwMcuId, it.tMtid.dwTerId, Conferee.ConfereeType.Normal);
                                     if (c != null) {
