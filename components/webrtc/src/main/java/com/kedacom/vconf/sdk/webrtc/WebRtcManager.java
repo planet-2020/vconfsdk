@@ -232,7 +232,7 @@ public class WebRtcManager extends Caster<Msg>{
             @Override
             public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
                 TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) output;
-                if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0 || rtcSvrAddr.achIpv6.isEmpty()){
+                if (null == rtcSvrAddr || (rtcSvrAddr.dwIp<= 0 && rtcSvrAddr.achIpv6.isEmpty())){
                     KLog.p(KLog.ERROR, "invalid rtcSvrAddr");
                     reportFailed(-1, resultListener);
                     return;
