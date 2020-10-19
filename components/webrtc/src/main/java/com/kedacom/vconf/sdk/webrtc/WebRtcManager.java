@@ -27,36 +27,53 @@ import com.google.common.collect.HashBiMap;
 import com.kedacom.vconf.sdk.amulet.Caster;
 import com.kedacom.vconf.sdk.amulet.INtfListener;
 import com.kedacom.vconf.sdk.amulet.IResultListener;
-import com.kedacom.vconf.sdk.common.type.Converter;
-import com.kedacom.vconf.sdk.common.type.HangupConfReason;
-import com.kedacom.vconf.sdk.common.type.transfer.TMtEntityStatus;
-import com.kedacom.vconf.sdk.common.type.transfer.TRegResultNtf;
-import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
-import com.kedacom.vconf.sdk.common.type.transfer.EmConfProtocol;
-import com.kedacom.vconf.sdk.common.type.transfer.EmMtAliasType;
-import com.kedacom.vconf.sdk.common.type.transfer.EmMtCallDisReason;
-import com.kedacom.vconf.sdk.common.type.transfer.EmMtChanState;
-import com.kedacom.vconf.sdk.common.type.transfer.EmMtResolution;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
+import com.kedacom.vconf.sdk.common.type.Converter;
+import com.kedacom.vconf.sdk.common.type.HangupConfReason;
 import com.kedacom.vconf.sdk.common.type.transfer.EmAPIVersionType;
+import com.kedacom.vconf.sdk.common.type.transfer.EmConfProtocol;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtAliasType;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtChanState;
 import com.kedacom.vconf.sdk.common.type.transfer.EmMtModifyConfInfoType;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtResolution;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtVmpMode;
 import com.kedacom.vconf.sdk.common.type.transfer.TAssVidStatus;
+import com.kedacom.vconf.sdk.common.type.transfer.TConfereeOnStage;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTEntityInfo;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtCustomVmpParam;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtEntityStatus;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtId;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtIdList;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtSimpConfInfo;
+import com.kedacom.vconf.sdk.common.type.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.type.transfer.TShortMsg;
+import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.ConnType;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.MediaType;
-import com.kedacom.vconf.sdk.webrtc.bean.*;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfInvitationInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfManSMS;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfPara;
+import com.kedacom.vconf.sdk.webrtc.bean.ConfType;
+import com.kedacom.vconf.sdk.webrtc.bean.CreateConfResult;
+import com.kedacom.vconf.sdk.webrtc.bean.MakeCallResult;
+import com.kedacom.vconf.sdk.webrtc.bean.Statistics;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TAPIVersion;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TConfSettingsModified;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TQueryConfInfoResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayItem;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfo;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
 
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
@@ -215,7 +232,7 @@ public class WebRtcManager extends Caster<Msg>{
             @Override
             public void onReqSent(IResultListener resultListener, Msg req, Object[] reqParas, Object output) {
                 TMtRtcSvrAddr rtcSvrAddr = (TMtRtcSvrAddr) output;
-                if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0){
+                if (null == rtcSvrAddr || rtcSvrAddr.dwIp<= 0 || rtcSvrAddr.achIpv6.isEmpty()){
                     KLog.p(KLog.ERROR, "invalid rtcSvrAddr");
                     reportFailed(-1, resultListener);
                     return;
@@ -1124,13 +1141,10 @@ public class WebRtcManager extends Caster<Msg>{
 
                     @Override
                     public void run() {
+                        ++triedCount;
+
                         TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
                         TMtId mtId = briefConfInfo.tChairman;
-                        if (triedCount > 3){
-                            KLog.p(KLog.ERROR, "tried %s times, presenter(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
-                            return;
-                        }
-                        ++triedCount;
 
                         Conferee predecessor = findPresenter();
                         if (!mtId.isValid()){
@@ -1150,6 +1164,10 @@ public class WebRtcManager extends Caster<Msg>{
                         }
 
                         if (successor == null){
+                            if (triedCount == 3){
+                                KLog.p(KLog.ERROR, "tried %s times, presenter(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
+                                return;
+                            }
                             KLog.p(KLog.WARN, "presenter(mcu=%s, ter=%s) has not joined yet, wait for a moment...", mtId.dwMcuId, mtId.dwTerId);
                             // 与会方入会消息尚未抵达，我们延后处理
                             handler.postDelayed(this, 1000);
@@ -1176,16 +1194,13 @@ public class WebRtcManager extends Caster<Msg>{
 
                     @Override
                     public void run() {
+                        ++triedCount;
+
                         TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
                         TMtId mtId = briefConfInfo.tSpeaker;
                         if (!mtId.isValid()){
                             return;
                         }
-                        if (triedCount > 3){
-                            KLog.p(KLog.ERROR, "tried %s times, keynoteSpeaker(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
-                            return;
-                        }
-                        ++triedCount;
 
                         Conferee predecessor = findKeynoteSpeaker();
                         if (!mtId.isValid()){
@@ -1205,6 +1220,10 @@ public class WebRtcManager extends Caster<Msg>{
                         }
 
                         if (successor == null){
+                            if (triedCount == 3){
+                                KLog.p(KLog.ERROR, "tried %s times, keynoteSpeaker(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
+                                return;
+                            }
                             KLog.p(KLog.WARN, "keynoteSpeaker(mcu=%s, ter=%s) has not joined yet, wait for a moment...", mtId.dwMcuId, mtId.dwTerId);
                             // 与会方入会消息尚未抵达，我们延后处理
                             handler.postDelayed(this, 1000);
@@ -1234,10 +1253,6 @@ public class WebRtcManager extends Caster<Msg>{
 
                     @Override
                     public void run() {
-                        if (triedCount > 3){
-                            KLog.p(KLog.ERROR, "tried %s times, some vips has still not joined yet");
-                            return;
-                        }
                         ++triedCount;
 
                         Set<Conferee> oldVips = findVIPs();
@@ -1254,6 +1269,10 @@ public class WebRtcManager extends Caster<Msg>{
                                 .collect(Collectors.toSet());
 
                         if (tMtIds.size() != newVips.size()){
+                            if (triedCount == 3){
+                                KLog.p(KLog.ERROR, "tried %s times, some vips has still not joined yet");
+                                return;
+                            }
                             KLog.p(KLog.WARN, "some vips has not joined yet, wait for a moment...");
                             // 与会方入会消息尚未抵达，我们延后处理
                             handler.postDelayed(this, 1000);
@@ -1281,6 +1300,92 @@ public class WebRtcManager extends Caster<Msg>{
 
             case ConfPasswordNeeded:
                 Stream.of(getNtfListeners(ConfPasswordNeededListener.class)).forEach(ConfPasswordNeededListener::onConfPasswordNeeded);
+                break;
+
+            case ConfereeOnStage:
+                handler.post(new Runnable() {
+                    int triedCount;
+
+                    @Override
+                    public void run() {
+                        ++triedCount;
+
+                        TConfereeOnStage confereeOnStage = (TConfereeOnStage) ntfContent;
+                        TMtId mtId = confereeOnStage.AssParam.tTer;
+                        Conferee conferee = findConferee(mtId.dwMcuId, mtId.dwTerId, Conferee.ConfereeType.Normal);
+                        if (conferee == null){
+                            if (triedCount == 3){
+                                KLog.p(KLog.ERROR, "tried %s times, onstage conferee(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
+                                return;
+                            }
+                            KLog.p(KLog.WARN, "onstage conferee(mcu=%s, ter=%s) has not joined yet, wait for a moment...", mtId.dwMcuId, mtId.dwTerId);
+                            // 与会方入会消息尚未抵达，我们延后处理
+                            handler.postDelayed(this, 1000);
+                            return;
+                        }
+                        boolean onStage = confereeOnStage.MainParam.basetype && confereeOnStage.AssParam.bForce;
+                        if (conferee.isOnStage() != onStage) {
+                            conferee.setOnStage(onStage);
+                            if (onStage) {
+                                Stream.of(getNtfListeners(ConfereeOnStageListener.class)).forEach(it -> it.onConfereeOnStage(Collections.singletonList(conferee)));
+                            } else {
+                                Stream.of(getNtfListeners(ConfereeOnStageListener.class)).forEach(it -> it.onConfereeLeaveStage(Collections.singletonList(conferee)));
+                            }
+                        }
+                    }
+
+                });
+                break;
+
+            case ScenesComposited:
+                handler.post(new Runnable() {
+                    int triedCount;
+
+                    @Override
+                    public void run() {
+                        ++triedCount;
+
+                        TMtCustomVmpParam vmpParam = (TMtCustomVmpParam) ntfContent;
+                        if (vmpParam.emVmpMode != EmMtVmpMode.emMt_VMP_MODE_CTRL){
+                            KLog.p(KLog.WARN, "ignore vmp mode %s", vmpParam.emVmpMode);
+                            return;
+                        }
+                        if (vmpParam.atVmpItem.isEmpty()){
+                            KLog.p(KLog.WARN, "vmp list empty");
+                            return;
+                        }
+                        List<Conferee> conferees = Stream.of(vmpParam.atVmpItem)
+                                .map(it -> {
+                                    Conferee c = findConferee(it.tMtid.dwMcuId, it.tMtid.dwTerId, Conferee.ConfereeType.Normal);
+                                    if (c != null) {
+                                        c.setOnStage(vmpParam.bForce);
+                                        c.setOnStageOrder(it.dwVmpItem_Idx);
+                                    }
+                                    return c;
+                                })
+                                .sorted((o1, o2) -> {
+                                    int order1 = o1 != null ? o1.getOnStageOrder() : 9999;
+                                    int order2 = o2 != null ? o2.getOnStageOrder() : 9999;
+                                    return order1 - order2;
+                                })
+                                .collect(Collectors.toList());
+                        if (conferees.contains(null)){
+                            if (triedCount == 3){
+                                KLog.p(KLog.ERROR, "tried %s times, some onstage conferee has still not joined yet", triedCount);
+                                return;
+                            }
+                            KLog.p(KLog.WARN, "some onstage conferee has not joined yet, wait for a moment...");
+                            handler.postDelayed(this, 1000);
+                            return;
+                        }
+
+                        if (vmpParam.bForce){
+                            Stream.of(getNtfListeners(ConfereeOnStageListener.class)).forEach(it-> it.onConfereeOnStage(conferees));
+                        }else {
+                            Stream.of(getNtfListeners(ConfereeOnStageListener.class)).forEach(it-> it.onConfereeLeaveStage(conferees));
+                        }
+                    }
+                });
                 break;
 
         }
@@ -1824,6 +1929,10 @@ public class WebRtcManager extends Caster<Msg>{
         private boolean isMuted;
         // 音量[0, 100]
         private int volume;
+        // 是否处于被选看状态
+        private boolean isOnStage;
+        // 选看次序，次序越靠前的优先级越高。0的优先级最高。
+        private int onStageOrder;
 
         // 音频通道状态
         private AudioChannelState audioChannelState = AudioChannelState.Idle;
@@ -1980,6 +2089,22 @@ public class WebRtcManager extends Caster<Msg>{
                 this.volume = volume;
                 refreshDisplays();
             }
+        }
+
+        public boolean isOnStage() {
+            return isOnStage;
+        }
+
+        private void setOnStage(boolean onStage) {
+            isOnStage = onStage;
+        }
+
+        public int getOnStageOrder() {
+            return onStageOrder;
+        }
+
+        private void setOnStageOrder(int onStageOrder) {
+            this.onStageOrder = onStageOrder;
         }
 
         /**
@@ -2335,10 +2460,6 @@ public class WebRtcManager extends Caster<Msg>{
                 instance.subscribeStream();
             }
             return needInvalidate;
-        }
-
-        private boolean onStage(){
-            return getPriority() == Display.Priority.HIGH;
         }
 
         private void addDisplay(@NonNull Display display) {
@@ -3111,7 +3232,7 @@ public class WebRtcManager extends Caster<Msg>{
                     }
 
                 })
-                .map(stream -> new TRtcPlayItem(stream.getStreamId(), stream.isAss(), stream.getResolution(), stream.getOwner().onStage()))
+                .map(stream -> new TRtcPlayItem(stream.getStreamId(), stream.isAss(), stream.getResolution(), stream.getOwner().getPriority() == Display.Priority.HIGH))
                 .collect(Collectors.toList());
 
         if (!playItems.isEmpty()) {
@@ -5439,6 +5560,20 @@ public class WebRtcManager extends Caster<Msg>{
      * */
     public interface ConfPasswordNeededListener extends INtfListener{
         void onConfPasswordNeeded();
+    }
+
+    /**
+     * 与会方被选看监听器
+     * */
+    public interface ConfereeOnStageListener extends INtfListener{
+        /**
+         * @param conferees 被选看的与会方列表，按优先级从大到小排序
+         * */
+        void onConfereeOnStage(List<Conferee> conferees);
+        /**
+         * @param conferees 取消选看的与会方列表
+         * */
+        void onConfereeLeaveStage(List<Conferee> conferees);
     }
 
 }

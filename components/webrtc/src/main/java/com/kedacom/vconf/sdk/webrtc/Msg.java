@@ -4,6 +4,8 @@ import com.kedacom.vconf.sdk.annotation.Module;
 import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
+import com.kedacom.vconf.sdk.common.type.transfer.TConfereeOnStage;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtCustomVmpParam;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtEntityStatus;
 import com.kedacom.vconf.sdk.common.type.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
@@ -538,4 +540,15 @@ enum Msg {
     )
     ConfManSMSArrived,
 
+    /**
+     * 选看通知
+     * */
+    @Notification(name = "ViewMtParam_Ntf", clz = TConfereeOnStage.class)
+    ConfereeOnStage,
+
+    /**
+     * 画面合成通知
+     * */
+    @Notification(name = "GetCustomVMPResultNtf", clz = TMtCustomVmpParam.class)
+    ScenesComposited,
 }
