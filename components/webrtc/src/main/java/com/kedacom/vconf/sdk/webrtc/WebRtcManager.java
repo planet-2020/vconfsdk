@@ -39,7 +39,7 @@ import com.kedacom.vconf.sdk.common.type.transfer.EmMtModifyConfInfoType;
 import com.kedacom.vconf.sdk.common.type.transfer.EmMtResolution;
 import com.kedacom.vconf.sdk.common.type.transfer.EmMtVmpMode;
 import com.kedacom.vconf.sdk.common.type.transfer.TAssVidStatus;
-import com.kedacom.vconf.sdk.common.type.transfer.TConfereeOnStage;
+import com.kedacom.vconf.sdk.common.type.transfer.TSelectedToWatch;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTEntityInfo;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtAlias;
@@ -1302,7 +1302,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Stream.of(getNtfListeners(ConfPasswordNeededListener.class)).forEach(ConfPasswordNeededListener::onConfPasswordNeeded);
                 break;
 
-            case ConfereeOnStage:
+            case SelectedToWatch:
                 handler.post(new Runnable() {
                     int triedCount;
 
@@ -1310,7 +1310,7 @@ public class WebRtcManager extends Caster<Msg>{
                     public void run() {
                         ++triedCount;
 
-                        TConfereeOnStage confereeOnStage = (TConfereeOnStage) ntfContent;
+                        TSelectedToWatch confereeOnStage = (TSelectedToWatch) ntfContent;
                         TMtId mtId = confereeOnStage.AssParam.tTer;
                         if (!mtId.isValid()){
                             KLog.p(KLog.ERROR, "invalid conferee(mcu=%s, ter=%s)", mtId.dwMcuId, mtId.dwTerId);
@@ -1319,10 +1319,10 @@ public class WebRtcManager extends Caster<Msg>{
                         Conferee conferee = findConferee(mtId.dwMcuId, mtId.dwTerId, Conferee.ConfereeType.Normal);
                         if (conferee == null){
                             if (triedCount == 3){
-                                KLog.p(KLog.ERROR, "tried %s times, onstage conferee(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
+                                KLog.p(KLog.ERROR, "tried %s times, selected-to-watch conferee(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
                                 return;
                             }
-                            KLog.p(KLog.WARN, "onstage conferee(mcu=%s, ter=%s) has not joined yet, wait for a moment...", mtId.dwMcuId, mtId.dwTerId);
+                            KLog.p(KLog.WARN, "selected-to-watch conferee(mcu=%s, ter=%s) has not joined yet, wait for a moment...", mtId.dwMcuId, mtId.dwTerId);
                             // 与会方入会消息尚未抵达，我们延后处理
                             handler.postDelayed(this, 1000);
                             return;
@@ -1382,10 +1382,10 @@ public class WebRtcManager extends Caster<Msg>{
                                 .collect(Collectors.toList());
                         if (conferees.contains(null)){
                             if (triedCount == 3){
-                                KLog.p(KLog.ERROR, "tried %s times, some onstage conferee has still not joined yet", triedCount);
+                                KLog.p(KLog.ERROR, "tried %s times, some vmp conferee has still not joined yet", triedCount);
                                 return;
                             }
-                            KLog.p(KLog.WARN, "some onstage conferee has not joined yet, wait for a moment...");
+                            KLog.p(KLog.WARN, "some vmp conferee has not joined yet, wait for a moment...");
                             handler.postDelayed(this, 1000);
                             return;
                         }

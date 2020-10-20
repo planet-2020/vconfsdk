@@ -4,28 +4,40 @@ import com.kedacom.vconf.sdk.annotation.Module;
 import com.kedacom.vconf.sdk.annotation.Notification;
 import com.kedacom.vconf.sdk.annotation.Request;
 import com.kedacom.vconf.sdk.annotation.Response;
-import com.kedacom.vconf.sdk.common.type.transfer.TConfereeOnStage;
-import com.kedacom.vconf.sdk.common.type.transfer.TMtCustomVmpParam;
-import com.kedacom.vconf.sdk.common.type.transfer.TMtEntityStatus;
-import com.kedacom.vconf.sdk.common.type.transfer.TRegResultNtf;
-import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
-import com.kedacom.vconf.sdk.common.type.transfer.EmConfProtocol;
-import com.kedacom.vconf.sdk.common.type.transfer.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.BaseTypeBool;
 import com.kedacom.vconf.sdk.common.type.BaseTypeInt;
 import com.kedacom.vconf.sdk.common.type.transfer.EmAPIVersionType;
+import com.kedacom.vconf.sdk.common.type.transfer.EmConfProtocol;
+import com.kedacom.vconf.sdk.common.type.transfer.EmMtCallDisReason;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTEntityInfo;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtCustomVmpParam;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtEntityStatus;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtId;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtIdList;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtSimpConfInfo;
+import com.kedacom.vconf.sdk.common.type.transfer.TRegResultNtf;
+import com.kedacom.vconf.sdk.common.type.transfer.TSelectedToWatch;
 import com.kedacom.vconf.sdk.common.type.transfer.TShortMsg;
-import com.kedacom.vconf.sdk.webrtc.bean.trans.*;
+import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TAPIVersion;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TConfSettingsModified;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TCreateConfResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TMtRtcSvrAddr;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TQueryConfInfoResult;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcPlayParam;
+import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
 
-import static com.kedacom.vconf.sdk.annotation.Request.*;
+import static com.kedacom.vconf.sdk.annotation.Request.AudioCtrl;
+import static com.kedacom.vconf.sdk.annotation.Request.ConfCtrl;
+import static com.kedacom.vconf.sdk.annotation.Request.ConfigCtrl;
+import static com.kedacom.vconf.sdk.annotation.Request.LastIndex;
+import static com.kedacom.vconf.sdk.annotation.Request.MeetingCtrl;
+import static com.kedacom.vconf.sdk.annotation.Request.MonitorCtrl;
+import static com.kedacom.vconf.sdk.annotation.Request.MtServiceCfgCtrl;
 
 /**
  * Created by Sissi on 2019/10/24
@@ -543,8 +555,8 @@ enum Msg {
     /**
      * 选看通知
      * */
-    @Notification(name = "ViewMtParam_Ntf", clz = TConfereeOnStage.class)
-    ConfereeOnStage,
+    @Notification(name = "ViewMtParam_Ntf", clz = TSelectedToWatch.class)
+    SelectedToWatch,
 
     /**
      * 画面合成通知
