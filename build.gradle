@@ -5,7 +5,7 @@ buildscript {
     ext{
         MYGROUP = 'com.kedacom.vconf.sdk'
 
-        REPO_LOCAL = 1
+        REPO_PRIVATE = 1
         REPO_KEDA = 2
         REPO_INSIDE_WALL = 3
         REPO_OUTSIDE_WALL = 4
@@ -21,9 +21,9 @@ buildscript {
         ALI_RELEASE = 'http://maven.aliyun.com/nexus/content/repositories/releases/' // 阿里自己发布的artifacts，如阿里推送sdk
 
         // 用于本地搭建nexus-repo的情形
-        LOCALHOST_GOOGLE = 'http://localhost:8081/repository/google/'
-        LOCALHOST_JCENTER = 'http://localhost:8081/repository/jcenter/'
-        LOCALHOST_SNAPSHOT = 'http://localhost:8081/repository/local-snapshot/'
+        PRIVATE_GOOGLE = 'http://localhost:8081/repository/google/'
+        PRIVATE_JCENTER = 'http://localhost:8081/repository/jcenter/'
+        PRIVATE_SNAPSHOT = 'http://localhost:8081/repository/maven-snapshots/'
 
         MAVEN_LOCAL = "file://$System.env.HOME/.m2/repository"
 
@@ -34,7 +34,7 @@ buildscript {
         TARGET_SDK_VERSION = COMPILE_SDK_VERSION
         ABI_FILTERS = 'armeabi-v7a'
 
-        repo = REPO_INSIDE_WALL
+        repo = REPO_PRIVATE
 
         configRepo = {Project project, boolean forBuildscript ->
             repoMethod = forBuildscript ? buildscript.&repositories : project.&repositories
@@ -50,9 +50,9 @@ buildscript {
                         urlGoogle = KEDA_GOOGLE
                         urlJcenter = KEDA_JCENTER
                         break;
-                    case REPO_LOCAL:
-                        urlGoogle = LOCALHOST_GOOGLE
-                        urlJcenter = LOCALHOST_JCENTER
+                    case REPO_PRIVATE:
+                        urlGoogle = PRIVATE_GOOGLE
+                        urlJcenter = PRIVATE_JCENTER
                         break;
                     default:
                         urlGoogle = GOOGLE
@@ -75,8 +75,8 @@ buildscript {
                         case REPO_KEDA:
                             urlKedaSdk = KEDA_SNAPSHOT
                             break;
-                        case REPO_LOCAL:
-                            urlKedaSdk = LOCALHOST_SNAPSHOT
+                        case REPO_PRIVATE:
+                            urlKedaSdk = PRIVATE_SNAPSHOT
                             break;
                         default:
                             urlKedaSdk = MAVEN_LOCAL

@@ -11,15 +11,26 @@ afterEvaluate {
 
         repositories {
             maven {
-                name = 'keda'
+                if (rootProject.ext.repo == rootProject.ext.REPO_PRIVATE){
+                    name = 'private'
+                    def releasesRepoUrl = "http://localhost:8081/repository/maven-releases/"
+                    def snapshotsRepoUrl = "http://localhost:8081/repository/maven-snapshots/"
+                    url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                    credentials {
+                        username "admin"
+                        password "kd7331"
+                    }
+                }else{
+                    name = 'keda'
 //            def releasesRepoUrl = "$buildDir/repos/releases"  // 调试用可直接发布到本地
 //            def snapshotsRepoUrl = "$buildDir/repos/snapshots"
-                def releasesRepoUrl = "http://172.16.6.154:9081/repository/releases/"
-                def snapshotsRepoUrl = "http://172.16.6.154:9081/repository/snapshots/"
-                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
-                credentials {
-                    username "TrueTouch_Android"
-                    password "android"
+                    def releasesRepoUrl = "http://172.16.6.154:9081/repository/releases/"
+                    def snapshotsRepoUrl = "http://172.16.6.154:9081/repository/snapshots/"
+                    url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                    credentials {
+                        username "TrueTouch_Android"
+                        password "android"
+                    }
                 }
             }
         }
