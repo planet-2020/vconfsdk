@@ -157,7 +157,8 @@ public class WebRtcManager extends Caster<Msg>{
     // 与会方集合（不包含己端）
     private Set<Conferee> conferees = new LinkedHashSet<>();
 
-    // 码流集合（没有己端的码流）
+    // 码流集合（没有己端的码流，业务组件没有上报）
+    // 所有码流均能在与会方集合中找到owner
     private Set<RtcStream> streams = new HashSet<>();
 
     private Set<Display> displays = new LinkedHashSet<>();
@@ -940,6 +941,9 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    // 强制画面合成是否已开启
+    private boolean forceScenesComposited;
+
     @Override
     protected void onNtf(Msg ntf, Object ntfContent) {
 
@@ -1310,8 +1314,8 @@ public class WebRtcManager extends Caster<Msg>{
                     public void run() {
                         ++triedCount;
 
-                        TSelectedToWatch confereeOnStage = (TSelectedToWatch) ntfContent;
-                        TMtId mtId = confereeOnStage.AssParam.tTer;
+                        TSelectedToWatch selectedToWatch = (TSelectedToWatch) ntfContent;
+                        TMtId mtId = selectedToWatch.AssParam.tTer;
                         if (!mtId.isValid()){
                             KLog.p(KLog.ERROR, "invalid conferee(mcu=%s, ter=%s)", mtId.dwMcuId, mtId.dwTerId);
                             return;
@@ -1327,7 +1331,7 @@ public class WebRtcManager extends Caster<Msg>{
                             handler.postDelayed(this, 1000);
                             return;
                         }
-                        boolean onStage = confereeOnStage.MainParam.basetype && confereeOnStage.AssParam.bForce;
+                        boolean onStage = selectedToWatch.MainParam.basetype && selectedToWatch.AssParam.bForce;
                         if (conferee.isOnStage() != onStage) {
                             conferee.setOnStage(onStage);
                             if (onStage) {
@@ -1358,6 +1362,7 @@ public class WebRtcManager extends Caster<Msg>{
                             KLog.p(KLog.WARN, "vmp list empty");
                             return;
                         }
+
                         List<Conferee> conferees = Stream.of(vmpParam.atVmpItem)
                                 .filter(it -> {
                                     boolean valid = it.tMtid.isValid();
@@ -1380,6 +1385,12 @@ public class WebRtcManager extends Caster<Msg>{
                                     return order1 - order2;
                                 })
                                 .collect(Collectors.toList());
+
+                        if (conferees.isEmpty()){
+                            KLog.p(KLog.WARN, "vmp conferees list empty");
+                            return;
+                        }
+
                         if (conferees.contains(null)){
                             if (triedCount == 3){
                                 KLog.p(KLog.ERROR, "tried %s times, some vmp conferee has still not joined yet", triedCount);
@@ -1389,6 +1400,12 @@ public class WebRtcManager extends Caster<Msg>{
                             handler.postDelayed(this, 1000);
                             return;
                         }
+
+                        if (vmpParam.bForce == forceScenesComposited){
+                            KLog.p(KLog.WARN, "forceScenesComposited=%s, vmpParam.bForce=%s", forceScenesComposited, vmpParam.bForce);
+                            return;
+                        }
+                        forceScenesComposited = vmpParam.bForce;
 
                         if (vmpParam.bForce){
                             Stream.of(getNtfListeners(ConfereeOnStageListener.class)).forEach(it-> it.onConfereeOnStage(conferees));
@@ -2151,12 +2168,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 是否正在发送辅流
          * */
         public boolean isSendingAssStream() {
-            if (isMyself()){
-                return null != instance.sharedWindow;
-            }else {
-                Conferee conferee = instance.findAssStreamSender();
-                return null != conferee && conferee.getId().equals(id);
-            }
+            return instance.findAssStreamSender() == this;
         }
 
         /**
@@ -3173,7 +3185,7 @@ public class WebRtcManager extends Caster<Msg>{
     private Conferee tryCreateAssStreamConferee(){
         if (null == findAssConferee()){
             Conferee sender = findAssStreamSender();
-            if (null != sender){
+            if (null != sender && !sender.isMyself()){
                 return new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, Conferee.ConfereeType.AssStream);
             }
         }
@@ -3254,23 +3266,29 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    // 直接查找与会方。
-    // 所有其他查找与会方的方法都是先查找RtcStream，然后通过RtcStream调用本方法。（较低效率换取简化的逻辑）
-    // NOTE： 如下一系列方法均未将己端纳入考量！！
     private Conferee findConferee(int mcuId, int terId, Conferee.ConfereeType type){
-        return Stream.of(conferees)
-                .filter(it-> it.mcuId==mcuId && it.terId==terId && it.type==type)
-                .findFirst()
-                .orElse(null);
+        if (mcuId == myself.getMcuId() && terId == myself.getTerId() && type == myself.type){
+            return myself;
+        }else {
+            return Stream.of(conferees)
+                    .filter(it -> it.mcuId == mcuId && it.terId == terId && it.type == type)
+                    .findFirst()
+                    .orElse(null);
+        }
     }
 
     private Conferee findConfereeByE164(String e164, Conferee.ConfereeType type){
-        return Stream.of(conferees)
-                .filter(it-> it.e164.equals(e164) && it.type==type)
-                .findFirst()
-                .orElse(null);
+        if (myself.getE164().equals(e164) && type == myself.type){
+            return myself;
+        }else {
+            return Stream.of(conferees)
+                    .filter(it-> it.e164.equals(e164) && it.type==type)
+                    .findFirst()
+                    .orElse(null);
+        }
     }
 
+    // NOTE: 查找范围不包含己端，己端没有对应的streamId，业务组件没报
     private Conferee findConfereeByStreamId(String streamId){
         RtcStream stream = findStream(streamId);
         if (null != stream){
@@ -3279,7 +3297,11 @@ public class WebRtcManager extends Caster<Msg>{
         return null;
     }
 
-
+    /**
+     * 查找（虚拟的）辅流与会方。
+     * 针对辅流我们虚构了一个“辅流与会方”。
+     * NOTE: 查找范围不包含己端，己端发送辅流的场景没有对应的“辅流与会方”
+     * */
     private Conferee findAssConferee(){
         RtcStream assStream = findAssStream();
         if (null == assStream){
@@ -3288,16 +3310,24 @@ public class WebRtcManager extends Caster<Msg>{
         return assStream.getOwner();
     }
 
-
+    /**
+     * 查找辅流发送者
+     * */
     private Conferee findAssStreamSender(){
-        RtcStream assStream = findAssStream();
-        if (null == assStream){
-            return null;
+        if (null != instance.sharedWindow){
+            return myself;
+        }else{
+            RtcStream assStream = findAssStream();
+            if (null == assStream) {
+                return null;
+            }
+            return findConferee(assStream.getMcuId(), assStream.getTerId(), Conferee.ConfereeType.Normal);
         }
-        return findConferee(assStream.getMcuId(), assStream.getTerId(), Conferee.ConfereeType.Normal);
     }
 
-
+    /**
+     * 查找主持人
+     * */
     private Conferee findPresenter(){
         if (myself.isPresenter()) {
             return myself;
@@ -3306,6 +3336,9 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
+    /**
+     * 查找主讲人
+     * */
     private Conferee findKeynoteSpeaker(){
         if (myself.isKeynoteSpeaker()) {
             return myself;
@@ -3314,6 +3347,9 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
+    /**
+     * 查找VIP
+     * */
     private Set<Conferee> findVIPs(){
         Set<Conferee> vips = new HashSet<>();
         if (myself.isVIP()) {
