@@ -34,7 +34,7 @@ buildscript {
         TARGET_SDK_VERSION = COMPILE_SDK_VERSION
         ABI_FILTERS = 'armeabi-v7a'
 
-        repo = REPO_PRIVATE
+        repo = REPO_INSIDE_WALL
 
         configRepo = {Project project, boolean forBuildscript ->
             repoMethod = forBuildscript ? buildscript.&repositories : project.&repositories
