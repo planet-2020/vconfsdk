@@ -34,7 +34,7 @@ buildscript {
         TARGET_SDK_VERSION = COMPILE_SDK_VERSION
         ABI_FILTERS = 'armeabi-v7a'
 
-        repo = REPO_INSIDE_WALL
+        repo = REPO_KEDA
 
         configRepo = {Project project, boolean forBuildscript ->
             repoMethod = forBuildscript ? buildscript.&repositories : project.&repositories
@@ -177,6 +177,12 @@ def configSubProject(Project project){
             if (!['common', 'utils', 'amulet'].contains(project.name)) {
                 dependencyHandler.add('compileOnly', dependencyHandler.project('path' : ':annotation'))
                 dependencyHandler.add('annotationProcessor', dependencyHandler.project('path' : ':processor'))
+            }
+            project.configurations.all {
+                resolutionStrategy {
+                    // don't cache changing modules at all
+                    cacheChangingModulesFor 0, 'seconds'
+                }
             }
 
             if (project.ext.publish) {
