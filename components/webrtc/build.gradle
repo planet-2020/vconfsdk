@@ -42,18 +42,18 @@ protobuf {
 }
 
 
-gradle.taskGraph.afterTask { task ->
-    logger.quiet("task.name= ${task.name}")
-    if (task.name == 'compileJava'){
-//        if (task.name == 'generateDebugProto'){
-        task.inputs.files.each{ it ->
-            logger.quiet("input ${it.absolutePath}")
-        }
-        task.outputs.files.each{ it ->
-            logger.quiet("input ${it.absolutePath}")
-        }
-    }
-}
+//gradle.taskGraph.afterTask { task ->
+//    logger.quiet("task.name= ${task.name}")
+//    if (task.name == 'compileJava'){
+////        if (task.name == 'generateDebugProto'){
+//        task.inputs.files.each{ it ->
+//            logger.quiet("input ${it.absolutePath}")
+//        }
+//        task.outputs.files.each{ it ->
+//            logger.quiet("input ${it.absolutePath}")
+//        }
+//    }
+//}
 
 
 //-> 修改WebRTC SDK实现以绕过H264硬编白名单机制（使用Transform API替换SDK中的相关方法）
