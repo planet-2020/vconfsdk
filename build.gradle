@@ -21,23 +21,23 @@ buildscript {
         ALI_GRADLE_PLUGIN = 'https://maven.aliyun.com/repository/gradle-plugin'
         ALI_RELEASE = 'http://maven.aliyun.com/nexus/content/repositories/releases/' // 阿里自己发布的release版的artifacts，如阿里推送sdk
 
-        // 本地私有仓库地址（用于本地测试，需先本地搭建nexus，使用默认配置，然后启动nexus。若自行修改了nexus配置则url地址可能需要修改）
-        LOCALHOST_GOOGLE = 'http://localhost:8081/repository/google/'
-        LOCALHOST_JCENTER = 'http://localhost:8081/repository/jcenter/'
-        LOCALHOST_GRADLE_PLUGIN = 'http://localhost:8081/repository/gradle-plugin/'
-        LOCALHOST_SNAPSHOT = 'http://localhost:8081/repository/maven-snapshots/'
-        LOCALHOST_RELEASE = 'http://localhost:8081/repository/maven-releases/'
+        // 本地私有仓库地址（用于本地测试，需先本地搭建nexus，然后启动nexus。若自行修改了nexus配置则url地址可能需要修改）
+        PERSONAL_GOOGLE = 'http://localhost:8081/repository/google/'
+        PERSONAL_JCENTER = 'http://localhost:8081/repository/jcenter/'
+        PERSONAL_GRADLE_PLUGIN = 'http://localhost:8081/repository/gradle-plugin/'
+        PERSONAL_SNAPSHOT = 'http://localhost:8081/repository/maven-snapshots/'
+        PERSONAL_RELEASE = 'http://localhost:8081/repository/maven-releases/'
 
         // mavenLocal()的url
         MAVEN_LOCAL = "file://$System.env.HOME/.m2/repository"
 
         // 定义仓库类型
-        REPO_PRIVATE = 1
+        REPO_PERSONAL = 1
         REPO_KEDA = 2
         REPO_INSIDE_WALL = 3
         REPO_OUTSIDE_WALL = 4
-        repo = REPO_KEDA
-//        repo = REPO_PRIVATE
+//        repo = REPO_KEDA
+        repo = REPO_PERSONAL
 
         MYGROUP = 'com.kedacom.vconf.sdk'
 
@@ -71,10 +71,10 @@ buildscript {
                         urlJcenter = KEDA_JCENTER
                         urlGradlePlugin = KEDA_GRADLE_PLUGIN
                         break;
-                    case REPO_PRIVATE:
-                        urlGoogle = LOCALHOST_GOOGLE
-                        urlJcenter = LOCALHOST_JCENTER
-                        urlGradlePlugin = LOCALHOST_GRADLE_PLUGIN
+                    case REPO_PERSONAL:
+                        urlGoogle = PERSONAL_GOOGLE
+                        urlJcenter = PERSONAL_JCENTER
+                        urlGradlePlugin = PERSONAL_GRADLE_PLUGIN
                         break;
                     default:
                         urlGoogle = ALI_GOOGLE
@@ -101,8 +101,8 @@ buildscript {
                         case REPO_KEDA:
                             urlKedaSdk = KEDA_SNAPSHOT
                             break;
-                        case REPO_PRIVATE:
-                            urlKedaSdk = LOCALHOST_SNAPSHOT
+                        case REPO_PERSONAL:
+                            urlKedaSdk = PERSONAL_SNAPSHOT
                             break;
                         default:
                             urlKedaSdk = MAVEN_LOCAL
