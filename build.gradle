@@ -97,12 +97,14 @@ buildscript {
 
                 if (!forBuildscript){
                     def urlKedaSdk
+                    def isSnapshot = project.version.endsWith('SNAPSHOT')
+//                    logger.quiet("project name=${project.name}, version=${project.version}, isSnapshot $isSnapshot")
                     switch (repo){
                         case REPO_KEDA:
-                            urlKedaSdk = KEDA_SNAPSHOT
+                            urlKedaSdk = isSnapshot ? KEDA_SNAPSHOT : KEDA_RELEASE
                             break;
                         case REPO_PERSONAL:
-                            urlKedaSdk = PERSONAL_SNAPSHOT
+                            urlKedaSdk = isSnapshot ? PERSONAL_SNAPSHOT : PERSONAL_RELEASE
                             break;
                         default:
                             urlKedaSdk = MAVEN_LOCAL
@@ -113,9 +115,6 @@ buildscript {
                         forRepository {
                             maven {
                                 url urlKedaSdk
-//                                mavenContent {
-//                                    snapshotsOnly()
-//                                }
                             }
                         }
                         filter {
@@ -150,74 +149,71 @@ buildscript {
 subprojects {
     group = MYGROUP
     ext.publish = true
-    configRepo(project, false)
-    configSubProject(project)
+    project.afterEvaluate {
+        configRepo(project, false)
+        configProject(project)
+    }
 }
 
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
-def configSubProject(Project project){
+def configProject(Project project){
 //    logger.quiet("configProject $project")
     if (['annotation', 'processor'].contains(project.name)){
-        project.afterEvaluate{
-            project.sourceCompatibility = SOURCE_JAVA_VERSION
-            project.targetCompatibility = TARGET_JAVA_VERSION
-        }
+        project.sourceCompatibility = SOURCE_JAVA_VERSION
+        project.targetCompatibility = TARGET_JAVA_VERSION
     }else{
-
-        project.afterEvaluate {
-            project.android {
-                compileSdkVersion COMPILE_SDK_VERSION
-                defaultConfig {
-                    minSdkVersion MIN_SDK_VERSION
-                    targetSdkVersion TARGET_SDK_VERSION
-                    ndk {
-                        abiFilters ABI_FILTERS
-                    }
-                    buildConfigField("String", "VERSION", "\"$project.version\"")
-                    buildConfigField("String", "TIMESTAMP", "\"" + new Date().format("yyyy-MM-dd HH:mm") + "\"")
+        project.android {
+            compileSdkVersion COMPILE_SDK_VERSION
+            defaultConfig {
+                minSdkVersion MIN_SDK_VERSION
+                targetSdkVersion TARGET_SDK_VERSION
+                ndk {
+                    abiFilters ABI_FILTERS
                 }
-                buildTypes {
-                    release {
-                        minifyEnabled false
-                        proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                    }
-                }
-                compileOptions {
-                    sourceCompatibility SOURCE_JAVA_VERSION
-                    targetCompatibility TARGET_JAVA_VERSION
-                }
-                lintOptions {
-                    checkReleaseBuilds false
-                    // Or, if you prefer, you can continue to check for errors in release builds,
-                    // but continue the build even when errors are found:
-                    abortOnError false
+                buildConfigField("String", "VERSION", "\"$project.version\"")
+                buildConfigField("String", "TIMESTAMP", "\"" + new Date().format("yyyy-MM-dd HH:mm") + "\"")
+            }
+            buildTypes {
+                release {
+                    minifyEnabled false
+                    proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                 }
             }
-
-            // 公共依赖
-            DependencyHandler dependencyHandler = project.getDependencies()
-            dependencyHandler.add('implementation', dependencyHandler.module('androidx.annotation:annotation:1.1.0'))
-            dependencyHandler.add('implementation', dependencyHandler.module('com.google.guava:guava:27.0.1-android'))
-            dependencyHandler.add('implementation', dependencyHandler.module('com.annimon:stream:1.2.1'))
-            if (!['common', 'utils', 'amulet'].contains(project.name)) {
-                dependencyHandler.add('compileOnly', dependencyHandler.project('path' : ':annotation'))
-                dependencyHandler.add('annotationProcessor', dependencyHandler.project('path' : ':processor'))
+            compileOptions {
+                sourceCompatibility SOURCE_JAVA_VERSION
+                targetCompatibility TARGET_JAVA_VERSION
             }
-            project.configurations.all {
-                resolutionStrategy {
-                    // don't cache changing modules at all
-                    cacheChangingModulesFor 0, 'seconds'
-                }
+            lintOptions {
+                checkReleaseBuilds false
+                // Or, if you prefer, you can continue to check for errors in release builds,
+                // but continue the build even when errors are found:
+                abortOnError false
             }
-
-            if (project.ext.publish) {
-                project.apply from: new File(rootDir, "publish.gradle")
-            }
-
         }
+
+        // 公共依赖
+        DependencyHandler dependencyHandler = project.getDependencies()
+        dependencyHandler.add('implementation', dependencyHandler.module('androidx.annotation:annotation:1.1.0'))
+        dependencyHandler.add('implementation', dependencyHandler.module('com.google.guava:guava:27.0.1-android'))
+        dependencyHandler.add('implementation', dependencyHandler.module('com.annimon:stream:1.2.1'))
+        if (!['common', 'utils', 'amulet'].contains(project.name)) {
+            dependencyHandler.add('compileOnly', dependencyHandler.project('path' : ':annotation'))
+            dependencyHandler.add('annotationProcessor', dependencyHandler.project('path' : ':processor'))
+        }
+        project.configurations.all {
+            resolutionStrategy {
+                // don't cache changing modules at all
+                cacheChangingModulesFor 0, 'seconds'
+            }
+        }
+
+        if (project.ext.publish) {
+            project.apply from: new File(rootDir, "publish.gradle")
+        }
+
     }
 
     project.apply plugin: "com.dorongold.task-tree"
