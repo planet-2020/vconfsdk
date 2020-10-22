@@ -219,3 +219,17 @@ def configProject(Project project){
     project.apply plugin: "com.dorongold.task-tree"
 
 }
+
+
+// 打印task的输入输出（调问题可能有用）
+//gradle.taskGraph.afterTask { task ->
+////    if (task.name == 'compileJava'){
+//    if (task.name == 'generateDebugProto'){
+//        task.inputs.files.each{ it ->
+//            logger.quiet("input ${it.absolutePath}")
+//        }
+//        task.outputs.files.each{ it ->
+//            logger.quiet("output ${it.absolutePath}")
+//        }
+//    }
+//}
