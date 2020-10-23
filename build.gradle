@@ -95,6 +95,20 @@ buildscript {
                     url urlGradlePlugin
                 }
 
+//                exclusiveContent {
+//                    forRepository {
+//                        maven{
+//                            url urlGradlePlugin
+//                        }
+//                    }
+//                    filter {
+//                        includeModule('com.android.tools.build', 'gradle')
+//                        includeModule('org.jetbrains.kotlin', 'kotlin-gradle-plugin')
+//                        includeModule('com.google.protobuf', 'protobuf-gradle-plugin')
+//                        includeModule('gradle.plugin.com.dorongold.plugins', 'task-tree')
+//                    }
+//                }
+
                 if (!forBuildscript){
                     def urlKedaSdk
                     def isSnapshot = project.version.endsWith('SNAPSHOT')
@@ -134,8 +148,9 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:4.0.0'
 
-        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.11'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.31"
+
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.11'
 
         classpath "gradle.plugin.com.dorongold.plugins:task-tree:1.5"
 
