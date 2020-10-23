@@ -37,7 +37,8 @@ buildscript {
         REPO_INSIDE_WALL = 3
         REPO_OUTSIDE_WALL = 4
 //        repo = REPO_KEDA
-        repo = REPO_PERSONAL
+//        repo = REPO_PERSONAL
+        repo = REPO_INSIDE_WALL
 
         MYGROUP = 'com.kedacom.vconf.sdk'
 

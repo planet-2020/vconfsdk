@@ -1331,13 +1331,15 @@ public class WebRtcManager extends Caster<Msg>{
                             handler.postDelayed(this, 1000);
                             return;
                         }
-                        boolean onStage = selectedToWatch.MainParam.basetype && selectedToWatch.AssParam.bForce;
-                        if (conferee.isOnStage() != onStage) {
-                            conferee.setOnStage(onStage);
-                            if (onStage) {
-                                Stream.of(getNtfListeners(ConfereeOnStageListener.class)).forEach(it -> it.onConfereeOnStage(Collections.singletonList(conferee)));
+                        boolean isSelected = selectedToWatch.MainParam.basetype // 是否开启选看
+                                && selectedToWatch.AssParam.bForce // 是否强制。对于rtc，仅在开启选看且强制的情况下是开启，其余情形均为关闭
+                                ;
+                        if (conferee.isSelectedToWatch() != isSelected) {
+                            conferee.setSelectedToWatch(isSelected);
+                            if (isSelected) {
+                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onSelected(conferee));
                             } else {
-                                Stream.of(getNtfListeners(ConfereeOnStageListener.class)).forEach(it -> it.onConfereeLeaveStage(Collections.singletonList(conferee)));
+                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onUnselected(conferee));
                             }
                         }
                     }
@@ -1354,7 +1356,7 @@ public class WebRtcManager extends Caster<Msg>{
                         ++triedCount;
 
                         TMtCustomVmpParam vmpParam = (TMtCustomVmpParam) ntfContent;
-                        if (vmpParam.emVmpMode != EmMtVmpMode.emMt_VMP_MODE_CTRL){
+                        if (vmpParam.emVmpMode != EmMtVmpMode.emMt_VMP_MODE_CTRL){ // 对于rtc仅需处理自定义模式的画面合成
                             KLog.p(KLog.WARN, "ignore vmp mode %s", vmpParam.emVmpMode);
                             return;
                         }
@@ -1364,7 +1366,7 @@ public class WebRtcManager extends Caster<Msg>{
                         }
 
                         List<Conferee> conferees = Stream.of(vmpParam.atVmpItem)
-                                .filter(it -> {
+                                .filter(it -> { // 过滤掉无效的画面合成方。画面合成方数量不足合成风格的画面数时，平台会用无效的与会方填充列表。
                                     boolean valid = it.tMtid.isValid();
                                     if (!valid){
                                         KLog.p(KLog.WARN, "invalid conferee(mcu=%s, ter=%s)", it.tMtid.dwMcuId, it.tMtid.dwTerId);
@@ -1374,14 +1376,14 @@ public class WebRtcManager extends Caster<Msg>{
                                 .map(it -> {
                                     Conferee c = findConferee(it.tMtid.dwMcuId, it.tMtid.dwTerId, Conferee.ConfereeType.Normal);
                                     if (c != null) {
-                                        c.setOnStage(vmpParam.bForce);
-                                        c.setOnStageOrder(it.dwVmpItem_Idx);
+                                        c.setInCompositedScene(vmpParam.bForce);
+                                        c.setOrderInCompositedScene(it.dwVmpItem_Idx);
                                     }
                                     return c;
                                 })
                                 .sorted((o1, o2) -> {
-                                    int order1 = o1 != null ? o1.getOnStageOrder() : 9999;
-                                    int order2 = o2 != null ? o2.getOnStageOrder() : 9999;
+                                    int order1 = o1 != null ? o1.getOrderInCompositedScene() : 9999;
+                                    int order2 = o2 != null ? o2.getOrderInCompositedScene() : 9999;
                                     return order1 - order2;
                                 })
                                 .collect(Collectors.toList());
@@ -1401,16 +1403,17 @@ public class WebRtcManager extends Caster<Msg>{
                             return;
                         }
 
-                        if (vmpParam.bForce == forceScenesComposited){
+                        if (vmpParam.bForce == forceScenesComposited){ // 开启普通画面合成和关闭强制画面合成是同一条消息且内容一致，
+                                                                       // 我们需借助本地保存的状态区分这两种场景。
                             KLog.p(KLog.WARN, "forceScenesComposited=%s, vmpParam.bForce=%s", forceScenesComposited, vmpParam.bForce);
                             return;
                         }
                         forceScenesComposited = vmpParam.bForce;
 
                         if (vmpParam.bForce){
-                            Stream.of(getNtfListeners(ConfereeOnStageListener.class)).forEach(it-> it.onConfereeOnStage(conferees));
+                            Stream.of(getNtfListeners(ScenesCompositedListener.class)).forEach(it-> it.onComposite(conferees));
                         }else {
-                            Stream.of(getNtfListeners(ConfereeOnStageListener.class)).forEach(it-> it.onConfereeLeaveStage(conferees));
+                            Stream.of(getNtfListeners(ScenesCompositedListener.class)).forEach(it-> it.onCancelComposite(conferees));
                         }
                     }
                 });
@@ -1958,9 +1961,12 @@ public class WebRtcManager extends Caster<Msg>{
         // 音量[0, 100]
         private int volume;
         // 是否处于被选看状态
-        private boolean isOnStage;
-        // 选看次序，次序越靠前的优先级越高。0的优先级最高。
-        private int onStageOrder;
+        private boolean isSelectedToWatch;
+        // 是否身处画面合成
+        private boolean isInCompositedScene;
+        // 在画面合成中的次序。次序越靠前的优先级越高。0的优先级最高。
+        // 界面可依据该优先级决定各与会方画面展示位置。
+        private int orderInCompositedScene;
 
         // 音频通道状态
         private AudioChannelState audioChannelState = AudioChannelState.Idle;
@@ -2119,20 +2125,28 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
 
-        public boolean isOnStage() {
-            return isOnStage;
+        public boolean isSelectedToWatch() {
+            return isSelectedToWatch;
         }
 
-        private void setOnStage(boolean onStage) {
-            isOnStage = onStage;
+        private void setSelectedToWatch(boolean selectedToWatch) {
+            isSelectedToWatch = selectedToWatch;
         }
 
-        public int getOnStageOrder() {
-            return onStageOrder;
+        public boolean isInCompositedScene() {
+            return isInCompositedScene;
         }
 
-        private void setOnStageOrder(int onStageOrder) {
-            this.onStageOrder = onStageOrder;
+        private void setInCompositedScene(boolean inCompositedScene) {
+            isInCompositedScene = inCompositedScene;
+        }
+
+        public int getOrderInCompositedScene() {
+            return orderInCompositedScene;
+        }
+
+        private void setOrderInCompositedScene(int orderInCompositedScene) {
+            this.orderInCompositedScene = orderInCompositedScene;
         }
 
         /**
@@ -5612,15 +5626,29 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 与会方被选看监听器
      * */
-    public interface ConfereeOnStageListener extends INtfListener{
+    public interface SelectedToWatchListener extends INtfListener{
         /**
-         * @param conferees 被选看的与会方列表，按优先级从大到小排序
+         * 被选看
          * */
-        void onConfereeOnStage(List<Conferee> conferees);
+        void onSelected(Conferee conferee);
         /**
-         * @param conferees 取消选看的与会方列表
+         * 被取消选看
          * */
-        void onConfereeLeaveStage(List<Conferee> conferees);
+        void onUnselected(Conferee conferee);
+    }
+
+    /**
+     * 画面合成监听器
+     * */
+    public interface ScenesCompositedListener extends INtfListener{
+        /**
+         * @param conferees 被纳入画面合成的与会方列表，按优先级从大到小排序
+         * */
+        void onComposite(List<Conferee> conferees);
+        /**
+         * @param conferees 被取消画面合成的与会方列表
+         * */
+        void onCancelComposite(List<Conferee> conferees);
     }
 
 }
