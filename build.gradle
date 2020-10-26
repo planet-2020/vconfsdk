@@ -10,7 +10,7 @@ buildscript {
         // 科达仓库地址
         KEDA_GOOGLE = 'http://172.16.6.154:9081/repository/aliyun_google/'
         KEDA_JCENTER = 'http://172.16.6.154:9081/repository/aliyun_jcenter/'
-        KEDA_GRADLE_PLUGIN = 'http://172.16.6.154:9081/repository/aliyun_gradle-plugin/'
+        KEDA_GRADLE_PLUGIN = 'http://172.16.6.154:9081/repository/gradle-plugin_group/'
         KEDA_SNAPSHOT = 'http://172.16.6.154:9081/repository/snapshots/' // keda自己发布的snapshot版的artifacts
         KEDA_RELEASE = 'http://172.16.6.154:9081/repository/releases/' // keda自己发布的release版的artifacts
         KEDA_ALIRELEASE = 'http://172.16.6.154:9081/repository/aliyun/' // 映射到ALI_RELEASE
@@ -24,7 +24,7 @@ buildscript {
         // 本地私有仓库地址（用于本地测试，需先本地搭建nexus，然后启动nexus。若自行修改了nexus配置则url地址可能需要修改）
         PERSONAL_GOOGLE = 'http://localhost:8081/repository/google/'
         PERSONAL_JCENTER = 'http://localhost:8081/repository/jcenter/'
-        PERSONAL_GRADLE_PLUGIN = 'http://localhost:8081/repository/gradle-plugin/'
+        PERSONAL_GRADLE_PLUGIN = 'http://localhost:8081/repository/gradle-plugin-group/'
         PERSONAL_SNAPSHOT = 'http://localhost:8081/repository/maven-snapshots/'
         PERSONAL_RELEASE = 'http://localhost:8081/repository/maven-releases/'
 
@@ -37,8 +37,8 @@ buildscript {
         REPO_INSIDE_WALL = 3
         REPO_OUTSIDE_WALL = 4
 //        repo = REPO_KEDA
-//        repo = REPO_PERSONAL
         repo = REPO_INSIDE_WALL
+//        repo = REPO_PERSONAL
 
         MYGROUP = 'com.kedacom.vconf.sdk'
 
@@ -96,7 +96,7 @@ buildscript {
                     url urlGradlePlugin
                 }
 
-//                exclusiveContent {
+//                exclusiveContent { // 阿里云有些插件未发布到gradle-plugin仓库，所以我们不针对插件做互斥性定义以使得可以在各个仓库寻找插件。
 //                    forRepository {
 //                        maven{
 //                            url urlGradlePlugin
