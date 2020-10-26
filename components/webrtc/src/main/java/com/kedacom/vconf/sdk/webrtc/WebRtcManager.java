@@ -2004,19 +2004,19 @@ public class WebRtcManager extends Caster<Msg>{
         /**
          * 摄像头关闭状态下的装饰
          * */
-        private static StreamStateDecoration cameraDisabledDeco;
+        private StreamStateDecoration cameraDisabledDeco;
         /**
          * 视频信号弱状态下的装饰
          * */
-        private static StreamStateDecoration weakVideoSignalDeco;
+        private StreamStateDecoration weakVideoSignalDeco;
         /**
          * 纯音频与会方的装饰
          * */
-        private static StreamStateDecoration audioConfereeDeco;
+        private StreamStateDecoration audioConfereeDeco;
         /**
          * 正在接收辅流的装饰
          * */
-        private static StreamStateDecoration recvingAssStreamDeco;
+        private StreamStateDecoration recvingAssStreamDeco;
 
         // 统计信息paint
         private static Paint statsPaint = new Paint();
@@ -2204,7 +2204,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param winH UCD标注的deco所在窗口的高
          * @param backgroundColor 背景色
          * */
-        public static void setCameraDisabledDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+        public void setCameraDisabledDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
             cameraDisabledDeco = StreamStateDecoration.createFromPicDecoration(
                     PicDecoration.createCenterPicDeco("cameraDisabledDeco", bitmap, winW, winH),
                     backgroundColor
@@ -2217,7 +2217,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param winH UCD标注的deco所在窗口的高
          * @param backgroundColor 背景色
          * */
-        public static void setAudioConfereeDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+        public void setAudioConfereeDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
             audioConfereeDeco = StreamStateDecoration.createFromPicDecoration(
                     PicDecoration.createCenterPicDeco("audioConfereeDeco", bitmap, winW, winH),
                     backgroundColor
@@ -2225,12 +2225,12 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         /**
-         * 设置视频信号丢失的deco
+         * 设置视频信号弱的deco
          * @param winW UCD标注的deco所在窗口的宽
          * @param winH UCD标注的deco所在窗口的高
          * @param backgroundColor 背景色
          * */
-        public static void setWeakVideoSignalDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+        public void setWeakVideoSignalDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
             weakVideoSignalDeco = StreamStateDecoration.createFromPicDecoration(
                     PicDecoration.createCenterPicDeco("weakVideoSignalDeco", bitmap, winW, winH),
                     backgroundColor
@@ -2243,7 +2243,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param winH UCD标注的deco所在窗口的高
          * @param backgroundColor 背景色
          * */
-        public static void setRecvingAssStreamDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
+        public void setRecvingAssStreamDecoration(@NonNull Bitmap bitmap, int winW, int winH, int backgroundColor){
             recvingAssStreamDeco = StreamStateDecoration.createFromPicDecoration(
                     PicDecoration.createCenterPicDeco("recvingAssStreamDeco", bitmap, winW, winH),
                     backgroundColor
@@ -3085,15 +3085,15 @@ public class WebRtcManager extends Caster<Msg>{
             // 绘制码流状态deco
             StreamStateDecoration stateDeco = null;
             if (conferee.isMyself() && !isLocalVideoEnabled){
-                stateDeco = Conferee.cameraDisabledDeco;
+                stateDeco = conferee.cameraDisabledDeco;
             }else if (Conferee.VideoChannelState.BindingFailed == videoChannelState
 //                    && Conferee.AudioChannelState.BindingFailed != audioChannelState
             ){
-                stateDeco = Conferee.audioConfereeDeco;
+                stateDeco = conferee.audioConfereeDeco;
             }else if (Conferee.VideoSignalState.Weak == videoSignalState){
-                stateDeco = Conferee.weakVideoSignalDeco;
+                stateDeco = conferee.weakVideoSignalDeco;
             }else if (Conferee.VideoSignalState.Buffering == videoSignalState && conferee.isVirtualAssStreamConferee()){
-                stateDeco = Conferee.recvingAssStreamDeco;
+                stateDeco = conferee.recvingAssStreamDeco;
             }
             if (null != stateDeco && stateDeco.enabled() && !disabledDecos.contains(stateDeco.id)) {
                 stateDeco.adjust(displayWidth, displayHeight);
