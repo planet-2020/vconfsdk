@@ -12,3 +12,9 @@
     project(modulePath).setProjectDir(new File("components/$it"))
 //    logger.quiet("component $modulePath")
 }
+
+gradle.ext.moduleIdMap = ['base' : 1,
+                          'alirtc' : 2,
+                          'datacollaborate' : 3,
+                          'webrtc' : 4
+]
