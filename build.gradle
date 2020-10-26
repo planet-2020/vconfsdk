@@ -194,7 +194,7 @@ def configProject(Project project){
                 def moduleId = gradle.moduleIdMap[project.name]
 //                logger.quiet("moduleId $moduleId")
                 if (moduleId != null){
-                    buildConfigField("int", "MODULEID", ""+(moduleId*100))
+                    buildConfigField("int", "MODULEID", ""+(moduleId*1000))
                 }
             }
             buildTypes {
