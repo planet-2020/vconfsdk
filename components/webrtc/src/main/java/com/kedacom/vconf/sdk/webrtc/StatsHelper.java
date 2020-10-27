@@ -249,6 +249,9 @@ final class StatsHelper {
 
 
         String getCodecMime(String trackIdInRtp){
+            if (trackIdInRtp == null){
+                return "unknown";
+            }
             if (audioOutboundRtp != null && trackIdInRtp.equals(audioOutboundRtp.trackId)) {
                 for (Codec codec : encoderList) {
                     if (codec.id.equals(audioOutboundRtp.codecId)) {
