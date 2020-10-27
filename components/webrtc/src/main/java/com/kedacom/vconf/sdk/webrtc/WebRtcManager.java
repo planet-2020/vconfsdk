@@ -3126,7 +3126,9 @@ public class WebRtcManager extends Caster<Msg>{
 
             // 绘制麦克风
             TextDecoration label = conferee.getLabel();
-            if (label != null && label.enabled() && !disabledDecos.contains(label.id)) {
+            if (conferee.type != Conferee.ConfereeType.AssStream // 虚拟的辅流与会方不展示麦克风图标
+                    && label != null && label.enabled()
+                    && !disabledDecos.contains(label.id)) {
                 conferee.microphoneDeco.draw(label.getMicroPhoneRect(), label.getMicroPhoneBackgroundRect(), label.bgPaint.getColor(),
                         conferee.isMuted(), conferee.getVolume(), canvas);
             }
