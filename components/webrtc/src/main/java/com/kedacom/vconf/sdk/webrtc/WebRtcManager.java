@@ -5270,7 +5270,6 @@ public class WebRtcManager extends Caster<Msg>{
         if (null == stats){
             return;
         }
-        KLog.p(">>>>>>>>>> stats begin");
         // 因为android log一次输出有最大字符限制，所以我们分段输出
         if (detail) {
             KLog.p("---------- audio");
@@ -5334,8 +5333,6 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
         }
-
-        KLog.p(">>>>>>>>>> stats end");
     }
 
     private void aggregateStats(){
@@ -5344,7 +5341,7 @@ public class WebRtcManager extends Caster<Msg>{
         aggregateSubStats(subscriberStats, preSubscriberStats, false);
         aggregatePubStats(assPublisherStats, preAssPublisherStats, true);
         aggregateSubStats(assSubscriberStats, preAssSubscriberStats, true);
-        KLog.p("/### "+statistics);
+        KLog.p("/=== aggregated Stats:\n"+statistics);
     }
 
 

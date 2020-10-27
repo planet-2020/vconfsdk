@@ -67,12 +67,12 @@ public class Statistics {
         @Override
         public String toString() {
             return "ConfereeRelated{" +
-                    "confereeId='" + confereeId + '\'' +
-                    ", audioOutput=" + audioOutput +
-                    ", audioInput=" + audioInput +
-                    ", videoOutput=" + videoOutput +
-                    ", videoInput=" + videoInput +
-                    "}\n";
+                    "\nconfereeId='" + confereeId + '\'' +
+                    ", \naudioOutput=" + audioOutput +
+                    ", \naudioInput=" + audioInput +
+                    ", \nvideoOutput=" + videoOutput +
+                    ", \nvideoInput=" + videoInput +
+                    "\n}\n";
         }
     }
 
@@ -87,8 +87,8 @@ public class Statistics {
         @Override
         public String toString() {
             return "Common{" +
-                    "mixedAudio=" + mixedAudio +
-                    "}\n";
+                    "\nmixedAudio=" + mixedAudio +
+                    "\n}\n";
         }
     }
 
@@ -234,15 +234,15 @@ public class Statistics {
                     ", width=" + width +
                     ", height=" + height +
                     ", encoder='" + encoder + '\'' +
-                    '}';
+                    "}\n";
         }
     }
 
     @Override
     public String toString() {
         return "Statistics{" +
-                "confereeRelated=" + confereeRelated +
-                ", common=" + common +
-                "}\n";
+                "\nconfereeRelated=" + confereeRelated +
+                ", \ncommon=" + common +
+                "\n}\n";
     }
 }
