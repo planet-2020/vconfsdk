@@ -745,7 +745,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     private boolean doSetMute(boolean mute){
-        config.isMuted = mute;
         myself.setMuted(mute);
         PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.PUBLISHER);
         if (null == pcWrapper) {
@@ -2108,6 +2107,9 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         private void setMuted(boolean muted) {
+            if (isMyself()){
+                instance.config.isMuted = muted;
+            }
             if (muted != isMuted) {
                 isMuted = muted;
                 refreshDisplays();
