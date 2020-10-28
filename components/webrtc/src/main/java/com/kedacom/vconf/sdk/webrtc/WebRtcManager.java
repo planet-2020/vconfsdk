@@ -2184,8 +2184,13 @@ public class WebRtcManager extends Caster<Msg>{
          * 是否正在发送辅流
          * */
         public boolean isSendingAssStream() {
-            return instance.findAssStreamSender() == this;
+            if (isMyself()){
+                return null != instance.sharedWindow;
+            }else {
+                return instance.findAssStreamSender() == this;
+            }
         }
+
 
         /**
          * 设置语音激励deco
@@ -3203,7 +3208,7 @@ public class WebRtcManager extends Caster<Msg>{
     private Conferee tryCreateAssStreamConferee(){
         if (null == findAssConferee()){
             Conferee sender = findAssStreamSender();
-            if (null != sender && !sender.isMyself()){
+            if (null != sender){
                 return new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, Conferee.ConfereeType.AssStream);
             }
         }
@@ -3330,17 +3335,14 @@ public class WebRtcManager extends Caster<Msg>{
 
     /**
      * 查找辅流发送者
+     * NOTE: 查找范围不包含己端
      * */
     private Conferee findAssStreamSender(){
-        if (null != instance.sharedWindow){
-            return myself;
-        }else{
-            RtcStream assStream = findAssStream();
-            if (null == assStream) {
-                return null;
-            }
-            return findConferee(assStream.getMcuId(), assStream.getTerId(), Conferee.ConfereeType.Normal);
+        RtcStream assStream = findAssStream();
+        if (null == assStream) {
+            return null;
         }
+        return findConferee(assStream.getMcuId(), assStream.getTerId(), Conferee.ConfereeType.Normal);
     }
 
     /**
