@@ -250,6 +250,8 @@ public class WebRtcManager extends Caster<Msg>{
                         int resCode = RtcResultCode.trans(rsp, loginResult.AssParam.basetype);
                         if (RtcResultCode.LoggedIn == resCode) {
                             reportSuccess(null, resultListener);
+                        } else if (RtcResultCode.LoggedOut == resCode){
+                            isConsumed[0] = false; // 该条消息可能是上一次注销请求等待超时未消费，导致遗留至此的，此非我们期望的消息，继续等待后续的。
                         } else {
                             reportFailed(resCode, resultListener);
                         }
