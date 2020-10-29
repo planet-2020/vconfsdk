@@ -5083,14 +5083,14 @@ public class WebRtcManager extends Caster<Msg>{
     private StatsHelper.Stats assSubscriberStats;
 
     // 上一个采集周期留存的统计信息。
-    // 因为有些统计数据我们需要自己计算，比如码率、帧率。
+    // 因为有些统计数据需要我们取区间差值自己计算，比如码率、帧率。
     private StatsHelper.Stats prePublisherStats;
     private StatsHelper.Stats preSubscriberStats;
     private StatsHelper.Stats preAssPublisherStats;
     private StatsHelper.Stats preAssSubscriberStats;
 
-    // 统计信息采集周期。// 单位：秒
-    private final int STATS_INTERVAL = 2;
+    // 统计信息采集周期。// 单位：毫秒
+    private final int STATS_INTERVAL = 500;
 
     // RTC统计信息收集器
     private Runnable statsCollector = new Runnable() {
@@ -5124,20 +5124,20 @@ public class WebRtcManager extends Caster<Msg>{
 
             if (enableStatsLog){
                 KLog.p("/=== publisherStats: ");
-                printStats(publisherStats, true);
+                printStats(publisherStats, false);
                 KLog.p("/=== subscriberStats: ");
-                printStats(subscriberStats, true);
+                printStats(subscriberStats, false);
                 KLog.p("/=== assPublisherStats: ");
-                printStats(assPublisherStats, true);
+                printStats(assPublisherStats, false);
                 KLog.p("/=== assSubscriberStats: ");
-                printStats(assSubscriberStats, true);
+                printStats(assSubscriberStats, false);
             }
 
             aggregateStats();
 
             Stream.of(getNtfListeners(StatsListener.class)).forEach(statsListener -> statsListener.onStats(statistics));
 
-            handler.postDelayed(this, STATS_INTERVAL * 1000);
+            handler.postDelayed(this, STATS_INTERVAL);
         }
     };
 
@@ -5148,7 +5148,7 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void run() {
             if (publisherStats==null || subscriberStats==null){
-                handler.postDelayed(this, STATS_INTERVAL * 1000);
+                handler.postDelayed(this, STATS_INTERVAL);
                 return;
             }
             // 比较各与会方的音量以选出最大者用以语音激励
@@ -5206,7 +5206,7 @@ public class WebRtcManager extends Caster<Msg>{
                 preMaxAudioLevelKdStreamId = null;
             }
 
-            handler.postDelayed(this, STATS_INTERVAL * 1000);
+            handler.postDelayed(this, STATS_INTERVAL);
         }
     };
 
@@ -5219,7 +5219,7 @@ public class WebRtcManager extends Caster<Msg>{
         @Override
         public void run() {
             if (subscriberStats==null){
-                handler.postDelayed(this, STATS_INTERVAL * 1000);
+                handler.postDelayed(this, STATS_INTERVAL);
                 return;
             }
             // 其他与会方的帧率
@@ -5259,7 +5259,7 @@ public class WebRtcManager extends Caster<Msg>{
                 videoStatsTimeStamp = curTimestamp;
             }
 
-            handler.postDelayed(this, STATS_INTERVAL * 1000);
+            handler.postDelayed(this, STATS_INTERVAL);
         }
     };
 
@@ -5275,28 +5275,26 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
         // 因为android log一次输出有最大字符限制，所以我们分段输出
-        if (detail) {
-            KLog.p("---------- audio");
-            if (null != stats.audioSource) {
-                KLog.p(stats.audioSource.toString());
+        KLog.p("---------- audio");
+        if (null != stats.audioSource) {
+            KLog.p(stats.audioSource.toString());
+        }
+        if (null != stats.sendAudioTrack) {
+            KLog.p(stats.sendAudioTrack.toString());
+        }
+        if (null != stats.audioOutboundRtp) {
+            KLog.p(stats.audioOutboundRtp.toString());
+        }
+        if (null != stats.recvAudioTrackList) {
+            for (StatsHelper.RecvAudioTrack audioTrack : stats.recvAudioTrackList) {
+                String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(audioTrack.trackIdentifier);
+                Conferee conferee = findConfereeByStreamId(kdStreamId);
+                KLog.p(conferee != null ? conferee.alias + " " + audioTrack : audioTrack.toString());
             }
-            if (null != stats.sendAudioTrack) {
-                KLog.p(stats.sendAudioTrack.toString());
-            }
-            if (null != stats.audioOutboundRtp) {
-                KLog.p(stats.audioOutboundRtp.toString());
-            }
-            if (null != stats.recvAudioTrackList) {
-                for (StatsHelper.RecvAudioTrack audioTrack : stats.recvAudioTrackList) {
-                    String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(audioTrack.trackIdentifier);
-                    Conferee conferee = findConfereeByStreamId(kdStreamId);
-                    KLog.p(conferee != null ? conferee.alias + " " + audioTrack : audioTrack.toString());
-                }
-            }
-            if (null != stats.audioInboundRtpList) {
-                for (StatsHelper.AudioInboundRtp audioInbound : stats.audioInboundRtpList) {
-                    KLog.p(audioInbound.toString());
-                }
+        }
+        if (null != stats.audioInboundRtpList) {
+            for (StatsHelper.AudioInboundRtp audioInbound : stats.audioInboundRtpList) {
+                KLog.p(audioInbound.toString());
             }
         }
 
@@ -5359,7 +5357,7 @@ public class WebRtcManager extends Caster<Msg>{
         String codecMime = "";
         if (!isAss){
             if (stats.audioOutboundRtp!=null && preStats.audioOutboundRtp!=null){
-                bitrate = (int) ((stats.audioOutboundRtp.bytesSent - preStats.audioOutboundRtp.bytesSent)*8 / STATS_INTERVAL / 1024);
+                bitrate = (int) ((stats.audioOutboundRtp.bytesSent - preStats.audioOutboundRtp.bytesSent)*8 / (STATS_INTERVAL/1000f) / 1024);
             }
             if (stats.audioOutboundRtp!=null){
                 codecMime = stats.getCodecMime(stats.audioOutboundRtp.trackId);
@@ -5373,7 +5371,7 @@ public class WebRtcManager extends Caster<Msg>{
         codecMime = "";
         String encoderImplementation = "";
         if (stats.videoOutboundRtp!=null && preStats.videoOutboundRtp!=null){
-            bitrate = (int) ((stats.videoOutboundRtp.bytesSent - preStats.videoOutboundRtp.bytesSent)*8 / STATS_INTERVAL / 1024);
+            bitrate = (int) ((stats.videoOutboundRtp.bytesSent - preStats.videoOutboundRtp.bytesSent)*8 / (STATS_INTERVAL/1000f) / 1024);
             encoderImplementation = stats.videoOutboundRtp.encoderImplementation;
         }
         if (stats.videoOutboundRtp!=null){
@@ -5383,7 +5381,7 @@ public class WebRtcManager extends Caster<Msg>{
         int frameWidth = 0;
         int frameHeight = 0;
         if (stats.sendVideoTrack!=null && preStats.sendVideoTrack!=null){
-            frameRate = (int) ((stats.sendVideoTrack.framesSent - preStats.sendVideoTrack.framesSent) / STATS_INTERVAL);
+            frameRate = (int) ((stats.sendVideoTrack.framesSent - preStats.sendVideoTrack.framesSent) / (STATS_INTERVAL/1000f));
             frameWidth = stats.sendVideoTrack.frameWidth;
             frameHeight = stats.sendVideoTrack.frameHeight;
         }
@@ -5412,7 +5410,7 @@ public class WebRtcManager extends Caster<Msg>{
                             continue;
                         }
                         if (rtp.trackId.equals(preRtp.trackId)) {
-                            int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / STATS_INTERVAL / 1024);
+                            int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / (STATS_INTERVAL/1000f) / 1024);
                             String codecMime = stats.getCodecMime(rtp.trackId);
                             long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
                             int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
@@ -5430,7 +5428,7 @@ public class WebRtcManager extends Caster<Msg>{
                                 conferee.setVolume(audioLevel);
                             } else {
                                 RtcStream rtcStream = findStream(kdStreamId);
-                                if (rtcStream != null && rtcStream.streamInfo.bMix) {
+                                if (rtcStream != null && rtcStream.streamInfo.bMix) { // 混音
                                     statistics.common = new Statistics.Common(audioInput);
                                 } else {
                                     KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
@@ -5452,10 +5450,10 @@ public class WebRtcManager extends Caster<Msg>{
                         continue;
                     }
                     if (rtp.trackId.equals(preRtp.trackId)) {
-                        int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / STATS_INTERVAL / 1024);
+                        int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / (STATS_INTERVAL/1000f) / 1024);
                         String codecMime = stats.getCodecMime(rtp.trackId);
                         StatsHelper.RecvVideoTrack recvVideoTrack = stats.getRecvVideoTrack(rtp.trackId);
-                        int frameRate = (int) ((recvVideoTrack.framesReceived - preStats.getRecvVideoTrack(preRtp.trackId).framesReceived) / STATS_INTERVAL);
+                        int frameRate = (int) ((recvVideoTrack.framesReceived - preStats.getRecvVideoTrack(preRtp.trackId).framesReceived) / (STATS_INTERVAL/1000f));
                         long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
                         int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
                         Statistics.VideoInput videoInput = new Statistics.VideoInput(frameRate, recvVideoTrack.frameWidth, recvVideoTrack.frameHeight, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate, bitrate, codecMime, rtp.decoderImplementation);
