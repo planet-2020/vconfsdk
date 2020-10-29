@@ -141,7 +141,11 @@ enum Msg {
     MultipartyConfEnded,
 
     /**
-     * 会议已取消
+     * 会议已取消。
+     * 呼叫在建立过程中，因拒绝或者超时等原因导致建立失败会报该通知。
+     * 举例：
+     * A呼叫B，B拒绝或接听超时，A会收到该消息；
+     * B在两个终端1，2登录，A呼叫B，1先接听了，2会收到该消息。
      * */
     @Notification
     @Response(clz = BaseTypeInt.class, // EmMtCallDisReason

@@ -963,8 +963,11 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case MultipartyConfEnded:
-            case ConfCanceled:
                 Stream.of(getNtfListeners(ConfFinishedListener.class)).forEach(it -> it.onConfFinished(RtcResultCode.trans(ntf, ((BaseTypeInt) ntfContent).basetype)));
+                stopSession();
+                break;
+            case ConfCanceled:
+                Stream.of(getNtfListeners(ConfProcessCanceled.class)).forEach(it -> it.onConfProcessCanceled(RtcResultCode.trans(ntf, ((BaseTypeInt) ntfContent).basetype)));
                 stopSession();
                 break;
 
@@ -5504,6 +5507,16 @@ public class WebRtcManager extends Caster<Msg>{
         void onStats(Statistics statistics);
     }
 
+    /**
+     * 会议流程取消监听器。
+     * 入会流程被取消，如对端取消呼叫。
+     * */
+    public interface ConfProcessCanceled extends INtfListener {
+        /**
+         * @param reason 取消原因{@link RtcResultCode}
+         */
+        void onConfProcessCanceled(int reason);
+    }
 
     /**
      * 会议结束监听器
