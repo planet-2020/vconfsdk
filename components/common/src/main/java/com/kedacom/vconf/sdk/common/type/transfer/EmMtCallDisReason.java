@@ -62,7 +62,10 @@ public enum EmMtCallDisReason {
 	emDisConnect_ChannelNoAuth(55), 			// 渠道产品未经授权
 	emDisConnect_QtCallButNotGetPeerE164(56),	// 量通呼叫，没有获取到对端的e164号码
 	emDisconnect_CancleInputPwd(57), 			// 取消输入会议密码
-	emDisconnect_ElseWhereConf(58),    		// 该账号别处入会
+	emDisconnect_ElseWhereConf(59),    		// 该账号别处入会
+	emDisconnect_MultiDeviceJoinConf_Api(60), ///< 多设备强登入会，A已经在会议中，B强登入会，A收到的原因
+	emDisconnect_ConfOpenModeClose_Api(61), ///< 会议为不可见会议
+	emDisconnect_ConfNotExist_Api(62),         ///< 会议不存在
 	emDisconnect_End(100);                 	// 前面用于扩展
 
 
