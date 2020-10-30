@@ -25,6 +25,8 @@ public final class RtcResultCode {
     public static final int AlreadyLoggedIn = InnerCodeUpperBound+6;         // 已登录（重复登录）
     public static final int UnknownServerAddress = InnerCodeUpperBound+7;   // 未知服务器
     public static final int ConfNeedPassword = InnerCodeUpperBound+8;   // 会议需要密码
+    public static final int InConfAlready = InnerCodeUpperBound+9;     // （尝试入会时）已在会议中。可能同一个帐号登录了多个设备，其他设备已入会。
+    public static final int NoSuchConf = InnerCodeUpperBound+10;     // 会议不存在
 
     /**
      * 错误码映射关系：
@@ -42,6 +44,8 @@ public final class RtcResultCode {
         resultCodes.put(Msg.CreateConfRsp, 99997, InstantConfDenied);
         resultCodes.put(Msg.ConfCanceled, 40, NotLoggedInYet);
         resultCodes.put(Msg.ConfCanceled, 39, ConfereeNumReachLimit);
+        resultCodes.put(Msg.ConfCanceled, 59, InConfAlready);
+        resultCodes.put(Msg.ConfCanceled, 62, NoSuchConf);
         resultCodes.put(Msg.QueryConfInfoRsp, 1000, Success); // 纯响应的结果码成功命名Success
     }
 
