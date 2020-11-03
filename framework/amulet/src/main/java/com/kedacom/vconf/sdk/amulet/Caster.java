@@ -133,14 +133,14 @@ public abstract class Caster<T extends Enum<T>> implements
      *                       NOTE: caster为每次请求创建一个会话（“请求——响应序列”），会话持有了resultListener的引用，而resultListener可能为生命周期对象如Activity，
      *                       若resultListener生命周期结束于会话之前则会话需要及时释放resultListener引用以避免内存泄漏以及不被用户期望的请求结果回调。
      *                       释放引用有两种方式：手动释放和自动释放。
-     *                       手动释放指用户通过调用delete系列方法释放，如{@link #delListener(Object...)}，自动释放则由Caster自动管理，默认是在resultListener生命周期结束时释放。
+     *                       手动释放指用户通过调用delete系列方法释放，如{@link #delListener(Object...)}，自动释放则由Caster自动管理（默认在resultListener生命周期结束时释放）。
      *                       手动释放很繁琐易出错，所以最好由Caster自动释放。
      *
      *                       在调用本接口时，Caster会尝试监控resultListener的生命周期，进而实现自动释放，但是成功的前提是——
      *                       resultListener需得是生命周期拥有者{@link androidx.lifecycle.LifecycleOwner}或者绑定了某个LifecycleOwner，
-     *                       这样，当LifecycleOwner#onDestroy时Caster会自动解除对resultListener的引用，用户无需做额外操作（除非这个行为非用户期望）。
-     *                       AppCompatActivity以及Fragment(support包的或androidx的)都是LifecycleOwner，用户也可以自定义监听器并实现LifecycleOwner（详询官网）。
-     *                       resultListener也可以绑定到某个LifecycleOwner，这样其生命周期跟绑定对象同步。
+     *                       这样，当LifecycleOwner#onDestroy时（此为默认，用户可以指定其他时机{@link IResultListener#destroyWhenLifecycleOwner()}）Caster会自动解除对resultListener的引用，用户无需做额外操作。
+     *                       AppCompatActivity以及Fragment(support包的或androidx的)都是LifecycleOwner，用户也可以自行实现LifecycleOwner（详询官网）。
+     *                       resultListener可以绑定到某个LifecycleOwner，这样其生命周期跟绑定对象同步。
      *                       绑定有两种方式：手动绑定和自动绑定。
      *                       手动绑定是通过实现{@link IResultListener#getLifecycleOwner()}，返回值即为绑定的生命周期拥有者。此种绑定方式具有最高优先级，即便resultListener自身是LifecycleOwner。
      *                       自动绑定的条件是监听器的“直接”外部类是LifecycleOwner或者绑定了LifecycleOwner。
@@ -193,8 +193,8 @@ public abstract class Caster<T extends Enum<T>> implements
      *                       调用本接口时Caster会尝试监控resultListener的生命周期以便在resultListener销毁时自动释放其引用，但成功的条件是resultListener是LifecycleOwner或绑定了LifecycleOwner；
      *                       绑定LifecycleOwner可手动（通过实现{@link IResultListener#getLifecycleOwner()}），或自动（满足resultListener的“直接”外部类是LifecycleOwner或绑定了LifecycleOwner）；
      *                       绑定的优先级按从高到低： getLifecycleOwner > 自身即为LifecycleOwner > 直接外部类是LifecycleOwner或绑定了LifecycleOwner；
+     *                       当session结束时（session一定会结束，有超时机制），Caster会自动释放监听器引用（所以多数情况下即使不做任何处理也不会表现出问题）；
      *                       如果用户的监听器本身就是一个长寿对象（如一个全局单例），肯定长过session的生命周期，则无需关注生命周期问题；
-     *                       当session结束时（session一定会结束，有超时机制），Caster会自动释放监听器引用，所以多数情况下即使不做任何处理也不会表现出问题（但实则有漏洞）。
      * */
     protected void req(boolean ignoreGlobalBan, boolean ignoreBan,
                        @NonNull T req, SessionProcessor<T> sessionProcessor, IResultListener resultListener, Object... reqParas){
@@ -241,7 +241,7 @@ public abstract class Caster<T extends Enum<T>> implements
                 if (s.state == Session.Working) {
                     sessionFairy.cancelReq(s.id);
                 }
-                s.state = Session.End;
+                s.state = Session.Canceled;
                 if (!containsListener(s.resultListener)){
                     listenerLifecycleObserver.unobserve(s.resultListener);
                 }
@@ -279,8 +279,8 @@ public abstract class Caster<T extends Enum<T>> implements
      * 删除通知监听器
      * @param listeners 要删除的通知监听器列表。
      * NOTE：该方法和{@link #delListener(Object...)}的区别在于——
-     *       如果一个监听器既是通知监听器也是结果监听器则调用{@link #delListener(Object...)}将同时删除这两种监听器，
-     *       而调用本方法仅删除了通知监听器保留了其结果监听器的身份。
+     *       如果一个监听器既是通知监听器也是结果监听器则调用{@link #delListener(Object...)}将同时删除这两种监听器身份，
+     *       而调用本方法仅删除了通知监听器身份保留了其结果监听器的身份。
      * */
     public void delNtfListener(@NonNull Object... listeners){
         for (Object listener : listeners){
@@ -316,8 +316,8 @@ public abstract class Caster<T extends Enum<T>> implements
      * 删除结果监听器
      * @param listeners 要删除的结果监听器列表。
      * NOTE：该方法和{@link #delListener(Object...)}的区别在于——
-     *       如果一个监听器既是结果监听器也是通知监听器则调用{@link #delListener(Object...)}将同时删除这两种监听器，
-     *       而调用本方法仅删除了结果监听器保留了其通知监听器的身份。
+     *       如果一个监听器既是结果监听器也是通知监听器则调用{@link #delListener(Object...)}将同时删除这两种监听器身份，
+     *       而调用本方法仅删除了结果监听器身份保留了其通知监听器的身份。
      * */
     public void delResultListener(@NonNull Object... listeners){
         for (Object listener : listeners) {
@@ -396,12 +396,13 @@ public abstract class Caster<T extends Enum<T>> implements
     public void onReqSent(boolean hasRsp, String reqId, int reqSn, Object[] reqParas, Object output) {
         T req = Enum.valueOf(enumT, unprefix(reqId));
         Session s = getSession(reqSn);
+        s.reqSent = true;
         IResultListener resultListener = s.resultListener;
         KLog.p(KLog.DEBUG,"req=%s, sid=%s, resultListener=%s", req, s.id, resultListener);
         if (null != s.processor){
             s.processor.onReqSent(resultListener, req, reqParas, output);
         }
-        if (!hasRsp){
+        if (!hasRsp || s.state == Session.End){
             sessions.remove(s);
             if (!containsListener(resultListener)) {
                 listenerLifecycleObserver.unobserve(resultListener);
@@ -420,8 +421,9 @@ public abstract class Caster<T extends Enum<T>> implements
         if (null != processor){
             boolean[] isConsumed = new boolean[]{true};
             processor.onRsp(rsp, rspContent, resultListener, bLast, req, reqParas, isConsumed);
-            if (isConsumed[0]){
-                if (bLast){
+            if (isConsumed[0] && bLast){
+                s.state = Session.End;
+                if (s.reqSent) {
                     sessions.remove(s);
                     if (!containsListener(resultListener)) {
                         listenerLifecycleObserver.unobserve(resultListener);
@@ -449,9 +451,12 @@ public abstract class Caster<T extends Enum<T>> implements
             // 超时未被消费则此处通知用户超时
             reportTimeout(resultListener);
         }
-        sessions.remove(s);
-        if (!containsListener(resultListener)) {
-            listenerLifecycleObserver.unobserve(resultListener);
+        s.state = Session.End;
+        if (s.reqSent) {
+            sessions.remove(s);
+            if (!containsListener(resultListener)) {
+                listenerLifecycleObserver.unobserve(resultListener);
+            }
         }
     }
 
@@ -672,11 +677,13 @@ public abstract class Caster<T extends Enum<T>> implements
         private SessionProcessor<T> processor;
         private IResultListener resultListener;
         private Object[] reqParas;
+        private boolean reqSent;
         private int state = Idle;
         static final int Idle = 0;
         static final int Working = 1;
         static final int Paused = 2;
         static final int End = 3;
+        static final int Canceled = 4;
 
         public Session(boolean ignoreBan, T req, SessionProcessor<T> processor, IResultListener resultListener, Object[] reqParas) {
             id = sessionCount++;

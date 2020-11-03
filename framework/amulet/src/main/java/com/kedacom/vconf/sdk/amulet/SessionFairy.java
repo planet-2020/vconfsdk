@@ -99,10 +99,10 @@ final class SessionFairy implements IFairy.ISessionFairy{
         }
 
         String methodName = magicBook.reqName(s.reqId);
-        s.setState(Session.READY);
 
         reqHandler.postDelayed(() -> {
-            if(!s.transState(Session.READY, Session.SENDING)){
+            if(!s.transState(Session.IDLE, Session.SENDING)){
+                KLog.p(KLog.DEBUG, "session %s aborted, current state: %s", s.id, s.state);
                 return;
             }
 
@@ -123,21 +123,15 @@ final class SessionFairy implements IFairy.ISessionFairy{
             long nativeCallCostTime = System.currentTimeMillis() - timestamp;
 
             KLog.p(KLog.DEBUG,"native method %s cost time: %s", nativeMethodOwner+"#"+methodName, nativeCallCostTime);
-            if(!s.transState(Session.SENDING, Session.SENT)){
-                return;
-            }
+
+            s.transState(Session.SENDING, Session.WAITING);
 
             uiHandler.post(() -> {
-                if(!s.transState(Session.SENT, Session.WAITING)){
+                if (s.isState(Session.CANCELED)){
+                    KLog.p(KLog.DEBUG, "session %s canceled", s.id);
                     return;
                 }
-                boolean hasRsp = null != s.rspSeqs && 0 != s.rspSeqs.length;
-                if (!hasRsp){
-                    // 没有响应，结束会话并移除定时器
-                    s.setState(Session.END);
-                    sessions.remove(s);
-                    uiHandler.removeMessages(MsgId_Timeout, s);
-                }
+
                 // 判断是否存在出参，若存在出参（json形式）则转为用户参数（类对象）
                 Object output = null;
                 int outputParaIndex = magicBook.outputParaIndex(reqId);
@@ -148,15 +142,19 @@ final class SessionFairy implements IFairy.ISessionFairy{
                             paras[outputParaIndex].toString(), // 目前和native之间交换数据是通过json字符串
                             userParaClasses[outputParaIndex]
                     );
-                }
-                if (!hasRsp) {
-                    Log.d(TAG, String.format("%s <-~-o NO RESPONSE%s", s.id, outputParaExists ? ", outputPara="+paras[outputParaIndex] : ""));
-                }else if(outputParaExists){
                     KLog.p(KLog.DEBUG,"native method %s output para: %s", nativeMethodOwner+"#"+methodName, paras[outputParaIndex]);
                 }
-
+                boolean hasRsp = null != s.rspSeqs && 0 != s.rspSeqs.length;
                 // 上报用户请求已发送，并反馈出参（若存在）
                 s.listener.onReqSent(hasRsp, s.reqId, s.reqSn, s.reqPara, output);
+
+                if (!hasRsp && !s.isState(Session.CANCELED, Session.TIMEOUT, Session.END)) {
+                    // 没有响应，结束会话并移除定时器
+                    s.setState(Session.END);
+                    sessions.remove(s);
+                    uiHandler.removeMessages(MsgId_Timeout, s);
+                    Log.d(TAG, String.format("%s <-~-o NO RESPONSE%s", s.id, outputParaExists ? ", outputPara="+paras[outputParaIndex] : ""));
+                }
             });
 
         },
@@ -204,15 +202,14 @@ final class SessionFairy implements IFairy.ISessionFairy{
         }
 
         boolean bConsumed = false;
-        tryConsume:
-        for (String rspId : rspIds) {
+        tryConsume: for (String rspId : rspIds) {
             Class<?> rspClass = magicBook.rspClass(rspId);
             if (rspClass == null){
                 continue;
             }
 
             for (final Session s : sessions) { // 查找期望该响应的会话
-                if (!s.isState(Session.WAITING, Session.RECVING)) {
+                if (!s.isState(Session.SENDING, Session.WAITING, Session.RECVING)) {
                     continue;
                 }
 
@@ -411,9 +408,7 @@ final class SessionFairy implements IFairy.ISessionFairy{
 
         private int state = IDLE;  // 会话状态
         private static final int IDLE = 0;  // 空闲。初始状态
-        private static final int READY = 1;  // 已准备，待执行。
         private static final int SENDING = 2; // 正在发送请求。
-        private static final int SENT = 3; // 请求已发出。
         private static final int WAITING = 4; // 正在等待响应。请求发送以后，收到第一条响应之前。
         private static final int RECVING = 5; // 正在接收响应序列。收到第一条响应后，收到最后一条响应之前。
         private static final int CANCELED = 6; // 已取消。会话结束前用户取消了该会话。最终状态。

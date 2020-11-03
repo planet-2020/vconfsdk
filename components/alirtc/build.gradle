@@ -18,8 +18,8 @@ android {
 
 dependencies {
     api 'com.kedacom.vconf.sdk:common:2.0.4-SNAPSHOT'
-    implementation 'com.kedacom.vconf.sdk:utils:1.6.7-SNAPSHOT'
-    api 'com.kedacom.vconf.sdk:amulet:10.1.0-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:utils:1.6.7'
+    api 'com.kedacom.vconf.sdk:amulet:10.1.0'
 
     //-> 阿里sdk引入
     compileOnly fileTree(dir: 'libs/alisdk', include: ['*.jar', '*.aar'])

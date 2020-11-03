@@ -111,31 +111,51 @@ buildscript {
 //                }
 
                 if (!forBuildscript){
-                    def urlKedaSdk
-                    def isSnapshot = project.version.endsWith('SNAPSHOT')
-//                    logger.quiet("project name=${project.name}, version=${project.version}, isSnapshot $isSnapshot")
+                    def urlKedaSdkSnapshot
+                    def urlKedaSdkRelease
                     switch (repo){
                         case REPO_KEDA:
-                            urlKedaSdk = isSnapshot ? KEDA_SNAPSHOT : KEDA_RELEASE
+                            urlKedaSdkSnapshot = KEDA_SNAPSHOT
+                            urlKedaSdkRelease = KEDA_RELEASE
                             break;
                         case REPO_PERSONAL:
-                            urlKedaSdk = isSnapshot ? PERSONAL_SNAPSHOT : PERSONAL_RELEASE
+                            urlKedaSdkSnapshot = PERSONAL_SNAPSHOT
+                            urlKedaSdkRelease = PERSONAL_RELEASE
                             break;
                         default:
-                            urlKedaSdk = MAVEN_LOCAL
+                            urlKedaSdkSnapshot = MAVEN_LOCAL
+                            urlKedaSdkRelease = MAVEN_LOCAL
                             break;
                     }
 
-                    exclusiveContent {
-                        forRepository {
-                            maven {
-                                url urlKedaSdk
-                            }
-                        }
-                        filter {
-                            includeGroup MYGROUP
+                    maven {
+                        url urlKedaSdkRelease
+                        mavenContent {
+                            releasesOnly()
                         }
                     }
+
+                    maven {
+                        url urlKedaSdkSnapshot
+                        mavenContent {
+                            snapshotsOnly()
+                        }
+                    }
+
+//                    exclusiveContent {
+//                        forRepository {
+//                            maven {
+//                                url urlKedaSdkSnapshot
+//                                mavenContent {
+//                                    snapshotsOnly()
+//                                }
+//                            }
+//                        }
+//                        filter {
+////                            includeGroup MYGROUP
+//                            includeModuleByRegex(MYGROUP, ".*-SNAPSHOT")
+//                        }
+//                    }
 
                 }
             }
