@@ -279,6 +279,8 @@ public class WebRtcManager extends Caster<Msg>{
                 int resCode = RtcResultCode.trans(rsp, loginResult.AssParam.basetype);
                 if (RtcResultCode.LoggedOut == resCode) {
                     reportSuccess(null, resultListener);
+                } else if (RtcResultCode.LoggedIn == resCode){
+                    isConsumed[0] = false;
                 } else {
                     reportFailed(resCode, resultListener);
                 }
