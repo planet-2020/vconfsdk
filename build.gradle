@@ -37,8 +37,8 @@ buildscript {
         REPO_INSIDE_WALL = 3
         REPO_OUTSIDE_WALL = 4
 //        repo = REPO_KEDA
-        repo = REPO_INSIDE_WALL
 //        repo = REPO_PERSONAL
+        repo = REPO_INSIDE_WALL
 
         MYGROUP = 'com.kedacom.vconf.sdk'
 
@@ -117,15 +117,15 @@ buildscript {
                         case REPO_KEDA:
                             urlKedaSdkSnapshot = KEDA_SNAPSHOT
                             urlKedaSdkRelease = KEDA_RELEASE
-                            break;
+                            break
                         case REPO_PERSONAL:
                             urlKedaSdkSnapshot = PERSONAL_SNAPSHOT
                             urlKedaSdkRelease = PERSONAL_RELEASE
-                            break;
+                            break
                         default:
-                            urlKedaSdkSnapshot = MAVEN_LOCAL
-                            urlKedaSdkRelease = MAVEN_LOCAL
-                            break;
+                            urlKedaSdkSnapshot = KEDA_SNAPSHOT
+                            urlKedaSdkRelease = KEDA_RELEASE
+                            break
                     }
 
                     maven {
