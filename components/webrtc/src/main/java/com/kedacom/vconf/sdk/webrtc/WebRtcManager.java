@@ -2024,6 +2024,11 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         private StreamStateDecoration recvingAssStreamDeco;
 
+        /**
+         * 正在发送辅流的装饰
+         * */
+        private Bitmap sendingAssStreamDeco;
+
         // 统计信息paint
         private static Paint statsPaint = new Paint();
 
@@ -2262,6 +2267,14 @@ public class WebRtcManager extends Caster<Msg>{
                     PicDecoration.createCenterPicDeco("recvingAssStreamDeco", bitmap, winW, winH),
                     backgroundColor
             );
+        }
+
+
+        /**
+         * 设置正在发送辅流时展示的deco
+         * */
+        public void setSendingAssStreamDecoration(@NonNull Bitmap bitmap){
+            sendingAssStreamDeco = bitmap;
         }
 
 
@@ -3138,13 +3151,18 @@ public class WebRtcManager extends Caster<Msg>{
                 canvas.drawText(deco.text, deco.actualX, deco.actualY, deco.paint);
             }
 
-            // 绘制麦克风
             TextDecoration label = conferee.getLabel();
-            if (conferee.type != Conferee.ConfereeType.AssStream // 虚拟的辅流与会方不展示麦克风图标
-                    && label != null && label.enabled()
+            if (label != null && label.enabled()
                     && !disabledDecos.contains(label.id)) {
-                conferee.microphoneDeco.draw(label.getMicroPhoneRect(), label.getMicroPhoneBackgroundRect(), label.bgPaint.getColor(),
-                        conferee.isMuted(), conferee.getVolume(), canvas);
+                if (conferee.type == Conferee.ConfereeType.AssStream){
+                    // 绘制发送辅流图标
+                    canvas.drawRect(label.getMicroPhoneBackgroundRect(), label.bgPaint);
+                    canvas.drawBitmap(conferee.sendingAssStreamDeco, null, label.getMicroPhoneBackgroundRect(), null);
+                }else {
+                    // 绘制麦克风
+                    conferee.microphoneDeco.draw(label.getMicroPhoneRect(), label.getMicroPhoneBackgroundRect(), label.bgPaint.getColor(),
+                            conferee.isMuted(), conferee.getVolume(), canvas);
+                }
             }
 
             // 绘制语音激励deco
