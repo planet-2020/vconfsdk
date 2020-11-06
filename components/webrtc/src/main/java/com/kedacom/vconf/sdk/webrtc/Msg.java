@@ -311,6 +311,16 @@ enum Msg {
     StreamLeft,
 
     /**
+     * 音频流所属关系变更通知。
+     * 对于多方会议，平台会创建固定数量的音频流，而不是为每个与会方创建单独的。
+     * 当某些与会方处于说话状态时，平台会把这些音频流映射给这些与会方。该条消息即表示此映射关系发生了变更。
+     * */
+    @Notification(clz = TRtcStreamInfoList.class,
+            name = "RtcMixStreamLabelChange_Ntf")
+    AudioStreamOwnerChanged,
+
+
+    /**
      * 选择想要订阅的视频码流
      */
     @Request(name = "SetRtcPlayCmd",

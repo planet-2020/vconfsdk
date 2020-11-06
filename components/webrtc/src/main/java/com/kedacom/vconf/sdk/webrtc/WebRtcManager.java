@@ -1108,6 +1108,25 @@ public class WebRtcManager extends Caster<Msg>{
 //                bindStream(); // 码流离开不需要重新订阅，业务组件会处理
                 break;
 
+            case AudioStreamOwnerChanged:
+                Stream.of(streams).forEach(it -> {
+                    if (it.streamInfo.bAudio && it.streamInfo.bMix){
+                        it.setTerId(0); // 清空之前的映射关系，准备建立新的映射关系
+                    }
+                });
+
+                Stream.of(((TRtcStreamInfoList) ntfContent).atStramInfoList)
+                        .filter(it->it.bAudio)
+                        .forEach(it -> Stream.of(streams).forEach(rtcStream -> {
+                            if (rtcStream.getStreamId().equals(it.achStreamId)){
+                                // 混音流映射到新的终端
+                                rtcStream.setMcuId(it.tMtId.dwMcuId);
+                                rtcStream.setTerId(it.tMtId.dwTerId);
+                            }
+                        }));
+
+                break;
+
             case SelfSilenceStateChanged:
                 BaseTypeBool cont = (BaseTypeBool) ntfContent;
                 if (cont.basetype != config.isSilenced && doSetSilence(cont.basetype)) {
@@ -2742,6 +2761,15 @@ public class WebRtcManager extends Caster<Msg>{
         private int getTerId() {
             return streamInfo.tMtId.dwTerId;
         }
+
+        private void setMcuId(int mcuId) {
+            streamInfo.tMtId.dwMcuId = mcuId;
+        }
+
+        private void setTerId(int terId) {
+            streamInfo.tMtId.dwTerId = terId;
+        }
+
 
         private boolean isAudio() {
             return streamInfo.bAudio;
