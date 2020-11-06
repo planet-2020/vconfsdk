@@ -1128,7 +1128,6 @@ public class WebRtcManager extends Caster<Msg>{
                 });
 
                 Stream.of(((TRtcStreamInfoList) ntfContent).atStramInfoList)
-                        .filter(it->it.bAudio)
                         .forEach(it -> Stream.of(streams).forEach(rtcStream -> {
                             if (rtcStream.getStreamId().equals(it.achStreamId)){
                                 // 混音流映射到新的终端
@@ -4715,7 +4714,7 @@ public class WebRtcManager extends Caster<Msg>{
                 String localAudioTrackId = LOCAL_AUDIO_TRACK_ID+audioTrackCnt++;
                 localAudioTrack = factory.createAudioTrack(localAudioTrackId, audioSource);
                 localAudioTrack.setEnabled(!config.isMuted);
-                localAudioTrack.setVolume(10 * config.inputAudioVolume/100f);
+                localAudioTrack.setVolume(10 * config.inputAudioVolume/100f); // 设置音量增益，范围0-10
                 RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
                         RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
                         Collections.singletonList(STREAM_ID)
@@ -5155,7 +5154,7 @@ public class WebRtcManager extends Caster<Msg>{
     private StatsHelper.Stats preAssSubscriberStats;
 
     // 统计信息采集周期。// 单位：毫秒
-    private final int STATS_INTERVAL = 500;
+    private final int STATS_INTERVAL = 300;
 
     // RTC统计信息收集器
     private Runnable statsCollector = new Runnable() {
@@ -5485,12 +5484,15 @@ public class WebRtcManager extends Caster<Msg>{
                                 continue;
                             }
                             int audioLevel = (int) (recvAudioTrack.audioLevel*100);
+                            audioLevel *= 1/(10 * config.outputAudioVolume/100f); // 抵消增益拿到实际的音量
                             Statistics.AudioInput audioInput = new Statistics.AudioInput(audioLevel, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate, bitrate, codecMime);
                             String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
                             Conferee conferee = findConfereeByStreamId(kdStreamId);
                             if (conferee != null) {
-                                audioInputMap.put(conferee.getId(), audioInput);
-                                conferee.setVolume(audioLevel);
+                                if (!conferee.isMyself()) {
+                                    audioInputMap.put(conferee.getId(), audioInput);
+                                    conferee.setVolume(audioLevel);
+                                }
                             } else {
                                 RtcStream rtcStream = findStream(kdStreamId);
                                 if (rtcStream != null && rtcStream.streamInfo.bMix) { // 混音
