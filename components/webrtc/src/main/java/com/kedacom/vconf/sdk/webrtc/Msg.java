@@ -54,7 +54,8 @@ enum Msg {
             owner = MtServiceCfgCtrl,
             paras = StringBuffer.class,
             userParas = String.class,
-            rspSeq = "StartMtServiceRsp"
+            rspSeq = "StartMtServiceRsp",
+            timeout = 3
     )
     StartMtService,
 

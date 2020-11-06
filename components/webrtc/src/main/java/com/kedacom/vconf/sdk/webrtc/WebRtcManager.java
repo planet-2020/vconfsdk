@@ -200,6 +200,8 @@ public class WebRtcManager extends Caster<Msg>{
 
         String serviceName = "mtrtcservice";
         req(false, true, Msg.StartMtService, new SessionProcessor<Msg>() {
+            int retriedCount = 0;
+
             @Override
             public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                 // 取消禁令
@@ -215,6 +217,16 @@ public class WebRtcManager extends Caster<Msg>{
                     KLog.p("start service %s success!", serviceName);
                 }
             }
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                if (retriedCount < 2) {
+                    ++retriedCount;
+                    isConsumed[0] = true;
+                    req(false, true, req, this, resultListener, reqParas);
+                }
+            }
+
         }, null , serviceName);
     }
 
