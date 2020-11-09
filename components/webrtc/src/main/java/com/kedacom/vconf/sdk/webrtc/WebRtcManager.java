@@ -2586,7 +2586,7 @@ public class WebRtcManager extends Caster<Msg>{
         private void refreshDisplays(){
             // 延迟刷新以防止短时间内大量重复刷新
             instance.handler.removeCallbacks(refreshDisplaysRunnable);
-            instance.handler.postDelayed(refreshDisplaysRunnable, 100); // TODO 增大延迟看能否改善关开摄像头时残留最后一帧的情况
+            instance.handler.postDelayed(refreshDisplaysRunnable, 500);
         }
 
         private Runnable refreshDisplaysRunnable = new Runnable() {
