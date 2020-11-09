@@ -1154,7 +1154,7 @@ public class WebRtcManager extends Caster<Msg>{
             case OtherConfereeStateChanged:
                 TMtEntityStatus state = (TMtEntityStatus) ntfContent;
                 Conferee conferee = findConferee(state.dwMcuId, state.dwTerId, Conferee.ConfereeType.Normal);
-                if (conferee != null && conferee.isMuted() != state.tStatus.bIsMute){
+                if (conferee != null && !conferee.isMyself() && conferee.isMuted() != state.tStatus.bIsMute){
                     conferee.setMuted(state.tStatus.bIsMute);
                     Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(conferee));
                 }
