@@ -48,10 +48,10 @@ public final class RtcConfig {
     private static final String key_isBuiltInNSPreferred = "key_isBuiltInNSPreferred";
     // 是否dump AEC数据
     private static final String key_isAECDumpEnabled = "key_isAECDumpEnabled";
-    // 输入音量（麦克）
-    private static final String key_inputAudioVolume = "key_inputAudioVolume";
-    // 输出音量（耳机/扬声器）
-    private static final String key_outputAudioVolume = "key_outputAudioVolume";
+    // 本端音轨音量
+    private static final String key_localAudioVolume = "key_localAudioVolume";
+    // 远端音轨音量
+    private static final String key_remoteAudioVolume = "key_remoteAudioVolume";
 
     // 视频质量定义
     static final int VideoQuality_Unknown = 0;
@@ -325,35 +325,35 @@ public final class RtcConfig {
 
 
     /**
-     * 设置输入音量
+     * 设置本端音轨音量
      * @param volume 音量，范围0-100。若小于0则取0，若大于100则取100.
      * */
-    public RtcConfig setInputAudioVolume(int volume){
+    public RtcConfig setLocalAudioVolume(int volume){
         volume = Math.min(volume, 100);
         volume = Math.max(volume, 0);
-        editor.putInt(key_inputAudioVolume, volume).apply();
+        editor.putInt(key_localAudioVolume, volume).apply();
         return this;
     }
 
-    public int getInputAudioVolume(){
-        return rtcUserConfig.getInt(key_inputAudioVolume,
+    public int getLocalAudioVolume(){
+        return rtcUserConfig.getInt(key_localAudioVolume,
                 5 // 媒控建议的数值
         );
     }
 
     /**
-     * 设置输出音量
+     * 设置远端音轨音量
      * @param volume 音量，范围0-100。若小于0则取0，若大于100则取100.
      * */
-    public RtcConfig setOutputAudioVolume(int volume){
+    public RtcConfig setRemoteAudioVolume(int volume){
         volume = Math.min(volume, 100);
         volume = Math.max(volume, 0);
-        editor.putInt(key_outputAudioVolume, volume).apply();
+        editor.putInt(key_remoteAudioVolume, volume).apply();
         return this;
     }
 
-    public int getOutputAudioVolume(){
-        return rtcUserConfig.getInt(key_outputAudioVolume,
+    public int getRemoteAudioVolume(){
+        return rtcUserConfig.getInt(key_remoteAudioVolume,
                 2 // 媒控建议的数值
         );
     }
@@ -382,8 +382,8 @@ public final class RtcConfig {
         setBuiltInAECPreferred(config.isBuiltInAECPreferred);
         setBuiltInNSPreferred(config.isBuiltInNSPreferred);
         setAECDumpEnable(config.isAECDumpEnabled);
-        setInputAudioVolume(config.inputAudioVolume);
-        setOutputAudioVolume(config.outputAudioVolume);
+        setLocalAudioVolume(config.inputAudioVolume);
+        setRemoteAudioVolume(config.outputAudioVolume);
     }
 
 
@@ -411,8 +411,8 @@ public final class RtcConfig {
         config.isBuiltInAECPreferred = isBuiltInAECPreferred();
         config.isBuiltInNSPreferred = isBuiltInNSPreferred();
         config.isAECDumpEnabled = isAECDumpEnabled();
-        config.inputAudioVolume = getInputAudioVolume();
-        config.outputAudioVolume = getOutputAudioVolume();
+        config.inputAudioVolume = getLocalAudioVolume();
+        config.outputAudioVolume = getRemoteAudioVolume();
 
         return config;
     }
