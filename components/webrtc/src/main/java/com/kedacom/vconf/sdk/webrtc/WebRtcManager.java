@@ -3715,6 +3715,9 @@ public class WebRtcManager extends Caster<Msg>{
          * @param bgColor 背景区域填充色
          * */
         void draw(RectF rect, RectF background, int bgColor, boolean muted, int volume, Canvas canvas){
+            volume = Math.max(volume, 0);
+            volume = Math.min(volume, 100);
+
             fillPaint.setColor(bgColor);
             canvas.drawRect(background, fillPaint);
             float roundRectHorizontalMargin = (rect.right-rect.left)/4;
