@@ -967,7 +967,7 @@ public class WebRtcManager extends Caster<Msg>{
                 TRegResultNtf regState = (TRegResultNtf) ntfContent;
                 int resCode = RtcResultCode.trans(ntf, regState.AssParam.basetype);
                 if (RtcResultCode.LoggedIn != resCode) {
-                    Stream.of(getNtfListeners(ConfFinishedListener.class)).forEach(it -> it.onConfFinished(resCode));
+                    Stream.of(getNtfListeners(LoginStateChangedListener.class)).forEach(it -> it.onLoginStateChanged(resCode));
                 }
                 break;
 
@@ -5571,6 +5571,15 @@ public class WebRtcManager extends Caster<Msg>{
     public interface StatsListener extends INtfListener {
         void onStats(Statistics statistics);
     }
+
+
+    /**
+     * 登录状态变化监听器。
+     * */
+    public interface LoginStateChangedListener extends INtfListener {
+        void onLoginStateChanged(int reason);
+    }
+
 
     /**
      * 会议流程取消监听器。
