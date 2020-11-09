@@ -326,9 +326,11 @@ public final class RtcConfig {
 
     /**
      * 设置输入音量
-     * @param volume 音量，范围0-100。
+     * @param volume 音量，范围0-100。若小于0则取0，若大于100则取100.
      * */
     public RtcConfig setInputAudioVolume(int volume){
+        volume = Math.min(volume, 100);
+        volume = Math.max(volume, 0);
         editor.putInt(key_inputAudioVolume, volume).apply();
         return this;
     }
@@ -341,9 +343,11 @@ public final class RtcConfig {
 
     /**
      * 设置输出音量
-     * @param volume 音量，范围0-100。
+     * @param volume 音量，范围0-100。若小于0则取0，若大于100则取100.
      * */
     public RtcConfig setOutputAudioVolume(int volume){
+        volume = Math.min(volume, 100);
+        volume = Math.max(volume, 0);
         editor.putInt(key_outputAudioVolume, volume).apply();
         return this;
     }
