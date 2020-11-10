@@ -8,6 +8,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.media.projection.MediaProjection;
 import android.os.Handler;
@@ -3508,7 +3509,8 @@ public class WebRtcManager extends Caster<Msg>{
         private int textSize;   // 文字大小（UCD标注的，实际展示的大小会依据Display的大小调整）
         private Paint bgPaint = new Paint();
         private RectF bgRect = new RectF();  // 文字背景区域
-        private static final int minTextSizeLimit = 32;
+        private static final int minTextSizeLimit = 34;
+        private Rect textBounds = new Rect();
         private boolean isLabel; // 是否为台标
         /**
          * @param id deco的id，唯一标识该deco，用户自定义。
@@ -3584,8 +3586,9 @@ public class WebRtcManager extends Caster<Msg>{
         private RectF microPhoneBackgroundRect = new RectF();
         RectF getMicroPhoneRect(){
             float left, top, right, bottom;
-            top = actualY+fm.ascent;
-            bottom = actualY;
+            top = actualY+textBounds.top
+                    +(fm.ascent-textBounds.top)/2; // 麦克风高出文字一点以免太小看不清能量条变化。
+            bottom = actualY+textBounds.bottom;//actualY;
             float phoneW = (bottom-top)*3/5;
             left = (bgRect.left-phoneW)/2;
             right = bgRect.left - left;
@@ -3612,12 +3615,13 @@ public class WebRtcManager extends Caster<Msg>{
             // 根据实际窗体宽高计算适配后的字体大小
             float size = Math.max(minTextSizeLimit, textSize * MatrixHelper.getMinScale(matrix));
             paint.setTextSize(size);
-            int xPadding = 4;
-            int yPadding = 6;
+            int xPadding = 12;
+            int yPadding = 12;
             // 修正实际锚点坐标。
             // 为防止字体缩的过小我们限定了字体大小下限，我们需修正由此可能带来的偏差。
             // NOTE: 此修正目前仅针对文字横排的情形，若将来增加文字竖排的需求，需在此增加相应的处理逻辑。
             paint.getFontMetrics(fm);
+            paint.getTextBounds(text, 0, text.length(), textBounds);
             if (POS_LEFTBOTTOM==refPos || POS_RIGHTBOTTOM==refPos) {
                 actualY = Math.min(height-fm.bottom-yPadding, actualY);
             }else {
@@ -3706,7 +3710,6 @@ public class WebRtcManager extends Caster<Msg>{
             strokePaint.setColor(Color.WHITE);
             strokePaint.setAntiAlias(true);
             fillPaint.setStyle(Paint.Style.FILL);
-            fillPaint.setAntiAlias(true);
         }
 
         /**
