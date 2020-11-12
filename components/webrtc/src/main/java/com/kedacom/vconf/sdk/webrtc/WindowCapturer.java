@@ -40,6 +40,7 @@ class WindowCapturer implements VideoCapturer {
     private View window;
     private final Object lock = new Object();
 
+    private VideoFileRenderer videoFileRenderer;
 
     public WindowCapturer(@NonNull View window) {
         this.window = window;
@@ -71,7 +72,7 @@ class WindowCapturer implements VideoCapturer {
                 Matrix matrix = new Matrix();
                 matrix.postScale(-1, 1);
                 matrix.postRotate(180);
-                int[] res = ResolutionHelper.adjust(window.getWidth(), window.getHeight(), 1280, 720, ResolutionHelper.SCALE_ASPECT_FILL);
+                int[] res = ResolutionHelper.adjust(window.getWidth(), window.getHeight(), width, height, ResolutionHelper.SCALE_ASPECT_FIT);
                 int w = res[0];
                 int h = res[1];
                 // 修正宽高为偶数
@@ -90,7 +91,6 @@ class WindowCapturer implements VideoCapturer {
                 canvas.setMatrix(matrix1);
                 Handler uiHandler = new Handler(Looper.getMainLooper());
 
-                VideoFileRenderer videoFileRenderer = null;
                 if (false){
                     // 保存码流（仅用于排查问题）
                     EglBase eglBase = EglBase.create();
@@ -106,7 +106,7 @@ class WindowCapturer implements VideoCapturer {
                                 "Failed to open video file for output: " + savedVideo, e);
                     }
                 }
-
+                int frameInterval = (int) (1000f/fps);
                 while (true) {
                     uiHandler.post(() -> {
                         synchronized (lock) {
@@ -135,7 +135,7 @@ class WindowCapturer implements VideoCapturer {
                         }
                     }
 
-                    Thread.sleep(66); // 15fps
+                    Thread.sleep(frameInterval);
 
                 }
             } catch(InterruptedException ex) {
@@ -148,6 +148,9 @@ class WindowCapturer implements VideoCapturer {
     @Override
     public void stopCapture() {
         captureThread.interrupt();
+        if (null != videoFileRenderer) {
+            videoFileRenderer.release();
+        }
     }
 
     @Override

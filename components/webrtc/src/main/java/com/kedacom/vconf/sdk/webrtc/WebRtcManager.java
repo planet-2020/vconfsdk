@@ -4542,6 +4542,8 @@ public class WebRtcManager extends Caster<Msg>{
         // 是否正在取消发布。由于协议组当前实现所限取消发布后我们需要重建PeerConnection
         private boolean isUnpublishing;
 
+        private Map<String, VideoFileRenderer> videoFileRendererMap = new HashMap<>();
+
         PeerConnectionWrapper(ConnType connType, @NonNull SDPObserver sdpObserver) {
             this.connType = connType;
             this.sdpObserver = sdpObserver;
@@ -4633,9 +4635,14 @@ public class WebRtcManager extends Caster<Msg>{
                     bTrackEnable = config.isLocalVideoEnabled;
                 }
                 if (bTrackEnable) {
-                    // 仅本地摄像头开启状态下开启采集
-                    KLog.p("capture videoWidth=%s, videoHeight=%s, videoFps=%s", config.videoWidth, config.videoHeight, config.videoFps);
-                    videoCapturer.startCapture(config.videoWidth, config.videoHeight, config.videoFps);
+                    int frameW, frameH, frameRate;
+                    if (LOCAL_WINDOW_TRACK_ID.equals(localVideoTrackId)){
+                        frameW = config.assVideoWidth; frameH = config.assVideoHeight; frameRate = config.assVideoFps;
+                    }else{
+                        frameW = config.videoWidth; frameH = config.videoHeight; frameRate = config.videoFps;
+                    }
+                    KLog.p("localVideoTrackId=%s, capture videoWidth=%s, videoHeight=%s, videoFps=%s", localVideoTrackId, frameW, frameH, frameRate);
+                    videoCapturer.startCapture(frameW, frameH, frameRate);
                 }
                 localVideoTrack = factory.createVideoTrack(localVideoTrackId, videoSource);
                 localVideoTrack.setEnabled(bTrackEnable);
@@ -4820,6 +4827,7 @@ public class WebRtcManager extends Caster<Msg>{
                             try {
                                 VideoFileRenderer videoFileRenderer = new VideoFileRenderer(savedVideo, 1280, 586, eglBase.getEglBaseContext());
                                 track.addSink(videoFileRenderer);
+                                videoFileRendererMap.put(owner.getId(), videoFileRenderer);
                             } catch (IOException e) {
                                 throw new RuntimeException(
                                         "Failed to open video file for output: " + savedVideo, e);
@@ -4867,6 +4875,11 @@ public class WebRtcManager extends Caster<Msg>{
                                     KLog.p("unbind track %s from conferee %s", trackId, owner.getId());
                                     track.removeSink(owner);
                                 });
+
+                                VideoFileRenderer renderer = videoFileRendererMap.remove(owner.getId());
+                                if (renderer != null){
+                                    renderer.release();
+                                }
                             }
                         });
 
