@@ -16,11 +16,16 @@ import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.view.ResolutionHelper;
 
 import org.webrtc.CapturerObserver;
+import org.webrtc.EglBase;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.TextureBufferImpl;
 import org.webrtc.VideoCapturer;
+import org.webrtc.VideoFileRenderer;
 import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
+
+import java.io.File;
+import java.io.IOException;
 
 /**
  * 窗口采集。
@@ -66,13 +71,16 @@ class WindowCapturer implements VideoCapturer {
                 Matrix matrix = new Matrix();
                 matrix.postScale(-1, 1);
                 matrix.postRotate(180);
-                float[] res = ResolutionHelper.adjust(window.getWidth(), window.getHeight(), 16f/9, 720, true);
-                int w = (int) res[0];
-                int h = (int) res[1];
-                float scaleX = res[2];
-                float scaleY = res[3];
-                KLog.p("window.getWidth()=%s, window.getHeight()=%s, w=%s, h=%s",
-                        window.getWidth(), window.getHeight(), w, h);
+                int[] res = ResolutionHelper.adjust(window.getWidth(), window.getHeight(), 1280, 720, ResolutionHelper.SCALE_ASPECT_FILL);
+                int w = res[0];
+                int h = res[1];
+                // 修正宽高为偶数
+                w = w%2==0 ? w : w+1;
+                h = h%2==0 ? h : h+1;
+                float scaleX = (float)w/window.getWidth();
+                float scaleY = scaleX;
+                KLog.p("windowW=%s, windowH=%s, BitmapW=%s, BitmapH=%s, scaleX=%s, scaleY=%s",
+                        window.getWidth(), window.getHeight(), w, h, scaleX, scaleY);
                 TextureBufferImpl buffer = new TextureBufferImpl(w, h, VideoFrame.TextureBuffer.Type.RGB, textures[0], matrix, surTexture.getHandler(), yuvConverter, null);
                 Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
 
@@ -80,8 +88,25 @@ class WindowCapturer implements VideoCapturer {
                 Matrix matrix1 = new Matrix();
                 matrix1.postScale(scaleX, scaleY);
                 canvas.setMatrix(matrix1);
-                KLog.p("canvas.matrix=%s", matrix1);
                 Handler uiHandler = new Handler(Looper.getMainLooper());
+
+                VideoFileRenderer videoFileRenderer = null;
+                if (false){
+                    // 保存码流（仅用于排查问题）
+                    EglBase eglBase = EglBase.create();
+                    File dir = new File(appContext.getExternalFilesDir(null), "webrtc");
+                    if (!dir.exists()) {
+                        dir.mkdirs();
+                    }
+                    File savedVideo = new File(dir.getAbsolutePath()+"/"+"sendAss.dump");
+                    try {
+                        videoFileRenderer = new VideoFileRenderer(savedVideo.getAbsolutePath(), w, h, eglBase.getEglBaseContext());
+                    } catch (IOException e) {
+                        throw new RuntimeException(
+                                "Failed to open video file for output: " + savedVideo, e);
+                    }
+                }
+
                 while (true) {
                     uiHandler.post(() -> {
                         synchronized (lock) {
@@ -102,6 +127,9 @@ class WindowCapturer implements VideoCapturer {
                                 long frameTime = System.nanoTime() - start;
                                 VideoFrame videoFrame = new VideoFrame(i420Buf, 0, frameTime);
                                 if (null != capturerObs) capturerObs.onFrameCaptured(videoFrame);
+                                if (videoFileRenderer != null) {
+                                    videoFileRenderer.onFrame(videoFrame);
+                                }
                                 videoFrame.release();
                             });
                         }
