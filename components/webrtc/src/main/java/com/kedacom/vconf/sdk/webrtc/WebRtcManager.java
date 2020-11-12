@@ -17,6 +17,7 @@ import android.os.Message;
 import android.os.ParcelFileDescriptor;
 import android.view.SurfaceHolder;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -56,6 +57,7 @@ import com.kedacom.vconf.sdk.common.type.transfer.TShortMsg;
 import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
+import com.kedacom.vconf.sdk.utils.view.ResolutionHelper;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.ConnType;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.MediaType;
 import com.kedacom.vconf.sdk.webrtc.bean.ConfInfo;
@@ -108,6 +110,7 @@ import org.webrtc.SurfaceViewRenderer;
 import org.webrtc.VideoCapturer;
 import org.webrtc.VideoDecoderFactory;
 import org.webrtc.VideoEncoderFactory;
+import org.webrtc.VideoFileRenderer;
 import org.webrtc.VideoFrame;
 import org.webrtc.VideoSink;
 import org.webrtc.VideoSource;
@@ -3123,12 +3126,6 @@ public class WebRtcManager extends Caster<Msg>{
             invalidate();
         }
 
-
-        @Override
-        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-            super.surfaceChanged(holder, format, width, height);
-        }
-
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
@@ -4811,6 +4808,22 @@ public class WebRtcManager extends Caster<Msg>{
                             }, 3000);
                         }else {
                             owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
+                        }
+
+                        // 保存码流用于调试
+                        if (false) {
+                            File dir = new File(context.getExternalFilesDir(null), "webrtc");
+                            if (!dir.exists()) {
+                                dir.mkdirs();
+                            }
+                            String savedVideo = dir.getAbsolutePath()+"/"+owner.getId()+".dump";
+                            try {
+                                VideoFileRenderer videoFileRenderer = new VideoFileRenderer(savedVideo, 1280, 586, eglBase.getEglBaseContext());
+                                track.addSink(videoFileRenderer);
+                            } catch (IOException e) {
+                                throw new RuntimeException(
+                                        "Failed to open video file for output: " + savedVideo, e);
+                            }
                         }
 
                         executor.execute(() -> {
