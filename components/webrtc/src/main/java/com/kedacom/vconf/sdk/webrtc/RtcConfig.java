@@ -24,7 +24,13 @@ public final class RtcConfig {
     private static final String key_videoHeight = "key_videoHeight";
     // 偏好的编码视频帧率
     private static final String key_videoFps = "key_videoFps";
-    // 最大编码视频码流
+    // 偏好的辅视频流编码宽度
+    private static final String key_assVideoWidth = "key_assVideoWidth";
+    // 偏好的辅视频流编码高度
+    private static final String key_assVideoHeight = "key_assVideoHeight";
+    // 偏好的辅视频流帧率
+    private static final String key_assVideoFps = "key_assVideoFps";
+    // 最大编码视频码率
     private static final String key_videoMaxBitrate = "key_videoMaxBitrate";
     // 偏好的编码音频格式
     private static final String key_preferredAudioCodec = "key_preferredAudioCodec";
@@ -189,6 +195,44 @@ public final class RtcConfig {
 
     public int getVideoFps(){
         return rtcUserConfig.getInt(key_videoFps, 15);
+    }
+
+
+    /**
+     * 设置辅视频采集宽
+     * */
+    public RtcConfig setAssVideoWidth(int width){
+        editor.putInt(key_assVideoWidth, width).apply();
+        return this;
+    }
+
+    public int getAssVideoWidth(){
+        return rtcUserConfig.getInt(key_assVideoWidth, 1280);
+    }
+
+    /**
+     * 设置辅视频采集高
+     * */
+    public RtcConfig setAssVideoHeight(int height){
+        editor.putInt(key_assVideoHeight, height).apply();
+        return this;
+    }
+
+    public int getAssVideoHeight(){
+        return rtcUserConfig.getInt(key_assVideoHeight, 720);
+    }
+
+
+    /**
+     * 设置辅视频采集帧率
+     * */
+    public RtcConfig setAssVideoFps(int fps){
+        editor.putInt(key_assVideoFps, fps).apply();
+        return this;
+    }
+
+    public int getAssVideoFps(){
+        return rtcUserConfig.getInt(key_assVideoFps, 15);
     }
 
 
@@ -370,6 +414,9 @@ public final class RtcConfig {
         setVideoWidth(config.videoWidth);
         setVideoHeight(config.videoHeight);
         setVideoFps(config.videoFps);
+        setAssVideoWidth(config.assVideoWidth);
+        setAssVideoHeight(config.assVideoHeight);
+        setAssVideoFps(config.assVideoFps);
         setVideoMaxBitrate(config.videoMaxBitrate);
         setPreferredAudioCodec(config.preferredAudioCodec);
         setAudioStartBitrate(config.audioStartBitrate);
@@ -399,6 +446,9 @@ public final class RtcConfig {
         config.videoWidth = getVideoWidth();
         config.videoHeight = getVideoHeight();
         config.videoFps = getVideoFps();
+        config.assVideoWidth = getAssVideoWidth();
+        config.assVideoHeight = getAssVideoHeight();
+        config.assVideoFps = getAssVideoFps();
         config.videoMaxBitrate = getVideoMaxBitrate();
         config.preferredAudioCodec = getPreferredAudioCodec();
         config.audioStartBitrate = getAudioStartBitrate();
@@ -436,6 +486,12 @@ public final class RtcConfig {
         int videoHeight;
         // 偏好的编码视频帧率
         int videoFps;
+        // 偏好的辅视频编码宽度
+        int assVideoWidth;
+        // 偏好的辅视频编码高度
+        int assVideoHeight;
+        // 偏好的辅视频帧率
+        int assVideoFps;
         // 最大编码视频码流。单位：kbps（注意：b代表bit而非byte）
         int videoMaxBitrate;
         // 偏好的编码音频格式
@@ -475,6 +531,9 @@ public final class RtcConfig {
             videoWidth = src.videoWidth;
             videoHeight = src.videoHeight;
             videoFps = src.videoFps;
+            assVideoWidth = src.assVideoWidth;
+            assVideoHeight = src.assVideoHeight;
+            assVideoFps = src.assVideoFps;
             videoMaxBitrate = src.videoMaxBitrate;
             preferredAudioCodec = src.preferredAudioCodec;
             audioStartBitrate = src.audioStartBitrate;
@@ -501,6 +560,9 @@ public final class RtcConfig {
                     ", videoWidth=" + videoWidth +
                     ", videoHeight=" + videoHeight +
                     ", videoFps=" + videoFps +
+                    ", assVideoWidth=" + assVideoWidth +
+                    ", assVideoHeight=" + assVideoHeight +
+                    ", assVideoFps=" + assVideoFps +
                     ", videoMaxBitrate=" + videoMaxBitrate +
                     ", preferredAudioCodec='" + preferredAudioCodec + '\'' +
                     ", audioStartBitrate=" + audioStartBitrate +
