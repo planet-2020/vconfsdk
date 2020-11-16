@@ -2486,10 +2486,16 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         private void setVideoSignalState(VideoSignalState videoSignalState) {
+            setVideoSignalState(videoSignalState, true);
+        }
+
+        private void setVideoSignalState(VideoSignalState videoSignalState, boolean refreshDisplays) {
             if (videoSignalState != this.videoSignalState) {
                 KLog.sp(String.format("%s change VIDEO SIGNAL state from %s to %s", getId(), this.videoSignalState, videoSignalState));
                 this.videoSignalState = videoSignalState;
-                refreshDisplays();
+                if (refreshDisplays) {
+                    refreshDisplays();
+                }
             }
         }
 
@@ -4829,7 +4835,8 @@ public class WebRtcManager extends Caster<Msg>{
 
                         if(owner.isVirtualAssStreamConferee()){
                             // 接收双流先展示缓冲图标
-                            owner.setVideoSignalState(Conferee.VideoSignalState.Buffering);
+                            owner.setVideoSignalState(Conferee.VideoSignalState.Buffering, false);
+                            handler.postDelayed(() -> owner.refreshDisplays(), 1000);
                             handler.postDelayed(() -> {
                                 if (owner.getVideoSignalState() == Conferee.VideoSignalState.Buffering) {
                                     owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
