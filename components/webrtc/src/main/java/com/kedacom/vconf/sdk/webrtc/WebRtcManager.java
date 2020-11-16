@@ -5051,6 +5051,11 @@ public class WebRtcManager extends Caster<Msg>{
             return false;
         }
 
+        boolean isSdpProgressFinished(){
+            return (sdpType==SdpType.OFFER && sdpState==SdpState.SET_REMOTE_SUCCESS)
+                    || (sdpType==SdpType.ANSWER && sdpState==SdpState.SET_LOCAL_SUCCESS)
+                    || (sdpType==SdpType.VIDEO_OFFER && sdpState==SdpState.SET_REMOTE_SUCCESS);
+        }
 
 
         void drainCandidates() {
@@ -5208,36 +5213,36 @@ public class WebRtcManager extends Caster<Msg>{
     private StatsHelper.Stats preAssSubscriberStats;
 
     // 统计信息采集周期。// 单位：毫秒
-    private final int STATS_INTERVAL = 300;
+    private final int STATS_INTERVAL = 500;
 
     // RTC统计信息收集器
     private Runnable statsCollector = new Runnable() {
         @Override
         public void run() {
-            if (null != pubPcWrapper && null != pubPcWrapper.pc) {
-                pubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+            if (null != pubPcWrapper && null != pubPcWrapper.pc && pubPcWrapper.isSdpProgressFinished()) {
+                executor.execute(() -> pubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
                     prePublisherStats = publisherStats;
                     publisherStats = StatsHelper.resolveStats(rtcStatsReport);
-                }));
+                })));
             }
-            if (null != subPcWrapper && null != subPcWrapper.pc) {
-                subPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+            if (null != subPcWrapper && null != subPcWrapper.pc && subPcWrapper.isSdpProgressFinished()) {
+                executor.execute(() -> subPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
                     preSubscriberStats = subscriberStats;
                     subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
-                }));
+                })));
             }
 
-            if (null != assPubPcWrapper && null != assPubPcWrapper.pc) {
-                assPubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+            if (null != assPubPcWrapper && null != assPubPcWrapper.pc && assPubPcWrapper.isSdpProgressFinished()) {
+                executor.execute(() -> assPubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
                     preAssPublisherStats = assPublisherStats;
                     assPublisherStats = StatsHelper.resolveStats(rtcStatsReport);
-                }));
+                })));
             }
-            if (null != assSubPcWrapper && null != assSubPcWrapper.pc) {
-                assSubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+            if (null != assSubPcWrapper && null != assSubPcWrapper.pc && assSubPcWrapper.isSdpProgressFinished()) {
+                executor.execute(() -> assSubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
                     preAssSubscriberStats = assSubscriberStats;
                     assSubscriberStats = StatsHelper.resolveStats(rtcStatsReport);
-                }));
+                })));
             }
 
             if (enableStatsLog){
