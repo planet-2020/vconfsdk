@@ -2891,13 +2891,32 @@ public class WebRtcManager extends Caster<Msg>{
         private Display(Context context, Type type) {
             super(context);
             init(instance.eglBase.getEglBaseContext(), null);
-            setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
-            setEnableHardwareScaler(true);
-            setWillNotDraw(false);
             id = hashCode()+"";
             this.type = type;
             priority = type2Priority(type);
             preferredVideoQuality = type2VideoQuality(type);
+            adjust();
+            setEnableHardwareScaler(true);
+            setWillNotDraw(false);
+        }
+
+        private void adjust(){
+            if (type != Type.THUMBNAIL && conferee != null && conferee.isVirtualAssStreamConferee()) { // 大画面且为辅流画面
+                // 辅流一般是共享文档或桌面的场景，内容完整性是首要的，共享方与接收方需要保证看到的内容一致。
+                // 当发送的辅流的宽高比跟接收端展示的窗口的宽高比不一致时，接收端留黑边以保证画面不被拉伸。
+                setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
+                ViewGroup.LayoutParams lp = getLayoutParams();
+                if (lp == null){
+                    lp = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                }else {
+                    lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+                    lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                }
+                setLayoutParams(lp); // NOTE: 设置为WRAP_CONTENT，SCALE_ASPECT_FIT才能生效
+            }else{
+                // 让码流充满窗口，不留黑边，可能画面被拉伸以及部分画面被裁剪。
+                setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_BALANCED);
+            }
         }
 
         /**
@@ -2942,6 +2961,7 @@ public class WebRtcManager extends Caster<Msg>{
                 this.type = type;
                 setPreferredVideoQuality(type2VideoQuality(type));
                 setPriority(type2Priority(type));
+                adjust();
             }
         }
 
@@ -3034,6 +3054,8 @@ public class WebRtcManager extends Caster<Msg>{
             }
             this.conferee = conferee;
 
+            adjust();
+
             refresh();
         }
 
@@ -3059,6 +3081,8 @@ public class WebRtcManager extends Caster<Msg>{
 
             disabledDecos.clear();
             disabledDecos.addAll(src.disabledDecos);
+
+            adjust();
 
             refresh();
         }
