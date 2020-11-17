@@ -977,7 +977,7 @@ public class WebRtcManager extends Caster<Msg>{
                     if (RtcResultCode.UnknownServerAddress == resCode){
                         // 组件在重连，我们静静等待
                         handler.postDelayed(reloginFailedRunnable,
-                                40 // 业务组件每次重连的最大耗时
+                                40*1000 // 业务组件每次重连的最大耗时
                         );
                     }else {
                         Stream.of(getNtfListeners(LoginStateChangedListener.class)).forEach(it -> it.onLoginStateChanged(resCode));
