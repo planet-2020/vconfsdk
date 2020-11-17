@@ -40,8 +40,6 @@ class WindowCapturer implements VideoCapturer {
     private View window;
     private final Object lock = new Object();
 
-    private VideoFileRenderer videoFileRenderer;
-
     public WindowCapturer(@NonNull View window) {
         this.window = window;
     }
@@ -91,21 +89,6 @@ class WindowCapturer implements VideoCapturer {
                 canvas.setMatrix(matrix1);
                 Handler uiHandler = new Handler(Looper.getMainLooper());
 
-                if (false){
-                    // 保存码流（仅用于排查问题）
-                    EglBase eglBase = EglBase.create();
-                    File dir = new File(appContext.getExternalFilesDir(null), "webrtc");
-                    if (!dir.exists()) {
-                        dir.mkdirs();
-                    }
-                    File savedVideo = new File(dir.getAbsolutePath()+"/"+"sendAss.dump");
-                    try {
-                        videoFileRenderer = new VideoFileRenderer(savedVideo.getAbsolutePath(), w, h, eglBase.getEglBaseContext());
-                    } catch (IOException e) {
-                        throw new RuntimeException(
-                                "Failed to open video file for output: " + savedVideo, e);
-                    }
-                }
                 int frameInterval = (int) (1000f/fps);
                 while (true) {
                     uiHandler.post(() -> {
@@ -127,9 +110,6 @@ class WindowCapturer implements VideoCapturer {
                                 long frameTime = System.nanoTime() - start;
                                 VideoFrame videoFrame = new VideoFrame(i420Buf, 0, frameTime);
                                 if (null != capturerObs) capturerObs.onFrameCaptured(videoFrame);
-                                if (videoFileRenderer != null) {
-                                    videoFileRenderer.onFrame(videoFrame);
-                                }
                                 videoFrame.release();
                             });
                         }
@@ -148,9 +128,6 @@ class WindowCapturer implements VideoCapturer {
     @Override
     public void stopCapture() {
         captureThread.interrupt();
-        if (null != videoFileRenderer) {
-            videoFileRenderer.release();
-        }
     }
 
     @Override

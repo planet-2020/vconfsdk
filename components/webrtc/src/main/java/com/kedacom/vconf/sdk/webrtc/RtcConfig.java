@@ -413,6 +413,7 @@ public final class RtcConfig {
 
     /**
      * 设置是否保存发送的主视频流
+     * 生成的文件保存在sdcard/应用目录/files/webrtc
      * */
     public RtcConfig setSaveSentMainVideo(boolean save){
         editor.putBoolean(key_saveSentMainVideo, save).apply();
@@ -425,6 +426,7 @@ public final class RtcConfig {
 
     /**
      * 设置是否保存接收的主视频流
+     * 生成的文件保存在sdcard/应用目录/files/webrtc
      * */
     public RtcConfig setSaveRecvedMainVideo(boolean save){
         editor.putBoolean(key_saveRecvedMainVideo, save).apply();
@@ -438,20 +440,20 @@ public final class RtcConfig {
 
     /**
      * 设置是否保存发送的辅视频流
-     *
+     * 生成的文件保存在sdcard/应用目录/files/webrtc
      * */
     public RtcConfig setSaveSentAssVideo(boolean save){
         editor.putBoolean(key_saveSentAssVideo, save).apply();
         return this;
     }
 
-    public boolean setSaveSentAssVideo(){
+    public boolean getSaveSentAssVideo(){
         return rtcUserConfig.getBoolean(key_saveSentAssVideo, false);
     }
 
     /**
      * 设置是否保存接收的辅视频流
-     *
+     * 生成的文件保存在sdcard/应用目录/files/webrtc
      * */
     public RtcConfig setSaveRecvedAssVideo(boolean save){
         editor.putBoolean(key_saveRecvedAssVideo, save).apply();
@@ -491,6 +493,10 @@ public final class RtcConfig {
         setAECDumpEnable(config.isAECDumpEnabled);
         setLocalAudioVolume(config.inputAudioVolume);
         setRemoteAudioVolume(config.outputAudioVolume);
+        setSaveSentMainVideo(config.saveSentMainVideo);
+        setSaveRecvedMainVideo(config.saveRecvedMainVideo);
+        setSaveSentAssVideo(config.saveSentAssVideo);
+        setSaveRecvedAssVideo(config.saveRecvedAssVideo);
     }
 
 
@@ -523,6 +529,10 @@ public final class RtcConfig {
         config.isAECDumpEnabled = isAECDumpEnabled();
         config.inputAudioVolume = getLocalAudioVolume();
         config.outputAudioVolume = getRemoteAudioVolume();
+        config.saveSentMainVideo = getSaveSentMainVideo();
+        config.saveRecvedMainVideo = getSaveRecvedMainVideo();
+        config.saveSentAssVideo = getSaveSentAssVideo();
+        config.saveRecvedAssVideo = getSaveRecvedAssVideo();
 
         return config;
     }
@@ -581,6 +591,14 @@ public final class RtcConfig {
         int inputAudioVolume;
         // 输出音量
         int outputAudioVolume;
+        // 是否保存发送的主视频流
+        boolean saveSentMainVideo;
+        // 是否保存接收的主视频流
+        boolean saveRecvedMainVideo;
+        // 是否保存发送的辅视频流
+        boolean saveSentAssVideo;
+        // 是否保存接收的辅视频流
+        boolean saveRecvedAssVideo;
 
 
         void copy(Config src){
@@ -608,6 +626,10 @@ public final class RtcConfig {
             isAECDumpEnabled = src.isAECDumpEnabled;
             inputAudioVolume = src.inputAudioVolume;
             outputAudioVolume = src.outputAudioVolume;
+            saveSentMainVideo = src.saveSentMainVideo;
+            saveRecvedMainVideo = src.saveRecvedMainVideo;
+            saveSentAssVideo = src.saveSentAssVideo;
+            saveRecvedAssVideo = src.saveRecvedAssVideo;
         }
 
         @Override

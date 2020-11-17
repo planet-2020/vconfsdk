@@ -4724,6 +4724,13 @@ public class WebRtcManager extends Caster<Msg>{
                             KLog.p("bind local video track %s to conferee %s", localVideoTrack.id(), myself.getId());
                             localVideoTrack.addSink(myself);  // 本地回显
                         });
+                        if (config.saveSentMainVideo){
+                            saveVideo(localVideoTrack, localVideoTrack.id());
+                        }
+                    }else if (localVideoTrackId.equals(LOCAL_WINDOW_TRACK_ID)){
+                        if (config.saveSentAssVideo){
+                            saveVideo(localVideoTrack, localVideoTrack.id());
+                        }
                     }
                 });
 
@@ -4749,6 +4756,7 @@ public class WebRtcManager extends Caster<Msg>{
                                 localVideoTrack.removeSink(myself);
                         });
                     }
+                    stopSaveVideo(trackId);
                 });
 
             });
@@ -4863,21 +4871,9 @@ public class WebRtcManager extends Caster<Msg>{
                             owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
                         }
 
-                        // 保存码流用于调试
-                        if (false) {
-                            File dir = new File(context.getExternalFilesDir(null), "webrtc");
-                            if (!dir.exists()) {
-                                dir.mkdirs();
-                            }
-                            String savedVideo = dir.getAbsolutePath()+"/"+owner.getId()+".dump";
-                            try {
-                                VideoFileRenderer videoFileRenderer = new VideoFileRenderer(savedVideo, 1280, 586, eglBase.getEglBaseContext());
-                                track.addSink(videoFileRenderer);
-                                videoFileRendererMap.put(owner.getId(), videoFileRenderer);
-                            } catch (IOException e) {
-                                throw new RuntimeException(
-                                        "Failed to open video file for output: " + savedVideo, e);
-                            }
+                        if (owner.isVirtualAssStreamConferee() ? config.saveRecvedAssVideo : config.saveRecvedMainVideo) {
+                            // 保存码流用于调试
+                            saveVideo(track, owner.getId());
                         }
 
                         executor.execute(() -> {
@@ -4922,10 +4918,7 @@ public class WebRtcManager extends Caster<Msg>{
                                     track.removeSink(owner);
                                 });
 
-                                VideoFileRenderer renderer = videoFileRendererMap.remove(owner.getId());
-                                if (renderer != null){
-                                    renderer.release();
-                                }
+                                stopSaveVideo(owner.getId());
                             }
                         });
 
@@ -5208,6 +5201,29 @@ public class WebRtcManager extends Caster<Msg>{
                     ((CameraVideoCapturer) videoCapturer).switchCamera(null);
                 }
             });
+        }
+
+        private void saveVideo(VideoTrack track, String fileName){
+            File dir = new File(context.getExternalFilesDir(null), "webrtc");
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            String savedVideo = dir.getAbsolutePath()+"/"+fileName+".video";
+            try {
+                VideoFileRenderer videoFileRenderer = new VideoFileRenderer(savedVideo, 640, 360, eglBase.getEglBaseContext());
+                track.addSink(videoFileRenderer);
+                videoFileRendererMap.put(fileName, videoFileRenderer);
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Failed to open video file for output: " + savedVideo, e);
+            }
+        }
+
+        private void stopSaveVideo(String fileName){
+            VideoFileRenderer renderer = videoFileRendererMap.remove(fileName);
+            if (renderer != null){
+                renderer.release();
+            }
         }
 
         @Override
