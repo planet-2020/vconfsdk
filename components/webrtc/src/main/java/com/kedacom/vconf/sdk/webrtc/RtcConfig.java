@@ -58,6 +58,14 @@ public final class RtcConfig {
     private static final String key_localAudioVolume = "key_localAudioVolume";
     // 远端音轨音量
     private static final String key_remoteAudioVolume = "key_remoteAudioVolume";
+    // 是否保存发送的辅视频流
+    private static final String key_saveSentAssVideo = "key_saveSentAssVideo";
+    // 是否保存接收的辅视频流
+    private static final String key_saveRecvedAssVideo = "key_saveRecvedAssVideo";
+    // 是否保存发送的主视频流
+    private static final String key_saveSentMainVideo = "key_saveSentMainVideo";
+    // 是否保存接收的主视频流
+    private static final String key_saveRecvedMainVideo = "key_saveRecvedMainVideo";
 
     // 视频质量定义
     static final int VideoQuality_Unknown = 0;
@@ -400,6 +408,58 @@ public final class RtcConfig {
         return rtcUserConfig.getInt(key_remoteAudioVolume,
                 2 // 媒控建议的数值
         );
+    }
+
+
+    /**
+     * 设置是否保存发送的主视频流
+     * */
+    public RtcConfig setSaveSentMainVideo(boolean save){
+        editor.putBoolean(key_saveSentMainVideo, save).apply();
+        return this;
+    }
+
+    public boolean getSaveSentMainVideo(){
+        return rtcUserConfig.getBoolean(key_saveSentMainVideo, false);
+    }
+
+    /**
+     * 设置是否保存接收的主视频流
+     * */
+    public RtcConfig setSaveRecvedMainVideo(boolean save){
+        editor.putBoolean(key_saveRecvedMainVideo, save).apply();
+        return this;
+    }
+
+    public boolean getSaveRecvedMainVideo(){
+        return rtcUserConfig.getBoolean(key_saveRecvedMainVideo, false);
+    }
+
+
+    /**
+     * 设置是否保存发送的辅视频流
+     *
+     * */
+    public RtcConfig setSaveSentAssVideo(boolean save){
+        editor.putBoolean(key_saveSentAssVideo, save).apply();
+        return this;
+    }
+
+    public boolean setSaveSentAssVideo(){
+        return rtcUserConfig.getBoolean(key_saveSentAssVideo, false);
+    }
+
+    /**
+     * 设置是否保存接收的辅视频流
+     *
+     * */
+    public RtcConfig setSaveRecvedAssVideo(boolean save){
+        editor.putBoolean(key_saveRecvedAssVideo, save).apply();
+        return this;
+    }
+
+    public boolean getSaveRecvedAssVideo(){
+        return rtcUserConfig.getBoolean(key_saveRecvedAssVideo, false);
     }
 
 

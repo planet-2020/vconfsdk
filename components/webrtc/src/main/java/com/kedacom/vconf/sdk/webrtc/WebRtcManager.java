@@ -267,7 +267,7 @@ public class WebRtcManager extends Caster<Msg>{
                         } else if (RtcResultCode.LoggedOut == resCode){
                             isConsumed[0] = false; // 该条消息可能是上一次注销请求等待超时未消费，导致遗留至此的，此非我们期望的消息，继续等待后续的。
                         } else if (RtcResultCode.UnknownServerAddress == resCode){
-                            //nothing to do. 组件在重连，我们静静等待吧
+                            isConsumed[0] = false; //组件在重连，我们静静等待吧
                         } else {
                             reportFailed(resCode, resultListener);
                         }
