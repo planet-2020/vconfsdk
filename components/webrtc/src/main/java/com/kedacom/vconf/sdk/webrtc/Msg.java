@@ -79,7 +79,7 @@ enum Msg {
             owner = ConfigCtrl,
             paras = StringBuffer.class,
             userParas = TMtRtcSvrAddr.class, // 登录：TMtRtcSvrAddr.bUsedRtc==true，登出：=false
-            timeout = 30,
+            timeout = 120, // 组件有重连机制，若该机制被触发会很漫长。
             rspSeq = "LoginStateChanged"
     )
     Login,
