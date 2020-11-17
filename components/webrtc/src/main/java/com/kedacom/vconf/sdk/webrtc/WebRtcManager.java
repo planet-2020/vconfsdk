@@ -320,7 +320,6 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
         req(Msg.Call, new SessionProcessor<Msg>() {
-            Runnable runnable;
                     @Override
                     public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
                         switch (rsp){
