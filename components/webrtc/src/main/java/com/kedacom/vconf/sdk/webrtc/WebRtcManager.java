@@ -415,6 +415,12 @@ public class WebRtcManager extends Caster<Msg>{
                 }, resultListener, ToDoConverter.confPara2CreateConference(confPara));
 
             }
+
+            @Override
+            public void onTimeout(IResultListener resultListener, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                stopSession();
+            }
+
         }, resultListener, EmAPIVersionType.emMcAPIVersion_Api);
 
     }
