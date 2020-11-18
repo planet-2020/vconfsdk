@@ -42,7 +42,31 @@ public class Statistics {
     }
 
     public Statistics.ConfereeRelated findMaxAudioLevel(){
-        return Stream.of(confereeRelated).max((o1, o2) -> o1.audioInfo.audioLevel - o2.audioInfo.audioLevel).orElse(null);
+        return Stream.of(confereeRelated).max((o1, o2) -> {
+            if (o1 == o2){
+                return 0;
+            } else {
+                if (o1==null){
+                    return -1;
+                }else if (o2 ==null){
+                    return 1;
+                }else{
+                    AudioInfo audioInfo1 = o1.audioInfo;
+                    AudioInfo audioInfo2 = o2.audioInfo;
+                    if (audioInfo1 == audioInfo2){
+                        return 0;
+                    }else {
+                        if (audioInfo1==null){
+                            return -1;
+                        }else if (audioInfo2==null){
+                            return 1;
+                        }else {
+                            return audioInfo1.audioLevel - audioInfo2.audioLevel;
+                        }
+                    }
+                }
+            }
+        }).orElse(null);
     }
 
     public void clear(){

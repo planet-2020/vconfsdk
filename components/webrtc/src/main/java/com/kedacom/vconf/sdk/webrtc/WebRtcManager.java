@@ -1533,13 +1533,8 @@ public class WebRtcManager extends Caster<Msg>{
         myself = new Conferee(userE164);
         myself.setMuted(config.isMuted);
 
-        // 定时获取统计信息
+        // 定时采集统计信息
         handler.postDelayed(statsCollector, 2000);
-        // 定时处理音频统计信息
-        handler.postDelayed(audioStatsProcesser, 3000);
-        // 定时处理视频统计信息
-        handler.postDelayed(videoStatsProcesser, 3000);
-
         KLog.p("session started ");
 
         return true;
@@ -2022,6 +2017,8 @@ public class WebRtcManager extends Caster<Msg>{
         // 在画面合成中的次序。次序越靠前的优先级越高。0的优先级最高。
         // 界面可依据该优先级决定各与会方画面展示位置。
         private int orderInCompositedScene;
+        // 上一次界面刷新的时间戳
+        private long lastRefreshTimestamp;
 
         // 音频通道状态
         private AudioChannelState audioChannelState = AudioChannelState.Idle;
@@ -2182,7 +2179,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         private void setVolume(int volume) {
-            if (volume != this.volume) {
+            if (Math.abs(volume - this.volume) > 5) {
                 this.volume = volume;
                 refreshDisplays();
             }
@@ -2609,9 +2606,13 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         private void refreshDisplays(){
-            // 延迟刷新以防止短时间内大量重复刷新
             instance.handler.removeCallbacks(refreshDisplaysRunnable);
-            instance.handler.postDelayed(refreshDisplaysRunnable, 500);
+            // 延迟刷新以防止短时间内大量重复刷新，亦可改善关开摄像头时帧残留的问题。
+            if (System.currentTimeMillis()-lastRefreshTimestamp > 300) {
+                doRefreshDisplays();
+            }else {
+                instance.handler.postDelayed(refreshDisplaysRunnable, 150);
+            }
         }
 
         private Runnable refreshDisplaysRunnable = new Runnable() {
@@ -2622,6 +2623,7 @@ public class WebRtcManager extends Caster<Msg>{
         };
 
         private void doRefreshDisplays(){
+            lastRefreshTimestamp = System.currentTimeMillis();
             for (Display display : displays){
                 display.refresh();
             }
@@ -3384,6 +3386,19 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
+
+    private Conferee findConfereeById(String id){
+        if (myself.getId().equals(id)){
+            return myself;
+        }else {
+            return Stream.of(conferees)
+                    .filter(it -> it.id.equals(id))
+                    .findFirst()
+                    .orElse(null);
+        }
+    }
+
+
     private Conferee findConfereeByE164(String e164, Conferee.ConfereeType type){
         if (myself.getE164().equals(e164) && type == myself.type){
             return myself;
@@ -3462,6 +3477,14 @@ public class WebRtcManager extends Caster<Msg>{
         vips.addAll(Stream.of(conferees).filter(Conferee::isVIP).collect(Collectors.toSet()));
 
         return vips;
+    }
+
+    private Conferee findVoiceActivatedConferee(){
+        if (myself.getAudioSignalState() == Conferee.AudioSignalState.Activated){
+            return myself;
+        }else{
+            return Stream.of(conferees).filter(it -> it.getAudioSignalState() == Conferee.AudioSignalState.Activated).findFirst().orElse(null);
+        }
     }
 
     private RtcStream findStream(String streamId){
@@ -5231,6 +5254,13 @@ public class WebRtcManager extends Caster<Msg>{
 
     // 统计信息采集周期。// 单位：毫秒
     private final int STATS_INTERVAL = 500;
+    // 已采集次数
+    private int collectStatsCount;
+
+    // 视频信号检测周期。单位：毫秒。
+    // 注：选择一个合适的周期以提升用户体验，太短则在网络波动时会频繁切换视频信号标志，太长则标志变化显得迟钝。
+    private final float videoSignalCheckPeriod = 5000f;
+    private final int videoSignalCheckPerCount = (int) Math.max(videoSignalCheckPeriod /STATS_INTERVAL, 1);
 
     // RTC统计信息收集器
     private Runnable statsCollector = new Runnable() {
@@ -5275,139 +5305,222 @@ public class WebRtcManager extends Caster<Msg>{
 
             aggregateStats();
 
+            processStats();
+
             Stream.of(getNtfListeners(StatsListener.class)).forEach(statsListener -> statsListener.onStats(statistics));
 
             handler.postDelayed(this, STATS_INTERVAL);
+
+            ++collectStatsCount;
         }
     };
 
 
-    private void processStats(){
+    private void aggregateStats(){
+        statistics.clear();
+        aggregatePubStats(publisherStats, prePublisherStats, false);
+        aggregateSubStats(subscriberStats, preSubscriberStats, false);
+        aggregatePubStats(assPublisherStats, preAssPublisherStats, true);
+        aggregateSubStats(assSubscriberStats, preAssSubscriberStats, true);
+        KLog.p("/=== aggregated Stats:\n"+statistics);
+    }
+
+
+    void aggregatePubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, boolean isAss){
+        if (stats==null || preStats==null || (stats.audioOutboundRtp==null && stats.videoOutboundRtp==null)){
+            return;
+        }
+
+        Statistics.AudioInfo audioInfo = null;
+        int bitrate = 0;
+        String codecMime = "";
+        if (!isAss){
+            if (stats.audioOutboundRtp!=null && preStats.audioOutboundRtp!=null){
+                bitrate = (int) ((stats.audioOutboundRtp.bytesSent - preStats.audioOutboundRtp.bytesSent)*8 / (STATS_INTERVAL/1000f) / 1024);
+            }
+            if (stats.audioOutboundRtp!=null){
+                codecMime = stats.getCodecMime(stats.audioOutboundRtp.trackId);
+            }
+            int audioLevel = stats.sendAudioTrack != null ? (int) (stats.sendAudioTrack.audioLevel * 100) :0; // NOTE: 己端音量不受前面调用audioTrack#setVolume(int volume)的影响（但是远端会，不清楚为什么）
+            audioInfo = new Statistics.AudioInfo(codecMime, bitrate, audioLevel);
+            myself.setVolume(audioLevel);
+        }
+
+        bitrate = 0;
+        codecMime = "";
+        String encoderImplementation = "";
+        if (stats.videoOutboundRtp!=null && preStats.videoOutboundRtp!=null){
+            bitrate = (int) ((stats.videoOutboundRtp.bytesSent - preStats.videoOutboundRtp.bytesSent)*8 / (STATS_INTERVAL/1000f) / 1024);
+            encoderImplementation = stats.videoOutboundRtp.encoderImplementation;
+        }
+        if (stats.videoOutboundRtp!=null){
+            codecMime = stats.getCodecMime(stats.videoOutboundRtp.trackId);
+        }
+        int frameRate = 0;
+        int frameWidth = 0;
+        int frameHeight = 0;
+        if (stats.sendVideoTrack!=null && preStats.sendVideoTrack!=null){
+            frameRate = (int) ((stats.sendVideoTrack.framesSent - preStats.sendVideoTrack.framesSent) / (STATS_INTERVAL/1000f));
+            frameWidth = stats.sendVideoTrack.frameWidth;
+            frameHeight = stats.sendVideoTrack.frameHeight;
+        }
+        Statistics.VideoInfo videoInfo = new Statistics.VideoInfo(codecMime, encoderImplementation, frameWidth, frameHeight, frameRate, bitrate);
+        if (videoInfo.framerate<=0 || videoInfo.bitrate<=0){
+            videoInfo.framerate = videoInfo.bitrate = 0;
+        }
+
+        String confereeId = isAss ? myself.mcuId+"-"+myself.terId+"-"+myself.e164+"-"+Conferee.ConfereeType.AssStream : myself.getId();
+        statistics.confereeRelated.add(new Statistics.ConfereeRelated(confereeId, audioInfo, videoInfo));
+    }
+
+
+    void aggregateSubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, boolean isAss){
+        if (stats==null || preStats==null || (stats.audioInboundRtpList==null && stats.videoInboundRtpList==null)){
+            return;
+        }
+
+        Map<String, Statistics.AudioInfo> audioInfoMap = new HashMap<>();
+        if (!isAss) {
+            if (stats.audioInboundRtpList!=null && preStats.audioInboundRtpList!=null) {
+                for (StatsHelper.AudioInboundRtp rtp : stats.audioInboundRtpList) {
+                    for (StatsHelper.AudioInboundRtp preRtp : preStats.audioInboundRtpList) {
+                        if (rtp.trackId==null || preRtp.trackId==null){
+                            KLog.p(KLog.ERROR, "this inbound rtp has no track id !?");
+                            continue;
+                        }
+                        if (rtp.trackId.equals(preRtp.trackId)) {
+                            int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / (STATS_INTERVAL/1000f) / 1024);
+                            String codecMime = stats.getCodecMime(rtp.trackId);
+                            long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
+                            int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
+                            StatsHelper.RecvAudioTrack recvAudioTrack = stats.getRecvAudioTrack(rtp.trackId);
+                            if (recvAudioTrack == null){
+                                KLog.p(KLog.ERROR, "no audio track of %s", rtp.trackId);
+                                continue;
+                            }
+                            int audioLevel = (int) (recvAudioTrack.audioLevel
+                                    / (10 * config.outputAudioVolume/100f) // 抵消增益拿到实际的音量。前面有调用audioTrack#setVolume(int volume)设置增益。
+                                    * 100 // 原始值为[0, 1]，我们转为[1, 100]
+                            );
+                            Statistics.AudioInfo audioInfo = new Statistics.AudioInfo(codecMime, bitrate, audioLevel, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate);
+                            String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
+                            Conferee conferee = findConfereeByStreamId(kdStreamId);
+                            if (conferee != null) {
+                                if (!conferee.isMyself()) {
+                                    audioInfoMap.put(conferee.getId(), audioInfo);
+                                    conferee.setVolume(audioLevel);
+                                }
+                            } else {
+                                RtcStream rtcStream = findStream(kdStreamId);
+                                if (rtcStream != null && rtcStream.streamInfo.bMix) { // 混音
+                                    statistics.common = new Statistics.Common(audioInfo);
+                                } else {
+                                    KLog.p(KLog.WARN, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        Map<String, Statistics.VideoInfo> videoInfoMap = new HashMap<>();
+        if (stats.videoInboundRtpList!=null && preStats.videoInboundRtpList!=null) {
+            for (StatsHelper.VideoInboundRtp rtp : stats.videoInboundRtpList) {
+                for (StatsHelper.VideoInboundRtp preRtp : preStats.videoInboundRtpList) {
+                    if (rtp.trackId==null || preRtp.trackId==null){
+                        KLog.p(KLog.ERROR, "this inbound rtp has no track id !?");
+                        continue;
+                    }
+                    if (rtp.trackId.equals(preRtp.trackId)) {
+                        int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / (STATS_INTERVAL/1000f) / 1024);
+                        String codecMime = stats.getCodecMime(rtp.trackId);
+                        StatsHelper.RecvVideoTrack recvVideoTrack = stats.getRecvVideoTrack(rtp.trackId);
+                        int frameRate = (int) ((recvVideoTrack.framesReceived - preStats.getRecvVideoTrack(preRtp.trackId).framesReceived) / (STATS_INTERVAL/1000f));
+                        long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
+                        int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
+                        Statistics.VideoInfo videoInfo = new Statistics.VideoInfo(codecMime, rtp.decoderImplementation, recvVideoTrack.frameWidth, recvVideoTrack.frameHeight, frameRate, bitrate, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate);
+                        if (videoInfo.framerate <= 0 || videoInfo.bitrate <= 0) {
+                            videoInfo.framerate = videoInfo.bitrate = 0;
+                        }
+                        String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvVideoTrack.trackIdentifier);
+                        Conferee conferee = findConfereeByStreamId(kdStreamId);
+                        if (conferee != null) {
+                            videoInfoMap.put(conferee.getId(), videoInfo);
+                        } else {
+                            KLog.p(KLog.WARN, "track %s / %s does not belong to any conferee!", recvVideoTrack.trackIdentifier, kdStreamId);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        Set<String> confereeIds = new HashSet<>();
+        confereeIds.addAll(audioInfoMap.keySet());
+        confereeIds.addAll(videoInfoMap.keySet());
+        for (String confereeId : confereeIds){
+            Statistics.AudioInfo audioInfo = audioInfoMap.get(confereeId);
+            Statistics.VideoInfo videoInfo = videoInfoMap.get(confereeId);
+            statistics.confereeRelated.add(new Statistics.ConfereeRelated(confereeId, audioInfo, videoInfo));
+        }
 
     }
 
 
-    private String preMaxAudioLevelKdStreamId;
-    // 音频统计信息处理器
-    private Runnable audioStatsProcesser = new Runnable() {
-        @Override
-        public void run() {
-            if (publisherStats==null || subscriberStats==null){
-                handler.postDelayed(this, STATS_INTERVAL);
+    private void processStats(){
+        // 语音激励
+        Statistics.ConfereeRelated confereeRelated = statistics.findMaxAudioLevel();
+        Conferee preMaxAudioConferee = findVoiceActivatedConferee();
+        if (confereeRelated != null){
+            Conferee maxAudioConferee = findConfereeById(confereeRelated.confereeId);
+            if (maxAudioConferee == null){
+                KLog.p(KLog.ERROR, "max audio level does not belong to any conferee!");
+            }
+            Statistics.AudioInfo audioInfo = confereeRelated.audioInfo;
+            int maxAudioLevel = audioInfo != null ? audioInfo.audioLevel : 0;
+            int threshold = 10; // 小于该值我们认为不是人在说话，是环境噪音
+            if (preMaxAudioConferee != maxAudioConferee){
+                if (preMaxAudioConferee != null){
+                    preMaxAudioConferee.setAudioSignalState(Conferee.AudioSignalState.Normal);
+                }
+                if (maxAudioConferee != null && maxAudioLevel >= threshold){
+                    maxAudioConferee.setAudioSignalState(Conferee.AudioSignalState.Activated);
+                }
+            }else{
+                if (maxAudioConferee != null && maxAudioLevel < threshold){
+                    maxAudioConferee.setAudioSignalState(Conferee.AudioSignalState.Normal);
+                }
+            }
+        }else{
+            KLog.p(KLog.ERROR, "no max audio level conferee!");
+            if (preMaxAudioConferee != null){
+                preMaxAudioConferee.setAudioSignalState(Conferee.AudioSignalState.Normal);
+            }
+        }
+
+        // 视频信号
+        Stream.of(statistics.confereeRelated).forEach(it -> {
+            Conferee conferee = findConfereeById(it.confereeId);
+            if (conferee == null){
+                KLog.p(KLog.ERROR, "no conferee with id %s", it.confereeId);
                 return;
             }
-            // 比较各与会方的音量以选出最大者用以语音激励
-            String maxAudioLevelTrackId = null;
-            double maxAudioLevel = 0;
-            if (!config.isMuted) { // 非哑音状态我们才将己端音量纳入统计范畴（按理说并不需要这个条件判断，我理解哑音状态下己端音量应该为0才对，但是实测并不是）
-                // 己端的音量
-                maxAudioLevelTrackId = null != publisherStats.audioSource ? publisherStats.audioSource.trackIdentifier : null;
-                maxAudioLevel = null != publisherStats.audioSource ? publisherStats.audioSource.audioLevel : 0;
-                KLog.p("local audioLevel= %s", maxAudioLevel);
+            Conferee.VideoSignalState vidSigState = conferee.getVideoSignalState();
+            Statistics.VideoInfo videoInfo = it.videoInfo;
+            float framerate = videoInfo != null ? videoInfo.framerate : 0;
+            float bottomThreshold = 0.2f; // 可忍受的帧率下限，低于该下限则认为信号丢失
+            float topThreshold = 1;   /* 尽管我们在帧率低于bottomThreshold时将状态设为WeakSignal但当帧率超过bottomThreshold时我们不立马设置状态为Normal
+                                       而是等帧率回复到较高水平才切回Normal以使状态切换显得平滑而不是在临界值处频繁切换*/
+            if (framerate < bottomThreshold && vidSigState == Conferee.VideoSignalState.Normal){
+                conferee.setVideoSignalState(Conferee.VideoSignalState.Weak);
+            }else if (framerate > topThreshold && Conferee.VideoSignalState.Weak == vidSigState){
+                conferee.setVideoSignalState(Conferee.VideoSignalState.Normal);
             }
+        });
 
-            // 其他与会方的音量
-            for (StatsHelper.RecvAudioTrack track : subscriberStats.recvAudioTrackList) {
-                String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(track.trackIdentifier);
-                Conferee conferee = findConfereeByStreamId(kdStreamId);
-                if (null == conferee) {
-                    KLog.p(KLog.ERROR, "track %s(kdstreamId=%s) not belong to any conferee?", track.trackIdentifier, kdStreamId);
-                    continue;
-                }
-                KLog.p("track %s(kdstreamId=%s), audioLevel %s, maxAudioLevel=%s", track.trackIdentifier, kdStreamId, track.audioLevel, maxAudioLevel);
-                if (track.audioLevel > maxAudioLevel) {
-                    maxAudioLevel = track.audioLevel;
-                    maxAudioLevelTrackId = track.trackIdentifier;
-                }
-            }
-            KLog.p("maxAudioLevel=%s", maxAudioLevel);
-            if (null != maxAudioLevelTrackId
-                    && maxAudioLevel > 0.1 // 大于0.1才认为是人说话，否则认为是环境噪音
-            ){
-                String maxAudioLevelKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(maxAudioLevelTrackId);
-                KLog.p("preMaxAudioLevelKdStreamId=%s, maxAudioLevelKdStreamId=%s", preMaxAudioLevelKdStreamId, maxAudioLevelKdStreamId);
-                if (null != maxAudioLevelKdStreamId) {
-                    if (!maxAudioLevelKdStreamId.equals(preMaxAudioLevelKdStreamId)) { // 说话人变化了才需要刷新语音激励状态
-                        Conferee conferee = findConfereeByStreamId(preMaxAudioLevelKdStreamId);
-                        if (null != conferee && Conferee.AudioSignalState.Activated == conferee.getAudioSignalState()) {
-                            conferee.setAudioSignalState(Conferee.AudioSignalState.Normal);
-                        }
-                        conferee = findConfereeByStreamId(maxAudioLevelKdStreamId);
-                        if (null != conferee && Conferee.AudioSignalState.Normal == conferee.getAudioSignalState()) {
-                            conferee.setAudioSignalState(Conferee.AudioSignalState.Activated);
-                        }
-                        preMaxAudioLevelKdStreamId = maxAudioLevelKdStreamId;
-                    }
-                }else{
-                    KLog.p(KLog.ERROR, "something wrong! cannot find TrackId %s in kdStreamId2RtcTrackIdMap", maxAudioLevelTrackId);
-                }
-            }else {
-                // 当前没有人说话，原来设置的语音激励清掉
-                KLog.p("preMaxAudioLevelKdStreamId=%s", preMaxAudioLevelKdStreamId);
-                Conferee conferee = findConfereeByStreamId(preMaxAudioLevelKdStreamId);
-                if (null != conferee && Conferee.AudioSignalState.Activated == conferee.getAudioSignalState()){
-                    conferee.setAudioSignalState(Conferee.AudioSignalState.Normal);
-                }
-                preMaxAudioLevelKdStreamId = null;
-            }
-
-            handler.postDelayed(this, STATS_INTERVAL);
-        }
-    };
-
-
-    private Map<String, Long> preReceivedFramesMap = new HashMap<>();
-    private long videoStatsTimeStamp = System.currentTimeMillis();
-    private static final int WeakSignalCheckInterval = 5000; // 单位：毫秒
-    // 视频统计信息处理器
-    private Runnable videoStatsProcesser = new Runnable() {
-        @Override
-        public void run() {
-            if (subscriberStats==null){
-                handler.postDelayed(this, STATS_INTERVAL);
-                return;
-            }
-            // 其他与会方的帧率
-            Map<String, Long> framesReceivedMap = new HashMap<>();
-            for (StatsHelper.RecvVideoTrack track : subscriberStats.recvVideoTrackList) {
-                framesReceivedMap.put(track.trackIdentifier, track.framesReceived);
-            }
-            long curTimestamp = System.currentTimeMillis();
-            for (Map.Entry<String, Long> entry : framesReceivedMap.entrySet()){
-                String trackIdentifier = entry.getKey();
-                long preReceivedFrames = null != preReceivedFramesMap.get(trackIdentifier) ? preReceivedFramesMap.get(trackIdentifier) : 0;
-                long curReceivedFrames = entry.getValue();
-                KLog.p("trackIdentifier=%s, preReceivedFrames=%s, curReceivedFrames=%s", trackIdentifier, preReceivedFrames, curReceivedFrames);
-                String lostSignalKdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackIdentifier);
-                Conferee conferee = findConfereeByStreamId(lostSignalKdStreamId);
-                if (null != conferee){
-                    long interval = curTimestamp - videoStatsTimeStamp;
-                    float fps = (curReceivedFrames - preReceivedFrames) / (interval/1000f);
-                    Conferee.VideoSignalState vidSigState = conferee.getVideoSignalState();
-                    if (Conferee.VideoSignalState.Normal == vidSigState
-                            && interval >= WeakSignalCheckInterval // 计算帧率的间隔时长应适度，太短则太敏感地滑入WeakSignal状态，太长则太迟钝
-                            && fps < 0.2 // 可忍受的帧率下限，低于该下限则认为信号丢失
-                    ){
-                        conferee.setVideoSignalState(Conferee.VideoSignalState.Weak);
-                    }else if (Conferee.VideoSignalState.Weak == vidSigState && fps > 1){
-                        // 尽管我们在帧率低于0.2时将状态设为WeakSignal但当帧率超过0.2时我们不立马设置状态为Normal
-                        // 而是等帧率回复到较高水平才切回Normal以使状态切换显得平滑而不是在临界值处频繁切换
-                        conferee.setVideoSignalState(Conferee.VideoSignalState.Normal);
-                    }
-                }else{
-                    KLog.p(KLog.ERROR, "track %s(kdstreamId=%s) not belong to any conferee?", trackIdentifier, lostSignalKdStreamId);
-                }
-            }
-
-            if (curTimestamp - videoStatsTimeStamp >= WeakSignalCheckInterval) {
-                preReceivedFramesMap = framesReceivedMap;
-                videoStatsTimeStamp = curTimestamp;
-            }
-
-            handler.postDelayed(this, STATS_INTERVAL);
-        }
-    };
-
+    }
 
     private boolean enableStatsLog = true;
     public void setStatsLogEnable(boolean enable){
@@ -5482,157 +5595,7 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
-    private void aggregateStats(){
-        statistics.clear();
-        aggregatePubStats(publisherStats, prePublisherStats, false);
-        aggregateSubStats(subscriberStats, preSubscriberStats, false);
-        aggregatePubStats(assPublisherStats, preAssPublisherStats, true);
-        aggregateSubStats(assSubscriberStats, preAssSubscriberStats, true);
-        KLog.p("/=== aggregated Stats:\n"+statistics);
-    }
-
-
-    void aggregatePubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, boolean isAss){
-        if (stats==null || preStats==null || (stats.audioOutboundRtp==null && stats.videoOutboundRtp==null)){
-            return;
-        }
-
-        Statistics.AudioInfo audioInfo = null;
-        int bitrate = 0;
-        String codecMime = "";
-        if (!isAss){
-            if (stats.audioOutboundRtp!=null && preStats.audioOutboundRtp!=null){
-                bitrate = (int) ((stats.audioOutboundRtp.bytesSent - preStats.audioOutboundRtp.bytesSent)*8 / (STATS_INTERVAL/1000f) / 1024);
-            }
-            if (stats.audioOutboundRtp!=null){
-                codecMime = stats.getCodecMime(stats.audioOutboundRtp.trackId);
-            }
-            int audioLevel = stats.sendAudioTrack != null ? (int) (stats.sendAudioTrack.audioLevel * 100) :0;
-            audioInfo = new Statistics.AudioInfo(codecMime, bitrate, audioLevel);
-            myself.setVolume(audioLevel);
-        }
-
-        bitrate = 0;
-        codecMime = "";
-        String encoderImplementation = "";
-        if (stats.videoOutboundRtp!=null && preStats.videoOutboundRtp!=null){
-            bitrate = (int) ((stats.videoOutboundRtp.bytesSent - preStats.videoOutboundRtp.bytesSent)*8 / (STATS_INTERVAL/1000f) / 1024);
-            encoderImplementation = stats.videoOutboundRtp.encoderImplementation;
-        }
-        if (stats.videoOutboundRtp!=null){
-            codecMime = stats.getCodecMime(stats.videoOutboundRtp.trackId);
-        }
-        int frameRate = 0;
-        int frameWidth = 0;
-        int frameHeight = 0;
-        if (stats.sendVideoTrack!=null && preStats.sendVideoTrack!=null){
-            frameRate = (int) ((stats.sendVideoTrack.framesSent - preStats.sendVideoTrack.framesSent) / (STATS_INTERVAL/1000f));
-            frameWidth = stats.sendVideoTrack.frameWidth;
-            frameHeight = stats.sendVideoTrack.frameHeight;
-        }
-        Statistics.VideoInfo videoInfo = new Statistics.VideoInfo(codecMime, encoderImplementation, frameWidth, frameHeight, frameRate, bitrate);
-        if (videoInfo.framerate<=0 || videoInfo.bitrate<=0){
-            videoInfo.framerate = videoInfo.bitrate = 0;
-        }
-
-        String confereeId = isAss ? myself.mcuId+"-"+myself.terId+"-"+myself.e164+"-"+Conferee.ConfereeType.AssStream : myself.getId();
-        statistics.confereeRelated.add(new Statistics.ConfereeRelated(confereeId, audioInfo, videoInfo));
-    }
-
-
-    void aggregateSubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, boolean isAss){
-        if (stats==null || preStats==null || (stats.audioInboundRtpList==null && stats.videoInboundRtpList==null)){
-            return;
-        }
-
-        Map<String, Statistics.AudioInfo> audioInfoMap = new HashMap<>();
-        if (!isAss) {
-            if (stats.audioInboundRtpList!=null && preStats.audioInboundRtpList!=null) {
-                for (StatsHelper.AudioInboundRtp rtp : stats.audioInboundRtpList) {
-                    for (StatsHelper.AudioInboundRtp preRtp : preStats.audioInboundRtpList) {
-                        if (rtp.trackId==null || preRtp.trackId==null){
-                            KLog.p(KLog.ERROR, "this inbound rtp has no track id !?");
-                            continue;
-                        }
-                        if (rtp.trackId.equals(preRtp.trackId)) {
-                            int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / (STATS_INTERVAL/1000f) / 1024);
-                            String codecMime = stats.getCodecMime(rtp.trackId);
-                            long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
-                            int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
-                            StatsHelper.RecvAudioTrack recvAudioTrack = stats.getRecvAudioTrack(rtp.trackId);
-                            if (recvAudioTrack == null){
-                                KLog.p(KLog.ERROR, "no audio track of %s", rtp.trackId);
-                                continue;
-                            }
-                            int audioLevel = (int) (recvAudioTrack.audioLevel*100);
-                            audioLevel *= 1/(10 * config.outputAudioVolume/100f); // 抵消增益拿到实际的音量
-                            Statistics.AudioInfo audioInfo = new Statistics.AudioInfo(codecMime, bitrate, audioLevel, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate);
-                            String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
-                            Conferee conferee = findConfereeByStreamId(kdStreamId);
-                            if (conferee != null) {
-                                if (!conferee.isMyself()) {
-                                    audioInfoMap.put(conferee.getId(), audioInfo);
-                                    conferee.setVolume(audioLevel);
-                                }
-                            } else {
-                                RtcStream rtcStream = findStream(kdStreamId);
-                                if (rtcStream != null && rtcStream.streamInfo.bMix) { // 混音
-                                    statistics.common = new Statistics.Common(audioInfo);
-                                } else {
-                                    KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        Map<String, Statistics.VideoInfo> videoInfoMap = new HashMap<>();
-        if (stats.videoInboundRtpList!=null && preStats.videoInboundRtpList!=null) {
-            for (StatsHelper.VideoInboundRtp rtp : stats.videoInboundRtpList) {
-                for (StatsHelper.VideoInboundRtp preRtp : preStats.videoInboundRtpList) {
-                    if (rtp.trackId==null || preRtp.trackId==null){
-                        KLog.p(KLog.ERROR, "this inbound rtp has no track id !?");
-                        continue;
-                    }
-                    if (rtp.trackId.equals(preRtp.trackId)) {
-                        int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / (STATS_INTERVAL/1000f) / 1024);
-                        String codecMime = stats.getCodecMime(rtp.trackId);
-                        StatsHelper.RecvVideoTrack recvVideoTrack = stats.getRecvVideoTrack(rtp.trackId);
-                        int frameRate = (int) ((recvVideoTrack.framesReceived - preStats.getRecvVideoTrack(preRtp.trackId).framesReceived) / (STATS_INTERVAL/1000f));
-                        long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
-                        int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
-                        Statistics.VideoInfo videoInfo = new Statistics.VideoInfo(codecMime, rtp.decoderImplementation, recvVideoTrack.frameWidth, recvVideoTrack.frameHeight, frameRate, bitrate, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate);
-                        if (videoInfo.framerate <= 0 || videoInfo.bitrate <= 0) {
-                            videoInfo.framerate = videoInfo.bitrate = 0;
-                        }
-                        String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvVideoTrack.trackIdentifier);
-                        Conferee conferee = findConfereeByStreamId(kdStreamId);
-                        if (conferee != null) {
-                            videoInfoMap.put(conferee.getId(), videoInfo);
-                        } else {
-                            KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvVideoTrack.trackIdentifier, kdStreamId);
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-
-        Set<String> confereeIds = new HashSet<>();
-        confereeIds.addAll(audioInfoMap.keySet());
-        confereeIds.addAll(videoInfoMap.keySet());
-        for (String confereeId : confereeIds){
-            Statistics.AudioInfo audioInfo = audioInfoMap.get(confereeId);
-            Statistics.VideoInfo videoInfo = videoInfoMap.get(confereeId);
-            statistics.confereeRelated.add(new Statistics.ConfereeRelated(confereeId, audioInfo, videoInfo));
-        }
-
-    }
-
-
+    
     private Statistics.ConfereeRelated getStats(String confereeId){
         return Stream.of(statistics.confereeRelated)
                 .filter(it-> it.confereeId.equals(confereeId))
