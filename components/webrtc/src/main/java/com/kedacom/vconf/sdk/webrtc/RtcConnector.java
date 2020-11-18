@@ -457,68 +457,42 @@ class RtcConnector implements IRcvMsgCallback{
 	private StructConfPB.TAgentCodecStatistic statistics2PB(Statistics statistics){
 		StructConfPB.TAgentCodecStatistic.Builder builder = StructConfPB.TAgentCodecStatistic.newBuilder();
 		if (statistics.common != null){
-			Statistics.AudioInput audioInput = statistics.common.mixedAudio;
+			Statistics.AudioInfo audioInfo = statistics.common.mixedAudio;
 			StructConfPB.TAgentAudDecStatistic.Builder audDecBuilder = StructConfPB.TAgentAudDecStatistic.newBuilder();
-			audDecBuilder.setBitrate(audioInput.bitrate);
-			audDecBuilder.setFormat(audEncodeFormat2PB(audioInput.encodeFormat));
-			audDecBuilder.setPktsLose((int) audioInput.packetsLost);
-			long totalPack = audioInput.packetsReceived+audioInput.packetsLost;
-			audDecBuilder.setPktsLoserate(totalPack==0 ? 0 : (int) (100 * audioInput.packetsLost/totalPack));
+			audDecBuilder.setBitrate(audioInfo.bitrate);
+			audDecBuilder.setFormat(audEncodeFormat2PB(audioInfo.encodeFormat));
+			audDecBuilder.setPktsLose((int) audioInfo.packetsLost);
+			long totalPack = audioInfo.packetsReceived+audioInfo.packetsLost;
+			audDecBuilder.setPktsLoserate(totalPack==0 ? 0 : (int) (100 * audioInfo.packetsLost/totalPack));
 			audDecBuilder.setDecStart(true);
 			audDecBuilder.setIndex(0);
 			builder.addAuddecStatics(audDecBuilder.build());
 		}
 		for (Statistics.ConfereeRelated confereeRelated : statistics.confereeRelated) {
-			if (confereeRelated.audioOutput!=null){
-				StructConfPB.TAgentAudEncStatistic.Builder audEncBuilder = StructConfPB.TAgentAudEncStatistic.newBuilder();
-				audEncBuilder.setBitrate(confereeRelated.audioOutput.bitrate);
-				audEncBuilder.setFormat(audEncodeFormat2PB(confereeRelated.audioOutput.encodeFormat));
-				audEncBuilder.setEncStart(true);
-				audEncBuilder.setIndex(0);
-				builder.addAudencStatics(audEncBuilder.build());
-			}
-
-			if (confereeRelated.audioInput !=null){
+			if (confereeRelated.audioInfo !=null){
 				StructConfPB.TAgentAudDecStatistic.Builder audDecBuilder = StructConfPB.TAgentAudDecStatistic.newBuilder();
-				Statistics.AudioInput audioInput = confereeRelated.audioInput;
-				audDecBuilder.setBitrate(audioInput.bitrate);
-				audDecBuilder.setFormat(audEncodeFormat2PB(audioInput.encodeFormat));
-				audDecBuilder.setPktsLose((int) audioInput.packetsLost);
-				long totalPack = audioInput.packetsReceived+audioInput.packetsLost;
-				audDecBuilder.setPktsLoserate(totalPack==0 ? 0 : (int) (100 * audioInput.packetsLost/totalPack));
+				Statistics.AudioInfo audioInfo = confereeRelated.audioInfo;
+				audDecBuilder.setBitrate(audioInfo.bitrate);
+				audDecBuilder.setFormat(audEncodeFormat2PB(audioInfo.encodeFormat));
+				audDecBuilder.setPktsLose((int) audioInfo.packetsLost);
+				long totalPack = audioInfo.packetsReceived+audioInfo.packetsLost;
+				audDecBuilder.setPktsLoserate(totalPack==0 ? 0 : (int) (100 * audioInfo.packetsLost/totalPack));
 				audDecBuilder.setDecStart(true);
 				audDecBuilder.setIndex(0);
 				builder.addAuddecStatics(audDecBuilder.build());
 			}
 
-			if (confereeRelated.videoOutput != null){
-				StructConfPB.TAgentVidEncStatistic.Builder vidEncBuilder = StructConfPB.TAgentVidEncStatistic.newBuilder();
-				vidEncBuilder.setBitrate(confereeRelated.videoOutput.bitrate);
-				vidEncBuilder.setFormat(vidEncodeFormat2PB(confereeRelated.videoOutput.encodeFormat));
-				vidEncBuilder.setFramerate(confereeRelated.videoOutput.framerate);
-				vidEncBuilder.setVidWidth(confereeRelated.videoOutput.width);
-				vidEncBuilder.setVidHeight(confereeRelated.videoOutput.height);
-				vidEncBuilder.setHwEncStatus(true);
-				vidEncBuilder.setEncStart(true);
-				vidEncBuilder.setIndex(0);
-				if (confereeRelated.confereeId.endsWith(WebRtcManager.Conferee.ConfereeType.AssStream.name())) {
-					builder.addAssVidencStatics(vidEncBuilder.build());
-				}else {
-					builder.addPriVidencStatics(vidEncBuilder.build());
-				}
-			}
-
-			if (confereeRelated.videoInput != null){
+			if (confereeRelated.videoInfo != null){
 				StructConfPB.TAgentVidDecStatistic.Builder vidDecBuilder = StructConfPB.TAgentVidDecStatistic.newBuilder();
-				Statistics.VideoInput videoInput = confereeRelated.videoInput;
-				vidDecBuilder.setBitrate(videoInput.bitrate);
-				vidDecBuilder.setFormat(vidEncodeFormat2PB(videoInput.encodeFormat));
-				vidDecBuilder.setFramerate(videoInput.framerate);
-				vidDecBuilder.setVidWidth(videoInput.width);
-				vidDecBuilder.setVidHeight(videoInput.height);
-				vidDecBuilder.setPktsLose((int) videoInput.packetsLost);
-				long totalPack = videoInput.packetsReceived+videoInput.packetsLost;
-				vidDecBuilder.setPktsLoserate(totalPack==0 ? 0 : (int) (100 * videoInput.packetsLost/totalPack));
+				Statistics.VideoInfo videoInfo = confereeRelated.videoInfo;
+				vidDecBuilder.setBitrate(videoInfo.bitrate);
+				vidDecBuilder.setFormat(vidEncodeFormat2PB(videoInfo.encodeFormat));
+				vidDecBuilder.setFramerate(videoInfo.framerate);
+				vidDecBuilder.setVidWidth(videoInfo.width);
+				vidDecBuilder.setVidHeight(videoInfo.height);
+				vidDecBuilder.setPktsLose((int) videoInfo.packetsLost);
+				long totalPack = videoInfo.packetsReceived+videoInfo.packetsLost;
+				vidDecBuilder.setPktsLoserate(totalPack==0 ? 0 : (int) (100 * videoInfo.packetsLost/totalPack));
 				vidDecBuilder.setHwDecStatus(true);
 				vidDecBuilder.setDecStart(true);
 				vidDecBuilder.setIndex(0);

@@ -2634,10 +2634,8 @@ public class WebRtcManager extends Caster<Msg>{
                 return;
             }
             canvas.drawColor(0x80000000);
-            Statistics.AudioOutput ao = stats.audioOutput;
-            Statistics.VideoOutput vo = stats.videoOutput;
-            Statistics.AudioInput ai = stats.audioInput;
-            Statistics.VideoInput vi = stats.videoInput;
+            Statistics.AudioInfo ai = stats.audioInfo;
+            Statistics.VideoInfo vi = stats.videoInfo;
             statsPaint.reset();
             statsPaint.setColor(Color.GREEN);
             statsPaint.setTextSize(22);
@@ -2645,25 +2643,7 @@ public class WebRtcManager extends Caster<Msg>{
             Paint.FontMetrics fm = statsPaint.getFontMetrics();
             float fontHeight = fm.descent - fm.ascent;
             int xPos = 5, yPos = Math.round(fontHeight);
-            if (vo != null) {
-                canvas.drawText("== video ==", xPos, yPos, statsPaint);
-                yPos += fontHeight;
-                canvas.drawText("width: "+vo.width, xPos, yPos, statsPaint);
-                yPos += fontHeight;
-                canvas.drawText("height: "+vo.height, xPos, yPos, statsPaint);
-                yPos += fontHeight;
-                if (vo.framerate < 5) {
-                    statsPaint.setColor(Color.RED);}
-                canvas.drawText("frame rate: " + vo.framerate, xPos, yPos, statsPaint);
-                statsPaint.setColor(Color.GREEN);
-                yPos += fontHeight;
-                canvas.drawText("bitrate: "+vo.bitrate+"kbps", xPos, yPos, statsPaint);
-                yPos += fontHeight;
-                canvas.drawText("format: "+vo.encodeFormat, xPos, yPos, statsPaint);
-                yPos += fontHeight;
-//                canvas.drawText("encoder: "+vo.encoder, xPos, yPos, paint);
-//                yPos += fontHeight;
-            }else if (vi != null) {
+            if (vi != null) {
                 canvas.drawText("== video ==", xPos, yPos, statsPaint);
                 yPos += fontHeight;
                 canvas.drawText("width: "+vi.width, xPos, yPos, statsPaint);
@@ -2679,32 +2659,26 @@ public class WebRtcManager extends Caster<Msg>{
                 yPos += fontHeight;
                 canvas.drawText("format: "+vi.encodeFormat, xPos, yPos, statsPaint);
                 yPos += fontHeight;
-                canvas.drawText("packets received: "+vi.packetsReceived, xPos, yPos, statsPaint);
-                yPos += fontHeight;
-                canvas.drawText("packets lost: "+vi.packetsLost, xPos, yPos, statsPaint);
-                yPos += fontHeight;
-                if (vi.realtimeLostRate > 20) {
-                    statsPaint.setColor(Color.RED);}
-                canvas.drawText("realtime lost rate: "+vi.realtimeLostRate+"%", xPos, yPos, statsPaint);
-                statsPaint.setColor(Color.GREEN);
-                yPos += fontHeight;
+                if (!isMyself()) {
+                    canvas.drawText("packets received: " + vi.packetsReceived, xPos, yPos, statsPaint);
+                    yPos += fontHeight;
+                    canvas.drawText("packets lost: " + vi.packetsLost, xPos, yPos, statsPaint);
+                    yPos += fontHeight;
+                    if (vi.realtimeLostRate > 20) {
+                        statsPaint.setColor(Color.RED);
+                    }
+                    canvas.drawText("realtime lost rate: " + vi.realtimeLostRate + "%", xPos, yPos, statsPaint);
+                    statsPaint.setColor(Color.GREEN);
+                    yPos += fontHeight;
 //                canvas.drawText("encoder: "+vi.encoder, xPos, yPos, paint);
 //                yPos += fontHeight;
+                }
             }
 
             xPos = canvas.getWidth()/2;
             yPos = Math.round(fontHeight);
 
-            if (ao != null) {
-                canvas.drawText("== audio ==", xPos, yPos, statsPaint);
-                yPos += fontHeight;
-                canvas.drawText("bitrate: "+ao.bitrate+"kbps", xPos, yPos, statsPaint);
-                yPos += fontHeight;
-                canvas.drawText("format: "+ao.encodeFormat, xPos, yPos, statsPaint);
-                yPos += fontHeight;
-                canvas.drawText("volume: "+ao.audioLevel, xPos, yPos, statsPaint);
-                yPos += fontHeight;
-            }else if (ai != null || instance.statistics.common != null) {
+            if (ai != null || instance.statistics.common != null) {
                 String title;
                 if (ai != null){
                     title = "== audio ==";
@@ -2720,15 +2694,18 @@ public class WebRtcManager extends Caster<Msg>{
                 yPos += fontHeight;
                 canvas.drawText("volume: "+ai.audioLevel, xPos, yPos, statsPaint);
                 yPos += fontHeight;
-                canvas.drawText("packets received: "+ai.packetsReceived, xPos, yPos, statsPaint);
-                yPos += fontHeight;
-                canvas.drawText("packets lost: "+ai.packetsLost, xPos, yPos, statsPaint);
-                yPos += fontHeight;
-                if (ai.realtimeLostRate > 20) {
-                    statsPaint.setColor(Color.RED);}
-                canvas.drawText("realtime lost rate: "+ai.realtimeLostRate+"%", xPos, yPos, statsPaint);
-                statsPaint.setColor(Color.GREEN);
-                yPos += fontHeight;
+                if (!isMyself()) {
+                    canvas.drawText("packets received: " + ai.packetsReceived, xPos, yPos, statsPaint);
+                    yPos += fontHeight;
+                    canvas.drawText("packets lost: " + ai.packetsLost, xPos, yPos, statsPaint);
+                    yPos += fontHeight;
+                    if (ai.realtimeLostRate > 20) {
+                        statsPaint.setColor(Color.RED);
+                    }
+                    canvas.drawText("realtime lost rate: " + ai.realtimeLostRate + "%", xPos, yPos, statsPaint);
+                    statsPaint.setColor(Color.GREEN);
+                    yPos += fontHeight;
+                }
             }
 
         }
@@ -5305,6 +5282,11 @@ public class WebRtcManager extends Caster<Msg>{
     };
 
 
+    private void processStats(){
+
+    }
+
+
     private String preMaxAudioLevelKdStreamId;
     // 音频统计信息处理器
     private Runnable audioStatsProcesser = new Runnable() {
@@ -5515,7 +5497,7 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
 
-        Statistics.AudioOutput audioOutput = null;
+        Statistics.AudioInfo audioInfo = null;
         int bitrate = 0;
         String codecMime = "";
         if (!isAss){
@@ -5526,7 +5508,7 @@ public class WebRtcManager extends Caster<Msg>{
                 codecMime = stats.getCodecMime(stats.audioOutboundRtp.trackId);
             }
             int audioLevel = stats.sendAudioTrack != null ? (int) (stats.sendAudioTrack.audioLevel * 100) :0;
-            audioOutput = new Statistics.AudioOutput(audioLevel, bitrate, codecMime);
+            audioInfo = new Statistics.AudioInfo(codecMime, bitrate, audioLevel);
             myself.setVolume(audioLevel);
         }
 
@@ -5548,13 +5530,13 @@ public class WebRtcManager extends Caster<Msg>{
             frameWidth = stats.sendVideoTrack.frameWidth;
             frameHeight = stats.sendVideoTrack.frameHeight;
         }
-        Statistics.VideoOutput videoOutput = new Statistics.VideoOutput(frameRate, frameWidth, frameHeight, bitrate, codecMime, encoderImplementation);
-        if (videoOutput.framerate<=0 || videoOutput.bitrate<=0 || videoOutput.width<=0 || videoOutput.height<=0){
-            videoOutput.framerate = videoOutput.bitrate = videoOutput.width = videoOutput.height = 0;
+        Statistics.VideoInfo videoInfo = new Statistics.VideoInfo(codecMime, encoderImplementation, frameWidth, frameHeight, frameRate, bitrate);
+        if (videoInfo.framerate<=0 || videoInfo.bitrate<=0){
+            videoInfo.framerate = videoInfo.bitrate = 0;
         }
 
         String confereeId = isAss ? myself.mcuId+"-"+myself.terId+"-"+myself.e164+"-"+Conferee.ConfereeType.AssStream : myself.getId();
-        statistics.confereeRelated.add(new Statistics.ConfereeRelated(confereeId, audioOutput, videoOutput, null, null));
+        statistics.confereeRelated.add(new Statistics.ConfereeRelated(confereeId, audioInfo, videoInfo));
     }
 
 
@@ -5563,7 +5545,7 @@ public class WebRtcManager extends Caster<Msg>{
             return;
         }
 
-        Map<String, Statistics.AudioInput> audioInputMap = new HashMap<>();
+        Map<String, Statistics.AudioInfo> audioInfoMap = new HashMap<>();
         if (!isAss) {
             if (stats.audioInboundRtpList!=null && preStats.audioInboundRtpList!=null) {
                 for (StatsHelper.AudioInboundRtp rtp : stats.audioInboundRtpList) {
@@ -5584,18 +5566,18 @@ public class WebRtcManager extends Caster<Msg>{
                             }
                             int audioLevel = (int) (recvAudioTrack.audioLevel*100);
                             audioLevel *= 1/(10 * config.outputAudioVolume/100f); // 抵消增益拿到实际的音量
-                            Statistics.AudioInput audioInput = new Statistics.AudioInput(audioLevel, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate, bitrate, codecMime);
+                            Statistics.AudioInfo audioInfo = new Statistics.AudioInfo(codecMime, bitrate, audioLevel, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate);
                             String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
                             Conferee conferee = findConfereeByStreamId(kdStreamId);
                             if (conferee != null) {
                                 if (!conferee.isMyself()) {
-                                    audioInputMap.put(conferee.getId(), audioInput);
+                                    audioInfoMap.put(conferee.getId(), audioInfo);
                                     conferee.setVolume(audioLevel);
                                 }
                             } else {
                                 RtcStream rtcStream = findStream(kdStreamId);
                                 if (rtcStream != null && rtcStream.streamInfo.bMix) { // 混音
-                                    statistics.common = new Statistics.Common(audioInput);
+                                    statistics.common = new Statistics.Common(audioInfo);
                                 } else {
                                     KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
                                 }
@@ -5607,7 +5589,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
 
-        Map<String, Statistics.VideoInput> videoInputMap = new HashMap<>();
+        Map<String, Statistics.VideoInfo> videoInfoMap = new HashMap<>();
         if (stats.videoInboundRtpList!=null && preStats.videoInboundRtpList!=null) {
             for (StatsHelper.VideoInboundRtp rtp : stats.videoInboundRtpList) {
                 for (StatsHelper.VideoInboundRtp preRtp : preStats.videoInboundRtpList) {
@@ -5622,14 +5604,14 @@ public class WebRtcManager extends Caster<Msg>{
                         int frameRate = (int) ((recvVideoTrack.framesReceived - preStats.getRecvVideoTrack(preRtp.trackId).framesReceived) / (STATS_INTERVAL/1000f));
                         long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
                         int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
-                        Statistics.VideoInput videoInput = new Statistics.VideoInput(frameRate, recvVideoTrack.frameWidth, recvVideoTrack.frameHeight, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate, bitrate, codecMime, rtp.decoderImplementation);
-                        if (videoInput.framerate <= 0 || videoInput.bitrate <= 0 || videoInput.width <= 0 || videoInput.height <= 0) {
-                            videoInput.framerate = videoInput.bitrate = videoInput.width = videoInput.height = 0;
+                        Statistics.VideoInfo videoInfo = new Statistics.VideoInfo(codecMime, rtp.decoderImplementation, recvVideoTrack.frameWidth, recvVideoTrack.frameHeight, frameRate, bitrate, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate);
+                        if (videoInfo.framerate <= 0 || videoInfo.bitrate <= 0) {
+                            videoInfo.framerate = videoInfo.bitrate = 0;
                         }
                         String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvVideoTrack.trackIdentifier);
                         Conferee conferee = findConfereeByStreamId(kdStreamId);
                         if (conferee != null) {
-                            videoInputMap.put(conferee.getId(), videoInput);
+                            videoInfoMap.put(conferee.getId(), videoInfo);
                         } else {
                             KLog.p(KLog.ERROR, "track %s / %s does not belong to any conferee!", recvVideoTrack.trackIdentifier, kdStreamId);
                         }
@@ -5640,12 +5622,12 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         Set<String> confereeIds = new HashSet<>();
-        confereeIds.addAll(audioInputMap.keySet());
-        confereeIds.addAll(videoInputMap.keySet());
+        confereeIds.addAll(audioInfoMap.keySet());
+        confereeIds.addAll(videoInfoMap.keySet());
         for (String confereeId : confereeIds){
-            Statistics.AudioInput audioInput = audioInputMap.get(confereeId);
-            Statistics.VideoInput videoInput = videoInputMap.get(confereeId);
-            statistics.confereeRelated.add(new Statistics.ConfereeRelated(confereeId, null, null, audioInput, videoInput));
+            Statistics.AudioInfo audioInfo = audioInfoMap.get(confereeId);
+            Statistics.VideoInfo videoInfo = videoInfoMap.get(confereeId);
+            statistics.confereeRelated.add(new Statistics.ConfereeRelated(confereeId, audioInfo, videoInfo));
         }
 
     }
