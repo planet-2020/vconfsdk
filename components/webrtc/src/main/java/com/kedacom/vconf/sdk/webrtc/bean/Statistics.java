@@ -1,5 +1,7 @@
 package com.kedacom.vconf.sdk.webrtc.bean;
 
+import com.annimon.stream.Stream;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,6 +41,10 @@ public class Statistics {
 
     }
 
+    public Statistics.ConfereeRelated findMaxAudioLevel(){
+        return Stream.of(confereeRelated).max((o1, o2) -> o1.audioInfo.audioLevel - o2.audioInfo.audioLevel).orElse(null);
+    }
+
     public void clear(){
         confereeRelated.clear();
         common = null;
@@ -47,40 +53,33 @@ public class Statistics {
     public static class ConfereeRelated{
         // 该统计信息所属与会方ID。
         public String confereeId;
-        // 音频输出信息。
-        public AudioOutput audioOutput;
-        // 音频输入信息。
-        public AudioInput audioInput;
-        // 视频输出信息。
-        public VideoOutput videoOutput;
-        // 视频输入信息。
-        public VideoInput videoInput;
+        // 音频信息。
+        public AudioInfo audioInfo;
+        // 视频信息。
+        public VideoInfo videoInfo;
 
-        public ConfereeRelated(String confereeId, AudioOutput audioOutput, VideoOutput videoOutput, AudioInput audioInput, VideoInput videoInput) {
+        public ConfereeRelated(String confereeId, AudioInfo audioInfo, VideoInfo videoInfo) {
             this.confereeId = confereeId;
-            this.audioOutput = audioOutput;
-            this.audioInput = audioInput;
-            this.videoOutput = videoOutput;
-            this.videoInput = videoInput;
+            this.audioInfo = audioInfo;
+            this.videoInfo = videoInfo;
         }
 
         @Override
         public String toString() {
             return "ConfereeRelated{" +
-                    "\nconfereeId='" + confereeId + '\'' +
-                    ", \naudioOutput=" + audioOutput +
-                    ", \naudioInput=" + audioInput +
-                    ", \nvideoOutput=" + videoOutput +
-                    ", \nvideoInput=" + videoInput +
-                    "\n}\n";
+                    "confereeId='" + confereeId + '\'' +
+                    ", audioInfo=" + audioInfo +
+                    ", videoInfo=" + videoInfo +
+                    '}';
         }
+
     }
 
     public static class Common{
         // 混音
-        public AudioInput mixedAudio;
+        public AudioInfo mixedAudio;
 
-        public Common(AudioInput mixedAudio) {
+        public Common(AudioInfo mixedAudio) {
             this.mixedAudio = mixedAudio;
         }
 
@@ -92,151 +91,111 @@ public class Statistics {
         }
     }
 
-    public static class AudioOutput{
-        // 音量[0, 100]
-        public int audioLevel;
-        // 码率。kbit/s
-        public int bitrate;
-        // 编码格式。
+
+
+    public static class AudioInfo{
+        /** 编码格式 */
         public String encodeFormat;
-
-        public AudioOutput(int audioLevel, int bitrate, String mime) {
-            this.audioLevel = audioLevel;
-            this.bitrate = bitrate;
-            this.encodeFormat = mime2CodecName(mime);
-        }
-
-        @Override
-        public String toString() {
-            return "AudioOutput{" +
-                    "audioLevel=" + audioLevel +
-                    ", bitrate=" + bitrate +
-                    ", encodeFormat='" + encodeFormat + '\'' +
-                    '}';
-        }
-    }
-
-    public static class AudioInput{
-        // 音量[0, 100]
+        /** 码率。单位kbit/s*/
+        public int bitrate;
+        /** 音量[0, 100] */
         public int audioLevel;
-        // 收包总数
+
+        /**
+         * NOTE: 以下字段仅在接收通道有效
+         */
+        /** 收包总数 */
         public long packetsReceived;
-        // 丢包总数
+        /** 丢包总数 */
         public long packetsLost;
-        // 实时丢包率[0, 100]
-        // NOTE：此丢包率是实时的，并非packetsLost/(packetsReceived+packetsLost)，那是总的丢包率。
+        /** 实时丢包率[0, 100]
+         * NOTE：此丢包率是实时的，并非packetsLost/(packetsReceived+packetsLost)，那是总的丢包率。
+         * */
         public int realtimeLostRate;
-        // 码率。kbit/s
-        public int bitrate;
-        // 编码格式。
-        public String encodeFormat;
 
-        public AudioInput(int audioLevel, long packetsReceived, long packetsLost, int realtimeLostRate, int bitrate, String mime) {
+        public AudioInfo(String mime, int bitrate, int audioLevel) {
+            this(mime, bitrate, audioLevel, 0, 0, 0);
+        }
+
+        public AudioInfo(String mime, int bitrate, int audioLevel, long packetsReceived, long packetsLost, int realtimeLostRate) {
+            this.encodeFormat = mime2CodecName(mime);
+            this.bitrate = bitrate;
             this.audioLevel = audioLevel;
             this.packetsReceived = packetsReceived;
             this.packetsLost = packetsLost;
             this.realtimeLostRate = realtimeLostRate;
-            this.bitrate = bitrate;
-            this.encodeFormat = mime2CodecName(mime);
         }
 
         @Override
         public String toString() {
-            return "AudioInput{" +
-                    "audioLevel=" + audioLevel +
+            return "AudioInfo{" +
+                    "encodeFormat='" + encodeFormat + '\'' +
+                    ", bitrate=" + bitrate +
+                    ", audioLevel=" + audioLevel +
                     ", packetsReceived=" + packetsReceived +
                     ", packetsLost=" + packetsLost +
                     ", realtimeLostRate=" + realtimeLostRate +
+                    '}';
+        }
+
+    }
+
+    public static class VideoInfo{
+        /** 编码格式*/
+        public String encodeFormat;
+        /** 编码器名称*/
+        public String encoder;
+        /** 帧宽*/
+        public int width;
+        /** 帧高*/
+        public int height;
+        /** 帧率。fps*/
+        public int framerate;
+        /** 码率。kbit/s*/
+        public int bitrate;
+
+        /**
+         * NOTE: 以下字段仅在接收通道有效
+         */
+        /** 收包总数*/
+        public long packetsReceived;
+        /** 丢包总数*/
+        public long packetsLost;
+        /** 实时丢包率[0, 100]*/
+        public int realtimeLostRate;
+
+        public VideoInfo(String mime, String encoder, int width, int height, int framerate, int bitrate) {
+            this(mime, encoder, width, height, framerate, bitrate, 0, 0, 0);
+        }
+
+        public VideoInfo(String mime, String encoder, int width, int height, int framerate, int bitrate, long packetsReceived, long packetsLost, int realtimeLostRate) {
+            this.encodeFormat = mime2CodecName(mime);
+            this.encoder = encoder;
+            this.width = width;
+            this.height = height;
+            this.framerate = framerate;
+            this.bitrate = bitrate;
+            this.packetsReceived = packetsReceived;
+            this.packetsLost = packetsLost;
+            this.realtimeLostRate = realtimeLostRate;
+        }
+
+        @Override
+        public String toString() {
+            return "VideoInfo{" +
+                    "encodeFormat='" + encodeFormat + '\'' +
+                    ", encoder='" + encoder + '\'' +
+                    ", width=" + width +
+                    ", height=" + height +
+                    ", framerate=" + framerate +
                     ", bitrate=" + bitrate +
-                    ", encodeFormat='" + encodeFormat + '\'' +
+                    ", packetsReceived=" + packetsReceived +
+                    ", packetsLost=" + packetsLost +
+                    ", realtimeLostRate=" + realtimeLostRate +
                     '}';
         }
     }
 
-    public static class VideoOutput{
-        // 帧率。fps
-        public int framerate;
-        // 码率。kbit/s
-        public int bitrate;
-        // 编码格式。
-        public String encodeFormat;
-        // 帧宽
-        public int width;
-        // 帧高
-        public int height;
-        // 编码器名称
-        public String encoder;
-
-        public VideoOutput(int framerate, int width, int height, int bitrate, String mime, String encoder) {
-            this.framerate = framerate;
-            this.bitrate = bitrate;
-            this.encodeFormat = mime2CodecName(mime);
-            this.width = width;
-            this.height = height;
-            this.encoder = encoder;
-        }
-
-        @Override
-        public String toString() {
-            return "VideoOutput{" +
-                    "framerate=" + framerate +
-                    ", bitrate=" + bitrate +
-                    ", encodeFormat=" + encodeFormat +
-                    ", width=" + width +
-                    ", height=" + height +
-                    ", encoder='" + encoder + '\'' +
-                    "}\n";
-        }
-    }
-
-    public static class VideoInput{
-        // 收包总数
-        public long packetsReceived;
-        // 丢包总数
-        public long packetsLost;
-        // 帧率。fps
-        public int framerate;
-        // 实时丢包率[0, 100]
-        // NOTE：此丢包率是实时的，并非packetsLost/(packetsReceived+packetsLost)，那是总的丢包率。
-        public int realtimeLostRate;
-        // 码率。kbit/s
-        public int bitrate;
-        // 编码格式。
-        public String encodeFormat;
-        // 帧宽
-        public int width;
-        // 帧高
-        public int height;
-        // 编码器名称。
-        public String encoder;
-
-        public VideoInput(int framerate, int width, int height, long packetsReceived, long packetsLost, int realtimeLostRate, int bitrate, String mime, String encoder) {
-            this.packetsReceived = packetsReceived;
-            this.packetsLost = packetsLost;
-            this.framerate = framerate;
-            this.realtimeLostRate = realtimeLostRate;
-            this.bitrate = bitrate;
-            this.encodeFormat = mime2CodecName(mime);
-            this.width = width;
-            this.height = height;
-            this.encoder = encoder;
-        }
-
-        @Override
-        public String toString() {
-            return "VideoInput{" +
-                    "packetsReceived=" + packetsReceived +
-                    ", packetsLost=" + packetsLost +
-                    ", framerate=" + framerate +
-                    ", realtimeLostRate=" + realtimeLostRate +
-                    ", bitrate=" + bitrate +
-                    ", encodeFormat='" + encodeFormat + '\'' +
-                    ", width=" + width +
-                    ", height=" + height +
-                    ", encoder='" + encoder + '\'' +
-                    "}\n";
-        }
-    }
 
     @Override
     public String toString() {
@@ -245,4 +204,5 @@ public class Statistics {
                 ", \ncommon=" + common +
                 "\n}\n";
     }
+
 }
