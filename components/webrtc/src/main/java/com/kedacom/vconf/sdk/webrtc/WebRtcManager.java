@@ -2170,6 +2170,12 @@ public class WebRtcManager extends Caster<Msg>{
             }
             if (muted != isMuted) {
                 isMuted = muted;
+                if (muted){
+                    volume = 0;
+                    if (audioSignalState == AudioSignalState.Activated) {
+                        audioSignalState = AudioSignalState.Normal;
+                    }
+                }
                 refreshDisplays();
             }
         }
@@ -3175,6 +3181,7 @@ public class WebRtcManager extends Caster<Msg>{
             if (conferee.isMyself() && !isLocalVideoEnabled){
                 stateDeco = conferee.cameraDisabledDeco;
             }else if (Conferee.VideoChannelState.BindingFailed == videoChannelState
+                    && conferee.type != Conferee.ConfereeType.AssStream
 //                    && Conferee.AudioChannelState.BindingFailed != audioChannelState
             ){
                 stateDeco = conferee.audioConfereeDeco;
@@ -5259,7 +5266,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     // 视频信号检测周期。单位：毫秒。
     // 注：选择一个合适的周期以提升用户体验，太短则在网络波动时会频繁切换视频信号标志，太长则标志变化显得迟钝。
-    private final float videoSignalCheckPeriod = 5000f;
+    private final float videoSignalCheckPeriod = 3000f;
     private final int videoSignalCheckPerCount = (int) Math.max(videoSignalCheckPeriod /STATS_INTERVAL, 1);
 
     // RTC统计信息收集器
@@ -5335,15 +5342,17 @@ public class WebRtcManager extends Caster<Msg>{
         int bitrate = 0;
         String codecMime = "";
         if (!isAss){
-            if (stats.audioOutboundRtp!=null && preStats.audioOutboundRtp!=null){
-                bitrate = (int) ((stats.audioOutboundRtp.bytesSent - preStats.audioOutboundRtp.bytesSent)*8 / (STATS_INTERVAL/1000f) / 1024);
+            if (!config.isMuted && !myself.isMuted()) {
+                if (stats.audioOutboundRtp != null && preStats.audioOutboundRtp != null) {
+                    bitrate = (int) ((stats.audioOutboundRtp.bytesSent - preStats.audioOutboundRtp.bytesSent) * 8 / (STATS_INTERVAL / 1000f) / 1024);
+                }
+                if (stats.audioOutboundRtp != null) {
+                    codecMime = stats.getCodecMime(stats.audioOutboundRtp.trackId);
+                }
+                int audioLevel = stats.sendAudioTrack != null ? (int) (stats.sendAudioTrack.audioLevel * 100) : 0; // NOTE: 己端音量不受前面调用audioTrack#setVolume(int volume)的影响（但是远端会，不清楚为什么）
+                audioInfo = new Statistics.AudioInfo(codecMime, bitrate, audioLevel);
+                myself.setVolume(audioLevel);
             }
-            if (stats.audioOutboundRtp!=null){
-                codecMime = stats.getCodecMime(stats.audioOutboundRtp.trackId);
-            }
-            int audioLevel = stats.sendAudioTrack != null ? (int) (stats.sendAudioTrack.audioLevel * 100) :0; // NOTE: 己端音量不受前面调用audioTrack#setVolume(int volume)的影响（但是远端会，不清楚为什么）
-            audioInfo = new Statistics.AudioInfo(codecMime, bitrate, audioLevel);
-            myself.setVolume(audioLevel);
         }
 
         bitrate = 0;
@@ -5501,24 +5510,30 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         // 视频信号
-        Stream.of(statistics.confereeRelated).forEach(it -> {
-            Conferee conferee = findConfereeById(it.confereeId);
-            if (conferee == null){
-                KLog.p(KLog.ERROR, "no conferee with id %s", it.confereeId);
-                return;
-            }
-            Conferee.VideoSignalState vidSigState = conferee.getVideoSignalState();
-            Statistics.VideoInfo videoInfo = it.videoInfo;
-            float framerate = videoInfo != null ? videoInfo.framerate : 0;
-            float bottomThreshold = 0.2f; // 可忍受的帧率下限，低于该下限则认为信号丢失
-            float topThreshold = 1;   /* 尽管我们在帧率低于bottomThreshold时将状态设为WeakSignal但当帧率超过bottomThreshold时我们不立马设置状态为Normal
+        if (collectStatsCount % videoSignalCheckPerCount == 0) {
+            Stream.of(statistics.confereeRelated).forEach(it -> {
+                if (myself.getId().equals(it.confereeId)){
+                    // 己端回显我们不根据统计信息展示视频信号，只受用户开关摄像头影响。
+                    return;
+                }
+                Conferee conferee = findConfereeById(it.confereeId);
+                if (conferee == null) {
+                    KLog.p(KLog.ERROR, "no conferee with id %s", it.confereeId);
+                    return;
+                }
+                Conferee.VideoSignalState vidSigState = conferee.getVideoSignalState();
+                Statistics.VideoInfo videoInfo = it.videoInfo;
+                float framerate = videoInfo != null ? videoInfo.framerate : 0;
+                float bottomThreshold = 0.2f; // 可忍受的帧率下限，低于该下限则认为信号丢失
+                float topThreshold = 1;   /* 尽管我们在帧率低于bottomThreshold时将状态设为WeakSignal但当帧率超过bottomThreshold时我们不立马设置状态为Normal
                                        而是等帧率回复到较高水平才切回Normal以使状态切换显得平滑而不是在临界值处频繁切换*/
-            if (framerate < bottomThreshold && vidSigState == Conferee.VideoSignalState.Normal){
-                conferee.setVideoSignalState(Conferee.VideoSignalState.Weak);
-            }else if (framerate > topThreshold && Conferee.VideoSignalState.Weak == vidSigState){
-                conferee.setVideoSignalState(Conferee.VideoSignalState.Normal);
-            }
-        });
+                if (framerate < bottomThreshold && vidSigState == Conferee.VideoSignalState.Normal) {
+                    conferee.setVideoSignalState(Conferee.VideoSignalState.Weak);
+                } else if (framerate > topThreshold && Conferee.VideoSignalState.Weak == vidSigState) {
+                    conferee.setVideoSignalState(Conferee.VideoSignalState.Normal);
+                }
+            });
+        }
 
     }
 
