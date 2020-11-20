@@ -621,6 +621,21 @@ class RtcConnector implements IRcvMsgCallback{
 		KLog.p("=#=> sendStatistics %s", stats);
 	}
 
+
+	void sendHasIncomingStreamOrNot(boolean has){
+		MtMsg msg = new MtMsg();
+		msg.SetMsgId("Ev_MtRtcCodeStreamStatus_Ntf");
+		msg.addMsg(BasePB.TBOOL32.newBuilder().setValue(has).build());
+		byte[] abyContent = msg.Encode();
+		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
+				guardId, guardNode, myId, myNode, 5000 );
+		if (0 != ret){
+			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
+		}
+
+		KLog.p("=#=> sendHasIncomingStreamOrNot %s", has);
+	}
+
 	static class TRtcMedia {
 		String streamid="";
 		String mid;

@@ -126,6 +126,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -1535,7 +1536,7 @@ public class WebRtcManager extends Caster<Msg>{
         myself.setMuted(config.isMuted);
 
         // 定时采集统计信息
-        handler.postDelayed(statsCollector, 2000);
+        startCollectStats();
         KLog.p("session started ");
 
         return true;
@@ -5280,58 +5281,85 @@ public class WebRtcManager extends Caster<Msg>{
         return recentStats.peekLast();
     }
 
-    // RTC统计信息收集器
-    private Runnable statsCollector = new Runnable() {
-        @Override
-        public void run() {
-            if (null != pubPcWrapper && null != pubPcWrapper.pc && pubPcWrapper.isSdpProgressFinished()) {
-                executor.execute(() -> pubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
-                    prePublisherStats = publisherStats;
-                    publisherStats = StatsHelper.resolveStats(rtcStatsReport);
-                })));
+    private void startCollectStats(){
+        publisherStats = null;
+        subscriberStats = null;
+        assPublisherStats = null;
+        assSubscriberStats = null;
+        prePublisherStats = null;
+        preSubscriberStats = null;
+        preAssPublisherStats = null;
+        preAssSubscriberStats = null;
+        collectStatsCount = 0;
+        recentStats.clear();
+
+        handler.postDelayed(new Runnable() {
+
+            private int lastReportedRecvBitrate = 1;
+            private final int calcRecvBitrateDuration = 30; // 单位秒。
+            private final int calcRecvBitrateStartCount = calcRecvBitrateDuration*1000/STATS_INTERVAL;
+
+            @Override
+            public void run() {
+                if (null != pubPcWrapper && null != pubPcWrapper.pc && pubPcWrapper.isSdpProgressFinished()) {
+                    executor.execute(() -> pubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+                        prePublisherStats = publisherStats;
+                        publisherStats = StatsHelper.resolveStats(rtcStatsReport);
+                    })));
+                }
+                if (null != subPcWrapper && null != subPcWrapper.pc && subPcWrapper.isSdpProgressFinished()) {
+                    executor.execute(() -> subPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+                        preSubscriberStats = subscriberStats;
+                        subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
+                    })));
+                }
+
+                if (null != assPubPcWrapper && null != assPubPcWrapper.pc && assPubPcWrapper.isSdpProgressFinished()) {
+                    executor.execute(() -> assPubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+                        preAssPublisherStats = assPublisherStats;
+                        assPublisherStats = StatsHelper.resolveStats(rtcStatsReport);
+                    })));
+                }
+                if (null != assSubPcWrapper && null != assSubPcWrapper.pc && assSubPcWrapper.isSdpProgressFinished()) {
+                    executor.execute(() -> assSubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
+                        preAssSubscriberStats = assSubscriberStats;
+                        assSubscriberStats = StatsHelper.resolveStats(rtcStatsReport);
+                    })));
+                }
+
+                if (enableStatsLog){
+                    KLog.p("/=== publisherStats: ");
+                    printStats(publisherStats, false);
+                    KLog.p("/=== subscriberStats: ");
+                    printStats(subscriberStats, false);
+                    KLog.p("/=== assPublisherStats: ");
+                    printStats(assPublisherStats, false);
+                    KLog.p("/=== assSubscriberStats: ");
+                    printStats(assSubscriberStats, false);
+                }
+
+                aggregateStats();
+
+                processStats(latestStats());
+
+                Stream.of(getNtfListeners(StatsListener.class)).forEach(statsListener -> statsListener.onStats(latestStats()));
+
+                ++collectStatsCount;
+
+                if (collectStatsCount >= calcRecvBitrateStartCount) {
+                    int bitrate = calcRecvBitrate(30);
+                    KLog.p("calcRecvBitrate=%s, lastReportedRecvBitrate=%s", bitrate, lastReportedRecvBitrate);
+                    boolean needReport = (bitrate == 0 && lastReportedRecvBitrate != 0) || (bitrate != 0 && lastReportedRecvBitrate == 0);
+                    if (needReport) {
+                        lastReportedRecvBitrate = bitrate;
+                        rtcConnector.sendHasIncomingStreamOrNot(bitrate != 0);
+                    }
+                }
+
+                handler.postDelayed(this, STATS_INTERVAL);
             }
-            if (null != subPcWrapper && null != subPcWrapper.pc && subPcWrapper.isSdpProgressFinished()) {
-                executor.execute(() -> subPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
-                    preSubscriberStats = subscriberStats;
-                    subscriberStats = StatsHelper.resolveStats(rtcStatsReport);
-                })));
-            }
-
-            if (null != assPubPcWrapper && null != assPubPcWrapper.pc && assPubPcWrapper.isSdpProgressFinished()) {
-                executor.execute(() -> assPubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
-                    preAssPublisherStats = assPublisherStats;
-                    assPublisherStats = StatsHelper.resolveStats(rtcStatsReport);
-                })));
-            }
-            if (null != assSubPcWrapper && null != assSubPcWrapper.pc && assSubPcWrapper.isSdpProgressFinished()) {
-                executor.execute(() -> assSubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
-                    preAssSubscriberStats = assSubscriberStats;
-                    assSubscriberStats = StatsHelper.resolveStats(rtcStatsReport);
-                })));
-            }
-
-            if (enableStatsLog){
-                KLog.p("/=== publisherStats: ");
-                printStats(publisherStats, false);
-                KLog.p("/=== subscriberStats: ");
-                printStats(subscriberStats, false);
-                KLog.p("/=== assPublisherStats: ");
-                printStats(assPublisherStats, false);
-                KLog.p("/=== assSubscriberStats: ");
-                printStats(assSubscriberStats, false);
-            }
-
-            aggregateStats();
-
-            processStats(latestStats());
-
-            Stream.of(getNtfListeners(StatsListener.class)).forEach(statsListener -> statsListener.onStats(latestStats()));
-
-            handler.postDelayed(this, STATS_INTERVAL);
-
-            ++collectStatsCount;
-        }
-    };
+        }, 2000);
+    }
 
 
     private void aggregateStats(){
@@ -5551,6 +5579,38 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
     }
+
+    /**
+     * 计算最近的指定时间内的接收码率
+     * @param duration 最近多长时间段内。单位秒。
+     * */
+    int calcRecvBitrate(int duration){
+        int periodNum = Math.max(duration*1000/STATS_INTERVAL, 1);
+        int count = 0;
+        int bitrateSum = 0;
+        Iterator<Statistics> it = recentStats.descendingIterator();
+        while (it.hasNext() && count < periodNum){
+            Statistics stats = it.next();
+            for (Statistics.ConfereeRelated confereeRelated : stats.confereeRelated){
+                if (myself.getId().equals(confereeRelated.confereeId)){
+                    continue;
+                }
+                bitrateSum += confereeRelated.audioInfo!=null ? confereeRelated.audioInfo.bitrate : 0;
+                bitrateSum += confereeRelated.videoInfo!=null ? confereeRelated.videoInfo.bitrate : 0;
+            }
+            /*
+            * 接收到的混音的码流纳入计算。
+            * 直觉上，若会议中只有自己，不应该存在接收码流的，但是实测下来混音流始终会接收到。
+            * 我们不做区别仍将其计算在内，因为这个值是给组件用的，我们如实记录就好，只不过它在我们这层已经失去了概念完整性——
+            * 我们无法准确理解这是个什么概念，因为它的一部分定义隐藏在组件那边。（该功能设计内聚性差，导致这种难以理解的代码是必然的）
+            * */
+            bitrateSum += (stats.common != null && stats.common.mixedAudio != null) ? stats.common.mixedAudio.bitrate : 0;
+
+            ++count;
+        }
+        return bitrateSum/periodNum;
+    }
+
 
     private boolean enableStatsLog = true;
     public void setStatsLogEnable(boolean enable){
