@@ -32,7 +32,7 @@ public class EvictingDeque<E> extends ArrayDeque<E> {
         super.addLast(e);
     }
 
-    public E pickSecondLast(){
+    public E peekSecondLast(){
         if (size()<2){
             return null;
         }
