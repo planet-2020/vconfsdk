@@ -94,7 +94,7 @@ public class Statistics {
                     "confereeId='" + confereeId + '\'' +
                     ", audioInfo=" + audioInfo +
                     ", videoInfo=" + videoInfo +
-                    '}';
+                    "}\n";
         }
 
     }

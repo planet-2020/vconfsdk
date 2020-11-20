@@ -54,6 +54,7 @@ import com.kedacom.vconf.sdk.common.type.transfer.TRegResultNtf;
 import com.kedacom.vconf.sdk.common.type.transfer.TSelectedToWatch;
 import com.kedacom.vconf.sdk.common.type.transfer.TShortMsg;
 import com.kedacom.vconf.sdk.common.type.transfer.TSrvStartResult;
+import com.kedacom.vconf.sdk.utils.collection.EvictingDeque;
 import com.kedacom.vconf.sdk.utils.log.KLog;
 import com.kedacom.vconf.sdk.utils.math.MatrixHelper;
 import com.kedacom.vconf.sdk.webrtc.CommonDef.ConnType;
@@ -2686,12 +2687,13 @@ public class WebRtcManager extends Caster<Msg>{
             xPos = canvas.getWidth()/2;
             yPos = Math.round(fontHeight);
 
-            if (ai != null || instance.statistics.common != null) {
+            Statistics statistics = instance.latestStats();
+            if (ai != null || (statistics!=null && statistics.common != null)) {
                 String title;
                 if (ai != null){
                     title = "== audio ==";
                 }else{
-                    ai = instance.statistics.common.mixedAudio;
+                    ai = statistics.common.mixedAudio;
                     title = "== mixed audio ==";
                 }
                 canvas.drawText(title, xPos, yPos, statsPaint);
@@ -4042,7 +4044,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         @Override
         public void onAgentRtcCodecStatisticReq() {
-            rtcConnector.sendStatistics(statistics);
+            rtcConnector.sendStatistics(latestStats());
         }
 
     }
@@ -5269,6 +5271,15 @@ public class WebRtcManager extends Caster<Msg>{
     private final float videoSignalCheckPeriod = 3000f;
     private final int videoSignalCheckPerCount = (int) Math.max(videoSignalCheckPeriod /STATS_INTERVAL, 1);
 
+    // 保存最近多久时间段的统计信息。单位：秒
+    private final int keptDuration = 30;
+    private final int keptSize = Math.max(keptDuration*1000/500, 1);
+    // 近期统计信息。按时间顺序从老到新排序，尾部最新。
+    private final EvictingDeque<Statistics> recentStats = new EvictingDeque<>(keptSize);
+    private Statistics latestStats(){
+        return recentStats.peekLast();
+    }
+
     // RTC统计信息收集器
     private Runnable statsCollector = new Runnable() {
         @Override
@@ -5312,9 +5323,9 @@ public class WebRtcManager extends Caster<Msg>{
 
             aggregateStats();
 
-            processStats();
+            processStats(latestStats());
 
-            Stream.of(getNtfListeners(StatsListener.class)).forEach(statsListener -> statsListener.onStats(statistics));
+            Stream.of(getNtfListeners(StatsListener.class)).forEach(statsListener -> statsListener.onStats(latestStats()));
 
             handler.postDelayed(this, STATS_INTERVAL);
 
@@ -5324,17 +5335,18 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private void aggregateStats(){
-        statistics.clear();
-        aggregatePubStats(publisherStats, prePublisherStats, false);
-        aggregateSubStats(subscriberStats, preSubscriberStats, false);
-        aggregatePubStats(assPublisherStats, preAssPublisherStats, true);
-        aggregateSubStats(assSubscriberStats, preAssSubscriberStats, true);
+        Statistics statistics = new Statistics();
+        aggregatePubStats(publisherStats, prePublisherStats, statistics, false);
+        aggregateSubStats(subscriberStats, preSubscriberStats, statistics, false);
+        aggregatePubStats(assPublisherStats, preAssPublisherStats, statistics, true);
+        aggregateSubStats(assSubscriberStats, preAssSubscriberStats, statistics, true);
+        recentStats.addLast(statistics);
         KLog.p("/=== aggregated Stats:\n"+statistics);
     }
 
 
-    void aggregatePubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, boolean isAss){
-        if (stats==null || preStats==null || (stats.audioOutboundRtp==null && stats.videoOutboundRtp==null)){
+    void aggregatePubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, Statistics statistics, boolean isAss){
+        if (stats==null || preStats==null || statistics==null || (stats.audioOutboundRtp==null && stats.videoOutboundRtp==null)){
             return;
         }
 
@@ -5383,8 +5395,8 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    void aggregateSubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, boolean isAss){
-        if (stats==null || preStats==null || (stats.audioInboundRtpList==null && stats.videoInboundRtpList==null)){
+    void aggregateSubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, Statistics statistics, boolean isAss){
+        if (stats==null || preStats==null || statistics==null || (stats.audioInboundRtpList==null && stats.videoInboundRtpList==null)){
             return;
         }
 
@@ -5478,7 +5490,10 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private void processStats(){
+    private void processStats(Statistics statistics){
+        if (statistics == null){
+            return;
+        }
         // 语音激励
         Statistics.ConfereeRelated confereeRelated = statistics.findMaxAudioLevel();
         Conferee preMaxAudioConferee = findVoiceActivatedConferee();
@@ -5612,6 +5627,10 @@ public class WebRtcManager extends Caster<Msg>{
 
     
     private Statistics.ConfereeRelated getStats(String confereeId){
+        Statistics statistics = latestStats();
+        if (statistics == null){
+            return null;
+        }
         return Stream.of(statistics.confereeRelated)
                 .filter(it-> it.confereeId.equals(confereeId))
                 .findFirst()
@@ -5619,7 +5638,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private final Statistics statistics = new Statistics();
 
     /**
      * 统计信息监听器
