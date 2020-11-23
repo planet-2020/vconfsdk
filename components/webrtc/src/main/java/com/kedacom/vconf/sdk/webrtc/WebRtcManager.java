@@ -2179,6 +2179,13 @@ public class WebRtcManager extends Caster<Msg>{
             }
         }
 
+        /**
+         * 是否为语音激励方
+         * */
+        public boolean isVoiceActivated(){
+            return audioSignalState == AudioSignalState.Activated;
+        }
+
         public int getVolume() {
             return volume;
         }
