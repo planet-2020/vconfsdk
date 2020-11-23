@@ -1204,16 +1204,16 @@ public class WebRtcManager extends Caster<Msg>{
                     public void run() {
                         ++triedCount;
 
+                        Conferee predecessor = findPresenter();
+
                         TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
                         TMtId mtId = briefConfInfo.tChairman;
-
-                        Conferee predecessor = findPresenter();
                         if (!mtId.isValid()){
-                            // 主持人mtid非法，此为取消主持人的场景。（已跟业务组件确认）
+                            // 主持人mtid非法，此为取消主持人的场景。
                             if (predecessor != null) {
                                 predecessor.setPresenter(false);
+                                Stream.of(getNtfListeners(PresenterChangedListener.class)).forEach(it -> it.onPresenterChanged(predecessor, null));
                             }
-                            Stream.of(getNtfListeners(PresenterChangedListener.class)).forEach(it -> it.onPresenterChangedChanged(predecessor, null));
                             return;
                         }
 
@@ -1243,7 +1243,7 @@ public class WebRtcManager extends Caster<Msg>{
                         }
                         successor.setPresenter(true);
 
-                        Stream.of(getNtfListeners(PresenterChangedListener.class)).forEach(it -> it.onPresenterChangedChanged(predecessor, successor));
+                        Stream.of(getNtfListeners(PresenterChangedListener.class)).forEach(it -> it.onPresenterChanged(predecessor, successor));
                     }
                 });
 
@@ -1257,19 +1257,16 @@ public class WebRtcManager extends Caster<Msg>{
                     public void run() {
                         ++triedCount;
 
+                        Conferee predecessor = findKeynoteSpeaker();
+
                         TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
                         TMtId mtId = briefConfInfo.tSpeaker;
                         if (!mtId.isValid()){
-                            return;
-                        }
-
-                        Conferee predecessor = findKeynoteSpeaker();
-                        if (!mtId.isValid()){
-                            // 主讲人mtid非法，我们认为此为取消主讲人的场景。（已跟业务组件确认）
+                            // 主讲人mtid非法，此为取消主讲人的场景。
                             if (predecessor != null) {
                                 predecessor.setKeynoteSpeaker(false);
+                                Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class)).forEach(it -> it.onKeynoteSpeakerChanged(predecessor, null));
                             }
-                            Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class)).forEach(it -> it.onKeynoteSpeakerChanged(predecessor, null));
                             return;
                         }
 
@@ -5808,7 +5805,7 @@ public class WebRtcManager extends Caster<Msg>{
          * @param  predecessor 前任主持人。若为null表示没有前任，也即当前主持人为首位主持人。
          * @param  successor 继任的主持人。若为null表示没有继任的主持人，也即取消主持人。
          * */
-        void onPresenterChangedChanged(Conferee predecessor, Conferee successor);
+        void onPresenterChanged(Conferee predecessor, Conferee successor);
     }
 
     /**
