@@ -3234,10 +3234,10 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             // 绘制语音激励deco
-            if (Conferee.AudioSignalState.Activated == audioSignalState){
-                conferee.voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
-                canvas.drawRect(conferee.voiceActivatedDeco, Conferee.voiceActivatedDecoPaint);
-            }
+//            if (Conferee.AudioSignalState.Activated == audioSignalState){
+//                conferee.voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
+//                canvas.drawRect(conferee.voiceActivatedDeco, Conferee.voiceActivatedDecoPaint);
+//            }
 
             // 绘制统计信息
             if (instance.showStatistics){
