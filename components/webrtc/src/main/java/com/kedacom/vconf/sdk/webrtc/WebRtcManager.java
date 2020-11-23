@@ -1144,7 +1144,7 @@ public class WebRtcManager extends Caster<Msg>{
             case AudioStreamOwnerChanged:
                 Stream.of(streams).forEach(it -> {
                     if (it.streamInfo.bAudio && it.streamInfo.bMix){
-                        it.setTerId(0); // 清空之前的映射关系，准备建立新的映射关系
+                        it.setTerId(0); // 清空之前的映射关系，准备建立新的映射关系。0为无效terId。
                     }
                 });
 
@@ -5546,8 +5546,9 @@ public class WebRtcManager extends Caster<Msg>{
         // 语音激励
         Statistics.ConfereeRelated confereeRelated = statistics.findMaxAudioLevel();
         Conferee preMaxAudioConferee = findVoiceActivatedConferee();
+        Conferee maxAudioConferee = null;
         if (confereeRelated != null){
-            Conferee maxAudioConferee = findConfereeById(confereeRelated.confereeId);
+            maxAudioConferee = findConfereeById(confereeRelated.confereeId);
             if (maxAudioConferee == null){
                 KLog.p(KLog.ERROR, "max audio level does not belong to any conferee!");
             }
@@ -5572,6 +5573,13 @@ public class WebRtcManager extends Caster<Msg>{
                 preMaxAudioConferee.setAudioSignalState(Conferee.AudioSignalState.Normal);
             }
         }
+
+        if (preMaxAudioConferee != maxAudioConferee) {
+            Conferee finalMaxAudioConferee = maxAudioConferee;
+            Stream.of(getNtfListeners(VoiceActivatedConfereeChangedListener.class))
+                    .forEach(it -> it.onVoiceActivatedConfereeChanged(preMaxAudioConferee, finalMaxAudioConferee));
+        }
+
 
         // 视频信号
         if (collectStatsCount % videoSignalCheckPerCount == 0) {
@@ -5895,6 +5903,21 @@ public class WebRtcManager extends Caster<Msg>{
          * @param conferees 被取消画面合成的与会方列表
          * */
         void onCancelComposite(List<Conferee> conferees);
+    }
+
+    /**
+     * 语音激励方变更监听器。
+     * 多方会议中某个与会方讲话声音最大，则认为该与会方处于语音激励状态，这往往暗示着该与会方需要被给予更多关注。
+     * 界面可以据此做一些展示上的策略，比如让激励方展示在醒目位置。
+     * 处于语音激励状态的与会方不同于会议中的发言人角色。发言人一般是主持人指定的，当前一段时间内会议内容的主要宣讲者，
+     * 当发言人发言的过程中其他与会方可以发问讨论，发问方此时很有可能就成为了语音激励方。
+     * */
+    public interface VoiceActivatedConfereeChangedListener extends INtfListener {
+        /**
+         * @param  predecessor 前任语音激励方。若为null表示没有前任。
+         * @param  successor 继任的语音激励方。若为null表示没有继任，即当前没有语音激励方。
+         * */
+        void onVoiceActivatedConfereeChanged(Conferee predecessor, Conferee successor);
     }
 
 }
