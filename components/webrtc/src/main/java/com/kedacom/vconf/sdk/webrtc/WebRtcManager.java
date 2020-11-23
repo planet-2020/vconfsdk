@@ -1999,44 +1999,44 @@ public class WebRtcManager extends Caster<Msg>{
 
         private final ConfereeType type;
 
-        // 是否为主持人
+        /** 是否为主持人 */
         private boolean isPresenter;
-        // 是否为主讲人
+        /** 是否为主讲人 */
         private boolean isKeynoteSpeaker;
-        // 是否为VIP
+        /** 是否为VIP*/
         private boolean isVIP;
-        // 是否已哑音
+        /** 是否已哑音*/
         private boolean isMuted;
-        // 音量[0, 100]
+        /** 音量[0, 100]*/
         private int volume;
-        // 是否处于被选看状态
+        /** 是否处于被选看状态*/
         private boolean isSelectedToWatch;
-        // 是否身处画面合成
+        /** 是否身处画面合成*/
         private boolean isInCompositedScene;
-        // 在画面合成中的次序。次序越靠前的优先级越高。0的优先级最高。
-        // 界面可依据该优先级决定各与会方画面展示位置。
+        /** 在画面合成中的次序。次序越靠前的优先级越高。0的优先级最高。
+         界面可依据该优先级决定各与会方画面展示位置。 */
         private int orderInCompositedScene;
-        // 上一次界面刷新的时间戳
+        /** 上一次界面刷新的时间戳*/
         private long lastRefreshTimestamp;
 
-        // 音频通道状态
+        /** 音频通道状态*/
         private AudioChannelState audioChannelState = AudioChannelState.Idle;
-        // 音频信号状态
+        /** 音频信号状态*/
         private AudioSignalState audioSignalState = AudioSignalState.Idle;
 
-        // 视频通道状态
+        /** 视频通道状态*/
         private VideoChannelState videoChannelState = VideoChannelState.Idle;
-        // 视频信号状态
+        /** 视频信号状态*/
         private VideoSignalState videoSignalState = VideoSignalState.Idle;
 
-        // 与会方画面显示器。
-        // 一个与会方可以绑定多个Display。一个Display只能绑定到一个与会方
-        private Set<Display> displays = Collections.newSetFromMap(new ConcurrentHashMap<>());
+        /** 与会方画面显示器。
+         一个与会方可以绑定多个Display。一个Display只能绑定到一个与会方 */
+        private final Set<Display> displays = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-        // 文字图片装饰。如台标，静态图片等。
-        // 与会方的画面内容由码流和装饰组成。
-        private Set<TextDecoration> textDecorations = new HashSet<>();
-        private Set<PicDecoration> picDecorations = new HashSet<>();
+        /** 文字图片装饰。如台标，静态图片等。
+         与会方的画面内容由码流和装饰组成。 */
+        private final Set<TextDecoration> textDecorations = new HashSet<>();
+        private final Set<PicDecoration> picDecorations = new HashSet<>();
 
         // 麦克风装饰 // TODO 统一由用户设置 addWidgetDeco(WidgetDeco, onclickListener)
         private MicrophoneDecoration microphoneDeco = new MicrophoneDecoration();
@@ -2075,7 +2075,7 @@ public class WebRtcManager extends Caster<Msg>{
         private Bitmap sendingAssStreamDeco;
 
         // 统计信息paint
-        private static Paint statsPaint = new Paint();
+        private static final Paint statsPaint = new Paint();
 
 
         private Conferee(String e164) {
