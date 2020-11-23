@@ -5590,6 +5590,7 @@ public class WebRtcManager extends Caster<Msg>{
             Statistics stats = it.next();
             for (Statistics.ConfereeRelated confereeRelated : stats.confereeRelated){
                 if (myself.getId().equals(confereeRelated.confereeId)){
+                    // 我们只计算接收到的，自己发送的排除
                     continue;
                 }
                 bitrateSum += confereeRelated.audioInfo!=null ? confereeRelated.audioInfo.bitrate : 0;
