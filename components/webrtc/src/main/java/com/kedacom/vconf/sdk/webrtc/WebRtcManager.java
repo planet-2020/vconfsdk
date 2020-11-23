@@ -2250,7 +2250,7 @@ public class WebRtcManager extends Caster<Msg>{
             if (isMyself()){
                 return null != instance.sharedWindow;
             }else {
-                return instance.findAssStreamSender() == this;
+                return instance.findAssStreamSenderExceptMyself() == this;
             }
         }
 
@@ -3300,7 +3300,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private Conferee tryCreateAssStreamConferee(){
         if (null == findAssConferee()){
-            Conferee sender = findAssStreamSender();
+            Conferee sender = findAssStreamSenderExceptMyself();
             if (null != sender){
                 return new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, Conferee.ConfereeType.AssStream);
             }
@@ -3393,8 +3393,20 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
+    // NOTE: 查找范围不包含己端，己端没有对应的streamId，业务组件没报
+    private Conferee findConfereeByStreamId(String streamId){
+        RtcStream stream = findStream(streamId);
+        if (null != stream){
+            return stream.getOwner();
+        }
+        return null;
+    }
 
-    private Conferee findConfereeById(String id){
+
+    /**
+     * 根据与会方id查找与会方
+     * */
+    public Conferee findConfereeById(String id){
         if (myself.getId().equals(id)){
             return myself;
         }else {
@@ -3406,7 +3418,10 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private Conferee findConfereeByE164(String e164, Conferee.ConfereeType type){
+    /**
+     * 根据e164号查找与会方
+     * */
+    public Conferee findConfereeByE164(String e164, Conferee.ConfereeType type){
         if (myself.getE164().equals(e164) && type == myself.type){
             return myself;
         }else {
@@ -3417,21 +3432,13 @@ public class WebRtcManager extends Caster<Msg>{
         }
     }
 
-    // NOTE: 查找范围不包含己端，己端没有对应的streamId，业务组件没报
-    private Conferee findConfereeByStreamId(String streamId){
-        RtcStream stream = findStream(streamId);
-        if (null != stream){
-            return stream.getOwner();
-        }
-        return null;
-    }
 
     /**
      * 查找（虚拟的）辅流与会方。
      * 针对辅流我们虚构了一个“辅流与会方”。
      * NOTE: 查找范围不包含己端，己端发送辅流的场景没有对应的“辅流与会方”
      * */
-    private Conferee findAssConferee(){
+    public Conferee findAssConferee(){
         RtcStream assStream = findAssStream();
         if (null == assStream){
             return null;
@@ -3439,11 +3446,23 @@ public class WebRtcManager extends Caster<Msg>{
         return assStream.getOwner();
     }
 
+
     /**
      * 查找辅流发送者
-     * NOTE: 查找范围不包含己端
      * */
-    private Conferee findAssStreamSender(){
+    public Conferee findAssStreamSender(){
+        if (myself.isSendingAssStream()){
+            return myself;
+        }else{
+            return findAssStreamSenderExceptMyself();
+        }
+    }
+
+
+    /**
+     * 查找辅流发送者（不包含己端）
+     * */
+    private Conferee findAssStreamSenderExceptMyself(){
         RtcStream assStream = findAssStream();
         if (null == assStream) {
             return null;
@@ -3451,10 +3470,11 @@ public class WebRtcManager extends Caster<Msg>{
         return findConferee(assStream.getMcuId(), assStream.getTerId(), Conferee.ConfereeType.Normal);
     }
 
+
     /**
      * 查找主持人
      * */
-    private Conferee findPresenter(){
+    public Conferee findPresenter(){
         if (myself.isPresenter()) {
             return myself;
         } else {
@@ -3465,7 +3485,7 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 查找主讲人
      * */
-    private Conferee findKeynoteSpeaker(){
+    public Conferee findKeynoteSpeaker(){
         if (myself.isKeynoteSpeaker()) {
             return myself;
         } else {
@@ -3476,7 +3496,7 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 查找VIP
      * */
-    private Set<Conferee> findVIPs(){
+    public Set<Conferee> findVIPs(){
         Set<Conferee> vips = new HashSet<>();
         if (myself.isVIP()) {
             vips.add(myself);
@@ -3486,13 +3506,17 @@ public class WebRtcManager extends Caster<Msg>{
         return vips;
     }
 
-    private Conferee findVoiceActivatedConferee(){
+    /**
+     * 查找当前处于语音激励状态的与会方
+     * */
+    public Conferee findVoiceActivatedConferee(){
         if (myself.getAudioSignalState() == Conferee.AudioSignalState.Activated){
             return myself;
         }else{
             return Stream.of(conferees).filter(it -> it.getAudioSignalState() == Conferee.AudioSignalState.Activated).findFirst().orElse(null);
         }
     }
+
 
     private RtcStream findStream(String streamId){
         return Stream.of(streams).filter(it-> it.getStreamId().equals(streamId)).findFirst().orElse(null);
