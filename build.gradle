@@ -123,8 +123,8 @@ buildscript {
                             urlKedaSdkRelease = PERSONAL_RELEASE
                             break
                         default:
-                            urlKedaSdkSnapshot = KEDA_SNAPSHOT
-                            urlKedaSdkRelease = KEDA_RELEASE
+                            urlKedaSdkSnapshot = MAVEN_LOCAL
+                            urlKedaSdkRelease = MAVEN_LOCAL
                             break
                     }
 
