@@ -11,4 +11,10 @@ public class TMTCreateConfMember{
 	public String achName;//平台过来 填的是一般都是 164号 和 别名
 	public String achAccount;//平台过来填的一般都是moid
 	public EmMtAddrType emAccountType; // 类型
+
+	public TMTCreateConfMember(String achName, String achAccount, EmMtAddrType emAccountType) {
+		this.achName = achName;
+		this.achAccount = achAccount;
+		this.emAccountType = emAccountType;
+	}
 }

@@ -8,7 +8,7 @@ import java.util.List;
  * Created by Sissi on 2019/11/22
  */
 public final class ConfPara {
-    public String creatorE164;      // 创建者e164
+    public ConfMemberInfo creator; // 创建者
     public String confName;         // 会议名
     public ConfType confType = ConfType.RTC;       // 会议类型
     public int duration;            // 会议时长。单位：分钟
@@ -22,9 +22,9 @@ public final class ConfPara {
 
     public List<ConfMemberInfo> initedConfMemberInfoList; // 初始与会成员列表（不包括创建者）
 
-    public ConfPara(String creatorE164, String confName, int duration, boolean bAudio, boolean bHighDefinition, boolean enableDC,
+    public ConfPara(ConfMemberInfo creator, String confName, int duration, boolean bAudio, boolean bHighDefinition, boolean enableDC,
                     String virtualConfId, List<ConfMemberInfo> initedConfMemberInfoList, boolean bHide, String passwd, boolean bSelfAudioMannerJoin) {
-        this.creatorE164 = creatorE164;
+        this.creator = creator;
         this.confName = confName;
         this.duration = duration;
         this.bAudio = bAudio;
@@ -37,8 +37,8 @@ public final class ConfPara {
         this.bSelfAudioMannerJoin = bSelfAudioMannerJoin;
     }
 
-    public ConfPara(String creatorE164, String confName, int duration, boolean bAudio, boolean bHighDefinition, boolean enableDC, String virtualConfId, boolean bSelfAudioMannerJoin) {
-        this.creatorE164 = creatorE164;
+    public ConfPara(ConfMemberInfo creator, String confName, int duration, boolean bAudio, boolean bHighDefinition, boolean enableDC, String virtualConfId, boolean bSelfAudioMannerJoin) {
+        this.creator = creator;
         this.confName = confName;
         this.duration = duration;
         this.bAudio = bAudio;

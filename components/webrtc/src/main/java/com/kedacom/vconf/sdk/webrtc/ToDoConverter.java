@@ -13,6 +13,7 @@ import com.kedacom.vconf.sdk.common.type.transfer.EmMtResolution;
 import com.kedacom.vconf.sdk.common.type.transfer.EmVConfCreateType;
 import com.kedacom.vconf.sdk.common.type.transfer.EmVidFormat;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTConfMixInfo;
+import com.kedacom.vconf.sdk.common.type.transfer.TMTCreateConfMember;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTDCSAttribute;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTInstanceConferenceInfo;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTInstanceCreateConference;
@@ -129,37 +130,47 @@ final class ToDoConverter {
         to.dwVFormatNum = to.atVideoFormatList.size();
 
         // 参会成员
-        TMTInviteMember inviteMember = new TMTInviteMember();
-        inviteMember.achAccount = confPara.creatorE164;
-        inviteMember.emAccountType = EmMtAddrType.emAddrE164;
-        inviteMember.emProtocol = EmConfProtocol.emrtc;
         to.atInviteMembers = new ArrayList<>();
-        to.atInviteMembers.add(inviteMember);
+        to.atInviteMembers.add(ConfMemberInfo2TMTInviteMember(confPara.creator));
         if (null != confPara.initedConfMemberInfoList) {
             for (ConfMemberInfo mi : confPara.initedConfMemberInfoList) {
-                inviteMember = new TMTInviteMember();
-                if (null != mi.e164 && !mi.e164.trim().isEmpty()) {
-                    inviteMember.achAccount = mi.e164;
-                    inviteMember.emAccountType = EmMtAddrType.emAddrE164;
-                } else if (null != mi.moid && !mi.moid.trim().isEmpty()) {
-                    inviteMember.achAccount = mi.moid;
-                    inviteMember.emAccountType = EmMtAddrType.emAddrMoid;
-                } else if (null != mi.alias && !mi.alias.trim().isEmpty()) {
-                    inviteMember.achAccount = mi.alias;
-                    inviteMember.emAccountType = EmMtAddrType.emAddrAlias;
-                } else {
-                    continue;
-                }
-                to.atInviteMembers.add(inviteMember);
+                to.atInviteMembers.add(ConfMemberInfo2TMTInviteMember(mi));
             }
         }
         to.dwIMemberNum = to.atInviteMembers.size();
+
+        to.tChairman = ConfMemberInfo2TMTCreateConfMember(confPara.creator);
 
         // 是否隐藏
         to.emSafeConf = confPara.bHide ? EmMtOpenMode.emMt_Hide : EmMtOpenMode.emMt_Open;
         to.achPassword = confPara.passwd;
 
         return to;
+    }
+
+    static TMTInviteMember ConfMemberInfo2TMTInviteMember(ConfMemberInfo mi){
+        TMTInviteMember inviteMember = new TMTInviteMember();
+        inviteMember.emProtocol = EmConfProtocol.emrtc;
+        if (null != mi.e164 && !mi.e164.trim().isEmpty()) {
+            inviteMember.achAccount = mi.e164;
+            inviteMember.emAccountType = EmMtAddrType.emAddrE164;
+        } else if (null != mi.moid && !mi.moid.trim().isEmpty()) {
+            inviteMember.achAccount = mi.moid;
+            inviteMember.emAccountType = EmMtAddrType.emAddrMoid;
+        } else if (null != mi.alias && !mi.alias.trim().isEmpty()) {
+            inviteMember.achAccount = mi.alias;
+            inviteMember.emAccountType = EmMtAddrType.emAddrAlias;
+        } else if (null != mi.email && !mi.email.trim().isEmpty()) {
+            inviteMember.achAccount = mi.email;
+            inviteMember.emAccountType = EmMtAddrType.emAddrAlias;
+        }else {
+            return null;
+        }
+        return inviteMember;
+    }
+
+    static TMTCreateConfMember ConfMemberInfo2TMTCreateConfMember(ConfMemberInfo mi){
+        return new TMTCreateConfMember(mi.e164, mi.moid, EmMtAddrType.emAddrMoid);
     }
 
     static ConfInfo tMTInstanceConferenceInfo2ConfInfo(TMTInstanceConferenceInfo ci){

@@ -10,9 +10,11 @@ public final class ConfMemberInfo {
     public String alias;
     public String email;
 
-    /**
-     * 与会成员信息，至少一项不为空，可通过该项呼叫到该成员。
-     * */
+
+    public ConfMemberInfo(String e164, String moid) {
+        this(e164, moid, null, null);
+    }
+
     public ConfMemberInfo(String e164, String moid, String alias, String email) {
         this.e164 = e164;
         this.moid = moid;
