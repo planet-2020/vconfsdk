@@ -1,5 +1,5 @@
 
-['annotation', 'processor', 'amulet'].each {
+['annotation', 'preprocessor', 'amulet'].each {
     String modulePath = ":$it"
     include modulePath
     project(modulePath).setProjectDir(new File("framework/$it"))

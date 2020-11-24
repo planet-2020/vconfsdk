@@ -1,4 +1,4 @@
-package com.kedacom.vconf.sdk.processor;
+package com.kedacom.vconf.sdk.preprocessor;
 
 import com.google.auto.service.AutoService;
 import com.google.common.collect.HashBasedTable;

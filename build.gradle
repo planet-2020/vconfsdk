@@ -197,7 +197,7 @@ task clean(type: Delete) {
 
 def configProject(Project project){
 //    logger.quiet("configProject $project")
-    if (['annotation', 'processor'].contains(project.name)){
+    if (['annotation', 'preprocessor'].contains(project.name)){
         project.sourceCompatibility = SOURCE_JAVA_VERSION
         project.targetCompatibility = TARGET_JAVA_VERSION
     }else{
@@ -242,7 +242,7 @@ def configProject(Project project){
         dependencyHandler.add('implementation', dependencyHandler.module('com.annimon:stream:1.2.1'))
         if (!['common', 'utils', 'amulet'].contains(project.name)) {
             dependencyHandler.add('compileOnly', dependencyHandler.project('path' : ':annotation'))
-            dependencyHandler.add('annotationProcessor', dependencyHandler.project('path' : ':processor'))
+            dependencyHandler.add('annotationProcessor', dependencyHandler.project('path' : ':preprocessor'))
         }
         project.configurations.all {
             resolutionStrategy {
