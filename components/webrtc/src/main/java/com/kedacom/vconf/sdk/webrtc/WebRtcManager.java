@@ -163,7 +163,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     // 码流集合（没有己端的码流，业务组件没有上报）
     // 所有码流均能在与会方集合中找到owner
-    private Set<RtcStream> streams = new HashSet<>();
+    private Set<KdStream> streams = new HashSet<>();
 
     private Set<Display> displays = new LinkedHashSet<>();
 
@@ -1062,20 +1062,20 @@ public class WebRtcManager extends Caster<Msg>{
 
             case CurrentStreamList: // NOTE: 创会者不会收到这条消息，并且CurrentStreamList和CurrentConfereeList的先后顺序不定
             case StreamJoined: // NOTE: 己端不会收到自己的流joined的消息
-                List<RtcStream> joinedStreams =
+                List<KdStream> joinedStreams =
                         Stream.of(((TRtcStreamInfoList) ntfContent).atStramInfoList)
                         .distinctBy(it-> it.achStreamId)
-                        .map(RtcStream::new)
+                        .map(KdStream::new)
                         .filter(it-> findStream(it.getStreamId())==null)
                         .collect(Collectors.toList());
 
                 if (!joinedStreams.isEmpty()) {
-                    boolean hasAssStreamJoined = Stream.of(joinedStreams).anyMatch(RtcStream::isAss);
+                    boolean hasAssStreamJoined = Stream.of(joinedStreams).anyMatch(KdStream::isAss);
                     if (hasAssStreamJoined) { // 有辅流加入
                         // 检查是否已存在辅流，若存在则先踢掉之前的辅流。（按说我们应该依赖下层消息驱动我们做这件事，
                         // 我们期望下层先推一个StreamLeft消息，表示前面的辅流被抢了，而后再推StreamJoined，表示新的辅流加入，但实际的时序刚好相反。
                         // 所以，我们自己调整时序——当抢发辅流的StreamJoined到达时我们主动踢掉前面的辅流，然后前面辅流的StreamLeft抵达时我们忽略。）
-                        RtcStream preAssStream = findAssStream();
+                        KdStream preAssStream = findAssStream();
                         if (null != preAssStream) {
                             streams.remove(preAssStream);
                             PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.ASS_SUBSCRIBER);
@@ -1105,7 +1105,7 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case StreamLeft: // NOTE 己端不会收到自己的流left的消息。码流退出不需要自己setplayitem重新订阅，业务组件已经重新订阅。
-                Set<RtcStream> leftStreams = Stream.of(streams)
+                Set<KdStream> leftStreams = Stream.of(streams)
                         .filter(it-> Stream.of(((TRtcStreamInfoList) ntfContent).atStramInfoList).anyMatch(s-> s.achStreamId.equals(it.getStreamId())))
                         .collect(Collectors.toSet());
 
@@ -1149,11 +1149,11 @@ public class WebRtcManager extends Caster<Msg>{
                 });
 
                 Stream.of(((TRtcStreamInfoList) ntfContent).atStramInfoList)
-                        .forEach(it -> Stream.of(streams).forEach(rtcStream -> {
-                            if (rtcStream.getStreamId().equals(it.achStreamId)){
+                        .forEach(it -> Stream.of(streams).forEach(kdStream -> {
+                            if (kdStream.getStreamId().equals(it.achStreamId)){
                                 // 混音流映射到新的终端
-                                rtcStream.setMcuId(it.tMtId.dwMcuId);
-                                rtcStream.setTerId(it.tMtId.dwTerId);
+                                kdStream.setMcuId(it.tMtId.dwMcuId);
+                                kdStream.setTerId(it.tMtId.dwTerId);
                             }
                         }));
 
@@ -2529,11 +2529,11 @@ public class WebRtcManager extends Caster<Msg>{
             return videoSignalState;
         }
 
-        private RtcStream getVideoStream(){
+        private KdStream getVideoStream(){
             return instance.findStream(mcuId, terId, false, type==ConfereeType.AssStream);
         }
 
-        private Set<RtcStream> getAudioStreams(){
+        private Set<KdStream> getAudioStreams(){
             return Stream.of(instance.streams)
                     .filter(it-> it.isAudio() && it.getMcuId()==mcuId && it.getTerId()==terId)
                     .collect(Collectors.toSet());
@@ -2557,7 +2557,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         private Display.Priority priority;
         private int preferredVideoQuality = -1;
-        private RtcStream videoStream;
+        private KdStream videoStream;
         private void mark(){
             if (isMyself()) {
                 return;
@@ -2576,7 +2576,7 @@ public class WebRtcManager extends Caster<Msg>{
             if (isMyself()) {
                 return false;
             }
-            RtcStream curVS = getVideoStream();
+            KdStream curVS = getVideoStream();
             Display.Priority curPri = getPriority();
             int curPVQ = getPreferredVideoQuality();
 
@@ -2770,10 +2770,10 @@ public class WebRtcManager extends Caster<Msg>{
     /**
      * 码流。
      * */
-    private class RtcStream{
+    private class KdStream {
         private TRtcStreamInfo streamInfo;
 
-        private RtcStream(@NonNull TRtcStreamInfo streamInfo){
+        private KdStream(@NonNull TRtcStreamInfo streamInfo){
             this.streamInfo = streamInfo;
         }
 
@@ -3402,7 +3402,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     // NOTE: 查找范围不包含己端，己端没有对应的streamId，业务组件没报
     private Conferee findConfereeByStreamId(String streamId){
-        RtcStream stream = findStream(streamId);
+        KdStream stream = findStream(streamId);
         if (null != stream){
             return stream.getOwner();
         }
@@ -3446,7 +3446,7 @@ public class WebRtcManager extends Caster<Msg>{
      * NOTE: 查找范围不包含己端，己端发送辅流的场景没有对应的“辅流与会方”
      * */
     public Conferee findAssConferee(){
-        RtcStream assStream = findAssStream();
+        KdStream assStream = findAssStream();
         if (null == assStream){
             return null;
         }
@@ -3470,7 +3470,7 @@ public class WebRtcManager extends Caster<Msg>{
      * 查找辅流发送者（不包含己端）
      * */
     private Conferee findAssStreamSenderExceptMyself(){
-        RtcStream assStream = findAssStream();
+        KdStream assStream = findAssStream();
         if (null == assStream) {
             return null;
         }
@@ -3525,20 +3525,20 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private RtcStream findStream(String streamId){
+    private KdStream findStream(String streamId){
         return Stream.of(streams).filter(it-> it.getStreamId().equals(streamId)).findFirst().orElse(null);
     }
 
 
-    private RtcStream findStream(int mcuId, int terId, boolean isAudio, boolean isAss){
+    private KdStream findStream(int mcuId, int terId, boolean isAudio, boolean isAss){
         return Stream.of(streams)
                 .filter(it-> it.getMcuId()==mcuId && it.getTerId()==terId && it.isAudio()==isAudio && it.isAss()==isAss)
                 .findFirst().orElse(null);
     }
 
 
-    private RtcStream findAssStream(){
-        return Stream.of(streams).filter(RtcStream::isAss).findFirst().orElse(null);
+    private KdStream findAssStream(){
+        return Stream.of(streams).filter(KdStream::isAss).findFirst().orElse(null);
     }
 
 
@@ -4879,7 +4879,7 @@ public class WebRtcManager extends Caster<Msg>{
                             return;
                         }
                         kdStreamId2RtcTrackIdMap.put(kdStreamId, trackId);
-                        RtcStream remoteStream = findStream(kdStreamId);
+                        KdStream remoteStream = findStream(kdStreamId);
                         if (null == remoteStream) {
                             KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
                                     "please check StreamJoined/StreamList and onSetOfferCmd to make sure they both contain kdStreamId "+kdStreamId+"\n and also " +
@@ -4927,7 +4927,7 @@ public class WebRtcManager extends Caster<Msg>{
             });
         }
 
-        void removeRemoteVideoTrack(RtcStream stream){
+        void removeRemoteVideoTrack(KdStream stream){
             String kdStreamId = stream.getStreamId();
             Conferee owner = stream.getOwner();
             executor.execute(() -> {
@@ -4996,7 +4996,7 @@ public class WebRtcManager extends Caster<Msg>{
                             return;
                         }
                         kdStreamId2RtcTrackIdMap.put(kdStreamId, trackId);
-                        RtcStream remoteStream = findStream(kdStreamId);
+                        KdStream remoteStream = findStream(kdStreamId);
                         if (null == remoteStream) {
                             KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
                                     "please check StreamJoined/StreamList and onSetOfferCmd to make sure they both contain kdStreamId "+kdStreamId+"\n and also " +
@@ -5018,7 +5018,7 @@ public class WebRtcManager extends Caster<Msg>{
             });
         }
 
-        void removeRemoteAudioTrack(RtcStream stream){
+        void removeRemoteAudioTrack(KdStream stream){
             String kdStreamId = stream.getStreamId();
             Conferee owner = stream.getOwner();
             executor.execute(() -> {
@@ -5488,8 +5488,8 @@ public class WebRtcManager extends Caster<Msg>{
                                     conferee.setVolume(audioLevel);
                                 }
                             } else {
-                                RtcStream rtcStream = findStream(kdStreamId);
-                                if (rtcStream != null && rtcStream.streamInfo.bMix) { // 混音
+                                KdStream kdStream = findStream(kdStreamId);
+                                if (kdStream != null && kdStream.streamInfo.bMix) { // 混音
                                     statistics.common = new Statistics.Common(audioInfo);
                                 } else {
                                     KLog.p(KLog.WARN, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
