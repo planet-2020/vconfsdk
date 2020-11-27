@@ -2,6 +2,7 @@ package com.kedacom.vconf.sdk.webrtc;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.media.MediaRecorder;
 
 /**
  * Rtc配置。
@@ -66,6 +67,8 @@ public final class RtcConfig {
     private static final String key_saveSentMainVideo = "key_saveSentMainVideo";
     // 是否保存接收的主视频流
     private static final String key_saveRecvedMainVideo = "key_saveRecvedMainVideo";
+    // 音频采集源
+    private static final String key_audioSource = "key_audioSource";
 
     // 视频质量定义
     static final int VideoQuality_Unknown = 0;
@@ -466,6 +469,21 @@ public final class RtcConfig {
 
 
     /**
+     * 设置音频采集源
+     * @param source {@link android.media.MediaRecorder.AudioSource}#VOICE_SOURCE_DEFINATION
+     * */
+    public RtcConfig setAudioSource(int source){
+        editor.putInt(key_audioSource, source).apply();
+        return this;
+    }
+
+    public int getAudioSource(){
+        return rtcUserConfig.getInt(key_audioSource, MediaRecorder.AudioSource.VOICE_COMMUNICATION);
+    }
+
+
+
+    /**
      * 将RtcConfig对象保存为持久化配置
      * */
     void save(Config config){
@@ -497,6 +515,7 @@ public final class RtcConfig {
         setSaveRecvedMainVideo(config.saveRecvedMainVideo);
         setSaveSentAssVideo(config.saveSentAssVideo);
         setSaveRecvedAssVideo(config.saveRecvedAssVideo);
+        setAudioSource(config.audioSource);
     }
 
 
@@ -533,6 +552,7 @@ public final class RtcConfig {
         config.saveRecvedMainVideo = getSaveRecvedMainVideo();
         config.saveSentAssVideo = getSaveSentAssVideo();
         config.saveRecvedAssVideo = getSaveRecvedAssVideo();
+        config.audioSource = getAudioSource();
 
         return config;
     }
@@ -599,6 +619,8 @@ public final class RtcConfig {
         boolean saveSentAssVideo;
         // 是否保存接收的辅视频流
         boolean saveRecvedAssVideo;
+        // 音频采集源
+        public int audioSource;
 
 
         void copy(Config src){
@@ -630,6 +652,7 @@ public final class RtcConfig {
             saveRecvedMainVideo = src.saveRecvedMainVideo;
             saveSentAssVideo = src.saveSentAssVideo;
             saveRecvedAssVideo = src.saveRecvedAssVideo;
+            audioSource = src.audioSource;
         }
 
         @Override
@@ -659,6 +682,11 @@ public final class RtcConfig {
                     ", isAECDumpEnabled=" + isAECDumpEnabled +
                     ", inputAudioVolume=" + inputAudioVolume +
                     ", outputAudioVolume=" + outputAudioVolume +
+                    ", saveSentMainVideo=" + saveSentMainVideo +
+                    ", saveRecvedMainVideo=" + saveRecvedMainVideo +
+                    ", saveSentAssVideo=" + saveSentAssVideo +
+                    ", saveRecvedAssVideo=" + saveRecvedAssVideo +
+                    ", audioSource=" + audioSource +
                     '}';
         }
     }

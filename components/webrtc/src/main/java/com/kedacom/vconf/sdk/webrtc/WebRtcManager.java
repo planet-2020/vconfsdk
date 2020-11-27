@@ -1869,6 +1869,7 @@ public class WebRtcManager extends Caster<Msg>{
                 .setUseHardwareNoiseSuppressor(config.isBuiltInNSPreferred)
                 .setAudioRecordErrorCallback(audioRecordErrorCallback)
                 .setAudioTrackErrorCallback(audioTrackErrorCallback)
+                .setAudioSource(config.audioSource)
                 .createAudioDeviceModule();
     }
 
