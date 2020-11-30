@@ -5377,7 +5377,9 @@ public class WebRtcManager extends Caster<Msg>{
 
                 if (collectStatsCount >= calcRecvBitrateStartCount) {
                     int bitrate = calcRecvBitrate(30);
-                    KLog.p("calcRecvBitrate=%s, lastReportedRecvBitrate=%s", bitrate, lastReportedRecvBitrate);
+                    if (collectStatsCount%6 == 0) {
+                        KLog.p("calcRecvBitrate=%s, lastReportedRecvBitrate=%s", bitrate, lastReportedRecvBitrate);
+                    }
                     boolean needReport = (bitrate == 0 && lastReportedRecvBitrate != 0) || (bitrate != 0 && lastReportedRecvBitrate == 0);
                     if (needReport) {
                         lastReportedRecvBitrate = bitrate;
@@ -5639,8 +5641,7 @@ public class WebRtcManager extends Caster<Msg>{
             /*
             * 接收到的混音的码流纳入计算。
             * 直觉上，若会议中只有自己，不应该存在接收码流的，但是实测下来混音流始终会接收到。
-            * 我们不做区别仍将其计算在内，因为这个值是给组件用的，我们如实记录就好，只不过它在我们这层已经失去了概念完整性——
-            * 我们无法准确理解这是个什么概念，因为它的一部分定义隐藏在组件那边。（该功能设计内聚性差，导致这种难以理解的代码是必然的）
+            * 我们不做区别仍将其计算在内，因为这个值是给组件用的，我们如实记录就好。
             * */
             bitrateSum += (stats.common != null && stats.common.mixedAudio != null) ? stats.common.mixedAudio.bitrate : 0;
 
