@@ -628,7 +628,7 @@ class RtcConnector implements IRcvMsgCallback{
 		msg.addMsg(BasePB.TBOOL32.newBuilder().setValue(has).build());
 		byte[] abyContent = msg.Encode();
 		int ret = Connector.PostOspMsg( EmMtOspMsgSys.Ev_MtOsp_ProtoBufMsg.getnVal(), abyContent, abyContent.length,
-				guardId, guardNode, myId, myNode, 5000 );
+				dispatchId, dispatchNode, myId, myNode, 5000 );
 		if (0 != ret){
 			KLog.p(KLog.ERROR, "PostOspMsg %s failed", msg.GetMsgId());
 		}
