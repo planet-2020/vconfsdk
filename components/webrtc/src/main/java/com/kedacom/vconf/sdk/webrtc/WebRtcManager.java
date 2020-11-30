@@ -5377,7 +5377,9 @@ public class WebRtcManager extends Caster<Msg>{
 
                 if (collectStatsCount >= calcRecvBitrateStartCount) {
                     int bitrate = calcRecvBitrate(30);
-                    KLog.p("calcRecvBitrate=%s, lastReportedRecvBitrate=%s", bitrate, lastReportedRecvBitrate);
+                    if (collectStatsCount%6 == 0) {
+                        KLog.p("calcRecvBitrate=%s, lastReportedRecvBitrate=%s", bitrate, lastReportedRecvBitrate);
+                    }
                     boolean needReport = (bitrate == 0 && lastReportedRecvBitrate != 0) || (bitrate != 0 && lastReportedRecvBitrate == 0);
                     if (needReport) {
                         lastReportedRecvBitrate = bitrate;
