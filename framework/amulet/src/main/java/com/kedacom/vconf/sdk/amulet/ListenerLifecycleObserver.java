@@ -63,6 +63,7 @@ final class ListenerLifecycleObserver implements DefaultLifecycleObserver {
                 if (null != owner){ // 外部类对象有绑定的生命周期对象
                     observe(owner, listener, cb); // 则将该listener绑定到其外部类所绑定的生命周期对象
                 }else{
+                    KLog.p(KLog.WARN, "can not perceive lifecycle of %s", listener + ClassHelper.getParents(listener.getClass()));
                     return false;
                 }
             }else if (encloser instanceof LifecycleOwner){ // 外部类对象自身为生命周期对象
@@ -74,7 +75,7 @@ final class ListenerLifecycleObserver implements DefaultLifecycleObserver {
                 3、其外部类对象（如果有）指定绑定了的生命周期对象；
                 4、其外部类对象（如果有）为生命周期拥有者；
                 */
-                KLog.p(KLog.DEBUG, "can not perceive lifecycle for %s", listener + ClassHelper.getParents(listener.getClass()));
+                KLog.p(KLog.WARN, "can not perceive lifecycle of %s", listener + ClassHelper.getParents(listener.getClass()));
                 return false;
             }
         }
