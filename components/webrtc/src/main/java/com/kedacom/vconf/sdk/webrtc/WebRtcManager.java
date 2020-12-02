@@ -4501,9 +4501,88 @@ public class WebRtcManager extends Caster<Msg>{
      *  针对webrtc sdk m74版本的实现
      * */
 
+//    private List<RtpParameters.Encoding> createEncodingListForSendingOfferSdp(){
+//        List<RtpParameters.Encoding> encodings = new ArrayList<>();
+//        RtpParameters.Encoding high = createEncoding();
+//        high.maxFramerate = config.videoFps;
+//        high.maxBitrateBps = config.videoMaxBitrate * 1024;
+//        encodings.add(high);
+//
+//        return encodings;
+//    }
+//
+//
+//    private List<RtpParameters.Encoding> createEncodingList(List<RtpParameters.Encoding> encodings){
+//        if (null != encodings) {
+//                RtpParameters.Encoding encoding = encodings.get(0);
+//                encoding.scaleResolutionDownBy = 1.0;
+//                encoding.maxFramerate = config.videoFps;
+//                encoding.maxBitrateBps = config.videoMaxBitrate * 1024;
+//                KLog.p("encoding.size=%s, encoding[0]: scaleResolutionDownBy=%s, maxFramerate=%s, maxBitrateBps=%s",
+//                        encodings.size(), encoding.scaleResolutionDownBy, encoding.maxFramerate, encoding.maxBitrateBps);
+//        }else{
+//            /* NOTE
+//             track被添加之前scaleResolutionDownBy必须设置为null否则会崩溃，提示
+//             "Fatal error: C++ addTransceiver failed"。
+//             等到track被添加之后，sdp被创建之前，
+//             通过sender.getParameters()获取encodings列表，然后给scaleResolutionDownBy赋予真实的值。
+//             */
+//            encodings = new ArrayList<>();
+//            encodings.add(createEncoding());
+//        }
+//
+//        return encodings;
+//
+//    }
+//
+//
+//    private RtpParameters.Encoding createEncoding(){
+//        Class encodingclz = null;
+//        try {
+//            encodingclz = Class.forName("org.webrtc.RtpParameters$Encoding");
+//        } catch (ClassNotFoundException e) {
+//            e.printStackTrace();
+//        }
+//        Constructor<?> ctor = null;
+//        try {
+//            ctor = encodingclz.getDeclaredConstructor(boolean.class, Integer.class, Integer.class, Integer.class, Integer.class, Double.class, Long.class);
+//        } catch (NoSuchMethodException e) {
+//            e.printStackTrace();
+//        }
+//        ctor.setAccessible(true);
+//        RtpParameters.Encoding encoding = null;
+//        try {
+//            encoding = (RtpParameters.Encoding) ctor.newInstance(true, 0, 0, 0, 0, 1.0, 0L);
+//        } catch (IllegalAccessException e) {
+//            e.printStackTrace();
+//        } catch (InstantiationException e) {
+//            e.printStackTrace();
+//        } catch (InvocationTargetException e) {
+//            e.printStackTrace();
+//        }
+//        return encoding;
+//    }
+
+
+    /*
+     *  针对平台给的实现了软编/硬编simulcast的库
+     * */
+
     private List<RtpParameters.Encoding> createEncodingListForSendingOfferSdp(){
         List<RtpParameters.Encoding> encodings = new ArrayList<>();
-        RtpParameters.Encoding high = createEncoding();
+        if (config.isSimulcastEnabled) {
+            // 从低到高，平台要求的。
+            RtpParameters.Encoding low = new RtpParameters.Encoding("l", true, 4.0);
+            low.maxFramerate = config.videoFps;
+            low.maxBitrateBps = config.videoMaxBitrate * 1024;
+            RtpParameters.Encoding medium = new RtpParameters.Encoding("m", true, 2.0);
+            medium.maxFramerate = config.videoFps;
+            medium.maxBitrateBps = config.videoMaxBitrate * 1024;
+            encodings.add(low);
+            encodings.add(medium);
+        }
+
+        RtpParameters.Encoding high = new RtpParameters.Encoding("h", true, 1.0);
         high.maxFramerate = config.videoFps;
         high.maxBitrateBps = config.videoMaxBitrate * 1024;
         encodings.add(high);
@@ -4514,53 +4593,45 @@ public class WebRtcManager extends Caster<Msg>{
 
     private List<RtpParameters.Encoding> createEncodingList(List<RtpParameters.Encoding> encodings){
         if (null != encodings) {
+            // NOTE：注意和sendOffer时传给业务组件的参数一致。
+            if (config.isSimulcastEnabled) {
+                for (RtpParameters.Encoding encoding : encodings) {
+                    if (encoding.rid.equals("l")) {
+                        encoding.scaleResolutionDownBy = 4.0;
+                        encoding.maxFramerate = config.videoFps;
+                        encoding.maxBitrateBps = config.videoMaxBitrate * 1024;
+                    } else if (encoding.rid.equals("m")) {
+                        encoding.scaleResolutionDownBy = 2.0;
+                        encoding.maxFramerate = config.videoFps;
+                        encoding.maxBitrateBps = config.videoMaxBitrate * 1024;
+                    } else if (encoding.rid.equals("h")) {
+                        encoding.scaleResolutionDownBy = 1.0;
+                        encoding.maxFramerate = config.videoFps;
+                        encoding.maxBitrateBps = config.videoMaxBitrate * 1024;
+                    }
+                    KLog.p("encoding: rid=%s, scaleResolutionDownBy=%s, maxFramerate=%s, maxBitrateBps=%s",
+                            encoding.rid, encoding.scaleResolutionDownBy, encoding.maxFramerate, encoding.maxBitrateBps);
+                }
+            }else {
                 RtpParameters.Encoding encoding = encodings.get(0);
                 encoding.scaleResolutionDownBy = 1.0;
                 encoding.maxFramerate = config.videoFps;
                 encoding.maxBitrateBps = config.videoMaxBitrate * 1024;
-                KLog.p("encoding.size=%s, encoding[0]: scaleResolutionDownBy=%s, maxFramerate=%s, maxBitrateBps=%s",
-                        encodings.size(), encoding.scaleResolutionDownBy, encoding.maxFramerate, encoding.maxBitrateBps);
+                KLog.p("encoding.size=%s, encoding[0]: rid=%s, scaleResolutionDownBy=%s, maxFramerate=%s, maxBitrateBps=%s",
+                        encodings.size(), encoding.rid, encoding.scaleResolutionDownBy, encoding.maxFramerate, encoding.maxBitrateBps);
+            }
+
         }else{
-            /* NOTE
-             track被添加之前scaleResolutionDownBy必须设置为null否则会崩溃，提示
-             "Fatal error: C++ addTransceiver failed"。
-             等到track被添加之后，sdp被创建之前，
-             通过sender.getParameters()获取encodings列表，然后给scaleResolutionDownBy赋予真实的值。
-             */
             encodings = new ArrayList<>();
-            encodings.add(createEncoding());
+            if (config.isSimulcastEnabled) {
+                encodings.add(new RtpParameters.Encoding("l", true, 4.0));
+                encodings.add(new RtpParameters.Encoding("m", true, 2.0));
+            }
+            encodings.add(new RtpParameters.Encoding("h", true, 1.0));
         }
 
         return encodings;
 
-    }
-
-
-    private RtpParameters.Encoding createEncoding(){
-        Class encodingclz = null;
-        try {
-            encodingclz = Class.forName("org.webrtc.RtpParameters$Encoding");
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        Constructor<?> ctor = null;
-        try {
-            ctor = encodingclz.getDeclaredConstructor(boolean.class, Integer.class, Integer.class, Integer.class, Integer.class, Double.class, Long.class);
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        }
-        ctor.setAccessible(true);
-        RtpParameters.Encoding encoding = null;
-        try {
-            encoding = (RtpParameters.Encoding) ctor.newInstance(true, 0, 0, 0, 0, 1.0, 0L);
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        }
-        return encoding;
     }
 
 
@@ -4734,13 +4805,13 @@ public class WebRtcManager extends Caster<Msg>{
                 if (config.isSimulcastEnabled) {
                     RtpTransceiver.RtpTransceiverInit transceiverInit = new RtpTransceiver.RtpTransceiverInit(
                             RtpTransceiver.RtpTransceiverDirection.SEND_ONLY,
-                            Collections.singletonList(STREAM_ID)
-//                            createEncodingList(null)
+                            Collections.singletonList(STREAM_ID),
+                            createEncodingList(null)
                     );
 
                     RtpTransceiver transceiver = pc.addTransceiver(localVideoTrack, transceiverInit);
                     videoSender = transceiver.getSender();
-                    createEncodingList(videoSender.getParameters().encodings);
+//                    createEncodingList(videoSender.getParameters().encodings); 仅30039版本需要在这里创建EncodingList
                 }else {
                     videoSender = pc.addTrack(localVideoTrack);
                     int maxBitrate = config.videoMaxBitrate * 1024;
@@ -5373,11 +5444,9 @@ public class WebRtcManager extends Caster<Msg>{
 
                 Stream.of(getNtfListeners(StatsListener.class)).forEach(statsListener -> statsListener.onStats(latestStats()));
 
-                ++collectStatsCount;
-
                 if (collectStatsCount >= calcRecvBitrateStartCount) {
                     int bitrate = calcRecvBitrate(30);
-                    if (collectStatsCount%6 == 0) {
+                    if (isMatchPeriod(3000)) {
                         KLog.p("calcRecvBitrate=%s, lastReportedRecvBitrate=%s", bitrate, lastReportedRecvBitrate);
                     }
                     boolean needReport = (bitrate == 0 && lastReportedRecvBitrate != 0) || (bitrate != 0 && lastReportedRecvBitrate == 0);
@@ -5387,11 +5456,21 @@ public class WebRtcManager extends Caster<Msg>{
                     }
                 }
 
+                if (showStatistics && isMatchPeriod(2000)){
+                    Stream.of(conferees).forEach(Conferee::refreshDisplays);
+                }
+
+                ++collectStatsCount;
+
                 handler.postDelayed(this, STATS_INTERVAL);
             }
         }, 2000);
     }
 
+
+    private boolean isMatchPeriod(int millisecond){
+        return collectStatsCount%(millisecond/STATS_INTERVAL) == 0 ;
+    }
 
     private void aggregateStats(){
         Statistics statistics = new Statistics();
