@@ -76,6 +76,7 @@ class RtcConnector implements IRcvMsgCallback{
 		cbMsgHandlerMap.put("Ev_MT_CodecQuiet_Cmd", this::onCodecQuietCmd);
 		cbMsgHandlerMap.put("Ev_MT_CodecMute_Cmd", this::onCodecMuteCmd);
 		cbMsgHandlerMap.put("Ev_MT_Agent_RtcCodecStatistic_Req", this::onAgentRtcCodecStatisticReq);
+		cbMsgHandlerMap.put("Ev_Mtpa_CallConnected_Ntf", this::onCallConnectedNtf);
 
 		if (!CreateOspObject()){
 			throw new RuntimeException("CreateOspObject failed!");
@@ -414,15 +415,55 @@ class RtcConnector implements IRcvMsgCallback{
 	}
 
 
-	private EnumPB.EmMtResolution convertRes(double scale){
-		if (scale < 0.5){
+	/**
+	 * 呼叫已建立通知。
+	 * NOTE：业务有通过他们的SDK API层给我们抛呼叫已建立的消息，我们没用那个消息，
+	 * 原因是业务无法保证API层给我们的呼叫成功消息和本模块其他相关消息的时序。
+	 * */
+	private void onCallConnectedNtf(MtMsg mtMsg, long nSrcId, long nSrcNode){
+		BodyItem item0 = mtMsg.GetMsgBody(0);
+		StructConfPB.TMtCallParam callParam = null;
+		try {
+			callParam = StructConfPB.TMtCallParam.parseFrom(item0.getAbyContent());
+		} catch (InvalidProtocolBufferException e) {
+			e.printStackTrace();
+		}
+		Log.i(TAG, "<=#= onCallConnectedNtf callBitrate="+callParam.getCallRate());
+		StructConfPB.TMtCallParam finalCallParam = callParam;
+		handler.post(() -> {
+			if (null != listener) {
+				listener.onCallConnectedNtf(new TCallInfo(finalCallParam.getCallRate()));
+			}
+		});
+	}
+
+
+
+	private EnumPB.EmMtResolution convertRes(int height, double scaleDownBy){
+		if (height <= 180){
 			return EnumPB.EmMtResolution.emMt320x180;
-		}else if (0.5 <= scale && scale < 0.75){
-			return EnumPB.EmMtResolution.emMt640x360;
-		}else if (0.75 <= scale && scale < 1){
-			return EnumPB.EmMtResolution.emMt960x540;
-		}else{
-			return EnumPB.EmMtResolution.emMt1280x720;
+		} else if (height <= 360){
+			if (scaleDownBy <= 1){
+				return EnumPB.EmMtResolution.emMt640x360;
+			}else{
+				return EnumPB.EmMtResolution.emMt320x180;
+			}
+		} else if (height <= 720){
+			if (scaleDownBy <= 1){
+				return EnumPB.EmMtResolution.emMt1280x720;
+			}else if (scaleDownBy <= 2){
+				return EnumPB.EmMtResolution.emMt640x360;
+			}else {
+				return EnumPB.EmMtResolution.emMt320x180;
+			}
+		} else {
+			if (scaleDownBy <= 1){
+				return EnumPB.EmMtResolution.emMtHD1080p1920x1080;
+			}else if (scaleDownBy <= 2){
+				return EnumPB.EmMtResolution.emMt960x540;
+			}else {
+				return EnumPB.EmMtResolution.emMt480x270;
+			}
 		}
 	}
 
@@ -442,9 +483,8 @@ class RtcConnector implements IRcvMsgCallback{
 		if (null != rtcMedia.encodings){
 			for (RtpParameters.Encoding encoding : rtcMedia.encodings){
 				StructConfPB.TRtcRid.Builder ridBuider = StructConfPB.TRtcRid.newBuilder();
-				ridBuider
-//						.setRid(encoding.rid)
-						.setEmres(convertRes(encoding.scaleResolutionDownBy))
+				ridBuider.setRid(encoding.rid)
+						.setEmres(convertRes(rtcMedia.videoHeight, encoding.scaleResolutionDownBy))
 						.setBitrate(encoding.maxBitrateBps);
 				rtcMediaBuilder.addRidlist(ridBuider.build());
 			}
@@ -639,6 +679,8 @@ class RtcConnector implements IRcvMsgCallback{
 	static class TRtcMedia {
 		String streamid="";
 		String mid;
+		int videoWidth;
+		int videoHeight;
 		List<RtpParameters.Encoding> encodings;
 
 		TRtcMedia(String streamid, String mid, List<RtpParameters.Encoding> encodings) {
@@ -653,9 +695,19 @@ class RtcConnector implements IRcvMsgCallback{
 		TRtcMedia(String mid) {
 			this.mid = mid;
 		}
-		TRtcMedia(String mid, List<RtpParameters.Encoding> encodings) {
+		TRtcMedia(String mid, int videoWidth, int videoHeight, List<RtpParameters.Encoding> encodings) {
+			this.videoWidth = videoWidth;
+			this.videoHeight = videoHeight;
 			this.mid = mid;
 			this.encodings = encodings;
+		}
+	}
+
+	static class TCallInfo{
+		int callBitrate; // 呼叫码率。单位：kbps
+
+		public TCallInfo(int callBitrate) {
+			this.callBitrate = callBitrate;
 		}
 	}
 
@@ -682,6 +734,8 @@ class RtcConnector implements IRcvMsgCallback{
 		void onUnPubCmd(int connType, int mediaType);
 
 		void onAgentRtcCodecStatisticReq();
+
+		void onCallConnectedNtf(TCallInfo callInfo);
 	}
 
 
