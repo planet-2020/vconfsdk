@@ -135,6 +135,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import pattern.ConditionalConsumer;
+
 
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class WebRtcManager extends Caster<Msg>{
@@ -1196,128 +1198,121 @@ public class WebRtcManager extends Caster<Msg>{
 //            case PresenterChanged:
 //            case KeynoteSpeakerChanged:
             case BriefConfInfoArrived:
-                handler.post(new Runnable() {
-                    // 重试次数。
-                    // 主持人变动通知可能在与会方入会/与会方列表通知之前，
-                    // 此种情形下我们延后重试以等待与会方入会消息到达再做处理。
-                    int triedCount;
+                final Conferee[] predecessor = new Conferee[1];
+                final Conferee[] successor = new Conferee[1];
+                int maxTimesToTry = 3;
+                int interval = 1000;
+                TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
 
-                    @Override
-                    public void run() {
-                        ++triedCount;
+                // 处理主持人变更
+                // 主持人变动通知可能在与会方入会/与会方列表通知之前抵达，而我们需要与会方信息来处理该通知，
+                // 因此我们使用“条件消费者”处理该消息。
+                ConditionalConsumer.tryConsume(
+                    briefConfInfo,
 
-                        Conferee predecessor = findPresenter();
-
-                        TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
-                        TMtId mtId = briefConfInfo.tChairman;
-                        if (!mtId.isValid()){
-                            // 主持人mtid非法，此为取消主持人的场景。
-                            if (predecessor != null) {
-                                predecessor.setPresenter(false);
-                                Stream.of(getNtfListeners(PresenterChangedListener.class)).forEach(it -> it.onPresenterChanged(predecessor, null));
+                    value -> {
+                        TMtId mtId = value.tChairman;
+                        if (mtId.isValid()) { // 此为指定主持人的场景
+                            // 判断主持人是否已经入会
+                            if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId) {
+                                successor[0] = myself;
+                            } else {
+                                successor[0] = Stream.of(conferees)
+                                        .filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId)
+                                        .findFirst()
+                                        .orElse(null);
                             }
+                            return successor[0] != null;
+                        }else { // 此为取消主持人的场景
+                            successor[0] = null;
+                            return true;
+                        }
+                    },
+
+                    value -> {
+                        TMtId mtId = value.tChairman;
+                        predecessor[0] = findPresenter();
+                        if (successor[0] == predecessor[0]) {
                             return;
                         }
-
-                        Conferee successor;
-                        if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId){
-                            successor = myself;
-                        }else{
-                            successor = Stream.of(conferees).filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId).findFirst().orElse(null);
+                        if (predecessor[0] != null) {
+                            predecessor[0].setPresenter(false);
                         }
-
-                        if (successor == null){
-                            if (triedCount == 3){
-                                KLog.p(KLog.ERROR, "tried %s times, presenter(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
-                                return;
-                            }
-                            KLog.p(KLog.WARN, "presenter(mcu=%s, ter=%s) has not joined yet, wait for a moment...", mtId.dwMcuId, mtId.dwTerId);
-                            // 与会方入会消息尚未抵达，我们延后处理
-                            handler.postDelayed(this, 1000);
-                            return;
+                        if (successor[0] != null) {
+                            successor[0].setPresenter(true);
                         }
+                        Stream.of(getNtfListeners(PresenterChangedListener.class))
+                                .forEach(it -> it.onPresenterChanged(predecessor[0], successor[0]));
+                    },
 
-                        if (successor == predecessor) {
-                            return;
-                        }
-                        if (predecessor != null) {
-                            predecessor.setPresenter(false);
-                        }
-                        successor.setPresenter(true);
+                    maxTimesToTry,
+                    interval,
 
-                        Stream.of(getNtfListeners(PresenterChangedListener.class)).forEach(it -> it.onPresenterChanged(predecessor, successor));
+                    value -> {
+                        TMtId mtId = value.tChairman;
+                        KLog.p(KLog.ERROR, "presenter(mcu=%s, ter=%s) has still not joined yet after %s times trying in %s milliseconds.",
+                                mtId.dwMcuId, mtId.dwTerId, maxTimesToTry, interval*maxTimesToTry);
                     }
-                });
+                );
 
-                handler.post(new Runnable() {
-                    // 重试次数。
-                    // 主讲人变动通知可能在与会方入会/与会方列表通知之前，
-                    // 此种情形下我们延后重试以等待与会方入会消息到达再做处理。
-                    int triedCount;
+                // 处理主讲人变更
+                // 主讲人变动通知可能在与会方入会/与会方列表通知之前抵达，而我们需要与会方信息来处理该通知，
+                // 因此我们使用“条件消费者”处理该消息。
+                ConditionalConsumer.tryConsume(
+                    briefConfInfo,
 
-                    @Override
-                    public void run() {
-                        ++triedCount;
-
-                        Conferee predecessor = findKeynoteSpeaker();
-
-                        TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
-                        TMtId mtId = briefConfInfo.tSpeaker;
-                        if (!mtId.isValid()){
-                            // 主讲人mtid非法，此为取消主讲人的场景。
-                            if (predecessor != null) {
-                                predecessor.setKeynoteSpeaker(false);
-                                Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class)).forEach(it -> it.onKeynoteSpeakerChanged(predecessor, null));
+                    value -> {
+                        TMtId mtId = value.tSpeaker;
+                        if (mtId.isValid()){ // 指定主讲人
+                            if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId){
+                                successor[0] = myself;
+                            }else{
+                                successor[0] = Stream.of(conferees).filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId).findFirst().orElse(null);
                             }
+                            return successor[0] != null;
+                        }else{ // 取消主讲人
+                            successor[0] = null;
+                            return true;
+                        }
+                    },
+
+                    value -> {
+                        predecessor[0] = findKeynoteSpeaker();
+                        if (successor[0] == predecessor[0]) {
                             return;
                         }
-
-                        Conferee successor;
-                        if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId){
-                            successor = myself;
-                        }else{
-                            successor = Stream.of(conferees).filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId).findFirst().orElse(null);
+                        if (predecessor[0] != null) {
+                            predecessor[0].setKeynoteSpeaker(false);
                         }
-
-                        if (successor == null){
-                            if (triedCount == 3){
-                                KLog.p(KLog.ERROR, "tried %s times, keynoteSpeaker(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
-                                return;
-                            }
-                            KLog.p(KLog.WARN, "keynoteSpeaker(mcu=%s, ter=%s) has not joined yet, wait for a moment...", mtId.dwMcuId, mtId.dwTerId);
-                            // 与会方入会消息尚未抵达，我们延后处理
-                            handler.postDelayed(this, 1000);
-                            return;
+                        if (successor[0] != null) {
+                            successor[0].setKeynoteSpeaker(true);
                         }
+                        Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class))
+                                .forEach(it -> it.onKeynoteSpeakerChanged(predecessor[0], successor[0]));
+                    },
 
-                        if (successor == predecessor) {
-                            return;
-                        }
-                        if (predecessor != null) {
-                            predecessor.setKeynoteSpeaker(false);
-                        }
-                        successor.setKeynoteSpeaker(true);
+                    maxTimesToTry,
+                    interval,
 
-                        Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class)).forEach(it -> it.onKeynoteSpeakerChanged(predecessor, successor));
+                    value -> {
+                        TMtId mtId = value.tChairman;
+                        KLog.p(KLog.ERROR, "keynoteSpeaker(mcu=%s, ter=%s) has still not joined yet after %s times trying in %s milliseconds.",
+                                mtId.dwMcuId, mtId.dwTerId, maxTimesToTry, interval*maxTimesToTry);
                     }
-                });
+                );
 
                 break;
 
             case VIPsChanged:
-                handler.post(new Runnable() {
-                    // 重试次数。
-                    // VIP变动通知可能在与会方入会/与会方列表通知之前，
-                    // 此种情形下我们延后重试以等待与会方入会消息到达再做处理。
-                    int triedCount;
+                maxTimesToTry = 3;
+                interval = 1000;
+                List<TMtId> tMtIds = ((TMtIdList) ntfContent).atList;
+                Set<Conferee> newVips = new HashSet<>();
+                ConditionalConsumer.tryConsume(
+                    tMtIds,
 
-                    @Override
-                    public void run() {
-                        ++triedCount;
-
-                        Set<Conferee> oldVips = findVIPs();
-                        List<TMtId> tMtIds = ((TMtIdList) ntfContent).atList;
-                        Set<Conferee> newVips = Stream.of(tMtIds)
+                    value -> {
+                        Set<Conferee> vips = Stream.of(value)
                                 .map(it -> {
                                     Conferee vip = findConferee(it.dwMcuId, it.dwTerId, Conferee.ConfereeType.Normal);
                                     if (vip==null){
@@ -1327,26 +1322,28 @@ public class WebRtcManager extends Caster<Msg>{
                                 })
                                 .filter(it -> it != null)
                                 .collect(Collectors.toSet());
+                        newVips.clear();
+                        newVips.addAll(vips);
+                        return value.size() == vips.size();
+                    },
 
-                        if (tMtIds.size() != newVips.size()){
-                            if (triedCount == 3){
-                                KLog.p(KLog.ERROR, "tried %s times, some vips has still not joined yet");
-                                return;
-                            }
-                            KLog.p(KLog.WARN, "some vips has not joined yet, wait for a moment...");
-                            // 与会方入会消息尚未抵达，我们延后处理
-                            handler.postDelayed(this, 1000);
-                            return;
-                        }
-
+                    tMtIds1 -> {
+                        Set<Conferee> oldVips = findVIPs();
                         Set<Conferee> added = new HashSet<>(newVips);
                         added.removeAll(oldVips);
                         Set<Conferee> removed = new HashSet<>(oldVips);
                         removed.removeAll(newVips);
+                        Stream.of(getNtfListeners(VIPChangedListener.class))
+                                .forEach(it -> it.onVipChanged(added, removed));
+                    },
 
-                        Stream.of(getNtfListeners(VIPChangedListener.class)).forEach(it -> it.onVipChanged(added, removed));
-                    }
-                });
+                    maxTimesToTry,
+                    interval,
+
+                    tMtIds12 -> KLog.p(KLog.ERROR, "some vips has still not joined yet after %s times trying in %s milliseconds.",
+                    maxTimesToTry, interval*maxTimesToTry)
+                );
+
                 break;
 
 //                case 全场哑音：
