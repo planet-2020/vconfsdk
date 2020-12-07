@@ -1180,11 +1180,24 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
             case OtherConfereeStateChanged:
                 TMtEntityStatus state = (TMtEntityStatus) ntfContent;
-                Conferee conferee = findConferee(state.dwMcuId, state.dwTerId, Conferee.ConfereeType.Normal);
-                if (conferee != null && !conferee.isMyself() && conferee.isMuted() != state.tStatus.bIsMute){
-                    conferee.setMuted(state.tStatus.bIsMute);
-                    Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(conferee));
-                }
+                final Conferee[] confereeWrapper = new Conferee[1];
+                int maxTimesToTry = 3, interval = 1000;
+                ConditionalConsumer.tryConsume(state, value -> {
+                    confereeWrapper[0] = findConferee(value.dwMcuId, value.dwTerId, Conferee.ConfereeType.Normal);
+                    return confereeWrapper[0] != null;
+                }, value -> {
+                    Conferee conferee = confereeWrapper[0];
+                    if (!conferee.isMyself() && conferee.isMuted() != value.tStatus.bIsMute){
+                        conferee.setMuted(value.tStatus.bIsMute);
+                        KLog.p("onMuteStateChanged(conferee=%s)", conferee);
+                        Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(conferee));
+                    }
+                },
+                maxTimesToTry,
+                interval,
+                value -> KLog.p(KLog.ERROR, "conferee(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
+                        value.dwMcuId, value.dwTerId, maxTimesToTry, interval*maxTimesToTry));
+
                 break;
 
             case ConfAboutToEnd:
@@ -1207,7 +1220,7 @@ public class WebRtcManager extends Caster<Msg>{
                 // 处理主持人变更
                 // 主持人变动通知可能在与会方入会/与会方列表通知之前抵达，而我们需要与会方信息来处理该通知，
                 // 因此我们使用“条件消费者”处理该消息。
-                int maxTimesToTry = 3, interval = 1000;
+                maxTimesToTry = 3; interval = 1000;
                 ConditionalConsumer.tryConsume(
                     briefConfInfo,
 
