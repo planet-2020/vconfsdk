@@ -450,7 +450,7 @@ class RtcConnector implements IRcvMsgCallback{
 			}
 		} else if (height <= 720){
 			if (scaleDownBy <= 1){
-				return EnumPB.EmMtResolution.emMtHD720p1280x720;
+				return EnumPB.EmMtResolution.emMt1280x720;
 			}else if (scaleDownBy <= 2){
 				return EnumPB.EmMtResolution.emMt640x360;
 			}else {
