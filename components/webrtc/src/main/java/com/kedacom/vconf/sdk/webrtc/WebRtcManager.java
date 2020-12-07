@@ -1376,29 +1376,37 @@ public class WebRtcManager extends Caster<Msg>{
 
                 maxTimesToTry = 3;
                 interval = 1000;
-                final Conferee[] selectedConfereeWrapper = new Conferee[1];
+                final Conferee[] selectedStateChangedConfereeWrapper = new Conferee[1];
+                final Conferee[] oldSelectedConfereeWrapper = new Conferee[1];
                 ConditionalConsumer.tryConsume(
                     selectedToWatch,
 
                     value -> {
                         TMtId mtId1 = value.AssParam.tTer;
-                        selectedConfereeWrapper[0] = findConferee(mtId1.dwMcuId, mtId1.dwTerId, Conferee.ConfereeType.Normal);
-                        return selectedConfereeWrapper[0] != null;
+                        selectedStateChangedConfereeWrapper[0] = findConferee(mtId1.dwMcuId, mtId1.dwTerId, Conferee.ConfereeType.Normal);
+                        return selectedStateChangedConfereeWrapper[0] != null;
                     },
 
                     value -> {
                         boolean isSelected = value.MainParam.basetype // 是否开启选看
                                 && value.AssParam.bForce // 是否强制。对于rtc，仅在开启选看且强制的情况下是开启，其余情形均为关闭
                                 ;
-                        Conferee selectedConferee = selectedConfereeWrapper[0];
-                        if (selectedConferee.isSelectedToWatch() != isSelected) {
-                            selectedConferee.setSelectedToWatch(isSelected);
+                        oldSelectedConfereeWrapper[0] = findSelectedToWatchConferee();
+                        Conferee oldSelectedConferee = oldSelectedConfereeWrapper[0];
+                        Conferee selectedStateChangedConferee = selectedStateChangedConfereeWrapper[0];
+                        if (selectedStateChangedConferee.isSelectedToWatch() != isSelected) {
+                            if (oldSelectedConferee != null && selectedStateChangedConferee != oldSelectedConferee && isSelected){
+                                oldSelectedConferee.setSelectedToWatch(false);
+                                KLog.p("onUnselected(%s)", oldSelectedConferee);
+                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onUnselected(oldSelectedConferee));
+                            }
+                            selectedStateChangedConferee.setSelectedToWatch(isSelected);
                             if (isSelected) {
-                                KLog.p("onSelected(%s)", selectedConferee);
-                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onSelected(selectedConferee));
+                                KLog.p("onSelected(%s)", selectedStateChangedConferee);
+                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onSelected(selectedStateChangedConferee));
                             } else {
-                                KLog.p("onUnselected(%s)", selectedConferee);
-                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onUnselected(selectedConferee));
+                                KLog.p("onUnselected(%s)", selectedStateChangedConferee);
+                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onUnselected(selectedStateChangedConferee));
                             }
                         }
                     },
@@ -3553,6 +3561,17 @@ public class WebRtcManager extends Caster<Msg>{
             return myself;
         }else{
             return Stream.of(conferees).filter(it -> it.getAudioSignalState() == Conferee.AudioSignalState.Activated).findFirst().orElse(null);
+        }
+    }
+
+    /**
+     * 查找当前处于选看状态的与会方
+     * */
+    public Conferee findSelectedToWatchConferee(){
+        if (myself.isSelectedToWatch()) {
+            return myself;
+        } else {
+            return Stream.of(conferees).filter(Conferee::isSelectedToWatch).findFirst().orElse(null);
         }
     }
 
