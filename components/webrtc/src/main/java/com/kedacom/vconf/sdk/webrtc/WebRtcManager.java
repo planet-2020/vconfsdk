@@ -1445,7 +1445,7 @@ public class WebRtcManager extends Caster<Msg>{
                                 .filter(it -> { // 过滤掉无效的画面合成方。画面合成方数量不足合成风格的画面数时，平台会用无效的与会方填充列表。
                                     boolean valid = it.tMtid.isValid();
                                     if (!valid){
-                                        KLog.p(KLog.WARN, "invalid conferee(mcu=%s, ter=%s)", it.tMtid.dwMcuId, it.tMtid.dwTerId);
+                                        KLog.p(KLog.WARN, "invalid ScenesComposited conferee(mcu=%s, ter=%s)", it.tMtid.dwMcuId, it.tMtid.dwTerId);
                                     }
                                     return valid;
                                 })
@@ -1488,7 +1488,7 @@ public class WebRtcManager extends Caster<Msg>{
                     maxTimesToTry,
                     interval,
 
-                    value -> KLog.p(KLog.ERROR, "some vmp conferee has still not joined yet after trying %s times in %s milliseconds.",maxTimesToTry, interval*maxTimesToTry)
+                    value -> KLog.p(KLog.ERROR, "some ScenesComposited conferee has still not joined yet after trying %s times in %s milliseconds.",maxTimesToTry, interval*maxTimesToTry)
                 );
 
                 break;
