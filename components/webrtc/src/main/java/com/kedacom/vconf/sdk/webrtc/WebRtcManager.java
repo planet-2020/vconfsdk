@@ -23,6 +23,8 @@ import androidx.annotation.Nullable;
 
 import com.annimon.stream.Collectors;
 import com.annimon.stream.Stream;
+import com.annimon.stream.function.Consumer;
+import com.annimon.stream.function.Predicate;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.kedacom.vconf.sdk.amulet.Caster;
@@ -1198,15 +1200,14 @@ public class WebRtcManager extends Caster<Msg>{
 //            case PresenterChanged:
 //            case KeynoteSpeakerChanged:
             case BriefConfInfoArrived:
-                final Conferee[] predecessor = new Conferee[1];
-                final Conferee[] successor = new Conferee[1];
-                int maxTimesToTry = 3;
-                int interval = 1000;
+                final Conferee[] predecessorWrapper = new Conferee[1];
+                final Conferee[] successorWrapper = new Conferee[1];
                 TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
 
                 // 处理主持人变更
                 // 主持人变动通知可能在与会方入会/与会方列表通知之前抵达，而我们需要与会方信息来处理该通知，
                 // 因此我们使用“条件消费者”处理该消息。
+                int maxTimesToTry = 3, interval = 1000;
                 ConditionalConsumer.tryConsume(
                     briefConfInfo,
 
@@ -1215,34 +1216,36 @@ public class WebRtcManager extends Caster<Msg>{
                         if (mtId.isValid()) { // 此为指定主持人的场景
                             // 判断主持人是否已经入会
                             if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId) {
-                                successor[0] = myself;
+                                successorWrapper[0] = myself;
                             } else {
-                                successor[0] = Stream.of(conferees)
+                                successorWrapper[0] = Stream.of(conferees)
                                         .filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId)
                                         .findFirst()
                                         .orElse(null);
                             }
-                            return successor[0] != null;
+                            return successorWrapper[0] != null;
                         }else { // 此为取消主持人的场景
-                            successor[0] = null;
+                            successorWrapper[0] = null;
                             return true;
                         }
                     },
 
                     value -> {
-                        TMtId mtId = value.tChairman;
-                        predecessor[0] = findPresenter();
-                        if (successor[0] == predecessor[0]) {
+                        predecessorWrapper[0] = findPresenter();
+                        Conferee predecessor = predecessorWrapper[0];
+                        Conferee successor = successorWrapper[0];
+                        if (successor == predecessor) {
                             return;
                         }
-                        if (predecessor[0] != null) {
-                            predecessor[0].setPresenter(false);
+                        if (predecessor != null) {
+                            predecessor.setPresenter(false);
                         }
-                        if (successor[0] != null) {
-                            successor[0].setPresenter(true);
+                        if (successor != null) {
+                            successor.setPresenter(true);
                         }
+                        KLog.p("onPresenterChanged(predecessor=%s, successor=%s)", predecessor, successor);
                         Stream.of(getNtfListeners(PresenterChangedListener.class))
-                                .forEach(it -> it.onPresenterChanged(predecessor[0], successor[0]));
+                                .forEach(it -> it.onPresenterChanged(predecessor, successor));
                     },
 
                     maxTimesToTry,
@@ -1250,7 +1253,7 @@ public class WebRtcManager extends Caster<Msg>{
 
                     value -> {
                         TMtId mtId = value.tChairman;
-                        KLog.p(KLog.ERROR, "presenter(mcu=%s, ter=%s) has still not joined yet after %s times trying in %s milliseconds.",
+                        KLog.p(KLog.ERROR, "presenter(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
                                 mtId.dwMcuId, mtId.dwTerId, maxTimesToTry, interval*maxTimesToTry);
                     }
                 );
@@ -1265,30 +1268,33 @@ public class WebRtcManager extends Caster<Msg>{
                         TMtId mtId = value.tSpeaker;
                         if (mtId.isValid()){ // 指定主讲人
                             if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId){
-                                successor[0] = myself;
+                                successorWrapper[0] = myself;
                             }else{
-                                successor[0] = Stream.of(conferees).filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId).findFirst().orElse(null);
+                                successorWrapper[0] = Stream.of(conferees).filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId).findFirst().orElse(null);
                             }
-                            return successor[0] != null;
+                            return successorWrapper[0] != null;
                         }else{ // 取消主讲人
-                            successor[0] = null;
+                            successorWrapper[0] = null;
                             return true;
                         }
                     },
 
                     value -> {
-                        predecessor[0] = findKeynoteSpeaker();
-                        if (successor[0] == predecessor[0]) {
+                        predecessorWrapper[0] = findKeynoteSpeaker();
+                        Conferee predecessor = predecessorWrapper[0];
+                        Conferee successor = successorWrapper[0];
+                        if (successor == predecessor) {
                             return;
                         }
-                        if (predecessor[0] != null) {
-                            predecessor[0].setKeynoteSpeaker(false);
+                        if (predecessor != null) {
+                            predecessor.setKeynoteSpeaker(false);
                         }
-                        if (successor[0] != null) {
-                            successor[0].setKeynoteSpeaker(true);
+                        if (successor != null) {
+                            successor.setKeynoteSpeaker(true);
                         }
+                        KLog.p("onKeynoteSpeakerChanged(predecessor=%s, successor=%s)", predecessor, successor);
                         Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class))
-                                .forEach(it -> it.onKeynoteSpeakerChanged(predecessor[0], successor[0]));
+                                .forEach(it -> it.onKeynoteSpeakerChanged(predecessor, successor));
                     },
 
                     maxTimesToTry,
@@ -1296,7 +1302,7 @@ public class WebRtcManager extends Caster<Msg>{
 
                     value -> {
                         TMtId mtId = value.tChairman;
-                        KLog.p(KLog.ERROR, "keynoteSpeaker(mcu=%s, ter=%s) has still not joined yet after %s times trying in %s milliseconds.",
+                        KLog.p(KLog.ERROR, "keynoteSpeaker(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
                                 mtId.dwMcuId, mtId.dwTerId, maxTimesToTry, interval*maxTimesToTry);
                     }
                 );
@@ -1304,10 +1310,10 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case VIPsChanged:
-                maxTimesToTry = 3;
-                interval = 1000;
                 List<TMtId> tMtIds = ((TMtIdList) ntfContent).atList;
                 Set<Conferee> newVips = new HashSet<>();
+                maxTimesToTry = 3;
+                interval = 1000;
                 ConditionalConsumer.tryConsume(
                     tMtIds,
 
@@ -1333,6 +1339,7 @@ public class WebRtcManager extends Caster<Msg>{
                         added.removeAll(oldVips);
                         Set<Conferee> removed = new HashSet<>(oldVips);
                         removed.removeAll(newVips);
+                        KLog.p("onVipChanged(added=%s, removed=%s)", added, removed);
                         Stream.of(getNtfListeners(VIPChangedListener.class))
                                 .forEach(it -> it.onVipChanged(added, removed));
                     },
@@ -1340,7 +1347,7 @@ public class WebRtcManager extends Caster<Msg>{
                     maxTimesToTry,
                     interval,
 
-                    tMtIds12 -> KLog.p(KLog.ERROR, "some vips has still not joined yet after %s times trying in %s milliseconds.",
+                    tMtIds12 -> KLog.p(KLog.ERROR, "some vip has still not joined yet after trying %s times in %s milliseconds.",
                     maxTimesToTry, interval*maxTimesToTry)
                 );
 
@@ -1360,65 +1367,73 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case SelectedToWatch:
-                handler.post(new Runnable() {
-                    int triedCount;
+                TSelectedToWatch selectedToWatch = (TSelectedToWatch) ntfContent;
+                TMtId mtId = selectedToWatch.AssParam.tTer;
+                if (!mtId.isValid()){
+                    KLog.p(KLog.ERROR, "invalid selected-to-watch conferee(mcu=%s, ter=%s)", mtId.dwMcuId, mtId.dwTerId);
+                    return;
+                }
 
-                    @Override
-                    public void run() {
-                        ++triedCount;
+                maxTimesToTry = 3;
+                interval = 1000;
+                final Conferee[] selectedConfereeWrapper = new Conferee[1];
+                ConditionalConsumer.tryConsume(
+                    selectedToWatch,
 
-                        TSelectedToWatch selectedToWatch = (TSelectedToWatch) ntfContent;
-                        TMtId mtId = selectedToWatch.AssParam.tTer;
-                        if (!mtId.isValid()){
-                            KLog.p(KLog.ERROR, "invalid conferee(mcu=%s, ter=%s)", mtId.dwMcuId, mtId.dwTerId);
-                            return;
-                        }
-                        Conferee conferee = findConferee(mtId.dwMcuId, mtId.dwTerId, Conferee.ConfereeType.Normal);
-                        if (conferee == null){
-                            if (triedCount == 3){
-                                KLog.p(KLog.ERROR, "tried %s times, selected-to-watch conferee(mcu=%s, ter=%s) has still not joined yet", triedCount, mtId.dwMcuId, mtId.dwTerId);
-                                return;
-                            }
-                            KLog.p(KLog.WARN, "selected-to-watch conferee(mcu=%s, ter=%s) has not joined yet, wait for a moment...", mtId.dwMcuId, mtId.dwTerId);
-                            // 与会方入会消息尚未抵达，我们延后处理
-                            handler.postDelayed(this, 1000);
-                            return;
-                        }
-                        boolean isSelected = selectedToWatch.MainParam.basetype // 是否开启选看
-                                && selectedToWatch.AssParam.bForce // 是否强制。对于rtc，仅在开启选看且强制的情况下是开启，其余情形均为关闭
+                    value -> {
+                        TMtId mtId1 = value.AssParam.tTer;
+                        selectedConfereeWrapper[0] = findConferee(mtId1.dwMcuId, mtId1.dwTerId, Conferee.ConfereeType.Normal);
+                        return selectedConfereeWrapper[0] != null;
+                    },
+
+                    value -> {
+                        boolean isSelected = value.MainParam.basetype // 是否开启选看
+                                && value.AssParam.bForce // 是否强制。对于rtc，仅在开启选看且强制的情况下是开启，其余情形均为关闭
                                 ;
-                        if (conferee.isSelectedToWatch() != isSelected) {
-                            conferee.setSelectedToWatch(isSelected);
+                        Conferee selectedConferee = selectedConfereeWrapper[0];
+                        if (selectedConferee.isSelectedToWatch() != isSelected) {
+                            selectedConferee.setSelectedToWatch(isSelected);
                             if (isSelected) {
-                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onSelected(conferee));
+                                KLog.p("onSelected(%s)", selectedConferee);
+                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onSelected(selectedConferee));
                             } else {
-                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onUnselected(conferee));
+                                KLog.p("onUnselected(%s)", selectedConferee);
+                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onUnselected(selectedConferee));
                             }
                         }
-                    }
+                    },
 
-                });
+                    maxTimesToTry,
+                    interval,
+
+                    value -> {
+                        TMtId mtId12 = value.AssParam.tTer;
+                        KLog.p(KLog.ERROR, "selected-to-watch conferee(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
+                                mtId12.dwMcuId, mtId12.dwTerId, maxTimesToTry, interval*maxTimesToTry);
+                    }
+                );
+
                 break;
 
             case ScenesComposited:
-                handler.post(new Runnable() {
-                    int triedCount;
+                TMtCustomVmpParam vmpParam = (TMtCustomVmpParam) ntfContent;
+                if (vmpParam.emVmpMode != EmMtVmpMode.emMt_VMP_MODE_CTRL){ // 对于rtc仅需处理自定义模式的画面合成
+                    KLog.p(KLog.WARN, "ignore vmp mode %s", vmpParam.emVmpMode);
+                    return;
+                }
+                if (vmpParam.atVmpItem.isEmpty()){
+                    KLog.p(KLog.WARN, "vmp list empty");
+                    return;
+                }
 
-                    @Override
-                    public void run() {
-                        ++triedCount;
+                maxTimesToTry = 3;
+                interval = 1000;
+                List<Conferee> vmpConferees = new ArrayList<>();
+                ConditionalConsumer.tryConsume(
+                    vmpParam,
 
-                        TMtCustomVmpParam vmpParam = (TMtCustomVmpParam) ntfContent;
-                        if (vmpParam.emVmpMode != EmMtVmpMode.emMt_VMP_MODE_CTRL){ // 对于rtc仅需处理自定义模式的画面合成
-                            KLog.p(KLog.WARN, "ignore vmp mode %s", vmpParam.emVmpMode);
-                            return;
-                        }
-                        if (vmpParam.atVmpItem.isEmpty()){
-                            KLog.p(KLog.WARN, "vmp list empty");
-                            return;
-                        }
-
-                        List<Conferee> conferees = Stream.of(vmpParam.atVmpItem)
+                    value -> {
+                        List<Conferee> conferees = Stream.of(value.atVmpItem)
                                 .filter(it -> { // 过滤掉无效的画面合成方。画面合成方数量不足合成风格的画面数时，平台会用无效的与会方填充列表。
                                     boolean valid = it.tMtid.isValid();
                                     if (!valid){
@@ -1429,7 +1444,7 @@ public class WebRtcManager extends Caster<Msg>{
                                 .map(it -> {
                                     Conferee c = findConferee(it.tMtid.dwMcuId, it.tMtid.dwTerId, Conferee.ConfereeType.Normal);
                                     if (c != null) {
-                                        c.setInCompositedScene(vmpParam.bForce);
+                                        c.setInCompositedScene(value.bForce);
                                         c.setOrderInCompositedScene(it.dwVmpItem_Idx);
                                     }
                                     return c;
@@ -1440,36 +1455,34 @@ public class WebRtcManager extends Caster<Msg>{
                                     return order1 - order2;
                                 })
                                 .collect(Collectors.toList());
+                        vmpConferees.clear();
+                        vmpConferees.addAll(conferees);
+                        return !conferees.isEmpty() && !conferees.contains(null);
+                    },
 
-                        if (conferees.isEmpty()){
-                            KLog.p(KLog.WARN, "vmp conferees list empty");
+                    value -> {
+                        if (value.bForce == forceScenesComposited){
+                            // 开启普通画面合成和关闭强制画面合成是同一条消息且内容一致，我们需借助本地保存的状态区分这两种场景。
+                            KLog.p(KLog.WARN, "ScenesComposited state not changed, open=%s", value.bForce);
                             return;
                         }
+                        forceScenesComposited = value.bForce;
 
-                        if (conferees.contains(null)){
-                            if (triedCount == 3){
-                                KLog.p(KLog.ERROR, "tried %s times, some vmp conferee has still not joined yet", triedCount);
-                                return;
-                            }
-                            KLog.p(KLog.WARN, "some vmp conferee has not joined yet, wait for a moment...");
-                            handler.postDelayed(this, 1000);
-                            return;
-                        }
-
-                        if (vmpParam.bForce == forceScenesComposited){ // 开启普通画面合成和关闭强制画面合成是同一条消息且内容一致，
-                                                                       // 我们需借助本地保存的状态区分这两种场景。
-                            KLog.p(KLog.WARN, "forceScenesComposited=%s, vmpParam.bForce=%s", forceScenesComposited, vmpParam.bForce);
-                            return;
-                        }
-                        forceScenesComposited = vmpParam.bForce;
-
-                        if (vmpParam.bForce){
-                            Stream.of(getNtfListeners(ScenesCompositedListener.class)).forEach(it-> it.onComposite(conferees));
+                        if (value.bForce){
+                            KLog.p("onComposite(vmpConferees=%s)", vmpConferees);
+                            Stream.of(getNtfListeners(ScenesCompositedListener.class)).forEach(it-> it.onComposite(vmpConferees));
                         }else {
-                            Stream.of(getNtfListeners(ScenesCompositedListener.class)).forEach(it-> it.onCancelComposite(conferees));
+                            KLog.p("onCancelComposite(vmpConferees=%s)", vmpConferees);
+                            Stream.of(getNtfListeners(ScenesCompositedListener.class)).forEach(it-> it.onCancelComposite(vmpConferees));
                         }
-                    }
-                });
+                    },
+
+                    maxTimesToTry,
+                    interval,
+
+                    value -> KLog.p(KLog.ERROR, "some vmp conferee has still not joined yet after trying %s times in %s milliseconds.",maxTimesToTry, interval*maxTimesToTry)
+                );
+
                 break;
 
         }
@@ -2727,7 +2740,24 @@ public class WebRtcManager extends Caster<Msg>{
 
         }
 
-
+        @Override
+        public String toString() {
+            return "Conferee{" +
+                    "id='" + id + '\'' +
+                    ", mcuId=" + mcuId +
+                    ", terId=" + terId +
+                    ", e164='" + e164 + '\'' +
+                    ", alias='" + alias + '\'' +
+                    ", isPresenter=" + isPresenter +
+                    ", isKeynoteSpeaker=" + isKeynoteSpeaker +
+                    ", isVIP=" + isVIP +
+                    ", isMuted=" + isMuted +
+                    ", volume=" + volume +
+                    ", isSelectedToWatch=" + isSelectedToWatch +
+                    ", isInCompositedScene=" + isInCompositedScene +
+                    ", orderInCompositedScene=" + orderInCompositedScene +
+                    '}';
+        }
 
         // 与会方类型
         public enum ConfereeType{
