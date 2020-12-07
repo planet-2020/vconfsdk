@@ -5434,7 +5434,7 @@ public class WebRtcManager extends Caster<Msg>{
     private StatsHelper.Stats preAssSubscriberStats;
 
     // 统计信息采集周期。// 单位：毫秒
-    private final int STATS_INTERVAL = 500;
+    private final int STATS_INTERVAL = 1000;
     // 已采集次数
     private int collectStatsCount;
 
@@ -5445,7 +5445,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     // 保存最近多久时间段的统计信息。单位：秒
     private final int keptDuration = 30;
-    private final int keptSize = Math.max(keptDuration*1000/500, 1);
+    private final int keptSize = Math.max(keptDuration*1000/STATS_INTERVAL, 1);
     // 近期统计信息。按时间顺序从老到新排序，尾部最新。
     private final EvictingDeque<Statistics> recentStats = new EvictingDeque<>(keptSize);
     private Statistics latestStats(){
@@ -5516,7 +5516,7 @@ public class WebRtcManager extends Caster<Msg>{
                 Stream.of(getNtfListeners(StatsListener.class)).forEach(statsListener -> statsListener.onStats(latestStats()));
 
                 if (collectStatsCount >= calcRecvBitrateStartCount) {
-                    int bitrate = calcRecvBitrate(30);
+                    int bitrate = calcRecvBitrate(calcRecvBitrateDuration);
                     if (isMatchPeriod(3000)) {
                         KLog.p("calcRecvBitrate=%s, lastReportedRecvBitrate=%s", bitrate, lastReportedRecvBitrate);
                     }
@@ -5527,7 +5527,7 @@ public class WebRtcManager extends Caster<Msg>{
                     }
                 }
 
-                if (showStatistics && isMatchPeriod(2000)){
+                if (showStatistics && isMatchPeriod(2000)){ // 2s刷新一次统计信息
                     Stream.of(conferees).forEach(Conferee::refreshDisplays);
                 }
 
