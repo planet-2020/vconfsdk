@@ -2053,19 +2053,14 @@ public class WebRtcManager extends Caster<Msg>{
         /** 身处画面合成*/
         private static final int IN_COMPOSITED_SCENE_MASK = 0x8;
 
-
-        /** 是否已哑音*/
-        private boolean isMuted;
         /** 音量[0, 100]*/
         private int volume;
-        /** 是否处于被选看状态*/
-        private boolean isSelectedToWatch;
-        /** 是否身处画面合成*/
-        private boolean isInCompositedScene;
         /** 在画面合成中的次序。次序越靠前的优先级越高。0的优先级最高。
-         界面可依据该优先级决定各与会方画面展示位置。 */
+         界面可依据该优先级决定各与会方画面展示位置。
+         仅当{@code isInCompositedScene()=true}时有用
+         */
         private int orderInCompositedScene;
-        /** 上一次界面刷新的时间戳*/
+        /** 上一次Display刷新的时间戳*/
         private long lastRefreshTimestamp;
 
         /** 音频通道状态*/
@@ -2215,30 +2210,31 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         public boolean isMuted() {
-            return isMuted;
+            return (state & MUTED_MASK) != 0;
         }
 
         private void setMuted(boolean muted) {
             if (isMyself()){
                 instance.config.isMuted = muted;
             }
-            if (muted != isMuted) {
-                isMuted = muted;
-                if (muted){
-                    volume = 0;
-                    if (audioSignalState == AudioSignalState.Activated) {
-                        audioSignalState = AudioSignalState.Normal;
-                    }
-                }
+            if (isMuted() != muted){
+                state ^= MUTED_MASK;
                 refreshDisplays();
             }
         }
 
         /**
-         * 是否为语音激励方
+         * 是否处于语音激励状态
          * */
         public boolean isVoiceActivated(){
-            return audioSignalState == AudioSignalState.Activated;
+            return (state & VOICE_ACTIVATED_MASK) != 0;
+        }
+
+        private void setVoiceActivated(boolean voiceActivated){
+            if (isVoiceActivated() != voiceActivated){
+                state ^= VOICE_ACTIVATED_MASK;
+                refreshDisplays();
+            }
         }
 
         public int getVolume() {
@@ -2253,19 +2249,23 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         public boolean isSelectedToWatch() {
-            return isSelectedToWatch;
+            return (state & SELECTED_TO_WATCH_MASK) != 0;
         }
 
         private void setSelectedToWatch(boolean selectedToWatch) {
-            isSelectedToWatch = selectedToWatch;
+            if (isSelectedToWatch() != selectedToWatch){
+                state ^= SELECTED_TO_WATCH_MASK;
+            }
         }
 
         public boolean isInCompositedScene() {
-            return isInCompositedScene;
+            return (state & IN_COMPOSITED_SCENE_MASK) != 0;
         }
 
         private void setInCompositedScene(boolean inCompositedScene) {
-            isInCompositedScene = inCompositedScene;
+            if (isInCompositedScene() != inCompositedScene){
+                state ^= IN_COMPOSITED_SCENE_MASK;
+            }
         }
 
         public int getOrderInCompositedScene() {
@@ -2799,7 +2799,6 @@ public class WebRtcManager extends Caster<Msg>{
         private enum AudioSignalState {
             Idle,
             Normal,
-            Activated, // 语音激励
         }
 
         // 视频通道状态
@@ -3295,7 +3294,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
 
             // 绘制语音激励deco
-//            if (Conferee.AudioSignalState.Activated == audioSignalState){
+//            if (conferee.isVoiceActivated()){
 //                conferee.voiceActivatedDeco.set(0, 0, displayWidth, displayHeight);
 //                canvas.drawRect(conferee.voiceActivatedDeco, Conferee.voiceActivatedDecoPaint);
 //            }
@@ -3571,10 +3570,10 @@ public class WebRtcManager extends Caster<Msg>{
      * 查找当前处于语音激励状态的与会方
      * */
     public Conferee findVoiceActivatedConferee(){
-        if (myself.getAudioSignalState() == Conferee.AudioSignalState.Activated){
+        if (myself.isVoiceActivated()){
             return myself;
         }else{
-            return Stream.of(conferees).filter(it -> it.getAudioSignalState() == Conferee.AudioSignalState.Activated).findFirst().orElse(null);
+            return Stream.of(conferees).filter(Conferee::isVoiceActivated).findFirst().orElse(null);
         }
     }
 
@@ -5718,20 +5717,20 @@ public class WebRtcManager extends Caster<Msg>{
             int threshold = 10; // 小于该值我们认为不是人在说话，是环境噪音
             if (preMaxAudioConferee != maxAudioConferee){
                 if (preMaxAudioConferee != null){
-                    preMaxAudioConferee.setAudioSignalState(Conferee.AudioSignalState.Normal);
+                    preMaxAudioConferee.setVoiceActivated(false);
                 }
                 if (maxAudioConferee != null && maxAudioLevel >= threshold){
-                    maxAudioConferee.setAudioSignalState(Conferee.AudioSignalState.Activated);
+                    maxAudioConferee.setVoiceActivated(true);
                 }
             }else{
                 if (maxAudioConferee != null && maxAudioLevel < threshold){
-                    maxAudioConferee.setAudioSignalState(Conferee.AudioSignalState.Normal);
+                    maxAudioConferee.setVoiceActivated(false);
                 }
             }
         }else{
             KLog.p(KLog.ERROR, "no max audio level conferee!");
             if (preMaxAudioConferee != null){
-                preMaxAudioConferee.setAudioSignalState(Conferee.AudioSignalState.Normal);
+                preMaxAudioConferee.setVoiceActivated(false);
             }
         }
 

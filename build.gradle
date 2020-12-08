@@ -11,6 +11,7 @@ buildscript {
         KEDA_GOOGLE = 'http://172.16.6.154:9081/repository/aliyun_google/'
         KEDA_JCENTER = 'http://172.16.6.154:9081/repository/aliyun_jcenter/'
         KEDA_GRADLE_PLUGIN = 'http://172.16.6.154:9081/repository/gradle-plugin_group/'
+        KEDA_PUBLIC = 'http://172.16.6.154:9081/repository/public/'
         KEDA_SNAPSHOT = 'http://172.16.6.154:9081/repository/snapshots/' // keda自己发布的snapshot版的artifacts
         KEDA_RELEASE = 'http://172.16.6.154:9081/repository/releases/' // keda自己发布的release版的artifacts
         KEDA_ALIRELEASE = 'http://172.16.6.154:9081/repository/aliyun/' // 映射到ALI_RELEASE
