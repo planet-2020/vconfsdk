@@ -2035,12 +2035,25 @@ public class WebRtcManager extends Caster<Msg>{
 
         private final ConfereeType type;
 
-        /** 是否为主持人 */
-        private boolean isPresenter;
-        /** 是否为主讲人 */
-        private boolean isKeynoteSpeaker;
-        /** 是否为VIP*/
-        private boolean isVIP;
+        private int role;
+        /** 主持人 */
+        private static final int PRESENTER_MASK = 0x1;
+        /** 主讲人 */
+        private static final int KEYNOTE_SPEAKER_MASK = 0x2;
+        /** VIP*/
+        private static final int VIP_MASK = 0x4;
+
+        private int state;
+        /** 哑音*/
+        private static final int MUTED_MASK = 0x1;
+        /** 语音激励*/
+        private static final int VOICE_ACTIVATED_MASK = 0x2;
+        /** 被选看*/
+        private static final int SELECTED_TO_WATCH_MASK = 0x4;
+        /** 身处画面合成*/
+        private static final int IN_COMPOSITED_SCENE_MASK = 0x8;
+
+
         /** 是否已哑音*/
         private boolean isMuted;
         /** 音量[0, 100]*/
@@ -2172,27 +2185,33 @@ public class WebRtcManager extends Caster<Msg>{
         }
 
         public boolean isPresenter() {
-            return isPresenter;
+            return (role & PRESENTER_MASK) != 0;
         }
 
         private void setPresenter(boolean presenter) {
-            isPresenter = presenter;
+            if (isPresenter() != presenter){
+                role ^= PRESENTER_MASK;
+            }
         }
 
         public boolean isKeynoteSpeaker() {
-            return isKeynoteSpeaker;
+            return (role & KEYNOTE_SPEAKER_MASK) != 0;
         }
 
         private void setKeynoteSpeaker(boolean keynoteSpeaker) {
-            isKeynoteSpeaker = keynoteSpeaker;
+            if (isKeynoteSpeaker() != keynoteSpeaker){
+                role ^= KEYNOTE_SPEAKER_MASK;
+            }
         }
 
         public boolean isVIP() {
-            return isVIP;
+            return (role & VIP_MASK) != 0;
         }
 
         private void setVIP(boolean VIP) {
-            isVIP = VIP;
+            if (isVIP() != VIP){
+                role ^= VIP_MASK;
+            }
         }
 
         public boolean isMuted() {
@@ -2761,24 +2780,6 @@ public class WebRtcManager extends Caster<Msg>{
 
         }
 
-        @Override
-        public String toString() {
-            return "Conferee{" +
-                    "id='" + id + '\'' +
-                    ", mcuId=" + mcuId +
-                    ", terId=" + terId +
-                    ", e164='" + e164 + '\'' +
-                    ", alias='" + alias + '\'' +
-                    ", isPresenter=" + isPresenter +
-                    ", isKeynoteSpeaker=" + isKeynoteSpeaker +
-                    ", isVIP=" + isVIP +
-                    ", isMuted=" + isMuted +
-                    ", volume=" + volume +
-                    ", isSelectedToWatch=" + isSelectedToWatch +
-                    ", isInCompositedScene=" + isInCompositedScene +
-                    ", orderInCompositedScene=" + orderInCompositedScene +
-                    '}';
-        }
 
         // 与会方类型
         public enum ConfereeType{
