@@ -4981,59 +4981,64 @@ public class WebRtcManager extends Caster<Msg>{
                 String trackId = track.id();
                 KLog.p("create remote video track %s/%s", kdStreamId, trackId);
 
-                handler.post(new Runnable() {
-                    int retriedCount;
-                    @Override
-                    public void run() {
-                        if (retriedCount >= 2){
-                            return;
-                        }
-                        kdStreamId2RtcTrackIdMap.put(kdStreamId, trackId);
-                        KdStream remoteStream = findStream(kdStreamId);
-                        if (null == remoteStream) {
-                            KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
-                                    "please check StreamJoined/StreamList and onSetOfferCmd to make sure they both contain kdStreamId "+kdStreamId+"\n and also " +
-                                    "make sure the stream corresponding to this kdStreamId have not left yet!");
-                            return;
-                        }
-                        Conferee owner = remoteStream.getOwner();
-                        if (null == owner){
-                            KLog.p(KLog.ERROR, "owner of stream %s has not joined yet? wait then try again...");
-                            handler.postDelayed(this, 2000);
-                            ++retriedCount;
-                            return;
-                        }
+                handler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, trackId));
 
-                        owner.setVideoChannelState(Conferee.VideoChannelState.Bound);
+                Conferee[] ownerWrapper = new Conferee[1];
+                KdStream[] remoteStreamWrapper = new KdStream[1];
+                int maxTimesToTry = 3, interval = 2000;
+                ConditionalConsumer.tryConsume(
+                null,
+                value -> {
+                    remoteStreamWrapper[0] = findStream(kdStreamId);
+                    ownerWrapper[0] = remoteStreamWrapper[0] != null ? remoteStreamWrapper[0].getOwner() : null;
+                    return ownerWrapper[0] != null;
+                },
+                o -> {
+                    Conferee owner = ownerWrapper[0];
+                    owner.setVideoChannelState(Conferee.VideoChannelState.Bound);
 
-                        if(owner.isVirtualAssStreamConferee()){
-                            // 接收双流先展示缓冲图标
-                            owner.setVideoSignalState(Conferee.VideoSignalState.Buffering, false);
-                            handler.postDelayed(() -> owner.refreshDisplays(), 1000);
-                            handler.postDelayed(() -> {
-                                if (owner.getVideoSignalState() == Conferee.VideoSignalState.Buffering) {
-                                    owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
-                                }
-                            }, 3000);
-                        }else {
-                            owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
-                        }
-
-                        if (owner.isVirtualAssStreamConferee() ? config.saveRecvedAssVideo : config.saveRecvedMainVideo) {
-                            // 保存码流用于调试
-                            saveVideo(track, owner.getId());
-                        }
-
-                        executor.execute(() -> {
-                            if (null == pc){
-                                KLog.p(KLog.ERROR, "peerConnection destroyed");
-                                return;
+                    if(owner.isVirtualAssStreamConferee()){
+                        // 接收双流先展示缓冲图标
+                        owner.setVideoSignalState(Conferee.VideoSignalState.Buffering, false);
+                        handler.postDelayed(() -> owner.refreshDisplays(), 1000);
+                        handler.postDelayed(() -> {
+                            if (owner.getVideoSignalState() == Conferee.VideoSignalState.Buffering) {
+                                owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
                             }
-                            KLog.p("bind track %s to conferee %s", trackId, owner.getId());
-                            track.addSink(owner);
-                        });
+                        }, 3000);
+                    }else {
+                        owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
+                    }
+
+                    if (owner.isVirtualAssStreamConferee() ? config.saveRecvedAssVideo : config.saveRecvedMainVideo) {
+                        // 保存码流用于调试
+                        saveVideo(track, owner.getId());
+                    }
+
+                    executor.execute(() -> {
+                        if (null == pc){
+                            KLog.p(KLog.ERROR, "peerConnection destroyed");
+                            return;
+                        }
+                        KLog.p("bind track %s to conferee %s", trackId, owner.getId());
+                        track.addSink(owner);
+                    });
+                },
+
+                maxTimesToTry,
+                interval,
+
+                o -> {
+                    if (remoteStreamWrapper[0] == null){
+                        KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
+                                "please check StreamJoined/StreamList and onSetOfferCmd to make sure they both contain kdStreamId "+kdStreamId+"\n and also " +
+                                "make sure the stream corresponding to this kdStreamId have not left yet!");
+                    }else if (ownerWrapper[0] == null){
+                        KLog.p(KLog.ERROR, "owner of stream(%s) has still not joined yet after trying %s times in %s milliseconds.",
+                                kdStreamId, maxTimesToTry, interval*maxTimesToTry);
                     }
                 });
+
             });
         }
 
@@ -5098,33 +5103,39 @@ public class WebRtcManager extends Caster<Msg>{
 
                 KLog.p("remote audio track %s/%s created", kdStreamId, trackId);
 
-                handler.post(new Runnable() {
-                    int retriedCount;
-                    @Override
-                    public void run() {
-                        if (retriedCount>=2){
-                            return;
-                        }
-                        kdStreamId2RtcTrackIdMap.put(kdStreamId, trackId);
-                        KdStream remoteStream = findStream(kdStreamId);
-                        if (null == remoteStream) {
-                            KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
-                                    "please check StreamJoined/StreamList and onSetOfferCmd to make sure they both contain kdStreamId "+kdStreamId+"\n and also " +
-                                    "make sure the stream corresponding to this kdStreamId have not left yet!");
-                            return;
-                        }
-                        Conferee owner = remoteStream.getOwner();
-                        if (null == owner){
-                            KLog.p(KLog.ERROR, "owner of stream %s has not joined yet? wait then try again...");
-                            handler.postDelayed(this, 2000);
-                            ++retriedCount;
-                            return;
-                        }
+                handler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, trackId));
 
-                        owner.setAudioChannelState(Conferee.AudioChannelState.Bound);
-                        owner.setAudioSignalState(Conferee.AudioSignalState.Normal); // XXX 一个与会方可能有多个音轨
-                    }
-                });
+
+                Conferee[] ownerWrapper = new Conferee[1];
+                KdStream[] remoteStreamWrapper = new KdStream[1];
+                int maxTimesToTry = 3, interval = 2000;
+                ConditionalConsumer.tryConsume(
+                        null,
+                        value -> {
+                            remoteStreamWrapper[0] = findStream(kdStreamId);
+                            ownerWrapper[0] = remoteStreamWrapper[0] != null ? remoteStreamWrapper[0].getOwner() : null;
+                            return ownerWrapper[0] != null;
+                        },
+                        o -> {
+                            Conferee owner = ownerWrapper[0];
+                            owner.setAudioChannelState(Conferee.AudioChannelState.Bound);
+                            owner.setAudioSignalState(Conferee.AudioSignalState.Normal); // XXX 一个与会方可能有多个音轨
+                        },
+
+                        maxTimesToTry,
+                        interval,
+
+                        o -> {
+                            if (remoteStreamWrapper[0] == null){
+                                KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
+                                        "please check StreamJoined/StreamList and onSetOfferCmd to make sure they both contain kdStreamId "+kdStreamId+"\n and also " +
+                                        "make sure the stream corresponding to this kdStreamId have not left yet!");
+                            }else if (ownerWrapper[0] == null){
+                                KLog.p(KLog.ERROR, "owner of stream(%s) has still not joined yet after trying %s times in %s milliseconds.",
+                                        kdStreamId, maxTimesToTry, interval*maxTimesToTry);
+                            }
+                        });
+
             });
         }
 
