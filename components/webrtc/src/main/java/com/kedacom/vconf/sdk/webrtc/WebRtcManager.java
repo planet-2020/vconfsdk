@@ -1034,17 +1034,11 @@ public class WebRtcManager extends Caster<Msg>{
 
                 conferees.addAll(presentConferees);
 
-                Conferee assStreamConferee = tryCreateAssStreamConferee();
-                if (null != assStreamConferee){
-                    conferees.add(assStreamConferee);
-                    presentConferees.add(assStreamConferee);
-                }
-
                 if (!selfFilled) {
                     presentConferees.add(myself); // 己端放最后
                 }
-                Set<ConfereesChangedListener> listeners = getNtfListeners(ConfereesChangedListener.class);
-                Stream.of(presentConferees).forEach(conferee -> Stream.of(listeners).forEach(it -> it.onConfereeJoined(conferee)));
+                Stream.of(getNtfListeners(ConfereesChangedListener.class))
+                        .forEach(it -> Stream.of(presentConferees).forEach(it::onConfereeJoined));
                 break;
 
             case ConfereeJoined:
@@ -1052,11 +1046,6 @@ public class WebRtcManager extends Caster<Msg>{
                 if (findConferee(joined.mcuId, joined.terId, joined.type)==null){
                     conferees.add(joined);
                     Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeJoined(joined));
-                    assStreamConferee = tryCreateAssStreamConferee();
-                    if (null != assStreamConferee){
-                        conferees.add(assStreamConferee);
-                        Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeJoined(assStreamConferee));
-                    }
                 }
                 break;
 
@@ -1079,8 +1068,8 @@ public class WebRtcManager extends Caster<Msg>{
                         .collect(Collectors.toList());
 
                 if (!joinedStreams.isEmpty()) {
-                    boolean hasAssStreamJoined = Stream.of(joinedStreams).anyMatch(KdStream::isAss);
-                    if (hasAssStreamJoined) { // 有辅流加入
+                    KdStream joinedAssStream = Stream.of(joinedStreams).filter(KdStream::isAss).findFirst().orElse(null);
+                    if (joinedAssStream != null) {
                         // 检查是否已存在辅流，若存在则先踢掉之前的辅流。（按说我们应该依赖下层消息驱动我们做这件事，
                         // 我们期望下层先推一个StreamLeft消息，表示前面的辅流被抢了，而后再推StreamJoined，表示新的辅流加入，但实际的时序刚好相反。
                         // 所以，我们自己调整时序——当抢发辅流的StreamJoined到达时我们主动踢掉前面的辅流，然后前面辅流的StreamLeft抵达时我们忽略。）
@@ -1101,12 +1090,30 @@ public class WebRtcManager extends Caster<Msg>{
 
                     streams.addAll(joinedStreams);
 
-                    if (hasAssStreamJoined){
-                        assStreamConferee = tryCreateAssStreamConferee();
-                        if (null != assStreamConferee){
-                            conferees.add(assStreamConferee);
-                            Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeJoined(assStreamConferee));
-                        }
+                    if (joinedAssStream != null){ // 针对辅流我们尝试构造一个虚拟的“辅流与会方”
+                        final Conferee[] assStreamSender = new Conferee[1];
+                        int maxTimesToTry = 15, interval = 200;
+                        ConditionalConsumer.tryConsume(
+                            joinedAssStream,
+
+                            it -> {
+                                assStreamSender[0] = findConferee(it.getMcuId(), it.getTerId(), Conferee.ConfereeType.Normal);
+                                return assStreamSender[0] != null;
+                            },
+
+                            kdStream -> {
+                                Conferee sender = assStreamSender[0];
+                                Conferee assStreamConferee = new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, Conferee.ConfereeType.AssStream);
+                                conferees.add(assStreamConferee);
+                                Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeJoined(assStreamConferee));
+                            },
+
+                            maxTimesToTry,
+                            interval,
+
+                            kdStream -> KLog.p(KLog.ERROR, "assStreamSender(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
+                                    kdStream.getMcuId(), kdStream.getTerId(), maxTimesToTry, interval*maxTimesToTry)
+                        );
                     }
 
                     subscribeStream();
@@ -3348,15 +3355,15 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    private Conferee tryCreateAssStreamConferee(){
-        if (null == findAssConferee()){
-            Conferee sender = findAssStreamSenderExceptMyself();
-            if (null != sender){
-                return new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, Conferee.ConfereeType.AssStream);
-            }
-        }
-        return null;
-    }
+//    private Conferee tryCreateAssStreamConferee(){
+//        if (null == findAssConferee()){
+//            Conferee sender = findAssStreamSenderExceptMyself();
+//            if (null != sender){
+//                return new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, Conferee.ConfereeType.AssStream);
+//            }
+//        }
+//        return null;
+//    }
 
 
     /**
