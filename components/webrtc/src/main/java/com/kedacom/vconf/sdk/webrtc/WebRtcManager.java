@@ -159,10 +159,7 @@ public class WebRtcManager extends Caster<Msg>{
     private PeerConnectionWrapper assPubPcWrapper;
     private PeerConnectionWrapper assSubPcWrapper;
 
-    // 己端与会方
-    private Conferee myself;
-
-    // 与会方集合（不包含己端）
+    // 与会方集合
     private Set<Conferee> conferees = new LinkedHashSet<>();
 
     // 码流集合（没有己端的码流，业务组件没有上报）
@@ -778,6 +775,7 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
     private boolean doSetMute(boolean mute){
+        Conferee myself = findMyself();
         myself.setMuted(mute);
         PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.PUBLISHER);
         if (null == pcWrapper) {
@@ -900,6 +898,8 @@ public class WebRtcManager extends Caster<Msg>{
         }
         pcWrapper.switchCamera();  // FIXME 攝像頭可能不是在前後切換。下面的鏡像設置可能有誤
         config.isFrontCameraPreferred = !config.isFrontCameraPreferred;
+
+        Conferee myself = findMyself();
         for (Display display : myself.displays){
             display.setMirror(config.isFrontCameraPreferred); // 前置摄像头情况下需镜像显示
         }
@@ -931,6 +931,7 @@ public class WebRtcManager extends Caster<Msg>{
             }
             pcWrapper.setLocalVideoEnable(enable);
             config.isLocalVideoEnabled = enable;
+            Conferee myself = findMyself();
             myself.refreshDisplays();
         }
         return true;
@@ -966,6 +967,7 @@ public class WebRtcManager extends Caster<Msg>{
         if (showStatistics != show){
             showStatistics = show;
             Stream.of(conferees).forEach(Conferee::refreshDisplays);
+            Conferee myself = findMyself();
             if (null != myself) {
                 myself.refreshDisplays();
             }
@@ -1020,6 +1022,7 @@ public class WebRtcManager extends Caster<Msg>{
                         .filter(it-> findConferee(it.mcuId, it.terId, it.type)==null)
                         .collect(Collectors.toList());
 
+                Conferee myself = findMyself();
                 boolean selfFilled = myself.mcuId != 0 && myself.terId != 0;
                 Conferee self = Stream.of(presentConferees).filter(Conferee::isMyself).findFirst().orElse(null);
                 if (self != null) {
@@ -1173,6 +1176,7 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
             case SelfMuteStateChanged:
                 cont = (BaseTypeBool) ntfContent;
+                myself = findMyself();
                 if (cont.basetype != myself.isMuted()) {
                     doSetMute(cont.basetype);
                     Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(myself));
@@ -1228,14 +1232,10 @@ public class WebRtcManager extends Caster<Msg>{
                         TMtId mtId = value.tChairman;
                         if (mtId.isValid()) { // 此为指定主持人的场景
                             // 判断主持人是否已经入会
-                            if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId) {
-                                successorWrapper[0] = myself;
-                            } else {
-                                successorWrapper[0] = Stream.of(conferees)
-                                        .filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId)
-                                        .findFirst()
-                                        .orElse(null);
-                            }
+                            successorWrapper[0] = Stream.of(conferees)
+                                    .filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId)
+                                    .findFirst()
+                                    .orElse(null);
                             return successorWrapper[0] != null;
                         }else { // 此为取消主持人的场景
                             successorWrapper[0] = null;
@@ -1280,11 +1280,10 @@ public class WebRtcManager extends Caster<Msg>{
                     value -> {
                         TMtId mtId = value.tSpeaker;
                         if (mtId.isValid()){ // 指定主讲人
-                            if (myself.getTerId() == mtId.dwTerId && myself.getMcuId() == mtId.dwMcuId){
-                                successorWrapper[0] = myself;
-                            }else{
-                                successorWrapper[0] = Stream.of(conferees).filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId).findFirst().orElse(null);
-                            }
+                            successorWrapper[0] = Stream.of(conferees)
+                                    .filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId)
+                                    .findFirst()
+                                    .orElse(null);
                             return successorWrapper[0] != null;
                         }else{ // 取消主讲人
                             successorWrapper[0] = null;
@@ -1562,8 +1561,9 @@ public class WebRtcManager extends Caster<Msg>{
         createPeerConnectionFactory();
         createPeerConnectionWrapper();
 
-        myself = new Conferee(userE164);
+        Conferee myself = new Conferee(userE164);
         myself.setMuted(config.isMuted);
+        conferees.add(myself);
 
         callInfo = null;
 
@@ -1590,8 +1590,6 @@ public class WebRtcManager extends Caster<Msg>{
         rtcConnector.setSignalingEventsCallback(null);
 
         handler.removeCallbacksAndMessages(null);
-
-//        myself = null;
 
         conferees.clear();
 
@@ -1997,25 +1995,17 @@ public class WebRtcManager extends Caster<Msg>{
      * 获取与会方列表
      * @param excludeAssStreamConferee 是否排除辅流与会方，true排除
      * @param excludeAssStreamConferee 是否排除己端，true排除
-     * @return 与会方列表。已排序。排序规则：
-     *                          自然排序；
-     *                          优先比对昵称，昵称若不存在则使用其e164，e164不存在则使用其邮箱；
-     *                          若包含己端则己端排最后。
      * */
     public List<Conferee> getConferees(boolean excludeAssStreamConferee, boolean excludeSelf){
         List<Conferee> confereesList = new ArrayList<>();
         Conferee self =null;
         for(Conferee conferee : conferees){
-            if (excludeAssStreamConferee && conferee.isVirtualAssStreamConferee()){
+            if ( (excludeAssStreamConferee && conferee.isVirtualAssStreamConferee())
+                    || (excludeSelf && conferee.isMyself()) ){
                 continue;
             }
             confereesList.add(conferee);
         }
-        Collections.sort(confereesList);
-        if (!excludeSelf){
-            confereesList.add(myself);
-        }
-
         return confereesList;
     }
 
@@ -2295,7 +2285,7 @@ public class WebRtcManager extends Caster<Msg>{
          * */
         public boolean isMyself(){
             // NOTE：目前的实现必须通过e164判断
-            return e164.equals(instance.myself.e164);
+            return e164.equals(instance.userE164);
         }
 
         /**
@@ -3443,14 +3433,10 @@ public class WebRtcManager extends Caster<Msg>{
 
 
     private Conferee findConferee(int mcuId, int terId, Conferee.ConfereeType type){
-        if (mcuId == myself.getMcuId() && terId == myself.getTerId() && type == myself.type){
-            return myself;
-        }else {
-            return Stream.of(conferees)
-                    .filter(it -> it.mcuId == mcuId && it.terId == terId && it.type == type)
-                    .findFirst()
-                    .orElse(null);
-        }
+        return Stream.of(conferees)
+                .filter(it -> it.mcuId == mcuId && it.terId == terId && it.type == type)
+                .findFirst()
+                .orElse(null);
     }
 
     // NOTE: 查找范围不包含己端，己端没有对应的streamId，业务组件没报
@@ -3467,14 +3453,10 @@ public class WebRtcManager extends Caster<Msg>{
      * 根据与会方id查找与会方
      * */
     public Conferee findConfereeById(String id){
-        if (myself.getId().equals(id)){
-            return myself;
-        }else {
-            return Stream.of(conferees)
-                    .filter(it -> it.id.equals(id))
-                    .findFirst()
-                    .orElse(null);
-        }
+        return Stream.of(conferees)
+                .filter(it -> it.id.equals(id))
+                .findFirst()
+                .orElse(null);
     }
 
 
@@ -3482,14 +3464,10 @@ public class WebRtcManager extends Caster<Msg>{
      * 根据e164号查找与会方
      * */
     public Conferee findConfereeByE164(String e164, Conferee.ConfereeType type){
-        if (myself.getE164().equals(e164) && type == myself.type){
-            return myself;
-        }else {
-            return Stream.of(conferees)
-                    .filter(it-> it.e164.equals(e164) && it.type==type)
-                    .findFirst()
-                    .orElse(null);
-        }
+        return Stream.of(conferees)
+                .filter(it-> it.e164.equals(e164) && it.type==type)
+                .findFirst()
+                .orElse(null);
     }
 
 
@@ -3511,11 +3489,10 @@ public class WebRtcManager extends Caster<Msg>{
      * 查找辅流发送者
      * */
     public Conferee findAssStreamSender(){
-        if (myself.isSendingAssStream()){
-            return myself;
-        }else{
-            return findAssStreamSenderExceptMyself();
-        }
+        return Stream.of(conferees)
+                .filter(Conferee::isSendingAssStream)
+                .findFirst()
+                .orElse(null);
     }
 
 
@@ -3535,57 +3512,42 @@ public class WebRtcManager extends Caster<Msg>{
      * 查找主持人
      * */
     public Conferee findPresenter(){
-        if (myself.isPresenter()) {
-            return myself;
-        } else {
-            return Stream.of(conferees).filter(Conferee::isPresenter).findFirst().orElse(null);
-        }
+        return Stream.of(conferees).filter(Conferee::isPresenter).findFirst().orElse(null);
     }
 
     /**
      * 查找主讲人
      * */
     public Conferee findKeynoteSpeaker(){
-        if (myself.isKeynoteSpeaker()) {
-            return myself;
-        } else {
-            return Stream.of(conferees).filter(Conferee::isKeynoteSpeaker).findFirst().orElse(null);
-        }
+        return Stream.of(conferees).filter(Conferee::isKeynoteSpeaker).findFirst().orElse(null);
     }
 
     /**
      * 查找VIP
      * */
     public Set<Conferee> findVIPs(){
-        Set<Conferee> vips = new HashSet<>();
-        if (myself.isVIP()) {
-            vips.add(myself);
-        }
-        vips.addAll(Stream.of(conferees).filter(Conferee::isVIP).collect(Collectors.toSet()));
-
-        return vips;
+        return Stream.of(conferees).filter(Conferee::isVIP).collect(Collectors.toSet());
     }
 
     /**
      * 查找当前处于语音激励状态的与会方
      * */
     public Conferee findVoiceActivatedConferee(){
-        if (myself.isVoiceActivated()){
-            return myself;
-        }else{
-            return Stream.of(conferees).filter(Conferee::isVoiceActivated).findFirst().orElse(null);
-        }
+        return Stream.of(conferees).filter(Conferee::isVoiceActivated).findFirst().orElse(null);
     }
 
     /**
      * 查找当前处于选看状态的与会方
      * */
     public Conferee findSelectedToWatchConferee(){
-        if (myself.isSelectedToWatch()) {
-            return myself;
-        } else {
-            return Stream.of(conferees).filter(Conferee::isSelectedToWatch).findFirst().orElse(null);
-        }
+        return Stream.of(conferees).filter(Conferee::isSelectedToWatch).findFirst().orElse(null);
+    }
+
+    /**
+     * 查找己端与会方
+     * */
+    public Conferee findMyself(){
+        return Stream.of(conferees).filter(Conferee::isMyself).findFirst().orElse(null);
     }
 
 
@@ -3613,8 +3575,8 @@ public class WebRtcManager extends Caster<Msg>{
      * @param type display類型。
      * 根据Display类型默认有如下策略：
      * 1、分辨率优选
-     * 假设Conferee发布了3种不同分辨率的视频码流低、中、高，則Conferee分別展示在{@link Display.Type#THUMBNAIL}、{@link Display.Type#MAIN}、
-     * {@link Display.Type#FULLSCREEN}類型的Display中時訂閱的嗎流分別爲低、中、高，Conferee在不同类型的Display中切换展示时码流选择会动态变化。
+     * 假设Conferee A发布了3种不同分辨率的视频码流低、中、高，Conferee B订阅 A的码流。当B将A的码流分別展示在{@link Display.Type#THUMBNAIL}、{@link Display.Type#MAIN}、
+     * {@link Display.Type#FULLSCREEN}類型的Display中時訂閱的码流分辨率分別爲低、中、高，A的码流在不同类型的Display中切换展示时分辨率会动态变化。
      * NOTE：您可以通过{@link Display#setPreferredVideoQuality(int)}覆盖默认的分辨率选择策略。
      *       若多个Display绑定到了同一个Conferee，则它们实际展示的分辨率一致——对齐其中最高的。
      * 2、带宽享用优先级
@@ -4606,6 +4568,7 @@ public class WebRtcManager extends Caster<Msg>{
     private List<RtpParameters.Encoding> createEncodingList(boolean isForAssStream){
         List<RtpParameters.Encoding> encodings = new ArrayList<>();
         int confBitrate = callInfo.callBitrate;
+        Conferee myself = findMyself();
         boolean isSelfSendingAssStream = myself.isSendingAssStream();
         int userConfigLimit = config.videoMaxBitrate;
         boolean simulcast = config.isSimulcastEnabled && !isForAssStream; // 双流不需要simulcast
@@ -4835,6 +4798,7 @@ public class WebRtcManager extends Caster<Msg>{
          * 创建本地视频轨道。
          * */
         void createVideoTrack(@NonNull VideoCapturer videoCapturer){
+            Conferee myself = findMyself();
             executor.execute(() -> {
                 if (null == factory){
                     KLog.p(KLog.ERROR, "factory destroyed");
@@ -4927,6 +4891,7 @@ public class WebRtcManager extends Caster<Msg>{
                 pc.removeTrack(videoSender);
                 String trackId = localVideoTrack.id();
                 handler.post(() -> {
+                    Conferee myself = findMyself();
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
                     if(trackId.equals(LOCAL_VIDEO_TRACK_ID)){ // 仅处理主流的情形，参见createVideoTrack
@@ -4969,6 +4934,7 @@ public class WebRtcManager extends Caster<Msg>{
                 String kdStreamId = localAudioTrackId;
                 KLog.p("create local audio track %s/%s", kdStreamId, localAudioTrackId);
                 handler.post(() -> {
+                    Conferee myself = findMyself();
                     kdStreamId2RtcTrackIdMap.put(kdStreamId, localAudioTrackId);
                     myself.setAudioChannelState(Conferee.AudioChannelState.Bound);
                     myself.setAudioSignalState(Conferee.AudioSignalState.Normal); // XXX 一个与会方可能有多个音轨
@@ -4988,6 +4954,7 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p("localAudioTrack %s removed ", trackId);
 
                 handler.post(() -> {
+                    Conferee myself = findMyself();
                     String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(trackId);
                     kdStreamId2RtcTrackIdMap.remove(kdStreamId);
                     myself.setAudioChannelState(Conferee.AudioChannelState.Idle);
@@ -5154,8 +5121,8 @@ public class WebRtcManager extends Caster<Msg>{
                             return;
                         }
 
-                        myself.setAudioChannelState(Conferee.AudioChannelState.Bound);
-                        myself.setAudioSignalState(Conferee.AudioSignalState.Normal); // XXX 一个与会方可能有多个音轨
+                        owner.setAudioChannelState(Conferee.AudioChannelState.Bound);
+                        owner.setAudioSignalState(Conferee.AudioSignalState.Normal); // XXX 一个与会方可能有多个音轨
                     }
                 });
             });
@@ -5176,8 +5143,8 @@ public class WebRtcManager extends Caster<Msg>{
                         handler.post(() -> {
                             kdStreamId2RtcTrackIdMap.remove(kdStreamId);
                             if (owner != null && owner.getAudioStreams().isEmpty()){
-                                myself.setAudioChannelState(Conferee.AudioChannelState.Idle);
-                                myself.setAudioSignalState(Conferee.AudioSignalState.Idle); // XXX 一个与会方可能有多个音轨
+                                owner.setAudioChannelState(Conferee.AudioChannelState.Idle);
+                                owner.setAudioSignalState(Conferee.AudioSignalState.Idle); // XXX 一个与会方可能有多个音轨
                             }
                         });
                         KLog.p("stream %s removed", kdStreamId);
@@ -5562,6 +5529,7 @@ public class WebRtcManager extends Caster<Msg>{
         Statistics.AudioInfo audioInfo = null;
         int bitrate = 0;
         String codecMime = "";
+        Conferee myself = findMyself();
         if (!isAss){
             if (!config.isMuted && !myself.isMuted()) {
                 if (stats.audioOutboundRtp != null && preStats.audioOutboundRtp != null) {
@@ -5743,6 +5711,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         // 视频信号
         if (collectStatsCount % videoSignalCheckPerCount == 0) {
+            Conferee myself = findMyself();
             Stream.of(statistics.confereeRelated).forEach(it -> {
                 if (myself.getId().equals(it.confereeId)){
                     // 己端回显我们不根据统计信息展示视频信号，只受用户开关摄像头影响。
@@ -5777,6 +5746,7 @@ public class WebRtcManager extends Caster<Msg>{
         int periodNum = Math.max(duration*1000/STATS_INTERVAL, 1);
         int count = 0;
         int bitrateSum = 0;
+        Conferee myself = findMyself();
         Iterator<Statistics> it = recentStats.descendingIterator();
         while (it.hasNext() && count < periodNum){
             Statistics stats = it.next();
