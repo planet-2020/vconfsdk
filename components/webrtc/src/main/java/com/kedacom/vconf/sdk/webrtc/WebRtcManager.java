@@ -147,9 +147,9 @@ public class WebRtcManager extends Caster<Msg>{
 
     private static WebRtcManager instance;
 
-    private Application context;
+    private final Application context;
 
-    private RtcConnector rtcConnector = new RtcConnector();
+    private final RtcConnector rtcConnector = new RtcConnector();
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private EglBase eglBase;
@@ -160,16 +160,16 @@ public class WebRtcManager extends Caster<Msg>{
     private PeerConnectionWrapper assSubPcWrapper;
 
     // 与会方集合
-    private Set<Conferee> conferees = new LinkedHashSet<>();
+    private final Set<Conferee> conferees = new LinkedHashSet<>();
 
     // 码流集合（没有己端的码流，业务组件没有上报）
     // 所有码流均能在与会方集合中找到owner
-    private Set<KdStream> streams = new HashSet<>();
+    private final Set<KdStream> streams = new HashSet<>();
 
-    private Set<Display> displays = new LinkedHashSet<>();
+    private final Set<Display> displays = new LinkedHashSet<>();
 
     // 平台的StreamId到WebRTC的TrackId之间的映射
-    private BiMap<String, String> kdStreamId2RtcTrackIdMap = HashBiMap.create();
+    private final BiMap<String, String> kdStreamId2RtcTrackIdMap = HashBiMap.create();
 
     // 当前用户的e164
     private String userE164;
@@ -177,9 +177,9 @@ public class WebRtcManager extends Caster<Msg>{
     private RtcConnector.TCallInfo callInfo;
 
     // RTC配置
-    private RtcConfig.Config config = new RtcConfig.Config();
+    private final RtcConfig.Config config = new RtcConfig.Config();
 
-    private Handler handler = new Handler(Looper.getMainLooper()){
+    private final Handler handler = new Handler(Looper.getMainLooper()){
         @Override
         public void handleMessage(Message msg) {
         }
