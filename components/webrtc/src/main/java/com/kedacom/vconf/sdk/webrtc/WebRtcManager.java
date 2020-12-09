@@ -143,8 +143,6 @@ import pattern.ConditionalConsumer;
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class WebRtcManager extends Caster<Msg>{
 
-    private static final String TAG = WebRtcManager.class.getSimpleName();
-
     private static WebRtcManager instance;
 
     private final Application context;
@@ -163,12 +161,14 @@ public class WebRtcManager extends Caster<Msg>{
     private final Set<Conferee> conferees = new LinkedHashSet<>();
 
     // 码流集合（没有己端的码流，业务组件没有上报）
-    // 所有码流均能在与会方集合中找到owner
+    // 一个与会方可以有多个（音视频）码流。所有码流均能在与会方集合中找到owner
     private final Set<KdStream> streams = new HashSet<>();
 
+    // 显示器集合。
+    // 与会方画面展示在显示器中。一个与会方可以有多个显示器。
     private final Set<Display> displays = new LinkedHashSet<>();
 
-    // 平台的StreamId到WebRTC的TrackId之间的映射
+    // 科达的StreamId到WebRTC的TrackId之间的映射
     private final BiMap<String, String> kdStreamId2RtcTrackIdMap = HashBiMap.create();
 
     // 当前用户的e164
@@ -2664,10 +2664,10 @@ public class WebRtcManager extends Caster<Msg>{
 
         private void refreshDisplays(){
             instance.handler.removeCallbacks(refreshDisplaysRunnable);
-            // 延迟刷新以防止短时间内大量重复刷新，亦可改善关开摄像头时帧残留的问题。
             if (System.currentTimeMillis()-lastRefreshTimestamp > 300) {
                 doRefreshDisplays();
             }else {
+                // 延迟刷新以防止短时间内大量重复刷新，亦可改善关开摄像头时帧残留的问题。
                 instance.handler.postDelayed(refreshDisplaysRunnable, 150);
             }
         }
@@ -5480,8 +5480,6 @@ public class WebRtcManager extends Caster<Msg>{
 
                 processStats(latestStats());
 
-                Stream.of(getNtfListeners(StatsListener.class)).forEach(statsListener -> statsListener.onStats(latestStats()));
-
                 if (collectStatsCount >= calcRecvBitrateStartCount) {
                     int bitrate = calcRecvBitrate(calcRecvBitrateDuration);
                     if (isMatchPeriod(3000)) {
@@ -5494,9 +5492,11 @@ public class WebRtcManager extends Caster<Msg>{
                     }
                 }
 
-                if (showStatistics && isMatchPeriod(2000)){ // 2s刷新一次统计信息
+                if (showStatistics && isMatchPeriod(2000)){ // 2s刷新一次统计信息展示
                     Stream.of(conferees).forEach(Conferee::refreshDisplays);
                 }
+
+                Stream.of(getNtfListeners(StatsListener.class)).forEach(statsListener -> statsListener.onStats(latestStats()));
 
                 ++collectStatsCount;
 
