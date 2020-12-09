@@ -2309,7 +2309,11 @@ public class WebRtcManager extends Caster<Msg>{
             if (isMyself()){
                 return null != instance.sharedWindow;
             }else {
-                return instance.findAssStreamSenderExceptMyself() == this;
+                KdStream assStream = instance.findAssStream();
+                if (null == assStream) {
+                    return false;
+                }
+                return assStream.getMcuId()==mcuId && assStream.getTerId()==terId && Conferee.ConfereeType.Normal==type;
             }
         }
 
@@ -3355,17 +3359,6 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-//    private Conferee tryCreateAssStreamConferee(){
-//        if (null == findAssConferee()){
-//            Conferee sender = findAssStreamSenderExceptMyself();
-//            if (null != sender){
-//                return new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, Conferee.ConfereeType.AssStream);
-//            }
-//        }
-//        return null;
-//    }
-
-
     /**
      * 订阅码流
      * */
@@ -3500,18 +3493,6 @@ public class WebRtcManager extends Caster<Msg>{
                 .filter(Conferee::isSendingAssStream)
                 .findFirst()
                 .orElse(null);
-    }
-
-
-    /**
-     * 查找辅流发送者（不包含己端）
-     * */
-    private Conferee findAssStreamSenderExceptMyself(){
-        KdStream assStream = findAssStream();
-        if (null == assStream) {
-            return null;
-        }
-        return findConferee(assStream.getMcuId(), assStream.getTerId(), Conferee.ConfereeType.Normal);
     }
 
 
