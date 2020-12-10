@@ -23,8 +23,6 @@ import androidx.annotation.Nullable;
 
 import com.annimon.stream.Collectors;
 import com.annimon.stream.Stream;
-import com.annimon.stream.function.Consumer;
-import com.annimon.stream.function.Predicate;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.kedacom.vconf.sdk.amulet.Caster;
@@ -137,7 +135,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import pattern.ConditionalConsumer;
+import pattern.ConsumerHelper;
 
 
 @SuppressWarnings({"unused", "WeakerAccess"})
@@ -1093,26 +1091,26 @@ public class WebRtcManager extends Caster<Msg>{
                     if (joinedAssStream != null){ // 针对辅流我们尝试构造一个虚拟的“辅流与会方”
                         final Conferee[] assStreamSender = new Conferee[1];
                         int maxTimesToTry = 15, interval = 200;
-                        ConditionalConsumer.tryConsume(
-                            joinedAssStream,
+                        ConsumerHelper.tryConsume(
+                                WebRtcManager.this,
+                                joinedAssStream,
+                                it -> {
+                                    assStreamSender[0] = findConferee(it.getMcuId(), it.getTerId(), Conferee.ConfereeType.Normal);
+                                    return assStreamSender[0] != null;
+                                },
 
-                            it -> {
-                                assStreamSender[0] = findConferee(it.getMcuId(), it.getTerId(), Conferee.ConfereeType.Normal);
-                                return assStreamSender[0] != null;
-                            },
+                                kdStream -> {
+                                    Conferee sender = assStreamSender[0];
+                                    Conferee assStreamConferee = new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, Conferee.ConfereeType.AssStream);
+                                    conferees.add(assStreamConferee);
+                                    Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeJoined(assStreamConferee));
+                                },
 
-                            kdStream -> {
-                                Conferee sender = assStreamSender[0];
-                                Conferee assStreamConferee = new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, Conferee.ConfereeType.AssStream);
-                                conferees.add(assStreamConferee);
-                                Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeJoined(assStreamConferee));
-                            },
-
-                            maxTimesToTry,
-                            interval,
-
-                            kdStream -> KLog.p(KLog.ERROR, "assStreamSender(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
-                                    kdStream.getMcuId(), kdStream.getTerId(), maxTimesToTry, interval*maxTimesToTry)
+                                kdStream -> KLog.p(KLog.ERROR, "assStreamSender(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
+                                        kdStream.getMcuId(), kdStream.getTerId(), maxTimesToTry, interval * maxTimesToTry),
+                                0,
+                                maxTimesToTry,
+                                interval
                         );
                     }
 
@@ -1193,21 +1191,27 @@ public class WebRtcManager extends Caster<Msg>{
                 TMtEntityStatus state = (TMtEntityStatus) ntfContent;
                 final Conferee[] confereeWrapper = new Conferee[1];
                 int maxTimesToTry = 3, interval = 1000;
-                ConditionalConsumer.tryConsume(state, value -> {
-                    confereeWrapper[0] = findConferee(value.dwMcuId, value.dwTerId, Conferee.ConfereeType.Normal);
-                    return confereeWrapper[0] != null;
-                }, value -> {
-                    Conferee conferee = confereeWrapper[0];
-                    if (!conferee.isMyself() && conferee.isMuted() != value.tStatus.bIsMute){
-                        conferee.setMuted(value.tStatus.bIsMute);
-                        KLog.p("onMuteStateChanged(conferee=%s)", conferee);
-                        Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(conferee));
-                    }
-                },
-                maxTimesToTry,
-                interval,
-                value -> KLog.p(KLog.ERROR, "conferee(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
-                        value.dwMcuId, value.dwTerId, maxTimesToTry, interval*maxTimesToTry));
+                ConsumerHelper.tryConsume(
+                        WebRtcManager.this,
+                        state,
+                        value -> {
+                            confereeWrapper[0] = findConferee(value.dwMcuId, value.dwTerId, Conferee.ConfereeType.Normal);
+                            return confereeWrapper[0] != null;
+                        },
+                        value -> {
+                            Conferee conferee = confereeWrapper[0];
+                            if (!conferee.isMyself() && conferee.isMuted() != value.tStatus.bIsMute){
+                                conferee.setMuted(value.tStatus.bIsMute);
+                                KLog.p("onMuteStateChanged(conferee=%s)", conferee);
+                                Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(conferee));
+                            }
+                        },
+                        value -> KLog.p(KLog.ERROR, "conferee(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
+                                value.dwMcuId, value.dwTerId, maxTimesToTry, interval*maxTimesToTry),
+                        0,
+                        maxTimesToTry,
+                        interval
+                );
 
                 break;
 
@@ -1232,7 +1236,8 @@ public class WebRtcManager extends Caster<Msg>{
                 // 主持人变动通知可能在与会方入会/与会方列表通知之前抵达，而我们需要与会方信息来处理该通知，
                 // 因此我们使用“条件消费者”处理该消息。
                 maxTimesToTry = 3; interval = 1000;
-                ConditionalConsumer.tryConsume(
+                ConsumerHelper.tryConsume(
+                        WebRtcManager.this,
                     briefConfInfo,
 
                     value -> {
@@ -1268,20 +1273,21 @@ public class WebRtcManager extends Caster<Msg>{
                                 .forEach(it -> it.onPresenterChanged(predecessor, successor));
                     },
 
-                    maxTimesToTry,
-                    interval,
-
                     value -> {
                         TMtId mtId = value.tChairman;
                         KLog.p(KLog.ERROR, "presenter(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
                                 mtId.dwMcuId, mtId.dwTerId, maxTimesToTry, interval*maxTimesToTry);
-                    }
+                    },
+                    0,
+                    maxTimesToTry,
+                    interval
                 );
 
                 // 处理主讲人变更
                 // 主讲人变动通知可能在与会方入会/与会方列表通知之前抵达，而我们需要与会方信息来处理该通知，
                 // 因此我们使用“条件消费者”处理该消息。
-                ConditionalConsumer.tryConsume(
+                ConsumerHelper.tryConsume(
+                        WebRtcManager.this,
                     briefConfInfo,
 
                     value -> {
@@ -1316,14 +1322,15 @@ public class WebRtcManager extends Caster<Msg>{
                                 .forEach(it -> it.onKeynoteSpeakerChanged(predecessor, successor));
                     },
 
-                    maxTimesToTry,
-                    interval,
-
                     value -> {
                         TMtId mtId = value.tChairman;
                         KLog.p(KLog.ERROR, "keynoteSpeaker(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
                                 mtId.dwMcuId, mtId.dwTerId, maxTimesToTry, interval*maxTimesToTry);
-                    }
+                    },
+
+                    0,
+                    maxTimesToTry,
+                    interval
                 );
 
                 break;
@@ -1333,7 +1340,8 @@ public class WebRtcManager extends Caster<Msg>{
                 Set<Conferee> newVips = new HashSet<>();
                 maxTimesToTry = 3;
                 interval = 1000;
-                ConditionalConsumer.tryConsume(
+                ConsumerHelper.tryConsume(
+                        WebRtcManager.this,
                     tMtIds,
 
                     value -> {
@@ -1363,11 +1371,12 @@ public class WebRtcManager extends Caster<Msg>{
                                 .forEach(it -> it.onVipChanged(added, removed));
                     },
 
-                    maxTimesToTry,
-                    interval,
-
                     tMtIds12 -> KLog.p(KLog.ERROR, "some vip has still not joined yet after trying %s times in %s milliseconds.",
-                    maxTimesToTry, interval*maxTimesToTry)
+                            maxTimesToTry, interval*maxTimesToTry),
+
+                    0,
+                    maxTimesToTry,
+                    interval
                 );
 
                 break;
@@ -1397,7 +1406,8 @@ public class WebRtcManager extends Caster<Msg>{
                 interval = 1000;
                 final Conferee[] selectedStateChangedConfereeWrapper = new Conferee[1];
                 final Conferee[] oldSelectedConfereeWrapper = new Conferee[1];
-                ConditionalConsumer.tryConsume(
+                ConsumerHelper.tryConsume(
+                        WebRtcManager.this,
                     selectedToWatch,
 
                     value -> {
@@ -1430,14 +1440,15 @@ public class WebRtcManager extends Caster<Msg>{
                         }
                     },
 
-                    maxTimesToTry,
-                    interval,
-
                     value -> {
                         TMtId mtId12 = value.AssParam.tTer;
                         KLog.p(KLog.ERROR, "selected-to-watch conferee(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
                                 mtId12.dwMcuId, mtId12.dwTerId, maxTimesToTry, interval*maxTimesToTry);
-                    }
+                    },
+
+                    0,
+                    maxTimesToTry,
+                    interval
                 );
 
                 break;
@@ -1456,7 +1467,8 @@ public class WebRtcManager extends Caster<Msg>{
                 maxTimesToTry = 3;
                 interval = 1000;
                 List<Conferee> vmpConferees = new ArrayList<>();
-                ConditionalConsumer.tryConsume(
+                ConsumerHelper.tryConsume(
+                        WebRtcManager.this,
                     vmpParam,
 
                     value -> {
@@ -1504,10 +1516,12 @@ public class WebRtcManager extends Caster<Msg>{
                         }
                     },
 
-                    maxTimesToTry,
-                    interval,
+                    value -> KLog.p(KLog.ERROR, "some ScenesComposited conferee has still not joined yet after trying %s times in %s milliseconds.",
+                            maxTimesToTry, interval*maxTimesToTry),
 
-                    value -> KLog.p(KLog.ERROR, "some ScenesComposited conferee has still not joined yet after trying %s times in %s milliseconds.",maxTimesToTry, interval*maxTimesToTry)
+                    0,
+                    maxTimesToTry,
+                    interval
                 );
 
                 break;
@@ -1622,6 +1636,8 @@ public class WebRtcManager extends Caster<Msg>{
 //        }
 
         cancelReq(null, null);
+
+        ConsumerHelper.cancelOrdersOfConsumer(this);
 
         KLog.p("session stopped ");
 
@@ -4974,7 +4990,8 @@ public class WebRtcManager extends Caster<Msg>{
                 Conferee[] ownerWrapper = new Conferee[1];
                 KdStream[] remoteStreamWrapper = new KdStream[1];
                 int maxTimesToTry = 3, interval = 2000;
-                ConditionalConsumer.tryConsume(
+                ConsumerHelper.tryConsume(
+                        WebRtcManager.this,
                     null,
                     value -> {
                         remoteStreamWrapper[0] = findStream(kdStreamId);
@@ -5013,9 +5030,6 @@ public class WebRtcManager extends Caster<Msg>{
                         });
                     },
 
-                    maxTimesToTry,
-                    interval,
-
                     o -> {
                         if (remoteStreamWrapper[0] == null){
                             KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
@@ -5025,7 +5039,11 @@ public class WebRtcManager extends Caster<Msg>{
                             KLog.p(KLog.ERROR, "owner of stream(%s) has still not joined yet after trying %s times in %s milliseconds.",
                                     kdStreamId, maxTimesToTry, interval*maxTimesToTry);
                         }
-                    }
+                    },
+
+                    0,
+                    maxTimesToTry,
+                    interval
                 );
 
             });
@@ -5098,7 +5116,8 @@ public class WebRtcManager extends Caster<Msg>{
                 Conferee[] ownerWrapper = new Conferee[1];
                 KdStream[] remoteStreamWrapper = new KdStream[1];
                 int maxTimesToTry = 3, interval = 2000;
-                ConditionalConsumer.tryConsume(
+                ConsumerHelper.tryConsume(
+                        WebRtcManager.this,
                         null,
                         value -> {
                             remoteStreamWrapper[0] = findStream(kdStreamId);
@@ -5111,9 +5130,6 @@ public class WebRtcManager extends Caster<Msg>{
                             owner.setAudioSignalState(Conferee.AudioSignalState.Normal); // XXX 一个与会方可能有多个音轨
                         },
 
-                        maxTimesToTry,
-                        interval,
-
                         o -> {
                             if (remoteStreamWrapper[0] == null){
                                 KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
@@ -5123,7 +5139,12 @@ public class WebRtcManager extends Caster<Msg>{
                                 KLog.p(KLog.ERROR, "owner of stream(%s) has still not joined yet after trying %s times in %s milliseconds.",
                                         kdStreamId, maxTimesToTry, interval*maxTimesToTry);
                             }
-                        });
+                        },
+
+                        0,
+                        maxTimesToTry,
+                        interval
+                );
 
             });
         }

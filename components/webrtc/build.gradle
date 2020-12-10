@@ -21,7 +21,7 @@ dependencies {
     implementation 'com.google.protobuf:protobuf-java:3.9.2'
 
     api 'com.kedacom.vconf.sdk:common:2.0.4-SNAPSHOT'
-    implementation 'com.kedacom.vconf.sdk:utils:1.6.8-SNAPSHOT'
+    implementation 'com.kedacom.vconf.sdk:utils:1.7.0-SNAPSHOT'
     api 'com.kedacom.vconf.sdk:amulet:10.1.0'
 
 }
