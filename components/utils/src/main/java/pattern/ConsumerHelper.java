@@ -31,7 +31,7 @@ public class ConsumerHelper {
      * @param activity 满足前置条件时的消费行为
      * @param activityIfFailed 不满足前置条件时的行为
      * @param delay 执行订单的延迟。单位：毫秒
-     * @return 订单号。一次消费生成一个订单，订单号唯一。
+     * @return 订单号。一次消费生成一个订单，订单号大于0且唯一。
      * */
     public static <T> int consume(@NonNull Object consumer,
                                    @Nullable T product,
@@ -59,6 +59,7 @@ public class ConsumerHelper {
      * @param delay 执行订单的延迟。单位：毫秒
      * @param maxTimesToTry 最大尝试次数。若<=0则表示无限次。（尝试次数包括首次，例如：尝试次数为1则表示仅试一次不重试，为2表示若失败重试一次）
      * @param interval 重试间隔时长。单位：毫秒
+     * @return 订单号。一次消费生成一个订单，订单号大于0且唯一。
      * */
     public static <T> int tryConsume(@NonNull Object consumer, @Nullable T product, @NonNull Predicate<T> precondition, @NonNull Consumer<T> activity,
                                       @Nullable Consumer<T> activityIfFailed, int delay, int maxTimesToTry, int interval){
