@@ -198,7 +198,7 @@ public class WebRtcManager extends Caster<Msg>{
         return instance;
     }
 
-    // 启动业务组件webrtc服务
+    // 启动组件webrtc服务
     private void startService(){
         // 启动服务过程中该模块其它请求禁止下发
         disableReq(true);
@@ -976,26 +976,29 @@ public class WebRtcManager extends Caster<Msg>{
     // 强制画面合成是否已开启
     private boolean forceScenesComposited;
 
-    private final Runnable reloginFailedRunnable = () -> Stream.of(getNtfListeners(LoginStateChangedListener.class))
-            .forEach(it -> it.onLoginStateChanged(RtcResultCode.UnknownServerAddress));
+    private int loginStateChangedOrderId = -1;
     @Override
     protected void onNtf(Msg ntf, Object ntfContent) {
 
         switch (ntf){
             case LoginStateChanged:
-                handler.removeCallbacks(reloginFailedRunnable);
                 TRegResultNtf regState = (TRegResultNtf) ntfContent;
                 int resCode = RtcResultCode.trans(ntf, regState.AssParam.basetype);
-                if (RtcResultCode.LoggedIn != resCode) {
-                    if (RtcResultCode.UnknownServerAddress == resCode){
-                        // 组件在重连，我们静静等待
-                        handler.postDelayed(reloginFailedRunnable,
-                                40*1000 // 业务组件每次重连的最大耗时
-                        );
-                    }else {
-                        Stream.of(getNtfListeners(LoginStateChangedListener.class)).forEach(it -> it.onLoginStateChanged(resCode));
-                    }
-                }
+                ConsumerHelper.cancelOrder(loginStateChangedOrderId); // 新的LoginStateChanged抵达时取消之前的订单
+                loginStateChangedOrderId = ConsumerHelper.consume(
+                        WebRtcManager.this,
+                        resCode,
+                        value -> RtcResultCode.UnknownServerAddress == value,
+                        v -> Stream.of(getNtfListeners(LoginStateChangedListener.class)).forEach(it -> it.onLoginStateChanged(v)),
+                        v -> {
+                            if (RtcResultCode.LoggedIn != v) {
+                                Stream.of(getNtfListeners(LoginStateChangedListener.class)).forEach(it -> it.onLoginStateChanged(v));
+                            }
+                        },
+                        40*1000, // 业务组件每次重连的最大耗时
+                        0
+                );
+
                 break;
 
             case CallIncoming:
@@ -1108,7 +1111,6 @@ public class WebRtcManager extends Caster<Msg>{
 
                                 kdStream -> KLog.p(KLog.ERROR, "assStreamSender(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
                                         kdStream.getMcuId(), kdStream.getTerId(), maxTimesToTry, interval * maxTimesToTry),
-                                0,
                                 maxTimesToTry,
                                 interval
                         );
@@ -1208,7 +1210,7 @@ public class WebRtcManager extends Caster<Msg>{
                         },
                         value -> KLog.p(KLog.ERROR, "conferee(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
                                 value.dwMcuId, value.dwTerId, maxTimesToTry, interval*maxTimesToTry),
-                        0,
+
                         maxTimesToTry,
                         interval
                 );
@@ -1278,7 +1280,7 @@ public class WebRtcManager extends Caster<Msg>{
                         KLog.p(KLog.ERROR, "presenter(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
                                 mtId.dwMcuId, mtId.dwTerId, maxTimesToTry, interval*maxTimesToTry);
                     },
-                    0,
+
                     maxTimesToTry,
                     interval
                 );
@@ -1328,7 +1330,7 @@ public class WebRtcManager extends Caster<Msg>{
                                 mtId.dwMcuId, mtId.dwTerId, maxTimesToTry, interval*maxTimesToTry);
                     },
 
-                    0,
+
                     maxTimesToTry,
                     interval
                 );
@@ -1374,7 +1376,7 @@ public class WebRtcManager extends Caster<Msg>{
                     tMtIds12 -> KLog.p(KLog.ERROR, "some vip has still not joined yet after trying %s times in %s milliseconds.",
                             maxTimesToTry, interval*maxTimesToTry),
 
-                    0,
+
                     maxTimesToTry,
                     interval
                 );
@@ -1446,7 +1448,7 @@ public class WebRtcManager extends Caster<Msg>{
                                 mtId12.dwMcuId, mtId12.dwTerId, maxTimesToTry, interval*maxTimesToTry);
                     },
 
-                    0,
+
                     maxTimesToTry,
                     interval
                 );
@@ -1519,7 +1521,7 @@ public class WebRtcManager extends Caster<Msg>{
                     value -> KLog.p(KLog.ERROR, "some ScenesComposited conferee has still not joined yet after trying %s times in %s milliseconds.",
                             maxTimesToTry, interval*maxTimesToTry),
 
-                    0,
+
                     maxTimesToTry,
                     interval
                 );
@@ -5041,7 +5043,6 @@ public class WebRtcManager extends Caster<Msg>{
                         }
                     },
 
-                    0,
                     maxTimesToTry,
                     interval
                 );
@@ -5141,7 +5142,6 @@ public class WebRtcManager extends Caster<Msg>{
                             }
                         },
 
-                        0,
                         maxTimesToTry,
                         interval
                 );
