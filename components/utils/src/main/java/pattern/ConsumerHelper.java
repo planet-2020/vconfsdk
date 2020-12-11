@@ -10,6 +10,7 @@ import com.annimon.stream.Collectors;
 import com.annimon.stream.Stream;
 import com.annimon.stream.function.Consumer;
 import com.annimon.stream.function.Predicate;
+import com.annimon.stream.function.Supplier;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -22,125 +23,78 @@ public class ConsumerHelper {
     private static final Set<Order<?>> orders = new HashSet<>();
 
 
-    /**
-     * 消费。
-     * @see #consume(Object, Object, Predicate, Consumer, Consumer, int, int, int)
-     * */
-    public static <T> int consume(@NonNull Object consumer,
-                                  @Nullable T product,
-                                  @NonNull Predicate<T> predicate,
-                                  @NonNull Consumer<T> okActivity,
-                                  @Nullable Consumer<T> failedActivity,
-                                  int delay
-    ){
-        return consume(consumer, product, predicate, okActivity, failedActivity, 0, 0, delay);
-    }
-
-    /**
-     * 消费。
-     * @see #consume(Object, Object, Predicate, Consumer, Consumer, int, int, int)
-     * */
-    public static <T> int consume(@NonNull Object consumer,
-                                  @Nullable T product,
-                                  @NonNull Predicate<T> predicate,
-                                  @NonNull Consumer<T> okActivity,
-                                  @Nullable Consumer<T> failedActivity,
-                                  int okDelay,
-                                  int failedDelay
-    ){
-        return consume(consumer, product, predicate, okActivity, failedActivity, okDelay, failedDelay, 0);
-    }
-
-
-    /**
-     * 消费。
-     * NOTE: 该方法是异步的；
-     *       该方法内部在主线程执行，若有耗时操作，请将耗时操作投递到后台线程。
-     * @param consumer 消费者
-     * @param product 消费品
-     * @param predicate 前置条件。满足该条件才能正常消费。若为null表示没有条件约束。
-     * @param okActivity 满足前置条件时的消费行为
-     * @param failedActivity 不满足前置条件时的行为
-     * @param okDelay 执行满足条件的消费行为前的延迟
-     * @param failedDelay 执行不满足条件的消费行为前的延迟
-     * @param delay 执行订单的延迟。单位：毫秒
-     * @return 订单号。一次消费生成一个订单，订单号大于0且唯一。
-     * */
-    public static <T> int consume(@NonNull Object consumer,
-                                  @Nullable T product,
-                                  @NonNull Predicate<T> predicate,
-                                  @NonNull Consumer<T> okActivity,
-                                  @Nullable Consumer<T> failedActivity,
-                                  int okDelay,
-                                  int failedDelay,
-                                  int delay
-    ){
-        Order<?> order = new Order<>(consumer, product, predicate, okActivity, failedActivity, okDelay, failedDelay, delay);
-        order.execute();
-        return order.id;
-    }
 
     /**
      * 尽力消费
-     * @see #tryConsume(Object, Object, Predicate, Consumer, Consumer, int, int, int, int, int)
+     * @see #tryConsume(Object, Supplier, Predicate, Consumer, Runnable, int, int, int)
      * */
-    public static <T> int tryConsume(@NonNull Object consumer,
-                                     @Nullable T product,
-                                     @NonNull Predicate<T> predicate,
-                                     @NonNull Consumer<T> okActivity,
-                                     @Nullable Consumer<T> failedActivity,
-                                     int maxTimesToTry,
-                                     int interval){
-        RetryOrder<T> order = new RetryOrder<>(consumer, product, predicate, okActivity, failedActivity, 0, 0, 0, maxTimesToTry, interval);
-        order.execute();
-        return order.id;
+    public static <T> int tryConsume(@NonNull Object tag,
+                                     @NonNull Supplier<T> supplier,
+                                     @Nullable Predicate<T> predicate,
+                                     @NonNull Consumer<T> consumer,
+                                     @Nullable Runnable actionIfFailed,
+                                     int delay
+    ){
+        return tryConsume(tag, supplier, predicate, consumer, actionIfFailed, delay, 1, 0);
     }
+
 
     /**
      * 尽力消费
-     * @see #tryConsume(Object, Object, Predicate, Consumer, Consumer, int, int, int, int, int)
+     * @see #tryConsume(Object, Supplier, Predicate, Consumer, Runnable, int, int, int)
      * */
-    public static <T> int tryConsume(@NonNull Object consumer,
-                                     @Nullable T product,
-                                     @NonNull Predicate<T> predicate,
-                                     @NonNull Consumer<T> okActivity,
-                                     @Nullable Consumer<T> failedActivity,
-                                     int delay,
+    public static <T> int tryConsume(@NonNull Object tag,
+                                     @NonNull Supplier<T> supplier,
+                                     @NonNull Consumer<T> consumer,
+                                     @Nullable Runnable actionIfFailed,
                                      int maxTimesToTry,
-                                     int interval){
-        RetryOrder<T> order = new RetryOrder<>(consumer, product, predicate, okActivity, failedActivity, 0, 0, delay, maxTimesToTry, interval);
-        order.execute();
-        return order.id;
+                                     int interval
+    ){
+        return tryConsume(tag, supplier, null, consumer, actionIfFailed, 0, maxTimesToTry, interval);
     }
+
+
+    /**
+     * 尽力消费
+     * @see #tryConsume(Object, Supplier, Predicate, Consumer, Runnable, int, int, int)
+     * */
+    public static <T> int tryConsume(@NonNull Object tag,
+                                     @NonNull Supplier<T> supplier,
+                                     @Nullable Predicate<T> predicate,
+                                     @NonNull Consumer<T> consumer,
+                                     @Nullable Runnable actionIfFailed,
+                                     int maxTimesToTry,
+                                     int interval
+    ){
+        return tryConsume(tag, supplier, predicate, consumer, actionIfFailed, 0, maxTimesToTry, interval);
+    }
+
 
     /**
      * 尽力消费。
-     * 若满足前置条件则消费，否则间隔一段时间再尝试，每次尝试均重新判断前置条件。
-     * NOTE: 该方法是异步的；
-     *      该方法内部在主线程执行，若有耗时操作，请用户将耗时操作投递到后台线程。
-     * @param consumer 消费者
-     * @param product 消费品
+     * 若消费品提供且满足前置条件则消费，否则间隔一段时间再尝试，每次尝试均重新获取消费品并判断前置条件。
+     * NOTE: 该方法内部在主线程执行，若有耗时操作，请将耗时操作投递到后台线程。
+     * @param tag 订单标记。用户可以使用该tag对订单进行一些处理，比如取消该tag下的所有订单{@link #cancelOrdersByTag(Object)}
+     * @param supplier 消费品提供者
      * @param predicate 前置条件
-     * @param okActivity 满足前置条件情况下的消费行为
-     * @param failedActivity 最大尝试次数后仍失败时的行为
-     * @param okDelay 执行满足条件的消费行为前的延迟
-     * @param failedDelay 执行不满足条件的消费行为前的延迟
-     * @param delay 执行订单的延迟。单位：毫秒
+     * @param consumer 消费者
+     * @param actionIfFailed 失败时的处理。
+     * @param delay 执行订单的延迟。单位：毫秒。
      * @param maxTimesToTry 最大尝试次数。若<=0则表示无限次。（尝试次数包括首次，例如：尝试次数为1则表示仅试一次不重试，为2表示若失败重试一次）
      * @param interval 重试间隔时长。单位：毫秒
      * @return 订单号。一次消费生成一个订单，订单号大于0且唯一。
+     *          用户可以使用该订单号对订单进行一些处理，比如取消订单{@link #cancelOrder(int)}
      * */
-    public static <T> int tryConsume(@NonNull Object consumer,
-                                     @Nullable T product,
-                                     @NonNull Predicate<T> predicate,
-                                     @NonNull Consumer<T> okActivity,
-                                     @Nullable Consumer<T> failedActivity,
-                                     int okDelay,
-                                     int failedDelay,
+    public static <T> int tryConsume(@NonNull Object tag,
+                                     @NonNull Supplier<T> supplier,
+                                     @Nullable Predicate<T> predicate,
+                                     @NonNull Consumer<T> consumer,
+                                     @Nullable Runnable actionIfFailed,
                                      int delay,
                                      int maxTimesToTry,
-                                     int interval){
-        RetryOrder<T> order = new RetryOrder<>(consumer, product, predicate, okActivity, failedActivity, okDelay, failedDelay, delay, maxTimesToTry, interval);
+                                     int interval
+    ){
+        RetryOrder<T> order = new RetryOrder<>(tag, supplier, predicate, consumer, actionIfFailed, delay, maxTimesToTry, interval);
         order.execute();
         return order.id;
     }
@@ -161,12 +115,11 @@ public class ConsumerHelper {
 
 
     /**
-     * 取消消费者的所有订单
-     * @param consumer 消费者
-     * @return 成功返回true，若没有该消费者的订单则返回false。
+     * 取消tag下的所有订单
+     * @return 成功返回true，若没有该tag的订单则返回false。
      * */
-    public static boolean cancelOrdersOfConsumer(@NonNull Object consumer){
-        Set<Order<?>> orders = findOrdersOfConsumer(consumer);
+    public static boolean cancelOrdersByTag(@NonNull Object tag){
+        Set<Order<?>> orders = findOrdersByTag(tag);
         if (!orders.isEmpty()) {
             Stream.of(orders).forEach(Order::cancel);
         }
@@ -181,9 +134,9 @@ public class ConsumerHelper {
                 .orElse(null);
     }
 
-    private static Set<Order<?>> findOrdersOfConsumer(@NonNull Object consumer){
+    private static Set<Order<?>> findOrdersByTag(@NonNull Object tag){
         return Stream.of(orders)
-                .filter(o-> o.consumer == consumer)
+                .filter(o-> o.tag == tag)
                 .collect(Collectors.toSet());
     }
 
@@ -191,68 +144,56 @@ public class ConsumerHelper {
     private static class Order<T>{
         static int count;
         int id; // 订单号
-        Object consumer; // 消费者
-        T product;  // 消费品
-        Predicate<T> predicate; // 前置条件。若为null表示没有前置条件。
-        Consumer<T> okActivity; // 满足前置条件时的消费行为
-        Consumer<T> failedActivity; // 不满足前置条件时的消费行为
-        int okDelay; // 执行满足条件的消费行为前的延迟。
-        int failedDelay; // 执行不满足条件的消费行为前的延迟。
-        int delay; // 订单执行延迟。单位：毫秒
+        Object tag; // 标签
+        Supplier<T> supplier;  // 消费品提供者
+        Predicate<T> predicate; // 消费的前置条件
+        Consumer<T> consumer; // 消费者
+        Runnable actionIfFailed; // 失败时的处理。
+        int delay;  // 订单执行延迟。单位：毫秒
 
-        Runnable okRunnable;
-        Runnable failedRunnable;
         Runnable process; // 订单执行流程
-        long createTimestamp = System.currentTimeMillis();
+        long timestamp = System.currentTimeMillis();
 
-        Order(@NonNull Object consumer, @Nullable T product, @Nullable Predicate<T> predicate, @NonNull Consumer<T> okActivity,
-              @Nullable Consumer<T> failedActivity, int okDelay, int failedDelay, int delay) {
+        Order(@NonNull Object tag,
+              @NonNull Supplier<T> supplier,
+              @Nullable Predicate<T> predicate,
+              @NonNull Consumer<T> consumer,
+              @Nullable Runnable actionIfFailed,
+              int delay
+        ) {
             id = ++count;
-            this.consumer = consumer;
-            this.product = product;
+            this.tag = tag;
+            this.supplier = supplier;
             this.predicate = predicate;
-            this.okActivity = okActivity;
-            this.failedActivity = failedActivity;
+            this.consumer = consumer;
+            this.actionIfFailed = actionIfFailed;
             this.delay = delay;
-            okRunnable = () -> {
-                okActivity.accept(product);
+
+            process = () -> {
+                T product = supplier.get();
+                if (product != null && (predicate == null || predicate.test(product))){
+                    consumer.accept(product);
+                }else{
+                    if (actionIfFailed != null) {
+                        actionIfFailed.run();
+                    }
+                }
                 orders.remove(Order.this);
             };
-            if (predicate != null && failedActivity != null) {
-                failedRunnable = () -> {
-                    failedActivity.accept(product);
-                    orders.remove(Order.this);
-                };
-            }
-            process = () -> {
-                if (predicate != null){
-                    if (predicate.test(product)) {
-                        handler.postDelayed(okRunnable, okDelay);
-                    } else {
-                        if (failedRunnable != null) {
-                            handler.postDelayed(failedRunnable, failedDelay);
-                        }else{
-                            orders.remove(Order.this);
-                        }
-                    }
-                }else{
-                    handler.postDelayed(okRunnable, okDelay);
-                }
 
-            };
             orders.add(this);
         }
 
 
         void execute(){
-            handler.postDelayed(process, delay);
+            if (delay > 0) {
+                handler.postDelayed(process, delay);
+            }else{
+                process.run();
+            }
         }
 
         void cancel(){
-            handler.removeCallbacks(okRunnable);
-            if (failedRunnable != null) {
-                handler.removeCallbacks(failedRunnable);
-            }
             handler.removeCallbacks(process);
             orders.remove(this);
         }
@@ -260,33 +201,43 @@ public class ConsumerHelper {
     }
 
 
-    private static class RetryOrder<T> extends Order<T> {
-        int maxTimesToTry; // 最大尝试次数（包括首次）
+    private static class RetryOrder<T> extends Order<T>{
+        int maxTimesToTry; // 最大尝试次数（包括首次）。若为0表示无限次
         int interval;   // 每次尝试的间隔时长。单位：毫秒
 
-        RetryOrder(@NonNull Object consumer, @Nullable T product, @NonNull Predicate<T> predicate, @NonNull Consumer<T> activity,
-                   @Nullable Consumer<T> activityIfFailed, int okDelay, int failedDelay, int delay, int maxTimesToTry, int interval) {
-            super(consumer, product, predicate, activity, activityIfFailed, okDelay, failedDelay, delay);
+        RetryOrder(@NonNull Object tag,
+                   @NonNull Supplier<T> supplier,
+                   @Nullable Predicate<T> predicate,
+                   @NonNull Consumer<T> consumer,
+                   @Nullable Runnable actionIfFailed,
+                   int delay,
+                   int maxTimesToTry,
+                   int interval
+        ){
+            super(tag, supplier, predicate, consumer, actionIfFailed, delay);
             this.maxTimesToTry = maxTimesToTry;
             this.interval = interval;
+
             process = new Runnable() {
                 int triedTimes;
                 @Override
                 public void run() {
                     ++triedTimes;
-                    if (predicate.test(product)) {
-                        handler.postDelayed(okRunnable, okDelay);
-                    } else {
+                    T product = supplier.get();
+                    if (product != null && (predicate == null || predicate.test(product))){
+                        consumer.accept(product);
+                    }else{
                         if (triedTimes == maxTimesToTry) {
-                            if (failedRunnable != null) {
-                                handler.postDelayed(failedRunnable, failedDelay);
-                            }else{
-                                orders.remove(RetryOrder.this);
+                            if (actionIfFailed != null) {
+                                actionIfFailed.run();
                             }
-                        } else {
+                        }else{
                             handler.postDelayed(this, interval);
+                            return;
                         }
                     }
+
+                    orders.remove(RetryOrder.this);
                 }
             };
         }

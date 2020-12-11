@@ -985,18 +985,19 @@ public class WebRtcManager extends Caster<Msg>{
                 TRegResultNtf regState = (TRegResultNtf) ntfContent;
                 int resCode = RtcResultCode.trans(ntf, regState.AssParam.basetype);
                 ConsumerHelper.cancelOrder(loginStateChangedOrderId); // 新的LoginStateChanged抵达时取消之前的订单
-                loginStateChangedOrderId = ConsumerHelper.consume(
+                loginStateChangedOrderId = ConsumerHelper.tryConsume(
                         WebRtcManager.this,
-                        resCode,
-                        value -> RtcResultCode.UnknownServerAddress == value,
-                        v -> Stream.of(getNtfListeners(LoginStateChangedListener.class)).forEach(it -> it.onLoginStateChanged(v)),
-                        v -> {
-                            if (RtcResultCode.LoggedIn != v) {
-                                Stream.of(getNtfListeners(LoginStateChangedListener.class)).forEach(it -> it.onLoginStateChanged(v));
+                        () -> resCode,
+                        code -> RtcResultCode.UnknownServerAddress != code,
+                        code -> {
+                            if (RtcResultCode.LoggedIn != code) {
+                                Stream.of(getNtfListeners(LoginStateChangedListener.class)).forEach(it -> it.onLoginStateChanged(code));
                             }
                         },
-                        40*1000, // 业务组件每次重连的最大耗时
-                        0
+                        // 如果错误码是UnknownServerAddress，组件会尝试重连，我们不立即上报用户服务器断开，等组件重连结果。
+                        () -> Stream.of(getNtfListeners(LoginStateChangedListener.class)).forEach(it -> it.onLoginStateChanged(resCode)),
+                        2,
+                        100 * 1000 // 组件重连的最大耗时
                 );
 
                 break;
@@ -1069,8 +1070,8 @@ public class WebRtcManager extends Caster<Msg>{
                         .collect(Collectors.toList());
 
                 if (!joinedStreams.isEmpty()) {
-                    KdStream joinedAssStream = Stream.of(joinedStreams).filter(KdStream::isAss).findFirst().orElse(null);
-                    if (joinedAssStream != null) {
+                    KdStream assStream = Stream.of(joinedStreams).filter(KdStream::isAss).findFirst().orElse(null);
+                    if (assStream != null) {
                         // 检查是否已存在辅流，若存在则先踢掉之前的辅流。（按说我们应该依赖下层消息驱动我们做这件事，
                         // 我们期望下层先推一个StreamLeft消息，表示前面的辅流被抢了，而后再推StreamJoined，表示新的辅流加入，但实际的时序刚好相反。
                         // 所以，我们自己调整时序——当抢发辅流的StreamJoined到达时我们主动踢掉前面的辅流，然后前面辅流的StreamLeft抵达时我们忽略。）
@@ -1091,28 +1092,21 @@ public class WebRtcManager extends Caster<Msg>{
 
                     streams.addAll(joinedStreams);
 
-                    if (joinedAssStream != null){ // 针对辅流我们尝试构造一个虚拟的“辅流与会方”
-                        final Conferee[] assStreamSender = new Conferee[1];
-                        int maxTimesToTry = 15, interval = 200;
+                    if (assStream != null){ // 针对辅流我们尝试构造一个虚拟的“辅流与会方”
+                        // 创建“辅流与会方”需要辅流发送者的信息，然而与会方入会通知可能在码流通知之后，所以我们可能需要等到与会方入会通知抵达后方能处理。
                         ConsumerHelper.tryConsume(
                                 WebRtcManager.this,
-                                joinedAssStream,
-                                it -> {
-                                    assStreamSender[0] = findConferee(it.getMcuId(), it.getTerId(), Conferee.ConfereeType.Normal);
-                                    return assStreamSender[0] != null;
-                                },
+                                () -> findConferee(assStream.getMcuId(), assStream.getTerId(), Conferee.ConfereeType.Normal),
 
-                                kdStream -> {
-                                    Conferee sender = assStreamSender[0];
-                                    Conferee assStreamConferee = new Conferee(sender.mcuId, sender.terId, sender.e164, sender.alias, sender.email, Conferee.ConfereeType.AssStream);
+                                assSender -> {
+                                    Conferee assStreamConferee = new Conferee(assSender.mcuId, assSender.terId, assSender.e164, assSender.alias, assSender.email, Conferee.ConfereeType.AssStream);
                                     conferees.add(assStreamConferee);
                                     Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeJoined(assStreamConferee));
                                 },
 
-                                kdStream -> KLog.p(KLog.ERROR, "assStreamSender(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
-                                        kdStream.getMcuId(), kdStream.getTerId(), maxTimesToTry, interval * maxTimesToTry),
-                                maxTimesToTry,
-                                interval
+                                () -> KLog.p(KLog.ERROR, "assStreamSender(mcu=%s, ter=%s) has still not joined yet", assStream.getMcuId(), assStream.getTerId()),
+                                15,
+                                200
                         );
                     }
 
@@ -1190,29 +1184,23 @@ public class WebRtcManager extends Caster<Msg>{
                 }
                 break;
             case OtherConfereeStateChanged:
-                TMtEntityStatus state = (TMtEntityStatus) ntfContent;
-                final Conferee[] confereeWrapper = new Conferee[1];
-                int maxTimesToTry = 3, interval = 1000;
+                TMtEntityStatus status = (TMtEntityStatus) ntfContent;
                 ConsumerHelper.tryConsume(
                         WebRtcManager.this,
-                        state,
-                        value -> {
-                            confereeWrapper[0] = findConferee(value.dwMcuId, value.dwTerId, Conferee.ConfereeType.Normal);
-                            return confereeWrapper[0] != null;
-                        },
-                        value -> {
-                            Conferee conferee = confereeWrapper[0];
-                            if (!conferee.isMyself() && conferee.isMuted() != value.tStatus.bIsMute){
-                                conferee.setMuted(value.tStatus.bIsMute);
+                        () -> findConferee(status.dwMcuId, status.dwTerId, Conferee.ConfereeType.Normal),
+
+                        conferee -> {
+                            if (!conferee.isMyself() && conferee.isMuted() != status.tStatus.bIsMute) {
+                                conferee.setMuted(status.tStatus.bIsMute);
                                 KLog.p("onMuteStateChanged(conferee=%s)", conferee);
                                 Stream.of(getNtfListeners(ConfereeStateChangedListener.class)).forEach(it -> it.onMuteStateChanged(conferee));
                             }
                         },
-                        value -> KLog.p(KLog.ERROR, "conferee(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
-                                value.dwMcuId, value.dwTerId, maxTimesToTry, interval*maxTimesToTry),
 
-                        maxTimesToTry,
-                        interval
+                        () -> KLog.p(KLog.ERROR, "conferee(mcu=%s, ter=%s) has still not joined yet", status.dwMcuId, status.dwTerId),
+
+                        3,
+                        1000
                 );
 
                 break;
@@ -1230,155 +1218,126 @@ public class WebRtcManager extends Caster<Msg>{
 //            case PresenterChanged:
 //            case KeynoteSpeakerChanged:
             case BriefConfInfoArrived:
-                final Conferee[] predecessorWrapper = new Conferee[1];
-                final Conferee[] successorWrapper = new Conferee[1];
                 TMtSimpConfInfo briefConfInfo = (TMtSimpConfInfo) ntfContent;
+                TMtId presenterMtId = briefConfInfo.tChairman;
+                boolean isCancelPresenter = !presenterMtId.isValid(); // mtid非法表示取消。
 
                 // 处理主持人变更
-                // 主持人变动通知可能在与会方入会/与会方列表通知之前抵达，而我们需要与会方信息来处理该通知，
-                // 因此我们使用“条件消费者”处理该消息。
-                maxTimesToTry = 3; interval = 1000;
                 ConsumerHelper.tryConsume(
                         WebRtcManager.this,
-                    briefConfInfo,
+                        () -> {
+                            if (isCancelPresenter) {
+                                return findPresenter();
+                            } else {
+                                return Stream.of(conferees)
+                                        .filter(it -> it.getTerId() == presenterMtId.dwTerId && it.getMcuId() == presenterMtId.dwMcuId)
+                                        .findFirst()
+                                        .orElse(null);
+                            }
+                        },
 
-                    value -> {
-                        TMtId mtId = value.tChairman;
-                        if (mtId.isValid()) { // 此为指定主持人的场景
-                            // 判断主持人是否已经入会
-                            successorWrapper[0] = Stream.of(conferees)
-                                    .filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId)
-                                    .findFirst()
-                                    .orElse(null);
-                            return successorWrapper[0] != null;
-                        }else { // 此为取消主持人的场景
-                            successorWrapper[0] = null;
-                            return true;
-                        }
-                    },
+                        presenter -> {
+                            Conferee predecessor, successor;
+                            if (isCancelPresenter){
+                                predecessor = presenter;
+                                successor = null;
+                            }else{
+                                successor = presenter;
+                                predecessor = findPresenter();
+                            }
+                            if (successor == predecessor) {
+                                return;
+                            }
+                            if (predecessor != null) {
+                                predecessor.setPresenter(false);
+                            }
+                            if (successor != null) {
+                                successor.setPresenter(true);
+                            }
+                            KLog.p("onPresenterChanged(predecessor=%s, successor=%s)", predecessor, successor);
+                            Stream.of(getNtfListeners(PresenterChangedListener.class))
+                                    .forEach(it -> it.onPresenterChanged(predecessor, successor));
+                        },
 
-                    value -> {
-                        predecessorWrapper[0] = findPresenter();
-                        Conferee predecessor = predecessorWrapper[0];
-                        Conferee successor = successorWrapper[0];
-                        if (successor == predecessor) {
-                            return;
-                        }
-                        if (predecessor != null) {
-                            predecessor.setPresenter(false);
-                        }
-                        if (successor != null) {
-                            successor.setPresenter(true);
-                        }
-                        KLog.p("onPresenterChanged(predecessor=%s, successor=%s)", predecessor, successor);
-                        Stream.of(getNtfListeners(PresenterChangedListener.class))
-                                .forEach(it -> it.onPresenterChanged(predecessor, successor));
-                    },
+                        () -> KLog.p(KLog.ERROR, "presenter(mcu=%s, ter=%s) has still not joined yet", presenterMtId.dwMcuId, presenterMtId.dwTerId),
 
-                    value -> {
-                        TMtId mtId = value.tChairman;
-                        KLog.p(KLog.ERROR, "presenter(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
-                                mtId.dwMcuId, mtId.dwTerId, maxTimesToTry, interval*maxTimesToTry);
-                    },
-
-                    maxTimesToTry,
-                    interval
+                        3,
+                        1000
                 );
 
                 // 处理主讲人变更
-                // 主讲人变动通知可能在与会方入会/与会方列表通知之前抵达，而我们需要与会方信息来处理该通知，
-                // 因此我们使用“条件消费者”处理该消息。
+                TMtId speakerMtId = briefConfInfo.tSpeaker;
+                boolean isCancelSpeaker = !speakerMtId.isValid();
                 ConsumerHelper.tryConsume(
                         WebRtcManager.this,
-                    briefConfInfo,
+                        () -> {
+                            if (isCancelSpeaker) {
+                                return findKeynoteSpeaker();
+                            } else {
+                                return Stream.of(conferees)
+                                        .filter(it -> it.getTerId() == speakerMtId.dwTerId && it.getMcuId() == speakerMtId.dwMcuId)
+                                        .findFirst()
+                                        .orElse(null);
+                            }
+                        },
 
-                    value -> {
-                        TMtId mtId = value.tSpeaker;
-                        if (mtId.isValid()){ // 指定主讲人
-                            successorWrapper[0] = Stream.of(conferees)
-                                    .filter(it -> it.getTerId() == mtId.dwTerId && it.getMcuId() == mtId.dwMcuId)
-                                    .findFirst()
-                                    .orElse(null);
-                            return successorWrapper[0] != null;
-                        }else{ // 取消主讲人
-                            successorWrapper[0] = null;
-                            return true;
-                        }
-                    },
+                        speaker -> {
+                            Conferee predecessor, successor;
+                            if (isCancelSpeaker){
+                                predecessor = speaker;
+                                successor = null;
+                            }else{
+                                successor = speaker;
+                                predecessor = findKeynoteSpeaker();
+                            }
+                            if (successor == predecessor) {
+                                return;
+                            }
+                            if (predecessor != null) {
+                                predecessor.setKeynoteSpeaker(false);
+                            }
+                            if (successor != null) {
+                                successor.setKeynoteSpeaker(true);
+                            }
+                            KLog.p("onKeynoteSpeakerChanged(predecessor=%s, successor=%s)", predecessor, successor);
+                            Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class))
+                                    .forEach(it -> it.onKeynoteSpeakerChanged(predecessor, successor));
+                        },
 
-                    value -> {
-                        predecessorWrapper[0] = findKeynoteSpeaker();
-                        Conferee predecessor = predecessorWrapper[0];
-                        Conferee successor = successorWrapper[0];
-                        if (successor == predecessor) {
-                            return;
-                        }
-                        if (predecessor != null) {
-                            predecessor.setKeynoteSpeaker(false);
-                        }
-                        if (successor != null) {
-                            successor.setKeynoteSpeaker(true);
-                        }
-                        KLog.p("onKeynoteSpeakerChanged(predecessor=%s, successor=%s)", predecessor, successor);
-                        Stream.of(getNtfListeners(KeynoteSpeakerChangedListener.class))
-                                .forEach(it -> it.onKeynoteSpeakerChanged(predecessor, successor));
-                    },
+                        () -> KLog.p(KLog.ERROR, "keynoteSpeaker(mcu=%s, ter=%s) has still not joined yet", speakerMtId.dwMcuId, speakerMtId.dwTerId),
 
-                    value -> {
-                        TMtId mtId = value.tChairman;
-                        KLog.p(KLog.ERROR, "keynoteSpeaker(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
-                                mtId.dwMcuId, mtId.dwTerId, maxTimesToTry, interval*maxTimesToTry);
-                    },
-
-
-                    maxTimesToTry,
-                    interval
+                        3,
+                        1000
                 );
 
                 break;
 
             case VIPsChanged:
                 List<TMtId> tMtIds = ((TMtIdList) ntfContent).atList;
-                Set<Conferee> newVips = new HashSet<>();
-                maxTimesToTry = 3;
-                interval = 1000;
                 ConsumerHelper.tryConsume(
                         WebRtcManager.this,
-                    tMtIds,
-
-                    value -> {
-                        Set<Conferee> vips = Stream.of(value)
-                                .map(it -> {
-                                    Conferee vip = findConferee(it.dwMcuId, it.dwTerId, Conferee.ConfereeType.Normal);
-                                    if (vip==null){
-                                        KLog.p(KLog.WARN, "vip(mcu=%s, ter=%s) has not joined yet", it.dwMcuId, it.dwTerId);
-                                    }
-                                    return vip;
-                                })
+                        () -> Stream.of(tMtIds)
+                                .map(it -> findConferee(it.dwMcuId, it.dwTerId, Conferee.ConfereeType.Normal))
                                 .filter(it -> it != null)
-                                .collect(Collectors.toSet());
-                        newVips.clear();
-                        newVips.addAll(vips);
-                        return value.size() == vips.size();
-                    },
+                                .collect(Collectors.toSet()),
 
-                    tMtIds1 -> {
-                        Set<Conferee> oldVips = findVIPs();
-                        Set<Conferee> added = new HashSet<>(newVips);
-                        added.removeAll(oldVips);
-                        Set<Conferee> removed = new HashSet<>(oldVips);
-                        removed.removeAll(newVips);
-                        KLog.p("onVipChanged(added=%s, removed=%s)", added, removed);
-                        Stream.of(getNtfListeners(VIPChangedListener.class))
-                                .forEach(it -> it.onVipChanged(added, removed));
-                    },
+                        vips -> vips.size() == tMtIds.size(),
 
-                    tMtIds12 -> KLog.p(KLog.ERROR, "some vip has still not joined yet after trying %s times in %s milliseconds.",
-                            maxTimesToTry, interval*maxTimesToTry),
+                        vips -> {
+                            Set<Conferee> oldVips = findVIPs();
+                            Set<Conferee> added = new HashSet<>(vips);
+                            added.removeAll(oldVips);
+                            Set<Conferee> removed = new HashSet<>(oldVips);
+                            removed.removeAll(vips);
+                            KLog.p("onVipChanged(added=%s, removed=%s)", added, removed);
+                            Stream.of(getNtfListeners(VIPChangedListener.class))
+                                    .forEach(it -> it.onVipChanged(added, removed));
+                        },
 
+                        () -> KLog.p(KLog.ERROR, "some vip has still not joined yet."),
 
-                    maxTimesToTry,
-                    interval
+                        3,
+                        1000
                 );
 
                 break;
@@ -1404,53 +1363,37 @@ public class WebRtcManager extends Caster<Msg>{
                     return;
                 }
 
-                maxTimesToTry = 3;
-                interval = 1000;
-                final Conferee[] selectedStateChangedConfereeWrapper = new Conferee[1];
-                final Conferee[] oldSelectedConfereeWrapper = new Conferee[1];
                 ConsumerHelper.tryConsume(
                         WebRtcManager.this,
-                    selectedToWatch,
 
-                    value -> {
-                        TMtId mtId1 = value.AssParam.tTer;
-                        selectedStateChangedConfereeWrapper[0] = findConferee(mtId1.dwMcuId, mtId1.dwTerId, Conferee.ConfereeType.Normal);
-                        return selectedStateChangedConfereeWrapper[0] != null;
-                    },
+                        () -> findConferee(mtId.dwMcuId, mtId.dwTerId, Conferee.ConfereeType.Normal),
 
-                    value -> {
-                        boolean isSelected = value.MainParam.basetype // 是否开启选看
-                                && value.AssParam.bForce // 是否强制。对于rtc，仅在开启选看且强制的情况下是开启，其余情形均为关闭
-                                ;
-                        oldSelectedConfereeWrapper[0] = findSelectedToWatchConferee();
-                        Conferee oldSelectedConferee = oldSelectedConfereeWrapper[0];
-                        Conferee selectedStateChangedConferee = selectedStateChangedConfereeWrapper[0];
-                        if (selectedStateChangedConferee.isSelectedToWatch() != isSelected) {
-                            if (oldSelectedConferee != null && selectedStateChangedConferee != oldSelectedConferee && isSelected){
-                                oldSelectedConferee.setSelectedToWatch(false);
-                                KLog.p("onUnselected(%s)", oldSelectedConferee);
-                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onUnselected(oldSelectedConferee));
+                        conferee -> {
+                            boolean isSelected = selectedToWatch.MainParam.basetype // 是否开启选看
+                                    && selectedToWatch.AssParam.bForce // 是否强制。对于rtc，仅在开启选看且强制的情况下是开启，其余情形均为关闭
+                                    ;
+                            Conferee oldSelectedConferee = findSelectedToWatchConferee();
+                            if (conferee.isSelectedToWatch() != isSelected) {
+                                if (oldSelectedConferee != null && conferee != oldSelectedConferee && isSelected) {
+                                    oldSelectedConferee.setSelectedToWatch(false);
+                                    KLog.p("onUnselected(%s)", oldSelectedConferee);
+                                    Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onUnselected(oldSelectedConferee));
+                                }
+                                conferee.setSelectedToWatch(isSelected);
+                                if (isSelected) {
+                                    KLog.p("onSelected(%s)", conferee);
+                                    Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onSelected(conferee));
+                                } else {
+                                    KLog.p("onUnselected(%s)", conferee);
+                                    Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onUnselected(conferee));
+                                }
                             }
-                            selectedStateChangedConferee.setSelectedToWatch(isSelected);
-                            if (isSelected) {
-                                KLog.p("onSelected(%s)", selectedStateChangedConferee);
-                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onSelected(selectedStateChangedConferee));
-                            } else {
-                                KLog.p("onUnselected(%s)", selectedStateChangedConferee);
-                                Stream.of(getNtfListeners(SelectedToWatchListener.class)).forEach(it -> it.onUnselected(selectedStateChangedConferee));
-                            }
-                        }
-                    },
+                        },
 
-                    value -> {
-                        TMtId mtId12 = value.AssParam.tTer;
-                        KLog.p(KLog.ERROR, "selected-to-watch conferee(mcu=%s, ter=%s) has still not joined yet after trying %s times in %s milliseconds.",
-                                mtId12.dwMcuId, mtId12.dwTerId, maxTimesToTry, interval*maxTimesToTry);
-                    },
+                        () -> KLog.p(KLog.ERROR, "selected-to-watch conferee(mcu=%s, ter=%s) has still not joined yet", mtId.dwMcuId, mtId.dwTerId),
 
-
-                    maxTimesToTry,
-                    interval
+                        3,
+                        1000
                 );
 
                 break;
@@ -1466,64 +1409,51 @@ public class WebRtcManager extends Caster<Msg>{
                     return;
                 }
 
-                maxTimesToTry = 3;
-                interval = 1000;
-                List<Conferee> vmpConferees = new ArrayList<>();
                 ConsumerHelper.tryConsume(
                         WebRtcManager.this,
-                    vmpParam,
 
-                    value -> {
-                        List<Conferee> conferees = Stream.of(value.atVmpItem)
-                                .filter(it -> { // 过滤掉无效的画面合成方。画面合成方数量不足合成风格的画面数时，平台会用无效的与会方填充列表。
-                                    boolean valid = it.tMtid.isValid();
-                                    if (!valid){
-                                        KLog.p(KLog.WARN, "invalid ScenesComposited conferee(mcu=%s, ter=%s)", it.tMtid.dwMcuId, it.tMtid.dwTerId);
-                                    }
-                                    return valid;
-                                })
-                                .map(it -> {
-                                    Conferee c = findConferee(it.tMtid.dwMcuId, it.tMtid.dwTerId, Conferee.ConfereeType.Normal);
-                                    if (c != null) {
-                                        c.setInCompositedScene(value.bForce);
-                                        c.setOrderInCompositedScene(it.dwVmpItem_Idx);
-                                    }
-                                    return c;
-                                })
-                                .sorted((o1, o2) -> {
-                                    int order1 = o1 != null ? o1.getOrderInCompositedScene() : 9999;
-                                    int order2 = o2 != null ? o2.getOrderInCompositedScene() : 9999;
-                                    return order1 - order2;
-                                })
-                                .collect(Collectors.toList());
-                        vmpConferees.clear();
-                        vmpConferees.addAll(conferees);
-                        return !conferees.isEmpty() && !conferees.contains(null);
-                    },
+                        () -> Stream.of(vmpParam.atVmpItem)
+                                        .filter(it -> { // 过滤掉无效的画面合成方。画面合成方数量不足合成风格的画面数时，平台会用无效的与会方填充列表。
+                                            return it.tMtid.isValid();
+                                        })
+                                        .map(it -> {
+                                            Conferee c = findConferee(it.tMtid.dwMcuId, it.tMtid.dwTerId, Conferee.ConfereeType.Normal);
+                                            if (c != null) {
+                                                c.setInCompositedScene(vmpParam.bForce);
+                                                c.setOrderInCompositedScene(it.dwVmpItem_Idx);
+                                            }
+                                            return c;
+                                        })
+                                        .sorted((o1, o2) -> {
+                                            int order1 = o1 != null ? o1.getOrderInCompositedScene() : 9999;
+                                            int order2 = o2 != null ? o2.getOrderInCompositedScene() : 9999;
+                                            return order1 - order2;
+                                        })
+                                        .collect(Collectors.toList()),
 
-                    value -> {
-                        if (value.bForce == forceScenesComposited){
-                            // 开启普通画面合成和关闭强制画面合成是同一条消息且内容一致，我们需借助本地保存的状态区分这两种场景。
-                            KLog.p(KLog.WARN, "ScenesComposited state not changed, open=%s", value.bForce);
-                            return;
-                        }
-                        forceScenesComposited = value.bForce;
+                        vmpConferees -> !vmpConferees.isEmpty() && !vmpConferees.contains(null),
 
-                        if (value.bForce){
-                            KLog.p("onComposite(vmpConferees=%s)", vmpConferees);
-                            Stream.of(getNtfListeners(ScenesCompositedListener.class)).forEach(it-> it.onComposite(vmpConferees));
-                        }else {
-                            KLog.p("onCancelComposite(vmpConferees=%s)", vmpConferees);
-                            Stream.of(getNtfListeners(ScenesCompositedListener.class)).forEach(it-> it.onCancelComposite(vmpConferees));
-                        }
-                    },
+                        vmpConferees -> {
+                            if (vmpParam.bForce == forceScenesComposited) {
+                                // 开启普通画面合成和关闭强制画面合成是同一条消息且内容一致，我们需借助本地保存的状态区分这两种场景。
+                                KLog.p(KLog.WARN, "ScenesComposited state not changed, open=%s", vmpParam.bForce);
+                                return;
+                            }
+                            forceScenesComposited = vmpParam.bForce;
 
-                    value -> KLog.p(KLog.ERROR, "some ScenesComposited conferee has still not joined yet after trying %s times in %s milliseconds.",
-                            maxTimesToTry, interval*maxTimesToTry),
+                            if (vmpParam.bForce) {
+                                KLog.p("onComposite(vmpConferees=%s)", vmpConferees);
+                                Stream.of(getNtfListeners(ScenesCompositedListener.class)).forEach(it -> it.onComposite(vmpConferees));
+                            } else {
+                                KLog.p("onCancelComposite(vmpConferees=%s)", vmpConferees);
+                                Stream.of(getNtfListeners(ScenesCompositedListener.class)).forEach(it -> it.onCancelComposite(vmpConferees));
+                            }
+                        },
 
+                        () -> KLog.p(KLog.ERROR, "some ScenesComposited conferee has still not joined yet"),
 
-                    maxTimesToTry,
-                    interval
+                        3,
+                        1000
                 );
 
                 break;
@@ -1639,7 +1569,7 @@ public class WebRtcManager extends Caster<Msg>{
 
         cancelReq(null, null);
 
-        ConsumerHelper.cancelOrdersOfConsumer(this);
+        ConsumerHelper.cancelOrdersByTag(this);
 
         KLog.p("session stopped ");
 
@@ -4989,62 +4919,57 @@ public class WebRtcManager extends Caster<Msg>{
 
                 handler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, trackId));
 
-                Conferee[] ownerWrapper = new Conferee[1];
-                KdStream[] remoteStreamWrapper = new KdStream[1];
-                int maxTimesToTry = 3, interval = 2000;
+                final KdStream[] s = new KdStream[1];
                 ConsumerHelper.tryConsume(
                         WebRtcManager.this,
-                    null,
-                    value -> {
-                        remoteStreamWrapper[0] = findStream(kdStreamId);
-                        ownerWrapper[0] = remoteStreamWrapper[0] != null ? remoteStreamWrapper[0].getOwner() : null;
-                        return ownerWrapper[0] != null;
-                    },
-                    o -> {
-                        Conferee owner = ownerWrapper[0];
-                        owner.setVideoChannelState(Conferee.VideoChannelState.Bound);
+                        () -> {
+                            s[0] = findStream(kdStreamId);
+                            return s[0] != null ? s[0].getOwner() : null;
+                        },
 
-                        if(owner.isVirtualAssStreamConferee()){
-                            // 接收双流先展示缓冲图标
-                            owner.setVideoSignalState(Conferee.VideoSignalState.Buffering, false);
-                            handler.postDelayed(() -> owner.refreshDisplays(), 1000);
-                            handler.postDelayed(() -> {
-                                if (owner.getVideoSignalState() == Conferee.VideoSignalState.Buffering) {
-                                    owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
-                                }
-                            }, 3000);
-                        }else {
-                            owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
-                        }
+                        owner -> {
+                            owner.setVideoChannelState(Conferee.VideoChannelState.Bound);
 
-                        if (owner.isVirtualAssStreamConferee() ? config.saveRecvedAssVideo : config.saveRecvedMainVideo) {
-                            // 保存码流用于调试
-                            saveVideo(track, owner.getId());
-                        }
-
-                        executor.execute(() -> {
-                            if (null == pc){
-                                KLog.p(KLog.ERROR, "peerConnection destroyed");
-                                return;
+                            if (owner.isVirtualAssStreamConferee()) {
+                                // 接收双流先展示缓冲图标
+                                owner.setVideoSignalState(Conferee.VideoSignalState.Buffering, false);
+                                handler.postDelayed(owner::refreshDisplays, 1000);
+                                handler.postDelayed(() -> {
+                                    if (owner.getVideoSignalState() == Conferee.VideoSignalState.Buffering) {
+                                        owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
+                                    }
+                                }, 3000);
+                            } else {
+                                owner.setVideoSignalState(Conferee.VideoSignalState.Normal);
                             }
-                            KLog.p("bind track %s to conferee %s", trackId, owner.getId());
-                            track.addSink(owner);
-                        });
-                    },
 
-                    o -> {
-                        if (remoteStreamWrapper[0] == null){
-                            KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
-                                    "please check StreamJoined/StreamList and onSetOfferCmd to make sure they both contain kdStreamId "+kdStreamId+"\n and also " +
-                                    "make sure the stream corresponding to this kdStreamId have not left yet!");
-                        }else if (ownerWrapper[0] == null){
-                            KLog.p(KLog.ERROR, "owner of stream(%s) has still not joined yet after trying %s times in %s milliseconds.",
-                                    kdStreamId, maxTimesToTry, interval*maxTimesToTry);
-                        }
-                    },
+                            if (owner.isVirtualAssStreamConferee() ? config.saveRecvedAssVideo : config.saveRecvedMainVideo) {
+                                // 保存码流用于调试
+                                saveVideo(track, owner.getId());
+                            }
 
-                    maxTimesToTry,
-                    interval
+                            executor.execute(() -> {
+                                if (null == pc) {
+                                    KLog.p(KLog.ERROR, "peerConnection destroyed");
+                                    return;
+                                }
+                                KLog.p("bind track %s to conferee %s", trackId, owner.getId());
+                                track.addSink(owner);
+                            });
+                        },
+
+                        () -> {
+                            if (s[0] == null) {
+                                KLog.p(KLog.ERROR, "stream related to kdStreamId " + kdStreamId + " doesn't exist? \n" +
+                                        "please check StreamJoined/StreamList and onSetOfferCmd to make sure they both contain kdStreamId " + kdStreamId + "\n and also " +
+                                        "make sure the stream corresponding to this kdStreamId have not left yet!");
+                            } else {
+                                KLog.p(KLog.ERROR, "owner of stream(%s) has still not joined yet", kdStreamId);
+                            }
+                        },
+
+                        6,
+                        1000
                 );
 
             });
@@ -5114,36 +5039,31 @@ public class WebRtcManager extends Caster<Msg>{
                 handler.post(() -> kdStreamId2RtcTrackIdMap.put(kdStreamId, trackId));
 
 
-                Conferee[] ownerWrapper = new Conferee[1];
-                KdStream[] remoteStreamWrapper = new KdStream[1];
-                int maxTimesToTry = 3, interval = 2000;
+                final KdStream[] s = new KdStream[1];
                 ConsumerHelper.tryConsume(
                         WebRtcManager.this,
-                        null,
-                        value -> {
-                            remoteStreamWrapper[0] = findStream(kdStreamId);
-                            ownerWrapper[0] = remoteStreamWrapper[0] != null ? remoteStreamWrapper[0].getOwner() : null;
-                            return ownerWrapper[0] != null;
+                        () -> {
+                            s[0] = findStream(kdStreamId);
+                            return s[0] != null ? s[0].getOwner() : null;
                         },
-                        o -> {
-                            Conferee owner = ownerWrapper[0];
+
+                        owner -> {
                             owner.setAudioChannelState(Conferee.AudioChannelState.Bound);
                             owner.setAudioSignalState(Conferee.AudioSignalState.Normal); // XXX 一个与会方可能有多个音轨
                         },
 
-                        o -> {
-                            if (remoteStreamWrapper[0] == null){
+                        () -> {
+                            if (s[0] == null){
                                 KLog.p(KLog.ERROR, "stream related to kdStreamId "+kdStreamId+" doesn't exist? \n" +
                                         "please check StreamJoined/StreamList and onSetOfferCmd to make sure they both contain kdStreamId "+kdStreamId+"\n and also " +
                                         "make sure the stream corresponding to this kdStreamId have not left yet!");
-                            }else if (ownerWrapper[0] == null){
-                                KLog.p(KLog.ERROR, "owner of stream(%s) has still not joined yet after trying %s times in %s milliseconds.",
-                                        kdStreamId, maxTimesToTry, interval*maxTimesToTry);
+                            }else{
+                                KLog.p(KLog.ERROR, "owner of stream(%s) has still not joined yet", kdStreamId);
                             }
                         },
 
-                        maxTimesToTry,
-                        interval
+                        6,
+                        1000
                 );
 
             });
