@@ -73,7 +73,8 @@ public class ConsumerHelper {
     /**
      * 尽力消费。
      * 若消费品提供且满足前置条件则消费，否则间隔一段时间再尝试，每次尝试均重新获取消费品并判断前置条件。
-     * NOTE: 该方法内部在主线程执行，若有耗时操作，请将耗时操作投递到后台线程。
+     * NOTE: 该方法是异步的；
+     *       该方法内部在主线程执行，若有耗时操作，请将耗时操作投递到后台线程。
      * @param tag 订单标记。用户可以使用该tag对订单进行一些处理，比如取消该tag下的所有订单{@link #cancelOrdersByTag(Object)}
      * @param supplier 消费品提供者
      * @param predicate 前置条件
@@ -167,7 +168,7 @@ public class ConsumerHelper {
             this.predicate = predicate;
             this.consumer = consumer;
             this.actionIfFailed = actionIfFailed;
-            this.delay = delay;
+            this.delay = Math.max(delay, 0);
 
             process = () -> {
                 T product = supplier.get();
@@ -186,11 +187,7 @@ public class ConsumerHelper {
 
 
         void execute(){
-            if (delay > 0) {
-                handler.postDelayed(process, delay);
-            }else{
-                process.run();
-            }
+            handler.postDelayed(process, delay);
         }
 
         void cancel(){
