@@ -145,3 +145,86 @@ message TAgentCodecStatistic
         repeated TAgentVidEncStatistic ass_videnc_statics = 5; //辅视频编码器统计信息
         repeated TAgentVidDecStatistic ass_viddec_statics = 6; //辅视频解码器统计信息
 }
+
+
+//呼叫参数
+message TMtCallParam
+{
+  optional EmMtCallMode     call_type = 1;          // 呼叫类型:JOIN|CREATE|INVITE   需UI指定
+  optional uint32           call_rate = 2;          // 呼叫速率(kbps)                需UI指定
+  optional EmConfProtocol   conf_protocol = 3;      // 通信协议
+  optional EmMtAddrType     call_addr_type = 4;     // 呼叫类型，ip, e164, alias
+  optional TNetAddr         calling_addr = 5;       // 主叫地址(主叫时可不填)
+  optional TNetAddr         called_addr  = 6;       // 被叫地址
+  optional TRpMtAlias       calling_alias = 7;      // 主叫别名
+  optional TRpMtAlias       called_alias  = 8;      // 被叫别名
+
+  //以下仅用于创建会议, 用于老的setup创会
+  optional bool              bcreate_conf = 9;        //是否是创建会议
+  optional TMtConfBaseInfo   conf_base_info  = 10;    //基本会议信息
+  optional TRpMtAddr         mt_list = 11;            //邀请终端列表
+
+  optional string          peer_product_id = 12;    //对端的productid
+  optional string          peer_version_id = 13;    //对端的versionid
+  optional uint32          peer_vender_id  = 14;    //对端的厂商id
+
+  optional bool            bencrypt = 15;           //是否加密
+  optional EmEndpointType  endpoint_type = 16;      //是mt, mcu，gk
+  optional bytes           nonstand = 17;           //非标数据
+  optional string          callid   = 18;           //callid值， 给白板会议用
+  optional bool            is_peerstack_5p0 =19;    //对端是否是5.0的协议栈
+  optional bool            is_vidchanoff = 20;      //关通道
+  optional EmSipConnectType    sipconnect_type = 21;      //sip连接方式
+  optional TMtKeyIdAndKey      keyid_and_key   =22;
+  optional bool                is_qt_call = 23;
+  optional bool                is_peer_support_confsub = 24; //平台是否支持订阅功能
+  optional TMtQtNstdParam      qt_nstd_param = 25;    //量通呼叫参数
+  optional EmEncryptArithmetic emEncryType = 26;			  //加密类型
+}
+
+//基本会议信息（ 用于创建会议, 只用于兼容 ）
+message TMtConfBaseInfo
+{
+  ///会议属性
+  optional string             conf_id = 1;            //会议ID
+  optional string             conf_name = 2;          //会议名称
+  optional string             conf_number = 3;        //会议号码
+  optional string             conf_pwd  = 4;          //会议密码
+  optional bool               bneed_pwd = 5;          //是否需要密码
+  optional uint32             conf_duration = 6;		  // 会议持续时间
+  optional EmEncryptArithmetic  encry_type = 7;           // 码流加密
+
+  ///音视频格式
+  optional EmVidFormat        video_format = 8;				// 会议视频格式(VIDEO_H261等)
+  optional EmAudFormat        audio_format = 9;				// 会议音频格式(AUDIO_MP3等)
+  optional EmMtResolution     resolution = 10;			    // 会议视频分辨率(VIDEO_CIF等)
+  optional EmAacChnlNum       chnl_num = 11;          // 如果音频格式是lc/ld, 需指定声道数
+  optional EmVidFormat		  sec_video_format = 12;	// 双流格式
+  optional EmMtResolution     sec_vid_res = 13;	      // 双流分辨率
+  optional uint32	          sec_vid_fps = 14;		    // 双流帧率
+  optional bool               is_auto_vmp = 15;		  	// 是否自动画面合成
+  optional bool               is_mix = 16;	  		    // 是否混音
+
+  optional EmH264Profile      vid_h264Profile = 17;     //264profile格式
+  optional uint32             conf_bitrate = 18;        //会议码率
+}
+
+message TMtOneChanKey
+{
+  optional int32  chantype = 1;
+  optional int32  chanidx = 2;
+  optional bytes  keyid = 3;
+  optional bytes  key = 4;
+  optional int32  keyid_len =5;
+}
+
+message TMtKeyIdAndKey
+{
+  repeated TMtOneChanKey chankey  = 1;
+}
+
+message TMtQtNstdParam
+{
+  optional string   dev_id = 1;
+  optional uint32   freq   = 2;
+}

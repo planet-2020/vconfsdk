@@ -141,7 +141,7 @@ public final class RtcConfig {
     }
 
     public boolean isSimulcastEnabled(){
-        return rtcUserConfig.getBoolean(key_isSimulcastEnabled, false);
+        return rtcUserConfig.getBoolean(key_isSimulcastEnabled, true);
     }
 
     /**
@@ -180,7 +180,7 @@ public final class RtcConfig {
     }
 
     public int getVideoWidth(){
-        return rtcUserConfig.getInt(key_videoWidth, 640);
+        return rtcUserConfig.getInt(key_videoWidth, 1280);
     }
 
     /**
@@ -192,7 +192,7 @@ public final class RtcConfig {
     }
 
     public int getVideoHeight(){
-        return rtcUserConfig.getInt(key_videoHeight, 360);
+        return rtcUserConfig.getInt(key_videoHeight, 720);
     }
 
 
@@ -205,7 +205,7 @@ public final class RtcConfig {
     }
 
     public int getVideoFps(){
-        return rtcUserConfig.getInt(key_videoFps, 15);
+        return rtcUserConfig.getInt(key_videoFps, 30);
     }
 
 
@@ -257,7 +257,7 @@ public final class RtcConfig {
     }
 
     public int getVideoMaxBitrate(){
-        return rtcUserConfig.getInt(key_videoMaxBitrate, 256);
+        return rtcUserConfig.getInt(key_videoMaxBitrate, 2048);
     }
 
     /**

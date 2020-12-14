@@ -3,7 +3,7 @@ package mt;
 option java_package = "com.kedacom.mt.netmanage.protobuf"; 
 option java_outer_classname = "StructCommonPB"; 
 
-//import "enum.proto";
+import "enum.proto";
 
 
 //消息订阅
@@ -16,4 +16,38 @@ message TMtId
 {
 	optional uint32 mcu_id = 1;       //mcu id
 	optional uint32 ter_id = 2;       //终端id
+}
+
+//net地址
+message TNetAddr
+{
+	optional EmIpAddrType ip_type = 1 [default = emIpV4];
+	optional uint32       ip      = 2;
+	optional bytes        ip_v6   = 3;    ////当心，这里存的是字符串形式的ipv6， 因为兼容原因就不改了
+	optional uint32       port    = 4;
+	optional uint32       scopid  = 5;    ///ipv6时，windows需要设scopid
+}
+
+//地址类型
+message TMtAddr
+{
+	optional EmMtAddrType  type =  1;      //ip or alias or e164
+	optional TNetAddr      ip_addr = 2;
+	optional string        alias = 3;
+}
+
+message TRpMtAddr
+{
+	repeated TMtAddr mt_addr = 1;
+}
+
+message TMtAlias
+{
+	optional EmMtAliasType type  = 1;
+	optional string        alias = 2;
+}
+
+message TRpMtAlias
+{
+	repeated TMtAlias  alias = 1; //多个名字
 }
