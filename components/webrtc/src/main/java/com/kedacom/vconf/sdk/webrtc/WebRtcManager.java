@@ -10,6 +10,8 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.media.MediaCodecInfo;
+import android.media.MediaCodecList;
 import android.media.projection.MediaProjection;
 import android.os.Handler;
 import android.os.Looper;
@@ -1885,6 +1887,49 @@ public class WebRtcManager extends Caster<Msg>{
         return JavaAudioDeviceModule.isBuiltInNoiseSuppressorSupported();
     }
 
+    /**
+     * 是否支持指定视频格式的硬编码
+     * @param videoFormat 视频编码格式。h264,vp8,vp9
+     * */
+    public boolean isHWEncoderAvailable(String videoFormat){
+        String mimeType = videoFormat2Mime(videoFormat);
+        if (mimeType.equalsIgnoreCase("unknown")){
+            return false;
+        }
+        int numCodecs = MediaCodecList.getCodecCount();
+        for (int i = 0; i < numCodecs; i++) {
+            MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+
+            if (!codecInfo.isEncoder()) {
+                continue;
+            }
+
+            String[] types = codecInfo.getSupportedTypes();
+            for (String type : types) {
+                if (type.equalsIgnoreCase(mimeType)) {
+                    if (!codecInfo.getName().startsWith("OMX.google.")) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+
+    }
+
+
+    private String videoFormat2Mime(String format){
+        if ("h264".equalsIgnoreCase(format)){
+            return "video/avc";
+        }else if ("vp8".equalsIgnoreCase(format)){
+            return "video/x-vnd.on2.vp8";
+        }else if ("vp9".equalsIgnoreCase(format)){
+            return "video/x-vnd.on2.vp9";
+        }else{
+            return "unknown";
+        }
+    }
 
 
     private @Nullable VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
