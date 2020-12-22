@@ -69,6 +69,8 @@ public final class RtcConfig {
     private static final String key_saveRecvedMainVideo = "key_saveRecvedMainVideo";
     // 音频采集源
     private static final String key_audioSource = "key_audioSource";
+    // AGC level
+    private static final String key_agcLevel = "key_agcLevel";
 
     // 视频质量定义
     static final int VideoQuality_Unknown = 0;
@@ -482,6 +484,19 @@ public final class RtcConfig {
     }
 
 
+    /**
+     * 设置AGC level
+     * @param level [0, 31]，值越大采集的麦克风音量越小，回声效果好。建议 12-30，老版本是12
+     * */
+    public RtcConfig setAgcLevel(int level){
+        editor.putInt(key_agcLevel, level).apply();
+        return this;
+    }
+
+    public int getAgcLevel(){
+        return rtcUserConfig.getInt(key_agcLevel, 12);
+    }
+
 
     /**
      * 将RtcConfig对象保存为持久化配置
@@ -516,6 +531,7 @@ public final class RtcConfig {
         setSaveSentAssVideo(config.saveSentAssVideo);
         setSaveRecvedAssVideo(config.saveRecvedAssVideo);
         setAudioSource(config.audioSource);
+        setAgcLevel(config.agcLevel);
     }
 
 
@@ -553,6 +569,7 @@ public final class RtcConfig {
         config.saveSentAssVideo = getSaveSentAssVideo();
         config.saveRecvedAssVideo = getSaveRecvedAssVideo();
         config.audioSource = getAudioSource();
+        config.agcLevel = getAgcLevel();
 
         return config;
     }
@@ -620,7 +637,9 @@ public final class RtcConfig {
         // 是否保存接收的辅视频流
         boolean saveRecvedAssVideo;
         // 音频采集源
-        public int audioSource;
+        int audioSource;
+        // AGC level
+        int agcLevel;
 
 
         void copy(Config src){
@@ -653,6 +672,7 @@ public final class RtcConfig {
             saveSentAssVideo = src.saveSentAssVideo;
             saveRecvedAssVideo = src.saveRecvedAssVideo;
             audioSource = src.audioSource;
+            agcLevel = src.agcLevel;
         }
 
         @Override
@@ -687,6 +707,7 @@ public final class RtcConfig {
                     ", saveSentAssVideo=" + saveSentAssVideo +
                     ", saveRecvedAssVideo=" + saveRecvedAssVideo +
                     ", audioSource=" + audioSource +
+                    ", agcLevel=" + agcLevel +
                     '}';
         }
     }
