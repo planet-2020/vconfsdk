@@ -48,7 +48,7 @@ buildscript {
         COMPILE_SDK_VERSION = 28
         MIN_SDK_VERSION = 19
         TARGET_SDK_VERSION = COMPILE_SDK_VERSION
-        ABI_FILTERS = 'armeabi-v7a'
+        ABI_FILTERS = ['armeabi-v7a', 'arm64-v8a']
 
         configRepo = {Project project, boolean forBuildscript ->
             repoMethod = forBuildscript ? buildscript.&repositories : project.&repositories
@@ -208,7 +208,7 @@ def configProject(Project project){
                 minSdkVersion MIN_SDK_VERSION
                 targetSdkVersion TARGET_SDK_VERSION
                 ndk {
-                    abiFilters ABI_FILTERS
+                    abiFilters = ABI_FILTERS
                 }
                 buildConfigField("String", "VERSION", "\"$project.version\"")
                 buildConfigField("String", "TIMESTAMP", "\"" + new Date().format("yyyy-MM-dd HH:mm") + "\"")
