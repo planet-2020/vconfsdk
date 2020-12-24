@@ -71,6 +71,8 @@ public final class RtcConfig {
     private static final String key_audioSource = "key_audioSource";
     // AGC level
     private static final String key_agcLevel = "key_agcLevel";
+    // AGC Compression Gain db
+    private static final String key_AGCCompressionGain = "key_AGCCompressionGain";
 
     // 视频质量定义
     static final int VideoQuality_Unknown = 0;
@@ -497,6 +499,18 @@ public final class RtcConfig {
         return rtcUserConfig.getInt(key_agcLevel, 12);
     }
 
+    /**
+     * 设置AGC Compression Gain
+     * @param gain [0, 90]，压缩阶段最大增益，数字越大压缩越高
+     * */
+    public RtcConfig setAGCCompressionGain(int gain){
+        editor.putInt(key_AGCCompressionGain, gain).apply();
+        return this;
+    }
+
+    public int getAGCCompressionGain(){
+        return rtcUserConfig.getInt(key_AGCCompressionGain, 9);
+    }
 
     /**
      * 将RtcConfig对象保存为持久化配置
@@ -532,6 +546,7 @@ public final class RtcConfig {
         setSaveRecvedAssVideo(config.saveRecvedAssVideo);
         setAudioSource(config.audioSource);
         setAgcLevel(config.agcLevel);
+        setAGCCompressionGain(config.agcCompressionGain);
     }
 
 
@@ -570,6 +585,7 @@ public final class RtcConfig {
         config.saveRecvedAssVideo = getSaveRecvedAssVideo();
         config.audioSource = getAudioSource();
         config.agcLevel = getAgcLevel();
+        config.agcCompressionGain = getAGCCompressionGain();
 
         return config;
     }
@@ -640,7 +656,8 @@ public final class RtcConfig {
         int audioSource;
         // AGC level
         int agcLevel;
-
+        // AGC Compression Gain db
+        int agcCompressionGain;
 
         void copy(Config src){
             isHardwareVideoEncoderPreferred = src.isHardwareVideoEncoderPreferred;
@@ -673,6 +690,7 @@ public final class RtcConfig {
             saveRecvedAssVideo = src.saveRecvedAssVideo;
             audioSource = src.audioSource;
             agcLevel = src.agcLevel;
+            agcCompressionGain = src.agcCompressionGain;
         }
 
         @Override
@@ -708,6 +726,7 @@ public final class RtcConfig {
                     ", saveRecvedAssVideo=" + saveRecvedAssVideo +
                     ", audioSource=" + audioSource +
                     ", agcLevel=" + agcLevel +
+                    ", agcCompressionGain=" + agcCompressionGain +
                     '}';
         }
     }

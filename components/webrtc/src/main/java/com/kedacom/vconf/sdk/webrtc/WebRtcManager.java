@@ -4917,7 +4917,10 @@ public class WebRtcManager extends Caster<Msg>{
                     KLog.p(KLog.ERROR, "peerConnection destroyed");
                     return;
                 }
-                audioSource = factory.createAudioSource(new MediaConstraints());
+                MediaConstraints audioConstraints = new MediaConstraints();
+                audioConstraints.optional.add(new MediaConstraints.KeyValuePair("AGCTargetLevelDbfs", ""+config.agcLevel));
+                audioConstraints.optional.add(new MediaConstraints.KeyValuePair("AGCCompressionGaindB", ""+config.agcCompressionGain));
+                audioSource = factory.createAudioSource(audioConstraints);
                 String localAudioTrackId = LOCAL_AUDIO_TRACK_ID+audioTrackCnt++;
                 localAudioTrack = factory.createAudioTrack(localAudioTrackId, audioSource);
                 localAudioTrack.setEnabled(!config.isMuted);
