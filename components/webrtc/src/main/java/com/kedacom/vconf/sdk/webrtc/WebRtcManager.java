@@ -122,8 +122,6 @@ import org.webrtc.voiceengine.WebRtcAudioUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -928,7 +926,9 @@ public class WebRtcManager extends Caster<Msg>{
                 KLog.p(KLog.ERROR,"null == pcWrapper");
                 return false;
             }
-            pcWrapper.setLocalVideoEnable(enable);
+            if (!pcWrapper.isLocalVideoForciblyClosed()){
+                pcWrapper.setLocalVideoEnable(enable);
+            }
             config.isLocalVideoEnabled = enable;
             Conferee myself = findMyself();
             myself.refreshDisplays();
@@ -4095,6 +4095,22 @@ public class WebRtcManager extends Caster<Msg>{
             instance.callInfo = callInfo;
         }
 
+        @Override
+        public void onRtcFlowCtrlCmd(String streamId, boolean sendingStreamEnabled, int bitrate) {
+            String trackId = kdStreamId2RtcTrackIdMap.get(streamId);
+            PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.PUBLISHER);
+            KLog.p("trackId=%s, pcWrapper=%s", trackId, pcWrapper);
+            if (trackId != null && pcWrapper != null) {
+                KLog.p("localVideoTrackId=%s", pcWrapper.localVideoTrack!=null ? pcWrapper.localVideoTrack.id() : null);
+                if (pcWrapper.localVideoTrack != null && trackId.equals(pcWrapper.localVideoTrack.id())){
+                    pcWrapper.setLocalVideoForciblyClosed(!sendingStreamEnabled);
+                    pcWrapper.setLocalVideoEnable(sendingStreamEnabled);
+                }else if (pcWrapper.localAudioTrack != null && trackId.equals(pcWrapper.localAudioTrack.id())){
+                    // TODO
+                }
+            }
+        }
+
     }
 
 
@@ -4703,6 +4719,7 @@ public class WebRtcManager extends Caster<Msg>{
         VideoCapturer videoCapturer;
         VideoSource videoSource;
         VideoTrack localVideoTrack;
+        boolean localVideoForciblyClosed; // 本地视频是否被强制关闭了（平台命令终端停止发送码流）
         Map<String, VideoTrack> remoteVideoTracks = new HashMap<>();
         AudioSource audioSource;
         AudioTrack localAudioTrack;
@@ -5337,6 +5354,15 @@ public class WebRtcManager extends Caster<Msg>{
                     }
                 }
             });
+        }
+
+
+        void setLocalVideoForciblyClosed(boolean closed){
+            localVideoForciblyClosed = closed;
+        }
+
+        boolean isLocalVideoForciblyClosed(){
+            return localVideoForciblyClosed;
         }
 
         void switchCamera(){

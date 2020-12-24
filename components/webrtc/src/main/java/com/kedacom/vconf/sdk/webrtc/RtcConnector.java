@@ -77,6 +77,7 @@ class RtcConnector implements IRcvMsgCallback{
 		cbMsgHandlerMap.put("Ev_MT_CodecMute_Cmd", this::onCodecMuteCmd);
 		cbMsgHandlerMap.put("Ev_MT_Agent_RtcCodecStatistic_Req", this::onAgentRtcCodecStatisticReq);
 		cbMsgHandlerMap.put("Ev_Mtpa_CallConnected_Ntf", this::onCallConnectedNtf);
+		cbMsgHandlerMap.put("Ev_MT_RtcFlowCtrl_Cmd", this::onRtcFlowCtrlCmd);
 
 		if (!CreateOspObject()){
 			throw new RuntimeException("CreateOspObject failed!");
@@ -437,6 +438,33 @@ class RtcConnector implements IRcvMsgCallback{
 		});
 	}
 
+	/**
+	 * 码流控制命令
+	 * */
+	private void onRtcFlowCtrlCmd(MtMsg mtMsg, long nSrcId, long nSrcNode){
+		BodyItem item0 = mtMsg.GetMsgBody(0);
+		BodyItem item1 = mtMsg.GetMsgBody(1);
+		BodyItem item2 = mtMsg.GetMsgBody(2);
+		String streamId;
+		boolean sendingStreamEnabled;
+		int bitrate;
+		try {
+			streamId = BasePB.TString.parseFrom(item0.getAbyContent()).getValue();
+			sendingStreamEnabled = BasePB.TBOOL32.parseFrom(item1.getAbyContent()).getValue();
+			bitrate = BasePB.TU32.parseFrom(item2.getAbyContent()).getValue();
+		} catch (InvalidProtocolBufferException e) {
+			e.printStackTrace();
+			return;
+		}
+		Log.i(TAG, String.format("<=#= onRtcFlowCtrlCmd streamId=%s, sendingStreamEnabled=%s, bitrate=%s",
+				streamId, sendingStreamEnabled, bitrate));
+		handler.post(() -> {
+			if (null != listener) {
+				listener.onRtcFlowCtrlCmd(streamId, sendingStreamEnabled, bitrate);
+			}
+		});
+	}
+
 
 
 	private EnumPB.EmMtResolution convertRes(int height, double scaleDownBy){
@@ -737,6 +765,8 @@ class RtcConnector implements IRcvMsgCallback{
 		void onAgentRtcCodecStatisticReq();
 
 		void onCallConnectedNtf(TCallInfo callInfo);
+
+		void onRtcFlowCtrlCmd(String streamId, boolean sendingStreamEnabled, int bitrate);
 	}
 
 
