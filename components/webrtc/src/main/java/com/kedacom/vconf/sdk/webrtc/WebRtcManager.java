@@ -155,7 +155,6 @@ public class WebRtcManager extends Caster<Msg>{
     private PeerConnectionWrapper pubPcWrapper;
     private PeerConnectionWrapper subPcWrapper;
     private PeerConnectionWrapper assPubPcWrapper;
-    private PeerConnectionWrapper assSubPcWrapper;
 
     // 与会方集合
     private final Set<Conferee> conferees = new LinkedHashSet<>();
@@ -1080,7 +1079,7 @@ public class WebRtcManager extends Caster<Msg>{
                         KdStream preAssStream = findAssStream();
                         if (null != preAssStream) {
                             streams.remove(preAssStream);
-                            PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.ASS_SUBSCRIBER);
+                            PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
                             if (null != pcWrapper) {
                                 pcWrapper.removeRemoteVideoTrack(preAssStream);
                             }
@@ -1128,8 +1127,8 @@ public class WebRtcManager extends Caster<Msg>{
                     // 我们在onTrack回调中createRemoteVideoTrack/createRemoteAudioTrack，
                     // 相应的我们原本期望在onRemoveStream（没有onRemoveTrack）中removeRemoteVideoTrack/removeRemoteAudioTrack，
                     // 然而实测下来发现onRemoveStream回调上来时MediaStream的track列表为空，不得已我们只得在StreamLeft消息上来时removeRemoteVideoTrack/removeRemoteAudioTrack
+                    PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
                     if (stream.isAss()){
-                        PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.ASS_SUBSCRIBER);
                         if (null != pcWrapper) {
                             pcWrapper.removeRemoteVideoTrack(stream);
                         }
@@ -1139,7 +1138,6 @@ public class WebRtcManager extends Caster<Msg>{
                             Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeLeft(assConferee));
                         }
                     }else {
-                        PeerConnectionWrapper pcWrapper = getPcWrapper(ConnType.SUBSCRIBER);
                         if (null != pcWrapper) {
                             if (stream.isAudio()) {
                                 pcWrapper.removeRemoteAudioTrack(stream);
@@ -1682,7 +1680,6 @@ public class WebRtcManager extends Caster<Msg>{
         pubPcWrapper = new PeerConnectionWrapper(ConnType.PUBLISHER, new SDPObserver(ConnType.PUBLISHER));
         subPcWrapper = new PeerConnectionWrapper(ConnType.SUBSCRIBER, new SDPObserver(ConnType.SUBSCRIBER));
         assPubPcWrapper = new PeerConnectionWrapper(ConnType.ASS_PUBLISHER, new SDPObserver(ConnType.ASS_PUBLISHER));
-        assSubPcWrapper = new PeerConnectionWrapper(ConnType.ASS_SUBSCRIBER, new SDPObserver(ConnType.ASS_SUBSCRIBER));
 
         executor.execute(() -> {
             if (null == factory){
@@ -1692,13 +1689,11 @@ public class WebRtcManager extends Caster<Msg>{
             PeerConnection pubPc = createPeerConnection(ConnType.PUBLISHER);
             PeerConnection subPc = createPeerConnection(ConnType.SUBSCRIBER);
             PeerConnection assPubPc = createPeerConnection(ConnType.ASS_PUBLISHER);
-            PeerConnection assSubPc = createPeerConnection(ConnType.ASS_SUBSCRIBER);
 
             synchronized (pcWrapperLock) {
                 if (null != pubPcWrapper) pubPcWrapper.setPeerConnection(pubPc);
                 if (null != subPcWrapper) subPcWrapper.setPeerConnection(subPc);
                 if (null != assPubPcWrapper) assPubPcWrapper.setPeerConnection(assPubPc);
-                if (null != assSubPcWrapper) assSubPcWrapper.setPeerConnection(assSubPc);
             }
 
             KLog.p("pcWrappers created");
@@ -1798,10 +1793,6 @@ public class WebRtcManager extends Caster<Msg>{
             if (null != assPubPcWrapper) {
                 assPubPcWrapper.close();
                 assPubPcWrapper = null;
-            }
-            if (null != assSubPcWrapper) {
-                assSubPcWrapper.close();
-                assSubPcWrapper = null;
             }
         }
         KLog.p("pcWrappers destroyed");
@@ -2000,11 +1991,10 @@ public class WebRtcManager extends Caster<Msg>{
             return subPcWrapper;
         }else if (ConnType.ASS_PUBLISHER == connType){
             return assPubPcWrapper;
-        }else if (ConnType.ASS_SUBSCRIBER == connType){
-            return assSubPcWrapper;
+        }else {
+            KLog.p(KLog.ERROR, "no peerconnection to conntype %s", connType);
+            return null;
         }
-        KLog.p(KLog.ERROR, "no peerconnection to conntype %s", connType);
-        return null;
     }
 
 
@@ -5397,14 +5387,12 @@ public class WebRtcManager extends Caster<Msg>{
     private StatsHelper.Stats publisherStats;
     private StatsHelper.Stats subscriberStats;
     private StatsHelper.Stats assPublisherStats;
-    private StatsHelper.Stats assSubscriberStats;
 
     // 上一个采集周期留存的统计信息。
     // 因为有些统计数据需要我们取区间差值自己计算，比如码率、帧率。
     private StatsHelper.Stats prePublisherStats;
     private StatsHelper.Stats preSubscriberStats;
     private StatsHelper.Stats preAssPublisherStats;
-    private StatsHelper.Stats preAssSubscriberStats;
 
     // 统计信息采集周期。// 单位：毫秒
     private final int STATS_INTERVAL = 1000;
@@ -5429,11 +5417,9 @@ public class WebRtcManager extends Caster<Msg>{
         publisherStats = null;
         subscriberStats = null;
         assPublisherStats = null;
-        assSubscriberStats = null;
         prePublisherStats = null;
         preSubscriberStats = null;
         preAssPublisherStats = null;
-        preAssSubscriberStats = null;
         collectStatsCount = 0;
         recentStats.clear();
 
@@ -5464,12 +5450,6 @@ public class WebRtcManager extends Caster<Msg>{
                         assPublisherStats = StatsHelper.resolveStats(rtcStatsReport);
                     })));
                 }
-                if (null != assSubPcWrapper && null != assSubPcWrapper.pc && assSubPcWrapper.isSdpProgressFinished()) {
-                    executor.execute(() -> assSubPcWrapper.pc.getStats(rtcStatsReport -> handler.post(() -> {
-                        preAssSubscriberStats = assSubscriberStats;
-                        assSubscriberStats = StatsHelper.resolveStats(rtcStatsReport);
-                    })));
-                }
 
                 if (enableStatsLog){
                     KLog.p("/=== publisherStats: ");
@@ -5478,8 +5458,6 @@ public class WebRtcManager extends Caster<Msg>{
                     printStats(subscriberStats, false);
                     KLog.p("/=== assPublisherStats: ");
                     printStats(assPublisherStats, false);
-                    KLog.p("/=== assSubscriberStats: ");
-                    printStats(assSubscriberStats, false);
                 }
 
                 aggregateStats();
@@ -5519,9 +5497,8 @@ public class WebRtcManager extends Caster<Msg>{
     private void aggregateStats(){
         Statistics statistics = new Statistics();
         aggregatePubStats(publisherStats, prePublisherStats, statistics, false);
-        aggregateSubStats(subscriberStats, preSubscriberStats, statistics, false);
         aggregatePubStats(assPublisherStats, preAssPublisherStats, statistics, true);
-        aggregateSubStats(assSubscriberStats, preAssSubscriberStats, statistics, true);
+        aggregateSubStats(subscriberStats, preSubscriberStats, statistics);
         recentStats.addLast(statistics);
         KLog.p("/=== aggregated Stats:\n"+statistics);
     }
@@ -5578,52 +5555,50 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
-    void aggregateSubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, Statistics statistics, boolean isAss){
+    void aggregateSubStats(StatsHelper.Stats stats, StatsHelper.Stats preStats, Statistics statistics){
         if (stats==null || preStats==null || statistics==null || (stats.audioInboundRtpList==null && stats.videoInboundRtpList==null)){
             return;
         }
 
         Map<String, Statistics.AudioInfo> audioInfoMap = new HashMap<>();
-        if (!isAss) {
-            if (stats.audioInboundRtpList!=null && preStats.audioInboundRtpList!=null) {
-                for (StatsHelper.AudioInboundRtp rtp : stats.audioInboundRtpList) {
-                    for (StatsHelper.AudioInboundRtp preRtp : preStats.audioInboundRtpList) {
-                        if (rtp.trackId==null || preRtp.trackId==null){
-                            KLog.p(KLog.ERROR, "this inbound rtp has no track id !?");
+        if (stats.audioInboundRtpList!=null && preStats.audioInboundRtpList!=null) {
+            for (StatsHelper.AudioInboundRtp rtp : stats.audioInboundRtpList) {
+                for (StatsHelper.AudioInboundRtp preRtp : preStats.audioInboundRtpList) {
+                    if (rtp.trackId==null || preRtp.trackId==null){
+                        KLog.p(KLog.ERROR, "this inbound rtp has no track id !?");
+                        continue;
+                    }
+                    if (rtp.trackId.equals(preRtp.trackId)) {
+                        int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / (STATS_INTERVAL/1000f) / 1024);
+                        String codecMime = stats.getCodecMime(rtp.trackId);
+                        long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
+                        int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
+                        StatsHelper.RecvAudioTrack recvAudioTrack = stats.getRecvAudioTrack(rtp.trackId);
+                        if (recvAudioTrack == null){
+                            KLog.p(KLog.ERROR, "no audio track of %s", rtp.trackId);
                             continue;
                         }
-                        if (rtp.trackId.equals(preRtp.trackId)) {
-                            int bitrate = (int) ((rtp.bytesReceived - preRtp.bytesReceived) * 8 / (STATS_INTERVAL/1000f) / 1024);
-                            String codecMime = stats.getCodecMime(rtp.trackId);
-                            long rtTotalPack = (rtp.packetsReceived-preRtp.packetsReceived)+(rtp.packetsLost-preRtp.packetsLost);
-                            int realtimeLostRate = rtTotalPack==0 ? 0 : (int) (100*(rtp.packetsLost-preRtp.packetsLost) / rtTotalPack);
-                            StatsHelper.RecvAudioTrack recvAudioTrack = stats.getRecvAudioTrack(rtp.trackId);
-                            if (recvAudioTrack == null){
-                                KLog.p(KLog.ERROR, "no audio track of %s", rtp.trackId);
-                                continue;
+                        int audioLevel = (int) (recvAudioTrack.audioLevel
+                                / (10 * config.outputAudioVolume/100f) // 抵消增益拿到实际的音量。前面有调用audioTrack#setVolume(int volume)设置增益。
+                                * 100 // 原始值为[0, 1]，我们转为[1, 100]
+                        );
+                        Statistics.AudioInfo audioInfo = new Statistics.AudioInfo(codecMime, bitrate, audioLevel, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate);
+                        String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
+                        Conferee conferee = findConfereeByStreamId(kdStreamId);
+                        if (conferee != null) {
+                            if (!conferee.isMyself()) {
+                                audioInfoMap.put(conferee.getId(), audioInfo);
+                                conferee.setVolume(audioLevel);
                             }
-                            int audioLevel = (int) (recvAudioTrack.audioLevel
-                                    / (10 * config.outputAudioVolume/100f) // 抵消增益拿到实际的音量。前面有调用audioTrack#setVolume(int volume)设置增益。
-                                    * 100 // 原始值为[0, 1]，我们转为[1, 100]
-                            );
-                            Statistics.AudioInfo audioInfo = new Statistics.AudioInfo(codecMime, bitrate, audioLevel, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate);
-                            String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
-                            Conferee conferee = findConfereeByStreamId(kdStreamId);
-                            if (conferee != null) {
-                                if (!conferee.isMyself()) {
-                                    audioInfoMap.put(conferee.getId(), audioInfo);
-                                    conferee.setVolume(audioLevel);
-                                }
+                        } else {
+                            KdStream kdStream = findStream(kdStreamId);
+                            if (kdStream != null && kdStream.streamInfo.bMix) { // 混音
+                                statistics.common = new Statistics.Common(audioInfo);
                             } else {
-                                KdStream kdStream = findStream(kdStreamId);
-                                if (kdStream != null && kdStream.streamInfo.bMix) { // 混音
-                                    statistics.common = new Statistics.Common(audioInfo);
-                                } else {
-                                    KLog.p(KLog.WARN, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
-                                }
+                                KLog.p(KLog.WARN, "track %s / %s does not belong to any conferee!", recvAudioTrack.trackIdentifier, kdStreamId);
                             }
-                            break;
                         }
+                        break;
                     }
                 }
             }

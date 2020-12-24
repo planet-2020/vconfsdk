@@ -9,7 +9,6 @@ class CommonDef {
         PUBLISHER,
         SUBSCRIBER,
         ASS_PUBLISHER,
-        ASS_SUBSCRIBER,
         UNKNOWN;
 
         static ConnType getInstance(int ordinal){
