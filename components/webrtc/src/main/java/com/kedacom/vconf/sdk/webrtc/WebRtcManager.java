@@ -168,6 +168,9 @@ public class WebRtcManager extends Caster<Msg>{
     // 科达的StreamId到WebRTC的TrackId之间的映射
     private final BiMap<String, String> kdStreamId2RtcTrackIdMap = HashBiMap.create();
 
+    // 混音情况下，音频ssrc到confereeId的映射。
+    private final Map<Long, String> audioSsrc2ConfereeIdMap = new HashMap<>();
+
     // 当前用户的e164
     private String userE164;
 
@@ -1025,6 +1028,15 @@ public class WebRtcManager extends Caster<Msg>{
                         .filter(it-> findConferee(it.mcuId, it.terId, it.type)==null)
                         .collect(Collectors.toList());
 
+                Stream.of(((TMTEntityInfoList) ntfContent).atMtEntitiy).forEach(entity -> {
+                    if (entity.dwAudSsrc != 0) {
+                        Conferee conferee = findConferee(entity.dwMcuId, entity.dwTerId, Conferee.ConfereeType.Normal);
+                        if (conferee != null) {
+                            audioSsrc2ConfereeIdMap.put(entity.dwAudSsrc, conferee.getId());
+                        }
+                    }
+                });
+
                 Conferee myself = findMyself();
                 boolean selfFilled = myself.mcuId != 0 && myself.terId != 0;
                 Conferee self = Stream.of(presentConferees).filter(Conferee::isMyself).findFirst().orElse(null);
@@ -1045,8 +1057,12 @@ public class WebRtcManager extends Caster<Msg>{
                 break;
 
             case ConfereeJoined:
-                Conferee joined = tMTEntityInfo2Conferee((TMTEntityInfo) ntfContent);
+                TMTEntityInfo entityInfo = (TMTEntityInfo) ntfContent;
+                Conferee joined = tMTEntityInfo2Conferee(entityInfo);
                 if (findConferee(joined.mcuId, joined.terId, joined.type)==null){
+                    if (entityInfo.dwAudSsrc != 0) {
+                        audioSsrc2ConfereeIdMap.put(entityInfo.dwAudSsrc, joined.getId());
+                    }
                     conferees.add(joined);
                     Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeJoined(joined));
                 }
@@ -1056,6 +1072,10 @@ public class WebRtcManager extends Caster<Msg>{
                 TMtId tMtId = (TMtId) ntfContent;
                 Conferee leftConferee = findConferee(tMtId.dwMcuId, tMtId.dwTerId, Conferee.ConfereeType.Normal);
                 if (null != leftConferee){
+                    Map<Long, String> toRemove = Stream.of(audioSsrc2ConfereeIdMap)
+                            .filter(m -> leftConferee.getId().equals(m.getValue()))
+                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                    audioSsrc2ConfereeIdMap.keySet().removeAll(toRemove.keySet());
                     conferees.remove(leftConferee);
                     Stream.of(getNtfListeners(ConfereesChangedListener.class)).forEach(it -> it.onConfereeLeft(leftConferee));
                 }
@@ -1555,6 +1575,8 @@ public class WebRtcManager extends Caster<Msg>{
 
 
         kdStreamId2RtcTrackIdMap.clear();
+
+        audioSsrc2ConfereeIdMap.clear();
 
         screenCapturePermissionData = null;
 
@@ -3448,6 +3470,16 @@ public class WebRtcManager extends Caster<Msg>{
         return null;
     }
 
+    /**
+     * 根据音频ssrc查找与会方
+     * */
+    private Conferee findConfereeByAudioSsrc(long ssrc){
+        String confereeId = audioSsrc2ConfereeIdMap.get(ssrc);
+        if (confereeId != null){
+            return findConfereeById(confereeId);
+        }
+        return null;
+    }
 
     /**
      * 根据与会方id查找与会方
@@ -5610,7 +5642,13 @@ public class WebRtcManager extends Caster<Msg>{
                         );
                         Statistics.AudioInfo audioInfo = new Statistics.AudioInfo(codecMime, bitrate, audioLevel, rtp.packetsReceived, rtp.packetsLost, realtimeLostRate);
                         String kdStreamId = kdStreamId2RtcTrackIdMap.inverse().get(recvAudioTrack.trackIdentifier);
-                        Conferee conferee = findConfereeByStreamId(kdStreamId);
+                        Conferee conferee = findConfereeByAudioSsrc(rtp.ssrc);
+                        KLog.p("findConfereeByAudioSsrc(%s)=%s", rtp.ssrc, conferee);
+                        if (conferee == null) {
+                            /*混音情况下，平台不会为每个与会方分配音频轨道，而是分配固定数目的音轨，再把这些音轨映射给部分与会方。
+                            这个映射关系平台有两种映射策略，一是streamId到与会方，另一种是ssrc到与会方*/
+                            conferee = findConfereeByStreamId(kdStreamId);
+                        }
                         if (conferee != null) {
                             if (!conferee.isMyself()) {
                                 audioInfoMap.put(conferee.getId(), audioInfo);

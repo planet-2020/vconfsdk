@@ -14,4 +14,5 @@ public class TMTEntityInfo {
 	public int dwTerId; // mt ID
 	public List<TMtLoc> atLoc;
 	public int byLocCount;
+	public long dwAudSsrc; // 音频ssrc
 }
