@@ -3243,7 +3243,7 @@ public class WebRtcManager extends Caster<Msg>{
             ){
                 stateDeco = conferee.audioConfereeDeco;
             }else if (Conferee.VideoSignalState.Weak == videoSignalState){
-                stateDeco = conferee.weakVideoSignalDeco;
+//                stateDeco = conferee.weakVideoSignalDeco;
             }else if (Conferee.VideoSignalState.Buffering == videoSignalState && conferee.isVirtualAssStreamConferee()){
                 stateDeco = conferee.recvingAssStreamDeco;
             }
