@@ -2985,7 +2985,7 @@ public class WebRtcManager extends Caster<Msg>{
             priority = type2Priority(type);
             preferredVideoQuality = type2VideoQuality(type);
             adjust();
-            setEnableHardwareScaler(true);
+            setEnableHardwareScaler(false);
             setWillNotDraw(false);
         }
 
