@@ -82,6 +82,7 @@ import com.kedacom.vconf.sdk.webrtc.bean.trans.TRtcStreamInfoList;
 import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.Camera2Enumerator;
+import org.webrtc.CameraEnumerationAndroid;
 import org.webrtc.CameraEnumerator;
 import org.webrtc.CameraVideoCapturer;
 import org.webrtc.CryptoOptions;
@@ -1948,6 +1949,13 @@ public class WebRtcManager extends Caster<Msg>{
 
     private @Nullable VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
         final String[] deviceNames = enumerator.getDeviceNames();
+
+        for (String deviceName : deviceNames) {
+            for(CameraEnumerationAndroid.CaptureFormat format : enumerator.getSupportedFormats(deviceName)){
+                KLog.p("camera %s, front=%s, w=%s, h=%s, fps=%s",
+                        deviceName, enumerator.isFrontFacing(deviceName), format.width, format.height, format.framerate);
+            }
+        }
 
         // First, try to find front facing camera
         for (String deviceName : deviceNames) {
