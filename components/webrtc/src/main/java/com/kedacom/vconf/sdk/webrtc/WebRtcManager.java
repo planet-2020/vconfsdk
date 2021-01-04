@@ -122,8 +122,6 @@ import org.webrtc.voiceengine.WebRtcAudioUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -136,6 +134,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 @SuppressWarnings({"unused", "WeakerAccess"})
@@ -149,7 +149,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private RtcConnector rtcConnector = new RtcConnector();
 
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private EglBase eglBase;
     private PeerConnectionFactory factory;
     private PeerConnectionWrapper pubPcWrapper;
@@ -4008,6 +4008,11 @@ public class WebRtcManager extends Caster<Msg>{
                 }else if (ConnType.ASS_PUBLISHER == connType) {
 //                        videoCapturer = createScreenCapturer();
                     videoCapturer = createWindowCapturer();
+                    // 发送辅流前调整主流编码参数
+                    PeerConnectionWrapper pubWrapper = getPcWrapper(ConnType.PUBLISHER);
+                    if (pubWrapper != null){
+                        pubWrapper.adaptOutputFormatForSendAssStream();
+                    }
                 }
             }
             if (null != videoCapturer) {
@@ -4231,6 +4236,12 @@ public class WebRtcManager extends Caster<Msg>{
                             // 取消发布结束，因协议组目前实现所限我们需重建PeerConnection。解决第二次发双流失败的问题
                             pcWrapper.isUnpublishing = false;
                             recreatePeerConnection(pcWrapper.connType);
+                            if (ConnType.ASS_PUBLISHER == pcWrapper.connType){
+                                PeerConnectionWrapper mainPub = getPcWrapper(ConnType.PUBLISHER);
+                                if (mainPub != null) {
+                                    mainPub.adaptOutputFormatForStopAssStream();
+                                }
+                            }
                         }
                     }
                 } else if (pcWrapper.isSdpType(SdpType.ANSWER)) {
@@ -5195,6 +5206,61 @@ public class WebRtcManager extends Caster<Msg>{
                 pc.removeTrack(audioSender);
                 audioSender = null;
             });
+        }
+
+
+        /**
+         * 发双流前降低主流的分辨率，这会触发主流只编2路。（平台的策略）
+         * */
+        private void adaptOutputFormatForSendAssStream(){
+            executor.execute(() -> {
+                KLog.p("adaptOutputFormat(640, 360, 30)");
+                videoSource.adaptOutputFormat(640, 360, 30);
+            });
+
+            // 延迟setParameters以等待adaptOutputFormat生效。
+            executor.schedule(() -> {
+                List<RtpSender> senders= pc.getSenders();
+                for(RtpSender s :senders)
+                {
+                    RtpParameters rtp= s.getParameters();
+                    if(rtp.encodings.size()==3)
+                    {
+                        rtp.encodings.get(0).scaleResolutionDownBy=2.0;
+                        rtp.encodings.get(1).scaleResolutionDownBy=1.0;
+                        rtp.encodings.get(2).scaleResolutionDownBy=1.0;
+                        KLog.p("setParameters(2.0, 1.0, 1.0)");
+                        s.setParameters(rtp);
+                    }
+                }
+            }, 500, TimeUnit.MILLISECONDS);
+        }
+
+        /**
+         * 双流停后（双流编码器释放后）恢复主流的分辨率，这会触发主流恢复编3路。（平台的策略）
+         * */
+        private void adaptOutputFormatForStopAssStream(){
+            executor.execute(() -> {
+                KLog.p("adaptOutputFormat(%s, %s, %s)", config.videoWidth, config.videoHeight, config.videoFps);
+                videoSource.adaptOutputFormat(config.videoWidth, config.videoHeight, config.videoFps);
+            });
+
+            // 延迟setParameters以等待adaptOutputFormat生效。
+            executor.schedule(() -> {
+                List<RtpSender> senders= pc.getSenders();
+                for(RtpSender s :senders)
+                {
+                    RtpParameters rtp= s.getParameters();
+                    if(rtp.encodings.size()==3)
+                    {
+                        rtp.encodings.get(0).scaleResolutionDownBy=4.0;
+                        rtp.encodings.get(1).scaleResolutionDownBy=2.0;
+                        rtp.encodings.get(2).scaleResolutionDownBy=1.0;
+                        KLog.p("setParameters(4.0, 2.0, 1.0)");
+                        s.setParameters(rtp);
+                    }
+                }
+            }, 500, TimeUnit.MILLISECONDS);
         }
 
 
