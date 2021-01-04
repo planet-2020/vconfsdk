@@ -897,7 +897,7 @@ public class WebRtcManager extends Caster<Msg>{
             KLog.p(KLog.ERROR,"null == pcWrapper");
             return false;
         }
-        pcWrapper.switchCamera();  // FIXME 攝像頭可能不是在前後切換。下面的鏡像設置可能有誤
+        pcWrapper.switchCamera();
         config.isFrontCameraPreferred = !config.isFrontCameraPreferred;
 
         Conferee myself = findMyself();
@@ -1947,15 +1947,17 @@ public class WebRtcManager extends Caster<Msg>{
     }
 
 
+    private String frontCamera, backCamera;
+    private boolean frontCameraInUse;
     private @Nullable VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {
         final String[] deviceNames = enumerator.getDeviceNames();
 
-        for (String deviceName : deviceNames) {
-            for(CameraEnumerationAndroid.CaptureFormat format : enumerator.getSupportedFormats(deviceName)){
-                KLog.p("camera %s, front=%s, w=%s, h=%s, fps=%s",
-                        deviceName, enumerator.isFrontFacing(deviceName), format.width, format.height, format.framerate);
-            }
-        }
+//        for (String deviceName : deviceNames) {
+//            for(CameraEnumerationAndroid.CaptureFormat format : enumerator.getSupportedFormats(deviceName)){
+//                KLog.p("camera %s, front=%s, w=%s, h=%s, fps=%s",
+//                        deviceName, enumerator.isFrontFacing(deviceName), format.width, format.height, format.framerate);
+//            }
+//        }
 
         // First, try to find front facing camera
         for (String deviceName : deviceNames) {
@@ -1963,6 +1965,9 @@ public class WebRtcManager extends Caster<Msg>{
                 VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
 
                 if (videoCapturer != null) {
+                    frontCamera = deviceName;
+                    backCamera = pickCamera(enumerator, false);
+                    frontCameraInUse = true;
                     return videoCapturer;
                 }
             }
@@ -1974,6 +1979,9 @@ public class WebRtcManager extends Caster<Msg>{
                 VideoCapturer videoCapturer = enumerator.createCapturer(deviceName, null);
 
                 if (videoCapturer != null) {
+                    backCamera = deviceName;
+                    frontCamera = pickCamera(enumerator, true);
+                    frontCameraInUse = false;
                     return videoCapturer;
                 }
             }
@@ -1981,6 +1989,17 @@ public class WebRtcManager extends Caster<Msg>{
 
         KLog.p(KLog.ERROR, "failed to createCameraCapturer");
 
+        return null;
+    }
+
+
+    private String pickCamera(CameraEnumerator enumerator, boolean front){
+        final String[] deviceNames = enumerator.getDeviceNames();
+        for (String deviceName : deviceNames) {
+            if (front == enumerator.isFrontFacing(deviceName)) {
+                return deviceName;
+            }
+        }
         return null;
     }
 
@@ -5408,7 +5427,17 @@ public class WebRtcManager extends Caster<Msg>{
         void switchCamera(){
             executor.execute(() -> {
                 if (null != videoCapturer) {
-                    ((CameraVideoCapturer) videoCapturer).switchCamera(null);
+                    if (frontCameraInUse) {
+                        if (backCamera != null) {
+                            ((CameraVideoCapturer) videoCapturer).switchCamera(null, backCamera);
+                            frontCameraInUse = false;
+                        }
+                    }else{
+                        if (frontCamera != null) {
+                            ((CameraVideoCapturer) videoCapturer).switchCamera(null, frontCamera);
+                            frontCameraInUse = true;
+                        }
+                    }
                 }
             });
         }
