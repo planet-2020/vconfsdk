@@ -47,6 +47,7 @@ import com.kedacom.vconf.sdk.common.type.transfer.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtAlias;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtConfInfo;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtCustomVmpParam;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtEntityStatus;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtId;
@@ -569,6 +570,43 @@ public class WebRtcManager extends Caster<Msg>{
                 }
             }
         }, resultListener, passwd);
+    }
+
+
+    /**
+     * 查询是否需要加水印
+     * @param resultListener onSuccess needWatermarkOrNot
+     *                       onTimeout
+     * */
+    public void queryIfNeedWatermark(IResultListener resultListener){
+        req(Msg.GetConfInfo, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TMtConfInfo confInfo = (TMtConfInfo) rspContent;
+                reportSuccess(confInfo.bWaterMark, resultListener);
+            }
+        }, resultListener);
+    }
+
+    /**
+     * 设置水印
+     * @param enable true开启，false关闭
+     * @param resultListener onSuccess null
+     *                       onTimeout
+     * */
+    public void setWatermark(boolean enable, IResultListener resultListener){
+        req(Msg.SetWatermark, new SessionProcessor<Msg>() {
+            @Override
+            public void onRsp(Msg rsp, Object rspContent, IResultListener resultListener, boolean isFinal, Msg req, Object[] reqParas, boolean[] isConsumed) {
+                TConfSettingsModified res = (TConfSettingsModified) rspContent;
+                if (res.MainParam.basetype == EmMtModifyConfInfoType.MT_MODIFY_CONF_WATERMARK.ordinal()
+                        && enable==res.AssParam.basetype){
+                    reportSuccess(null, resultListener);
+                }else{
+                    isConsumed[0] = false;
+                }
+            }
+        }, resultListener);
     }
 
 
@@ -1478,6 +1516,13 @@ public class WebRtcManager extends Caster<Msg>{
                         1000
                 );
 
+                break;
+
+            case ConfSettingsModified:
+                TConfSettingsModified confSettings = (TConfSettingsModified) ntfContent;
+                if (confSettings.MainParam.basetype==EmMtModifyConfInfoType.MT_MODIFY_CONF_WATERMARK.ordinal()){
+                    Stream.of(getNtfListeners(WatermarkCommandListener.class)).forEach(it -> it.onWatermarkCommand(confSettings.AssParam.basetype));
+                }
                 break;
 
         }
@@ -6162,5 +6207,14 @@ public class WebRtcManager extends Caster<Msg>{
         void onVoiceActivatedConfereeChanged(Conferee predecessor, Conferee successor);
     }
 
+    /**
+     * 水印指令监听器
+     * */
+    public interface WatermarkCommandListener extends INtfListener{
+        /**
+         * @param enable true开启，false关闭
+         * */
+        void onWatermarkCommand(boolean enable);
+    }
 }
 
