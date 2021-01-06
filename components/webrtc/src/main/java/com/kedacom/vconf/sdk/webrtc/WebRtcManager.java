@@ -5455,8 +5455,6 @@ public class WebRtcManager extends Caster<Msg>{
         void switchCamera(){
             executor.execute(() -> {
                 if (null != videoCapturer) {
-                    ((CameraVideoCapturer) videoCapturer).switchCamera(null);
-
                     if (frontCameraInUse) {
                         if (backCamera != null) {
                             ((CameraVideoCapturer) videoCapturer).switchCamera(null, backCamera);
