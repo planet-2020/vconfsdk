@@ -17,4 +17,5 @@ public enum EmMtModifyConfInfoType {
 	MT_MODIFY_CONF_OPENMODE ,	     //修改会议的openmode-暂不支持
 	MT_MODIFY_CONF_DUMB ,	         //修改会议全体哑音
 	MT_MODIFY_CONF_NoDisturb ,	     //修改会议是否终端免打扰（对应平台是否封闭）
+	MT_MODIFY_CONF_WATERMARK ,	     //修改会议会议水印
 }

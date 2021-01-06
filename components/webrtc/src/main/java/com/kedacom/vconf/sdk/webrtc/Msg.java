@@ -14,6 +14,7 @@ import com.kedacom.vconf.sdk.common.type.transfer.TMTEntityInfoList;
 import com.kedacom.vconf.sdk.common.type.transfer.TMTInstanceCreateConference;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtAssVidStatusList;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtCallLinkSate;
+import com.kedacom.vconf.sdk.common.type.transfer.TMtConfInfo;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtCustomVmpParam;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtEntityStatus;
 import com.kedacom.vconf.sdk.common.type.transfer.TMtId;
@@ -421,9 +422,8 @@ enum Msg {
     ToggleScreenShareRsp,
 
 
-
     /**
-     * 查询会议详情
+     * 查询会议详情（通过会管，会管走http）
      * */
     @Request(name = "MGRestGetInstantConfInfoByIDReq",
             owner = MeetingCtrl,
@@ -440,6 +440,21 @@ enum Msg {
     @Response(clz = TQueryConfInfoResult.class,
             name = "RestGetInstantConfInfoByID_Rsp")
     QueryConfInfoRsp,
+
+
+    /**
+     * 查询会议详情（通过会控，会控的接口只有在会议中能用）
+     * */
+    @Request(name = "ConfGetConfInfoCmd",
+            owner = ConfCtrl,
+            timeout = 10,
+            rspSeq = "GetConfInfoRsp"
+    )
+    GetConfInfo,
+
+    @Response(clz = TMtConfInfo.class,
+            name = "ConfInfoNtf")
+    GetConfInfoRsp,
 
     /**
      * 此会议需要密码
@@ -579,4 +594,17 @@ enum Msg {
      * */
     @Notification(name = "GetCustomVMPResultNtf", clz = TMtCustomVmpParam.class)
     ScenesComposited,
+
+
+    /**
+     * 设置水印
+     * */
+    @Request(name = "ConfSetWaterMark",
+            owner = ConfCtrl,
+            paras = boolean.class,
+            userParas = boolean.class,
+            rspSeq = "ConfSettingsModified"
+    )
+    SetWatermark,
+
 }
