@@ -147,7 +147,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private Application context;
 
-    private RtcConnector rtcConnector = new RtcConnector();
+    private RtcConnector rtcConnector;
 
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private EglBase eglBase;
@@ -190,6 +190,7 @@ public class WebRtcManager extends Caster<Msg>{
 
     private WebRtcManager(Application context){
         this.context = context;
+        rtcConnector = new RtcConnector(context);
     }
 
 
