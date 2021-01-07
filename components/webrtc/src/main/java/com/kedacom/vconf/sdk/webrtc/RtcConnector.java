@@ -1,6 +1,7 @@
 
 package com.kedacom.vconf.sdk.webrtc;
 
+import android.app.Application;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -39,6 +40,7 @@ class RtcConnector implements IRcvMsgCallback{
 	private static final short MTDISPATCH_ID = 107;
 	private static final short MTRTCSERVICE_ID = 145;
 	private static final short GUARD_ID = 109;
+	private Application ctx;
 	private final Map<String, ICbMsgHandler> cbMsgHandlerMap = new HashMap<>();
 
 	private final long myId =Connector.MAKEIID(WEBRTC_ID, (short)1 );
@@ -65,7 +67,8 @@ class RtcConnector implements IRcvMsgCallback{
 		this.listener = listener;
 	}
 
-	RtcConnector( ) {
+	RtcConnector(Application context) {
+		ctx = context;
 		// 注册消息处理方法
 		cbMsgHandlerMap.put("Ev_MT_GetOffer_Cmd", this::onGetOfferCmd);
 		cbMsgHandlerMap.put("Ev_MT_SetOffer_Cmd", this::onSetOfferCmd);
@@ -537,38 +540,86 @@ class RtcConnector implements IRcvMsgCallback{
 			audDecBuilder.setIndex(0);
 			builder.addAuddecStatics(audDecBuilder.build());
 		}
-		for (Statistics.ConfereeRelated confereeRelated : statistics.confereeRelated) {
-			if (confereeRelated.audioInfo !=null){
-				StructConfPB.TAgentAudDecStatistic.Builder audDecBuilder = StructConfPB.TAgentAudDecStatistic.newBuilder();
-				Statistics.AudioInfo audioInfo = confereeRelated.audioInfo;
-				audDecBuilder.setBitrate(audioInfo.bitrate);
-				audDecBuilder.setFormat(audEncodeFormat2PB(audioInfo.encodeFormat));
-				audDecBuilder.setPktsLose((int) audioInfo.packetsLost);
-				long totalPack = audioInfo.packetsReceived+audioInfo.packetsLost;
-				audDecBuilder.setPktsLoserate(totalPack==0 ? 0 : (int) (100 * audioInfo.packetsLost/totalPack));
-				audDecBuilder.setDecStart(true);
-				audDecBuilder.setIndex(0);
-				builder.addAuddecStatics(audDecBuilder.build());
-			}
 
-			if (confereeRelated.videoInfo != null){
-				StructConfPB.TAgentVidDecStatistic.Builder vidDecBuilder = StructConfPB.TAgentVidDecStatistic.newBuilder();
-				Statistics.VideoInfo videoInfo = confereeRelated.videoInfo;
-				vidDecBuilder.setBitrate(videoInfo.bitrate);
-				vidDecBuilder.setFormat(vidEncodeFormat2PB(videoInfo.encodeFormat));
-				vidDecBuilder.setFramerate(videoInfo.framerate);
-				vidDecBuilder.setVidWidth(videoInfo.width);
-				vidDecBuilder.setVidHeight(videoInfo.height);
-				vidDecBuilder.setPktsLose((int) videoInfo.packetsLost);
-				long totalPack = videoInfo.packetsReceived+videoInfo.packetsLost;
-				vidDecBuilder.setPktsLoserate(totalPack==0 ? 0 : (int) (100 * videoInfo.packetsLost/totalPack));
-				vidDecBuilder.setHwDecStatus(true);
-				vidDecBuilder.setDecStart(true);
-				vidDecBuilder.setIndex(0);
-				if (confereeRelated.confereeId.endsWith(WebRtcManager.Conferee.ConfereeType.AssStream.name())) {
-					builder.addAssViddecStatics(vidDecBuilder.build());
-				}else {
-					builder.addPriViddecStatics(vidDecBuilder.build());
+		for (Statistics.ConfereeRelated confereeRelated : statistics.confereeRelated) {
+			WebRtcManager.Conferee conferee = WebRtcManager.getInstance(ctx).findConfereeById(confereeRelated.confereeId);
+			// 发送主流
+			if (conferee!=null && conferee.isMyself()){
+				if (confereeRelated.audioInfo != null) {
+					StructConfPB.TAgentAudEncStatistic.Builder audEncBuilder = StructConfPB.TAgentAudEncStatistic.newBuilder();
+					Statistics.AudioInfo audioInfo = confereeRelated.audioInfo;
+					audEncBuilder.setBitrate(audioInfo.bitrate);
+					audEncBuilder.setFormat(audEncodeFormat2PB(audioInfo.encodeFormat));
+					audEncBuilder.setEncStart(true);
+					audEncBuilder.setIndex(0);
+					builder.addAudencStatics(audEncBuilder.build());
+				}
+
+				if (confereeRelated.videoInfo != null) {
+					StructConfPB.TAgentVidEncStatistic.Builder vidEncBuilder = StructConfPB.TAgentVidEncStatistic.newBuilder();
+					Statistics.VideoInfo videoInfo = confereeRelated.videoInfo;
+					vidEncBuilder.setBitrate(videoInfo.bitrate);
+					vidEncBuilder.setFormat(vidEncodeFormat2PB(videoInfo.encodeFormat));
+					vidEncBuilder.setFramerate(videoInfo.framerate);
+					vidEncBuilder.setVidWidth(videoInfo.width);
+					vidEncBuilder.setVidHeight(videoInfo.height);
+					vidEncBuilder.setEncStart(true);
+					vidEncBuilder.setIndex(0);
+//					vidEncBuilder.setVideoResourceExist();
+//					vidEncBuilder.setHwEncStatus();
+					builder.addPriVidencStatics(vidEncBuilder.build());
+				}
+
+			}
+			// 发送辅流
+			else if (conferee == null && confereeRelated.confereeId.endsWith(WebRtcManager.Conferee.ConfereeType.AssStream.name())){
+				if (confereeRelated.videoInfo != null) {
+					StructConfPB.TAgentVidEncStatistic.Builder vidEncBuilder = StructConfPB.TAgentVidEncStatistic.newBuilder();
+					Statistics.VideoInfo videoInfo = confereeRelated.videoInfo;
+					vidEncBuilder.setBitrate(videoInfo.bitrate);
+					vidEncBuilder.setFormat(vidEncodeFormat2PB(videoInfo.encodeFormat));
+					vidEncBuilder.setFramerate(videoInfo.framerate);
+					vidEncBuilder.setVidWidth(videoInfo.width);
+					vidEncBuilder.setVidHeight(videoInfo.height);
+					vidEncBuilder.setEncStart(true);
+					vidEncBuilder.setIndex(0);
+//					vidEncBuilder.setVideoResourceExist();
+//					vidEncBuilder.setHwEncStatus();
+					builder.addAssVidencStatics(vidEncBuilder.build());
+				}
+			}else {
+				if (confereeRelated.audioInfo != null) {
+					StructConfPB.TAgentAudDecStatistic.Builder audDecBuilder = StructConfPB.TAgentAudDecStatistic.newBuilder();
+					Statistics.AudioInfo audioInfo = confereeRelated.audioInfo;
+					audDecBuilder.setBitrate(audioInfo.bitrate);
+					audDecBuilder.setFormat(audEncodeFormat2PB(audioInfo.encodeFormat));
+					audDecBuilder.setPktsLose((int) audioInfo.packetsLost);
+					long totalPack = audioInfo.packetsReceived + audioInfo.packetsLost;
+					audDecBuilder.setPktsLoserate(totalPack == 0 ? 0 : (int) (100 * audioInfo.packetsLost / totalPack));
+					audDecBuilder.setDecStart(true);
+					audDecBuilder.setIndex(0);
+					builder.addAuddecStatics(audDecBuilder.build());
+				}
+
+				if (confereeRelated.videoInfo != null) {
+					StructConfPB.TAgentVidDecStatistic.Builder vidDecBuilder = StructConfPB.TAgentVidDecStatistic.newBuilder();
+					Statistics.VideoInfo videoInfo = confereeRelated.videoInfo;
+					vidDecBuilder.setBitrate(videoInfo.bitrate);
+					vidDecBuilder.setFormat(vidEncodeFormat2PB(videoInfo.encodeFormat));
+					vidDecBuilder.setFramerate(videoInfo.framerate);
+					vidDecBuilder.setVidWidth(videoInfo.width);
+					vidDecBuilder.setVidHeight(videoInfo.height);
+					vidDecBuilder.setPktsLose((int) videoInfo.packetsLost);
+					long totalPack = videoInfo.packetsReceived + videoInfo.packetsLost;
+					vidDecBuilder.setPktsLoserate(totalPack == 0 ? 0 : (int) (100 * videoInfo.packetsLost / totalPack));
+					vidDecBuilder.setHwDecStatus(true);
+					vidDecBuilder.setDecStart(true);
+					vidDecBuilder.setIndex(0);
+					if (confereeRelated.confereeId.endsWith(WebRtcManager.Conferee.ConfereeType.AssStream.name())) {
+						builder.addAssViddecStatics(vidDecBuilder.build());
+					} else {
+						builder.addPriViddecStatics(vidDecBuilder.build());
+					}
 				}
 			}
 		}
